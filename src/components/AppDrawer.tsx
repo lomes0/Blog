@@ -95,6 +95,7 @@ const AppDrawer: React.FC<React.PropsWithChildren<{ title: string }>> = (
         onOpen={toggleDrawer}
         onClose={toggleDrawer}
         sx={{ displayPrint: "none" }}
+        id="document-info-drawer"
       >
         <Box sx={{ p: 2, width: 300, position: "relative", height: "100%" }}>
           <Box sx={{ display: "flex", alignItems: "center" }}>

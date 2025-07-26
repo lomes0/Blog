@@ -1,14 +1,13 @@
 "use client";
 import { actions, useDispatch, useSelector } from "@/store";
-import { Box, Paper, Tooltip } from "@mui/material";
+import { Paper } from "@mui/material";
 import { ChevronLeft } from "@mui/icons-material";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { alpha } from "@mui/material/styles";
 
 const DocumentInfoDrawerArrow: React.FC = () => {
-  const dispatch = useDispatch();
-  const pathname = usePathname();
+  const dispatch = useDispatch(); const pathname = usePathname();
   const drawerOpen = useSelector((state) => state.ui.drawer);
 
   // Only show the arrow in edit or view modes
@@ -100,7 +99,7 @@ const DocumentInfoDrawerArrow: React.FC = () => {
         zIndex: 1200,
         cursor: "pointer",
         height: 40, // Reduced height from 80 to 40
-        width: 12, // Reduced width from 24 to 12
+        width: 22, // Increased from 12 to fix icon squashing
         borderTopLeftRadius: 4, // Reduced radius from 8 to 4
         borderBottomLeftRadius: 4,
         borderTopRightRadius: 0,
@@ -118,7 +117,7 @@ const DocumentInfoDrawerArrow: React.FC = () => {
             { duration: theme.transitions.duration.shorter },
           ),
         "&:hover": {
-          width: 16, // Slightly wider on hover for better visibility
+          width: 32, // Slightly wider on hover for better visibility
           backgroundColor: (theme) =>
             drawerOpen
               ? alpha(theme.palette.primary.dark, 0.9)
@@ -129,7 +128,7 @@ const DocumentInfoDrawerArrow: React.FC = () => {
       aria-label="document info"
     >
       <ChevronLeft
-        fontSize="small" // Added small size
+        fontSize="medium" // Changed from "small" to "medium" for better visibility
         sx={{
           color: (theme) =>
             drawerOpen
