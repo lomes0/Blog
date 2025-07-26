@@ -102,17 +102,20 @@ const FileBrowserTreeItem: React.FC<FileBrowserTreeItemProps> = ({
         transition: "background-color 0.2s ease, color 0.2s ease",
       }}
     >
-      <ListItemIcon
-        sx={{
-          minWidth: 30,
-          color: ((isDirectory || isDomainRoot) && isDropTarget) ? "inherit" : "text.secondary",
-          ml: 0,
-        }}
-      >
-        {isDomainRoot && domainIcon 
-          ? domainIcon 
-          : isDirectory ? <Folder fontSize="small" /> : <Article fontSize="small" />}
-      </ListItemIcon>
+      {/* Only show icon if it's not a domain root, or if it's a domain root with a specific icon */}
+      {!(isDomainRoot && !domainIcon) && (
+        <ListItemIcon
+          sx={{
+            minWidth: 30,
+            color: ((isDirectory || isDomainRoot) && isDropTarget) ? "inherit" : "text.secondary",
+            ml: 0,
+          }}
+        >
+          {isDomainRoot && domainIcon 
+            ? domainIcon 
+            : isDirectory ? <Folder fontSize="small" /> : <Article fontSize="small" />}
+        </ListItemIcon>
+      )}
 
       {open && (
         <>

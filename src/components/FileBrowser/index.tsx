@@ -20,6 +20,7 @@ import {
   Folder,
   FolderOpen,
   Home,
+  MoreVert,
 } from "@mui/icons-material";
 import { DocumentType, UserDocument } from "@/types";
 import ContextMenu from "./ContextMenu";
@@ -761,7 +762,6 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ open, domainId }) => {
                     cancelEditing={() => {}}
                     open={open}
                     isDomainRoot={true}
-                    domainIcon={<Home />}
                     domainId={domainId}
                   />
                 </>
