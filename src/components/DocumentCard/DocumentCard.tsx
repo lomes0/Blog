@@ -147,6 +147,7 @@ const DocumentCard: React.FC<DocumentCardProps> = memo(({
       isPublished: permissionState.isPublished,
       isCollab: permissionState.isCollab,
       isPrivate: permissionState.isPrivate,
+      documentStatus: document?.status,
       hasSortOrder,
       sortOrderValue,
       author,
@@ -157,6 +158,7 @@ const DocumentCard: React.FC<DocumentCardProps> = memo(({
     isLoading,
     documentState,
     permissionState,
+    document?.status,
     hasSortOrder,
     sortOrderValue,
     author,
@@ -213,6 +215,7 @@ const DocumentCard: React.FC<DocumentCardProps> = memo(({
       topContent={topContent}
       chipContent={chipContent}
       actionContent={actionContent}
+      documentStatus={document?.status}
       minHeight={config.minHeight}
       className="document-card"
       ariaLabel={ariaLabel}

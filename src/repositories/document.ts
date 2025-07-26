@@ -1,6 +1,11 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { CloudDocument, DocumentType, EditorDocument } from "@/types";
+import {
+  CloudDocument,
+  DocumentStatus,
+  DocumentType,
+  EditorDocument,
+} from "@/types";
 import { validate } from "uuid";
 import { getCachedRevision } from "./revision";
 
@@ -98,22 +103,7 @@ const findUserDocument = async (
 ) => {
   const document = await prisma.document.findUnique({
     where: validate(handle) ? { id: handle } : { handle: handle.toLowerCase() },
-    select: {
-      id: true,
-      handle: true,
-      name: true,
-      createdAt: true,
-      updatedAt: true,
-      published: true,
-      collab: true,
-      private: true,
-      baseId: true,
-      head: true,
-      type: true,
-      background_image: true,
-      sort_order: true,
-      parentId: true,
-      domainId: true, // Select domainId field
+    include: {
       revisions: {
         select: {
           id: true,
@@ -165,12 +155,11 @@ const findUserDocument = async (
 
   const cloudDocument: CloudDocument = {
     ...document,
-    coauthors: document.coauthors.map((coauthor) => coauthor.user),
-    // Use the document's type or default to DOCUMENT if not specified
-    type: (document as any).type || DocumentType.DOCUMENT,
+    coauthors: document.coauthors.map((coauthor: any) => coauthor.user),
+    // Convert Prisma enum to our TypeScript enum
+    type: document.type as DocumentType,
+    status: (document as any).status as DocumentStatus,
     head: document.head || "",
-    parentId: (document as any).parentId, // Explicitly include parentId
-    domainId: (document as any).domainId, // Explicitly include domainId
     revisions: document.revisions as any,
   };
 
@@ -214,22 +203,6 @@ const deleteDocument = async (handle: string) => {
 const findEditorDocument = async (handle: string) => {
   const document = await prisma.document.findUnique({
     where: validate(handle) ? { id: handle } : { handle: handle.toLowerCase() },
-    select: {
-      id: true,
-      handle: true,
-      name: true,
-      createdAt: true,
-      updatedAt: true,
-      published: true,
-      collab: true,
-      private: true,
-      baseId: true,
-      head: true,
-      type: true,
-      sort_order: true,
-      background_image: true,
-      parentId: true,
-    },
   });
 
   if (!document) return null;
@@ -239,7 +212,8 @@ const findEditorDocument = async (handle: string) => {
   const editorDocument: EditorDocument = {
     ...document,
     data: revision.data as unknown as EditorDocument["data"],
-    type: (document as any).type || DocumentType.DOCUMENT,
+    type: document.type as DocumentType,
+    status: (document as any).status as DocumentStatus,
     head: document.head || "",
   };
 

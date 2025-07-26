@@ -1,15 +1,17 @@
 import React from "react";
 import { Avatar, Chip, Skeleton, SxProps, Theme } from "@mui/material";
 import {
+  CheckCircle,
   Cloud,
   CloudDone,
   CloudSync,
   MobileFriendly,
+  PlayArrow,
   Public,
   Security,
   Workspaces,
 } from "@mui/icons-material";
-import { User } from "@/types";
+import { DocumentStatus, User } from "@/types";
 import { cardTheme } from "./theme";
 
 /**
@@ -55,6 +57,9 @@ interface StatusChipProps {
   isPrivate?: boolean;
   hasSortOrder?: boolean;
   sortOrderValue?: number;
+
+  /** Document status */
+  documentStatus?: DocumentStatus;
 
   /** Author information */
   author?: User | null;
@@ -136,6 +141,7 @@ export const renderStatusChips = ({
   isPrivate = false,
   hasSortOrder = false,
   sortOrderValue = 0,
+  documentStatus,
   author = null,
   showAuthor = true,
   chipSize = "small",
@@ -146,6 +152,41 @@ export const renderStatusChips = ({
 }: StatusChipProps) => {
   // Generate status chips based on state
   const statusChips: React.ReactNode[] = [];
+
+  // Add document status chip first (highest priority)
+  if (documentStatus && documentStatus !== DocumentStatus.NEUTRAL) {
+    if (documentStatus === DocumentStatus.ACTIVE) {
+      statusChips.push(
+        createChip({
+          key: "active-status-chip",
+          icon: <PlayArrow />,
+          label: "Active",
+          size: chipSize,
+          variant: chipVariant,
+          bgColor: "#e3f2fd", // Light blue background
+          borderColor: "#2196f3", // Blue border
+          textColor: "#1976d2", // Dark blue text
+          fontWeight: "bold",
+          ...defaultChipStyles,
+        }),
+      );
+    } else if (documentStatus === DocumentStatus.DONE) {
+      statusChips.push(
+        createChip({
+          key: "done-status-chip",
+          icon: <CheckCircle />,
+          label: "Done",
+          size: chipSize,
+          variant: chipVariant,
+          bgColor: "#f5f5f5", // Light gray background
+          borderColor: "#9e9e9e", // Gray border
+          textColor: "#616161", // Dark gray text
+          fontWeight: "bold",
+          ...defaultChipStyles,
+        }),
+      );
+    }
+  }
 
   // Add status chips based on state
   if (isLocalOnly) {

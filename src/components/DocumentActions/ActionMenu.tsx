@@ -11,6 +11,7 @@ import ShareDocument from "./Share";
 import EditDocument from "./Edit";
 import RestoreDocument from "./Restore";
 import MoveDocument from "./Move";
+import StatusToggle from "./StatusToggle";
 
 function DocumentActionMenu(
   { userDocument, user }: { userDocument: UserDocument; user?: User },
@@ -49,6 +50,7 @@ function DocumentActionMenu(
       {options.includes("share") && (
         <ShareDocument userDocument={userDocument} />
       )}
+      <StatusToggle userDocument={userDocument} variant="iconbutton" />
       <IconButton
         id={`${id}-action-button`}
         aria-controls={open ? `${id}-action-menu` : undefined}
@@ -75,6 +77,11 @@ function DocumentActionMenu(
           horizontal: "right",
         }}
       >
+        <StatusToggle
+          userDocument={userDocument}
+          variant="menuitem"
+          closeMenu={closeMenu}
+        />
         {options.includes("move") && (
           <MoveDocument
             userDocument={userDocument}

@@ -47,6 +47,7 @@ export type EditorDocument = {
   parentId?: string | null;
   domainId?: string | null;
   type: DocumentType;
+  status?: DocumentStatus;
   revisions?: EditorDocumentRevision[];
   sort_order?: number | null;
   background_image?: string | null;
@@ -55,6 +56,12 @@ export type EditorDocument = {
 export enum DocumentType {
   DOCUMENT = "DOCUMENT",
   DIRECTORY = "DIRECTORY",
+}
+
+export enum DocumentStatus {
+  NEUTRAL = "NEUTRAL",
+  ACTIVE = "ACTIVE",
+  DONE = "DONE",
 }
 
 // Helper functions for checking document types

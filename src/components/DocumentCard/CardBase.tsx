@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 import Link from "next/link";
 import { cardTheme } from "./theme";
+import { DocumentStatus } from "@/types";
 
 interface CardBaseProps {
   /** Title of the card - can be a string or React node (like a Skeleton) */
@@ -34,6 +35,9 @@ interface CardBaseProps {
 
   /** Content to display in the actions area (bottom right) */
   actionContent: ReactNode;
+
+  /** Document status for visual styling */
+  documentStatus?: DocumentStatus;
 
   /** Height of the card - defaults to 260px if not specified */
   minHeight?: string;
@@ -88,6 +92,7 @@ const CardBase: React.FC<CardBaseProps> = ({
   topContent,
   chipContent,
   actionContent,
+  documentStatus = DocumentStatus.NEUTRAL,
   minHeight = cardTheme.minHeight.document,
   sx = {},
   className = "card-base",
@@ -139,6 +144,43 @@ const CardBase: React.FC<CardBaseProps> = ({
   // Create a formatted title that's safe for tooltips
   const formattedTitle = typeof title === "string" ? title : "Document";
 
+  // Status-based styling
+  const getStatusStyles = () => {
+    switch (documentStatus) {
+      case DocumentStatus.ACTIVE:
+        return {
+          borderColor: "#ff9800",
+          borderWidth: 2,
+          backgroundColor: "#fffbf0", // Light yellow background
+          boxShadow: "0 2px 8px rgba(255, 152, 0, 0.1)",
+          "&:hover": {
+            borderColor: "#f57c00",
+            backgroundColor: "#fff8e1", // Slightly deeper yellow on hover
+            boxShadow: "0 4px 12px rgba(255, 152, 0, 0.15)",
+          },
+        };
+      case DocumentStatus.DONE:
+        return {
+          borderColor: "#9e9e9e",
+          borderWidth: 2,
+          backgroundColor: "#f5f5f5", // Gray background
+          boxShadow: "0 2px 8px rgba(158, 158, 158, 0.1)",
+          filter: "grayscale(20%)", // Add slight grayscale effect
+          "&:hover": {
+            borderColor: "#757575",
+            backgroundColor: "#eeeeee", // Slightly deeper gray on hover
+            boxShadow: "0 4px 12px rgba(158, 158, 158, 0.15)",
+            filter: "grayscale(10%)", // Less grayscale on hover
+          },
+        };
+      default:
+        return {
+          borderColor: cardTheme.colors.border,
+          borderWidth: 1,
+        };
+    }
+  };
+
   // Dynamic styles based on user preferences
   const animationStyles = prefersReducedMotion
     ? cardTheme.accessibility.reducedMotion
@@ -168,9 +210,11 @@ const CardBase: React.FC<CardBaseProps> = ({
           width: "100%",
           position: "relative",
           borderRadius: cardTheme.borderRadius,
-          borderColor: cardTheme.colors.border,
-          backgroundColor: cardTheme.colors.cardBackground,
-          boxShadow: cardTheme.colors.shadow.default,
+          ...getStatusStyles(),
+          backgroundColor: getStatusStyles().backgroundColor ||
+            cardTheme.colors.cardBackground,
+          boxShadow: getStatusStyles().boxShadow ||
+            cardTheme.colors.shadow.default,
           ...animationStyles,
           "&:focus-within": {
             boxShadow: cardTheme.colors.shadow.focus,
@@ -190,7 +234,6 @@ const CardBase: React.FC<CardBaseProps> = ({
           [theme.breakpoints.down("sm")]: {
             minHeight: "clamp(240px, 15vw, 280px)",
           },
-          borderWidth: 1,
           ...sx,
         }}
       >
@@ -203,7 +246,7 @@ const CardBase: React.FC<CardBaseProps> = ({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            bgcolor: "background.paper",
+            bgcolor: getStatusStyles().backgroundColor || "background.paper",
             py: 2.5, // Add vertical padding to create space from top/bottom edges
             ...(shouldShowTitle && {
               borderBottom: "1px solid",
@@ -275,6 +318,7 @@ const CardBase: React.FC<CardBaseProps> = ({
                 alignItems: "center", // Vertically center all content
                 position: "relative",
                 overflow: "hidden", // Prevent overflow issues
+                bgcolor: getStatusStyles().backgroundColor || "transparent",
                 // Better responsive padding
                 [theme.breakpoints.down("sm")]: {
                   px: 1.5,
@@ -377,7 +421,8 @@ const CardBase: React.FC<CardBaseProps> = ({
               alignItems: "center",
               borderTop: "1px solid",
               borderColor: cardTheme.colors.border,
-              backgroundColor: "transparent",
+              backgroundColor: getStatusStyles().backgroundColor ||
+                "transparent",
               zIndex: 3,
               height,
               minHeight: cardTheme.actionBar.minHeight,

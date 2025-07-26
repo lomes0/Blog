@@ -48,6 +48,9 @@ model Document {
   sort_order       Float?  @db.DoublePrecision
   background_image String?
 
+  // Status field for marking documents as active, done, or neutral
+  status DocumentStatus @default(NEUTRAL)
+
   // Fork relationship
   baseId String?    @db.Uuid
   base   Document?  @relation("BaseForks", fields: [baseId], references: [id])
@@ -74,6 +77,12 @@ model Document {
 enum DocumentType {
   DOCUMENT
   DIRECTORY
+}
+
+enum DocumentStatus {
+  NEUTRAL
+  ACTIVE
+  DONE
 }
 
 model Revision {

@@ -205,6 +205,7 @@ const DirectoryCard: React.FC<DirectoryCardProps> = memo(({
       isPublished: permissionState.isPublished,
       isCollab: permissionState.isCollab,
       isPrivate: permissionState.isPrivate,
+      documentStatus: document?.status,
       hasSortOrder: sortOrderData.hasSortOrder,
       sortOrderValue: sortOrderData.sortOrderValue,
       author: navigationData.author,
@@ -215,6 +216,7 @@ const DirectoryCard: React.FC<DirectoryCardProps> = memo(({
     isLoading,
     documentState,
     permissionState,
+    document?.status,
     sortOrderData,
     navigationData.author,
     config.showAuthor,
@@ -270,6 +272,7 @@ const DirectoryCard: React.FC<DirectoryCardProps> = memo(({
       topContent={topContent}
       chipContent={chipContent}
       actionContent={actionContent}
+      documentStatus={document?.status}
       minHeight={config.minHeight}
       className="directory-card"
       ariaLabel={ariaLabel}

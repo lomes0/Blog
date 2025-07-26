@@ -12,7 +12,14 @@ import {
   Portal,
   Typography,
 } from "@mui/material";
-import { Close, Compare, History, Preview } from "@mui/icons-material";
+import {
+  CheckCircle,
+  Close,
+  Compare,
+  History,
+  PlayArrow,
+  Preview,
+} from "@mui/icons-material";
 import type { LexicalEditor } from "lexical";
 import { RefObject } from "react";
 import RouterLink from "next/link";
@@ -153,6 +160,28 @@ export default function EditDocumentInfo(
               <Typography component="h2" variant="h6">
                 {localDocument.name}
               </Typography>
+              {localDocument.status && localDocument.status !== "NEUTRAL" && (
+                <Chip
+                  size="small"
+                  icon={localDocument.status === "ACTIVE"
+                    ? <PlayArrow />
+                    : <CheckCircle />}
+                  label={localDocument.status === "ACTIVE" ? "Active" : "Done"}
+                  sx={{
+                    backgroundColor: localDocument.status === "ACTIVE"
+                      ? "#e3f2fd"
+                      : "#e8f5e8",
+                    color: localDocument.status === "ACTIVE"
+                      ? "#1976d2"
+                      : "#2e7d32",
+                    borderColor: localDocument.status === "ACTIVE"
+                      ? "#2196f3"
+                      : "#4caf50",
+                    fontWeight: "bold",
+                  }}
+                  variant="outlined"
+                />
+              )}
               <Typography
                 variant="subtitle2"
                 color="text.secondary"

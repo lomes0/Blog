@@ -141,6 +141,7 @@ export async function PATCH(
       background_image: body.background_image,
       sort_order: body.sort_order,
       domainId: body.domainId,
+      status: body.status,
     };
 
     console.log("PATCH /api/documents/[id] document update input:", input);
