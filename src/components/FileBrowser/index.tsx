@@ -58,7 +58,9 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ open, domainId }) => {
   const [isLoading, setIsLoading] = useState(false);
 
   // Get current domain info for root entry
-  const currentDomain = domainId ? domains.find(d => d.id === domainId) : null;
+  const currentDomain = domainId
+    ? domains.find((d) => d.id === domainId)
+    : null;
 
   // Trigger data loading if it hasn't been initialized yet
   useEffect(() => {
@@ -484,7 +486,10 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ open, domainId }) => {
   };
 
   // Context menu handlers
-  const handleContextMenu = (event: React.MouseEvent, item: FileBrowserTreeItemData) => {
+  const handleContextMenu = (
+    event: React.MouseEvent,
+    item: FileBrowserTreeItemData,
+  ) => {
     event.preventDefault();
     event.stopPropagation();
 
@@ -627,7 +632,10 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ open, domainId }) => {
   };
 
   // Recursive component to render tree items
-  const renderTreeItems = (items: FileBrowserTreeItemData[], level: number = 0) => {
+  const renderTreeItems = (
+    items: FileBrowserTreeItemData[],
+    level: number = 0,
+  ) => {
     return items.map((item) => {
       const isExpanded = expandedNodes.has(item.id);
       const isDirectory = item.type === DocumentType.DIRECTORY;
@@ -766,7 +774,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ open, domainId }) => {
                   />
                 </>
               )}
-              
+
               {/* Regular tree items */}
               {treeData.length === 0 && domainId
                 ? (

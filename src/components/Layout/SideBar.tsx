@@ -99,27 +99,29 @@ const SideBar: React.FC = () => {
   // Drag and drop handlers
   const handleDrop = useCallback(async (
     event: React.DragEvent,
-    targetDomainId?: string
+    targetDomainId?: string,
   ) => {
     event.preventDefault();
-    
+
     try {
-      const dragData = event.dataTransfer.getData("application/matheditor-document");
+      const dragData = event.dataTransfer.getData(
+        "application/matheditor-document",
+      );
       if (!dragData) return;
-      
+
       const draggedItem = JSON.parse(dragData);
-      
+
       // Find the dragged document in the store
       const draggedDocResponse = await dispatch(
         actions.getDocumentById(draggedItem.id),
       );
       const draggedDoc = draggedDocResponse.payload as UserDocument;
-      
+
       if (!draggedDoc) return;
-      
+
       // Move to root if no domain specified, otherwise to the specified domain
       const newDomainId = targetDomainId || null;
-      
+
       // Update local document if it exists
       if (draggedDoc.local) {
         await dispatch(actions.updateLocalDocument({
@@ -130,7 +132,7 @@ const SideBar: React.FC = () => {
           },
         }));
       }
-      
+
       // Update cloud document if it exists
       if (draggedDoc.cloud) {
         await dispatch(actions.updateCloudDocument({
@@ -141,15 +143,16 @@ const SideBar: React.FC = () => {
           },
         }));
       }
-      
+
       // Show success message
       dispatch(actions.announce({
         message: {
-          title: `Moved ${draggedItem.name || 'document'} to ${targetDomainId ? 'domain' : 'root'}`,
+          title: `Moved ${draggedItem.name || "document"} to ${
+            targetDomainId ? "domain" : "root"
+          }`,
         },
         timeout: 3000,
       }));
-      
     } catch (error) {
       console.error("Error handling drop:", error);
       dispatch(actions.announce({
@@ -160,7 +163,7 @@ const SideBar: React.FC = () => {
       }));
     }
   }, [dispatch]);
-  
+
   const handleDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
@@ -391,7 +394,9 @@ const SideBar: React.FC = () => {
                       pathname.startsWith(`${item.path}/`),
                   )}
                   onDragOver={item.text === "Home" ? handleDragOver : undefined}
-                  onDrop={item.text === "Home" ? (e) => handleDrop(e) : undefined}
+                  onDrop={item.text === "Home"
+                    ? (e) => handleDrop(e)
+                    : undefined}
                   sx={{
                     minHeight: SIDEBAR_CONSTANTS.MIN_HEIGHT.NAVIGATION_ITEM,
                     justifyContent: open ? "initial" : "center",

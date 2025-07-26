@@ -50,7 +50,7 @@ interface DocumentGridProps {
 
 /**
  * A highly optimized, responsive grid component for displaying documents and directories
- * 
+ *
  * Features:
  * - Responsive grid layout with intelligent column distribution
  * - Performance optimized with comprehensive memoization
@@ -60,7 +60,7 @@ interface DocumentGridProps {
  * - Loading states with skeleton placeholders
  * - Motion preference respect for better UX
  * - Development performance monitoring
- * 
+ *
  * @example
  * ```tsx
  * <DocumentGrid
@@ -190,7 +190,7 @@ const DocumentGrid: React.FC<DocumentGridProps> = ({
   // Handle empty state (when not loading and no items)
   if (!isLoading && items.length === 0) {
     if (!showEmptyState) return null;
-    
+
     return (
       <Box
         component="section"

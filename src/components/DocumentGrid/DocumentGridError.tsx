@@ -1,6 +1,6 @@
 import React from "react";
-import { Box, Button, Typography, Alert, AlertTitle } from "@mui/material";
-import { Refresh, ErrorOutline } from "@mui/icons-material";
+import { Alert, AlertTitle, Box, Button, Typography } from "@mui/material";
+import { ErrorOutline, Refresh } from "@mui/icons-material";
 
 interface DocumentGridErrorProps {
   /** The error that occurred */
@@ -23,8 +23,8 @@ const DocumentGridError: React.FC<DocumentGridErrorProps> = ({
   message,
   showRetry = true,
 }) => {
-  const errorMessage = message || 
-    (typeof error === "string" ? error : error?.message) || 
+  const errorMessage = message ||
+    (typeof error === "string" ? error : error?.message) ||
     "Failed to load documents";
 
   return (
@@ -40,10 +40,10 @@ const DocumentGridError: React.FC<DocumentGridErrorProps> = ({
         minHeight: 300,
       }}
     >
-      <Alert 
-        severity="error" 
-        sx={{ 
-          mb: 3, 
+      <Alert
+        severity="error"
+        sx={{
+          mb: 3,
           maxWidth: 500,
           "& .MuiAlert-icon": {
             fontSize: "2rem",

@@ -25,7 +25,9 @@ interface DropData {
  * Custom hook for handling drag and drop targets in the sidebar
  * Provides drag event handlers and visual feedback state
  */
-export const useDropTarget = ({ targetId, targetType, domainId, onDropComplete }: DropTargetOptions) => {
+export const useDropTarget = (
+  { targetId, targetType, domainId, onDropComplete }: DropTargetOptions,
+) => {
   const dispatch = useDispatch();
   const [dropTargetState, setDropTargetState] = useState<DropTargetState>({
     isDropTarget: false,
@@ -34,7 +36,9 @@ export const useDropTarget = ({ targetId, targetType, domainId, onDropComplete }
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     // Check if the dragged data is a matheditor document
-    const hasValidData = e.dataTransfer.types.includes("application/matheditor-document");
+    const hasValidData = e.dataTransfer.types.includes(
+      "application/matheditor-document",
+    );
     if (hasValidData) {
       e.preventDefault();
       e.dataTransfer.dropEffect = "move";
@@ -42,10 +46,12 @@ export const useDropTarget = ({ targetId, targetType, domainId, onDropComplete }
   }, []);
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
-    const hasValidData = e.dataTransfer.types.includes("application/matheditor-document");
+    const hasValidData = e.dataTransfer.types.includes(
+      "application/matheditor-document",
+    );
     if (hasValidData) {
       e.preventDefault();
-      setDropTargetState(prev => ({
+      setDropTargetState((prev) => ({
         isDropTarget: true,
         dragEnterCount: prev.dragEnterCount + 1,
       }));
@@ -54,7 +60,7 @@ export const useDropTarget = ({ targetId, targetType, domainId, onDropComplete }
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    setDropTargetState(prev => {
+    setDropTargetState((prev) => {
       const newCount = prev.dragEnterCount - 1;
       return {
         isDropTarget: newCount > 0,
@@ -79,7 +85,9 @@ export const useDropTarget = ({ targetId, targetType, domainId, onDropComplete }
       }
 
       // Find the dragged document in the store
-      const draggedDocResponse = await dispatch(actions.getDocumentById(draggedItem.id));
+      const draggedDocResponse = await dispatch(
+        actions.getDocumentById(draggedItem.id),
+      );
       const draggedDoc = draggedDocResponse.payload as UserDocument;
 
       if (!draggedDoc) return;
@@ -118,7 +126,7 @@ export const useDropTarget = ({ targetId, targetType, domainId, onDropComplete }
           dispatch(actions.updateLocalDocument({
             id: draggedItem.id,
             partial,
-          }))
+          })),
         );
       }
 
@@ -131,17 +139,17 @@ export const useDropTarget = ({ targetId, targetType, domainId, onDropComplete }
           dispatch(actions.updateCloudDocument({
             id: draggedItem.id,
             partial,
-          }))
+          })),
         );
       }
 
       await Promise.all(updatePromises);
 
       // Show success message
-      const targetName = targetType === "domain" 
-        ? "domain root" 
-        : targetType === "directory" 
-        ? "directory" 
+      const targetName = targetType === "domain"
+        ? "domain root"
+        : targetType === "directory"
+        ? "directory"
         : "root";
 
       dispatch(actions.announce({
@@ -159,7 +167,6 @@ export const useDropTarget = ({ targetId, targetType, domainId, onDropComplete }
 
       // Call completion callback
       onDropComplete?.();
-
     } catch (error) {
       console.error("Error during drop:", error);
       dispatch(actions.announce({

@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Typography, Button } from "@mui/material";
+import { Box, Button, Typography } from "@mui/material";
 import { Add, FolderOpen } from "@mui/icons-material";
 
 interface DocumentGridEmptyProps {
@@ -42,7 +42,7 @@ const DocumentGridEmpty: React.FC<DocumentGridEmptyProps> = ({
       <Box sx={{ mb: 3 }}>
         {icon}
       </Box>
-      
+
       <Typography
         variant="h6"
         sx={{
@@ -53,7 +53,7 @@ const DocumentGridEmpty: React.FC<DocumentGridEmptyProps> = ({
       >
         {message}
       </Typography>
-      
+
       <Typography
         variant="body2"
         sx={{

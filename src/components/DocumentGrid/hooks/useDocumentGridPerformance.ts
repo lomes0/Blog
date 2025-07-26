@@ -12,7 +12,7 @@ interface PerformanceMetrics {
  */
 export const useDocumentGridPerformance = (
   itemCount: number,
-  componentName = "DocumentGrid"
+  componentName = "DocumentGrid",
 ) => {
   const renderCount = useRef(0);
   const renderTimes = useRef<number[]>([]);
@@ -28,17 +28,18 @@ export const useDocumentGridPerformance = (
     if (process.env.NODE_ENV === "development") {
       const endTime = performance.now();
       const renderTime = endTime - startTime.current;
-      
+
       renderCount.current += 1;
       renderTimes.current.push(renderTime);
-      
+
       // Keep only last 10 render times for moving average
       if (renderTimes.current.length > 10) {
         renderTimes.current.shift();
       }
-      
-      const averageRenderTime = renderTimes.current.reduce((a, b) => a + b, 0) / renderTimes.current.length;
-      
+
+      const averageRenderTime = renderTimes.current.reduce((a, b) => a + b, 0) /
+        renderTimes.current.length;
+
       // Log performance metrics for long render times
       if (renderTime > 16) { // More than one frame at 60fps
         console.warn(`${componentName}: Slow render detected`, {
@@ -54,7 +55,8 @@ export const useDocumentGridPerformance = (
   const getMetrics = (): PerformanceMetrics => ({
     renderCount: renderCount.current,
     lastRenderTime: renderTimes.current[renderTimes.current.length - 1] || 0,
-    averageRenderTime: renderTimes.current.reduce((a, b) => a + b, 0) / renderTimes.current.length || 0,
+    averageRenderTime: renderTimes.current.reduce((a, b) => a + b, 0) /
+        renderTimes.current.length || 0,
   });
 
   return { getMetrics };

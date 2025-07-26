@@ -1,6 +1,12 @@
 "use client";
 import React from "react";
-import { Box, ListItemButton, ListItemIcon, ListItemText, TextField } from "@mui/material";
+import {
+  Box,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  TextField,
+} from "@mui/material";
 import { Article, ChevronRight, ExpandMore, Folder } from "@mui/icons-material";
 import { DocumentType } from "@/types";
 import { useDropTarget } from "../Layout/SideBar/hooks/useDropTarget";
@@ -23,9 +29,18 @@ interface FileBrowserTreeItemProps {
   editingItemId: string | null;
   editingText: string;
   onItemClick: (item: FileBrowserTreeItemData) => void;
-  onExpandClick: (item: FileBrowserTreeItemData, event: React.MouseEvent) => void;
-  onContextMenu: (event: React.MouseEvent, item: FileBrowserTreeItemData) => void;
-  startEditing: (item: { id: string; name: string; type: DocumentType }, event: React.MouseEvent) => void;
+  onExpandClick: (
+    item: FileBrowserTreeItemData,
+    event: React.MouseEvent,
+  ) => void;
+  onContextMenu: (
+    event: React.MouseEvent,
+    item: FileBrowserTreeItemData,
+  ) => void;
+  startEditing: (
+    item: { id: string; name: string; type: DocumentType },
+    event: React.MouseEvent,
+  ) => void;
   handleEditChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   submitEditing: () => void;
   cancelEditing: () => void;
@@ -63,7 +78,11 @@ const FileBrowserTreeItem: React.FC<FileBrowserTreeItemProps> = ({
     targetType: isDomainRoot ? "domain" : "directory",
     domainId: domainId,
     onDropComplete: () => {
-      console.log(`Item dropped on ${isDomainRoot ? 'domain root' : 'directory'}: ${item.name}`);
+      console.log(
+        `Item dropped on ${
+          isDomainRoot ? "domain root" : "directory"
+        }: ${item.name}`,
+      );
     },
   });
 
@@ -107,71 +126,79 @@ const FileBrowserTreeItem: React.FC<FileBrowserTreeItemProps> = ({
         <ListItemIcon
           sx={{
             minWidth: 30,
-            color: ((isDirectory || isDomainRoot) && isDropTarget) ? "inherit" : "text.secondary",
+            color: ((isDirectory || isDomainRoot) && isDropTarget)
+              ? "inherit"
+              : "text.secondary",
             ml: 0,
           }}
         >
-          {isDomainRoot && domainIcon 
-            ? domainIcon 
-            : isDirectory ? <Folder fontSize="small" /> : <Article fontSize="small" />}
+          {isDomainRoot && domainIcon
+            ? domainIcon
+            : isDirectory
+            ? <Folder fontSize="small" />
+            : <Article fontSize="small" />}
         </ListItemIcon>
       )}
 
       {open && (
         <>
-          {editingItemId === item.id ? (
-            <TextField
-              value={editingText}
-              onChange={handleEditChange}
-              autoFocus
-              size="small"
-              variant="standard"
-              margin="dense"
-              fullWidth
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-              }}
-              onKeyDown={(e) => {
-                e.stopPropagation();
-                if (e.key === "Enter") {
+          {editingItemId === item.id
+            ? (
+              <TextField
+                value={editingText}
+                onChange={handleEditChange}
+                autoFocus
+                size="small"
+                variant="standard"
+                margin="dense"
+                fullWidth
+                onClick={(e) => {
+                  e.stopPropagation();
                   e.preventDefault();
-                  submitEditing();
-                } else if (e.key === "Escape") {
-                  e.preventDefault();
-                  cancelEditing();
-                }
-              }}
-              onBlur={(e) => {
-                setTimeout(() => {
-                  if (editingItemId === item.id) {
+                }}
+                onKeyDown={(e) => {
+                  e.stopPropagation();
+                  if (e.key === "Enter") {
+                    e.preventDefault();
                     submitEditing();
+                  } else if (e.key === "Escape") {
+                    e.preventDefault();
+                    cancelEditing();
                   }
-                }, 100);
-              }}
-              sx={{
-                "& .MuiInputBase-input": {
+                }}
+                onBlur={(e) => {
+                  setTimeout(() => {
+                    if (editingItemId === item.id) {
+                      submitEditing();
+                    }
+                  }, 100);
+                }}
+                sx={{
+                  "& .MuiInputBase-input": {
+                    fontSize: 14,
+                    py: 0.5,
+                  },
+                  width: "90%",
+                  mr: 1,
+                }}
+                InputProps={{
+                  disableUnderline: false,
+                }}
+              />
+            )
+            : (
+              <ListItemText
+                primary={item.name}
+                primaryTypographyProps={{
+                  noWrap: true,
                   fontSize: 14,
-                  py: 0.5,
-                },
-                width: "90%",
-                mr: 1,
-              }}
-              InputProps={{
-                disableUnderline: false,
-              }}
-            />
-          ) : (
-            <ListItemText
-              primary={item.name}
-              primaryTypographyProps={{
-                noWrap: true,
-                fontSize: 14,
-                fontWeight: (isCurrentDirectory || isCurrentDocument) ? "medium" : "normal",
-                color: "text.primary",
-              }}
-            />
-          )}
+                  fontWeight: (isCurrentDirectory || isCurrentDocument)
+                    ? "medium"
+                    : "normal",
+                  color: "text.primary",
+                }}
+              />
+            )}
 
           {/* Expand/collapse arrow - hidden for domain root */}
           {isDirectory && isDomainRoot !== true && (
@@ -183,7 +210,9 @@ const FileBrowserTreeItem: React.FC<FileBrowserTreeItemProps> = ({
               }}
               onClick={(e) => onExpandClick(item, e)}
             >
-              {isExpanded ? <ExpandMore fontSize="small" /> : <ChevronRight fontSize="small" />}
+              {isExpanded
+                ? <ExpandMore fontSize="small" />
+                : <ChevronRight fontSize="small" />}
             </Box>
           )}
         </>

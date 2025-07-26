@@ -8,7 +8,6 @@ import { JSDOM } from "jsdom";
 export const generateServerHtml = (data: SerializedEditorState) =>
   new Promise<string>((resolve, reject) => {
     try {
-
       // Initialize JSDOM with more features enabled
       const dom = new JSDOM(
         "<!DOCTYPE html><html><head></head><body></body></html>",

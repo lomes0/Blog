@@ -7,7 +7,8 @@ import { useEffect, useRef, useState } from "react";
 import { alpha } from "@mui/material/styles";
 
 const DocumentInfoDrawerArrow: React.FC = () => {
-  const dispatch = useDispatch(); const pathname = usePathname();
+  const dispatch = useDispatch();
+  const pathname = usePathname();
   const drawerOpen = useSelector((state) => state.ui.drawer);
 
   // Only show the arrow in edit or view modes

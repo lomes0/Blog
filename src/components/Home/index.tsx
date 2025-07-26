@@ -425,7 +425,7 @@ const Home: React.FC<{ staticDocuments: UserDocument[] }> = (
       const document = doc.local || doc.cloud;
       const parentId = document?.parentId;
       const domainId = document?.domainId;
-      
+
       // Check if both parentId and domainId are null
       return parentId === null && domainId === null;
     })

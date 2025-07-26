@@ -1,10 +1,12 @@
 # DocumentGrid Component
 
-A highly optimized, responsive grid component for displaying documents and directories with comprehensive features for modern web applications.
+A highly optimized, responsive grid component for displaying documents and
+directories with comprehensive features for modern web applications.
 
 ## Features ✨
 
-- **🎯 Performance Optimized**: Comprehensive memoization and efficient re-rendering
+- **🎯 Performance Optimized**: Comprehensive memoization and efficient
+  re-rendering
 - **📱 Responsive Design**: Adaptive layout for all screen sizes
 - **♿ Accessibility**: Full ARIA support and keyboard navigation
 - **🔄 Error Handling**: Graceful error states with retry functionality
@@ -57,7 +59,7 @@ function AdvancedExample() {
 
   const handleCreateDocument = () => {
     // Navigate to document creation
-    router.push('/create');
+    router.push("/create");
   };
 
   return (
@@ -83,39 +85,40 @@ function AdvancedExample() {
 
 ## Props
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `items` | `UserDocument[]` | **Required** | Array of documents to display |
-| `user` | `User?` | `undefined` | Current user for permissions |
-| `currentDirectoryId` | `string?` | `undefined` | Current directory context |
-| `title` | `string?` | `undefined` | Grid title to display |
-| `titleIcon` | `ReactNode?` | `undefined` | Icon next to title |
-| `sx` | `SxProps<Theme>?` | `undefined` | Additional styles |
-| `onMoveComplete` | `() => void?` | `undefined` | Callback after item move |
-| `isLoading` | `boolean` | `false` | Loading state |
-| `skeletonCount` | `number` | `4` | Number of skeleton items |
-| `error` | `Error \| string \| null` | `null` | Error state |
-| `onRetry` | `() => void?` | `undefined` | Error retry callback |
-| `showEmptyState` | `boolean` | `true` | Show empty state component |
-| `emptyMessage` | `string?` | `undefined` | Custom empty message |
-| `emptyActionLabel` | `string?` | `undefined` | Empty state button label |
-| `onEmptyAction` | `() => void?` | `undefined` | Empty state action |
+| Prop                 | Type                      | Default      | Description                   |
+| -------------------- | ------------------------- | ------------ | ----------------------------- |
+| `items`              | `UserDocument[]`          | **Required** | Array of documents to display |
+| `user`               | `User?`                   | `undefined`  | Current user for permissions  |
+| `currentDirectoryId` | `string?`                 | `undefined`  | Current directory context     |
+| `title`              | `string?`                 | `undefined`  | Grid title to display         |
+| `titleIcon`          | `ReactNode?`              | `undefined`  | Icon next to title            |
+| `sx`                 | `SxProps<Theme>?`         | `undefined`  | Additional styles             |
+| `onMoveComplete`     | `() => void?`             | `undefined`  | Callback after item move      |
+| `isLoading`          | `boolean`                 | `false`      | Loading state                 |
+| `skeletonCount`      | `number`                  | `4`          | Number of skeleton items      |
+| `error`              | `Error \| string \| null` | `null`       | Error state                   |
+| `onRetry`            | `() => void?`             | `undefined`  | Error retry callback          |
+| `showEmptyState`     | `boolean`                 | `true`       | Show empty state component    |
+| `emptyMessage`       | `string?`                 | `undefined`  | Custom empty message          |
+| `emptyActionLabel`   | `string?`                 | `undefined`  | Empty state button label      |
+| `onEmptyAction`      | `() => void?`             | `undefined`  | Empty state action            |
 
 ## Grid Layout
 
 The component automatically adapts to different screen sizes:
 
-| Breakpoint | Columns | Grid Size |
-|------------|---------|-----------|
-| XS (mobile) | 1 | 12/12 |
-| SM (tablet) | 2 | 6/12 |
-| MD (small desktop) | 3 | 4/12 |
-| LG (desktop) | 4 | 3/12 |
-| XL (large desktop) | 5 | 2.4/12 |
+| Breakpoint         | Columns | Grid Size |
+| ------------------ | ------- | --------- |
+| XS (mobile)        | 1       | 12/12     |
+| SM (tablet)        | 2       | 6/12      |
+| MD (small desktop) | 3       | 4/12      |
+| LG (desktop)       | 4       | 3/12      |
+| XL (large desktop) | 5       | 2.4/12    |
 
 ## Sub-components
 
 ### DocumentGridHeader
+
 Header component with title, icon, and item count.
 
 ```tsx
@@ -126,10 +129,11 @@ import { DocumentGridHeader } from "@/components/DocumentGrid";
   titleIcon={<Folder />}
   isLoading={false}
   itemCount={documents.length}
-/>
+/>;
 ```
 
 ### DocumentGridError
+
 Error state component with retry functionality.
 
 ```tsx
@@ -139,10 +143,11 @@ import { DocumentGridError } from "@/components/DocumentGrid";
   error={error}
   onRetry={handleRetry}
   message="Custom error message"
-/>
+/>;
 ```
 
 ### DocumentGridEmpty
+
 Empty state component with action button.
 
 ```tsx
@@ -153,12 +158,13 @@ import { DocumentGridEmpty } from "@/components/DocumentGrid";
   actionLabel="Create Document"
   onAction={handleCreate}
   icon={<CreateIcon />}
-/>
+/>;
 ```
 
 ## Custom Hook
 
 ### useResponsiveDocumentGrid
+
 Hook for responsive grid calculations.
 
 ```tsx
@@ -166,10 +172,10 @@ import { useResponsiveDocumentGrid } from "@/components/DocumentGrid";
 
 function CustomGrid() {
   const { gridSizing, breakpointInfo } = useResponsiveDocumentGrid();
-  
+
   return (
     <Grid container>
-      {items.map(item => (
+      {items.map((item) => (
         <Grid key={item.id} size={gridSizing}>
           <CustomCard item={item} />
         </Grid>

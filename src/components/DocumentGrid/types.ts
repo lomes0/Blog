@@ -66,7 +66,7 @@ export type DocumentGridActionHandler = () => void | Promise<void>;
 export type DocumentGridMoveHandler = () => void | Promise<void>;
 
 // State types
-export type DocumentGridState = 'loading' | 'error' | 'empty' | 'ready';
+export type DocumentGridState = "loading" | "error" | "empty" | "ready";
 
 export interface DocumentGridStateInfo {
   state: DocumentGridState;
@@ -79,12 +79,12 @@ export interface DocumentGridStateInfo {
 // Performance monitoring types
 export interface PerformanceThresholds {
   renderTime: number; // milliseconds
-  itemCount: number;  // number of items
+  itemCount: number; // number of items
   memoryUsage: number; // MB
 }
 
 export interface PerformanceWarning {
-  type: 'render' | 'memory' | 'items';
+  type: "render" | "memory" | "items";
   value: number;
   threshold: number;
   suggestion: string;
@@ -100,7 +100,7 @@ export interface MockDocument {
     data: any;
     createdAt: string;
     updatedAt: string;
-    type: 'DOCUMENT' | 'DIRECTORY';
+    type: "DOCUMENT" | "DIRECTORY";
   };
   cloud?: any;
 }
@@ -128,8 +128,8 @@ export type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 export type RequiredProps<T> = Required<T>;
 
 // Component variant types
-export type GridVariant = 'standard' | 'compact' | 'comfortable';
-export type GridDensity = 'dense' | 'normal' | 'sparse';
+export type GridVariant = "standard" | "compact" | "comfortable";
+export type GridDensity = "dense" | "normal" | "sparse";
 
 // Animation and motion types
 export interface MotionConfig {

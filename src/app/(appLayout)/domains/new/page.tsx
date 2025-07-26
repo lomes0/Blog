@@ -263,7 +263,7 @@ export default function NewDomainPage() {
                           sx={{ fontSize: "1.5rem", mr: 1 }}
                         >
                           {iconOption}
-                        </Box>                        
+                        </Box>
                       </MenuItem>
                     ))}
                   </Select>
