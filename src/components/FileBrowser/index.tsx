@@ -19,9 +19,11 @@ import {
   ExpandMore,
   Folder,
   FolderOpen,
+  Home,
 } from "@mui/icons-material";
 import { DocumentType, UserDocument } from "@/types";
 import ContextMenu from "./ContextMenu";
+import FileBrowserTreeItem from "./TreeItem";
 import documentDB, { revisionDB } from "@/indexeddb";
 import "./styles.css";
 
@@ -30,11 +32,11 @@ interface FileBrowserProps {
   domainId?: string | null; // Optional domain ID to filter by
 }
 
-interface TreeItem {
+interface FileBrowserTreeItemData {
   id: string;
   name: string;
   type: DocumentType;
-  children: TreeItem[];
+  children: FileBrowserTreeItemData[];
   parentId: string | null;
   sort_order: number | null; // Add sort_order field
 }
@@ -47,12 +49,15 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ open, domainId }) => {
   const router = useRouter();
   const dispatch = useDispatch();
 
-  const [treeData, setTreeData] = useState<TreeItem[]>([]);
+  const [treeData, setTreeData] = useState<FileBrowserTreeItemData[]>([]);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [currentDirectory, setCurrentDirectory] = useState<string | null>(
     null,
   );
   const [isLoading, setIsLoading] = useState(false);
+
+  // Get current domain info for root entry
+  const currentDomain = domainId ? domains.find(d => d.id === domainId) : null;
 
   // Trigger data loading if it hasn't been initialized yet
   useEffect(() => {
@@ -129,7 +134,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ open, domainId }) => {
     {
       mouseX: number;
       mouseY: number;
-      item: TreeItem | null;
+      item: FileBrowserTreeItemData | null;
     } | null
   >(null);
 
@@ -334,8 +339,8 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ open, domainId }) => {
 
     // Create tree structure
     const buildTree = () => {
-      const items: TreeItem[] = [];
-      const map = new Map<string, TreeItem>();
+      const items: FileBrowserTreeItemData[] = [];
+      const map = new Map<string, FileBrowserTreeItemData>();
 
       // First pass: create all tree items without children, filtered by domain if needed
       documents.forEach((doc) => {
@@ -350,7 +355,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ open, domainId }) => {
         const sort_order = doc.local?.sort_order || doc.cloud?.sort_order ||
           null;
 
-        const item: TreeItem = {
+        const item: FileBrowserTreeItemData = {
           id: doc.id,
           name,
           type,
@@ -379,7 +384,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ open, domainId }) => {
       });
 
       // Sort items: directories first, then by sort_order, then by name
-      const sortItems = (items: TreeItem[]) => {
+      const sortItems = (items: FileBrowserTreeItemData[]) => {
         items.sort((a, b) => {
           // Directories first
           if (
@@ -425,7 +430,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ open, domainId }) => {
     setTreeData(buildTree());
   }, [documents, domainId]);
 
-  const handleItemClick = (item: TreeItem) => {
+  const handleItemClick = (item: FileBrowserTreeItemData) => {
     // Check if we're in a domain context by looking at the current pathname
     const isDomainRoute = pathname.startsWith("/domains/");
 
@@ -457,7 +462,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ open, domainId }) => {
   };
 
   const handleExpandClick = (
-    item: TreeItem,
+    item: FileBrowserTreeItemData,
     event: React.MouseEvent,
   ) => {
     // Prevent the click from triggering the parent ListItemButton click
@@ -478,7 +483,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ open, domainId }) => {
   };
 
   // Context menu handlers
-  const handleContextMenu = (event: React.MouseEvent, item: TreeItem) => {
+  const handleContextMenu = (event: React.MouseEvent, item: FileBrowserTreeItemData) => {
     event.preventDefault();
     event.stopPropagation();
 
@@ -621,7 +626,7 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ open, domainId }) => {
   };
 
   // Recursive component to render tree items
-  const renderTreeItems = (items: TreeItem[], level: number = 0) => {
+  const renderTreeItems = (items: FileBrowserTreeItemData[], level: number = 0) => {
     return items.map((item) => {
       const isExpanded = expandedNodes.has(item.id);
       const isDirectory = item.type === DocumentType.DIRECTORY;
@@ -640,144 +645,24 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ open, domainId }) => {
 
       return (
         <Box key={item.id}>
-          <ListItemButton
-            onClick={() => handleItemClick(item)}
-            onDoubleClick={(e) => {
-              // Don't navigate on double click
-              e.stopPropagation();
-              // Start editing on double click
-              startEditing({
-                id: item.id,
-                name: item.name,
-                type: item.type,
-              }, e);
-            }}
-            onContextMenu={(e) => handleContextMenu(e, item)}
-            selected={isCurrentDirectory || isCurrentDocument}
-            sx={{
-              pl: level * 1.5 + 2.5, // Adjusted indentation formula - starts with pl: 2.5 at level 0, then adds 1.5 per level
-              py: 0.5,
-              minHeight: 36,
-              "&.Mui-selected": {
-                bgcolor: "action.selected",
-              },
-              "&:hover": {
-                bgcolor: "rgba(0, 0, 0, 0.15) !important", // Much darker gray hover color with !important
-              },
-            }}
-          >
-            <ListItemIcon
-              sx={{
-                minWidth: 30,
-                color: "text.secondary", // Use gray color for icons
-                ml: 0, // Ensure no margin is applied
-              }}
-            >
-              {isDirectory
-                ? <Folder fontSize="small" />
-                : <Article fontSize="small" />}
-            </ListItemIcon>
-
-            {open && (
-              <>
-                {editingItemId === item.id
-                  ? (
-                    <TextField
-                      value={editingText}
-                      onChange={handleEditChange}
-                      autoFocus
-                      size="small"
-                      variant="standard"
-                      margin="dense"
-                      fullWidth
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                      }}
-                      onKeyDown={(e) => {
-                        e.stopPropagation();
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          submitEditing();
-                        } else if (e.key === "Escape") {
-                          e.preventDefault();
-                          cancelEditing();
-                        }
-                      }}
-                      // Use onBlur with a small delay to prevent conflicts with button clicks
-                      onBlur={(e) => {
-                        // Small timeout to allow clicking other elements
-                        setTimeout(() => {
-                          if (editingItemId === item.id) {
-                            submitEditing();
-                          }
-                        }, 100);
-                      }}
-                      sx={{
-                        "& .MuiInputBase-input": {
-                          fontSize: 14,
-                          py: 0.5,
-                        },
-                        width: "90%",
-                        mr: 1,
-                      }}
-                      InputProps={{
-                        disableUnderline: false,
-                      }}
-                    />
-                  )
-                  : (
-                    <ListItemText
-                      primary={item.name}
-                      primaryTypographyProps={{
-                        noWrap: true,
-                        fontSize: 14,
-                        fontWeight: (isCurrentDirectory ||
-                            isCurrentDocument)
-                          ? "medium"
-                          : "normal",
-                        color: "text.primary", // Keep default text color for all items
-                      }}
-                    />
-                  )}
-
-                {isDirectory && (
-                  <Box
-                    sx={{
-                      color: "text.secondary",
-                      cursor: "pointer",
-                      p: 0.5, // Add padding for better click target
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      borderRadius: "50%",
-                      "&:hover": {
-                        backgroundColor: "rgba(0, 0, 0, 0.08)", // Light background on hover
-                      },
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation(); // Prevent the parent ListItemButton click
-
-                      // Only toggle expansion state without navigating
-                      setExpandedNodes((prev) => {
-                        const newSet = new Set(prev);
-                        if (newSet.has(item.id)) {
-                          newSet.delete(item.id);
-                        } else {
-                          newSet.add(item.id);
-                        }
-                        return newSet;
-                      });
-                    }}
-                  >
-                    {isExpanded
-                      ? <ExpandMore fontSize="small" />
-                      : <ChevronRight fontSize="small" />}
-                  </Box>
-                )}
-              </>
-            )}
-          </ListItemButton>
+          <FileBrowserTreeItem
+            item={item}
+            level={level}
+            isExpanded={isExpanded}
+            isCurrentDirectory={isCurrentDirectory}
+            isCurrentDocument={isCurrentDocument}
+            editingItemId={editingItemId}
+            editingText={editingText}
+            onItemClick={handleItemClick}
+            onExpandClick={handleExpandClick}
+            onContextMenu={handleContextMenu}
+            startEditing={startEditing}
+            handleEditChange={handleEditChange}
+            submitEditing={submitEditing}
+            cancelEditing={cancelEditing}
+            open={open}
+            domainId={domainId}
+          />
 
           {/* Render children if directory is expanded */}
           {isDirectory && isExpanded && (
@@ -840,26 +725,71 @@ const FileBrowser: React.FC<FileBrowserProps> = ({ open, domainId }) => {
               </Typography>
             </Box>
           )
-          : treeData.length === 0 && domainId
-          ? (
-            <Box sx={{ p: 2, textAlign: "center" }}>
-              <Typography variant="body2" color="text.secondary">
-                No files in this domain
-              </Typography>
-            </Box>
-          )
-          : treeData.length > 0
-          ? (
-            renderTreeItems(treeData, 0)
-          )
           : (
-            <Box sx={{ p: 1, textAlign: "center" }}>
-              {open && (
-                <Typography variant="caption" color="text.secondary">
-                  No folders found
-                </Typography>
+            <>
+              {/* Domain root entry - only show when in domain context */}
+              {domainId && currentDomain && (
+                <>
+                  <FileBrowserTreeItem
+                    item={{
+                      id: `domain-root-${domainId}`,
+                      name: "Root",
+                      type: DocumentType.DIRECTORY,
+                      children: [],
+                      parentId: null,
+                      sort_order: null,
+                    }}
+                    level={0}
+                    isExpanded={false}
+                    isCurrentDirectory={false}
+                    isCurrentDocument={false}
+                    editingItemId=""
+                    editingText=""
+                    onItemClick={() => {
+                      // Navigate to domain root
+                      const parts = pathname.split("/").filter(Boolean);
+                      if (parts.length >= 2 && parts[0] === "domains") {
+                        const domainSlug = parts[1];
+                        router.push(`/domains/${domainSlug}`);
+                      }
+                    }}
+                    onExpandClick={() => {}}
+                    onContextMenu={() => {}}
+                    startEditing={() => {}}
+                    handleEditChange={() => {}}
+                    submitEditing={() => {}}
+                    cancelEditing={() => {}}
+                    open={open}
+                    isDomainRoot={true}
+                    domainIcon={<Home />}
+                    domainId={domainId}
+                  />
+                </>
               )}
-            </Box>
+              
+              {/* Regular tree items */}
+              {treeData.length === 0 && domainId
+                ? (
+                  <Box sx={{ p: 2, textAlign: "center" }}>
+                    <Typography variant="body2" color="text.secondary">
+                      No files in this domain
+                    </Typography>
+                  </Box>
+                )
+                : treeData.length > 0
+                ? (
+                  renderTreeItems(treeData, 0) // Start at level 0 for regular items
+                )
+                : !domainId && (
+                  <Box sx={{ p: 1, textAlign: "center" }}>
+                    {open && (
+                      <Typography variant="caption" color="text.secondary">
+                        No folders found
+                      </Typography>
+                    )}
+                  </Box>
+                )}
+            </>
           )}
       </List>
 

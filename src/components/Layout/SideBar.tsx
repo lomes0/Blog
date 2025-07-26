@@ -33,6 +33,7 @@ import { useSidebarState } from "./SideBar/hooks/useSidebarState";
 import { useKeyboardShortcuts } from "./SideBar/hooks/useKeyboardShortcuts";
 import { FileBrowserErrorBoundary } from "./SideBar/components/FileBrowserErrorBoundary";
 import { DomainLoadingSkeleton } from "./SideBar/components/DomainLoadingSkeleton";
+import type { UserDocument } from "@/types";
 
 // Constants
 const DRAWER_WIDTH = 240;
@@ -94,6 +95,76 @@ const SideBar: React.FC = () => {
     onToggleSidebar: toggleSidebar,
     enabled: true,
   });
+
+  // Drag and drop handlers
+  const handleDrop = useCallback(async (
+    event: React.DragEvent,
+    targetDomainId?: string
+  ) => {
+    event.preventDefault();
+    
+    try {
+      const dragData = event.dataTransfer.getData("application/matheditor-document");
+      if (!dragData) return;
+      
+      const draggedItem = JSON.parse(dragData);
+      
+      // Find the dragged document in the store
+      const draggedDocResponse = await dispatch(
+        actions.getDocumentById(draggedItem.id),
+      );
+      const draggedDoc = draggedDocResponse.payload as UserDocument;
+      
+      if (!draggedDoc) return;
+      
+      // Move to root if no domain specified, otherwise to the specified domain
+      const newDomainId = targetDomainId || null;
+      
+      // Update local document if it exists
+      if (draggedDoc.local) {
+        await dispatch(actions.updateLocalDocument({
+          id: draggedItem.id,
+          partial: {
+            domainId: newDomainId,
+            parentId: null, // Move to root of target domain
+          },
+        }));
+      }
+      
+      // Update cloud document if it exists
+      if (draggedDoc.cloud) {
+        await dispatch(actions.updateCloudDocument({
+          id: draggedItem.id,
+          partial: {
+            domainId: newDomainId,
+            parentId: null, // Move to root of target domain
+          },
+        }));
+      }
+      
+      // Show success message
+      dispatch(actions.announce({
+        message: {
+          title: `Moved ${draggedItem.name || 'document'} to ${targetDomainId ? 'domain' : 'root'}`,
+        },
+        timeout: 3000,
+      }));
+      
+    } catch (error) {
+      console.error("Error handling drop:", error);
+      dispatch(actions.announce({
+        message: {
+          title: "Failed to move document",
+        },
+        timeout: 3000,
+      }));
+    }
+  }, [dispatch]);
+  
+  const handleDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  }, []);
 
   // Redux selectors with proper typing
   const initialized = useSelector((state: RootState) => state.ui.initialized);
@@ -319,6 +390,8 @@ const SideBar: React.FC = () => {
                     pathname === item.path ||
                       pathname.startsWith(`${item.path}/`),
                   )}
+                  onDragOver={item.text === "Home" ? handleDragOver : undefined}
+                  onDrop={item.text === "Home" ? (e) => handleDrop(e) : undefined}
                   sx={{
                     minHeight: SIDEBAR_CONSTANTS.MIN_HEIGHT.NAVIGATION_ITEM,
                     justifyContent: open ? "initial" : "center",
@@ -424,6 +497,8 @@ const SideBar: React.FC = () => {
                           (item.slug &&
                             pathname.startsWith(`/domains/${item.slug}/`)),
                       )}
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleDrop(e, item.id)}
                       sx={{
                         minHeight: SIDEBAR_CONSTANTS.MIN_HEIGHT.DOMAIN_ITEM,
                         justifyContent: open ? "initial" : "center",
