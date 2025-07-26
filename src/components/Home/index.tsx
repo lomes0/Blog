@@ -419,6 +419,18 @@ const Home: React.FC<{ staticDocuments: UserDocument[] }> = (
     })
     .slice(0, 4);
 
+  // Get orphaned documents and directories (those with null parentId and null domainId)
+  const orphanedItems = filteredDocuments
+    .filter((doc) => {
+      const document = doc.local || doc.cloud;
+      const parentId = document?.parentId;
+      const domainId = document?.domainId;
+      
+      // Check if both parentId and domainId are null
+      return parentId === null && domainId === null;
+    })
+    .slice(0, 8); // Limit to 8 items for display
+
   return (
     <DragProvider>
       <Container maxWidth="xl" sx={{ py: 4 }}>
@@ -517,6 +529,34 @@ const Home: React.FC<{ staticDocuments: UserDocument[] }> = (
             </Typography>
             <Grid container spacing={3} sx={{ mb: 4 }}>
               {recentDocuments.map((document) => (
+                <Grid
+                  key={document.id}
+                  size={{
+                    xs: 12,
+                    sm: 6,
+                    md: 4,
+                    lg: 3,
+                  }}
+                >
+                  <DraggableDocumentCard
+                    userDocument={document}
+                    user={user}
+                    currentDirectoryId=""
+                  />
+                </Grid>
+              ))}
+            </Grid>
+          </>
+        )}
+
+        {/* Orphaned Items section */}
+        {orphanedItems.length > 0 && (
+          <>
+            <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+              Orphaned Items
+            </Typography>
+            <Grid container spacing={3} sx={{ mb: 4 }}>
+              {orphanedItems.map((document) => (
                 <Grid
                   key={document.id}
                   size={{
