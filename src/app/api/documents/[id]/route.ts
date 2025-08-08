@@ -127,8 +127,6 @@ export async function PATCH(
       return NextResponse.json(response, { status: 400 });
     }
 
-    console.log("PATCH /api/documents/[id] request body:", body);
-
     const input: Prisma.DocumentUncheckedUpdateInput = {
       name: body.name,
       head: body.head,
@@ -143,8 +141,6 @@ export async function PATCH(
       domainId: body.domainId,
       status: body.status,
     };
-
-    console.log("PATCH /api/documents/[id] document update input:", input);
 
     if (body.handle && body.handle !== userDocument.handle) {
       input.handle = body.handle.toLowerCase();

@@ -1,16 +1,18 @@
 "use client";
-import { FC, useCallback } from "react";
+import { FC, useCallback, useState } from "react";
 import { Box, Button, Tooltip } from "@mui/material";
 import { Storage, UploadFile } from "@mui/icons-material";
 import { actions, useDispatch, useSelector } from "@/store";
-import { BackupDocument } from "@/types";
+import { BackupDocument, Domain } from "@/types";
 import { v4 as uuid } from "uuid";
 import documentDB, { revisionDB } from "@/indexeddb";
+import DomainSelectionDialog from "./DomainSelectionDialog";
 
 type ImportExportControlProps = {
   handleFilesChange?: (
     files: FileList | File[] | null,
     createNewDirectory?: boolean,
+    domainId?: string,
   ) => Promise<void>;
   backupFunction?: () => Promise<void>;
 };
@@ -20,15 +22,51 @@ const ImportExportControl: FC<ImportExportControlProps> = (
 ) => {
   const dispatch = useDispatch();
   const user = useSelector((state) => state.user);
+  const [domainDialogOpen, setDomainDialogOpen] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
   const handleFileUpload = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (handleFilesChange) {
-        await handleFilesChange(e.target.files, true); // Pass true to indicate we want to import into a new directory
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+
+      // Convert FileList to Array to persist after input reset
+      const fileArray = Array.from(files);
+
+      // If user is logged in, show domain selection dialog
+      if (user) {
+        setPendingFiles(fileArray);
+        setDomainDialogOpen(true);
+      } else {
+        // If not logged in, import directly without domain selection
+        if (handleFilesChange) {
+          await handleFilesChange(fileArray, true);
+        }
       }
+      
+      // Reset the file input
+      e.target.value = '';
     },
-    [handleFilesChange],
+    [handleFilesChange, user],
   );
+
+  const handleDomainSelect = useCallback(
+    async (domainId: string | null) => {
+      setDomainDialogOpen(false);
+      
+      if (pendingFiles.length > 0 && handleFilesChange) {
+        await handleFilesChange(pendingFiles, true, domainId || undefined);
+      }
+      
+      setPendingFiles([]);
+    },
+    [handleFilesChange, pendingFiles],
+  );
+
+  const handleDomainDialogClose = useCallback(() => {
+    setDomainDialogOpen(false);
+    setPendingFiles([]);
+  }, []);
 
   const handleBackup = useCallback(async () => {
     if (backupFunction) {
@@ -79,39 +117,48 @@ const ImportExportControl: FC<ImportExportControlProps> = (
 
   // Determine button text and tooltip based on whether user is logged in
   const importTooltip = user
-    ? "Import files into a new timestamped 'New_Files' directory and save to cloud"
+    ? "Import files into a new timestamped 'New_Files' directory and assign to a domain"
     : "Import files into a new timestamped 'New_Files' directory";
 
   return (
-    <Box sx={{ display: "flex", gap: 0.5 }}>
-      <Tooltip title={importTooltip}>
-        <Button
-          variant="outlined"
-          sx={{ px: 1, "& .MuiButton-startIcon": { ml: 0 } }}
-          startIcon={<UploadFile />}
-          component="label"
-        >
-          Import
-          <input
-            type="file"
-            hidden
-            accept=".me"
-            multiple
-            onChange={handleFileUpload}
-          />
-        </Button>
-      </Tooltip>
-      <Tooltip title="Backup all documents to a .me file">
-        <Button
-          variant="outlined"
-          sx={{ px: 1, "& .MuiButton-startIcon": { ml: 0 } }}
-          startIcon={<Storage />}
-          onClick={handleBackup}
-        >
-          Backup
-        </Button>
-      </Tooltip>
-    </Box>
+    <>
+      <Box sx={{ display: "flex", gap: 0.5 }}>
+        <Tooltip title={importTooltip}>
+          <Button
+            variant="outlined"
+            sx={{ px: 1, "& .MuiButton-startIcon": { ml: 0 } }}
+            startIcon={<UploadFile />}
+            component="label"
+          >
+            Import
+            <input
+              type="file"
+              hidden
+              accept=".me"
+              multiple
+              onChange={handleFileUpload}
+            />
+          </Button>
+        </Tooltip>
+        <Tooltip title="Backup all documents to a .me file">
+          <Button
+            variant="outlined"
+            sx={{ px: 1, "& .MuiButton-startIcon": { ml: 0 } }}
+            startIcon={<Storage />}
+            onClick={handleBackup}
+          >
+            Backup
+          </Button>
+        </Tooltip>
+      </Box>
+      
+      <DomainSelectionDialog
+        open={domainDialogOpen}
+        onClose={handleDomainDialogClose}
+        onConfirm={handleDomainSelect}
+        fileCount={pendingFiles.length}
+      />
+    </>
   );
 };
 

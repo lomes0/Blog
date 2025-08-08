@@ -59,6 +59,7 @@ const Home: React.FC<{ staticDocuments: UserDocument[] }> = (
   const handleFilesChange = async (
     files: FileList | File[] | null,
     createNewDirectory: boolean = false,
+    domainId?: string,
   ) => {
     if (!files?.length) return;
 
@@ -81,6 +82,7 @@ const Home: React.FC<{ staticDocuments: UserDocument[] }> = (
         name: dirName,
         type: DocumentType.DIRECTORY,
         parentId: null, // Root level directory
+        domainId: domainId || undefined, // Set domain if provided
         head: uuid(),
         data: {
           root: {
@@ -108,7 +110,7 @@ const Home: React.FC<{ staticDocuments: UserDocument[] }> = (
     }
 
     for (const file of files) {
-      await loadFromFile(file, files.length === 1, directoryId);
+      await loadFromFile(file, files.length === 1, directoryId, domainId);
     }
 
     // Show success notification after all files are imported
@@ -194,6 +196,7 @@ const Home: React.FC<{ staticDocuments: UserDocument[] }> = (
     file: File,
     shouldNavigate?: boolean,
     directoryId?: string | null,
+    domainId?: string,
   ) {
     const reader = new FileReader();
     reader.readAsText(file);
@@ -204,10 +207,10 @@ const Home: React.FC<{ staticDocuments: UserDocument[] }> = (
             reader.result as string,
           );
           if (!Array.isArray(data)) {
-            await addDocument(data, shouldNavigate, directoryId);
+            await addDocument(data, shouldNavigate, directoryId, domainId);
           } else {
             for (const document of data) {
-              await addDocument(document, false, directoryId);
+              await addDocument(document, false, directoryId, domainId);
             }
           }
         } catch (error) {
@@ -230,6 +233,7 @@ const Home: React.FC<{ staticDocuments: UserDocument[] }> = (
     document: BackupDocument,
     shouldNavigate?: boolean,
     directoryId?: string | null,
+    domainId?: string,
   ) {
     const revisions = document.revisions || [];
     if (!document.head) document.head = uuid();
@@ -251,6 +255,11 @@ const Home: React.FC<{ staticDocuments: UserDocument[] }> = (
     // Set the parentId if a directory was created
     if (directoryId) {
       document.parentId = directoryId;
+    }
+
+    // Set the domainId if provided
+    if (domainId) {
+      document.domainId = domainId;
     }
 
     if (documents.find((d) => d.id === document.id && d.local)) {
