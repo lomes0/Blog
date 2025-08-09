@@ -56,3 +56,36 @@ export const deleteDomain = createAsyncThunk(
     }
   },
 );
+
+export const reorderDomains = createAsyncThunk(
+  "app/reorderDomains",
+  async (domainOrders: { id: string; order: number }[], thunkAPI) => {
+    try {
+      const response = await fetch("/api/domains/reorder", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ domainOrders }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Failed to reorder domains:", errorData);
+        return thunkAPI.rejectWithValue({
+          title: "Failed to reorder domains",
+          subtitle: errorData.message || "Unknown error",
+        });
+      }
+
+      // Return the new order for the reducer to update domain positions
+      return thunkAPI.fulfillWithValue(domainOrders);
+    } catch (error: any) {
+      console.error("Error reordering domains:", error);
+      return thunkAPI.rejectWithValue({
+        title: "Something went wrong",
+        subtitle: error.message,
+      });
+    }
+  },
+);

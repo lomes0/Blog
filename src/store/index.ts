@@ -32,7 +32,7 @@ import {
   updateLocalDocument,
   updateUser,
 } from "./app";
-import { deleteDomain, fetchUserDomains } from "./app/domains";
+import { deleteDomain, fetchUserDomains, reorderDomains } from "./app/domains";
 import { Action, configureStore, ThunkAction } from "@reduxjs/toolkit";
 
 export const actions = {
@@ -73,6 +73,7 @@ export const actions = {
 
   fetchUserDomains,
   deleteDomain,
+  reorderDomains,
 };
 
 export const store = configureStore({ reducer: appSlice.reducer });

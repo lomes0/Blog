@@ -32,7 +32,7 @@ import {
 } from "@/types";
 import { validate } from "uuid";
 import { duplicateDocument } from "./app/duplicateDocument";
-import { fetchUserDomains } from "./app/domains";
+import { fetchUserDomains, reorderDomains } from "./app/domains";
 
 const initialState: AppState = {
   documents: [],
@@ -1201,6 +1201,34 @@ export const appSlice = createSlice({
         state.domains = action.payload;
       })
       .addCase(fetchUserDomains.rejected, (state, action) => {
+        const message = action.payload as {
+          title: string;
+          subtitle: string;
+        };
+        state.ui.announcements.push({ message });
+      })
+      .addCase(reorderDomains.fulfilled, (state, action) => {
+        // Update the order property for each domain
+        const domainOrders = action.payload;
+        domainOrders.forEach(({ id, order }) => {
+          const domain = state.domains.find(d => d.id === id);
+          if (domain) {
+            domain.order = order;
+          }
+        });
+        
+        // Sort domains by order (nulls last), then by creation date
+        state.domains.sort((a, b) => {
+          if (a.order != null && b.order != null) {
+            return a.order - b.order;
+          }
+          if (a.order != null) return -1;
+          if (b.order != null) return 1;
+          // Both are null, sort by creation date (newest first)
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+      })
+      .addCase(reorderDomains.rejected, (state, action) => {
         const message = action.payload as {
           title: string;
           subtitle: string;

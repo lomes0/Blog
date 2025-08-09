@@ -98,10 +98,13 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Get domains for user
+    // Get domains for user, ordered by custom order first, then by creation date
     const domains = await prisma.domain.findMany({
       where: { userId: user.id },
-      orderBy: { createdAt: "desc" },
+      orderBy: [
+        { order: "asc" } as any, // TODO: Fix when Prisma types are updated
+        { createdAt: "desc" }
+      ],
     });
 
     return NextResponse.json(domains);

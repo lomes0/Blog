@@ -108,6 +108,7 @@ export interface Domain {
   userId: string;
   color?: string;
   icon?: string;
+  order?: number;
 }
 
 export type CloudDocument = Document; // Cloud documents are the same as regular documents
