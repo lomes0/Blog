@@ -12,10 +12,16 @@ export const metadata: Metadata = {
 };
 
 export default async function Page(
-  props: { params: Promise<{ id?: string[] }> },
+  props: { 
+    params: Promise<{ id?: string[] }>; 
+    searchParams: Promise<{ domain?: string; domainSlug?: string }>;
+  },
 ) {
   const params = await props.params;
+  const searchParams = await props.searchParams;
   const parentId = params.id?.[0] || undefined;
+  const domainId = searchParams.domain;
+  const domainSlug = searchParams.domainSlug;
 
-  return <NewDirectory parentId={parentId} />;
+  return <NewDirectory parentId={parentId} domainId={domainId} domainSlug={domainSlug} />;
 }

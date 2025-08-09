@@ -5,6 +5,7 @@ import { useCallback } from "react";
 interface UseDocumentNavigationProps {
   directoryId?: string;
   domainId?: string;
+  domainInfo?: any; // Domain information including slug
 }
 
 /**
@@ -12,7 +13,7 @@ interface UseDocumentNavigationProps {
  * Encapsulates URL construction logic and provides consistent navigation
  */
 export const useDocumentNavigation = (
-  { directoryId, domainId }: UseDocumentNavigationProps,
+  { directoryId, domainId, domainInfo }: UseDocumentNavigationProps,
 ) => {
   const router = useRouter();
 
@@ -24,8 +25,8 @@ export const useDocumentNavigation = (
       params.append("parentId", directoryId);
     }
 
-    if (domainId) {
-      params.append("domain", domainId);
+    if (domainInfo) {
+      params.append("domain", domainInfo.id);
     }
 
     if (params.toString()) {
@@ -33,7 +34,7 @@ export const useDocumentNavigation = (
     }
 
     router.push(url);
-  }, [router, directoryId, domainId]);
+  }, [router, directoryId, domainInfo]);
 
   const createDirectory = useCallback(() => {
     let url = "/new-directory";
@@ -43,8 +44,9 @@ export const useDocumentNavigation = (
       url += `/${directoryId}`;
     }
 
-    if (domainId) {
-      params.append("domain", domainId);
+    if (domainInfo) {
+      params.append("domain", domainInfo.id);
+      params.append("domainSlug", domainInfo.slug);
     }
 
     if (params.toString()) {
@@ -52,7 +54,7 @@ export const useDocumentNavigation = (
     }
 
     router.push(url);
-  }, [router, directoryId, domainId]);
+  }, [router, directoryId, domainInfo]);
 
   return {
     createDocument,

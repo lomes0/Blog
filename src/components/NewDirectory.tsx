@@ -16,7 +16,15 @@ import {
 import { CreateNewFolder } from "@mui/icons-material";
 import useOnlineStatus from "@/hooks/useOnlineStatus";
 
-const NewDirectory: React.FC<{ parentId?: string }> = ({ parentId }) => {
+const NewDirectory: React.FC<{ 
+  parentId?: string; 
+  domainId?: string; 
+  domainSlug?: string; 
+}> = ({ 
+  parentId, 
+  domainId,
+  domainSlug 
+}) => {
   const router = useRouter();
   const dispatch = useDispatch();
   const [name, setName] = useState("New Directory");
@@ -46,6 +54,7 @@ const NewDirectory: React.FC<{ parentId?: string }> = ({ parentId }) => {
       name: name.trim(),
       type: DocumentType.DIRECTORY,
       parentId: parentId || null,
+      domainId: domainId || null,
       head,
       sort_order: 0, // Default sort order
       data: {
@@ -79,7 +88,14 @@ const NewDirectory: React.FC<{ parentId?: string }> = ({ parentId }) => {
     }
 
     // Redirect to the appropriate location
-    if (parentId) {
+    if (domainSlug) {
+      // If creating within a domain, redirect to the domain view
+      if (parentId) {
+        router.push(`/domains/${domainSlug}/browse/${parentId}`);
+      } else {
+        router.push(`/domains/${domainSlug}`);
+      }
+    } else if (parentId) {
       router.push(`/browse/${parentId}`);
     } else {
       router.push("/browse");

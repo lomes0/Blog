@@ -52,6 +52,7 @@ const DocumentBrowser: React.FC<DocumentBrowserProps> = ({
   const { createDocument, createDirectory } = useDocumentNavigation({
     directoryId,
     domainId,
+    domainInfo,
   });
 
   // Function to get the correct URL for a document or directory
