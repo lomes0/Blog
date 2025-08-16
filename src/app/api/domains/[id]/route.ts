@@ -122,7 +122,7 @@ export async function PUT(
 
     // Parse request body
     const body = await req.json();
-    const { name, slug, description, color, icon } = body;
+    const { name, slug, description, color } = body;
 
     // Validate input
     if (!name || !name.trim()) {
@@ -154,7 +154,6 @@ export async function PUT(
         slug,
         description,
         color,
-        icon,
         updatedAt: new Date(),
       },
     });

@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
     // Parse request body
     const body = await req.json();
-    const { name, slug, description, color, icon } = body;
+    const { name, slug, description, color } = body;
 
     // Validate input
     if (!name || !name.trim()) {
@@ -60,7 +60,6 @@ export async function POST(req: NextRequest) {
         slug: finalSlug,
         description,
         color,
-        icon,
         userId: user.id,
       },
     });

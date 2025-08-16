@@ -107,7 +107,6 @@ export interface Domain {
   updatedAt: string | Date;
   userId: string;
   color?: string;
-  icon?: string;
   order?: number;
 }
 

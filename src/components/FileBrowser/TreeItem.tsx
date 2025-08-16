@@ -7,7 +7,7 @@ import {
   ListItemText,
   TextField,
 } from "@mui/material";
-import { Article, ChevronRight, ExpandMore, Folder } from "@mui/icons-material";
+import { Article, ChevronRight, ExpandMore, Folder, LibraryBooks } from "@mui/icons-material";
 import { DocumentType } from "@/types";
 import { useDropTarget } from "../Layout/SideBar/hooks/useDropTarget";
 
@@ -46,7 +46,6 @@ interface FileBrowserTreeItemProps {
   cancelEditing: () => void;
   open: boolean;
   isDomainRoot?: boolean;
-  domainIcon?: React.ReactNode;
   domainId?: string | null;
 }
 
@@ -67,7 +66,6 @@ const FileBrowserTreeItem: React.FC<FileBrowserTreeItemProps> = ({
   cancelEditing,
   open,
   isDomainRoot = false,
-  domainIcon,
   domainId,
 }) => {
   const isDirectory = item.type === DocumentType.DIRECTORY;
@@ -121,24 +119,22 @@ const FileBrowserTreeItem: React.FC<FileBrowserTreeItemProps> = ({
         transition: "background-color 0.2s ease, color 0.2s ease",
       }}
     >
-      {/* Only show icon if it's not a domain root, or if it's a domain root with a specific icon */}
-      {!(isDomainRoot && !domainIcon) && (
-        <ListItemIcon
-          sx={{
-            minWidth: 30,
-            color: ((isDirectory || isDomainRoot) && isDropTarget)
-              ? "inherit"
-              : "text.secondary",
-            ml: 0,
-          }}
-        >
-          {isDomainRoot && domainIcon
-            ? domainIcon
-            : isDirectory
-            ? <Folder fontSize="small" />
-            : <Article fontSize="small" />}
-        </ListItemIcon>
-      )}
+      {/* Show icon for directories and documents, use default for domain root */}
+      <ListItemIcon
+        sx={{
+          minWidth: 30,
+          color: ((isDirectory || isDomainRoot) && isDropTarget)
+            ? "inherit"
+            : "text.secondary",
+          ml: 0,
+        }}
+      >
+        {isDomainRoot
+          ? <LibraryBooks fontSize="small" />
+          : isDirectory
+          ? <Folder fontSize="small" />
+          : <Article fontSize="small" />}
+      </ListItemIcon>
 
       {open && (
         <>

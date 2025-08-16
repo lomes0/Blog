@@ -42,19 +42,6 @@ const colorOptions = [
   "#757575", // Gray
 ];
 
-// Icon options (using emoji for simplicity)
-const iconOptions = [
-  "📚", // Books
-  "🧮", // Math
-  "🔬", // Science
-  "🌎", // Geography
-  "📝", // Notes
-  "🧠", // Knowledge
-  "📊", // Charts
-  "📐", // Geometry
-  "🔍", // Research
-];
-
 interface DomainEditFormProps {
   domain: Domain;
 }
@@ -67,7 +54,6 @@ export default function DomainEditForm({ domain }: DomainEditFormProps) {
   const [slug, setSlug] = useState(domain.slug);
   const [description, setDescription] = useState(domain.description || "");
   const [color, setColor] = useState(domain.color || colorOptions[0]);
-  const [icon, setIcon] = useState(domain.icon || iconOptions[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
@@ -110,7 +96,6 @@ export default function DomainEditForm({ domain }: DomainEditFormProps) {
           slug,
           description,
           color,
-          icon,
         }),
       });
 
@@ -168,13 +153,7 @@ export default function DomainEditForm({ domain }: DomainEditFormProps) {
             mr: 2,
           }}
         >
-          {domain.icon
-            ? (
-              <Box component="span" sx={{ fontSize: "1.5rem" }}>
-                {domain.icon}
-              </Box>
-            )
-            : <LibraryBooks sx={{ fontSize: "1.5rem" }} />}
+          <LibraryBooks sx={{ fontSize: "1.5rem" }} />
         </Box>
         <Typography variant="h4" component="h1">Edit Domain</Typography>
       </Box>
@@ -246,31 +225,6 @@ export default function DomainEditForm({ domain }: DomainEditFormProps) {
                           }}
                         />
                         {colorOption}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth>
-                  <InputLabel id="icon-label">Icon</InputLabel>
-                  <Select
-                    labelId="icon-label"
-                    id="icon-select"
-                    value={icon}
-                    label="Icon"
-                    onChange={(e) => setIcon(e.target.value)}
-                  >
-                    {iconOptions.map((iconOption) => (
-                      <MenuItem key={iconOption} value={iconOption}>
-                        <Box
-                          component="span"
-                          sx={{ fontSize: "1.5rem", mr: 1 }}
-                        >
-                          {iconOption}
-                        </Box>
-                        {iconOption}
                       </MenuItem>
                     ))}
                   </Select>

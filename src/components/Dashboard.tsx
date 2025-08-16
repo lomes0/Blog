@@ -486,27 +486,6 @@ const DomainsSection: React.FC = () => {
                   router.push(`/domains/${domain.slug}`)}
               >
                 <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: domain.color || "#4285F4",
-                      color: "#fff",
-                      width: 36,
-                      height: 36,
-                      borderRadius: "50%",
-                      mr: 2,
-                    }}
-                  >
-                    {domain.icon
-                      ? (
-                        <Box component="span" sx={{ fontSize: "1.2rem" }}>
-                          {domain.icon}
-                        </Box>
-                      )
-                      : <LibraryBooks sx={{ fontSize: "1.2rem" }} />}
-                  </Box>
                   <Typography variant="h6" component="h3" noWrap>
                     {domain.name}
                   </Typography>

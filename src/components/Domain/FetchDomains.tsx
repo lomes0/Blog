@@ -80,11 +80,6 @@ export default function FetchDomains(
           return selectedDomain
             ? (
               <Box sx={{ display: "flex", alignItems: "center" }}>
-                {selectedDomain.icon && (
-                  <span style={{ marginRight: "8px" }}>
-                    {selectedDomain.icon}
-                  </span>
-                )}
                 {selectedDomain.name}
               </Box>
             )
@@ -98,9 +93,6 @@ export default function FetchDomains(
         {domains.map((domain) => (
           <MenuItem key={domain.id} value={domain.id}>
             <Box sx={{ display: "flex", alignItems: "center" }}>
-              {domain.icon && (
-                <span style={{ marginRight: "8px" }}>{domain.icon}</span>
-              )}
               {domain.name}
             </Box>
           </MenuItem>

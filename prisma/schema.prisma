@@ -17,7 +17,6 @@ model Domain {
   updatedAt   DateTime @updatedAt @db.Timestamptz
   userId      String   @db.Uuid // Associated user who created this domain
   color       String? // Optional color for UI representation
-  icon        String? // Optional icon for UI representation
   order       Float?   @db.DoublePrecision // For custom ordering of domains
 
   // Relations

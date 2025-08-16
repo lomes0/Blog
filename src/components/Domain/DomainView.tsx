@@ -244,13 +244,7 @@ export default function DomainView(
                     mr: 2,
                   }}
                 >
-                  {domain.icon
-                    ? (
-                      <Box component="span" sx={{ fontSize: "1.5rem" }}>
-                        {domain.icon}
-                      </Box>
-                    )
-                    : <LibraryBooks sx={{ fontSize: "1.5rem" }} />}
+                  <LibraryBooks sx={{ fontSize: "1.5rem" }} />
                 </Box>
                 <Box>
                   <Typography variant="h4" component="h1">

@@ -114,11 +114,6 @@ const DomainSelectionDialog: React.FC<DomainSelectionDialogProps> = ({
               const selectedDomain = domains.find((d) => d.id === selected);
               return selectedDomain ? (
                 <Box sx={{ display: "flex", alignItems: "center" }}>
-                  {selectedDomain.icon && (
-                    <span style={{ marginRight: "8px" }}>
-                      {selectedDomain.icon}
-                    </span>
-                  )}
                   {selectedDomain.name}
                 </Box>
               ) : "Select a domain";
@@ -131,9 +126,6 @@ const DomainSelectionDialog: React.FC<DomainSelectionDialogProps> = ({
             {domains.map((domain) => (
               <MenuItem key={domain.id} value={domain.id}>
                 <Box sx={{ display: "flex", alignItems: "center" }}>
-                  {domain.icon && (
-                    <span style={{ marginRight: "8px" }}>{domain.icon}</span>
-                  )}
                   {domain.name}
                 </Box>
               </MenuItem>
