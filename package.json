@@ -19,6 +19,7 @@
     "@emotion/styled": "^11.14.1",
     "@excalidraw/excalidraw": "^0.18.0",
     "@fontsource/roboto": "^5.2.5",
+    "@hello-pangea/dnd": "^18.0.1",
     "@lexical/headless": "^0.28.0",
     "@lexical/react": "^0.28.0",
     "@lexical/selection": "^0.28.0",
