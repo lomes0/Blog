@@ -14,6 +14,7 @@ import {
 } from "@mui/icons-material";
 import { actions, useDispatch } from "@/store";
 import { DocumentStatus, UserDocument } from "@/types";
+import useOnlineStatus from "@/hooks/useOnlineStatus";
 
 interface StatusActionsProps {
   userDocument: UserDocument;
@@ -27,6 +28,7 @@ const StatusActions: React.FC<StatusActionsProps> = ({
   closeMenu,
 }) => {
   const dispatch = useDispatch();
+  const isOnline = useOnlineStatus();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 
@@ -64,10 +66,19 @@ const StatusActions: React.FC<StatusActionsProps> = ({
         }));
       }
 
-      if (cloudDocument) {
+      if (cloudDocument && isOnline) {
+        // Update cloud document only if online
         await dispatch(actions.updateCloudDocument({
           id: userDocument.id,
           partial: { status: newStatus },
+        }));
+      } else if (cloudDocument && !isOnline) {
+        // Show warning if trying to update cloud document while offline
+        dispatch(actions.announce({
+          message: {
+            title: "Status updated locally",
+            subtitle: "Will sync to cloud when back online",
+          },
         }));
       }
     } catch (error) {

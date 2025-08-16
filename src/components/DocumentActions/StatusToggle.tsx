@@ -14,6 +14,7 @@ import {
 } from "@mui/icons-material";
 import { actions, useDispatch, useSelector } from "@/store";
 import { DocumentStatus, UserDocument } from "@/types";
+import useOnlineStatus from "@/hooks/useOnlineStatus";
 
 interface StatusToggleProps {
   userDocument: UserDocument;
@@ -28,6 +29,7 @@ const StatusToggle: React.FC<StatusToggleProps> = ({
 }) => {
   const dispatch = useDispatch();
   const user = useSelector((state) => state.user);
+  const isOnline = useOnlineStatus();
 
   const localDocument = userDocument?.local;
   const cloudDocument = userDocument?.cloud;
@@ -98,11 +100,19 @@ const StatusToggle: React.FC<StatusToggleProps> = ({
         }));
       }
 
-      if (isCloud) {
-        // Update cloud document
+      if (isCloud && isOnline) {
+        // Update cloud document only if online
         await dispatch(actions.updateCloudDocument({
           id: userDocument.id,
           partial: { status: nextStatus },
+        }));
+      } else if (isCloud && !isOnline) {
+        // Show warning if trying to update cloud document while offline
+        dispatch(actions.announce({
+          message: {
+            title: "Status updated locally",
+            subtitle: "Will sync to cloud when back online",
+          },
         }));
       }
     } catch (error) {
