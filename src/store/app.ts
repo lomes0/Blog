@@ -106,9 +106,16 @@ export const loadLocalDocuments = createAsyncThunk(
           };
           const localRevisions = backupDocument.revisions.map((
             { data, ...rest },
-          ) => rest);
+          ) => ({
+            ...rest,
+            // Ensure dates are serialized to strings
+            createdAt: rest.createdAt instanceof Date ? rest.createdAt.toISOString() : rest.createdAt,
+          }));
           const localDocument: EditorDocument = {
             ...rest,
+            // Ensure dates are serialized to strings
+            createdAt: rest.createdAt instanceof Date ? rest.createdAt.toISOString() : rest.createdAt,
+            updatedAt: rest.updatedAt instanceof Date ? rest.updatedAt.toISOString() : rest.updatedAt,
             data: {} as any, // Add missing data property
             revisions: localRevisions as any,
           };
