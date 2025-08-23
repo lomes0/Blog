@@ -22,11 +22,11 @@ import { useTheme } from "@mui/material/styles";
 import {
   ChevronLeft,
   ChevronRight,
+  Create,
+  Dashboard,
+  FolderSpecial,
   Home,
   LibraryBooks,
-  FolderSpecial,
-  Dashboard,
-  Create,
 } from "@mui/icons-material";
 import { styles } from "./styles";
 import type { User } from "@/types";
@@ -98,15 +98,15 @@ const SideBar: React.FC = () => {
       { text: "Browse Posts", icon: <LibraryBooks />, path: "/browse" },
       { text: "Series", icon: <FolderSpecial />, path: "/series" },
     ];
-    
+
     // Add user-specific navigation items if authenticated
     if (user) {
       items.push(
         { text: "Dashboard", icon: <Dashboard />, path: "/dashboard" },
-        { text: "New Post", icon: <Create />, path: "/new" }
+        { text: "New Post", icon: <Create />, path: "/new" },
       );
     }
-    
+
     return items;
   }, [user]);
 

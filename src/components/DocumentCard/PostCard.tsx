@@ -9,7 +9,7 @@ import PostActionMenu from "./PostActionMenu";
 import PostThumbnail from "./PostThumbnail";
 import PostThumbnailSkeleton from "./PostThumbnailSkeleton";
 import CardBase from "./CardBase";
-import { renderPostChips, PostState } from "./PostChips";
+import { PostState, renderPostChips } from "./PostChips";
 import { cardTheme } from "./theme";
 import { useDocumentURL } from "../DocumentURLContext";
 
@@ -84,7 +84,7 @@ const PostCard: React.FC<PostCardProps> = memo(({
         </Suspense>
       </Badge>
     ),
-    [userDocument]
+    [userDocument],
   );
 
   // Memoize chip content

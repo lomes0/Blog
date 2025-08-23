@@ -1,10 +1,10 @@
 "use client";
-import { Box, Container, Typography, Paper } from "@mui/material";
-import { UserDocument, Series, User } from "@/types";
+import { Box, Container, Paper, Typography } from "@mui/material";
+import { Series, User, UserDocument } from "@/types";
 import { DragProvider } from "../DragContext";
 import TrashBin from "../TrashBin";
 
-const Home: React.FC<{ 
+const Home: React.FC<{
   staticDocuments: UserDocument[];
   series?: Series[];
   user?: User;
@@ -18,22 +18,31 @@ const Home: React.FC<{
       <Container maxWidth="lg" sx={{ py: 4 }}>
         {/* Simple Header Section */}
         <Box sx={{ textAlign: "center", mb: 6 }}>
-          <Typography variant="h3" component="h1" gutterBottom sx={{ fontWeight: 700, color: "primary.main" }}>
+          <Typography
+            variant="h3"
+            component="h1"
+            gutterBottom
+            sx={{ fontWeight: 700, color: "primary.main" }}
+          >
             Welcome
           </Typography>
-          <Typography variant="h6" color="text.secondary" sx={{ mb: 4, maxWidth: 600, mx: "auto" }}>
+          <Typography
+            variant="h6"
+            color="text.secondary"
+            sx={{ mb: 4, maxWidth: 600, mx: "auto" }}
+          >
             A simple blog platform for creating and sharing content
           </Typography>
         </Box>
 
         {/* Simple Content Section */}
-        <Paper 
-          elevation={0} 
-          sx={{ 
-            p: 6, 
-            textAlign: "center", 
+        <Paper
+          elevation={0}
+          sx={{
+            p: 6,
+            textAlign: "center",
             bgcolor: "grey.50",
-            borderRadius: 2
+            borderRadius: 2,
           }}
         >
           <Typography variant="h5" color="text.secondary" gutterBottom>

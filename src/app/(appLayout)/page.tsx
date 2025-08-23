@@ -18,7 +18,7 @@ const page = async () => {
   const session = await getServerSession(authOptions);
   const publishedPosts = await findPublishedPosts(12);
   const allSeries = await findAllSeries();
-  
+
   const staticDocuments: UserDocument[] = publishedPosts.map(
     (post) => ({
       id: post.id,
@@ -29,11 +29,11 @@ const page = async () => {
     acc[post.head] = findRevisionThumbnail(post.head);
     return acc;
   }, {} as Record<string, Promise<string | null>>);
-  
+
   return (
     <ThumbnailProvider thumbnails={staticThumbnails}>
-      <Home 
-        staticDocuments={staticDocuments} 
+      <Home
+        staticDocuments={staticDocuments}
         series={allSeries}
         user={session?.user}
       />

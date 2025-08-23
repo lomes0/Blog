@@ -13,15 +13,15 @@ const PostActionMenu = dynamic(
     ssr: false,
     loading: () => (
       <>
-        <IconButton 
-          aria-label="Share Post" 
+        <IconButton
+          aria-label="Share Post"
           size="small"
           disabled
         >
           <Share />
         </IconButton>
-        <IconButton 
-          aria-label="Post Actions" 
+        <IconButton
+          aria-label="Post Actions"
           size="small"
           disabled
         >

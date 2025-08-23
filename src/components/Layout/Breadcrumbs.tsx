@@ -1,8 +1,20 @@
 "use client";
 import * as React from "react";
 import { usePathname } from "next/navigation";
-import { Breadcrumbs as MuiBreadcrumbs, Link, Typography, Box } from "@mui/material";
-import { Home, LibraryBooks, FolderSpecial, Dashboard, Create, Edit } from "@mui/icons-material";
+import {
+  Box,
+  Breadcrumbs as MuiBreadcrumbs,
+  Link,
+  Typography,
+} from "@mui/material";
+import {
+  Create,
+  Dashboard,
+  Edit,
+  FolderSpecial,
+  Home,
+  LibraryBooks,
+} from "@mui/icons-material";
 import RouterLink from "next/link";
 
 interface BreadcrumbItem {
@@ -17,7 +29,11 @@ const Breadcrumbs: React.FC = () => {
   const getBreadcrumbs = React.useCallback((): BreadcrumbItem[] => {
     const segments = pathname.split("/").filter(Boolean);
     const breadcrumbs: BreadcrumbItem[] = [
-      { label: "Home", href: "/", icon: <Home sx={{ fontSize: 16, mr: 0.5 }} /> }
+      {
+        label: "Home",
+        href: "/",
+        icon: <Home sx={{ fontSize: 16, mr: 0.5 }} />,
+      },
     ];
 
     if (segments.length === 0) {
@@ -30,7 +46,7 @@ const Breadcrumbs: React.FC = () => {
         breadcrumbs.push({
           label: "Browse Posts",
           href: "/browse",
-          icon: <LibraryBooks sx={{ fontSize: 16, mr: 0.5 }} />
+          icon: <LibraryBooks sx={{ fontSize: 16, mr: 0.5 }} />,
         });
         break;
 
@@ -38,13 +54,16 @@ const Breadcrumbs: React.FC = () => {
         breadcrumbs.push({
           label: "Series",
           href: "/series",
-          icon: <FolderSpecial sx={{ fontSize: 16, mr: 0.5 }} />
+          icon: <FolderSpecial sx={{ fontSize: 16, mr: 0.5 }} />,
         });
         if (segments.length > 1) {
           if (segments[1] === "new") {
             breadcrumbs.push({ label: "New Series" });
           } else if (segments.length > 2 && segments[2] === "edit") {
-            breadcrumbs.push({ label: "Series Details", href: `/series/${segments[1]}` });
+            breadcrumbs.push({
+              label: "Series Details",
+              href: `/series/${segments[1]}`,
+            });
             breadcrumbs.push({ label: "Edit" });
           } else {
             breadcrumbs.push({ label: "Series Details" });
@@ -55,14 +74,14 @@ const Breadcrumbs: React.FC = () => {
       case "dashboard":
         breadcrumbs.push({
           label: "Dashboard",
-          icon: <Dashboard sx={{ fontSize: 16, mr: 0.5 }} />
+          icon: <Dashboard sx={{ fontSize: 16, mr: 0.5 }} />,
         });
         break;
 
       case "new":
         breadcrumbs.push({
           label: "New Post",
-          icon: <Create sx={{ fontSize: 16, mr: 0.5 }} />
+          icon: <Create sx={{ fontSize: 16, mr: 0.5 }} />,
         });
         break;
 
@@ -70,11 +89,11 @@ const Breadcrumbs: React.FC = () => {
         breadcrumbs.push({
           label: "Browse Posts",
           href: "/browse",
-          icon: <LibraryBooks sx={{ fontSize: 16, mr: 0.5 }} />
+          icon: <LibraryBooks sx={{ fontSize: 16, mr: 0.5 }} />,
         });
         breadcrumbs.push({
           label: "Edit Post",
-          icon: <Edit sx={{ fontSize: 16, mr: 0.5 }} />
+          icon: <Edit sx={{ fontSize: 16, mr: 0.5 }} />,
         });
         break;
 
@@ -82,7 +101,7 @@ const Breadcrumbs: React.FC = () => {
         breadcrumbs.push({
           label: "Browse Posts",
           href: "/browse",
-          icon: <LibraryBooks sx={{ fontSize: 16, mr: 0.5 }} />
+          icon: <LibraryBooks sx={{ fontSize: 16, mr: 0.5 }} />,
         });
         breadcrumbs.push({ label: "View Post" });
         break;
@@ -108,21 +127,23 @@ const Breadcrumbs: React.FC = () => {
   }
 
   return (
-    <Box sx={{ py: 1, px: 2, borderBottom: "1px solid", borderColor: "divider" }}>
+    <Box
+      sx={{ py: 1, px: 2, borderBottom: "1px solid", borderColor: "divider" }}
+    >
       <MuiBreadcrumbs aria-label="breadcrumb" separator="›">
         {breadcrumbs.map((item, index) => {
           const isLast = index === breadcrumbs.length - 1;
-          
+
           if (isLast || !item.href) {
             return (
               <Typography
                 key={index}
                 color="text.primary"
-                sx={{ 
-                  display: "flex", 
+                sx={{
+                  display: "flex",
                   alignItems: "center",
                   fontSize: "0.875rem",
-                  fontWeight: isLast ? 600 : 400
+                  fontWeight: isLast ? 600 : 400,
                 }}
               >
                 {item.icon}
@@ -138,13 +159,13 @@ const Breadcrumbs: React.FC = () => {
               href={item.href}
               underline="hover"
               color="inherit"
-              sx={{ 
-                display: "flex", 
+              sx={{
+                display: "flex",
                 alignItems: "center",
                 fontSize: "0.875rem",
                 "&:hover": {
-                  color: "primary.main"
-                }
+                  color: "primary.main",
+                },
               }}
             >
               {item.icon}

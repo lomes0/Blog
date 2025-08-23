@@ -7,8 +7,8 @@ const PostThumbnailSkeleton = () => {
   return (
     <Box
       className="post-thumbnail-skeleton"
-      sx={{ 
-        display: "flex", 
+      sx={{
+        display: "flex",
         flexDirection: "column",
         gap: 1,
         p: 1,
@@ -21,12 +21,12 @@ const PostThumbnailSkeleton = () => {
         height={24}
         sx={{ alignSelf: "center" }}
       />
-      
+
       {/* Content lines */}
       <Skeleton variant="text" width="90%" height={16} />
       <Skeleton variant="text" width="75%" height={16} />
       <Skeleton variant="text" width="85%" height={16} />
-      
+
       {/* Optional content block (table, image, etc.) */}
       <Skeleton
         variant="rectangular"

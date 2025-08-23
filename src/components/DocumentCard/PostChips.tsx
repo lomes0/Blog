@@ -1,6 +1,6 @@
 import React from "react";
 import { Avatar, Chip, Skeleton } from "@mui/material";
-import { LibraryBooks, Edit, Public } from "@mui/icons-material";
+import { Edit, LibraryBooks, Public } from "@mui/icons-material";
 import { Series, User } from "@/types";
 import { cardTheme } from "./theme";
 
@@ -97,12 +97,12 @@ export const createAuthorChip = (author?: User | null, showAuthor = true) => {
 export const createSeriesChip = (
   series?: Series | null,
   seriesOrder?: number | null,
-  showSeries = true
+  showSeries = true,
 ) => {
   if (!showSeries || !series) return null;
 
-  const label = seriesOrder 
-    ? `${series.title} (#${seriesOrder})` 
+  const label = seriesOrder
+    ? `${series.title} (#${seriesOrder})`
     : series.title;
 
   return (

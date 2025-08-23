@@ -32,10 +32,25 @@ const Footer: React.FC = () => {
         }}
       >
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Made with <FavoriteRounded sx={{ color: "red", fontSize: 16, mx: 0.5, verticalAlign: "middle" }} /> 
+          Made with{" "}
+          <FavoriteRounded
+            sx={{
+              color: "red",
+              fontSize: 16,
+              mx: 0.5,
+              verticalAlign: "middle",
+            }}
+          />
           for the community
         </Typography>
-        <Box sx={{ display: "flex", justifyContent: "center", gap: 3, flexWrap: "wrap" }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            gap: 3,
+            flexWrap: "wrap",
+          }}
+        >
           <Link
             component={RouterLink}
             href="/browse"
@@ -73,7 +88,11 @@ const Footer: React.FC = () => {
             Privacy
           </Link>
         </Box>
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: "block" }}>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ mt: 2, display: "block" }}
+        >
           v{version} {commitHash?.substring(0, 7)}
         </Typography>
       </Box>

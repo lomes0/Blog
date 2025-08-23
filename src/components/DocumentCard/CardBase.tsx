@@ -52,29 +52,29 @@ const CardBase: React.FC<SimplifiedCardBaseProps> = ({
   ariaLabel = "Open post",
 }) => {
   const theme = useTheme();
-  const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+  const prefersReducedMotion = useMediaQuery(
+    "(prefers-reduced-motion: reduce)",
+  );
 
   // Check if we should show the title
   const shouldShowTitle = Boolean(
     title && (
       (typeof title === "string" && title.trim().length > 0) ||
       (typeof title !== "string")
-    )
+    ),
   );
 
   // Format title for tooltips
   const formattedTitle = typeof title === "string" ? title : "Post";
 
   // Animation styles
-  const animationStyles = prefersReducedMotion
-    ? {}
-    : {
-        transition: cardTheme.animation.transition,
-        "&:hover": {
-          transform: cardTheme.animation.hoverTransform,
-          boxShadow: cardTheme.colors.shadow.hover,
-        },
-      };
+  const animationStyles = prefersReducedMotion ? {} : {
+    transition: cardTheme.animation.transition,
+    "&:hover": {
+      transform: cardTheme.animation.hoverTransform,
+      boxShadow: cardTheme.colors.shadow.hover,
+    },
+  };
 
   return (
     <Fade in={true} timeout={prefersReducedMotion ? 0 : 300}>
@@ -95,7 +95,8 @@ const CardBase: React.FC<SimplifiedCardBaseProps> = ({
           ...animationStyles,
           "&:focus-within": {
             boxShadow: cardTheme.colors.shadow.focus,
-            outline: `${cardTheme.accessibility.focusRingWidth}px solid ${theme.palette.primary.main}`,
+            outline:
+              `${cardTheme.accessibility.focusRingWidth}px solid ${theme.palette.primary.main}`,
             outlineOffset: "2px",
           },
           // Responsive adjustments
@@ -142,7 +143,8 @@ const CardBase: React.FC<SimplifiedCardBaseProps> = ({
               right: 0,
               bottom: cardTheme.actionBar.height,
               zIndex: 1,
-              borderRadius: `${cardTheme.borderRadius}px ${cardTheme.borderRadius}px 0 0`,
+              borderRadius:
+                `${cardTheme.borderRadius}px ${cardTheme.borderRadius}px 0 0`,
               "&:hover": {
                 backgroundColor: "transparent",
               },

@@ -13,7 +13,10 @@ const thumbnailCache = new Map<string, string>();
 /**
  * Get thumbnail from various sources
  */
-const getPostThumbnail = async (documentId: string, revisionId: string): Promise<string | null> => {
+const getPostThumbnail = async (
+  documentId: string,
+  revisionId: string,
+): Promise<string | null> => {
   // Check cache first
   const cachedThumbnail = thumbnailCache.get(revisionId);
   if (cachedThumbnail) return cachedThumbnail;
@@ -80,7 +83,10 @@ const PostThumbnail: React.FC<{ userDocument?: UserDocument }> = memo(
           } catch (error) {
             console.warn("Context thumbnail failed, falling back:", error);
             // Fall back to regular thumbnail loading
-            const fallbackThumbnail = await getPostThumbnail(document.id, document.head);
+            const fallbackThumbnail = await getPostThumbnail(
+              document.id,
+              document.head,
+            );
             setThumbnail(fallbackThumbnail);
           } finally {
             setIsLoading(false);
@@ -92,7 +98,10 @@ const PostThumbnail: React.FC<{ userDocument?: UserDocument }> = memo(
 
       // Regular thumbnail loading
       const loadThumbnail = async () => {
-        const thumbnailData = await getPostThumbnail(document.id, document.head);
+        const thumbnailData = await getPostThumbnail(
+          document.id,
+          document.head,
+        );
         setThumbnail(thumbnailData);
         setIsLoading(false);
       };
@@ -128,7 +137,7 @@ const PostThumbnail: React.FC<{ userDocument?: UserDocument }> = memo(
         }}
       />
     );
-  }
+  },
 );
 
 PostThumbnail.displayName = "PostThumbnail";

@@ -26,7 +26,9 @@ const DraggablePostCard: React.FC<DraggablePostCardProps> = ({
 }) => {
   const dispatch = useDispatch();
   const theme = useTheme();
-  const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+  const prefersReducedMotion = useMediaQuery(
+    "(prefers-reduced-motion: reduce)",
+  );
   const [isDragging, setIsDragging] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const { setIsDragging: setGlobalDragging } = useContext(DragContext);
@@ -40,12 +42,16 @@ const DraggablePostCard: React.FC<DraggablePostCardProps> = ({
         id: userDocument.id,
         name: document?.name,
         type: "post",
-      })
+      }),
     );
 
     if (cardRef.current) {
       const rect = cardRef.current.getBoundingClientRect();
-      e.dataTransfer.setDragImage(cardRef.current, rect.width / 2, rect.height / 2);
+      e.dataTransfer.setDragImage(
+        cardRef.current,
+        rect.width / 2,
+        rect.height / 2,
+      );
     }
 
     e.dataTransfer.effectAllowed = "move";
@@ -60,15 +66,17 @@ const DraggablePostCard: React.FC<DraggablePostCardProps> = ({
 
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    
+
     try {
-      const dragData = JSON.parse(e.dataTransfer.getData("application/matheditor-document"));
-      
+      const dragData = JSON.parse(
+        e.dataTransfer.getData("application/matheditor-document"),
+      );
+
       if (dragData.id && dragData.id !== userDocument.id) {
         // In a blog context, we might reorder posts or move to series
         // This would need to be implemented based on specific requirements
         console.log("Post drop:", dragData, "onto:", userDocument.id);
-        
+
         onMoveComplete?.();
       }
     } catch (error) {
@@ -85,7 +93,9 @@ const DraggablePostCard: React.FC<DraggablePostCardProps> = ({
       onDrop={handleDrop}
       role="button"
       tabIndex={0}
-      aria-label={document?.name ? `Draggable ${document.name}` : "Draggable post"}
+      aria-label={document?.name
+        ? `Draggable ${document.name}`
+        : "Draggable post"}
       sx={{
         cursor: "grab",
         "&:active": {
