@@ -100,7 +100,7 @@ export interface MockDocument {
     data: any;
     createdAt: string;
     updatedAt: string;
-    type: "DOCUMENT" | "DIRECTORY";
+    type: "DOCUMENT";
   };
   cloud?: any;
 }

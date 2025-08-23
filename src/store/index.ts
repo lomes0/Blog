@@ -9,10 +9,14 @@ import {
   createCloudRevision,
   createLocalDocument,
   createLocalRevision,
+  createPost,
+  createSeries,
   deleteCloudDocument,
   deleteCloudRevision,
   deleteLocalDocument,
   deleteLocalRevision,
+  deletePost,
+  deleteSeries,
   duplicateDocument,
   forkCloudDocument,
   forkLocalDocument,
@@ -28,21 +32,15 @@ import {
   load,
   loadCloudDocuments,
   loadLocalDocuments,
-  updateCloudDocument,
-  updateLocalDocument,
-  updateUser,
   // New post and series actions
   loadPosts,
-  createPost,
-  updatePost,
-  deletePost,
   loadSeries,
-  createSeries,
+  updateCloudDocument,
+  updateLocalDocument,
+  updatePost,
   updateSeries,
-  deleteSeries,
+  updateUser,
 } from "./app";
-// Temporary: keep domain imports for backward compatibility during migration
-import { deleteDomain, fetchUserDomains, reorderDomains } from "./app/domains";
 import { Action, configureStore, ThunkAction } from "@reduxjs/toolkit";
 
 export const actions = {
@@ -90,11 +88,6 @@ export const actions = {
   createSeries,
   updateSeries,
   deleteSeries,
-
-  // Temporary: keep domain actions for backward compatibility during migration
-  fetchUserDomains,
-  deleteDomain,
-  reorderDomains,
 };
 
 export const store = configureStore({ reducer: appSlice.reducer });

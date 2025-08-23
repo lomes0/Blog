@@ -1,24 +1,23 @@
-# Math Editor
+# Blog Editor
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/IBastawisi/math-editor/blob/master/LICENSE)
 [![demo](https://img.shields.io/badge/live-demo-blue)](https://matheditor.ml/playground)
 
-A rich text editor for scientific content, with Markdown helpers, Mathlive,
-Geogebra and Excalidraw Extensions. The project aims to make writing
-publication-quality documents easy and accessible.
+A modern blog platform with rich text editing capabilities, built with Next.js and Lexical editor.
+Featuring advanced mathematical content support, interactive visualizations, and series organization.
 
 ## Features
 
-- Rich Text: Text formatting, Copy + Paste Preformatted text, Code syntax
+- **Rich Text**: Advanced text formatting, Copy + Paste support, Code syntax
   highlighting, Insert Images, Tables and Sticky notes.
-- Math: Integrates with [Mathlive](https://cortexjs.io/mathlive) for writing
+- **Math**: Integrates with [Mathlive](https://cortexjs.io/mathlive) for writing
   LaTeX with a Virtual Keyboard.
-- Graph: Integrates with [Geogebra](https://www.geogebra.org) for graphing
+- **Graph**: Integrates with [Geogebra](https://www.geogebra.org) for graphing
   functions and shapes.
-- Sketch: Integrates with [Excalidraw](https://excalidraw.com/) for hand-drawn
+- **Sketch**: Integrates with [Excalidraw](https://excalidraw.com/) for hand-drawn
   like sketches.
-- Document Organization: Hierarchical folder structure with intuitive drag-and-drop interface.
-- Responsive UI: Optimized for all device sizes with high-performance virtualized rendering.
+- **Blog Organization**: Create posts and organize them into series for multi-part content.
+- **Responsive UI**: Optimized for all device sizes with high-performance rendering.
 
 ## Getting Started
 

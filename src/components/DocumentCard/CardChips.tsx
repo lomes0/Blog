@@ -5,14 +5,14 @@ import {
   Cloud,
   CloudDone,
   CloudSync,
+  LibraryBooks,
   MobileFriendly,
   PlayArrow,
   Public,
   Security,
   Workspaces,
-  LibraryBooks,
 } from "@mui/icons-material";
-import { DocumentStatus, User, Series } from "@/types";
+import { DocumentStatus, Series, User } from "@/types";
 import { cardTheme } from "./theme";
 
 /**

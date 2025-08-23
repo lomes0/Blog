@@ -12,8 +12,8 @@ export default function NewSeriesButton() {
       startIcon={<Add />}
       sx={{
         borderRadius: 2,
-        textTransform: 'none',
-        fontSize: '1rem',
+        textTransform: "none",
+        fontSize: "1rem",
         px: 3,
         py: 1.5,
       }}

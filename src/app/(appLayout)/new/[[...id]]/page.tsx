@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 
 import NewDocument from "@/components/NewDocument";
 import type { OgMetadata } from "@/app/api/og/route";
-import { findUserDocument } from "@/repositories/document";
+import { findUserPost } from "@/repositories/post";
 import type { Metadata } from "next";
 import { cache } from "react";
 import { ThumbnailProvider } from "@/app/context/ThumbnailContext";
@@ -13,7 +13,7 @@ import { authOptions } from "@/lib/auth";
 import { getServerSession } from "next-auth";
 
 const getCachedUserDocument = cache(async (id: string, revisions?: string) =>
-  await findUserDocument(id, revisions)
+  await findUserPost(id, revisions)
 );
 const getCachedSession = cache(async () => await getServerSession(authOptions));
 

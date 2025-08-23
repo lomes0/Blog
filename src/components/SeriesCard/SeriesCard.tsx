@@ -2,8 +2,8 @@
 import * as React from "react";
 import { memo, useMemo } from "react";
 import { SxProps, Theme } from "@mui/material/styles";
-import { IconButton, Skeleton, Chip, Box } from "@mui/material";
-import { MoreVert, Folder, Article } from "@mui/icons-material";
+import { Box, Chip, IconButton, Skeleton } from "@mui/material";
+import { Article, Folder, MoreVert } from "@mui/icons-material";
 import { Series, User } from "@/types";
 import CardBase from "../DocumentCard/CardBase";
 import { cardTheme } from "../DocumentCard/theme";
@@ -52,7 +52,7 @@ const SeriesCard: React.FC<SeriesCardProps> = memo(({
 
   // Navigation and metadata
   const href = series ? `/series/${series.id}` : "/";
-  
+
   // Rendering helpers
   const isLoading = !series;
 
@@ -81,14 +81,24 @@ const SeriesCard: React.FC<SeriesCardProps> = memo(({
     if (isLoading) {
       return (
         <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
-          <Skeleton variant="rectangular" width={60} height={24} sx={{ borderRadius: 1 }} />
-          <Skeleton variant="rectangular" width={80} height={24} sx={{ borderRadius: 1 }} />
+          <Skeleton
+            variant="rectangular"
+            width={60}
+            height={24}
+            sx={{ borderRadius: 1 }}
+          />
+          <Skeleton
+            variant="rectangular"
+            width={80}
+            height={24}
+            sx={{ borderRadius: 1 }}
+          />
         </Box>
       );
     }
 
     const chips = [];
-    
+
     // Post count chip
     if (series) {
       chips.push(
@@ -99,10 +109,10 @@ const SeriesCard: React.FC<SeriesCardProps> = memo(({
           variant="outlined"
           icon={<Article />}
           sx={{ fontSize: "0.7rem" }}
-        />
+        />,
       );
     }
-    
+
     // Author chip
     if (config.showAuthor && series?.author) {
       chips.push(
@@ -112,7 +122,7 @@ const SeriesCard: React.FC<SeriesCardProps> = memo(({
           size="small"
           variant="outlined"
           sx={{ fontSize: "0.7rem" }}
-        />
+        />,
       );
     }
 

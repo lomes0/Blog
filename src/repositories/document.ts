@@ -1,9 +1,9 @@
-import { Prisma } from "@prisma/client";
+import { DocumentType as PrismaDocumentType, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   CloudDocument,
   DocumentStatus,
-  DocumentType,
+  type DocumentType,
   EditorDocument,
 } from "@/types";
 import { validate } from "uuid";
@@ -87,7 +87,7 @@ const findPublishedDocuments = async (limit?: number) => {
       coauthors: document.coauthors.map((coauthor) => coauthor.user),
       parentId: (document as any).parentId,
       revisions: revisions as any,
-      type: (document as any).type || DocumentType.DOCUMENT,
+      type: (document as any).type || "DOCUMENT",
       head: document.head || "",
     } as CloudDocument;
 
@@ -239,7 +239,8 @@ const findDocumentsByAuthorId = async (authorId: string) => {
       background_image: true,
       parentId: true, // Ensure parentId is explicitly selected
       sort_order: true, // Ensure sort_order is explicitly selected
-      domainId: true, // Select the domainId field for domain filtering
+      // seriesId: true, // Comment out until schema is updated
+      // seriesOrder: true, // Comment out until schema is updated
       revisions: {
         select: {
           id: true,
@@ -290,21 +291,24 @@ const findDocumentsByAuthorId = async (authorId: string) => {
     },
   });
 
-  const cloudDocuments = documents.map((document) => {
+  const cloudDocuments = documents.map((document: any) => {
     const revisions = document.collab
-      ? document.revisions
-      : document.revisions.filter((revision) => revision.id === document.head);
+      ? (document.revisions || [])
+      : (document.revisions || []).filter((revision: any) =>
+        revision.id === document.head
+      );
 
     // Cast to CloudDocument to avoid type errors
     const cloudDocument = {
       ...document,
-      parentId: (document as any).parentId,
-      domainId: (document as any).domainId, // Include domainId in the cloudDocument
-      coauthors: document.coauthors.map((coauthor) => coauthor.user),
+      parentId: document.parentId,
+      coauthors: (document.coauthors || []).map((coauthor: any) =>
+        coauthor.user
+      ),
       revisions: revisions as any,
-      type: (document as any).type || DocumentType.DOCUMENT,
+      type: document.type || PrismaDocumentType.DOCUMENT,
       head: document.head || "",
-    } as CloudDocument;
+    } as unknown as CloudDocument;
 
     return cloudDocument;
   });
@@ -389,7 +393,7 @@ const findPublishedDocumentsByAuthorId = async (authorId: string) => {
       coauthors: document.coauthors.map((coauthor) => coauthor.user),
       parentId: (document as any).parentId,
       revisions: revisions as any,
-      type: (document as any).type || DocumentType.DOCUMENT,
+      type: (document as any).type || "DOCUMENT",
       head: document.head || "",
     };
     return cloudDocument;

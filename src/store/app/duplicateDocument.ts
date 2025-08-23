@@ -4,7 +4,7 @@ import documentDB, { revisionDB } from "@/indexeddb";
 import { BackupDocument, UserDocument } from "@/types";
 
 /**
- * Duplicates an existing document or directory
+ * Duplicates an existing blog post
  */
 export const duplicateDocument = createAsyncThunk(
   "app/duplicateDocument",

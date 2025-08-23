@@ -10,7 +10,7 @@ interface EditSeriesPageProps {
 
 export default async function EditSeriesPage({ params }: EditSeriesPageProps) {
   const session = await getServerSession(authOptions);
-  
+
   if (!session) {
     redirect("/api/auth/signin");
   }

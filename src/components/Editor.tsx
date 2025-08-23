@@ -58,9 +58,45 @@ const Container: React.FC<{
     );
   };
 
+  // Ensure we have a valid editor state
+  const getValidEditorState = () => {
+    // If document.data is empty, null, or undefined, return null to let Lexical create default state
+    if (!document.data || typeof document.data !== "object") {
+      return null;
+    }
+
+    try {
+      const stateString = JSON.stringify(document.data);
+      const parsed = JSON.parse(stateString);
+
+      // Validate that root exists and has the required structure
+      if (
+        !parsed.root || !parsed.root.children ||
+        !Array.isArray(parsed.root.children)
+      ) {
+        console.warn("Invalid root structure, using default state");
+        return null;
+      }
+
+      // If root has no children, return null to let Lexical create default state
+      if (parsed.root.children.length === 0) {
+        return null;
+      }
+
+      return stateString;
+    } catch (error) {
+      console.warn("Invalid document data, using default state:", error);
+      // Return null to let Lexical create the default state
+      return null;
+    }
+  };
+
+  const editorState = getValidEditorState();
+  const initialConfig = editorState ? { editorState } : {}; // Let Lexical create default state
+
   return (
     <Editor
-      initialConfig={{ editorState: JSON.stringify(document.data) }}
+      initialConfig={initialConfig}
       onChange={onChange}
       editorRef={editorRefCallback}
       ignoreHistoryMerge={ignoreHistoryMerge}

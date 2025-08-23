@@ -25,7 +25,7 @@ import {
   Home as HomeIcon,
 } from "@mui/icons-material";
 import { actions, useDispatch, useSelector } from "@/store";
-import { DocumentType, UserDocument } from "@/types";
+import { type DocumentType, UserDocument } from "@/types";
 
 interface MoveProps {
   userDocument: UserDocument;
@@ -53,16 +53,15 @@ const Move: React.FC<MoveProps> = (
   const document = userDocument?.local || userDocument?.cloud;
   const documentId = userDocument.id;
   const documentName = document?.name || "Document";
-  const documentType = document?.type || DocumentType.DOCUMENT;
+  const documentType = document?.type || ("DOCUMENT" as DocumentType);
   const currentParentId = document?.parentId || null;
 
   const open = Boolean(anchorEl);
 
   // Function to determine if a document is a directory
+  // In blog structure, there are no directories
   const isDirectory = (doc: UserDocument) => {
-    const isLocalDir = doc.local?.type === DocumentType.DIRECTORY;
-    const isCloudDir = doc.cloud?.type === DocumentType.DIRECTORY;
-    return isLocalDir || isCloudDir;
+    return false; // No directories in blog structure
   };
 
   // Function to determine if a document is at the root level
@@ -346,10 +345,7 @@ const Move: React.FC<MoveProps> = (
         disableRestoreFocus
       >
         <Typography variant="h6" gutterBottom>
-          Move{" "}
-          {documentType === DocumentType.DIRECTORY ? "Folder" : "Document"}:
-          {" "}
-          {documentName}
+          Move Document: {documentName}
         </Typography>
 
         <Box sx={{ mb: 2, overflow: "auto", maxHeight: 350 }}>

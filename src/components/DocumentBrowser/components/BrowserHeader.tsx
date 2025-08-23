@@ -12,10 +12,8 @@ import DocumentSortControl from "../../DocumentControls/SortControl";
 
 interface BrowserHeaderProps {
   onCreateDocument: () => void;
-  onCreateDirectory: () => void; // Keep for compatibility but unused
   sortValue: { key: string; direction: string };
   setSortValue: (value: { key: string; direction: string }) => void;
-  domainInfo?: any; // Keep for compatibility but unused
 }
 
 /**
@@ -23,10 +21,8 @@ interface BrowserHeaderProps {
  */
 const BrowserHeader: React.FC<BrowserHeaderProps> = ({
   onCreateDocument,
-  onCreateDirectory,
   sortValue,
   setSortValue,
-  domainInfo,
 }) => {
   return (
     <Box

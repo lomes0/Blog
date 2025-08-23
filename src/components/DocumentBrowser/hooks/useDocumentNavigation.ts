@@ -3,9 +3,7 @@ import { useRouter } from "next/navigation";
 import { useCallback } from "react";
 
 interface UseDocumentNavigationProps {
-  directoryId?: string; // Keep for compatibility but unused
-  domainId?: string; // Keep for compatibility but unused
-  domainInfo?: any; // Keep for compatibility but unused
+  // No props needed for simplified blog structure
 }
 
 /**
@@ -13,7 +11,7 @@ interface UseDocumentNavigationProps {
  * Simplified for blog structure without directories or domains
  */
 export const useDocumentNavigation = (
-  { directoryId, domainId, domainInfo }: UseDocumentNavigationProps,
+  {}: UseDocumentNavigationProps = {},
 ) => {
   const router = useRouter();
 

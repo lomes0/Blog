@@ -1,7 +1,6 @@
 import { authOptions } from "@/lib/auth";
-import { findUserDocument, updateDocument } from "@/repositories/document";
+import { findUserPost, updatePost } from "@/repositories/post";
 import { UploadBackgroundImageResponse } from "@/types";
-import { isDirectoryServer } from "@/utils/documentUtils";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { mkdir, writeFile } from "fs/promises";
@@ -47,7 +46,7 @@ export async function POST(
       return NextResponse.json(response, { status: 403 });
     }
 
-    const userDocument = await findUserDocument(params.id);
+    const userDocument = await findUserPost(params.id);
     if (!userDocument) {
       response.error = { title: "Document not found" };
       return NextResponse.json(response, { status: 404 });
@@ -56,7 +55,6 @@ export async function POST(
     console.log("Document retrieved:", {
       id: userDocument.id,
       type: userDocument.type,
-      isDirectoryByHelper: isDirectoryServer(userDocument),
       rawDocumentType: typeof userDocument.type === "string"
         ? userDocument.type
         : "not a string",
@@ -65,23 +63,18 @@ export async function POST(
     if (user.id !== userDocument.author.id) {
       response.error = {
         title: "Forbidden",
-        subtitle: "You are not authorized to modify this directory",
+        subtitle: "You are not authorized to modify this document",
       };
       return NextResponse.json(response, { status: 403 });
     }
 
-    // Use both string comparison and enum comparison for robustness
-    if (
-      !isDirectoryServer(userDocument) &&
-      userDocument.type !== "DIRECTORY"
-    ) {
-      console.log("Document type is not DIRECTORY:", userDocument.type);
-      response.error = {
-        title: "Bad Request",
-        subtitle: "This is not a directory",
-      };
-      return NextResponse.json(response, { status: 400 });
-    }
+    // Since directories have been removed in blog refactor, reject all background operations
+    response.error = {
+      title: "Bad Request",
+      subtitle:
+        "Background images are only supported for directories, which have been removed",
+    };
+    return NextResponse.json(response, { status: 400 });
 
     // Parse the form data
     const formData = await request.formData();
@@ -137,7 +130,7 @@ export async function POST(
       const imagePath = `/uploads/directories/${fileName}`;
 
       console.log("Updating document with background_image:", imagePath);
-      const updatedDocument = await updateDocument(params.id, {
+      const updatedDocument = await updatePost(params.id, {
         background_image: imagePath,
         updatedAt: new Date(),
       });
@@ -152,7 +145,7 @@ export async function POST(
 
       response.data = {
         background_image: imagePath,
-        document: updatedDocument,
+        document: updatedDocument!,
       };
 
       return NextResponse.json(response, { status: 200 });

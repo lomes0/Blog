@@ -13,8 +13,9 @@ export async function GET(
   props: { params: Promise<{ id: string }> },
 ) {
   const params = await props.params;
-  const response: { data?: any; error?: { title: string; subtitle?: string } } = {};
-  
+  const response: { data?: any; error?: { title: string; subtitle?: string } } =
+    {};
+
   try {
     if (!validate(params.id)) {
       response.error = { title: "Bad Request", subtitle: "Invalid series id" };
@@ -46,8 +47,9 @@ export async function POST(
   props: { params: Promise<{ id: string }> },
 ) {
   const params = await props.params;
-  const response: { data?: any; error?: { title: string; subtitle?: string } } = {};
-  
+  const response: { data?: any; error?: { title: string; subtitle?: string } } =
+    {};
+
   try {
     if (!validate(params.id)) {
       response.error = { title: "Bad Request", subtitle: "Invalid series id" };

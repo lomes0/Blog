@@ -10,10 +10,7 @@ interface DocumentURLContextProps {
 const DocumentURLContext = createContext<DocumentURLContextProps>({
   getDocumentUrl: (doc: UserDocument) => {
     const docId = doc.id;
-    const isDirectory = (doc.local?.type === "DIRECTORY") ||
-      (doc.cloud?.type === "DIRECTORY");
-
-    return isDirectory ? `/browse/${docId}` : `/view/${docId}`;
+    return `/view/${docId}`; // All documents are posts now
   },
 });
 

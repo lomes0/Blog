@@ -10,8 +10,6 @@ interface BreadcrumbItem {
 
 interface BrowserBreadcrumbsProps {
   breadcrumbs: BreadcrumbItem[]; // Will be empty for blog structure
-  domainInfo?: any; // Keep for compatibility but unused
-  directoryId?: string; // Keep for compatibility but unused
 }
 
 /**
@@ -20,8 +18,6 @@ interface BrowserBreadcrumbsProps {
  */
 const BrowserBreadcrumbs: React.FC<BrowserBreadcrumbsProps> = ({
   breadcrumbs,
-  domainInfo,
-  directoryId,
 }) => {
   return (
     <Breadcrumbs aria-label="breadcrumb">

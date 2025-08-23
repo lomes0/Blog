@@ -10,7 +10,6 @@ import documentDB, { revisionDB } from "@/indexeddb";
 type ImportExportControlProps = {
   handleFilesChange?: (
     files: FileList | File[] | null,
-    createNewDirectory?: boolean,
   ) => Promise<void>;
   backupFunction?: () => Promise<void>;
 };
@@ -31,7 +30,7 @@ const ImportExportControl: FC<ImportExportControlProps> = (
 
       // Import files directly as posts
       if (handleFilesChange) {
-        await handleFilesChange(fileArray, true);
+        await handleFilesChange(fileArray);
       } else {
         // Default import logic for blog posts
         for (const file of fileArray) {
@@ -39,18 +38,18 @@ const ImportExportControl: FC<ImportExportControlProps> = (
             try {
               const text = await file.text();
               const data: BackupDocument[] = JSON.parse(text);
-              
+
               for (const document of data) {
                 // Create new document as a blog post
                 const newDocument = {
                   ...document,
                   id: uuid(),
-                  createdAt: new Date(),
-                  updatedAt: new Date(),
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
                   // Ensure it's created as a post (not directory)
-                  type: DocumentType.DOCUMENT,
+                  type: "DOCUMENT" as DocumentType,
                 };
-                
+
                 await documentDB.add(newDocument);
                 dispatch(actions.loadLocalDocuments());
               }
@@ -67,9 +66,9 @@ const ImportExportControl: FC<ImportExportControlProps> = (
           }
         }
       }
-      
+
       // Reset the file input
-      e.target.value = '';
+      e.target.value = "";
     },
     [handleFilesChange, user, dispatch],
   );

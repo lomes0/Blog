@@ -32,14 +32,11 @@ import {
 } from "@/types";
 import { validate } from "uuid";
 import { duplicateDocument } from "./app/duplicateDocument";
-// Temporary import for backward compatibility during migration
-import { fetchUserDomains, reorderDomains, deleteDomain } from "./app/domains";
 
 const initialState: AppState = {
   documents: [],
   posts: [], // New: posts state for blog structure
   series: [], // New: series state for blog structure
-  domains: [], // Temporary: keep for backward compatibility during migration
   ui: {
     announcements: [],
     alerts: [],
@@ -59,7 +56,6 @@ export const load = createAsyncThunk("app/load", async (_, thunkAPI) => {
     thunkAPI.dispatch(loadCloudDocuments()),
     thunkAPI.dispatch(loadPosts()), // Load posts for blog structure
     thunkAPI.dispatch(loadSeries()), // Load series for blog structure
-    thunkAPI.dispatch(fetchUserDomains()), // Temporary: keep for backward compatibility during migration
   ]);
 });
 
@@ -114,13 +110,19 @@ export const loadLocalDocuments = createAsyncThunk(
           ) => ({
             ...rest,
             // Ensure dates are serialized to strings
-            createdAt: rest.createdAt instanceof Date ? rest.createdAt.toISOString() : rest.createdAt,
+            createdAt: rest.createdAt instanceof Date
+              ? rest.createdAt.toISOString()
+              : rest.createdAt,
           }));
           const localDocument: EditorDocument = {
             ...rest,
             // Ensure dates are serialized to strings
-            createdAt: rest.createdAt instanceof Date ? rest.createdAt.toISOString() : rest.createdAt,
-            updatedAt: rest.updatedAt instanceof Date ? rest.updatedAt.toISOString() : rest.updatedAt,
+            createdAt: rest.createdAt instanceof Date
+              ? rest.createdAt.toISOString()
+              : rest.createdAt,
+            updatedAt: rest.updatedAt instanceof Date
+              ? rest.updatedAt.toISOString()
+              : rest.updatedAt,
             data: {} as any, // Add missing data property
             revisions: localRevisions as any,
           };
@@ -148,7 +150,7 @@ export const loadCloudDocuments = createAsyncThunk(
           payloadCreator,
         );
       }
-      const response = await fetch("/api/documents");
+      const response = await fetch("/api/posts");
       const { data, error } = await response
         .json() as GetDocumentsResponse;
       if (error) return thunkAPI.rejectWithValue(error);
@@ -324,7 +326,7 @@ export const getCloudDocument = createAsyncThunk(
   async (id: string, thunkAPI) => {
     try {
       NProgress.start();
-      const response = await fetch(`/api/documents/${id}`);
+      const response = await fetch(`/api/posts/${id}`);
       const { data, error } = await response
         .json() as GetDocumentResponse;
       if (error) return thunkAPI.rejectWithValue(error);
@@ -520,7 +522,7 @@ export const createCloudDocument = createAsyncThunk(
   async (payloadCreator: DocumentCreateInput, thunkAPI) => {
     try {
       NProgress.start();
-      const response = await fetch("/api/documents", {
+      const response = await fetch("/api/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payloadCreator),
@@ -903,7 +905,8 @@ export const updatePost = createAsyncThunk(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      const { data: result, error } = await response.json() as PatchDocumentResponse;
+      const { data: result, error } = await response
+        .json() as PatchDocumentResponse;
       if (error) return thunkAPI.rejectWithValue(error);
       return thunkAPI.fulfillWithValue(result);
     } catch (error: any) {
@@ -998,7 +1001,10 @@ export const createSeries = createAsyncThunk(
 export const updateSeries = createAsyncThunk(
   "app/updateSeries",
   async (
-    { id, data }: { id: string; data: { title?: string; description?: string } },
+    { id, data }: {
+      id: string;
+      data: { title?: string; description?: string };
+    },
     thunkAPI,
   ) => {
     try {
@@ -1007,7 +1013,8 @@ export const updateSeries = createAsyncThunk(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      const { data: result, error } = await response.json() as PostSeriesResponse;
+      const { data: result, error } = await response
+        .json() as PostSeriesResponse;
       if (error) return thunkAPI.rejectWithValue(error);
       return thunkAPI.fulfillWithValue(result);
     } catch (error: any) {
@@ -1027,7 +1034,10 @@ export const deleteSeries = createAsyncThunk(
       const response = await fetch(`/api/series/${id}`, {
         method: "DELETE",
       });
-      const { data, error } = await response.json() as { data?: string; error?: { title: string; subtitle?: string } };
+      const { data, error } = await response.json() as {
+        data?: string;
+        error?: { title: string; subtitle?: string };
+      };
       if (error) return thunkAPI.rejectWithValue(error);
       return thunkAPI.fulfillWithValue(data);
     } catch (error: any) {
@@ -1124,22 +1134,6 @@ export const appSlice = createSlice({
               cloud: document,
             });
           } else {
-            // Preserve parentId if it's not in the new document but exists in the local document
-            if (
-              userDocument.local &&
-              userDocument.local.parentId !== undefined &&
-              document.parentId === undefined
-            ) {
-              document.parentId = userDocument.local.parentId;
-            }
-            // Also preserve parentId from previous cloud document if available
-            if (
-              userDocument.cloud &&
-              userDocument.cloud.parentId !== undefined &&
-              document.parentId === undefined
-            ) {
-              document.parentId = userDocument.cloud.parentId;
-            }
             userDocument.cloud = document;
           }
         });
@@ -1155,22 +1149,6 @@ export const appSlice = createSlice({
             cloud: cloudDocument,
           });
         } else {
-          // Preserve parentId if it's not in the new document but exists in the local document
-          if (
-            userDocument.local &&
-            userDocument.local.parentId !== undefined &&
-            cloudDocument.parentId === undefined
-          ) {
-            cloudDocument.parentId = userDocument.local.parentId;
-          }
-          // Also preserve parentId from previous cloud document if available
-          if (
-            userDocument.cloud &&
-            userDocument.cloud.parentId !== undefined &&
-            cloudDocument.parentId === undefined
-          ) {
-            cloudDocument.parentId = userDocument.cloud.parentId;
-          }
           userDocument.cloud = cloudDocument;
         }
       })
@@ -1225,14 +1203,6 @@ export const appSlice = createSlice({
             cloud: document,
           });
         } else {
-          // Preserve parentId if it's not in the new document but exists in the local document
-          if (
-            userDocument.local &&
-            userDocument.local.parentId !== undefined &&
-            document.parentId === undefined
-          ) {
-            document.parentId = userDocument.local.parentId;
-          }
           userDocument.cloud = document;
         }
       })
@@ -1277,17 +1247,6 @@ export const appSlice = createSlice({
             cloud: document,
           });
         } else {
-          // Preserve parentId if it's not in the new document but exists in the old document
-          if (
-            userDocument.cloud &&
-            userDocument.cloud.parentId !== undefined &&
-            document.parentId === undefined
-          ) {
-            document.parentId = userDocument.cloud.parentId;
-            console.log(
-              `[Redux] Preserved parentId ${document.parentId} from existing cloud document ${document.id}`,
-            );
-          }
           userDocument.cloud = document;
         }
       })
@@ -1494,7 +1453,9 @@ export const appSlice = createSlice({
       .addCase(updateSeries.fulfilled, (state, action) => {
         const updatedSeries = action.payload;
         if (updatedSeries) {
-          const index = state.series.findIndex((s) => s.id === updatedSeries.id);
+          const index = state.series.findIndex((s) =>
+            s.id === updatedSeries.id
+          );
           if (index !== -1) {
             state.series[index] = updatedSeries;
           }
@@ -1514,30 +1475,6 @@ export const appSlice = createSlice({
         }
       })
       .addCase(deleteSeries.rejected, (state, action) => {
-        const message = action.payload as {
-          title: string;
-          subtitle: string;
-        };
-        state.ui.announcements.push({ message });
-      })
-      // Temporary: add domain reducers for backward compatibility during migration
-      .addCase(fetchUserDomains.fulfilled, (state, action) => {
-        state.domains = action.payload || [];
-      })
-      .addCase(fetchUserDomains.rejected, (state, action) => {
-        const message = action.payload as {
-          title: string;
-          subtitle: string;
-        };
-        state.ui.announcements.push({ message });
-      })
-      .addCase(deleteDomain.fulfilled, (state, action) => {
-        const deletedDomainId = action.payload;
-        if (deletedDomainId) {
-          state.domains = state.domains.filter((d: any) => d.id !== deletedDomainId);
-        }
-      })
-      .addCase(deleteDomain.rejected, (state, action) => {
         const message = action.payload as {
           title: string;
           subtitle: string;

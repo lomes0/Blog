@@ -17,19 +17,12 @@ import BrowserBreadcrumbs from "./components/BrowserBreadcrumbs";
 import BrowserHeader from "./components/BrowserHeader";
 import EmptyState from "./components/EmptyState";
 import LoadingState from "./components/LoadingState";
-import ErrorState from "./components/ErrorState";
 
 interface DocumentBrowserProps {
-  directoryId?: string; // Keep for compatibility but unused in blog structure
-  domainId?: string; // Keep for compatibility but unused in blog structure
-  domainInfo?: any; // Keep for compatibility but unused in blog structure
+  // No props needed for simplified blog structure
 }
 
-const DocumentBrowser: React.FC<DocumentBrowserProps> = ({
-  directoryId,
-  domainId,
-  domainInfo,
-}) => {
+const DocumentBrowser: React.FC<DocumentBrowserProps> = () => {
   const documents = useSelector((state) => state.documents);
   const user = useSelector((state) => state.user);
 
@@ -44,16 +37,10 @@ const DocumentBrowser: React.FC<DocumentBrowserProps> = ({
   const { directories, regularDocuments, currentDirectory } =
     useDocumentFiltering({
       documents,
-      directoryId,
-      domainId,
     });
 
-  const breadcrumbs = useBreadcrumbs(directoryId, documents);
-  const { createDocument, createDirectory } = useDocumentNavigation({
-    directoryId,
-    domainId,
-    domainInfo,
-  });
+  const breadcrumbs = useBreadcrumbs();
+  const { createDocument, createDirectory } = useDocumentNavigation({});
 
   // Function to get the correct URL for a blog post
   const getDocumentUrl = useMemo(() => {
@@ -136,17 +123,13 @@ const DocumentBrowser: React.FC<DocumentBrowserProps> = ({
                 >
                   <BrowserBreadcrumbs
                     breadcrumbs={breadcrumbs}
-                    domainInfo={domainInfo}
-                    directoryId={directoryId}
                   />
                 </Box>
 
                 <BrowserHeader
                   onCreateDocument={createDocument}
-                  onCreateDirectory={createDirectory}
                   sortValue={sortValue}
                   setSortValue={setSortValue}
-                  domainInfo={domainInfo}
                 />
               </Box>
 
@@ -154,10 +137,7 @@ const DocumentBrowser: React.FC<DocumentBrowserProps> = ({
               {hasNoItems
                 ? (
                   <EmptyState
-                    directoryId={directoryId}
-                    domainInfo={domainInfo}
                     onCreateDocument={createDocument}
-                    onCreateDirectory={createDirectory}
                   />
                 )
                 : (
@@ -175,7 +155,6 @@ const DocumentBrowser: React.FC<DocumentBrowserProps> = ({
                       <DocumentGrid
                         items={sortedDocuments}
                         user={user}
-                        currentDirectoryId={directoryId}
                         title="Posts"
                       />
                     )}

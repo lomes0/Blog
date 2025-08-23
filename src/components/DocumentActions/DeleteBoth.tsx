@@ -26,18 +26,17 @@ const DeleteBothDocument: React.FC<{
   const id = userDocument.id;
   const name = localDocument?.name || cloudDocument?.name || "This Item";
 
-  // Determine if this is a directory or a document
+  // All documents are posts now (no directories)
   const document = userDocument.local || userDocument.cloud;
-  const isDirectory = document?.type === DocumentType.DIRECTORY;
-  const itemType = isDirectory ? "Folder" : "Document";
+  const isDirectory = false; // No directories in blog structure
+  const itemType = "Post";
 
   const handleDelete = async () => {
     if (closeMenu) closeMenu();
     const alert = {
       title: `Delete ${itemType}`,
-      content: `Are you sure you want to delete ${
-        isDirectory ? `folder "${name}"` : `document "${name}"`
-      }? This will remove it from both cloud and local storage.`,
+      content:
+        `Are you sure you want to delete post "${name}"? This will remove it from both cloud and local storage.`,
       actions: [
         { label: "Cancel", id: uuid() },
         { label: "Delete", id: uuid() },

@@ -25,12 +25,10 @@ import {
   Home,
   LibraryBooks,
 } from "@mui/icons-material";
-import FileBrowser from "@/components/FileBrowser";
 import { styles } from "./styles";
 import type { User } from "@/types";
 import { useSidebarState } from "./SideBar/hooks/useSidebarState";
 import { useKeyboardShortcuts } from "./SideBar/hooks/useKeyboardShortcuts";
-import { FileBrowserErrorBoundary } from "./SideBar/components/FileBrowserErrorBoundary";
 import type { UserDocument } from "@/types";
 
 // Constants
@@ -89,10 +87,6 @@ const SideBar: React.FC = () => {
   const isInEditMode = useMemo(() => isEditMode(pathname), [pathname]);
   // Remove file browser for blog structure
   const showFileBrowser = false;
-
-  // Remove domain-related state for blog structure
-  const currentDomainSlug = null;
-  const currentDomainId = null;
 
   // Navigation items for blog structure
   const navigationItems = useMemo((): NavigationItem[] => [
@@ -263,25 +257,25 @@ const SideBar: React.FC = () => {
                 title={open ? "" : item.text}
                 placement="right"
               >
-                                  <ListItemButton
-                    component={SafeNavigationLink}
-                    href={item.path}
-                    selected={Boolean(
-                      pathname === item.path ||
-                        pathname.startsWith(`${item.path}/`),
-                    )}
-                    sx={{
-                      minHeight: SIDEBAR_CONSTANTS.MIN_HEIGHT.NAVIGATION_ITEM,
-                      justifyContent: open ? "initial" : "center",
-                      px: 2.5,
-                      "&.Mui-selected": {
-                        bgcolor: "action.selected",
-                        "&:hover": {
-                          bgcolor: "rgba(0, 0, 0, 0.15)",
-                        },
+                <ListItemButton
+                  component={SafeNavigationLink}
+                  href={item.path}
+                  selected={Boolean(
+                    pathname === item.path ||
+                      pathname.startsWith(`${item.path}/`),
+                  )}
+                  sx={{
+                    minHeight: SIDEBAR_CONSTANTS.MIN_HEIGHT.NAVIGATION_ITEM,
+                    justifyContent: open ? "initial" : "center",
+                    px: 2.5,
+                    "&.Mui-selected": {
+                      bgcolor: "action.selected",
+                      "&:hover": {
+                        bgcolor: "rgba(0, 0, 0, 0.15)",
                       },
-                    }}
-                  >
+                    },
+                  }}
+                >
                   <ListItemIcon
                     sx={{
                       minWidth: 0,

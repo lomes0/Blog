@@ -1,6 +1,6 @@
 import type { OgMetadata } from "@/app/api/og/route";
 import EditDocument from "@/components/EditDocument";
-import { findUserDocument } from "@/repositories/document";
+import { findUserPost } from "@/repositories/post";
 import type { Metadata } from "next";
 
 export async function generateMetadata(
@@ -14,7 +14,7 @@ export async function generateMetadata(
     };
   }
   const metadata: OgMetadata = { id: params.id[0], title: "Editor" };
-  const document = await findUserDocument(params.id[0]);
+  const document = await findUserPost(params.id[0]);
   if (document) {
     if (document.private) {
       metadata.title = "Private Document";

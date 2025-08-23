@@ -215,6 +215,89 @@ const DocumentEditor: React.FC<React.PropsWithChildren> = ({ children }) => {
     debouncedUpdateLocalDocument(document.id, updatedDocument);
   }
 
+  // Helper function to ensure document has valid editor data
+  const ensureValidDocumentData = (doc: EditorDocument): EditorDocument => {
+    // If data is missing or invalid, create a default state
+    if (!doc.data || typeof doc.data !== "object") {
+      return {
+        ...doc,
+        data: {
+          root: {
+            children: [
+              {
+                children: [],
+                direction: null,
+                format: "",
+                indent: 0,
+                type: "paragraph",
+                version: 1,
+              },
+            ],
+            direction: null,
+            format: "",
+            indent: 0,
+            type: "root",
+            version: 1,
+          },
+        } as any,
+      };
+    }
+
+    // Validate that root exists and has the required structure
+    if (
+      !doc.data.root || !(doc.data as any).root.children ||
+      !Array.isArray((doc.data as any).root.children)
+    ) {
+      return {
+        ...doc,
+        data: {
+          root: {
+            children: [
+              {
+                children: [],
+                direction: null,
+                format: "",
+                indent: 0,
+                type: "paragraph",
+                version: 1,
+              },
+            ],
+            direction: null,
+            format: "",
+            indent: 0,
+            type: "root",
+            version: 1,
+          },
+        } as any,
+      };
+    }
+
+    // If root has no children, add an empty paragraph
+    if ((doc.data as any).root.children.length === 0) {
+      return {
+        ...doc,
+        data: {
+          ...(doc.data as any),
+          root: {
+            ...(doc.data as any).root,
+            children: [
+              {
+                children: [],
+                direction: null,
+                format: "",
+                indent: 0,
+                type: "paragraph",
+                version: 1,
+              },
+            ],
+          },
+        } as any,
+      };
+    }
+
+    return doc;
+  };
+
   useEffect(() => {
     const loadDocument = async (id: string) => {
       const localResponse = await dispatch(actions.getLocalDocument(id));
@@ -222,7 +305,7 @@ const DocumentEditor: React.FC<React.PropsWithChildren> = ({ children }) => {
         localResponse.type === actions.getLocalDocument.fulfilled.type
       ) {
         const editorDocument = localResponse.payload as EditorDocument;
-        setDocument(editorDocument);
+        setDocument(ensureValidDocumentData(editorDocument));
       } else {
         const cloudResponse = await dispatch(
           actions.getCloudDocument(id),
@@ -235,7 +318,7 @@ const DocumentEditor: React.FC<React.PropsWithChildren> = ({ children }) => {
             .payload as ReturnType<
               typeof actions.getCloudDocument.fulfilled
             >["payload"];
-          setDocument(editorDocument);
+          setDocument(ensureValidDocumentData(editorDocument));
           dispatch(actions.createLocalDocument(editorDocument));
           const editorDocumentRevision = {
             id: editorDocument.head,

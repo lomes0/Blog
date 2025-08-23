@@ -26,7 +26,7 @@ import {
   Home as HomeIcon,
 } from "@mui/icons-material";
 import { actions, useDispatch, useSelector } from "@/store";
-import { DocumentType, UserDocument } from "@/types";
+import { type DocumentType, UserDocument } from "@/types";
 
 interface MoveToDialogProps {
   open: boolean;
@@ -51,7 +51,7 @@ const MoveToDialog: React.FC<MoveToDialogProps> = (
   const document = userDocument?.local || userDocument?.cloud;
   const documentId = userDocument.id;
   const documentName = document?.name || "Document";
-  const documentType = document?.type || DocumentType.DOCUMENT;
+  const documentType = document?.type || ("DOCUMENT" as DocumentType);
   const currentParentId = document?.parentId || null;
 
   // Function to determine if a document is at the root level
@@ -88,22 +88,9 @@ const MoveToDialog: React.FC<MoveToDialogProps> = (
       console.log("Loading directories for parent ID:", directoryId);
       console.log("Total documents:", documents.length);
 
-      // Filter all directories from the documents list
-      const allDirectories = documents.filter((doc) => {
-        if (!doc) return false;
-
-        const isDirectory = (doc.local?.type === DocumentType.DIRECTORY) ||
-          (doc.cloud?.type === DocumentType.DIRECTORY);
-
-        // Don't include the current document if it's a directory (can't move into itself)
-        const isNotSelf = doc.id !== documentId;
-
-        // Check if this directory is a child of the current document (if document is a directory)
-        // This prevents circular references
-        const isNotChild = !isChildOf(doc.id, documentId);
-
-        return isDirectory && isNotSelf && isNotChild;
-      });
+      // Since directories are no longer used in blog structure,
+      // this dialog should not be used for moving documents
+      const allDirectories: UserDocument[] = [];
 
       console.log("All directories:", allDirectories.length);
 
@@ -304,9 +291,7 @@ const MoveToDialog: React.FC<MoveToDialogProps> = (
       data-testid="move-dialog"
     >
       <DialogTitle id="move-dialog-title">
-        Move {documentType === DocumentType.DIRECTORY ? "Folder" : "Document"}:
-        {" "}
-        {documentName}
+        Move Document: {documentName}
       </DialogTitle>
 
       <DialogContent dividers>

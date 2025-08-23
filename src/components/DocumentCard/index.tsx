@@ -46,27 +46,16 @@ const CardSelector: React.FC<
   }
 
   const document = userDocument.local || userDocument.cloud;
-  const isDirectory = document?.type === DocumentType.DIRECTORY;
 
-  if (isDirectory) {
-    return (
-      <DirectoryCard
-        userDocument={userDocument}
-        user={user}
-        sx={combinedSx}
-        cardConfig={cardConfig}
-      />
-    );
-  } else {
-    return (
-      <DocumentCard
-        userDocument={userDocument}
-        user={user}
-        sx={combinedSx}
-        cardConfig={cardConfig}
-      />
-    );
-  }
+  // In blog structure, we only have documents (no directories)
+  return (
+    <DocumentCard
+      userDocument={userDocument}
+      user={user}
+      sx={combinedSx}
+      cardConfig={cardConfig}
+    />
+  );
 });
 
 // Set display name for debugging

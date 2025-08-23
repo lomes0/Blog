@@ -1,8 +1,8 @@
 import { authOptions } from "@/lib/auth";
 import {
+  deleteSeries,
   findSeriesById,
   updateSeries,
-  deleteSeries,
 } from "@/repositories/series";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
@@ -42,7 +42,7 @@ export async function GET(
       response.error = { title: "Series not found" };
       return NextResponse.json(response, { status: 404 });
     }
-    
+
     response.data = series;
     return NextResponse.json(response, { status: 200 });
   } catch (error) {
@@ -70,7 +70,7 @@ export async function PATCH(
       };
       return NextResponse.json(response, { status: 401 });
     }
-    
+
     const { user } = session;
     if (user.disabled) {
       response.error = {
@@ -79,13 +79,13 @@ export async function PATCH(
       };
       return NextResponse.json(response, { status: 403 });
     }
-    
+
     const series = await findSeriesById(params.id);
     if (!series) {
       response.error = { title: "Series not found" };
       return NextResponse.json(response, { status: 404 });
     }
-    
+
     const isAuthor = user.id === series.authorId;
     if (!isAuthor) {
       response.error = {
@@ -94,7 +94,7 @@ export async function PATCH(
       };
       return NextResponse.json(response, { status: 403 });
     }
-    
+
     const body = await request.json() as SeriesUpdateInput;
     if (!body) {
       response.error = {
@@ -131,7 +131,7 @@ export async function DELETE(
       };
       return NextResponse.json(response, { status: 401 });
     }
-    
+
     const { user } = session;
     if (user.disabled) {
       response.error = {
@@ -140,13 +140,13 @@ export async function DELETE(
       };
       return NextResponse.json(response, { status: 403 });
     }
-    
+
     const series = await findSeriesById(params.id);
     if (!series) {
       response.error = { title: "Series not found" };
       return NextResponse.json(response, { status: 404 });
     }
-    
+
     const isAuthor = user.id === series.authorId;
     if (!isAuthor) {
       response.error = {
@@ -155,7 +155,7 @@ export async function DELETE(
       };
       return NextResponse.json(response, { status: 403 });
     }
-    
+
     await deleteSeries(params.id);
     response.data = params.id;
     return NextResponse.json(response, { status: 200 });

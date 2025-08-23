@@ -11,7 +11,6 @@ interface DraggableDocumentCardProps {
   userDocument: UserDocument;
   user?: User;
   sx?: SxProps<Theme> | undefined;
-  currentDirectoryId?: string;
   onMoveComplete?: () => void;
 }
 
@@ -19,7 +18,6 @@ const DraggableDocumentCard: React.FC<DraggableDocumentCardProps> = ({
   userDocument,
   user,
   sx,
-  currentDirectoryId,
   onMoveComplete,
 }) => {
   const dispatch = useDispatch();
@@ -35,12 +33,9 @@ const DraggableDocumentCard: React.FC<DraggableDocumentCardProps> = ({
   const { setIsDragging: setGlobalDragging } = useContext(DragContext);
 
   const document = userDocument?.local || userDocument?.cloud;
-  const isDirectory = document?.type === DocumentType.DIRECTORY;
 
-  // Prevent dragging the current directory into itself
-  const isCurrentDirectory = currentDirectoryId === userDocument.id;
-  // Only directories can be drop targets
-  const canBeDropTarget = isDirectory && !isCurrentDirectory;
+  // Since we only have posts now, no documents can be drop targets
+  const canBeDropTarget = false;
 
   // Improved drag start with better accessibility
   const handleDragStart = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -141,11 +136,8 @@ const DraggableDocumentCard: React.FC<DraggableDocumentCardProps> = ({
 
       const draggedItem = JSON.parse(data);
 
-      // Don't allow dropping a directory into itself or dropping the current directory
-      if (
-        draggedItem.id === userDocument.id ||
-        draggedItem.id === currentDirectoryId
-      ) {
+      // Don't allow dropping an item into itself
+      if (draggedItem.id === userDocument.id) {
         return;
       }
 
@@ -209,22 +201,22 @@ const DraggableDocumentCard: React.FC<DraggableDocumentCardProps> = ({
   return (
     <Box
       ref={cardRef}
-      draggable={!isCurrentDirectory}
+      draggable={true}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDragOver={handleDragOver}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      role={!isCurrentDirectory ? "button" : undefined}
-      tabIndex={!isCurrentDirectory ? 0 : undefined}
-      aria-label={!isCurrentDirectory && document?.name
+      role="button"
+      tabIndex={0}
+      aria-label={document?.name
         ? `Draggable ${document.name}. Press space to start dragging.`
         : undefined}
       sx={{
-        cursor: isCurrentDirectory ? "default" : "grab",
+        cursor: "grab",
         "&:active": {
-          cursor: isCurrentDirectory ? "default" : "grabbing",
+          cursor: "grabbing",
         },
         transition: prefersReducedMotion ? "none" : theme.transitions.create([
           "transform",
@@ -291,23 +283,6 @@ const DraggableDocumentCard: React.FC<DraggableDocumentCardProps> = ({
             : {
               boxShadow: theme.shadows[2],
             },
-          // Enhanced drop target visual feedback
-          ...(canBeDropTarget && {
-            "&:hover": isDropTarget && !prefersReducedMotion
-              ? {
-                borderColor: theme.palette.primary.main,
-                backgroundColor: `${theme.palette.primary.main}08`,
-                transform: "scale(1.02)",
-              }
-              : !prefersReducedMotion
-              ? {
-                boxShadow: theme.shadows[4],
-                transform: "translateY(-2px)",
-              }
-              : {
-                boxShadow: theme.shadows[2],
-              },
-          }),
           // Ensure consistent transition timing
           transition: prefersReducedMotion ? "none" : theme.transitions.create([
             "transform",

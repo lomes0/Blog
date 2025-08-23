@@ -5,7 +5,7 @@ import { NewSeriesForm } from "@/components/SeriesActions";
 
 export default async function NewSeriesPage() {
   const session = await getServerSession(authOptions);
-  
+
   if (!session) {
     redirect("/api/auth/signin");
   }

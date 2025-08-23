@@ -11,10 +11,7 @@ interface BreadcrumbItem {
  * Custom hook for breadcrumb navigation in blog structure
  * Returns empty array since we don't have directory navigation in blogs
  */
-export const useBreadcrumbs = (
-  directoryId: string | undefined,
-  documents: UserDocument[],
-): BreadcrumbItem[] => {
+export const useBreadcrumbs = (): BreadcrumbItem[] => {
   return useMemo(() => {
     // In blog structure, we don't have directory navigation
     // So we always return an empty breadcrumb trail

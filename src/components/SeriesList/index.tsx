@@ -20,7 +20,7 @@ const SeriesList: React.FC<SeriesListProps> = ({
   series,
   user,
   title = "Series",
-  emptyMessage = "No series found"
+  emptyMessage = "No series found",
 }) => {
   if (series.length === 0) {
     return (
@@ -39,11 +39,11 @@ const SeriesList: React.FC<SeriesListProps> = ({
           {title}
         </Typography>
       )}
-      
+
       <Grid container spacing={2} sx={{ width: "100%" }}>
         {series.map((seriesItem) => (
-          <Grid 
-            key={seriesItem.id} 
+          <Grid
+            key={seriesItem.id}
             size={{ xs: 12, sm: 6, md: 4, lg: 3 }}
           >
             <SeriesCardSelector

@@ -1,6 +1,12 @@
 "use client";
-import { IconButton, Menu, MenuItem, ListItemIcon, ListItemText } from "@mui/material";
-import { MoreVert, Edit, Delete } from "@mui/icons-material";
+import {
+  IconButton,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
+} from "@mui/material";
+import { Delete, Edit, MoreVert } from "@mui/icons-material";
 import { useState } from "react";
 import Link from "next/link";
 
@@ -9,7 +15,9 @@ interface SeriesActionsProps {
   onDelete?: () => void;
 }
 
-export default function SeriesActions({ seriesId, onDelete }: SeriesActionsProps) {
+export default function SeriesActions(
+  { seriesId, onDelete }: SeriesActionsProps,
+) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 
@@ -32,9 +40,9 @@ export default function SeriesActions({ seriesId, onDelete }: SeriesActionsProps
     <>
       <IconButton
         aria-label="more actions"
-        aria-controls={open ? 'series-menu' : undefined}
+        aria-controls={open ? "series-menu" : undefined}
         aria-haspopup="true"
-        aria-expanded={open ? 'true' : undefined}
+        aria-expanded={open ? "true" : undefined}
         onClick={handleClick}
       >
         <MoreVert />
@@ -45,10 +53,14 @@ export default function SeriesActions({ seriesId, onDelete }: SeriesActionsProps
         open={open}
         onClose={handleClose}
         MenuListProps={{
-          'aria-labelledby': 'series-button',
+          "aria-labelledby": "series-button",
         }}
       >
-        <MenuItem component={Link} href={`/series/${seriesId}/edit`} onClick={handleClose}>
+        <MenuItem
+          component={Link}
+          href={`/series/${seriesId}/edit`}
+          onClick={handleClose}
+        >
           <ListItemIcon>
             <Edit fontSize="small" />
           </ListItemIcon>

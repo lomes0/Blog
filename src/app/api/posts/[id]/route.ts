@@ -7,10 +7,10 @@ import {
 } from "@/repositories/post";
 import {
   DeleteDocumentResponse,
+  DocumentType,
   DocumentUpdateInput,
   GetDocumentResponse,
   PatchDocumentResponse,
-  DocumentType,
 } from "@/types";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
@@ -33,7 +33,7 @@ export async function GET(
       response.error = { title: "Post not found" };
       return NextResponse.json(response, { status: 404 });
     }
-    
+
     // For simple blog structure, posts can be public or private
     // Remove complex coauthor/collab logic
     if (!session && userPost.private) {
@@ -43,7 +43,7 @@ export async function GET(
       };
       return NextResponse.json(response, { status: 401 });
     }
-    
+
     if (session) {
       const { user } = session;
       if (user.disabled) {
@@ -62,7 +62,7 @@ export async function GET(
         return NextResponse.json(response, { status: 403 });
       }
     }
-    
+
     const editorPost = await findEditorPost(params.id);
     if (!editorPost) {
       response.error = { title: "Post not found" };
@@ -103,13 +103,13 @@ export async function PATCH(
       };
       return NextResponse.json(response, { status: 403 });
     }
-    
+
     const userPost = await findUserPost(params.id);
     if (!userPost) {
       response.error = { title: "Post not found" };
       return NextResponse.json(response, { status: 404 });
     }
-    
+
     const isAuthor = user.id === userPost.author.id;
     if (!isAuthor) {
       response.error = {
@@ -118,7 +118,7 @@ export async function PATCH(
       };
       return NextResponse.json(response, { status: 403 });
     }
-    
+
     const body = await request.json() as DocumentUpdateInput;
     if (!body) {
       response.error = {
@@ -134,11 +134,11 @@ export async function PATCH(
       published: body.published,
       private: body.private,
       // Ensure type remains DOCUMENT for posts
-      type: DocumentType.DOCUMENT,
+      type: "DOCUMENT" as DocumentType,
       // Remove domain/directory hierarchy
       parentId: null,
     };
-    
+
     if (body.handle !== undefined) {
       if (body.handle === null) {
         input.handle = null;
@@ -190,13 +190,13 @@ export async function DELETE(
       };
       return NextResponse.json(response, { status: 403 });
     }
-    
+
     const userPost = await findUserPost(params.id);
     if (!userPost) {
       response.error = { title: "Post not found" };
       return NextResponse.json(response, { status: 404 });
     }
-    
+
     const isAuthor = user.id === userPost.author.id;
     if (!isAuthor) {
       response.error = {
@@ -205,7 +205,7 @@ export async function DELETE(
       };
       return NextResponse.json(response, { status: 403 });
     }
-    
+
     await deletePost(params.id);
     response.data = params.id;
     return NextResponse.json(response, { status: 200 });

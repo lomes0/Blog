@@ -1,5 +1,5 @@
 import type { OgMetadata } from "@/app/api/og/route";
-import { findUserDocument } from "@/repositories/document";
+import { findUserPost } from "@/repositories/post";
 import ViewDocument from "@/components/ViewDocument";
 import htmr from "htmr";
 import { Metadata } from "next";
@@ -14,7 +14,7 @@ import { DocumentRevision } from "@/types";
 export const dynamic = "force-dynamic";
 
 const getCachedUserDocument = cache(async (id: string, revisions?: string) =>
-  await findUserDocument(id, revisions)
+  await findUserPost(id, revisions)
 );
 const getCachedSession = cache(async () => await getServerSession(authOptions));
 
@@ -29,11 +29,11 @@ export async function generateMetadata(
 
   if (!params.id) {
     return {
-      title: "View Document",
-      description: "View a document on Editor",
+      title: "View Post",
+      description: "View a post on Editor",
     };
   }
-  const metadata: OgMetadata = { id: params.id, title: "View Document" };
+  const metadata: OgMetadata = { id: params.id, title: "View Post" };
   const document = await getCachedUserDocument(params.id, "all");
   if (document) {
     const revisionId = searchParams.v ?? document.head;
@@ -44,9 +44,8 @@ export async function generateMetadata(
       const session = await getCachedSession();
       const user = session?.user;
       const isAuthor = user && user.id === document.author.id;
-      const isCoauthor = user &&
-        document.coauthors.some((coauthor) => coauthor.id === user.id);
-      if (isAuthor || isCoauthor) {
+      // Simplified blog structure: no coauthors, only authors can access private posts
+      if (isAuthor) {
         metadata.title = document.name;
         metadata.subtitle = revision
           ? `Last updated: ${
@@ -62,7 +61,7 @@ export async function generateMetadata(
           email: document.author.email,
         };
       } else {
-        metadata.title = "Private Document";
+        metadata.title = "Private Post";
         metadata.subtitle = "If you have access, please sign in to view it";
       }
     } else {
@@ -82,7 +81,7 @@ export async function generateMetadata(
       };
     }
   } else {
-    metadata.subtitle = "Document not found";
+    metadata.subtitle = "Post not found";
   }
   const { title, subtitle, description } = metadata;
   const image = `/api/og?metadata=${
@@ -109,7 +108,7 @@ export default async function Page(
 
   try {
     const document = await getCachedUserDocument(params.id, "all");
-    if (!document) return <SplashScreen title="Document not found" />;
+    if (!document) return <SplashScreen title="Post not found" />;
     const revisionId = searchParams.v ?? document.head;
     const revision = document.revisions.find((revision) =>
       revision.id === revisionId
@@ -129,7 +128,7 @@ export default async function Page(
       if (document.private) {
         return (
           <SplashScreen
-            title="This document is private"
+            title="This post is private"
             subtitle="Please sign in to view it"
           />
         );
@@ -141,15 +140,13 @@ export default async function Page(
     const user = session?.user;
     if (user) {
       const isAuthor = user.id === document.author.id;
-      const isCoauthor = document.coauthors.some((coauthor) =>
-        coauthor.id === user.id
-      );
-      if (!isAuthor && !isCoauthor) {
+      // Simplified blog structure: no coauthors, only authors can access private posts
+      if (!isAuthor) {
         if (document.private) {
           return (
             <SplashScreen
-              title="This document is private"
-              subtitle="You are not authorized to view this document"
+              title="This post is private"
+              subtitle="You are not authorized to view this post"
             />
           );
         }

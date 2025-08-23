@@ -1,5 +1,5 @@
 import { authOptions } from "@/lib/auth";
-import { findUserDocument } from "@/repositories/document";
+import { findUserPost } from "@/repositories/post";
 import { ForkDocumentResponse } from "@/types";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
@@ -16,7 +16,7 @@ export async function GET(
   try {
     const { searchParams } = new URL(request.url);
     const revisionId = searchParams.get("v");
-    const cloudDocument = await findUserDocument(params.id, revisionId);
+    const cloudDocument = await findUserPost(params.id, revisionId);
     if (!cloudDocument) {
       response.error = { title: "Document not found" };
       return NextResponse.json(response, { status: 404 });

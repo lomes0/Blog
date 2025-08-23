@@ -1,14 +1,14 @@
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/store";
 import {
-  loadPosts,
   createPost,
-  updatePost,
-  deletePost,
-  loadSeries,
   createSeries,
-  updateSeries,
+  deletePost,
   deleteSeries,
+  loadPosts,
+  loadSeries,
+  updatePost,
+  updateSeries,
 } from "@/store/app";
 import { DocumentCreateInput, DocumentUpdateInput } from "@/types";
 
@@ -30,8 +30,9 @@ export const usePostActions = () => {
 
   return {
     loadPosts: () => dispatch(loadPosts()),
-    createPost: (postData: DocumentCreateInput) => dispatch(createPost(postData)),
-    updatePost: (id: string, data: DocumentUpdateInput) => 
+    createPost: (postData: DocumentCreateInput) =>
+      dispatch(createPost(postData)),
+    updatePost: (id: string, data: DocumentUpdateInput) =>
       dispatch(updatePost({ id, data })),
     deletePost: (id: string) => dispatch(deletePost(id)),
   };
@@ -54,10 +55,12 @@ export const useSeriesActions = () => {
 
   return {
     loadSeries: () => dispatch(loadSeries()),
-    createSeries: (seriesData: { title: string; description?: string }) => 
+    createSeries: (seriesData: { title: string; description?: string }) =>
       dispatch(createSeries(seriesData)),
-    updateSeries: (id: string, data: { title?: string; description?: string }) => 
-      dispatch(updateSeries({ id, data })),
+    updateSeries: (
+      id: string,
+      data: { title?: string; description?: string },
+    ) => dispatch(updateSeries({ id, data })),
     deleteSeries: (id: string) => dispatch(deleteSeries(id)),
   };
 };

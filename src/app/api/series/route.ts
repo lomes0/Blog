@@ -1,8 +1,8 @@
 import { authOptions } from "@/lib/auth";
 import {
+  createSeries,
   findAllSeries,
   findSeriesByAuthorId,
-  createSeries,
 } from "@/repositories/series";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
@@ -36,7 +36,7 @@ export async function GET() {
       response.data = allSeries;
       return NextResponse.json(response, { status: 200 });
     }
-    
+
     const { user } = session;
     if (user.disabled) {
       response.error = {
@@ -45,7 +45,7 @@ export async function GET() {
       };
       return NextResponse.json(response, { status: 403 });
     }
-    
+
     // Return user's series
     const userSeries = await findSeriesByAuthorId(user.id);
     response.data = userSeries;
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
       };
       return NextResponse.json(response, { status: 401 });
     }
-    
+
     const { user } = session;
     if (user.disabled) {
       response.error = {
@@ -80,7 +80,7 @@ export async function POST(request: Request) {
       };
       return NextResponse.json(response, { status: 403 });
     }
-    
+
     const body = await request.json() as SeriesCreateInput;
     if (!body || !body.title) {
       response.error = {

@@ -7,29 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Simple Domain model for grouping documents by subject
-// TODO: Remove after blog migration is complete
-model Domain {
-  id          String   @id @default(uuid()) @db.Uuid
-  slug        String   @unique // For URL friendly identifiers
-  name        String
-  description String?
-  createdAt   DateTime @default(now()) @db.Timestamptz
-  updatedAt   DateTime @updatedAt @db.Timestamptz
-  userId      String   @db.Uuid // Associated user who created this domain
-  color       String? // Optional color for UI representation
-  order       Float?   @db.DoublePrecision // For custom ordering of domains
-
-  // Relations
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  documents Document[]
-
-  @@index([userId])
-  @@index([slug])
-  @@index([name]) // Add index for name searches
-  @@index([userId, order]) // Compound index for ordered queries by user
-}
-
 // Series model for organizing blog posts
 model Series {
   id          String   @id @default(uuid()) @db.Uuid
@@ -58,15 +35,10 @@ model Document {
   authorId  String   @db.Uuid
   published Boolean  @default(false)
   private   Boolean  @default(false)
-  domainId  String?  @db.Uuid // Optional domain association (legacy)
 
   // Document-specific fields
   head   String? @db.Uuid
   collab Boolean @default(false)
-
-  // Directory-specific fields (used when type is DIRECTORY)
-  sort_order       Float?  @db.DoublePrecision
-  background_image String?
 
   // Status field for marking documents as active, done, or neutral
   status DocumentStatus @default(NEUTRAL)
@@ -75,12 +47,18 @@ model Document {
   seriesId    String? @db.Uuid
   seriesOrder Int?    // Order of post within series
 
+  // Background image for posts (optional)
+  background_image String?
+
+  // Sort order for documents (legacy, may be removed)
+  sort_order Int?
+
   // Fork relationship
   baseId String?    @db.Uuid
   base   Document?  @relation("BaseForks", fields: [baseId], references: [id])
   forks  Document[] @relation("BaseForks")
 
-  // Hierarchical relationships
+  // Hierarchical relationships (for future features if needed)
   parentId String?    @db.Uuid
   parent   Document?  @relation("DocumentHierarchy", fields: [parentId], references: [id])
   children Document[] @relation("DocumentHierarchy")
@@ -92,11 +70,8 @@ model Document {
   author    User                @relation(fields: [authorId], references: [id], onDelete: Cascade)
   coauthors DocumentCoauthers[]
   revisions Revision[]
-  domain    Domain?             @relation(fields: [domainId], references: [id], onDelete: Cascade)
   series    Series?             @relation("SeriesPosts", fields: [seriesId], references: [id], onDelete: SetNull)
 
-  @@index([domainId])
-  @@index([authorId, domainId]) // Compound index for queries filtering by both author and domain
   @@index([seriesId])
   @@index([authorId, published]) // Index for finding user's published posts
   @@index([published, type]) // Index for finding published posts/documents
@@ -105,7 +80,6 @@ model Document {
 
 enum DocumentType {
   DOCUMENT
-  DIRECTORY
 }
 
 enum DocumentStatus {
@@ -142,9 +116,8 @@ model User {
   accounts      Account[]
   sessions      Session[]
   revisions     Revision[]
-  documents     Document[] // User's posts and directories
+  documents     Document[] // User's posts  
   coauthored    DocumentCoauthers[]
-  domains       Domain[] // User's domains for organizing documents (legacy)
   series        Series[] // User's series for organizing blog posts
 
   @@index([email])

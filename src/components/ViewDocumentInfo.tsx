@@ -29,19 +29,16 @@ export default function ViewDocumentInfo(
   const slideTrigger = useScrollTrigger({ disableHysteresis: true });
   const handle = cloudDocument.handle || cloudDocument.id;
   const isAuthor = cloudDocument.author.id === user?.id;
-  const isCoauthor = cloudDocument.coauthors.some((u) => u.id === user?.id);
+  // Simplified blog structure: no coauthors, only authors can edit
   const userDocument = { id: cloudDocument.id, cloud: cloudDocument };
   const isPublished = cloudDocument.published;
   const isCollab = cloudDocument.collab;
-  const isEditable = isAuthor || isCoauthor || isCollab;
+  const isEditable = isAuthor || isCollab; // Remove coauthor check
   const showFork = isPublished || isEditable;
   const collaborators = isCollab
     ? cloudDocument.revisions.reduce((acc, rev) => {
       if (
         (rev as any).author?.id !== cloudDocument.author.id &&
-        !cloudDocument.coauthors.some((u) =>
-          u.id === (rev as any).author?.id
-        ) &&
         !acc.find((u) => u.id === (rev as any).author?.id)
       ) acc.push((rev as any).author);
       return acc;
@@ -109,39 +106,7 @@ export default function ViewDocumentInfo(
               variant="outlined"
             />
           </Typography>
-          {cloudDocument.coauthors.length > 0 && (
-            <>
-              <Typography component="h3" variant="subtitle2">
-                Coauthors
-              </Typography>
-              <Box
-                sx={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: 1,
-                }}
-              >
-                {cloudDocument.coauthors.map((coauthor) => (
-                  <Chip
-                    clickable
-                    component={RouterLink}
-                    prefetch={false}
-                    href={`/user/${coauthor.handle || coauthor.id}`}
-                    key={coauthor.id}
-                    avatar={
-                      <Avatar
-                        alt={coauthor.name}
-                        src={coauthor.image ||
-                          undefined}
-                      />
-                    }
-                    label={coauthor.name}
-                    variant="outlined"
-                  />
-                ))}
-              </Box>
-            </>
-          )}
+          {/* Removed coauthors section for simplified blog structure */}
           {collaborators.length > 0 && (
             <>
               <Typography component="h3" variant="subtitle2">

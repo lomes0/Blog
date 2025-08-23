@@ -4,7 +4,7 @@ import { EditorDocumentRevision, PostRevisionResponse } from "@/types";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
-import { findUserDocument } from "@/repositories/document";
+import { findUserPost } from "@/repositories/post";
 
 export const dynamic = "force-dynamic";
 
@@ -36,18 +36,16 @@ export async function POST(request: Request) {
       return NextResponse.json(response, { status: 400 });
     }
 
-    const cloudDocument = await findUserDocument(body.documentId);
+    const cloudDocument = await findUserPost(body.documentId);
     if (!cloudDocument) {
       response.error = { title: "Document not found" };
       return NextResponse.json(response, { status: 404 });
     }
     const isAuthor = user.id === cloudDocument.author.id;
-    const isCoauthor = cloudDocument.coauthors.some((coauthor) =>
-      coauthor.id === user.id
-    );
+    // Remove coauthor logic for simple blog structure
     const isCollab = cloudDocument.collab;
 
-    if (!isAuthor && !isCoauthor && !isCollab) {
+    if (!isAuthor && !isCollab) {
       response.error = {
         title: "This document is private",
         subtitle: "You are not authorized to Edit this document",

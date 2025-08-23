@@ -20,7 +20,6 @@ export interface AppState {
   documents: UserDocument[];
   posts: UserPost[]; // New: posts state for blog structure
   series: Series[]; // New: series state for blog structure
-  domains: any[]; // Temporary: keep for backward compatibility during migration
   ui: {
     announcements: Announcement[];
     alerts: Alert[];
@@ -47,37 +46,23 @@ export type EditorDocument = {
   handle?: string | null;
   baseId?: string | null;
   parentId?: string | null;
-  domainId?: string | null; // Temporary: keep for backward compatibility during migration
   type: DocumentType;
   status?: DocumentStatus;
   revisions?: EditorDocumentRevision[];
   sort_order?: number | null;
   background_image?: string | null;
+  seriesId?: string | null; // For blog series functionality
+  seriesOrder?: number | null; // For ordering posts within series
 };
 
-export enum DocumentType {
-  DOCUMENT = "DOCUMENT",
-  DIRECTORY = "DIRECTORY",
-}
+// Simplified since we only have posts now
+export type DocumentType = "DOCUMENT";
 
 export enum DocumentStatus {
   NEUTRAL = "NEUTRAL",
   ACTIVE = "ACTIVE",
   DONE = "DONE",
 }
-
-// Helper functions for checking document types
-export const isDirectory = (
-  document: EditorDocument | Document | null | undefined,
-): boolean => {
-  return document?.type === DocumentType.DIRECTORY;
-};
-
-export const isRegularDocument = (
-  document: EditorDocument | Document | null | undefined,
-): boolean => {
-  return document?.type === DocumentType.DOCUMENT;
-};
 
 export type Document = Omit<EditorDocument, "data"> & {
   author: User;
@@ -86,32 +71,12 @@ export type Document = Omit<EditorDocument, "data"> & {
   published?: boolean;
   collab?: boolean;
   private?: boolean;
-  children?: Document[]; // Child documents (for directories)
   // Ensure parentId is explicitly included since it's in the database schema
   parentId?: string | null;
-  domainId?: string | null; // Temporary: keep for backward compatibility during migration
-  // Legacy field kept for backward compatibility
-  directory?: { id: string; documentId: string; sort_order?: number | null };
+  // Series support for blog posts
+  seriesId?: string | null;
+  seriesOrder?: number | null;
 };
-
-// Backward compatibility type
-export interface Directory {
-  id: string;
-  documentId: string;
-  sort_order?: number | null;
-}
-
-export interface Domain {
-  id: string;
-  slug: string;
-  name: string;
-  description?: string;
-  createdAt: string | Date;
-  updatedAt: string | Date;
-  userId: string;
-  color?: string;
-  order?: number;
-}
 
 // New types for blog structure
 export interface Series {
@@ -122,7 +87,7 @@ export interface Series {
   updatedAt: string | Date;
   authorId: string;
   author: User;
-  posts: Post[];
+  posts: Document[]; // Use Document[] since these are documents from the database
 }
 
 export interface Post {
@@ -172,7 +137,6 @@ export type UserDocument = {
 export type BackupDocument = EditorDocument & {
   revisions: EditorDocumentRevision[];
   parentId?: string | null; // Explicitly include parentId for consistency
-  domainId?: string | null; // Temporary: keep for backward compatibility during migration
 };
 
 export type DocumentCreateInput = EditorDocument & {
@@ -181,7 +145,6 @@ export type DocumentCreateInput = EditorDocument & {
   collab?: boolean;
   private?: boolean;
   baseId?: string | null;
-  domainId?: string | null; // Temporary: keep for backward compatibility during migration
   revisions?: EditorDocumentRevision[];
 };
 
@@ -192,10 +155,11 @@ export type DocumentUpdateInput = Partial<EditorDocument> & {
   private?: boolean;
   baseId?: string | null;
   parentId?: string | null; // Explicitly include parentId for updates
-  domainId?: string | null; // Temporary: keep for backward compatibility during migration
   revisions?: EditorDocumentRevision[];
   background_image?: string | null;
   sort_order?: number | null;
+  seriesId?: string | null; // For blog series functionality
+  seriesOrder?: number | null; // For ordering posts within series
 };
 
 export interface EditorDocumentRevision {

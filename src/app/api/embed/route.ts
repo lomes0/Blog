@@ -11,7 +11,17 @@ export async function POST(request: Request) {
       return NextResponse.json({
         error: {
           title: "Invalid request",
-          subtitle: "Please try again later",
+          subtitle: "Request body is required and must be valid JSON",
+        },
+      }, { status: 400 });
+    }
+
+    // Validate that the body contains editor state data
+    if (!body.root) {
+      return NextResponse.json({
+        error: {
+          title: "Invalid editor state",
+          subtitle: "Editor state must contain a root node",
         },
       }, { status: 400 });
     }
@@ -22,7 +32,7 @@ export async function POST(request: Request) {
       return NextResponse.json({
         error: {
           title: "Failed to generate HTML",
-          subtitle: "Please try again later",
+          subtitle: "Generated HTML is empty",
         },
       }, { status: 500 });
     }
@@ -34,10 +44,15 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("Embed API error:", error);
+
+    const errorMessage = error instanceof Error
+      ? error.message
+      : "Unknown error";
+
     return NextResponse.json({
       error: {
-        title: "Something went wrong",
-        subtitle: "Please try again later",
+        title: "Failed to generate HTML",
+        subtitle: errorMessage,
       },
     }, { status: 500 });
   }

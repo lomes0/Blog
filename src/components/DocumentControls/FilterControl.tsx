@@ -1,4 +1,4 @@
-import { DocumentType, User, UserDocument } from "@/types";
+import { User, UserDocument } from "@/types";
 import { FC, useState } from "react";
 import { Tab, Tabs } from "@mui/material";
 import {
@@ -46,8 +46,7 @@ export const filterDocuments = (
     );
     const isOthers = !isLocalOnly && !isAuthor && !isCoauthor &&
       !isCollaborator;
-    const isDirectory = document?.type === DocumentType.DIRECTORY;
-    const isDocument = document?.type !== DocumentType.DIRECTORY;
+    const isDocument = document?.type === "DOCUMENT";
 
     const showLocal = !!(value & (1 << 0)) && !!localDocument;
     const showCloud = !!(value & (1 << 1)) && !!isCloudOnly;
@@ -62,13 +61,12 @@ export const filterDocuments = (
     const showCollaborator = !!(value & (1 << 9)) && !!isCollaborator &&
       !isAuthor && !isCoauthor;
     const showOthers = !!(value & (1 << 10)) && !!isOthers;
-    const showDirectories = !!(value & (1 << 11)) && !!isDirectory;
-    const showDocuments = !!(value & (1 << 12)) && !!isDocument;
+    const showDocuments = !!(value & (1 << 11)) && !!isDocument;
 
     const shouldShow = showLocal || showCloud || showPublished ||
       showCollab || showPrivate || showSynced || showOutOfSync ||
       showAuthor || showCoauthor || showCollaborator || showOthers ||
-      showDirectories || showDocuments;
+      showDocuments;
     return shouldShow;
   });
   return filteredDocuments;
@@ -94,8 +92,7 @@ const DocumentFilterControl: FC<{
     { key: 8, label: "Coauthor", icon: <SupervisedUserCircle /> },
     { key: 9, label: "Collaborator", icon: <GroupWork /> },
     { key: 10, label: "Others", icon: <PeopleOutline /> },
-    { key: 11, label: "Directories", icon: <Folder /> },
-    { key: 12, label: "Documents", icon: <TextSnippet /> },
+    { key: 11, label: "Posts", icon: <TextSnippet /> },
   ];
 
   const handleFilterChange = (optionKey: number) => {

@@ -5,15 +5,14 @@ import { ArrowBack, Folder } from "@mui/icons-material";
 import Link from "next/link";
 
 interface ErrorStateProps {
-  directoryId?: string; // Keep for compatibility but unused
-  domainInfo?: any; // Keep for compatibility but unused
+  // No legacy props needed for blog structure
 }
 
 /**
  * Error state component for blog posts
- * Since we don't have directories in blog structure, this should rarely be used
+ * Simplified for blog structure without directories/domains
  */
-const ErrorState: React.FC<ErrorStateProps> = ({ directoryId, domainInfo }) => {
+const ErrorState: React.FC<ErrorStateProps> = () => {
   return (
     <Container
       maxWidth={false}

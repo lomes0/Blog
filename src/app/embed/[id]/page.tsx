@@ -1,7 +1,7 @@
 import type { OgMetadata } from "@/app/api/og/route";
 import htmr from "htmr";
 import EmbedDocument from "@/components/EmbedDocument";
-import { findUserDocument } from "@/repositories/document";
+import { findUserPost } from "@/repositories/post";
 import SplashScreen from "@/components/SplashScreen";
 import { cache } from "react";
 import type { Metadata } from "next";
@@ -9,7 +9,7 @@ import { validate } from "uuid";
 import { findRevisionHtml } from "@/app/api/utils";
 
 const getCachedUserDocument = cache(async (id: string, revisions?: string) =>
-  await findUserDocument(id, revisions)
+  await findUserPost(id, revisions)
 );
 
 export async function generateMetadata(

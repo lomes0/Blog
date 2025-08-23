@@ -361,16 +361,16 @@ const BlogStatsSection: React.FC = () => {
 
   const fetchStats = async () => {
     if (!user) return;
-    
+
     try {
       setLoading(true);
-      
+
       // Fetch user posts (documents with type DOCUMENT)
-      const postsResponse = await fetch(`/api/documents?authorId=${user.id}`);
+      const postsResponse = await fetch(`/api/posts?authorId=${user.id}`);
       const postsData = await postsResponse.json();
       const userPosts = postsData.data || [];
-      
-      // Fetch user series (documents with type DIRECTORY)  
+
+      // Fetch user series (documents with type DIRECTORY)
       const seriesResponse = await fetch(`/api/series?authorId=${user.id}`);
       const seriesData = await seriesResponse.json();
       const userSeries = seriesData.data || [];
@@ -422,7 +422,7 @@ const BlogStatsSection: React.FC = () => {
           </Typography>
         </Card>
       </Grid>
-      
+
       <Grid size={{ xs: 6, sm: 3 }}>
         <Card sx={{ textAlign: "center", p: 2 }}>
           <Typography variant="h4" color="success.main">
@@ -433,7 +433,7 @@ const BlogStatsSection: React.FC = () => {
           </Typography>
         </Card>
       </Grid>
-      
+
       <Grid size={{ xs: 6, sm: 3 }}>
         <Card sx={{ textAlign: "center", p: 2 }}>
           <Typography variant="h4" color="warning.main">
@@ -444,7 +444,7 @@ const BlogStatsSection: React.FC = () => {
           </Typography>
         </Card>
       </Grid>
-      
+
       <Grid size={{ xs: 6, sm: 3 }}>
         <Card sx={{ textAlign: "center", p: 2 }}>
           <Typography variant="h4" color="info.main">
@@ -467,7 +467,7 @@ const BlogStatsSection: React.FC = () => {
           >
             Write New Post
           </Button>
-          
+
           <Button
             variant="outlined"
             startIcon={<Category />}
@@ -476,7 +476,7 @@ const BlogStatsSection: React.FC = () => {
           >
             Create Series
           </Button>
-          
+
           <Button
             variant="outlined"
             startIcon={<LibraryBooks />}
@@ -490,5 +490,3 @@ const BlogStatsSection: React.FC = () => {
     </Grid>
   );
 };
-
-

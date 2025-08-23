@@ -10,23 +10,22 @@ interface DropTargetState {
 
 interface DropTargetOptions {
   targetId?: string | null;
-  targetType: "domain" | "directory" | "root";
-  domainId?: string | null;
+  targetType: "series" | "root";
   onDropComplete?: () => void;
 }
 
 interface DropData {
   id: string;
   name: string;
-  type: "DOCUMENT" | "DIRECTORY";
+  type: "DOCUMENT";
 }
 
 /**
  * Custom hook for handling drag and drop targets in the sidebar
- * Provides drag event handlers and visual feedback state
+ * Simplified for blog structure - only supports posts and series
  */
 export const useDropTarget = (
-  { targetId, targetType, domainId, onDropComplete }: DropTargetOptions,
+  { targetId, targetType, onDropComplete }: DropTargetOptions,
 ) => {
   const dispatch = useDispatch();
   const [dropTargetState, setDropTargetState] = useState<DropTargetState>({
@@ -35,7 +34,7 @@ export const useDropTarget = (
   });
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
-    // Check if the dragged data is a matheditor document
+    // Check if the dragged data is a matheditor document (post)
     const hasValidData = e.dataTransfer.types.includes(
       "application/matheditor-document",
     );
@@ -92,53 +91,37 @@ export const useDropTarget = (
 
       if (!draggedDoc) return;
 
-      // Determine the new parent ID and domain ID based on target type
-      let newParentId: string | null = null;
-      let newDomainId: string | null | undefined = null;
+      // For blog structure: determine series assignment
+      let newSeriesId: string | null = null;
 
       switch (targetType) {
-        case "domain":
-          // For domains, set parentId to null (root level of domain) and update domainId
-          newParentId = null;
-          newDomainId = domainId || null;
-          break;
-        case "directory":
-          // For directories, set parentId to the directory ID, keep existing domainId
-          newParentId = targetId || null;
-          newDomainId = undefined; // Don't change domainId for directory moves
+        case "series":
+          // Add post to series
+          newSeriesId = targetId || null;
           break;
         case "root":
-          // For root, set parentId to null and clear domainId
-          newParentId = null;
-          newDomainId = null;
+          // Remove post from series
+          newSeriesId = null;
           break;
       }
 
-      // Update the document's parentId and domainId
+      // Update the document's series assignment
       const updatePromises = [];
 
       if (draggedDoc.local) {
-        const partial: any = { parentId: newParentId };
-        if (newDomainId !== undefined) {
-          partial.domainId = newDomainId;
-        }
         updatePromises.push(
           dispatch(actions.updateLocalDocument({
             id: draggedItem.id,
-            partial,
+            partial: { seriesId: newSeriesId },
           })),
         );
       }
 
       if (draggedDoc.cloud) {
-        const partial: any = { parentId: newParentId };
-        if (newDomainId !== undefined) {
-          partial.domainId = newDomainId;
-        }
         updatePromises.push(
           dispatch(actions.updateCloudDocument({
             id: draggedItem.id,
-            partial,
+            partial: { seriesId: newSeriesId },
           })),
         );
       }
@@ -146,38 +129,25 @@ export const useDropTarget = (
       await Promise.all(updatePromises);
 
       // Show success message
-      const targetName = targetType === "domain"
-        ? "domain root"
-        : targetType === "directory"
-        ? "directory"
-        : "root";
-
+      const targetName = targetType === "series" ? "series" : "posts";
       dispatch(actions.announce({
         message: {
-          title: `Moved ${draggedItem.name} to ${targetName}`,
+          title: "Post moved successfully",
+          subtitle: `"${draggedItem.name}" has been moved to ${targetName}`,
         },
-        timeout: 3000,
       }));
 
-      // Dispatch custom event for other components to react
-      const movedEvent = new CustomEvent("document-moved", {
-        detail: { documentId: draggedItem.id },
-      });
-      window.dispatchEvent(movedEvent);
-
-      // Call completion callback
       onDropComplete?.();
     } catch (error) {
-      console.error("Error during drop:", error);
+      console.error("Drop operation failed:", error);
       dispatch(actions.announce({
         message: {
-          title: "Failed to move item",
-          subtitle: "An error occurred while moving the item",
+          title: "Move failed",
+          subtitle: "Failed to move the post. Please try again.",
         },
-        timeout: 3000,
       }));
     }
-  }, [targetId, targetType, domainId, dispatch, onDropComplete]);
+  }, [targetId, targetType, dispatch, onDropComplete]);
 
   return {
     isDropTarget: dropTargetState.isDropTarget,

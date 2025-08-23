@@ -1,12 +1,12 @@
 "use client";
 import React, { useState } from "react";
-import { 
-  Box, 
-  TextField, 
-  Button, 
-  Typography, 
+import {
   Alert,
-  CircularProgress 
+  Box,
+  Button,
+  CircularProgress,
+  TextField,
+  Typography,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { Series } from "@/types";
@@ -16,7 +16,9 @@ interface EditSeriesFormProps {
   onCancel?: () => void;
 }
 
-export default function EditSeriesForm({ series, onCancel }: EditSeriesFormProps) {
+export default function EditSeriesForm(
+  { series, onCancel }: EditSeriesFormProps,
+) {
   const [title, setTitle] = useState(series.title);
   const [description, setDescription] = useState(series.description || "");
   const [loading, setLoading] = useState(false);
@@ -67,7 +69,11 @@ export default function EditSeriesForm({ series, onCancel }: EditSeriesFormProps
   };
 
   const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this series? This action cannot be undone.")) {
+    if (
+      !confirm(
+        "Are you sure you want to delete this series? This action cannot be undone.",
+      )
+    ) {
       return;
     }
 
@@ -135,7 +141,7 @@ export default function EditSeriesForm({ series, onCancel }: EditSeriesFormProps
         >
           Delete Series
         </Button>
-        
+
         <Box sx={{ display: "flex", gap: 2 }}>
           <Button
             variant="outlined"

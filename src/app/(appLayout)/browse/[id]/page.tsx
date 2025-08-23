@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import DocumentBrowser from "@/components/DocumentBrowser";
 
 export const metadata: Metadata = {
-  title: "Folder Contents | MathEditor",
-  description: "Browse and manage documents and folders in this directory",
+  title: "Blog Posts | MathEditor",
+  description: "Browse and manage your blog posts",
 };
 
 // Define the page component props
@@ -18,8 +18,8 @@ type Props = {
 };
 
 // Make the component async and properly handle params
+// Note: In blog structure, we redirect to main browse page since we don't have directories
 export default async function DirectoryPage({ params }: Props) {
-  // In Next.js 13+, params may be a Promise that needs to be awaited
-  const resolvedParams = await Promise.resolve(params);
-  return <DocumentBrowser directoryId={resolvedParams.id} />;
+  // In blog structure, directory IDs are not used, show regular browser
+  return <DocumentBrowser />;
 }

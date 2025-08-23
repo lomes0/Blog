@@ -57,13 +57,62 @@ export const generateServerHtml = (data: SerializedEditorState) =>
         // Create a new editor instance after setting up the globals
         const editor = createHeadlessEditor(editorConfig);
 
-        const editorState = editor.parseEditorState(data);
-        editor.setEditorState(editorState);
+        // Validate input data
+        if (!data || typeof data !== "object" || !data.root) {
+          throw new Error("Invalid editor state data: missing root node");
+        }
 
-        editorState.read(() => {
-          let html = $generateHtmlFromNodes(editor);
+        let editorState;
+        try {
+          editorState = editor.parseEditorState(data);
+        } catch (error) {
+          const errorMessage = error instanceof Error
+            ? error.message
+            : "Unknown error";
+          throw new Error(`Failed to parse editor state: ${errorMessage}`);
+        }
+
+        // Validate that the editor state has content
+        if (!editorState) {
+          throw new Error("Parsed editor state is empty or invalid");
+        }
+
+        // Try to set the editor state, if it fails due to empty root, create a minimal state
+        try {
+          editor.setEditorState(editorState);
+
+          // Generate HTML from the state
+          const html = editorState.read(() => $generateHtmlFromNodes(editor));
           resolve(html);
-        });
+        } catch (setStateError) {
+          // If setting state fails due to empty root, create a minimal valid state
+          const emptyStateData = {
+            root: {
+              children: [
+                {
+                  children: [],
+                  direction: null,
+                  format: "",
+                  indent: 0,
+                  type: "paragraph",
+                  version: 1,
+                },
+              ],
+              direction: null,
+              format: "",
+              indent: 0,
+              type: "root",
+              version: 1,
+            },
+          };
+
+          const emptyState = editor.parseEditorState(emptyStateData as any);
+          editor.setEditorState(emptyState);
+
+          // Generate HTML from the empty state
+          const html = emptyState.read(() => $generateHtmlFromNodes(editor));
+          resolve(html);
+        }
       } finally {
         // Restore original global values
         global.window = originalWindow;

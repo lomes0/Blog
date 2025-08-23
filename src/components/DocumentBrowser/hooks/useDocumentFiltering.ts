@@ -4,8 +4,6 @@ import { DocumentType, UserDocument } from "@/types";
 
 interface UseDocumentFilteringProps {
   documents: UserDocument[];
-  directoryId?: string; // Keep for compatibility but will be unused
-  domainId?: string; // Keep for compatibility but will be unused
 }
 
 interface FilteredDocuments {
@@ -20,8 +18,6 @@ interface FilteredDocuments {
  */
 export const useDocumentFiltering = ({
   documents,
-  directoryId,
-  domainId,
 }: UseDocumentFilteringProps): FilteredDocuments => {
   return useMemo(() => {
     // In blog structure, we don't have directories
@@ -31,7 +27,7 @@ export const useDocumentFiltering = ({
     // Remove directories and domain filtering
     const regularDocuments = documents.filter((doc) => {
       const docData = doc.local || doc.cloud;
-      return docData?.type === DocumentType.DOCUMENT;
+      return docData?.type === "DOCUMENT";
     });
 
     // No directories in simple blog structure

@@ -4,10 +4,7 @@ import { Box, Button, Paper, Typography } from "@mui/material";
 import { CreateNewFolder, Folder, PostAdd } from "@mui/icons-material";
 
 interface EmptyStateProps {
-  directoryId?: string; // Keep for compatibility but unused
-  domainInfo?: any; // Keep for compatibility but unused
   onCreateDocument: () => void;
-  onCreateDirectory: () => void; // Keep for compatibility but unused
 }
 
 /**
@@ -15,10 +12,7 @@ interface EmptyStateProps {
  * Provides quick action to create a new post
  */
 const EmptyState: React.FC<EmptyStateProps> = ({
-  directoryId,
-  domainInfo,
   onCreateDocument,
-  onCreateDirectory,
 }) => {
   // In blog structure, we always show the same empty state
   const getEmptyStateContent = () => {

@@ -7,9 +7,9 @@ import {
 } from "@/repositories/post";
 import {
   DocumentCreateInput,
+  DocumentType,
   GetDocumentsResponse,
   PostDocumentsResponse,
-  DocumentType,
 } from "@/types";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
@@ -95,9 +95,9 @@ export async function POST(request: Request) {
       published: body.published,
       collab: body.collab,
       private: body.private,
-      // Remove domain/directory hierarchy for simple blog structure
+      // Blog posts use flat structure - no parentId
       parentId: null,
-      type: DocumentType.DOCUMENT, // Always DOCUMENT for posts
+      type: "DOCUMENT" as DocumentType, // Always DOCUMENT for posts
       revisions: {
         create: {
           id: body.head || undefined,
@@ -107,7 +107,15 @@ export async function POST(request: Request) {
         },
       },
     };
-    
+
+    // Add series support if provided
+    if (body.seriesId) {
+      (input as any).seriesId = body.seriesId;
+    }
+    if (body.seriesOrder !== undefined) {
+      (input as any).seriesOrder = body.seriesOrder;
+    }
+
     if (body.handle) {
       input.handle = body.handle.toLowerCase();
       const validationError = await validateHandle(input.handle);

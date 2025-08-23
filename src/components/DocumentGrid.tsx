@@ -20,8 +20,6 @@ interface DocumentGridProps {
   items: UserDocument[];
   /** The current user */
   user?: User;
-  /** The current directory ID (if any) */
-  currentDirectoryId?: string;
   /** Optional title to display above the grid */
   title?: string;
   /** Optional icon to display beside the title */
@@ -78,7 +76,6 @@ interface DocumentGridProps {
 const DocumentGrid: React.FC<DocumentGridProps> = ({
   items,
   user,
-  currentDirectoryId,
   title,
   titleIcon,
   sx,
@@ -130,7 +127,6 @@ const DocumentGrid: React.FC<DocumentGridProps> = ({
           <DraggableDocumentCard
             userDocument={item}
             user={user}
-            currentDirectoryId={currentDirectoryId}
             onMoveComplete={onMoveComplete}
             sx={{
               height: "100%",
@@ -150,7 +146,6 @@ const DocumentGrid: React.FC<DocumentGridProps> = ({
     [
       items,
       user,
-      currentDirectoryId,
       onMoveComplete,
       gridSizing,
       prefersReducedMotion,

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Box, Button, CircularProgress, Typography } from "@mui/material";
 import { Delete, UploadFile } from "@mui/icons-material";
-import { DocumentType, isDirectory, UserDocument } from "@/types";
+import { UserDocument } from "@/types";
 import { actions, useDispatch } from "@/store";
 
 interface BackgroundImageUploaderProps {
@@ -50,7 +50,7 @@ const BackgroundImageUploader = (
         throw new Error("Document ID not found");
       }
 
-      // Check if this is a directory before uploading
+      // Check if document exists
       const document = userDocument.cloud || userDocument.local;
       console.log("Document data:", {
         hasCloud: !!userDocument.cloud,
@@ -58,34 +58,29 @@ const BackgroundImageUploader = (
         cloudType: userDocument.cloud?.type,
         localType: userDocument.local?.type,
         documentType: document?.type,
-        isDirectoryCheck: document?.type === DocumentType.DIRECTORY,
+        isDocumentCheck: document?.type === "DOCUMENT",
         rawDocumentType: typeof document?.type === "string"
           ? document?.type
           : "not a string",
-        DocumentTypeENUM: {
-          DIRECTORY: DocumentType.DIRECTORY,
-          DOCUMENT: DocumentType.DOCUMENT,
-        },
       });
 
       if (!document) {
         throw new Error("Document not found");
       }
 
-      // Check document type
-      if (document.type !== DocumentType.DIRECTORY) {
+      // Check document type - all documents are now posts
+      if (document.type !== "DOCUMENT") {
         console.error(
-          "Not a directory - document type:",
+          "Not a document - document type:",
           document.type,
-          "Expected:",
-          DocumentType.DIRECTORY,
+          "Expected: DOCUMENT",
         );
         throw new Error(
-          `This document is not a directory (type: ${document.type})`,
+          `This document is not a valid post (type: ${document.type})`,
         );
       }
 
-      console.log("Uploading image for directory:", documentId);
+      console.log("Uploading image for post:", documentId);
 
       // Upload the image
       const response = await fetch(
@@ -112,7 +107,7 @@ const BackgroundImageUploader = (
         dispatch(actions.announce({
           message: {
             title: "Background Image Updated",
-            subtitle: "Your directory background has been updated.",
+            subtitle: "Your post background has been updated.",
           },
         }));
       } else {
@@ -147,7 +142,7 @@ const BackgroundImageUploader = (
   return (
     <Box sx={{ my: 2 }}>
       <Typography variant="subtitle1" gutterBottom>
-        Directory Background Image
+        Post Background Image
       </Typography>
 
       {previewUrl

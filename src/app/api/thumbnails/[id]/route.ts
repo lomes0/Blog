@@ -1,5 +1,5 @@
 import { authOptions } from "@/lib/auth";
-import { findUserDocument } from "@/repositories/document";
+import { findUserPost } from "@/repositories/post";
 import { GetDocumentThumbnailResponse } from "@/types";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
@@ -12,7 +12,7 @@ export async function GET(
   const params = await props.params;
   const response: GetDocumentThumbnailResponse = {};
   try {
-    const userDocument = await findUserDocument(params.id);
+    const userDocument = await findUserPost(params.id);
     if (!userDocument) {
       response.error = { title: "Document not found" };
       return NextResponse.json(response, { status: 404 });

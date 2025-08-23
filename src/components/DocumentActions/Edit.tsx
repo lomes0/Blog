@@ -62,9 +62,8 @@ const EditDocument: React.FC<
   const handle = cloudDocument?.handle ?? localDocument?.handle ?? null;
   const isCloudOnly = !isLocal && isCloud;
   const document = isCloudOnly ? cloudDocument : localDocument;
-  // Make sure we properly check if it's a directory
-  const isDirectory = document?.type === DocumentType.DIRECTORY;
-  const currentDomainId = document?.domainId || null;
+  // All documents are posts now
+  const isDirectory = false;
 
   const [input, setInput] = useState<Partial<DocumentUpdateInput>>({
     name,
@@ -75,7 +74,6 @@ const EditDocument: React.FC<
     collab: isCollab,
     background_image: document?.background_image || null,
     sort_order: document?.sort_order || null,
-    domainId: currentDomainId,
   });
 
   const [validating, setValidating] = useState(false);
@@ -95,7 +93,6 @@ const EditDocument: React.FC<
       collab: isCollab,
       background_image: document?.background_image || null,
       sort_order: document?.sort_order || null,
-      domainId: currentDomainId,
     });
     setValidating(false);
     setValidationErrors({});
@@ -207,13 +204,6 @@ const EditDocument: React.FC<
     if (input.sort_order !== document?.sort_order) {
       partial.sort_order = input.sort_order;
     }
-    // Add domainId to the update if it has changed
-    if (input.domainId !== document?.domainId) {
-      partial.domainId = input.domainId;
-      console.log(
-        `Setting domainId to ${input.domainId} for document ${id} (current: ${document?.domainId})`,
-      );
-    }
     // Preserve parentId when updating document
     if (document?.parentId) {
       partial.parentId = document.parentId;
@@ -287,7 +277,7 @@ const EditDocument: React.FC<
           }}
         >
           <DialogTitle>
-            Edit {isDirectory ? "Directory" : "Document"}
+            Edit Post
           </DialogTitle>
           <DialogContent
             sx={{
@@ -302,7 +292,7 @@ const EditDocument: React.FC<
               size="small"
               fullWidth
               autoFocus
-              label={isDirectory ? "Directory Name" : "Document Name"}
+              label="Post Title"
               value={input.name || ""}
               onChange={(e) => updateInput({ name: e.target.value })}
               sx={{ "& .MuiInputBase-root": { height: 40 } }}
@@ -311,7 +301,7 @@ const EditDocument: React.FC<
               margin="normal"
               size="small"
               fullWidth
-              label={isDirectory ? "Directory Handle" : "Document Handle"}
+              label="Post Handle"
               disabled={!isOnline}
               value={input.handle || ""}
               onChange={updateHandle}

@@ -100,13 +100,6 @@ const NewDocument: React.FC<{ cloudDocument?: CloudDocument }> = (
   const searchParams = useSearchParams();
   const revisionId = searchParams.get("v");
   const parentId = searchParams.get("parentId");
-  const domainId = searchParams.get("domain");
-  // Initialize with domainId from URL if available
-  useEffect(() => {
-    if (domainId) {
-      updateInput({ domainId });
-    }
-  }, [domainId]);
 
   const [base, setBase] = useState<UserDocument | undefined>(
     cloudDocument ? { id: cloudDocument.id, cloud: cloudDocument } : undefined,
@@ -174,9 +167,8 @@ const NewDocument: React.FC<{ cloudDocument?: CloudDocument }> = (
       head: uuidv4(),
       name,
       data,
-      type: DocumentType.DOCUMENT,
+      type: "DOCUMENT" as DocumentType,
       parentId: parentId || null,
-      domainId: input.domainId || null,
       createdAt,
       updatedAt: createdAt,
     };
