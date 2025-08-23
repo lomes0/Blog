@@ -32,11 +32,14 @@ import {
 } from "@/types";
 import { validate } from "uuid";
 import { duplicateDocument } from "./app/duplicateDocument";
-import { fetchUserDomains, reorderDomains } from "./app/domains";
+// Temporary import for backward compatibility during migration
+import { fetchUserDomains, reorderDomains, deleteDomain } from "./app/domains";
 
 const initialState: AppState = {
   documents: [],
-  domains: [],
+  posts: [], // New: posts state for blog structure
+  series: [], // New: series state for blog structure
+  domains: [], // Temporary: keep for backward compatibility during migration
   ui: {
     announcements: [],
     alerts: [],
@@ -54,7 +57,9 @@ export const load = createAsyncThunk("app/load", async (_, thunkAPI) => {
     thunkAPI.dispatch(loadSession()),
     thunkAPI.dispatch(loadLocalDocuments()),
     thunkAPI.dispatch(loadCloudDocuments()),
-    thunkAPI.dispatch(fetchUserDomains()),
+    thunkAPI.dispatch(loadPosts()), // Load posts for blog structure
+    thunkAPI.dispatch(loadSeries()), // Load series for blog structure
+    thunkAPI.dispatch(fetchUserDomains()), // Temporary: keep for backward compatibility during migration
   ]);
 });
 
@@ -840,6 +845,201 @@ export const alert = createAsyncThunk(
   },
 );
 
+// ===== NEW POST MANAGEMENT THUNKS =====
+
+export const loadPosts = createAsyncThunk(
+  "app/loadPosts",
+  async (_, thunkAPI) => {
+    try {
+      NProgress.start();
+      const response = await fetch("/api/posts");
+      const { data, error } = await response.json() as GetDocumentsResponse;
+      if (error) return thunkAPI.rejectWithValue(error);
+      if (!data) return thunkAPI.fulfillWithValue([]);
+      NProgress.done();
+      return thunkAPI.fulfillWithValue(data);
+    } catch (error: any) {
+      console.error(error);
+      NProgress.done();
+      return thunkAPI.rejectWithValue({
+        title: "Something went wrong",
+        subtitle: error.message,
+      });
+    }
+  },
+);
+
+export const createPost = createAsyncThunk(
+  "app/createPost",
+  async (payloadCreator: DocumentCreateInput, thunkAPI) => {
+    try {
+      const response = await fetch("/api/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payloadCreator),
+      });
+      const { data, error } = await response.json() as PostDocumentsResponse;
+      if (error) return thunkAPI.rejectWithValue(error);
+      return thunkAPI.fulfillWithValue(data);
+    } catch (error: any) {
+      console.error(error);
+      return thunkAPI.rejectWithValue({
+        title: "Something went wrong",
+        subtitle: error.message,
+      });
+    }
+  },
+);
+
+export const updatePost = createAsyncThunk(
+  "app/updatePost",
+  async (
+    { id, data }: { id: string; data: DocumentUpdateInput },
+    thunkAPI,
+  ) => {
+    try {
+      const response = await fetch(`/api/posts/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const { data: result, error } = await response.json() as PatchDocumentResponse;
+      if (error) return thunkAPI.rejectWithValue(error);
+      return thunkAPI.fulfillWithValue(result);
+    } catch (error: any) {
+      console.error(error);
+      return thunkAPI.rejectWithValue({
+        title: "Something went wrong",
+        subtitle: error.message,
+      });
+    }
+  },
+);
+
+export const deletePost = createAsyncThunk(
+  "app/deletePost",
+  async (id: string, thunkAPI) => {
+    try {
+      const response = await fetch(`/api/posts/${id}`, {
+        method: "DELETE",
+      });
+      const { data, error } = await response.json() as DeleteDocumentResponse;
+      if (error) return thunkAPI.rejectWithValue(error);
+      return thunkAPI.fulfillWithValue(data);
+    } catch (error: any) {
+      console.error(error);
+      return thunkAPI.rejectWithValue({
+        title: "Something went wrong",
+        subtitle: error.message,
+      });
+    }
+  },
+);
+
+// ===== NEW SERIES MANAGEMENT THUNKS =====
+
+// Series response types (temporary until we add them to types.ts)
+interface GetSeriesResponse {
+  data?: any[];
+  error?: { title: string; subtitle?: string };
+}
+
+interface PostSeriesResponse {
+  data?: any;
+  error?: { title: string; subtitle?: string };
+}
+
+interface SeriesCreateInput {
+  title: string;
+  description?: string;
+}
+
+export const loadSeries = createAsyncThunk(
+  "app/loadSeries",
+  async (_, thunkAPI) => {
+    try {
+      const response = await fetch("/api/series");
+      const { data, error } = await response.json() as GetSeriesResponse;
+      if (error) return thunkAPI.rejectWithValue(error);
+      if (!data) return thunkAPI.fulfillWithValue([]);
+      return thunkAPI.fulfillWithValue(data);
+    } catch (error: any) {
+      console.error(error);
+      return thunkAPI.rejectWithValue({
+        title: "Something went wrong",
+        subtitle: error.message,
+      });
+    }
+  },
+);
+
+export const createSeries = createAsyncThunk(
+  "app/createSeries",
+  async (payloadCreator: SeriesCreateInput, thunkAPI) => {
+    try {
+      const response = await fetch("/api/series", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payloadCreator),
+      });
+      const { data, error } = await response.json() as PostSeriesResponse;
+      if (error) return thunkAPI.rejectWithValue(error);
+      return thunkAPI.fulfillWithValue(data);
+    } catch (error: any) {
+      console.error(error);
+      return thunkAPI.rejectWithValue({
+        title: "Something went wrong",
+        subtitle: error.message,
+      });
+    }
+  },
+);
+
+export const updateSeries = createAsyncThunk(
+  "app/updateSeries",
+  async (
+    { id, data }: { id: string; data: { title?: string; description?: string } },
+    thunkAPI,
+  ) => {
+    try {
+      const response = await fetch(`/api/series/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const { data: result, error } = await response.json() as PostSeriesResponse;
+      if (error) return thunkAPI.rejectWithValue(error);
+      return thunkAPI.fulfillWithValue(result);
+    } catch (error: any) {
+      console.error(error);
+      return thunkAPI.rejectWithValue({
+        title: "Something went wrong",
+        subtitle: error.message,
+      });
+    }
+  },
+);
+
+export const deleteSeries = createAsyncThunk(
+  "app/deleteSeries",
+  async (id: string, thunkAPI) => {
+    try {
+      const response = await fetch(`/api/series/${id}`, {
+        method: "DELETE",
+      });
+      const { data, error } = await response.json() as { data?: string; error?: { title: string; subtitle?: string } };
+      if (error) return thunkAPI.rejectWithValue(error);
+      return thunkAPI.fulfillWithValue(data);
+    } catch (error: any) {
+      console.error(error);
+      return thunkAPI.rejectWithValue({
+        title: "Something went wrong",
+        subtitle: error.message,
+      });
+    }
+  },
+);
+
 // Add a special action to handle the auto-save before navigation
 export const appSlice = createSlice({
   name: "app",
@@ -1204,8 +1404,125 @@ export const appSlice = createSlice({
         };
         state.ui.announcements.push({ message });
       })
+      // ===== NEW POST MANAGEMENT REDUCER CASES =====
+      .addCase(loadPosts.fulfilled, (state, action) => {
+        const posts = action.payload;
+        // Convert CloudDocument[] to UserPost[] format
+        const userPosts = posts.map((post: any) => ({
+          id: post.id,
+          cloud: post,
+        }));
+        state.posts = userPosts as any; // Cast to maintain compatibility during transition
+      })
+      .addCase(loadPosts.rejected, (state, action) => {
+        const message = action.payload as {
+          title: string;
+          subtitle: string;
+        };
+        state.ui.announcements.push({ message });
+      })
+      .addCase(createPost.fulfilled, (state, action) => {
+        const post = action.payload;
+        if (post) {
+          const userPost = {
+            id: post.id,
+            cloud: post as any, // Cast to maintain compatibility during transition
+          };
+          state.posts.unshift(userPost as any);
+        }
+      })
+      .addCase(createPost.rejected, (state, action) => {
+        const message = action.payload as {
+          title: string;
+          subtitle: string;
+        };
+        state.ui.announcements.push({ message });
+      })
+      .addCase(updatePost.fulfilled, (state, action) => {
+        const updatedPost = action.payload;
+        if (updatedPost) {
+          const userPost = state.posts.find((p) => p.id === updatedPost.id);
+          if (userPost) {
+            userPost.cloud = updatedPost as any; // Cast to maintain compatibility during transition
+          }
+        }
+      })
+      .addCase(updatePost.rejected, (state, action) => {
+        const message = action.payload as {
+          title: string;
+          subtitle: string;
+        };
+        state.ui.announcements.push({ message });
+      })
+      .addCase(deletePost.fulfilled, (state, action) => {
+        const deletedPostId = action.payload;
+        if (deletedPostId) {
+          state.posts = state.posts.filter((p) => p.id !== deletedPostId);
+        }
+      })
+      .addCase(deletePost.rejected, (state, action) => {
+        const message = action.payload as {
+          title: string;
+          subtitle: string;
+        };
+        state.ui.announcements.push({ message });
+      })
+      // ===== NEW SERIES MANAGEMENT REDUCER CASES =====
+      .addCase(loadSeries.fulfilled, (state, action) => {
+        state.series = action.payload || [];
+      })
+      .addCase(loadSeries.rejected, (state, action) => {
+        const message = action.payload as {
+          title: string;
+          subtitle: string;
+        };
+        state.ui.announcements.push({ message });
+      })
+      .addCase(createSeries.fulfilled, (state, action) => {
+        const series = action.payload;
+        if (series) {
+          state.series.unshift(series);
+        }
+      })
+      .addCase(createSeries.rejected, (state, action) => {
+        const message = action.payload as {
+          title: string;
+          subtitle: string;
+        };
+        state.ui.announcements.push({ message });
+      })
+      .addCase(updateSeries.fulfilled, (state, action) => {
+        const updatedSeries = action.payload;
+        if (updatedSeries) {
+          const index = state.series.findIndex((s) => s.id === updatedSeries.id);
+          if (index !== -1) {
+            state.series[index] = updatedSeries;
+          }
+        }
+      })
+      .addCase(updateSeries.rejected, (state, action) => {
+        const message = action.payload as {
+          title: string;
+          subtitle: string;
+        };
+        state.ui.announcements.push({ message });
+      })
+      .addCase(deleteSeries.fulfilled, (state, action) => {
+        const deletedSeriesId = action.payload;
+        if (deletedSeriesId) {
+          state.series = state.series.filter((s) => s.id !== deletedSeriesId);
+        }
+      })
+      .addCase(deleteSeries.rejected, (state, action) => {
+        const message = action.payload as {
+          title: string;
+          subtitle: string;
+        };
+        state.ui.announcements.push({ message });
+      })
+      // Temporary: add domain reducers for backward compatibility during migration
       .addCase(fetchUserDomains.fulfilled, (state, action) => {
-        state.domains = action.payload;
+        state.domains = action.payload || [];
       })
       .addCase(fetchUserDomains.rejected, (state, action) => {
         const message = action.payload as {
@@ -1214,28 +1531,13 @@ export const appSlice = createSlice({
         };
         state.ui.announcements.push({ message });
       })
-      .addCase(reorderDomains.fulfilled, (state, action) => {
-        // Update the order property for each domain
-        const domainOrders = action.payload;
-        domainOrders.forEach(({ id, order }) => {
-          const domain = state.domains.find(d => d.id === id);
-          if (domain) {
-            domain.order = order;
-          }
-        });
-        
-        // Sort domains by order (nulls last), then by creation date
-        state.domains.sort((a, b) => {
-          if (a.order != null && b.order != null) {
-            return a.order - b.order;
-          }
-          if (a.order != null) return -1;
-          if (b.order != null) return 1;
-          // Both are null, sort by creation date (newest first)
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        });
+      .addCase(deleteDomain.fulfilled, (state, action) => {
+        const deletedDomainId = action.payload;
+        if (deletedDomainId) {
+          state.domains = state.domains.filter((d: any) => d.id !== deletedDomainId);
+        }
       })
-      .addCase(reorderDomains.rejected, (state, action) => {
+      .addCase(deleteDomain.rejected, (state, action) => {
         const message = action.payload as {
           title: string;
           subtitle: string;

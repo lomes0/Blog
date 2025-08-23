@@ -9,11 +9,12 @@ import {
   DocumentCreateInput,
   GetDocumentsResponse,
   PostDocumentsResponse,
+  DocumentType,
 } from "@/types";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
-import { validateHandle } from "./utils";
+import { validateHandle } from "../documents/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
     if (!session) {
       response.error = {
         title: "Unauthorized",
-        subtitle: "Please sign in to save your document to the cloud",
+        subtitle: "Please sign in to save your post to the cloud",
       };
       return NextResponse.json(response, { status: 401 });
     }
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
     if (!body) {
       response.error = {
         title: "Bad Request",
-        subtitle: "No document provided",
+        subtitle: "No post provided",
       };
       return NextResponse.json(response, { status: 400 });
     }
@@ -79,7 +80,7 @@ export async function POST(request: Request) {
     if (userPost) {
       response.error = {
         title: "Unauthorized",
-        subtitle: "A document with this id already exists",
+        subtitle: "A post with this id already exists",
       };
       return NextResponse.json(response, { status: 403 });
     }
@@ -94,8 +95,9 @@ export async function POST(request: Request) {
       published: body.published,
       collab: body.collab,
       private: body.private,
-      parentId: body.parentId, // Include parentId when creating document
-      type: body.type || "DOCUMENT", // Ensure posts are created as DOCUMENT type
+      // Remove domain/directory hierarchy for simple blog structure
+      parentId: null,
+      type: DocumentType.DOCUMENT, // Always DOCUMENT for posts
       revisions: {
         create: {
           id: body.head || undefined,
@@ -105,6 +107,7 @@ export async function POST(request: Request) {
         },
       },
     };
+    
     if (body.handle) {
       input.handle = body.handle.toLowerCase();
       const validationError = await validateHandle(input.handle);
@@ -113,36 +116,9 @@ export async function POST(request: Request) {
         return NextResponse.json(response, { status: 400 });
       }
     }
-    if (body.coauthors) {
-      const documentId = body.id;
-      const userEmails = body.coauthors as string[];
-      const InvalidEmails = userEmails.filter((email) =>
-        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-      );
-      if (InvalidEmails.length > 0) {
-        response.error = {
-          title: "Invalid Coauther Email",
-          subtitle: "One or more emails are invalid",
-        };
-        return NextResponse.json(response, { status: 400 });
-      }
-      input.coauthors = {
-        connectOrCreate: userEmails.map((userEmail) => ({
-          where: { documentId_userEmail: { documentId, userEmail } },
-          create: {
-            user: {
-              connectOrCreate: {
-                where: { email: userEmail },
-                create: {
-                  name: userEmail.split("@")[0],
-                  email: userEmail,
-                },
-              },
-            },
-          },
-        })),
-      };
-    }
+
+    // Remove coauthor complexity for simple blog structure
+    // if (body.coauthors) { ... }
 
     if (body.baseId) {
       const basePost = await findUserPost(body.baseId);

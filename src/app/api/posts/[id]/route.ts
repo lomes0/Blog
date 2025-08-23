@@ -10,12 +10,13 @@ import {
   DocumentUpdateInput,
   GetDocumentResponse,
   PatchDocumentResponse,
+  DocumentType,
 } from "@/types";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { validate } from "uuid";
 import { Prisma } from "@prisma/client";
-import { validateHandle } from "../utils";
+import { validateHandle } from "../../documents/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -29,17 +30,20 @@ export async function GET(
     const session = await getServerSession(authOptions);
     const userPost = await findUserPost(params.id, "all");
     if (!userPost) {
-      response.error = { title: "Document not found" };
+      response.error = { title: "Post not found" };
       return NextResponse.json(response, { status: 404 });
     }
-    const isCollab = userPost.collab;
-    if (!session && !isCollab) {
+    
+    // For simple blog structure, posts can be public or private
+    // Remove complex coauthor/collab logic
+    if (!session && userPost.private) {
       response.error = {
-        title: "This document is private",
-        subtitle: "Please sign in to Edit it",
+        title: "This post is private",
+        subtitle: "Please sign in to view it",
       };
       return NextResponse.json(response, { status: 401 });
     }
+    
     if (session) {
       const { user } = session;
       if (user.disabled) {
@@ -50,20 +54,18 @@ export async function GET(
         return NextResponse.json(response, { status: 403 });
       }
       const isAuthor = user.id === userPost.author.id;
-      const isCoauthor = userPost.coauthors.some((coauthor: any) =>
-        coauthor.id === user.id
-      );
-      if (!isAuthor && !isCoauthor && !isCollab) {
+      if (!isAuthor && userPost.private) {
         response.error = {
-          title: "This document is private",
-          subtitle: "You are not authorized to Edit this document",
+          title: "This post is private",
+          subtitle: "You are not authorized to view this post",
         };
         return NextResponse.json(response, { status: 403 });
       }
     }
+    
     const editorPost = await findEditorPost(params.id);
     if (!editorPost) {
-      response.error = { title: "Document not found" };
+      response.error = { title: "Post not found" };
       return NextResponse.json(response, { status: 404 });
     }
     response.data = { ...editorPost, cloudDocument: userPost };
@@ -85,15 +87,11 @@ export async function PATCH(
   const params = await props.params;
   const response: PatchDocumentResponse = {};
   try {
-    if (!validate(params.id)) {
-      response.error = { title: "Bad Request", subtitle: "Invalid id" };
-      return NextResponse.json(response, { status: 400 });
-    }
     const session = await getServerSession(authOptions);
     if (!session) {
       response.error = {
-        title: "This document is private",
-        subtitle: "Please sign in to Edit it",
+        title: "Unauthorized",
+        subtitle: "Please sign in to update your post",
       };
       return NextResponse.json(response, { status: 401 });
     }
@@ -105,99 +103,57 @@ export async function PATCH(
       };
       return NextResponse.json(response, { status: 403 });
     }
+    
     const userPost = await findUserPost(params.id);
     if (!userPost) {
-      response.error = { title: "Document not found" };
+      response.error = { title: "Post not found" };
       return NextResponse.json(response, { status: 404 });
     }
-    if (user.id !== userPost.author.id) {
+    
+    const isAuthor = user.id === userPost.author.id;
+    if (!isAuthor) {
       response.error = {
-        title: "This document is private",
-        subtitle: "You are not authorized to Edit this document",
+        title: "Unauthorized",
+        subtitle: "You are not authorized to update this post",
       };
       return NextResponse.json(response, { status: 403 });
     }
-
-    const body: DocumentUpdateInput = await request.json();
+    
+    const body = await request.json() as DocumentUpdateInput;
     if (!body) {
       response.error = {
         title: "Bad Request",
-        subtitle: "Invalid request body",
+        subtitle: "No post data provided",
       };
       return NextResponse.json(response, { status: 400 });
     }
 
     const input: Prisma.DocumentUncheckedUpdateInput = {
       name: body.name,
-      head: body.head,
-      handle: body.handle,
       updatedAt: body.updatedAt,
       published: body.published,
-      collab: body.collab,
       private: body.private,
-      parentId: body.parentId,
-      background_image: body.background_image,
-      sort_order: body.sort_order,
-      status: body.status,
+      // Ensure type remains DOCUMENT for posts
+      type: DocumentType.DOCUMENT,
+      // Remove domain/directory hierarchy
+      parentId: null,
     };
-
-    if (body.handle && body.handle !== userPost.handle) {
-      input.handle = body.handle.toLowerCase();
-      const validationError = await validateHandle(input.handle);
-      if (validationError) {
-        response.error = validationError;
-        return NextResponse.json(response, { status: 400 });
+    
+    if (body.handle !== undefined) {
+      if (body.handle === null) {
+        input.handle = null;
+      } else {
+        input.handle = body.handle.toLowerCase();
+        const validationError = await validateHandle(input.handle);
+        if (validationError) {
+          response.error = validationError;
+          return NextResponse.json(response, { status: 400 });
+        }
       }
     }
 
-    if (body.coauthors) {
-      const documentId = params.id;
-      const userEmails = body.coauthors;
-      const InvalidEmails = userEmails.filter((email) =>
-        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-      );
-      if (InvalidEmails.length > 0) {
-        response.error = {
-          title: "Invalid Coauther Email",
-          subtitle: "One or more emails are invalid",
-        };
-        return NextResponse.json(response, { status: 400 });
-      }
-      input.coauthors = {
-        deleteMany: {
-          userEmail: { notIn: userEmails },
-        },
-        upsert: userEmails.map((userEmail) => ({
-          where: { documentId_userEmail: { documentId, userEmail } },
-          update: {},
-          create: {
-            user: {
-              connectOrCreate: {
-                where: { email: userEmail },
-                create: {
-                  name: userEmail.split("@")[0],
-                  email: userEmail,
-                },
-              },
-            },
-          },
-        })),
-      };
-    }
-
-    if (body.data) {
-      input.revisions = {
-        connectOrCreate: {
-          where: { id: body.head },
-          create: {
-            id: body.head,
-            authorId: user.id,
-            createdAt: body.updatedAt,
-            data: body.data as unknown as Prisma.InputJsonObject,
-          },
-        },
-      };
-    }
+    // Remove coauthor complexity for simple blog structure
+    // if (body.coauthors !== undefined) { ... }
 
     response.data = await updatePost(params.id, input);
     return NextResponse.json(response, { status: 200 });
@@ -218,15 +174,11 @@ export async function DELETE(
   const params = await props.params;
   const response: DeleteDocumentResponse = {};
   try {
-    if (!validate(params.id)) {
-      response.error = { title: "Bad Request", subtitle: "Invalid id" };
-      return NextResponse.json(response, { status: 400 });
-    }
     const session = await getServerSession(authOptions);
     if (!session) {
       response.error = {
-        title: "This document is private",
-        subtitle: "Please sign in to delete it",
+        title: "Unauthorized",
+        subtitle: "Please sign in to delete your post",
       };
       return NextResponse.json(response, { status: 401 });
     }
@@ -238,18 +190,22 @@ export async function DELETE(
       };
       return NextResponse.json(response, { status: 403 });
     }
+    
     const userPost = await findUserPost(params.id);
     if (!userPost) {
-      response.error = { title: "Document not found" };
+      response.error = { title: "Post not found" };
       return NextResponse.json(response, { status: 404 });
     }
-    if (user.id !== userPost.author.id) {
+    
+    const isAuthor = user.id === userPost.author.id;
+    if (!isAuthor) {
       response.error = {
-        title: "This document is private",
-        subtitle: "You are not authorized to delete this document",
+        title: "Unauthorized",
+        subtitle: "You are not authorized to delete this post",
       };
       return NextResponse.json(response, { status: 403 });
     }
+    
     await deletePost(params.id);
     response.data = params.id;
     return NextResponse.json(response, { status: 200 });

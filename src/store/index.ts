@@ -31,7 +31,17 @@ import {
   updateCloudDocument,
   updateLocalDocument,
   updateUser,
+  // New post and series actions
+  loadPosts,
+  createPost,
+  updatePost,
+  deletePost,
+  loadSeries,
+  createSeries,
+  updateSeries,
+  deleteSeries,
 } from "./app";
+// Temporary: keep domain imports for backward compatibility during migration
 import { deleteDomain, fetchUserDomains, reorderDomains } from "./app/domains";
 import { Action, configureStore, ThunkAction } from "@reduxjs/toolkit";
 
@@ -71,6 +81,17 @@ export const actions = {
   getCloudDocumentThumbnail,
   getDocumentById,
 
+  // New post and series actions
+  loadPosts,
+  createPost,
+  updatePost,
+  deletePost,
+  loadSeries,
+  createSeries,
+  updateSeries,
+  deleteSeries,
+
+  // Temporary: keep domain actions for backward compatibility during migration
   fetchUserDomains,
   deleteDomain,
   reorderDomains,

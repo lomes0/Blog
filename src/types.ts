@@ -18,7 +18,9 @@ export interface Announcement {
 export interface AppState {
   user?: User;
   documents: UserDocument[];
-  domains: Domain[];
+  posts: UserPost[]; // New: posts state for blog structure
+  series: Series[]; // New: series state for blog structure
+  domains: any[]; // Temporary: keep for backward compatibility during migration
   ui: {
     announcements: Announcement[];
     alerts: Alert[];
@@ -45,7 +47,7 @@ export type EditorDocument = {
   handle?: string | null;
   baseId?: string | null;
   parentId?: string | null;
-  domainId?: string | null;
+  domainId?: string | null; // Temporary: keep for backward compatibility during migration
   type: DocumentType;
   status?: DocumentStatus;
   revisions?: EditorDocumentRevision[];
@@ -87,6 +89,7 @@ export type Document = Omit<EditorDocument, "data"> & {
   children?: Document[]; // Child documents (for directories)
   // Ensure parentId is explicitly included since it's in the database schema
   parentId?: string | null;
+  domainId?: string | null; // Temporary: keep for backward compatibility during migration
   // Legacy field kept for backward compatibility
   directory?: { id: string; documentId: string; sort_order?: number | null };
 };
@@ -110,7 +113,57 @@ export interface Domain {
   order?: number;
 }
 
+// New types for blog structure
+export interface Series {
+  id: string;
+  title: string;
+  description?: string | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  authorId: string;
+  author: User;
+  posts: Post[];
+}
+
+export interface Post {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  published: boolean;
+  authorId: string;
+  author: User;
+  seriesId?: string | null;
+  series?: Series | null;
+  seriesOrder?: number | null;
+  revisions: PostRevision[];
+}
+
+// Series input types
+export interface SeriesCreateInput {
+  id: string;
+  title: string;
+  description?: string;
+  authorId: string;
+}
+
+export interface SeriesUpdateInput {
+  title?: string;
+  description?: string;
+}
+
+// Transform existing types for compatibility during migration
+export type PostRevision = DocumentRevision;
+export type EditorPost = EditorDocument;
+
 export type CloudDocument = Document; // Cloud documents are the same as regular documents
+export type UserPost = {
+  id: string;
+  local?: EditorPost;
+  cloud?: Post;
+}; // Post can be local, cloud, or both
+
 export type UserDocument = {
   id: string;
   local?: EditorDocument;
@@ -119,6 +172,7 @@ export type UserDocument = {
 export type BackupDocument = EditorDocument & {
   revisions: EditorDocumentRevision[];
   parentId?: string | null; // Explicitly include parentId for consistency
+  domainId?: string | null; // Temporary: keep for backward compatibility during migration
 };
 
 export type DocumentCreateInput = EditorDocument & {
@@ -127,7 +181,7 @@ export type DocumentCreateInput = EditorDocument & {
   collab?: boolean;
   private?: boolean;
   baseId?: string | null;
-  domainId?: string | null;
+  domainId?: string | null; // Temporary: keep for backward compatibility during migration
   revisions?: EditorDocumentRevision[];
 };
 
@@ -138,6 +192,7 @@ export type DocumentUpdateInput = Partial<EditorDocument> & {
   private?: boolean;
   baseId?: string | null;
   parentId?: string | null; // Explicitly include parentId for updates
+  domainId?: string | null; // Temporary: keep for backward compatibility during migration
   revisions?: EditorDocumentRevision[];
   background_image?: string | null;
   sort_order?: number | null;
@@ -263,4 +318,47 @@ export interface DeleteRevisionResponse {
 export interface Pix2textResponse {
   data?: { generated_text: string };
   error?: { title: string; subtitle?: string };
+}
+
+// New response types for blog structure
+export interface GetPostsResponse {
+  data?: UserPost[];
+  error?: { title: string; subtitle?: string };
+}
+
+export interface PostPostsResponse {
+  data?: UserPost;
+  error?: { title: string; subtitle?: string };
+}
+
+export interface GetPostResponse {
+  data?: UserPost;
+  error?: { title: string; subtitle?: string };
+}
+
+export interface GetSeriesResponse {
+  data?: Series[];
+  error?: { title: string; subtitle?: string };
+}
+
+export interface PostSeriesResponse {
+  data?: Series;
+  error?: { title: string; subtitle?: string };
+}
+
+// New input types for blog structure
+export interface PostCreateInput {
+  title: string;
+  content?: string;
+  published?: boolean;
+  seriesId?: string;
+  seriesOrder?: number;
+}
+
+export interface PostUpdateInput {
+  title?: string;
+  content?: string;
+  published?: boolean;
+  seriesId?: string;
+  seriesOrder?: number;
 }
