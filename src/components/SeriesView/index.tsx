@@ -157,11 +157,6 @@ const SeriesView: React.FC<SeriesViewProps> = ({
                       <DocumentCard
                         userDocument={userDocument}
                         user={user}
-                        cardConfig={{
-                          showAuthor: false,
-                          showSortOrder: false,
-                          showPermissionChips: true,
-                        }}
                       />
                     </Box>
                   </Grid>

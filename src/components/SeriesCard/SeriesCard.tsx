@@ -43,7 +43,7 @@ const SeriesCard: React.FC<SeriesCardProps> = memo(({
 }) => {
   // Apply default configuration with overrides
   const config = useMemo(() => ({
-    minHeight: cardConfig.minHeight || cardTheme.minHeight.document,
+    minHeight: cardConfig.minHeight || cardTheme.minHeight.post,
     showAuthor: cardConfig.showAuthor !== false,
     maxStatusChips: cardConfig.maxStatusChips,
     showSortOrder: cardConfig.showSortOrder !== false,
@@ -185,12 +185,10 @@ const SeriesCard: React.FC<SeriesCardProps> = memo(({
       topContent={topContent}
       chipContent={chipContent}
       actionContent={actionContent}
-      minHeight={config.minHeight}
-      className="series-card"
       ariaLabel={ariaLabel}
-      sx={sx}
-      contentProps={{
-        showSubheaderSpace: false,
+      sx={{
+        minHeight: config.minHeight,
+        ...sx,
       }}
     />
   );

@@ -5,8 +5,8 @@ import Typography from "@mui/material/Typography";
 import { useTheme } from "@mui/material/styles";
 import { useMediaQuery } from "@mui/material";
 import { User, UserDocument } from "@/types";
-import DraggableDocumentCard from "./DocumentCard/DraggableDocumentCard";
-import SkeletonCard from "./DocumentCard/SkeletonCard";
+import DraggableDocumentCard from "./DocumentCard/DraggablePostCard";
+import SkeletonCard from "./DocumentCard/PostSkeleton";
 import { SxProps, Theme } from "@mui/material/styles";
 import { cardTheme } from "./DocumentCard/theme";
 import { useResponsiveDocumentGrid } from "./DocumentGrid/hooks/useResponsiveDocumentGrid";
@@ -211,7 +211,7 @@ const DocumentGrid: React.FC<DocumentGridProps> = ({
       sx={{
         display: "flex",
         flexDirection: "column",
-        gap: cardTheme.spacing.cardGap,
+        gap: 3, // Using MUI spacing scale instead of cardTheme.spacing.cardGap
         width: "100%",
         // Improved responsive spacing
         [theme.breakpoints.down("sm")]: {

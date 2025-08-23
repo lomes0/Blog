@@ -1,64 +1,36 @@
 "use client";
 import * as React from "react";
-import { DocumentType, User, UserDocument } from "@/types";
+import { User, UserDocument } from "@/types";
 import { memo } from "react";
 import { SxProps, Theme } from "@mui/material/styles";
-import DocumentCard from "./DocumentCard";
-import DirectoryCard from "./DirectoryCard";
+import PostCard from "./PostCard";
 
-// Main component that decides whether to render a document or directory card
-const CardSelector: React.FC<
-  {
-    userDocument?: UserDocument;
-    user?: User;
-    sx?: SxProps<Theme>;
-    cardConfig?: {
-      minHeight?: string;
-      showAuthor?: boolean;
-      maxStatusChips?: number;
-      showSortOrder?: boolean;
-      showPermissionChips?: boolean;
-    };
-  }
-> = memo(({ userDocument, user, sx = {}, cardConfig = {} }) => {
-  // Apply default size to all cards
+// Simplified card wrapper - no more document/directory routing
+const PostCardWrapper: React.FC<{
+  userDocument?: UserDocument;
+  user?: User;
+  sx?: SxProps<Theme>;
+}> = memo(({ userDocument, user, sx = {} }) => {
+  // Apply default responsive styles
   const defaultSx: SxProps<Theme> = {
-    width: "100%", // Make cards take full width of their grid cell
-    height: "100%", // Make sure card takes full height
-    margin: 0, // Reset margin to allow Grid spacing to work
+    width: "100%",
+    height: "100%",
+    margin: 0,
     display: "flex",
     flexDirection: "column",
   };
 
-  // Combine with any additional styles
   const combinedSx: SxProps<Theme> = { ...defaultSx, ...(sx as any) };
 
-  // Early return for loading state
-  if (!userDocument) {
-    return (
-      <DocumentCard
-        userDocument={undefined}
-        user={user}
-        sx={combinedSx}
-        cardConfig={cardConfig}
-      />
-    );
-  }
-
-  const document = userDocument.local || userDocument.cloud;
-
-  // In blog structure, we only have documents (no directories)
   return (
-    <DocumentCard
+    <PostCard
       userDocument={userDocument}
       user={user}
       sx={combinedSx}
-      cardConfig={cardConfig}
     />
   );
 });
 
-// Set display name for debugging
-CardSelector.displayName = "CardSelector";
+PostCardWrapper.displayName = "PostCardWrapper";
 
-export default CardSelector;
+export default PostCardWrapper;
