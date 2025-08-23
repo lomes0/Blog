@@ -36,7 +36,6 @@ import UploadDocument from "./Upload";
 import UsersAutocomplete from "../User/UsersAutocomplete";
 import useOnlineStatus from "@/hooks/useOnlineStatus";
 import BackgroundImageUploader from "../BackgroundImageUploader";
-import FetchDomains from "../Domain/FetchDomains";
 
 const EditDocument: React.FC<
   {
@@ -372,26 +371,6 @@ const EditDocument: React.FC<
                     updateInput({ sort_order: value });
                   }}
                   helperText="Items with sort order > 0 will appear first, sorted by this value. Leave empty for default sorting."
-                />
-              </>
-            )}
-
-            {/* Domain selection for both documents and directories */}
-            {isAuthor && (
-              <>
-                <Divider sx={{ my: 2 }} />
-                <Typography
-                  variant="subtitle2"
-                  color="text.secondary"
-                  gutterBottom
-                >
-                  Domain Options
-                </Typography>
-                <FetchDomains
-                  userId={user?.id || ""}
-                  value={input.domainId || ""}
-                  onChange={(domainId) =>
-                    updateInput({ domainId: domainId || null })}
                 />
               </>
             )}

@@ -20,9 +20,9 @@ import LoadingState from "./components/LoadingState";
 import ErrorState from "./components/ErrorState";
 
 interface DocumentBrowserProps {
-  directoryId?: string;
-  domainId?: string;
-  domainInfo?: any; // Domain information with user details
+  directoryId?: string; // Keep for compatibility but unused in blog structure
+  domainId?: string; // Keep for compatibility but unused in blog structure
+  domainInfo?: any; // Keep for compatibility but unused in blog structure
 }
 
 const DocumentBrowser: React.FC<DocumentBrowserProps> = ({
@@ -55,30 +55,14 @@ const DocumentBrowser: React.FC<DocumentBrowserProps> = ({
     domainInfo,
   });
 
-  // Function to get the correct URL for a document or directory
+  // Function to get the correct URL for a blog post
   const getDocumentUrl = useMemo(() => {
     return (doc: UserDocument) => {
       const docId = doc.id;
-      const document = doc.local || doc.cloud;
-      const isDir = document?.type === "DIRECTORY";
-
-      // If we're in a domain context
-      if (domainInfo) {
-        if (isDir) {
-          return `/domains/${domainInfo.slug}/browse/${docId}`;
-        } else {
-          return `/domains/${domainInfo.slug}/view/${docId}`;
-        }
-      }
-
-      // Default personal documents URL
-      if (isDir) {
-        return `/browse/${docId}`;
-      } else {
-        return `/view/${docId}`;
-      }
+      // In blog structure, all posts use the same URL pattern
+      return `/view/${docId}`;
     };
-  }, [domainInfo]);
+  }, []);
 
   // Apply sorting to the filtered results
   const sortedDirectories = useMemo(
@@ -96,11 +80,10 @@ const DocumentBrowser: React.FC<DocumentBrowserProps> = ({
     return <LoadingState />;
   }
 
-  if (directoryId && !currentDirectory) {
-    return <ErrorState directoryId={directoryId} domainInfo={domainInfo} />;
-  }
+  // In blog structure, we don't expect directory navigation errors
+  // Remove the directory not found check
 
-  const hasNoItems = directories.length === 0 && regularDocuments.length === 0;
+  const hasNoItems = regularDocuments.length === 0; // No directories in blog structure
 
   return (
     <DragProvider>
@@ -187,23 +170,13 @@ const DocumentBrowser: React.FC<DocumentBrowserProps> = ({
                       transition: "opacity 0.5s ease-in-out",
                     }}
                   >
-                    {/* Display directories section */}
-                    {sortedDirectories.length > 0 && (
-                      <DocumentGrid
-                        items={sortedDirectories}
-                        user={user}
-                        currentDirectoryId={directoryId}
-                        title="Folders"
-                      />
-                    )}
-
-                    {/* Display documents section */}
+                    {/* Display blog posts section */}
                     {sortedDocuments.length > 0 && (
                       <DocumentGrid
                         items={sortedDocuments}
                         user={user}
                         currentDirectoryId={directoryId}
-                        title="Documents"
+                        title="Posts"
                       />
                     )}
                   </Box>

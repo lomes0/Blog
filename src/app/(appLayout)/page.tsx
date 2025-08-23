@@ -1,5 +1,5 @@
 import Home from "@/components/Home";
-import { findPublishedDocuments } from "@/repositories/document";
+import { findPublishedPosts } from "@/repositories/post";
 import { UserDocument } from "@/types";
 import type { Metadata } from "next";
 import { findRevisionThumbnail } from "../api/utils";
@@ -12,15 +12,15 @@ export const metadata: Metadata = {
 };
 
 const page = async () => {
-  const publishedDocuments = await findPublishedDocuments(12);
-  const staticDocuments: UserDocument[] = publishedDocuments.map(
-    (document) => ({
-      id: document.id,
-      cloud: document,
+  const publishedPosts = await findPublishedPosts(12);
+  const staticDocuments: UserDocument[] = publishedPosts.map(
+    (post) => ({
+      id: post.id,
+      cloud: post,
     }),
   );
-  const staticThumbnails = publishedDocuments.reduce((acc, document) => {
-    acc[document.head] = findRevisionThumbnail(document.head);
+  const staticThumbnails = publishedPosts.reduce((acc, post) => {
+    acc[post.head] = findRevisionThumbnail(post.head);
     return acc;
   }, {} as Record<string, Promise<string | null>>);
   return (

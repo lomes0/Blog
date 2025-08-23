@@ -1,6 +1,6 @@
 import { OgMetadata } from "@/app/api/og/route";
 import type { Metadata } from "next";
-import { findPublishedDocumentsByAuthorId } from "@/repositories/document";
+import { findPublishedPostsByAuthorId } from "@/repositories/post";
 import { notFound } from "next/navigation";
 import { findUser } from "@/repositories/user";
 import { cache, Suspense } from "react";
@@ -12,7 +12,7 @@ import { sortDocuments } from "@/components/DocumentControls/sortDocuments";
 
 const getCachedUser = cache(async (id: string) => await findUser(id));
 const getCachedUserDocuments = cache(async (id: string) =>
-  await findPublishedDocumentsByAuthorId(id)
+  await findPublishedPostsByAuthorId(id)
 );
 
 export async function generateMetadata(
@@ -65,10 +65,10 @@ const UserDocumentsWrapper = async (
 ) => {
   const user = await getCachedUser(id);
   if (!user) notFound();
-  const documentsResponse = await getCachedUserDocuments(user.id);
-  const documents = documentsResponse.map((document) => ({
-    id: document.id,
-    cloud: document,
+  const postsResponse = await getCachedUserDocuments(user.id);
+  const documents = postsResponse.map((post) => ({
+    id: post.id,
+    cloud: post,
   }));
   const pageSize = 12;
   const pages = Math.ceil(documents.length / pageSize);

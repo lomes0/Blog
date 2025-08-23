@@ -26,6 +26,7 @@ import {
   Category,
   Cloud,
   Delete,
+  Edit,
   LibraryBooks,
   Login,
   Storage,
@@ -56,19 +57,19 @@ const Dashboard: React.FC = () => {
               component="h2"
               sx={{ display: "flex", alignItems: "center" }}
             >
-              <LibraryBooks sx={{ mr: 1 }} /> Domains
+              <LibraryBooks sx={{ mr: 1 }} /> Blog Content
             </Typography>
             <Button
               variant="contained"
               size="small"
               startIcon={<Add />}
-              onClick={() => router.push("/domains/new")}
+              onClick={() => router.push("/new")}
             >
-              New Domain
+              New Post
             </Button>
           </Box>
           <Divider sx={{ mb: 2 }} />
-          <DomainsSection />
+          <BlogStatsSection />
         </Paper>
       )}
 
@@ -346,231 +347,148 @@ const StorageChart: React.FC = () => {
   );
 };
 
-const DomainsSection: React.FC = () => {
-  const [domains, setDomains] = useState<any[]>([]);
+const BlogStatsSection: React.FC = () => {
+  const [stats, setStats] = useState({
+    posts: 0,
+    series: 0,
+    publishedPosts: 0,
+    draftPosts: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const dispatch = useDispatch();
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [domainToDelete, setDomainToDelete] = useState<any>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [snackbar, setSnackbar] = useState<{
-    open: boolean;
-    message: string;
-    severity: "success" | "error";
-  }>({
-    open: false,
-    message: "",
-    severity: "success",
-  });
+  const user = useSelector((state) => state.user);
 
-  const fetchDomains = async () => {
+  const fetchStats = async () => {
+    if (!user) return;
+    
     try {
       setLoading(true);
-      const response = await fetch("/api/domains");
+      
+      // Fetch user posts (documents with type DOCUMENT)
+      const postsResponse = await fetch(`/api/documents?authorId=${user.id}`);
+      const postsData = await postsResponse.json();
+      const userPosts = postsData.data || [];
+      
+      // Fetch user series (documents with type DIRECTORY)  
+      const seriesResponse = await fetch(`/api/series?authorId=${user.id}`);
+      const seriesData = await seriesResponse.json();
+      const userSeries = seriesData.data || [];
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch domains");
-      }
-
-      const data = await response.json();
-      setDomains(data);
+      setStats({
+        posts: userPosts.length,
+        series: userSeries.length,
+        publishedPosts: userPosts.filter((post: any) => post.published).length,
+        draftPosts: userPosts.filter((post: any) => !post.published).length,
+      });
       setError(null);
     } catch (err) {
-      setError("Failed to load domains");
-      console.error("Error fetching domains:", err);
+      setError("Failed to load blog statistics");
+      console.error("Error fetching blog stats:", err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchDomains();
-  }, []);
-
-  const handleDeleteClick = (e: React.MouseEvent, domain: any) => {
-    e.stopPropagation(); // Prevent card click (navigation) when clicking delete button
-    setDomainToDelete(domain);
-    setDeleteDialogOpen(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!domainToDelete) return;
-
-    try {
-      setIsDeleting(true);
-      const result = await dispatch(actions.deleteDomain(domainToDelete.id))
-        .unwrap();
-
-      // Show success message
-      setSnackbar({
-        open: true,
-        message:
-          `Domain "${domainToDelete.name}" and all its documents have been deleted`,
-        severity: "success",
-      });
-
-      // Refresh domains list after successful deletion
-      await fetchDomains();
-      setDeleteDialogOpen(false);
-    } catch (err: any) {
-      console.error("Error deleting domain:", err);
-      setSnackbar({
-        open: true,
-        message: err.subtitle || err.message || "Failed to delete domain",
-        severity: "error",
-      });
-    } finally {
-      setIsDeleting(false);
-      setDomainToDelete(null);
-    }
-  };
+    fetchStats();
+  }, [user]);
 
   if (loading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-        <CircularProgress />
+      <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
+        <CircularProgress size={24} />
       </Box>
     );
   }
 
   if (error) {
     return (
-      <Box sx={{ py: 2 }}>
-        <Typography color="error">{error}</Typography>
-      </Box>
-    );
-  }
-
-  if (domains.length === 0) {
-    return (
-      <Box sx={{ textAlign: "center", py: 4 }}>
-        <Typography variant="body1" color="text.secondary" gutterBottom>
-          You haven't created any domains yet.
-        </Typography>
-        <Button
-          variant="outlined"
-          startIcon={<Add />}
-          component={Link}
-          href="/domains/new"
-          sx={{ mt: 1 }}
-        >
-          Create your first domain
-        </Button>
-      </Box>
+      <Alert severity="error" sx={{ mb: 2 }}>
+        {error}
+      </Alert>
     );
   }
 
   return (
-    <>
-      <Grid container spacing={2}>
-        {domains.map((domain) => (
-          <Grid key={domain.id} size={{ xs: 12, sm: 6, md: 4 }}>
-            <Card
-              sx={{
-                p: 2,
-                transition: "transform 0.2s, box-shadow 0.2s",
-                "&:hover": {
-                  transform: "translateY(-4px)",
-                  boxShadow: 4,
-                },
-                position: "relative",
-              }}
-            >
-              <Box
-                sx={{
-                  cursor: "pointer",
-                }}
-                onClick={() =>
-                  router.push(`/domains/${domain.slug}`)}
-              >
-                <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-                  <Typography variant="h6" component="h3" noWrap>
-                    {domain.name}
-                  </Typography>
-                </Box>
-                {domain.description && (
-                  <Typography variant="body2" color="text.secondary" noWrap>
-                    {domain.description}
-                  </Typography>
-                )}
-              </Box>
-              <IconButton
-                size="small"
-                color="error"
-                sx={{
-                  position: "absolute",
-                  top: 8,
-                  right: 8,
-                  opacity: 0.7,
-                  "&:hover": {
-                    opacity: 1,
-                    backgroundColor: "rgba(211, 47, 47, 0.04)",
-                  },
-                }}
-                onClick={(e) =>
-                  handleDeleteClick(e, domain)}
-                aria-label={`Delete domain ${domain.name}`}
-              >
-                <Delete fontSize="small" />
-              </IconButton>
-            </Card>
-          </Grid>
-        ))}
+    <Grid container spacing={2}>
+      <Grid size={{ xs: 6, sm: 3 }}>
+        <Card sx={{ textAlign: "center", p: 2 }}>
+          <Typography variant="h4" color="primary.main">
+            {stats.posts}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Total Posts
+          </Typography>
+        </Card>
+      </Grid>
+      
+      <Grid size={{ xs: 6, sm: 3 }}>
+        <Card sx={{ textAlign: "center", p: 2 }}>
+          <Typography variant="h4" color="success.main">
+            {stats.publishedPosts}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Published
+          </Typography>
+        </Card>
+      </Grid>
+      
+      <Grid size={{ xs: 6, sm: 3 }}>
+        <Card sx={{ textAlign: "center", p: 2 }}>
+          <Typography variant="h4" color="warning.main">
+            {stats.draftPosts}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Drafts
+          </Typography>
+        </Card>
+      </Grid>
+      
+      <Grid size={{ xs: 6, sm: 3 }}>
+        <Card sx={{ textAlign: "center", p: 2 }}>
+          <Typography variant="h4" color="info.main">
+            {stats.series}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Series
+          </Typography>
+        </Card>
       </Grid>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={() => !isDeleting && setDeleteDialogOpen(false)}
-        aria-labelledby="alert-dialog-title"
-        aria-describedby="alert-dialog-description"
-      >
-        <DialogTitle id="alert-dialog-title">
-          Delete Domain
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText id="alert-dialog-description">
-            Are you sure you want to delete the domain "{domainToDelete?.name}"?
-            This will permanently delete the domain and all documents within it.
-            This action cannot be undone.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
+      {/* Quick Actions */}
+      <Grid size={12}>
+        <Box sx={{ display: "flex", gap: 2, mt: 2, flexWrap: "wrap" }}>
           <Button
-            onClick={() => setDeleteDialogOpen(false)}
-            disabled={isDeleting}
+            variant="outlined"
+            startIcon={<Edit />}
+            onClick={() => router.push("/new")}
+            size="small"
           >
-            Cancel
+            Write New Post
           </Button>
+          
           <Button
-            onClick={handleDeleteConfirm}
-            color="error"
-            autoFocus
-            disabled={isDeleting}
+            variant="outlined"
+            startIcon={<Category />}
+            onClick={() => router.push("/series/new")}
+            size="small"
           >
-            {isDeleting ? "Deleting..." : "Delete"}
+            Create Series
           </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Snackbar for notifications */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
-        <Alert
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-          severity={snackbar.severity}
-          variant="filled"
-          sx={{ width: "100%" }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </>
+          
+          <Button
+            variant="outlined"
+            startIcon={<LibraryBooks />}
+            onClick={() => router.push("/dashboard/posts")}
+            size="small"
+          >
+            Manage Posts
+          </Button>
+        </Box>
+      </Grid>
+    </Grid>
   );
 };
+
+

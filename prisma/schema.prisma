@@ -8,6 +8,7 @@ datasource db {
 }
 
 // Simple Domain model for grouping documents by subject
+// TODO: Remove after blog migration is complete
 model Domain {
   id          String   @id @default(uuid()) @db.Uuid
   slug        String   @unique // For URL friendly identifiers
@@ -29,7 +30,25 @@ model Domain {
   @@index([userId, order]) // Compound index for ordered queries by user
 }
 
-// Main content model with hierarchical structure
+// Series model for organizing blog posts
+model Series {
+  id          String   @id @default(uuid()) @db.Uuid
+  title       String
+  description String?
+  createdAt   DateTime @default(now()) @db.Timestamptz
+  updatedAt   DateTime @updatedAt @db.Timestamptz
+  authorId    String   @db.Uuid
+
+  // Relations
+  author User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  posts  Document[] @relation("SeriesPosts")
+
+  @@index([authorId])
+  @@index([title])
+  @@index([authorId, createdAt])
+}
+
+// Main content model with hierarchical structure (used for both posts and directories)
 model Document {
   id        String   @id @default(uuid()) @db.Uuid
   handle    String?  @unique
@@ -39,7 +58,7 @@ model Document {
   authorId  String   @db.Uuid
   published Boolean  @default(false)
   private   Boolean  @default(false)
-  domainId  String?  @db.Uuid // Optional domain association
+  domainId  String?  @db.Uuid // Optional domain association (legacy)
 
   // Document-specific fields
   head   String? @db.Uuid
@@ -51,6 +70,10 @@ model Document {
 
   // Status field for marking documents as active, done, or neutral
   status DocumentStatus @default(NEUTRAL)
+
+  // Series support for blog posts
+  seriesId    String? @db.Uuid
+  seriesOrder Int?    // Order of post within series
 
   // Fork relationship
   baseId String?    @db.Uuid
@@ -70,9 +93,14 @@ model Document {
   coauthors DocumentCoauthers[]
   revisions Revision[]
   domain    Domain?             @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  series    Series?             @relation("SeriesPosts", fields: [seriesId], references: [id], onDelete: SetNull)
 
   @@index([domainId])
   @@index([authorId, domainId]) // Compound index for queries filtering by both author and domain
+  @@index([seriesId])
+  @@index([authorId, published]) // Index for finding user's published posts
+  @@index([published, type]) // Index for finding published posts/documents
+  @@index([seriesId, seriesOrder]) // Index for ordering posts within series
 }
 
 enum DocumentType {
@@ -90,10 +118,13 @@ model Revision {
   id         String   @id @default(uuid()) @db.Uuid
   data       Json
   createdAt  DateTime @default(now())
-  documentId String   @db.Uuid
+  documentId String   @db.Uuid // References posts (Document with type DOCUMENT)
   document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
   authorId   String   @db.Uuid
   author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([authorId])
 }
 
 model User {
@@ -111,9 +142,13 @@ model User {
   accounts      Account[]
   sessions      Session[]
   revisions     Revision[]
-  documents     Document[]
+  documents     Document[] // User's posts and directories
   coauthored    DocumentCoauthers[]
-  domains       Domain[] // User's domains for organizing documents
+  domains       Domain[] // User's domains for organizing documents (legacy)
+  series        Series[] // User's series for organizing blog posts
+
+  @@index([email])
+  @@index([handle])
 }
 
 model DocumentCoauthers {

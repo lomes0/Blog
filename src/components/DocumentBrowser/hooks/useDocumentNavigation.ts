@@ -3,14 +3,14 @@ import { useRouter } from "next/navigation";
 import { useCallback } from "react";
 
 interface UseDocumentNavigationProps {
-  directoryId?: string;
-  domainId?: string;
-  domainInfo?: any; // Domain information including slug
+  directoryId?: string; // Keep for compatibility but unused
+  domainId?: string; // Keep for compatibility but unused
+  domainInfo?: any; // Keep for compatibility but unused
 }
 
 /**
- * Custom hook for document navigation actions
- * Encapsulates URL construction logic and provides consistent navigation
+ * Custom hook for blog post navigation actions
+ * Simplified for blog structure without directories or domains
  */
 export const useDocumentNavigation = (
   { directoryId, domainId, domainInfo }: UseDocumentNavigationProps,
@@ -18,43 +18,15 @@ export const useDocumentNavigation = (
   const router = useRouter();
 
   const createDocument = useCallback(() => {
-    let url = "/new";
-    const params = new URLSearchParams();
-
-    if (directoryId) {
-      params.append("parentId", directoryId);
-    }
-
-    if (domainInfo) {
-      params.append("domain", domainInfo.id);
-    }
-
-    if (params.toString()) {
-      url += `?${params.toString()}`;
-    }
-
-    router.push(url);
-  }, [router, directoryId, domainInfo]);
+    // In blog structure, just navigate to new post creation
+    router.push("/new");
+  }, [router]);
 
   const createDirectory = useCallback(() => {
-    let url = "/new-directory";
-    const params = new URLSearchParams();
-
-    if (directoryId) {
-      url += `/${directoryId}`;
-    }
-
-    if (domainInfo) {
-      params.append("domain", domainInfo.id);
-      params.append("domainSlug", domainInfo.slug);
-    }
-
-    if (params.toString()) {
-      url += `?${params.toString()}`;
-    }
-
-    router.push(url);
-  }, [router, directoryId, domainInfo]);
+    // No directories in blog structure, so this does nothing
+    // Keep for compatibility but don't navigate anywhere
+    console.warn("Directory creation not supported in blog structure");
+  }, []);
 
   return {
     createDocument,

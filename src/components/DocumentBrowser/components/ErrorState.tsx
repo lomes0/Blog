@@ -5,13 +5,13 @@ import { ArrowBack, Folder } from "@mui/icons-material";
 import Link from "next/link";
 
 interface ErrorStateProps {
-  directoryId?: string;
-  domainInfo?: any;
+  directoryId?: string; // Keep for compatibility but unused
+  domainInfo?: any; // Keep for compatibility but unused
 }
 
 /**
- * Error state component shown when directory is not found
- * Provides navigation back to parent or root
+ * Error state component for blog posts
+ * Since we don't have directories in blog structure, this should rarely be used
  */
 const ErrorState: React.FC<ErrorStateProps> = ({ directoryId, domainInfo }) => {
   return (
@@ -41,20 +41,18 @@ const ErrorState: React.FC<ErrorStateProps> = ({ directoryId, domainInfo }) => {
             opacity: 0.6,
           }}
         />
-        <Typography variant="h6">Directory not found</Typography>
+        <Typography variant="h6">Post not found</Typography>
         <Typography variant="body2" color="text.secondary" align="center">
-          {directoryId
-            ? "The directory you're looking for doesn't exist or has been removed."
-            : "The requested directory could not be found."}
+          The blog post you're looking for doesn't exist or has been removed.
         </Typography>
         <Button
           component={Link}
-          href={domainInfo ? `/domains/${domainInfo.slug}` : "/browse"}
+          href="/browse"
           startIcon={<ArrowBack />}
           variant="contained"
           sx={{ borderRadius: 1.5, mt: 2 }}
         >
-          Back to {domainInfo ? `${domainInfo.name}` : "Document Browser"}
+          Back to Posts
         </Button>
       </Box>
     </Container>

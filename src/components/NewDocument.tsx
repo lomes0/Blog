@@ -33,7 +33,6 @@ import { Add, Article } from "@mui/icons-material";
 import useOnlineStatus from "@/hooks/useOnlineStatus";
 import UsersAutocomplete from "./User/UsersAutocomplete";
 import { debounce } from "@mui/material/utils";
-import FetchDomains from "./Domain/FetchDomains";
 import type {
   SerializedParagraphNode,
   SerializedRootNode,
@@ -317,14 +316,6 @@ const NewDocument: React.FC<{ cloudDocument?: CloudDocument }> = (
               ? `https://matheditor.me/view/${input.handle}`
               : "This will be used in the URL of your document"}
           />
-
-          {saveToCloud && user && (
-            <FetchDomains
-              userId={user.id}
-              value={input.domainId || ""}
-              onChange={(value) => updateInput({ domainId: value })}
-            />
-          )}
 
           <FormControlLabel
             control={

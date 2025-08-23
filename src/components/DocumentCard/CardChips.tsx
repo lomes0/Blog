@@ -10,8 +10,9 @@ import {
   Public,
   Security,
   Workspaces,
+  LibraryBooks,
 } from "@mui/icons-material";
-import { DocumentStatus, User } from "@/types";
+import { DocumentStatus, User, Series } from "@/types";
 import { cardTheme } from "./theme";
 
 /**
@@ -64,6 +65,11 @@ interface StatusChipProps {
   /** Author information */
   author?: User | null;
   showAuthor?: boolean;
+
+  /** Series information */
+  series?: Series | null;
+  seriesOrder?: number | null;
+  showSeries?: boolean;
 
   /** Chip customization */
   chipSize?: "small" | "medium";
@@ -144,6 +150,9 @@ export const renderStatusChips = ({
   documentStatus,
   author = null,
   showAuthor = true,
+  series = null,
+  seriesOrder = null,
+  showSeries = true,
   chipSize = "small",
   chipVariant = "outlined",
   sortChipStyles = {},
@@ -300,6 +309,25 @@ export const renderStatusChips = ({
     />
   );
 
+  // Generate series chip
+  const seriesChip = (!showSeries || !series) ? null : createChip({
+    key: "series-chip",
+    icon: <LibraryBooks />,
+    label: seriesOrder ? `${series.title} (#${seriesOrder})` : series.title,
+    size: chipSize,
+    variant: chipVariant,
+    bgColor: "#f3e5f5", // Light purple background
+    borderColor: "#9c27b0", // Purple border
+    textColor: "#7b1fa2", // Dark purple text
+    fontWeight: "bold",
+    pointerEvents: true,
+    onClick: () => {
+      // Navigate to series page
+      window.location.href = `/series/${series.id}`;
+    },
+    ...defaultChipStyles,
+  });
+
   // Generate sort order chip
   const sortOrderChip = !hasSortOrder ? null : createChip({
     key: "sort-order-chip",
@@ -316,6 +344,7 @@ export const renderStatusChips = ({
   return (
     <>
       {displayedStatusChips}
+      {seriesChip}
       {authorChip}
       {sortOrderChip}
     </>

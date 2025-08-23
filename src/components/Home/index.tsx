@@ -424,21 +424,21 @@ const Home: React.FC<{ staticDocuments: UserDocument[] }> = (
   const recentDocuments = filteredDocuments
     .filter((doc) => {
       const document = doc.local || doc.cloud;
-      return document?.type === DocumentType.DOCUMENT;
+      return document?.type === DocumentType.DOCUMENT; // Filter for posts only
     })
     .slice(0, 4);
 
-  // Get orphaned documents and directories (those with null parentId and null domainId)
+  // Get featured series (directories representing series)
   const orphanedItems = filteredDocuments
     .filter((doc) => {
       const document = doc.local || doc.cloud;
       const parentId = document?.parentId;
       const domainId = document?.domainId;
 
-      // Check if both parentId and domainId are null
-      return parentId === null && domainId === null;
+      // Show directories (series) that are not nested and have no domain
+      return document?.type === DocumentType.DIRECTORY && parentId === null && domainId === null;
     })
-    .slice(0, 8); // Limit to 8 items for display
+    .slice(0, 8); // Limit to 8 series for display
 
   return (
     <DragProvider>
@@ -459,15 +459,15 @@ const Home: React.FC<{ staticDocuments: UserDocument[] }> = (
         >
           <Box sx={{ mb: { xs: 2, md: 0 } }}>
             <Typography variant="h4" component="h1" gutterBottom>
-              Welcome
+              Welcome to Our Blog
             </Typography>
             <Typography
               variant="body1"
               color="text.secondary"
               sx={{ maxWidth: 600 }}
             >
-              Create, edit, and share mathematical documents with ease. Our
-              editor supports LaTeX, diagrams, and collaborative editing.
+              Discover and share knowledge through engaging posts and series. 
+              Create rich content with LaTeX, diagrams, and collaborative editing.
             </Typography>
           </Box>
           <Box sx={{ display: "flex", gap: 2 }}>
@@ -477,14 +477,14 @@ const Home: React.FC<{ staticDocuments: UserDocument[] }> = (
               startIcon={<Add />}
               onClick={handleCreateDocument}
             >
-              New Document
+              New Post
             </Button>
             <Button
               variant="outlined"
-              startIcon={<Add />}
+              startIcon={<Folder />}
               onClick={handleCreateDirectory}
             >
-              New Directory
+              New Series
             </Button>
           </Box>
         </Paper>
@@ -530,11 +530,11 @@ const Home: React.FC<{ staticDocuments: UserDocument[] }> = (
           </Box>
         </Box>
 
-        {/* Recent Documents section */}
+        {/* Recent Posts section */}
         {recentDocuments.length > 0 && (
           <>
             <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
-              Recent Documents
+              Recent Posts
             </Typography>
             <Grid container spacing={3} sx={{ mb: 4 }}>
               {recentDocuments.map((document) => (
@@ -558,11 +558,11 @@ const Home: React.FC<{ staticDocuments: UserDocument[] }> = (
           </>
         )}
 
-        {/* Orphaned Items section */}
+        {/* Featured Series section */}
         {orphanedItems.length > 0 && (
           <>
             <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
-              Orphaned Items
+              Featured Series
             </Typography>
             <Grid container spacing={3} sx={{ mb: 4 }}>
               {orphanedItems.map((document) => (

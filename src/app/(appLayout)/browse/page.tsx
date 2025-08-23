@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 import DocumentBrowser from "@/components/DocumentBrowser";
 
 export const metadata: Metadata = {
-  title: "Personal Documents | Editor",
-  description:
-    "Browse, organize, and manage your personal documents and folders outside of domains",
+  title: "Browse Posts | Blog",
+  description: "Browse and search through all your blog posts and content",
 };
 
 // Use the default export async function pattern

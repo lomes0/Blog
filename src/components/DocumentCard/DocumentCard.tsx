@@ -138,6 +138,10 @@ const DocumentCard: React.FC<DocumentCardProps> = memo(({
   const chipContent = useMemo(() => {
     if (isLoading) return renderSkeletonChips({});
 
+    // Check if this is a post with series information
+    const cloudDoc = documentState.cloudDocument as any; // Type assertion for series fields
+    const hasSeriesInfo = cloudDoc?.seriesId || cloudDoc?.series;
+
     return renderStatusChips({
       isLocalOnly: documentState.isLocalOnly,
       isUploaded: documentState.isUploaded,
@@ -152,6 +156,9 @@ const DocumentCard: React.FC<DocumentCardProps> = memo(({
       sortOrderValue,
       author,
       showAuthor: config.showAuthor,
+      series: hasSeriesInfo ? cloudDoc?.series : null,
+      seriesOrder: hasSeriesInfo ? cloudDoc?.seriesOrder : null,
+      showSeries: hasSeriesInfo,
       statusChipCount: config.maxStatusChips,
     });
   }, [

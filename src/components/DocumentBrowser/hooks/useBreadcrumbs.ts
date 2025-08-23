@@ -8,38 +8,16 @@ interface BreadcrumbItem {
 }
 
 /**
- * Custom hook to build breadcrumb navigation efficiently
- * Memoized to prevent unnecessary recalculations
+ * Custom hook for breadcrumb navigation in blog structure
+ * Returns empty array since we don't have directory navigation in blogs
  */
 export const useBreadcrumbs = (
   directoryId: string | undefined,
   documents: UserDocument[],
 ): BreadcrumbItem[] => {
   return useMemo(() => {
-    if (!directoryId) return [];
-
-    const buildBreadcrumbs = (
-      docId: string,
-      trail: BreadcrumbItem[] = [],
-    ): BreadcrumbItem[] => {
-      const doc = documents.find((d) =>
-        d.local?.id === docId || d.cloud?.id === docId
-      );
-
-      if (!doc) return trail;
-
-      const name = doc.local?.name || doc.cloud?.name || "";
-      const parentId = doc.local?.parentId || doc.cloud?.parentId;
-
-      const newTrail = [{ id: docId, name }, ...trail];
-
-      if (parentId) {
-        return buildBreadcrumbs(parentId, newTrail);
-      }
-
-      return newTrail;
-    };
-
-    return buildBreadcrumbs(directoryId);
-  }, [directoryId, documents]);
+    // In blog structure, we don't have directory navigation
+    // So we always return an empty breadcrumb trail
+    return [];
+  }, []); // No dependencies needed since we always return empty array
 };

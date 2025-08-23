@@ -4,15 +4,15 @@ import { Box, Button, Paper, Typography } from "@mui/material";
 import { CreateNewFolder, Folder, PostAdd } from "@mui/icons-material";
 
 interface EmptyStateProps {
-  directoryId?: string;
-  domainInfo?: any;
+  directoryId?: string; // Keep for compatibility but unused
+  domainInfo?: any; // Keep for compatibility but unused
   onCreateDocument: () => void;
-  onCreateDirectory: () => void;
+  onCreateDirectory: () => void; // Keep for compatibility but unused
 }
 
 /**
- * Empty state component shown when no documents are found
- * Provides contextual messaging and quick actions
+ * Empty state component shown when no blog posts are found
+ * Provides quick action to create a new post
  */
 const EmptyState: React.FC<EmptyStateProps> = ({
   directoryId,
@@ -20,51 +20,21 @@ const EmptyState: React.FC<EmptyStateProps> = ({
   onCreateDocument,
   onCreateDirectory,
 }) => {
+  // In blog structure, we always show the same empty state
   const getEmptyStateContent = () => {
-    if (directoryId) {
-      return {
-        icon: (
-          <Folder
-            sx={{
-              width: 64,
-              height: 64,
-              color: "text.secondary",
-              opacity: 0.6,
-            }}
-          />
-        ),
-        title: "This folder is empty",
-        description: "Create a new document or folder to get started",
-      };
-    }
-
-    if (domainInfo) {
-      return {
-        icon: (
-          <PostAdd
-            sx={{
-              width: 64,
-              height: 64,
-              color: "text.secondary",
-              opacity: 0.6,
-            }}
-          />
-        ),
-        title: `No documents in ${domainInfo.name} yet`,
-        description:
-          "Create a document or folder in this domain to get started",
-      };
-    }
-
     return {
       icon: (
         <PostAdd
-          sx={{ width: 64, height: 64, color: "text.secondary", opacity: 0.6 }}
+          sx={{
+            width: 64,
+            height: 64,
+            color: "text.secondary",
+            opacity: 0.6,
+          }}
         />
       ),
-      title: "No personal documents found",
-      description:
-        "Create a new document or folder to get started (Items in domains are not shown here)",
+      title: "No blog posts yet",
+      description: "Create your first blog post to get started",
     };
   };
 
@@ -99,17 +69,9 @@ const EmptyState: React.FC<EmptyStateProps> = ({
           variant="contained"
           startIcon={<PostAdd />}
           onClick={onCreateDocument}
-          sx={{ borderRadius: 1.5, mr: 2 }}
-        >
-          New Document
-        </Button>
-        <Button
-          variant="outlined"
-          startIcon={<CreateNewFolder />}
-          onClick={onCreateDirectory}
           sx={{ borderRadius: 1.5 }}
         >
-          New Folder
+          New Post
         </Button>
       </Box>
     </Paper>

@@ -12,14 +12,14 @@ import DocumentSortControl from "../../DocumentControls/SortControl";
 
 interface BrowserHeaderProps {
   onCreateDocument: () => void;
-  onCreateDirectory: () => void;
+  onCreateDirectory: () => void; // Keep for compatibility but unused
   sortValue: { key: string; direction: string };
   setSortValue: (value: { key: string; direction: string }) => void;
-  domainInfo?: any;
+  domainInfo?: any; // Keep for compatibility but unused
 }
 
 /**
- * Header component with action buttons and controls for the document browser
+ * Header component with action buttons and controls for the blog browser
  */
 const BrowserHeader: React.FC<BrowserHeaderProps> = ({
   onCreateDocument,
@@ -41,7 +41,7 @@ const BrowserHeader: React.FC<BrowserHeaderProps> = ({
         },
       }}
     >
-      <Tooltip title="Create a new document">
+      <Tooltip title="Create a new blog post">
         <Button
           variant="outlined"
           startIcon={<PostAdd />}
@@ -51,25 +51,11 @@ const BrowserHeader: React.FC<BrowserHeaderProps> = ({
             px: 2,
           }}
         >
-          New Document
+          New Post
         </Button>
       </Tooltip>
 
-      <Tooltip title="Create a new folder">
-        <Button
-          variant="outlined"
-          startIcon={<CreateNewFolder />}
-          onClick={onCreateDirectory}
-          sx={{
-            borderRadius: 1.5,
-            px: 2,
-          }}
-        >
-          New Folder
-        </Button>
-      </Tooltip>
-
-      <Tooltip title="Sort your documents">
+      <Tooltip title="Sort your posts">
         <Box
           sx={{
             display: "flex",
@@ -105,24 +91,6 @@ const BrowserHeader: React.FC<BrowserHeaderProps> = ({
           />
         </Box>
       </Tooltip>
-
-      {/* Domain settings button - only shown when viewing a domain */}
-      {domainInfo && (
-        <Tooltip title="Domain settings">
-          <Button
-            variant="outlined"
-            component={Link}
-            href={`/domains/edit/${domainInfo.id}`}
-            startIcon={<Settings />}
-            sx={{
-              borderRadius: 1.5,
-              px: 2,
-            }}
-          >
-            Settings
-          </Button>
-        </Tooltip>
-      )}
     </Box>
   );
 };
