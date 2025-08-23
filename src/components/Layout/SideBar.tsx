@@ -24,6 +24,9 @@ import {
   ChevronRight,
   Home,
   LibraryBooks,
+  FolderSpecial,
+  Dashboard,
+  Create,
 } from "@mui/icons-material";
 import { styles } from "./styles";
 import type { User } from "@/types";
@@ -89,11 +92,23 @@ const SideBar: React.FC = () => {
   const showFileBrowser = false;
 
   // Navigation items for blog structure
-  const navigationItems = useMemo((): NavigationItem[] => [
-    { text: "Home", icon: <Home />, path: "/" },
-    { text: "Posts", icon: <LibraryBooks />, path: "/browse" },
-    { text: "Series", icon: <LibraryBooks />, path: "/series" },
-  ], []);
+  const navigationItems = useMemo((): NavigationItem[] => {
+    const items = [
+      { text: "Home", icon: <Home />, path: "/" },
+      { text: "Browse Posts", icon: <LibraryBooks />, path: "/browse" },
+      { text: "Series", icon: <FolderSpecial />, path: "/series" },
+    ];
+    
+    // Add user-specific navigation items if authenticated
+    if (user) {
+      items.push(
+        { text: "Dashboard", icon: <Dashboard />, path: "/dashboard" },
+        { text: "New Post", icon: <Create />, path: "/new" }
+      );
+    }
+    
+    return items;
+  }, [user]);
 
   // Remove domain-related items for blog structure
   const domainItems = useMemo((): NavigationItem[] => [], []);
@@ -204,12 +219,12 @@ const SideBar: React.FC = () => {
                 fontSize: "1.2rem",
               }}
             >
-              Editor
+              Blog
             </Box>
           </Box>
         )}
         {!open && (
-          <Tooltip title="Editor">
+          <Tooltip title="Blog">
             <Box
               component={RouterLink}
               href="/"
@@ -217,7 +232,7 @@ const SideBar: React.FC = () => {
             >
               <Image
                 src="/logo.svg"
-                alt="Editor Logo"
+                alt="Blog Logo"
                 width={32}
                 height={32}
               />

@@ -1,4 +1,4 @@
-import { Cached } from "@mui/icons-material";
+import { Cached, FavoriteRounded } from "@mui/icons-material";
 import { Box, IconButton, Link, Typography } from "@mui/material";
 import RouterLink from "next/link";
 import { usePathname } from "next/navigation";
@@ -7,6 +7,7 @@ import packageJson from "../../../package.json";
 const Footer: React.FC = () => {
   const pathname = usePathname();
   const isDashboard = pathname === "/dashboard";
+  const isHomePage = pathname === "/";
 
   const version = packageJson.version;
   const commitHash: string | undefined =
@@ -14,6 +15,70 @@ const Footer: React.FC = () => {
   const href = `https://github.com/ibastawisi/matheditor${
     commitHash ? "/commit/" + commitHash.substring(0, 7) : "/"
   }`;
+
+  // Show blog footer on homepage
+  if (isHomePage) {
+    return (
+      <Box
+        component="footer"
+        sx={{
+          mt: 8,
+          py: 4,
+          px: 2,
+          bgcolor: "grey.100",
+          borderTop: "1px solid",
+          borderColor: "divider",
+          textAlign: "center",
+        }}
+      >
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Made with <FavoriteRounded sx={{ color: "red", fontSize: 16, mx: 0.5, verticalAlign: "middle" }} /> 
+          for the community
+        </Typography>
+        <Box sx={{ display: "flex", justifyContent: "center", gap: 3, flexWrap: "wrap" }}>
+          <Link
+            component={RouterLink}
+            href="/browse"
+            color="text.secondary"
+            underline="hover"
+            variant="body2"
+          >
+            Browse Posts
+          </Link>
+          <Link
+            component={RouterLink}
+            href="/series"
+            color="text.secondary"
+            underline="hover"
+            variant="body2"
+          >
+            Series
+          </Link>
+          <Link
+            href={href}
+            target="_blank"
+            color="text.secondary"
+            underline="hover"
+            variant="body2"
+          >
+            Source Code
+          </Link>
+          <Link
+            component={RouterLink}
+            href="/privacy"
+            color="text.secondary"
+            underline="hover"
+            variant="body2"
+          >
+            Privacy
+          </Link>
+        </Box>
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: "block" }}>
+          v{version} {commitHash?.substring(0, 7)}
+        </Typography>
+      </Box>
+    );
+  }
 
   return isDashboard
     ? (

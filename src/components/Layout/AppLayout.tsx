@@ -7,7 +7,7 @@ import AlertDialog from "./Alert";
 import Announcer from "./Announcer";
 import ProgressBar from "./ProgressBar";
 import HydrationManager from "./HydrationManager";
-import Footer from "@/components/Home/Footer";
+import Breadcrumbs from "./Breadcrumbs";
 import { Box, Container, Toolbar, useMediaQuery } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { Suspense } from "react";
@@ -49,6 +49,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
                 minHeight: "0 !important",
               }}
             />
+            <Breadcrumbs />
             <HydrationManager>
               <Container
                 className="editor-container"
@@ -84,7 +85,6 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
           </Box>
           <ScrollTop />
         </Box>
-        <Footer />
         <AlertDialog />
         <Announcer />
         <DocumentInfoDrawerArrow />
