@@ -6,7 +6,6 @@ import {
   Alert,
   Box,
   Button,
-  Card,
   CircularProgress,
   Dialog,
   DialogActions,
@@ -411,49 +410,105 @@ const BlogStatsSection: React.FC = () => {
   }
 
   return (
-    <Grid container spacing={2}>
+    <Grid container spacing={3}>
       <Grid size={{ xs: 6, sm: 3 }}>
-        <Card sx={{ textAlign: "center", p: 2 }}>
-          <Typography variant="h4" color="primary.main">
+        <Box
+          sx={{
+            textAlign: "center",
+            p: 3,
+            borderRadius: 2,
+            border: "1px solid",
+            borderColor: "divider",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+            transition: "all 0.2s ease-in-out",
+            "&:hover": {
+              boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
+              transform: "translateY(-1px)",
+            },
+          }}
+        >
+          <Typography variant="h4" color="primary.main" sx={{ fontWeight: 600 }}>
             {stats.posts}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
             Total Posts
           </Typography>
-        </Card>
+        </Box>
       </Grid>
 
       <Grid size={{ xs: 6, sm: 3 }}>
-        <Card sx={{ textAlign: "center", p: 2 }}>
-          <Typography variant="h4" color="success.main">
+        <Box
+          sx={{
+            textAlign: "center",
+            p: 3,
+            borderRadius: 2,
+            border: "1px solid",
+            borderColor: "divider",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+            transition: "all 0.2s ease-in-out",
+            "&:hover": {
+              boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
+              transform: "translateY(-1px)",
+            },
+          }}
+        >
+          <Typography variant="h4" color="success.main" sx={{ fontWeight: 600 }}>
             {stats.publishedPosts}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
             Published
           </Typography>
-        </Card>
+        </Box>
       </Grid>
 
       <Grid size={{ xs: 6, sm: 3 }}>
-        <Card sx={{ textAlign: "center", p: 2 }}>
-          <Typography variant="h4" color="warning.main">
+        <Box
+          sx={{
+            textAlign: "center",
+            p: 3,
+            borderRadius: 2,
+            border: "1px solid",
+            borderColor: "divider",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+            transition: "all 0.2s ease-in-out",
+            "&:hover": {
+              boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
+              transform: "translateY(-1px)",
+            },
+          }}
+        >
+          <Typography variant="h4" color="warning.main" sx={{ fontWeight: 600 }}>
             {stats.draftPosts}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
             Drafts
           </Typography>
-        </Card>
+        </Box>
       </Grid>
 
       <Grid size={{ xs: 6, sm: 3 }}>
-        <Card sx={{ textAlign: "center", p: 2 }}>
-          <Typography variant="h4" color="info.main">
+        <Box
+          sx={{
+            textAlign: "center",
+            p: 3,
+            borderRadius: 2,
+            border: "1px solid",
+            borderColor: "divider",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+            transition: "all 0.2s ease-in-out",
+            "&:hover": {
+              boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
+              transform: "translateY(-1px)",
+            },
+          }}
+        >
+          <Typography variant="h4" color="info.main" sx={{ fontWeight: 600 }}>
             {stats.series}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
             Series
           </Typography>
-        </Card>
+        </Box>
       </Grid>
 
       {/* Quick Actions */}
