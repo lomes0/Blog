@@ -126,12 +126,20 @@ const PostThumbnail: React.FC<{ userDocument?: UserDocument }> = memo(
             .replaceAll("</a", "</span"),
         }}
         sx={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          padding: 2,
           "& img": {
             maxWidth: "100%",
             height: "auto",
           },
           "& table": {
             fontSize: "0.75rem",
+          },
+          "& > *": {
+            margin: "0.5rem 0",
           },
           overflow: "hidden",
         }}

@@ -8,7 +8,7 @@ export const cardTheme = {
   // Layout
   borderRadius: 4,
   minHeight: {
-    post: "clamp(280px, 20vw, 320px)",
+    post: "clamp(240px, 18vw, 280px)", // Reduced minimum height
   },
   maxWidth: "400px",
 

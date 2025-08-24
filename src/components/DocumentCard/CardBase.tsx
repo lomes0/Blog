@@ -6,10 +6,8 @@ import {
   Box,
   Card,
   CardActionArea,
-  CardContent,
   Fade,
   Tooltip,
-  Typography,
   useMediaQuery,
 } from "@mui/material";
 import Link from "next/link";
@@ -19,8 +17,8 @@ import { cardTheme } from "./theme";
  * Simplified props interface for blog posts
  */
 interface SimplifiedCardBaseProps {
-  /** Title of the post */
-  title: string | ReactNode;
+  /** Title of the post (optional, used for tooltip) */
+  title?: string | ReactNode;
   /** URL that the card links to */
   href: string;
   /** Whether the card is in a loading state */
@@ -54,14 +52,6 @@ const CardBase: React.FC<SimplifiedCardBaseProps> = ({
   const theme = useTheme();
   const prefersReducedMotion = useMediaQuery(
     "(prefers-reduced-motion: reduce)",
-  );
-
-  // Check if we should show the title
-  const shouldShowTitle = Boolean(
-    title && (
-      (typeof title === "string" && title.trim().length > 0) ||
-      (typeof title !== "string")
-    ),
   );
 
   // Format title for tooltips
@@ -106,20 +96,16 @@ const CardBase: React.FC<SimplifiedCardBaseProps> = ({
           ...sx,
         }}
       >
-        {/* Top content area (70%) */}
+        {/* Top content area - flexible height */}
         <Box
           sx={{
-            height: cardTheme.contentRatio.top,
+            flex: 1, // Take up remaining space
             width: "100%",
             position: "relative",
             display: "flex",
-            alignItems: "center",
+            alignItems: "stretch", // Stretch children to full height
             justifyContent: "center",
-            py: 2,
-            ...(shouldShowTitle && {
-              borderBottom: "1px solid",
-              borderColor: "divider",
-            }),
+            minHeight: "200px", // Minimum height for content
           }}
         >
           {topContent}
@@ -141,7 +127,7 @@ const CardBase: React.FC<SimplifiedCardBaseProps> = ({
               top: 0,
               left: 0,
               right: 0,
-              bottom: cardTheme.actionBar.height,
+              bottom: cardTheme.actionBar.height, // Leave space for action bar
               zIndex: 1,
               borderRadius:
                 `${cardTheme.borderRadius}px ${cardTheme.borderRadius}px 0 0`,
@@ -156,47 +142,16 @@ const CardBase: React.FC<SimplifiedCardBaseProps> = ({
           />
         </Tooltip>
 
-        {/* Bottom section (30%) */}
+        {/* Bottom section - Action bar only */}
         <Box
           sx={{
-            height: cardTheme.contentRatio.bottom,
+            flexShrink: 0, // Don't shrink
             display: "flex",
             flexDirection: "column",
             position: "relative",
             zIndex: 2,
           }}
         >
-          {/* Title area */}
-          {shouldShowTitle && (
-            <CardContent
-              sx={{
-                pt: cardTheme.spacing.titleMargin,
-                pb: cardTheme.spacing.titleMargin,
-                px: cardTheme.spacing.contentPadding,
-                flexGrow: 1,
-                display: "flex",
-                alignItems: "center",
-                "&:last-child": { pb: cardTheme.spacing.titleMargin },
-              }}
-            >
-              <Typography
-                variant="h6"
-                component="div"
-                sx={{
-                  fontWeight: cardTheme.typography.titleWeight,
-                  fontSize: cardTheme.typography.titleSize,
-                  lineHeight: cardTheme.typography.titleLineHeight,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  width: "100%",
-                }}
-              >
-                {title}
-              </Typography>
-            </CardContent>
-          )}
-
           {/* Action bar */}
           <Box
             sx={{
@@ -231,10 +186,12 @@ const CardBase: React.FC<SimplifiedCardBaseProps> = ({
               sx={{
                 display: "flex",
                 ml: "auto",
-                gap: 0.5,
+                gap: 0.25, // Reduced gap between buttons (2px instead of 4px)
+                mr: -0.5, // Move buttons slightly more to the right
                 "& button": {
-                  minWidth: cardTheme.accessibility.minimumTouchTarget,
-                  minHeight: cardTheme.accessibility.minimumTouchTarget,
+                  minWidth: 36, // Reduced from 44px to make them more compact
+                  minHeight: 36, // Reduced from 44px to make them more compact
+                  padding: 0.5, // Reduced padding inside buttons
                 },
               }}
             >

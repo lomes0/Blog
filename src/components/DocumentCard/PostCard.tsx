@@ -117,11 +117,6 @@ const PostCard: React.FC<PostCardProps> = memo(({
     return <PostActionMenu userDocument={userDocument} user={user} />;
   }, [postState.isLoading, userDocument, user]);
 
-  // Memoize title content
-  const titleContent = useMemo(() => {
-    return document?.name || <Skeleton variant="text" width={190} />;
-  }, [document?.name]);
-
   // Memoize aria label
   const ariaLabel = useMemo(() => {
     return document ? `Open ${document.name} post` : "Loading post";
@@ -129,7 +124,6 @@ const PostCard: React.FC<PostCardProps> = memo(({
 
   return (
     <CardBase
-      title={titleContent}
       href={href}
       isLoading={postState.isLoading}
       topContent={topContent}
