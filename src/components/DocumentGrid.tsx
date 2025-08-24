@@ -213,6 +213,7 @@ const DocumentGrid: React.FC<DocumentGridProps> = ({
         flexDirection: "column",
         gap: 3, // Using MUI spacing scale instead of cardTheme.spacing.cardGap
         width: "100%",
+        maxWidth: "100%",
         // Improved responsive spacing
         [theme.breakpoints.down("sm")]: {
           gap: 2,
@@ -233,6 +234,7 @@ const DocumentGrid: React.FC<DocumentGridProps> = ({
         }}
         sx={{
           width: "100%",
+          maxWidth: "100%",
           marginTop: 0,
           // Ensure consistent alignment
           alignItems: "stretch",

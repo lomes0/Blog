@@ -79,8 +79,9 @@ const DocumentBrowser: React.FC<DocumentBrowserProps> = () => {
           maxWidth={false}
           sx={{
             py: 4,
-            px: { xs: 2, sm: 3, md: 4, lg: 1 },
-            maxWidth: { xs: "100%", sm: "100%", md: "2000px", lg: "2200px" },
+            px: { xs: 1, sm: 2, md: 3, lg: 4 },
+            width: "100%",
+            maxWidth: "100%",
             mx: "auto",
           }}
         >
@@ -94,10 +95,10 @@ const DocumentBrowser: React.FC<DocumentBrowserProps> = () => {
                 width: "100%",
                 maxWidth: "100%",
                 px: {
-                  xs: 1,
-                  sm: 2,
-                  md: 3,
-                  lg: 3,
+                  xs: 0,
+                  sm: 0,
+                  md: 0,
+                  lg: 0,
                 },
               }}
             >
@@ -148,6 +149,8 @@ const DocumentBrowser: React.FC<DocumentBrowserProps> = () => {
                       gap: 4,
                       opacity: 1,
                       transition: "opacity 0.5s ease-in-out",
+                      width: "100%",
+                      maxWidth: "100%",
                     }}
                   >
                     {/* Display blog posts section */}
@@ -156,6 +159,10 @@ const DocumentBrowser: React.FC<DocumentBrowserProps> = () => {
                         items={sortedDocuments}
                         user={user}
                         title="Posts"
+                        sx={{
+                          width: "100%",
+                          maxWidth: "100%",
+                        }}
                       />
                     )}
                   </Box>
