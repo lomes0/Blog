@@ -54,29 +54,23 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
               <Container
                 className="editor-container"
                 id="editor-main-container"
+                maxWidth={false}
                 sx={{
                   display: "flex",
                   flexDirection: "column",
-                  mx: "auto", /* Reset to center horizontally */
+                  mx: 0, /* Remove auto centering to allow full width */
                   my: 2,
                   flex: 1,
                   position: "relative",
                   overflow:
                     "auto", /* Allow scrolling but scrollbar is hidden by CSS */
-                  maxWidth: {
-                    xs: "100% !important",
-                    sm: "100% !important",
-                    md:
-                      "2000px !important", /* Increased from 1800px to 2000px */
-                    lg:
-                      "2000px !important", /* Added larger size for large screens */
-                  },
+                  width: "100%",
+                  maxWidth: "100%",
                   px: {
                     xs: 1,
                     sm: 1,
-                    md:
-                      1, /* Added more horizontal padding for medium screens */
-                  }, /* Adjusted horizontal padding */
+                    md: 1, /* Keep minimal padding */
+                  },
                 }}
               >
                 {children}

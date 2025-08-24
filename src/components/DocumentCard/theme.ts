@@ -10,7 +10,7 @@ export const cardTheme = {
   minHeight: {
     post: "clamp(240px, 18vw, 280px)", // Reduced minimum height
   },
-  maxWidth: "400px",
+  // Removed maxWidth constraint to allow cards to fill available space
 
   // Content areas
   contentRatio: {

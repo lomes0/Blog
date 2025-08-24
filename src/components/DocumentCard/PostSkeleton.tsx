@@ -21,7 +21,7 @@ const PostSkeleton: React.FC<PostSkeletonProps> = ({ sx }) => {
         flexDirection: "column",
         height: "100%",
         minHeight: cardTheme.minHeight.post,
-        maxWidth: cardTheme.maxWidth,
+        // Removed maxWidth constraint to allow skeleton to fill available space
         width: "100%",
         ...sx,
         borderRadius: cardTheme.borderRadius,

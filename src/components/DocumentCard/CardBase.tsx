@@ -76,7 +76,7 @@ const CardBase: React.FC<SimplifiedCardBaseProps> = ({
           flexDirection: "column",
           height: "100%",
           minHeight: cardTheme.minHeight.post,
-          maxWidth: cardTheme.maxWidth,
+          // Removed maxWidth constraint to allow card to fill available space
           width: "100%",
           position: "relative",
           borderRadius: cardTheme.borderRadius,
