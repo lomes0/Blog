@@ -29,7 +29,7 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import UsersAutocomplete from "../User/UsersAutocomplete";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useTheme } from "@mui/material/styles";
 import useFixedBodyScroll from "@/hooks/useFixedBodyScroll";
 import UploadDocument from "./Upload";
@@ -67,15 +67,17 @@ const ShareDocument: React.FC<
   const searchParams = useSearchParams();
 
   const openShareDialog = () => {
-    if (closeMenu) closeMenu();
     setFormat(cloudDocument?.collab ? "edit" : "view");
     const v = searchParams.get("v");
     setRevision(v || (cloudDocument?.head ?? null));
     setShareDialogOpen(true);
+    // Don't close menu - let it stay open
   };
 
   const closeShareDialog = () => {
     setShareDialogOpen(false);
+    // Close menu when dialog closes
+    if (closeMenu) closeMenu();
   };
 
   function getShareUrl(formdata: FormData) {
@@ -244,6 +246,8 @@ const ShareDocument: React.FC<
         fullWidth
         maxWidth="sm"
         fullScreen={fullScreen}
+        disablePortal={false}
+        style={{ zIndex: 1300 }}
       >
         <Box
           component="form"

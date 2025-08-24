@@ -44,9 +44,6 @@ function DocumentActionMenu(
   return (
     <>
       {options.includes("edit") && <EditDocument userDocument={userDocument} />}
-      {options.includes("share") && (
-        <ShareDocument userDocument={userDocument} />
-      )}
       <IconButton
         id={`${id}-action-button`}
         aria-controls={open ? `${id}-action-menu` : undefined}
@@ -73,6 +70,13 @@ function DocumentActionMenu(
           horizontal: "right",
         }}
       >
+        {options.includes("share") && (
+          <ShareDocument
+            userDocument={userDocument}
+            variant="menuitem"
+            closeMenu={closeMenu}
+          />
+        )}
         {options.includes("download") && (
           <DownloadDocument
             userDocument={userDocument}
