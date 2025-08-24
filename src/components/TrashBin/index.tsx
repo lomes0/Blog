@@ -37,9 +37,7 @@ const TrashBin: React.FC = () => {
 
       // Show confirmation dialog before deleting
       const alert = {
-        title: `Delete ${
-          draggedItem.type === "DIRECTORY" ? "Directory" : "Document"
-        }`,
+        title: "Delete Document",
         content: `Are you sure you want to delete "${draggedItem.name}"?`,
         actions: [
           { label: "Cancel", id: uuid() },
