@@ -6,7 +6,7 @@ import { User, UserDocument } from "@/types";
 import { AutoSizer, List, WindowScroller } from "react-virtualized";
 import Grid from "@mui/material/Grid2";
 import DraggableDocumentCard from "../DocumentCard/DraggablePostCard";
-import SkeletonCard from "../DocumentCard/PostSkeleton";
+import SkeletonCard from "../DocumentCard/components/LoadingCard";
 import GridSectionHeader from "./GridSectionHeader";
 import { documentGridStyles } from "./styles";
 import { useResponsiveGrid, useVirtualization } from "./hooks";

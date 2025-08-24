@@ -6,7 +6,7 @@ import { useTheme } from "@mui/material/styles";
 import { useMediaQuery } from "@mui/material";
 import { User, UserDocument } from "@/types";
 import DraggableDocumentCard from "./DocumentCard/DraggablePostCard";
-import SkeletonCard from "./DocumentCard/PostSkeleton";
+import SkeletonCard from "./DocumentCard/components/LoadingCard";
 import { SxProps, Theme } from "@mui/material/styles";
 import { cardTheme } from "./DocumentCard/theme";
 import { useResponsiveDocumentGrid } from "./DocumentGrid/hooks/useResponsiveDocumentGrid";

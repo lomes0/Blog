@@ -1,122 +1,62 @@
 "use client";
 import { UserDocument } from "@/types";
-import { memo, use, useEffect, useState } from "react";
-import { useThumbnailContext } from "../../app/context/ThumbnailContext";
-import { Box } from "@mui/material";
-import { generateHtml } from "@/editor/utils/generateHtml";
-import documentDB from "@/indexeddb";
-import PostThumbnailSkeleton from "./PostThumbnailSkeleton";
-
-// Simple cache for thumbnails
-const thumbnailCache = new Map<string, string>();
+import { memo } from "react";
+import { Box, Skeleton, Alert, IconButton } from "@mui/material";
+import { Refresh } from "@mui/icons-material";
+import { usePostContent } from "./hooks/usePostContent";
 
 /**
- * Get thumbnail from various sources
+ * Simple inline skeleton for thumbnail loading
  */
-const getPostThumbnail = async (
-  documentId: string,
-  revisionId: string,
-): Promise<string | null> => {
-  // Check cache first
-  const cachedThumbnail = thumbnailCache.get(revisionId);
-  if (cachedThumbnail) return cachedThumbnail;
-
-  try {
-    // Try local document first
-    const document = await documentDB.getByID(documentId);
-    if (document) {
-      const data = document.data;
-      const thumbnail = await generateHtml({
-        ...data,
-        root: { ...data.root, children: data.root.children.slice(0, 3) },
-      });
-      thumbnailCache.set(revisionId, thumbnail);
-      return thumbnail;
-    }
-
-    // Fallback to API
-    const response = await fetch(`/api/thumbnails/${documentId}`);
-    if (response.ok) {
-      const { data } = await response.json();
-      if (data) {
-        thumbnailCache.set(revisionId, data);
-        return data;
-      }
-    }
-  } catch (error) {
-    console.warn("Failed to load thumbnail:", error);
-  }
-
-  return null;
-};
+const ThumbnailSkeleton: React.FC = () => (
+  <Box sx={{ p: 1 }}>
+    <Skeleton variant="text" width="70%" height={24} />
+    <Skeleton variant="text" width="90%" height={16} />
+    <Skeleton variant="text" width="75%" height={16} />
+    <Skeleton variant="rectangular" width="100%" height={60} sx={{ mt: 1 }} />
+  </Box>
+);
 
 /**
- * Simplified post thumbnail component
- * Consolidates DocumentThumbnail and LocalDocumentThumbnail logic
+ * Error display component for failed thumbnail loading
+ */
+const ThumbnailError: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
+  <Box sx={{ p: 1 }}>
+    <Alert 
+      severity="warning" 
+      action={
+        <IconButton size="small" onClick={onRetry} aria-label="Retry loading">
+          <Refresh />
+        </IconButton>
+      }
+    >
+      Failed to load content
+    </Alert>
+  </Box>
+);
+
+/**
+ * Simplified post thumbnail component using usePostContent hook
+ * 
+ * This component now uses the consolidated content loading logic
+ * with improved error handling and retry functionality.
  */
 const PostThumbnail: React.FC<{ userDocument?: UserDocument }> = memo(
   ({ userDocument }) => {
-    const [thumbnail, setThumbnail] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    // Use the consolidated content loading hook
+    const { thumbnail, isLoading, error, retry } = usePostContent(userDocument);
 
-    // Get the document to display (prefer local over cloud)
-    const localDocument = userDocument?.local;
-    const cloudDocument = userDocument?.cloud;
-    const document = localDocument || cloudDocument;
-
-    // Try to use thumbnail context first
-    const thumbnailContext = useThumbnailContext();
-    const contextThumbnail = thumbnailContext?.[document?.head ?? ""];
-
-    useEffect(() => {
-      if (!document?.id || !document?.head) {
-        setIsLoading(false);
-        return;
-      }
-
-      // If we have context thumbnail, use it
-      if (contextThumbnail) {
-        const loadContextThumbnail = async () => {
-          try {
-            const thumbnailData = await contextThumbnail;
-            setThumbnail(thumbnailData);
-          } catch (error) {
-            console.warn("Context thumbnail failed, falling back:", error);
-            // Fall back to regular thumbnail loading
-            const fallbackThumbnail = await getPostThumbnail(
-              document.id,
-              document.head,
-            );
-            setThumbnail(fallbackThumbnail);
-          } finally {
-            setIsLoading(false);
-          }
-        };
-        loadContextThumbnail();
-        return;
-      }
-
-      // Regular thumbnail loading
-      const loadThumbnail = async () => {
-        const thumbnailData = await getPostThumbnail(
-          document.id,
-          document.head,
-        );
-        setThumbnail(thumbnailData);
-        setIsLoading(false);
-      };
-
-      loadThumbnail();
-    }, [document?.id, document?.head, contextThumbnail]);
-
+    // Show loading skeleton
     if (isLoading) {
-      return <PostThumbnailSkeleton />;
+      return <ThumbnailSkeleton />;
     }
 
-    if (!thumbnail) {
-      return <PostThumbnailSkeleton />;
+    // Show error with retry option
+    if (error || !thumbnail) {
+      return <ThumbnailError onRetry={retry} />;
     }
 
+    // Render the thumbnail content
     return (
       <Box
         className="post-thumbnail"

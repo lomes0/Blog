@@ -22,9 +22,9 @@ import { useTheme } from "@mui/material/styles";
 import {
   ChevronLeft,
   ChevronRight,
+  CollectionsBookmark,
   Create,
   Dashboard,
-  FolderSpecial,
   Home,
   LibraryBooks,
 } from "@mui/icons-material";
@@ -96,7 +96,7 @@ const SideBar: React.FC = () => {
     const items = [
       { text: "Home", icon: <Home />, path: "/" },
       { text: "Browse Posts", icon: <LibraryBooks />, path: "/browse" },
-      { text: "Series", icon: <FolderSpecial />, path: "/series" },
+      { text: "Series", icon: <CollectionsBookmark />, path: "/series" },
     ];
 
     // Add user-specific navigation items if authenticated
