@@ -3,15 +3,12 @@ import * as React from "react";
 import { IconButton, Menu } from "@mui/material";
 import { MoreVert } from "@mui/icons-material";
 import DownloadDocument from "./Download";
-import ForkDocument from "./Fork";
 import DeleteBothDocument from "./DeleteBoth";
 import UploadDocument from "./Upload";
 import { User, UserDocument } from "@/types";
 import ShareDocument from "./Share";
 import EditDocument from "./Edit";
 import RestoreDocument from "./Restore";
-import MoveDocument from "./Move";
-import StatusToggle from "./StatusToggle";
 
 function DocumentActionMenu(
   { userDocument, user }: { userDocument: UserDocument; user?: User },
@@ -38,7 +35,7 @@ function DocumentActionMenu(
   const isCollab = isCloud ? cloudDocument.collab : false;
   const id = userDocument.id;
 
-  const options = ["fork", "share", "move"];
+  const options = ["share"];
   if (isAuthor || isCoauthor || isLocal || isCollab) options.push("download");
   if (isAuthor || isLocal) options.push("delete");
   if (isAuthor) options.push("edit", "upload");
@@ -50,7 +47,6 @@ function DocumentActionMenu(
       {options.includes("share") && (
         <ShareDocument userDocument={userDocument} />
       )}
-      <StatusToggle userDocument={userDocument} variant="iconbutton" />
       <IconButton
         id={`${id}-action-button`}
         aria-controls={open ? `${id}-action-menu` : undefined}
@@ -77,27 +73,8 @@ function DocumentActionMenu(
           horizontal: "right",
         }}
       >
-        <StatusToggle
-          userDocument={userDocument}
-          variant="menuitem"
-          closeMenu={closeMenu}
-        />
-        {options.includes("move") && (
-          <MoveDocument
-            userDocument={userDocument}
-            variant="menuitem"
-            closeMenu={closeMenu}
-          />
-        )}
         {options.includes("download") && (
           <DownloadDocument
-            userDocument={userDocument}
-            variant="menuitem"
-            closeMenu={closeMenu}
-          />
-        )}
-        {options.includes("fork") && (
-          <ForkDocument
             userDocument={userDocument}
             variant="menuitem"
             closeMenu={closeMenu}
