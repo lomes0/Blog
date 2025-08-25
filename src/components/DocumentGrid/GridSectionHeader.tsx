@@ -28,7 +28,7 @@ const GridSectionHeader: React.FC<GridSectionHeaderProps> = ({
     <Box sx={styles.container}>
       <Box sx={styles.titleContainer}>
         {icon && <Box sx={styles.iconWrapper}>{icon}</Box>}
-        <Typography variant="h6" component="h2" sx={styles.title}>
+        <Typography variant="h3" component="h2" sx={styles.title}>
           {title}
         </Typography>
       </Box>

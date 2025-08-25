@@ -27,10 +27,15 @@ const BrowserBreadcrumbs: React.FC<BrowserBreadcrumbsProps> = ({
           display: "flex",
           alignItems: "center",
           color: "text.primary",
-          fontWeight: "medium",
+          fontWeight: "bold",
+          fontSize: {
+            xs: "1.05rem",
+            sm: "1.25rem", 
+            md: "1.35rem",
+          },
         }}
       >
-        <LibraryBooks sx={{ mr: 0.5 }} fontSize="inherit" />
+        <LibraryBooks sx={{ mr: 0.5, fontSize: "inherit" }} />
         Blog Posts
       </Typography>
     </Breadcrumbs>

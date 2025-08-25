@@ -135,17 +135,17 @@ export const gridSectionStyles = (theme: Theme) => ({
   },
   title: {
     fontWeight: 800, // Extra bold for magazine-style headers
-    fontSize: "2rem", // Larger for impact
+    fontSize: "2.5rem", // Larger for impact
     color: theme.palette.text.primary,
     display: "flex",
     alignItems: "center",
     gap: theme.spacing(2),
     letterSpacing: "-0.02em", // Tighter letter spacing
     [theme.breakpoints.down("md")]: {
-      fontSize: "1.5rem",
+      fontSize: "2rem",
     },
     [theme.breakpoints.down("sm")]: {
-      fontSize: "1.25rem",
+      fontSize: "1.75rem",
     },
   },
   actionContainer: {
