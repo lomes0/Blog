@@ -1,52 +1,64 @@
 import { alpha } from "@mui/material/styles";
 
 /**
- * Simplified card theme for blog posts
- * Removed complex configurations, keeping only essentials
+ * Blog-oriented card theme with clean, magazine-style design
+ * Optimized for content readability and visual hierarchy
  */
 export const cardTheme = {
-  // Layout
-  borderRadius: 4,
+  // Layout - blog-style proportions
+  borderRadius: 8, // Softer corners for a modern blog feel
   minHeight: {
-    post: "clamp(240px, 18vw, 280px)", // Reduced minimum height
+    post: "360px", // Taller cards for better content display
   },
-  // Removed maxWidth constraint to allow cards to fill available space
+  maxHeight: {
+    post: "420px", // Consistent maximum height
+  },
+  aspectRatio: "4:5", // Portrait orientation for blog content
 
-  // Content areas
+  // Content areas - optimized for blog content
   contentRatio: {
-    top: "70%",
-    bottom: "30%",
+    top: "65%", // More space for content preview
+    bottom: "35%", // Adequate space for metadata
   },
 
-  // Spacing (8px grid system)
+  // Spacing - generous for readability
   spacing: {
-    contentPadding: 2,
-    chipGap: 0.75,
-    titleMargin: 1,
+    contentPadding: 3, // More padding for better text readability
+    chipGap: 1,
+    titleMargin: 1.5,
+    sectionGap: 2,
   },
 
-  // Typography
+  // Typography - blog-optimized
   typography: {
-    titleSize: "1.125rem",
-    titleWeight: 600,
-    titleLineHeight: 1.3,
+    titleSize: "1.25rem", // Larger titles for impact
+    titleWeight: 700, // Bold titles for hierarchy
+    titleLineHeight: 1.2, // Tight line height for headlines
+    excerptSize: "0.875rem", // Readable excerpt text
+    excerptLineHeight: 1.5, // Good line height for body text
+    metaSize: "0.75rem", // Smaller metadata text
   },
 
-  // Colors - simplified palette
+  // Colors - refined blog palette
   colors: {
     border: "divider",
     cardBackground: "background.paper",
+    textPrimary: "text.primary",
+    textSecondary: "text.secondary",
+    
+    // Shadows for depth and hierarchy
     shadow: {
-      default: "0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)",
-      hover: "0 4px 12px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.08)",
-      focus: "0 0 0 3px rgba(25,118,210,0.3)",
+      default: "0 2px 8px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04)",
+      hover: "0 8px 24px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08)",
+      focus: "0 0 0 3px rgba(25,118,210,0.2)",
     },
+    
     // Status colors for blog posts
     status: {
       draft: {
-        bg: "#fff3e0",
-        border: "#ff9800",
-        text: "#f57c00",
+        bg: "#fef3e2",
+        border: "#f59e0b",
+        text: "#d97706",
       },
       published: {
         bg: "#e8f5e8",

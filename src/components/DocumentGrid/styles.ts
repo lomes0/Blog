@@ -1,40 +1,49 @@
 import { Theme } from "@mui/material/styles";
 
 /**
- * Clean, blog-focused styles for the DocumentGrid component
+ * Blog-oriented grid styles for optimal content presentation
+ * Follows magazine-style layout principles for better readability
  */
 export const documentGridStyles = (theme: Theme) => ({
   container: {
     display: "flex",
     flexDirection: "column",
-    gap: theme.spacing(4), // More generous spacing for blog layout
+    gap: theme.spacing(6), // Generous spacing between sections
     width: "100%",
-    maxWidth: "1200px", // Constrain max width for readability
-    margin: "0 auto", // Center the grid
-    padding: theme.spacing(0, 2), // Side padding
+    maxWidth: "1400px", // Wider for better desktop experience
+    margin: "0 auto",
+    padding: theme.spacing(0, 3), // More padding for breathing room
+    [theme.breakpoints.down("md")]: {
+      padding: theme.spacing(0, 2),
+      gap: theme.spacing(4),
+    },
   },
   grid: {
     width: "100%",
     marginTop: 0,
-    borderRadius: theme.spacing(1),
   },
   gridRow: {
     width: "100%",
     marginTop: 0,
     marginLeft: 0,
-    padding: theme.spacing(0, 1),
   },
   card: {
     height: "100%",
-    borderRadius: theme.spacing(1.5),
+    borderRadius: theme.spacing(1),
     border: `1px solid ${theme.palette.divider}`,
     backgroundColor: theme.palette.background.paper,
-    transition: theme.transitions.create(['box-shadow', 'transform'], {
-      duration: theme.transitions.duration.shorter,
+    overflow: "hidden",
+    transition: theme.transitions.create([
+      'box-shadow', 
+      'transform', 
+      'border-color'
+    ], {
+      duration: theme.transitions.duration.standard,
     }),
     "&:hover": {
-      boxShadow: theme.shadows[4],
-      transform: "translateY(-2px)",
+      boxShadow: "0 8px 24px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08)",
+      transform: "translateY(-4px)",
+      borderColor: theme.palette.primary.light,
     },
     "&:focus-within": {
       outline: `2px solid ${theme.palette.primary.main}`,
@@ -42,8 +51,8 @@ export const documentGridStyles = (theme: Theme) => ({
     },
   },
   skeletonCard: {
-    height: "320px", // Fixed height for consistency
-    borderRadius: theme.spacing(1.5),
+    height: "360px", // Match new card height
+    borderRadius: theme.spacing(1),
     backgroundColor: theme.palette.grey[100],
   },
   emptyState: {
@@ -51,42 +60,57 @@ export const documentGridStyles = (theme: Theme) => ({
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "column",
-    padding: theme.spacing(8, 4),
-    backgroundColor: theme.palette.grey[50],
+    padding: theme.spacing(12, 4),
+    backgroundColor: theme.palette.background.default,
     borderRadius: theme.spacing(2),
     border: `2px dashed ${theme.palette.grey[300]}`,
     color: theme.palette.text.secondary,
     textAlign: "center",
+    [theme.breakpoints.down("md")]: {
+      padding: theme.spacing(8, 3),
+    },
   },
   emptyStateIcon: {
-    fontSize: "3rem",
-    color: theme.palette.grey[400],
-    marginBottom: theme.spacing(2),
+    fontSize: "4rem",
+    color: theme.palette.primary.light,
+    marginBottom: theme.spacing(3),
+    opacity: 0.7,
   },
   emptyStateText: {
     fontWeight: 600,
-    fontSize: "1.125rem",
-    marginBottom: theme.spacing(1),
+    fontSize: "1.5rem",
+    marginBottom: theme.spacing(2),
     color: theme.palette.text.primary,
+    [theme.breakpoints.down("md")]: {
+      fontSize: "1.25rem",
+    },
   },
   emptyStateSubtext: {
-    maxWidth: "400px",
+    maxWidth: "500px",
     lineHeight: 1.6,
     color: theme.palette.text.secondary,
+    fontSize: "1rem",
+    [theme.breakpoints.down("md")]: {
+      fontSize: "0.875rem",
+    },
   },
 });
 
 /**
- * Clean, blog-focused styles for the GridSectionHeader component
+ * Blog-oriented styles for the GridSectionHeader component
  */
 export const gridSectionStyles = (theme: Theme) => ({
   container: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: theme.spacing(3),
-    paddingBottom: theme.spacing(2),
-    borderBottom: `1px solid ${theme.palette.divider}`,
+    marginBottom: theme.spacing(4),
+    paddingBottom: theme.spacing(3),
+    borderBottom: `2px solid ${theme.palette.divider}`,
+    [theme.breakpoints.down("md")]: {
+      marginBottom: theme.spacing(3),
+      paddingBottom: theme.spacing(2),
+    },
   },
   titleContainer: {
     display: "flex",
@@ -97,20 +121,29 @@ export const gridSectionStyles = (theme: Theme) => ({
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    width: 32,
-    height: 32,
+    width: 40,
+    height: 40,
     borderRadius: "50%",
     backgroundColor: theme.palette.primary.main,
     color: theme.palette.primary.contrastText,
-    fontSize: "1rem",
+    fontSize: "1.25rem",
+    [theme.breakpoints.down("md")]: {
+      width: 36,
+      height: 36,
+      fontSize: "1.125rem",
+    },
   },
   title: {
-    fontWeight: 700,
-    fontSize: "1.5rem",
+    fontWeight: 800, // Extra bold for magazine-style headers
+    fontSize: "2rem", // Larger for impact
     color: theme.palette.text.primary,
     display: "flex",
     alignItems: "center",
-    gap: theme.spacing(1.5),
+    gap: theme.spacing(2),
+    letterSpacing: "-0.02em", // Tighter letter spacing
+    [theme.breakpoints.down("md")]: {
+      fontSize: "1.5rem",
+    },
     [theme.breakpoints.down("sm")]: {
       fontSize: "1.25rem",
     },
@@ -119,15 +152,20 @@ export const gridSectionStyles = (theme: Theme) => ({
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: theme.palette.grey[200],
-    color: theme.palette.text.secondary,
-    borderRadius: "12px",
-    minWidth: 24,
-    height: 24,
-    padding: theme.spacing(0, 1),
-    fontSize: "0.75rem",
-    fontWeight: 600,
-    marginLeft: theme.spacing(1),
+    backgroundColor: theme.palette.primary.main,
+    color: theme.palette.primary.contrastText,
+    borderRadius: "16px",
+    minWidth: 32,
+    height: 32,
+    padding: theme.spacing(0, 1.5),
+    fontSize: "0.875rem",
+    fontWeight: 700,
+    marginLeft: theme.spacing(2),
+    [theme.breakpoints.down("md")]: {
+      minWidth: 28,
+      height: 28,
+      fontSize: "0.75rem",
+    },
   },
   actionContainer: {
     display: "flex",

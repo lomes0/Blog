@@ -53,50 +53,54 @@ const DocumentGrid: React.FC<DocumentGridProps> = ({
   const theme = useTheme();
   const styles = documentGridStyles(theme);
 
-  // Simplified responsive grid for blog conventions
+  // Blog-oriented responsive grid calculation
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
-  const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
+  const isTablet = useMediaQuery(theme.breakpoints.between("sm", "lg"));
+  const isDesktop = useMediaQuery(theme.breakpoints.up("lg"));
 
-  // Blog-style column calculation
+  // Blog-style column calculation with better spacing
   const getColumns = () => {
-    if (isMobile) return 1; // Single column on mobile
-    if (isTablet) return 2; // Two columns on tablet
-    return isDesktop ? 3 : 2; // Three columns on desktop, fallback to 2
+    if (isMobile) return 1; // Single column for mobile reading
+    if (isTablet) return 2; // Two columns for tablets
+    return 3; // Three columns for desktop blog layout
   };
 
   const columns = getColumns();
   const shouldVirtualize = items.length > virtualizationThreshold;
+
+  // Blog-focused spacing that adapts to content density
+  const getSpacing = () => {
+    if (isMobile) return 3; // Generous mobile spacing
+    if (isTablet) return 4; // Good tablet spacing
+    return 5; // Ample desktop spacing for visual separation
+  };
+
+  const spacing = getSpacing();
 
   // Add keyboard navigation support for accessibility
   const { gridRef } = useGridKeyboardNavigation(
     columns,
     items.length,
     (index) => {
-      // Optional focus change handler
+      // Optional focus change handler for accessibility
       console.log(`Focus moved to item ${index}`);
     },
   );
 
-  // Blog-style spacing configuration
-  const getSpacing = () => {
-    if (isMobile) return 2;
-    if (isTablet) return 3;
-    return 4; // More generous spacing on desktop
-  };
-
-  const spacing = getSpacing();
-
-  // If no items and not loading, show a clean empty state
+  // If no items and not loading, show a blog-oriented empty state
   if (items.length === 0 && !isLoading) {
     const containerStyles = {
       display: "flex",
       flexDirection: "column",
-      gap: theme.spacing(4),
+      gap: theme.spacing(6),
       width: "100%",
-      maxWidth: "1200px",
+      maxWidth: "1400px",
       margin: "0 auto",
-      padding: theme.spacing(0, 2),
+      padding: theme.spacing(0, 3),
+      [theme.breakpoints.down("md")]: {
+        padding: theme.spacing(0, 2),
+        gap: theme.spacing(4),
+      },
       ...(sx as any),
     } as SxProps<Theme>;
 
@@ -115,11 +119,12 @@ const DocumentGrid: React.FC<DocumentGridProps> = ({
               {titleIcon}
             </Box>
           )}
-          <Typography variant="h6" sx={styles.emptyStateText}>
-            No articles found
+          <Typography variant="h5" sx={styles.emptyStateText}>
+            No articles published yet
           </Typography>
-          <Typography variant="body2" sx={styles.emptyStateSubtext}>
-            Start writing your first article and it will appear here. Your content will be beautifully organized in this clean, blog-style layout.
+          <Typography variant="body1" sx={styles.emptyStateSubtext}>
+            Start writing your first article and share your thoughts with the world. 
+            Your published content will appear here in a beautiful, magazine-style layout.
           </Typography>
         </Box>
       </Box>
@@ -189,7 +194,7 @@ const DocumentGrid: React.FC<DocumentGridProps> = ({
     </WindowScroller>
   );
 
-  // Render standard grid for smaller datasets with blog-style layout
+  // Render standard grid with blog-oriented layout
   const renderStandardGrid = () => (
     <Box sx={styles.grid}>
       <Grid
@@ -198,7 +203,7 @@ const DocumentGrid: React.FC<DocumentGridProps> = ({
         sx={{ 
           width: "100%",
           margin: 0,
-          padding: theme.spacing(1),
+          alignItems: "stretch", // Ensure equal height cards
         }}
       >
         {isLoading
@@ -216,11 +221,15 @@ const DocumentGrid: React.FC<DocumentGridProps> = ({
             ))
           )
           : (
-            // Show actual items
+            // Show actual blog posts
             items.map((item, index) => (
               <Grid
                 key={item.id}
                 size={12 / columns} // Dynamic sizing based on column count
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                }}
               >
                 <DraggableDocumentCard
                   userDocument={item}
@@ -236,14 +245,19 @@ const DocumentGrid: React.FC<DocumentGridProps> = ({
   );
 
   // Create a merged style object safely for TypeScript with blog-focused layout
+  // Create blog-oriented container styles
   const containerStyles = {
     display: "flex",
     flexDirection: "column",
-    gap: theme.spacing(4),
+    gap: theme.spacing(6), // More generous spacing
     width: "100%",
-    maxWidth: "1200px", // Optimal reading width for blog content
+    maxWidth: "1400px", // Wider for better desktop experience
     margin: "0 auto",
-    padding: theme.spacing(0, 2),
+    padding: theme.spacing(0, 3), // More padding
+    [theme.breakpoints.down("md")]: {
+      padding: theme.spacing(0, 2),
+      gap: theme.spacing(4),
+    },
     ...(sx as any),
   } as SxProps<Theme>;
 
