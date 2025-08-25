@@ -110,7 +110,6 @@ const DocumentGrid: React.FC<DocumentGridProps> = ({
           <GridSectionHeader
             title={title}
             icon={titleIcon}
-            count={0}
           />
         )}
         <Box sx={styles.emptyState}>
@@ -272,7 +271,6 @@ const DocumentGrid: React.FC<DocumentGridProps> = ({
         <GridSectionHeader
           title={title}
           icon={titleIcon}
-          count={!isLoading ? items.length : undefined}
         />
       )}
 
