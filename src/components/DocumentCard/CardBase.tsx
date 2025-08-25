@@ -57,13 +57,45 @@ const CardBase: React.FC<SimplifiedCardBaseProps> = ({
   // Format title for tooltips
   const formattedTitle = typeof title === "string" ? title : "Post";
 
-  // Animation styles
-  const animationStyles = prefersReducedMotion ? {} : {
-    transition: cardTheme.animation.transition,
-    "&:hover": {
-      transform: cardTheme.animation.hoverTransform,
+  // Blog-oriented card styles with subtle interactions
+  const cardStyles = {
+    display: "flex",
+    flexDirection: "column",
+    height: "100%",
+    minHeight: cardTheme.minHeight.post,
+    maxHeight: cardTheme.maxHeight?.post,
+    width: "100%",
+    position: "relative",
+    borderRadius: cardTheme.borderRadius,
+    backgroundColor: cardTheme.colors.cardBackground,
+    boxShadow: cardTheme.colors.shadow.default,
+    border: `1px solid ${theme.palette.divider}`,
+    overflow: "hidden",
+    transition: theme.transitions.create([
+      'box-shadow', 
+      'transform', 
+      'border-color'
+    ], {
+      duration: theme.transitions.duration.standard,
+    }),
+    "&:hover": !prefersReducedMotion ? {
+      transform: "translateY(-4px)",
       boxShadow: cardTheme.colors.shadow.hover,
+      borderColor: theme.palette.primary.light,
+    } : {},
+    "&:focus-within": {
+      boxShadow: cardTheme.colors.shadow.focus,
+      outline: `2px solid ${theme.palette.primary.main}`,
+      outlineOffset: "2px",
     },
+    // Responsive adjustments for blog layout
+    [theme.breakpoints.down("md")]: {
+      minHeight: "340px",
+    },
+    [theme.breakpoints.down("sm")]: {
+      minHeight: "320px",
+    },
+    ...sx,
   };
 
   return (
@@ -72,40 +104,20 @@ const CardBase: React.FC<SimplifiedCardBaseProps> = ({
         variant="outlined"
         className="post-card-base"
         sx={{
-          display: "flex",
-          flexDirection: "column",
-          height: "100%",
-          minHeight: cardTheme.minHeight.post,
-          // Removed maxWidth constraint to allow card to fill available space
-          width: "100%",
-          position: "relative",
-          borderRadius: cardTheme.borderRadius,
-          backgroundColor: cardTheme.colors.cardBackground,
-          boxShadow: cardTheme.colors.shadow.default,
-          ...animationStyles,
-          "&:focus-within": {
-            boxShadow: cardTheme.colors.shadow.focus,
-            outline:
-              `${cardTheme.accessibility.focusRingWidth}px solid ${theme.palette.primary.main}`,
-            outlineOffset: "2px",
-          },
-          // Responsive adjustments
-          [theme.breakpoints.down("sm")]: {
-            minHeight: "260px",
-          },
-          ...sx,
-        }}
+          ...cardStyles,
+        } as SxProps<Theme>}
       >
-        {/* Top content area - flexible height */}
+        {/* Top content area - optimized for blog content */}
         <Box
           sx={{
-            flex: 1, // Take up remaining space
+            flex: 1,
             width: "100%",
             position: "relative",
             display: "flex",
-            alignItems: "stretch", // Stretch children to full height
-            justifyContent: "center",
-            minHeight: "200px", // Minimum height for content
+            flexDirection: "column",
+            minHeight: "240px", // Adequate height for blog content
+            padding: cardTheme.spacing.contentPadding,
+            paddingBottom: cardTheme.spacing.sectionGap,
           }}
         >
           {topContent}
@@ -152,17 +164,18 @@ const CardBase: React.FC<SimplifiedCardBaseProps> = ({
             zIndex: 2,
           }}
         >
-          {/* Action bar */}
+          {/* Blog-style action bar */}
           <Box
             sx={{
               px: cardTheme.spacing.contentPadding,
-              py: 1.5,
+              py: 2, // More generous padding for blog layout
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
               borderTop: "1px solid",
               borderColor: "divider",
-              height: cardTheme.actionBar.height,
+              backgroundColor: theme.palette.background.default,
+              minHeight: "72px", // Adequate height for blog metadata
               zIndex: 3,
               pointerEvents: "auto",
             }}
@@ -176,6 +189,7 @@ const CardBase: React.FC<SimplifiedCardBaseProps> = ({
                 alignItems: "center",
                 flex: "1 1 auto",
                 minWidth: 0,
+                flexWrap: "wrap", // Allow wrapping on smaller screens
               }}
             >
               {chipContent}
@@ -186,12 +200,12 @@ const CardBase: React.FC<SimplifiedCardBaseProps> = ({
               sx={{
                 display: "flex",
                 ml: "auto",
-                gap: 0.25, // Reduced gap between buttons (2px instead of 4px)
-                mr: -0.5, // Move buttons slightly more to the right
+                gap: 0.5, // Slightly larger gap for blog actions
+                mr: -0.5,
                 "& button": {
-                  minWidth: 36, // Reduced from 44px to make them more compact
-                  minHeight: 36, // Reduced from 44px to make them more compact
-                  padding: 0.5, // Reduced padding inside buttons
+                  minWidth: 40, // Slightly larger for better touch targets
+                  minHeight: 40,
+                  padding: 0.75,
                 },
               }}
             >
