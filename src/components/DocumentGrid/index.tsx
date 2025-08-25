@@ -1,7 +1,7 @@
 "use client";
 import React, { useCallback, useMemo } from "react";
 import { Box, Typography, useMediaQuery } from "@mui/material";
-import { SxProps, Theme, useTheme } from "@mui/material/styles";
+import { SxProps, Theme, useTheme, alpha } from "@mui/material/styles";
 import { User, UserDocument } from "@/types";
 import { AutoSizer, List, WindowScroller } from "react-virtualized";
 import Grid from "@mui/material/Grid2";
@@ -9,7 +9,6 @@ import DraggableDocumentCard from "../DocumentCard/DraggablePostCard";
 import SkeletonCard from "../DocumentCard/components/LoadingCard";
 import GridSectionHeader from "./GridSectionHeader";
 import { documentGridStyles } from "./styles";
-import { useResponsiveGrid, useVirtualization } from "./hooks";
 import useGridKeyboardNavigation from "./useGridKeyboardNavigation";
 
 interface DocumentGridProps {
@@ -47,19 +46,27 @@ const DocumentGrid: React.FC<DocumentGridProps> = ({
   sx,
   onMoveComplete,
   isLoading = false,
-  skeletonCount = 4,
+  skeletonCount = 6, // Better for blog layouts
   virtualized = true,
-  virtualizationThreshold = 20,
+  virtualizationThreshold = 50, // Higher threshold for better UX
 }) => {
   const theme = useTheme();
   const styles = documentGridStyles(theme);
 
-  // Use our custom hooks for responsive grid layout
-  const { columns, rowHeight } = useResponsiveGrid();
-  const { shouldVirtualize } = useVirtualization(items.length, {
-    threshold: virtualizationThreshold,
-    forceVirtualize: virtualized && items.length > virtualizationThreshold * 2,
-  });
+  // Simplified responsive grid for blog conventions
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
+  const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
+
+  // Blog-style column calculation
+  const getColumns = () => {
+    if (isMobile) return 1; // Single column on mobile
+    if (isTablet) return 2; // Two columns on tablet
+    return isDesktop ? 3 : 2; // Three columns on desktop, fallback to 2
+  };
+
+  const columns = getColumns();
+  const shouldVirtualize = items.length > virtualizationThreshold;
 
   // Add keyboard navigation support for accessibility
   const { gridRef } = useGridKeyboardNavigation(
@@ -71,14 +78,25 @@ const DocumentGrid: React.FC<DocumentGridProps> = ({
     },
   );
 
-  // If no items and not loading, show a message instead of nothing
+  // Blog-style spacing configuration
+  const getSpacing = () => {
+    if (isMobile) return 2;
+    if (isTablet) return 3;
+    return 4; // More generous spacing on desktop
+  };
+
+  const spacing = getSpacing();
+
+  // If no items and not loading, show a clean empty state
   if (items.length === 0 && !isLoading) {
-    // Create a merged style object safely for TypeScript
     const containerStyles = {
       display: "flex",
       flexDirection: "column",
-      gap: theme.spacing(2),
+      gap: theme.spacing(4),
       width: "100%",
+      maxWidth: "1200px",
+      margin: "0 auto",
+      padding: theme.spacing(0, 2),
       ...(sx as any),
     } as SxProps<Theme>;
 
@@ -91,28 +109,24 @@ const DocumentGrid: React.FC<DocumentGridProps> = ({
             count={0}
           />
         )}
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexDirection: "column",
-            py: 6,
-            color: "text.secondary",
-          }}
-        >
+        <Box sx={styles.emptyState}>
           {titleIcon && (
-            <Box sx={{ fontSize: 48, opacity: 0.5, mb: 2 }}>
+            <Box sx={styles.emptyStateIcon}>
               {titleIcon}
             </Box>
           )}
-          <Typography variant="body1">No items found</Typography>
+          <Typography variant="h6" sx={styles.emptyStateText}>
+            No articles found
+          </Typography>
+          <Typography variant="body2" sx={styles.emptyStateSubtext}>
+            Start writing your first article and it will appear here. Your content will be beautifully organized in this clean, blog-style layout.
+          </Typography>
         </Box>
       </Box>
     );
   }
 
-  // Render the grid with virtualization for better performance with large datasets
+  // Render the grid with virtualization for large datasets
   const renderVirtualizedGrid = () => (
     <WindowScroller>
       {({ height, isScrolling, registerChild, scrollTop }) => (
@@ -120,7 +134,7 @@ const DocumentGrid: React.FC<DocumentGridProps> = ({
           {({ width }) => {
             const itemsPerRow = columns;
             const rowCount = Math.ceil(items.length / itemsPerRow);
-            const calculatedRowHeight = rowHeight(340); // Card height + margin
+            const calculatedRowHeight = 400; // Fixed card height for blog layout
 
             return (
               <div ref={(element) => registerChild(element)}>
@@ -141,7 +155,7 @@ const DocumentGrid: React.FC<DocumentGridProps> = ({
 
                     return (
                       <div key={key} style={style}>
-                        <Grid container spacing={3} sx={styles.gridRow}>
+                        <Grid container spacing={spacing} sx={styles.gridRow}>
                           {Array.from({ length: itemsPerRow }).map(
                             (_, colIndex) => {
                               const itemIndex = fromIndex + colIndex;
@@ -150,13 +164,7 @@ const DocumentGrid: React.FC<DocumentGridProps> = ({
                               return (
                                 <Grid
                                   key={items[itemIndex].id}
-                                  size={{
-                                    xs: 12,
-                                    sm: 6,
-                                    md: 4,
-                                    lg: 3,
-                                    xl: 2.4,
-                                  }}
+                                  size={12 / columns} // Dynamic sizing based on column count
                                 >
                                   <DraggableDocumentCard
                                     userDocument={items[itemIndex]}
@@ -181,62 +189,61 @@ const DocumentGrid: React.FC<DocumentGridProps> = ({
     </WindowScroller>
   );
 
-  // Render standard grid for smaller datasets
+  // Render standard grid for smaller datasets with blog-style layout
   const renderStandardGrid = () => (
-    <Grid
-      container
-      spacing={3}
-      sx={styles.grid}
-    >
-      {isLoading
-        ? (
-          // Show skeleton cards when loading
-          Array.from({ length: skeletonCount }).map((_, index) => (
-            <Grid
-              key={`skeleton-${index}`}
-              size={{
-                xs: 12,
-                sm: 6,
-                md: 4,
-                lg: 3,
-                xl: 2.4,
-              }}
-            >
-              <SkeletonCard sx={styles.skeletonCard} />
-            </Grid>
-          ))
-        )
-        : (
-          // Show actual items
-          items.map((item) => (
-            <Grid
-              key={item.id}
-              size={{
-                xs: 12,
-                sm: 6,
-                md: 4,
-                lg: 3,
-                xl: 2.4,
-              }}
-            >
-              <DraggableDocumentCard
-                userDocument={item}
-                user={user}
-                onMoveComplete={onMoveComplete}
-                sx={styles.card}
-              />
-            </Grid>
-          ))
-        )}
-    </Grid>
+    <Box sx={styles.grid}>
+      <Grid
+        container
+        spacing={spacing}
+        sx={{ 
+          width: "100%",
+          margin: 0,
+          padding: theme.spacing(1),
+        }}
+      >
+        {isLoading
+          ? (
+            // Show skeleton cards when loading
+            Array.from({ length: skeletonCount }).map((_, index) => (
+              <Grid
+                key={`skeleton-${index}`}
+                size={12 / columns} // Dynamic sizing based on column count
+              >
+                <Box sx={styles.skeletonCard}>
+                  <SkeletonCard />
+                </Box>
+              </Grid>
+            ))
+          )
+          : (
+            // Show actual items
+            items.map((item, index) => (
+              <Grid
+                key={item.id}
+                size={12 / columns} // Dynamic sizing based on column count
+              >
+                <DraggableDocumentCard
+                  userDocument={item}
+                  user={user}
+                  onMoveComplete={onMoveComplete}
+                  sx={styles.card}
+                />
+              </Grid>
+            ))
+          )}
+      </Grid>
+    </Box>
   );
 
-  // Create a merged style object safely for TypeScript
+  // Create a merged style object safely for TypeScript with blog-focused layout
   const containerStyles = {
     display: "flex",
     flexDirection: "column",
-    gap: theme.spacing(2),
+    gap: theme.spacing(4),
     width: "100%",
+    maxWidth: "1200px", // Optimal reading width for blog content
+    margin: "0 auto",
+    padding: theme.spacing(0, 2),
     ...(sx as any),
   } as SxProps<Theme>;
 

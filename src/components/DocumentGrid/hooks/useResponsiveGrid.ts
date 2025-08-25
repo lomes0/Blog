@@ -21,66 +21,81 @@ export const useResponsiveGrid = () => {
   const isUltraWide = useMediaQuery("(min-width: 2000px)");
 
   const gridConfig = useMemo(() => {
-    // Mobile-first approach with better column distribution
+    // Mobile-first approach with better column distribution and enhanced spacing
     if (isXs || isNarrow) {
       return {
         columns: 1,
         spacing: { xs: 2, sm: 2, md: 2, lg: 2, xl: 2 },
         size: { xs: 12, sm: 12, md: 12, lg: 12, xl: 12 },
+        cardHeight: "auto",
+        gap: 16,
       };
     }
 
     if (isSm) {
       return {
         columns: 2,
-        spacing: { xs: 2, sm: 2.5, md: 3, lg: 3, xl: 3 },
+        spacing: { xs: 2, sm: 3, md: 3, lg: 3, xl: 3 },
         size: { xs: 12, sm: 6, md: 6, lg: 6, xl: 6 },
+        cardHeight: "280px",
+        gap: 20,
       };
     }
 
     if (isMd) {
       return {
         columns: 3,
-        spacing: { xs: 2, sm: 2.5, md: 3, lg: 3, xl: 3 },
+        spacing: { xs: 2, sm: 3, md: 3, lg: 3, xl: 3 },
         size: { xs: 12, sm: 6, md: 4, lg: 4, xl: 4 },
+        cardHeight: "300px",
+        gap: 24,
       };
     }
 
     if (isLg) {
       return {
         columns: 4,
-        spacing: { xs: 2, sm: 2.5, md: 3, lg: 3, xl: 3 },
+        spacing: { xs: 2, sm: 3, md: 3, lg: 3, xl: 4 },
         size: { xs: 12, sm: 6, md: 4, lg: 3, xl: 3 },
+        cardHeight: "320px",
+        gap: 24,
       };
     }
 
-    // XL and above with dynamic column calculation
+    // XL and above with dynamic column calculation and better spacing
     if (isUltraWide) {
       return {
         columns: 6,
-        spacing: { xs: 2, sm: 2.5, md: 3, lg: 3, xl: 3 },
+        spacing: { xs: 2, sm: 3, md: 3, lg: 3, xl: 4 },
         size: { xs: 12, sm: 6, md: 4, lg: 3, xl: 2 },
+        cardHeight: "340px",
+        gap: 32,
       };
     }
 
     if (isWide || isXl) {
       return {
         columns: 5,
-        spacing: { xs: 2, sm: 2.5, md: 3, lg: 3, xl: 3 },
+        spacing: { xs: 2, sm: 3, md: 3, lg: 3, xl: 4 },
         size: { xs: 12, sm: 6, md: 4, lg: 3, xl: 2.4 },
+        cardHeight: "340px",
+        gap: 28,
       };
     }
 
-    // Default fallback
+    // Default fallback with enhanced spacing
     return {
       columns: 4,
-      spacing: { xs: 2, sm: 2.5, md: 3, lg: 3, xl: 3 },
+      spacing: { xs: 2, sm: 3, md: 3, lg: 3, xl: 3 },
       size: { xs: 12, sm: 6, md: 4, lg: 3, xl: 3 },
+      cardHeight: "320px",
+      gap: 24,
     };
   }, [isXs, isSm, isMd, isLg, isXl, isNarrow, isWide, isUltraWide]);
 
   return {
     ...gridConfig,
+    rowHeight: (baseHeight = 340) => baseHeight + gridConfig.gap,
     breakpoints: {
       isXs,
       isSm,
