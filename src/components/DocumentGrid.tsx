@@ -226,11 +226,11 @@ const DocumentGrid: React.FC<DocumentGridProps> = ({
       <Grid
         container
         spacing={{
-          xs: 2,
-          sm: 2.5,
-          md: 3,
-          lg: 3,
-          xl: 3,
+          xs: 3,
+          sm: 4,
+          md: 5,
+          lg: 5,
+          xl: 6,
         }}
         sx={{
           width: "100%",

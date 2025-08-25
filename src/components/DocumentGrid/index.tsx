@@ -70,9 +70,9 @@ const DocumentGrid: React.FC<DocumentGridProps> = ({
 
   // Blog-focused spacing that adapts to content density
   const getSpacing = () => {
-    if (isMobile) return 3; // Generous mobile spacing
-    if (isTablet) return 4; // Good tablet spacing
-    return 5; // Ample desktop spacing for visual separation
+    if (isMobile) return 5; // More generous mobile spacing
+    if (isTablet) return 6; // More generous tablet spacing
+    return 8; // Much more generous desktop spacing for better visual separation
   };
 
   const spacing = getSpacing();
