@@ -62,7 +62,7 @@ const findPublishedPosts = async (limit?: number) => {
       // Remove coauthors complexity for blog posts
     },
     orderBy: {
-      updatedAt: "desc",
+      createdAt: "desc",
     },
     take: limit,
   });
@@ -231,7 +231,7 @@ const findPostsByAuthorId = async (authorId: string) => {
       // Remove coauthors complexity
     },
     orderBy: {
-      updatedAt: "desc",
+      createdAt: "desc",
     },
   });
 
@@ -307,7 +307,7 @@ const findPublishedPostsByAuthorId = async (authorId: string) => {
       // Remove coauthors complexity
     },
     orderBy: {
-      updatedAt: "desc",
+      createdAt: "desc",
     },
   });
 
@@ -433,7 +433,7 @@ const findCloudStorageUsageByAuthorId = async (authorId: string) => {
     GROUP BY 
       d.id
     ORDER BY 
-      d."updatedAt" DESC;
+      d."createdAt" DESC;
   `;
 
   return postSizes;

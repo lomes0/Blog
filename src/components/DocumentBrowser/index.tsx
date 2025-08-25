@@ -29,7 +29,7 @@ const DocumentBrowser: React.FC<DocumentBrowserProps> = () => {
   // State for loading and sorting
   const [loading] = useState(false); // Remove loading state since we're using synchronous filtering
   const [sortValue, setSortValue] = useState({
-    key: "updatedAt",
+    key: "createdAt",
     direction: "desc",
   });
 
