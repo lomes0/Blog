@@ -53,19 +53,6 @@ const DocumentGridHeader: React.FC<DocumentGridHeaderProps> = memo(({
           {titleIcon}
         </Box>
       )}
-      <Typography
-        variant="h6"
-        component="h2"
-        sx={{
-          fontWeight: 600,
-          // Responsive typography
-          [theme.breakpoints.down("sm")]: {
-            fontSize: "1.125rem",
-          },
-        }}
-      >
-        {title} {!isLoading && `(${itemCount})`}
-      </Typography>
     </Box>
   );
 });
