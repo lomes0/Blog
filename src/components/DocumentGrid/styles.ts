@@ -34,9 +34,9 @@ export const documentGridStyles = (theme: Theme) => ({
     backgroundColor: theme.palette.background.paper,
     overflow: "hidden",
     transition: theme.transitions.create([
-      'box-shadow', 
-      'transform', 
-      'border-color'
+      "box-shadow",
+      "transform",
+      "border-color",
     ], {
       duration: theme.transitions.duration.standard,
     }),

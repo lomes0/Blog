@@ -1,7 +1,7 @@
 "use client";
 import { UserDocument } from "@/types";
 import { memo } from "react";
-import { Box, Skeleton, Alert, IconButton } from "@mui/material";
+import { Alert, Box, IconButton, Skeleton } from "@mui/material";
 import { Refresh } from "@mui/icons-material";
 import { usePostContent } from "./hooks/usePostContent";
 
@@ -22,8 +22,8 @@ const ThumbnailSkeleton: React.FC = () => (
  */
 const ThumbnailError: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
   <Box sx={{ p: 1 }}>
-    <Alert 
-      severity="warning" 
+    <Alert
+      severity="warning"
       action={
         <IconButton size="small" onClick={onRetry} aria-label="Retry loading">
           <Refresh />
@@ -37,7 +37,7 @@ const ThumbnailError: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
 
 /**
  * Simplified post thumbnail component using usePostContent hook
- * 
+ *
  * This component now uses the consolidated content loading logic
  * with improved error handling and retry functionality.
  */

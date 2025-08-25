@@ -2,7 +2,7 @@ import React from "react";
 import { Box } from "@mui/material";
 import { User } from "@/types";
 import { PostState } from "../PostChips";
-import { usePostMeta, PostMetaOptions } from "../hooks/usePostMeta";
+import { PostMetaOptions, usePostMeta } from "../hooks/usePostMeta";
 
 /**
  * Props for PostMeta component
@@ -17,10 +17,10 @@ export interface PostMetaProps {
 
 /**
  * PostMeta component handles the metadata chips display
- * 
+ *
  * This component consolidates the metadata chip logic from PostCard
  * and provides a clear separation of metadata concerns.
- * 
+ *
  * @param postState - The current post state
  * @param author - The post author
  * @param series - The series information (if any)
@@ -43,12 +43,12 @@ export const PostMeta: React.FC<PostMetaProps> = ({
   });
 
   return (
-    <Box 
-      sx={{ 
-        display: "flex", 
-        gap: 0.75, 
+    <Box
+      sx={{
+        display: "flex",
+        gap: 0.75,
         overflow: "hidden",
-        flexWrap: "wrap"
+        flexWrap: "wrap",
       }}
     >
       {chips}

@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { useTheme, alpha } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import { useMediaQuery } from "@mui/material";
 
 /**
@@ -8,7 +8,9 @@ import { useMediaQuery } from "@mui/material";
  */
 export const useGridAnimations = () => {
   const theme = useTheme();
-  const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+  const prefersReducedMotion = useMediaQuery(
+    "(prefers-reduced-motion: reduce)",
+  );
 
   // Base animation configurations
   const animationConfig = useMemo(() => ({
@@ -16,12 +18,16 @@ export const useGridAnimations = () => {
     cardHover: {
       transform: prefersReducedMotion ? "none" : "translateY(-2px) scale(1.02)",
       transition: theme.transitions.create([
-        'transform', 'box-shadow', 'filter'
+        "transform",
+        "box-shadow",
+        "filter",
       ], {
         duration: prefersReducedMotion ? 0 : theme.transitions.duration.shorter,
         easing: theme.transitions.easing.easeInOut,
       }),
-      boxShadow: `0 8px 25px ${alpha(theme.palette.primary.main, 0.15)}, 0 3px 10px ${alpha(theme.palette.common.black, 0.1)}`,
+      boxShadow: `0 8px 25px ${
+        alpha(theme.palette.primary.main, 0.15)
+      }, 0 3px 10px ${alpha(theme.palette.common.black, 0.1)}`,
       filter: prefersReducedMotion ? "none" : "brightness(1.05)",
     },
 
@@ -30,21 +36,27 @@ export const useGridAnimations = () => {
       outline: `3px solid ${alpha(theme.palette.primary.main, 0.3)}`,
       outlineOffset: 2,
       transform: prefersReducedMotion ? "none" : "translateY(-1px)",
-      boxShadow: `0 0 0 1px ${theme.palette.primary.main}, 0 4px 12px ${alpha(theme.palette.primary.main, 0.2)}`,
+      boxShadow: `0 0 0 1px ${theme.palette.primary.main}, 0 4px 12px ${
+        alpha(theme.palette.primary.main, 0.2)
+      }`,
     },
 
     // Card active states
     cardActive: {
       transform: prefersReducedMotion ? "none" : "translateY(0px) scale(0.98)",
-      transition: theme.transitions.create('transform', {
-        duration: prefersReducedMotion ? 0 : theme.transitions.duration.shortest,
+      transition: theme.transitions.create("transform", {
+        duration: prefersReducedMotion
+          ? 0
+          : theme.transitions.duration.shortest,
       }),
     },
 
     // Staggered entry animation
     staggeredEntry: (index: number, maxDelay = 1000) => ({
       animation: prefersReducedMotion ? "none" : "fadeInUp 0.6s ease-out",
-      animationDelay: prefersReducedMotion ? "0s" : `${Math.min(index * 0.1, maxDelay / 1000)}s`,
+      animationDelay: prefersReducedMotion
+        ? "0s"
+        : `${Math.min(index * 0.1, maxDelay / 1000)}s`,
       animationFillMode: "both",
     }),
 
@@ -55,12 +67,16 @@ export const useGridAnimations = () => {
         ${alpha(theme.palette.grey[200], 0.3)} 50%, 
         ${alpha(theme.palette.grey[300], 0.1)} 75%)`,
       backgroundSize: "200% 100%",
-      animation: prefersReducedMotion ? "none" : "shimmer 1.8s ease-in-out infinite",
+      animation: prefersReducedMotion
+        ? "none"
+        : "shimmer 1.8s ease-in-out infinite",
     },
 
     // Floating animation for empty states
     floating: {
-      animation: prefersReducedMotion ? "none" : "float 3s ease-in-out infinite",
+      animation: prefersReducedMotion
+        ? "none"
+        : "float 3s ease-in-out infinite",
     },
   }), [theme, prefersReducedMotion]);
 
@@ -103,34 +119,40 @@ export const useGridAnimations = () => {
   }), []);
 
   // Animation utilities
-  const getCardStyles = useCallback((state: 'default' | 'hover' | 'focus' | 'active' = 'default') => {
-    const baseStyles = {
-      height: "100%",
-      transformOrigin: "center",
+  const getCardStyles = useCallback(
+    (state: "default" | "hover" | "focus" | "active" = "default") => {
+      const baseStyles = {
+        height: "100%",
+        transformOrigin: "center",
+        ...keyframes,
+      };
+
+      switch (state) {
+        case "hover":
+          return { ...baseStyles, "&:hover": animationConfig.cardHover };
+        case "focus":
+          return { ...baseStyles, "&:focus-within": animationConfig.cardFocus };
+        case "active":
+          return { ...baseStyles, "&:active": animationConfig.cardActive };
+        default:
+          return {
+            ...baseStyles,
+            "&:hover": animationConfig.cardHover,
+            "&:focus-within": animationConfig.cardFocus,
+            "&:active": animationConfig.cardActive,
+          };
+      }
+    },
+    [animationConfig, keyframes],
+  );
+
+  const getStaggeredStyles = useCallback(
+    (index: number, maxDelay?: number) => ({
+      ...animationConfig.staggeredEntry(index, maxDelay),
       ...keyframes,
-    };
-
-    switch (state) {
-      case 'hover':
-        return { ...baseStyles, "&:hover": animationConfig.cardHover };
-      case 'focus':
-        return { ...baseStyles, "&:focus-within": animationConfig.cardFocus };
-      case 'active':
-        return { ...baseStyles, "&:active": animationConfig.cardActive };
-      default:
-        return {
-          ...baseStyles,
-          "&:hover": animationConfig.cardHover,
-          "&:focus-within": animationConfig.cardFocus,
-          "&:active": animationConfig.cardActive,
-        };
-    }
-  }, [animationConfig, keyframes]);
-
-  const getStaggeredStyles = useCallback((index: number, maxDelay?: number) => ({
-    ...animationConfig.staggeredEntry(index, maxDelay),
-    ...keyframes,
-  }), [animationConfig, keyframes]);
+    }),
+    [animationConfig, keyframes],
+  );
 
   const getShimmerStyles = useCallback(() => ({
     ...animationConfig.shimmer,
@@ -147,16 +169,16 @@ export const useGridAnimations = () => {
     cardStyles: getCardStyles(),
     shimmerStyles: getShimmerStyles(),
     floatingStyles: getFloatingStyles(),
-    
+
     // Utility functions
     getCardStyles,
     getStaggeredStyles,
     getShimmerStyles,
     getFloatingStyles,
-    
+
     // Animation state
     prefersReducedMotion,
-    
+
     // Theme integration
     theme,
   };

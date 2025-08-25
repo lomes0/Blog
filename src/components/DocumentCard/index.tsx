@@ -16,20 +16,20 @@ interface DocumentCardProps {
 
 /**
  * DocumentCard - Main entry point for blog post cards
- * 
+ *
  * This component provides a simplified interface for rendering blog post cards.
  * It wraps the PostCard component with default responsive styling and maintains
  * backward compatibility with the original DocumentCard API.
- * 
+ *
  * @param userDocument - The user document to display
- * @param user - The current user context  
+ * @param user - The current user context
  * @param sx - Additional Material-UI styling
  * @returns A properly styled post card component
  */
-const DocumentCard: React.FC<DocumentCardProps> = memo(({ 
-  userDocument, 
-  user, 
-  sx = {} 
+const DocumentCard: React.FC<DocumentCardProps> = memo(({
+  userDocument,
+  user,
+  sx = {},
 }) => {
   // Apply default responsive styles that work well in grid layouts
   const defaultSx: SxProps<Theme> = {

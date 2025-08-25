@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { UserDocument } from "@/types";
 import { useThumbnailContext } from "../../../app/context/ThumbnailContext";
 import { loadThumbnailWithFallbacks } from "../utils/postHelpers";
@@ -15,22 +15,24 @@ export interface UsePostContentResult {
 
 /**
  * Consolidated content loading hook
- * 
+ *
  * This hook consolidates all thumbnail loading logic from PostThumbnail
  * and provides better error handling, retry functionality, and performance
  * optimizations.
- * 
+ *
  * Features:
  * - Unified loading state management
  * - Error handling with retry capability
  * - Backward compatibility with thumbnail context
  * - Improved caching strategy
  * - Proper cleanup on unmount
- * 
+ *
  * @param userDocument - The user document to load content for
  * @returns Object containing thumbnail data, loading state, error state, and retry function
  */
-export const usePostContent = (userDocument?: UserDocument): UsePostContentResult => {
+export const usePostContent = (
+  userDocument?: UserDocument,
+): UsePostContentResult => {
   const [thumbnail, setThumbnail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -67,14 +69,16 @@ export const usePostContent = (userDocument?: UserDocument): UsePostContentResul
 
       // Use improved caching strategy with fallbacks
       const thumbnailData = await loadThumbnailWithFallbacks(userDocument);
-      
+
       if (thumbnailData) {
         setThumbnail(thumbnailData);
       } else {
         setError("Failed to load thumbnail content");
       }
     } catch (loadError) {
-      const errorMessage = loadError instanceof Error ? loadError.message : "Unknown error";
+      const errorMessage = loadError instanceof Error
+        ? loadError.message
+        : "Unknown error";
       console.warn("Failed to load thumbnail:", loadError);
       setError(errorMessage);
       setThumbnail(null);

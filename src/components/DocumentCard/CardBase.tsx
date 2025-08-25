@@ -72,17 +72,19 @@ const CardBase: React.FC<SimplifiedCardBaseProps> = ({
     border: `1px solid ${theme.palette.divider}`,
     overflow: "hidden",
     transition: theme.transitions.create([
-      'box-shadow', 
-      'transform', 
-      'border-color'
+      "box-shadow",
+      "transform",
+      "border-color",
     ], {
       duration: theme.transitions.duration.standard,
     }),
-    "&:hover": !prefersReducedMotion ? {
-      transform: "translateY(-4px)",
-      boxShadow: cardTheme.colors.shadow.hover,
-      borderColor: theme.palette.primary.light,
-    } : {},
+    "&:hover": !prefersReducedMotion
+      ? {
+        transform: "translateY(-4px)",
+        boxShadow: cardTheme.colors.shadow.hover,
+        borderColor: theme.palette.primary.light,
+      }
+      : {},
     "&:focus-within": {
       boxShadow: cardTheme.colors.shadow.focus,
       outline: `2px solid ${theme.palette.primary.main}`,

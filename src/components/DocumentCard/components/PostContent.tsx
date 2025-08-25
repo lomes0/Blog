@@ -31,15 +31,15 @@ const ContentSkeleton: React.FC = () => (
 
 /**
  * PostContent component handles the main content display logic
- * 
+ *
  * This component consolidates the thumbnail logic from PostCard
  * and provides a clear separation of content concerns.
- * 
+ *
  * Main loading state is handled by LoadingCard, this component
  * only handles content-specific async loading (Suspense).
  */
-export const PostContent: React.FC<PostContentProps> = ({ 
-  userDocument
+export const PostContent: React.FC<PostContentProps> = ({
+  userDocument,
 }) => {
   return (
     <Badge badgeContent={0} color="secondary">

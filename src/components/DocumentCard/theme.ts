@@ -45,14 +45,14 @@ export const cardTheme = {
     cardBackground: "background.paper",
     textPrimary: "text.primary",
     textSecondary: "text.secondary",
-    
+
     // Shadows for depth and hierarchy
     shadow: {
       default: "0 2px 8px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04)",
       hover: "0 8px 24px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08)",
       focus: "0 0 0 3px rgba(25,118,210,0.2)",
     },
-    
+
     // Status colors for blog posts
     status: {
       draft: {

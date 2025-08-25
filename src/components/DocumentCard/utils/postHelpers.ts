@@ -5,7 +5,7 @@ import thumbnailCache from "./thumbnailCache";
 
 /**
  * Enhanced thumbnail loading with improved fallback strategies
- * 
+ *
  * This function implements a robust thumbnail loading strategy with:
  * - Advanced caching using the new ThumbnailCache
  * - Multiple fallback sources
@@ -13,7 +13,7 @@ import thumbnailCache from "./thumbnailCache";
  * - Performance optimizations
  */
 export const loadThumbnailWithFallbacks = async (
-  userDocument?: UserDocument
+  userDocument?: UserDocument,
 ): Promise<string | null> => {
   if (!userDocument) return null;
 
@@ -63,7 +63,9 @@ export const loadThumbnailWithFallbacks = async (
 /**
  * Load thumbnail from local document in memory
  */
-const loadFromLocalDocument = async (documentId: string): Promise<string | null> => {
+const loadFromLocalDocument = async (
+  documentId: string,
+): Promise<string | null> => {
   try {
     const document = await documentDB.getByID(documentId);
     if (!document?.data) return null;
@@ -84,7 +86,9 @@ const loadFromLocalDocument = async (documentId: string): Promise<string | null>
 /**
  * Load thumbnail from IndexedDB
  */
-const loadFromIndexedDB = async (documentId: string): Promise<string | null> => {
+const loadFromIndexedDB = async (
+  documentId: string,
+): Promise<string | null> => {
   try {
     const document = await documentDB.getByID(documentId);
     if (!document?.data) return null;
@@ -107,14 +111,14 @@ const loadFromIndexedDB = async (documentId: string): Promise<string | null> => 
  */
 const loadFromAPI = async (
   documentId: string,
-  retries = 2
+  retries = 2,
 ): Promise<string | null> => {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const response = await fetch(`/api/thumbnails/${documentId}`, {
         // Add cache headers for better performance
         headers: {
-          'Cache-Control': 'max-age=300', // 5 minutes cache
+          "Cache-Control": "max-age=300", // 5 minutes cache
         },
       });
 
@@ -127,11 +131,13 @@ const loadFromAPI = async (
 
       // If not successful and we have retries left, wait before retry
       if (attempt < retries) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+        await new Promise((resolve) =>
+          setTimeout(resolve, 1000 * (attempt + 1))
+        );
       }
     } catch (error) {
       console.warn(`API attempt ${attempt + 1} failed:`, error);
-      
+
       // If it's the last attempt, don't retry
       if (attempt === retries) {
         throw error;
@@ -160,13 +166,15 @@ export const clearThumbnailCache = () => {
  * Preload thumbnails for a list of documents
  * Useful for optimizing performance when loading multiple cards
  */
-export const preloadThumbnails = async (userDocuments: UserDocument[]): Promise<void> => {
+export const preloadThumbnails = async (
+  userDocuments: UserDocument[],
+): Promise<void> => {
   const loadPromises = userDocuments
-    .filter(doc => doc && (doc.local || doc.cloud))
-    .map(doc => loadThumbnailWithFallbacks(doc));
+    .filter((doc) => doc && (doc.local || doc.cloud))
+    .map((doc) => loadThumbnailWithFallbacks(doc));
 
   // Load thumbnails in parallel but don't await all - fire and forget
-  Promise.allSettled(loadPromises).catch(error => {
+  Promise.allSettled(loadPromises).catch((error) => {
     console.warn("Some thumbnail preloads failed:", error);
   });
 };

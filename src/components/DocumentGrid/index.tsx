@@ -1,7 +1,7 @@
 "use client";
 import React, { useCallback, useMemo } from "react";
 import { Box, Typography, useMediaQuery } from "@mui/material";
-import { SxProps, Theme, useTheme, alpha } from "@mui/material/styles";
+import { alpha, SxProps, Theme, useTheme } from "@mui/material/styles";
 import { User, UserDocument } from "@/types";
 import { AutoSizer, List, WindowScroller } from "react-virtualized";
 import Grid from "@mui/material/Grid2";
@@ -122,8 +122,9 @@ const DocumentGrid: React.FC<DocumentGridProps> = ({
             No articles published yet
           </Typography>
           <Typography variant="body1" sx={styles.emptyStateSubtext}>
-            Start writing your first article and share your thoughts with the world. 
-            Your published content will appear here in a beautiful, magazine-style layout.
+            Start writing your first article and share your thoughts with the
+            world. Your published content will appear here in a beautiful,
+            magazine-style layout.
           </Typography>
         </Box>
       </Box>
@@ -199,7 +200,7 @@ const DocumentGrid: React.FC<DocumentGridProps> = ({
       <Grid
         container
         spacing={spacing}
-        sx={{ 
+        sx={{
           width: "100%",
           margin: 0,
           alignItems: "stretch", // Ensure equal height cards

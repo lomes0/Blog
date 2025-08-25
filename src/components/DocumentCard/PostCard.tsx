@@ -22,7 +22,7 @@ interface PostCardProps {
 /**
  * Simplified PostCard component for blog posts
  * Consolidates DocumentCard logic with blog-specific simplifications
- * 
+ *
  * This refactored version eliminates complex memoization in favor of
  * well-structured component composition with clear data flow.
  */
@@ -32,7 +32,8 @@ const PostCard: React.FC<PostCardProps> = memo(({
   sx,
 }) => {
   // Use consolidated state management hook
-  const { document, author, postState, href, seriesInfo, ariaLabel } = usePostState(userDocument, user);
+  const { document, author, postState, href, seriesInfo, ariaLabel } =
+    usePostState(userDocument, user);
 
   // If loading, show unified loading card
   if (postState.isLoading) {
@@ -45,8 +46,8 @@ const PostCard: React.FC<PostCardProps> = memo(({
       href={href}
       isLoading={false}
       topContent={
-        <PostContent 
-          userDocument={userDocument} 
+        <PostContent
+          userDocument={userDocument}
         />
       }
       chipContent={
@@ -62,9 +63,9 @@ const PostCard: React.FC<PostCardProps> = memo(({
         />
       }
       actionContent={
-        <PostActions 
-          userDocument={userDocument} 
-          user={user} 
+        <PostActions
+          userDocument={userDocument}
+          user={user}
         />
       }
       ariaLabel={ariaLabel}

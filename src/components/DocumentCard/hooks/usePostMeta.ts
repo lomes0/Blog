@@ -1,6 +1,11 @@
 import { useMemo } from "react";
 import { User } from "@/types";
-import { PostState, createStatusChip, createAuthorChip, createSeriesChip } from "../PostChips";
+import {
+  createAuthorChip,
+  createSeriesChip,
+  createStatusChip,
+  PostState,
+} from "../PostChips";
 
 /**
  * Options for controlling which metadata chips to display
@@ -23,10 +28,10 @@ export interface PostMetaInput {
 
 /**
  * Hook for managing post metadata chip generation
- * 
+ *
  * This hook consolidates all the chip generation logic that was previously
  * handled by the renderPostChips function, making it more reusable and testable.
- * 
+ *
  * @param input - The metadata input parameters
  * @returns Array of React elements representing the metadata chips
  */

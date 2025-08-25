@@ -10,7 +10,7 @@ interface CacheEntry {
 
 /**
  * Advanced thumbnail cache with LRU eviction, TTL, and memory management
- * 
+ *
  * This cache implements:
  * - LRU (Least Recently Used) eviction policy
  * - TTL (Time To Live) for automatic cleanup
@@ -28,7 +28,7 @@ class ThumbnailCache {
   constructor(
     maxSize = 100,
     maxMemoryMB = 50, // 50MB max memory usage
-    ttlMinutes = 30 // 30 minutes TTL
+    ttlMinutes = 30, // 30 minutes TTL
   ) {
     this.maxSize = maxSize;
     this.maxMemoryMB = maxMemoryMB;
@@ -45,7 +45,7 @@ class ThumbnailCache {
    */
   get(key: string): string | null {
     const entry = this.cache.get(key);
-    
+
     if (!entry) {
       return null;
     }
@@ -117,12 +117,13 @@ class ThumbnailCache {
   getStats() {
     const now = Date.now();
     const entries = Array.from(this.cache.values());
-    const expired = entries.filter(entry => now > entry.expiry).length;
-    
+    const expired = entries.filter((entry) => now > entry.expiry).length;
+
     return {
       totalEntries: this.cache.size,
       expiredEntries: expired,
-      memoryUsageMB: Math.round((this.currentMemoryBytes / (1024 * 1024)) * 100) / 100,
+      memoryUsageMB:
+        Math.round((this.currentMemoryBytes / (1024 * 1024)) * 100) / 100,
       maxMemoryMB: this.maxMemoryMB,
       maxEntries: this.maxSize,
     };
@@ -181,7 +182,7 @@ class ThumbnailCache {
       }
     }
 
-    expiredKeys.forEach(key => this.delete(key));
+    expiredKeys.forEach((key) => this.delete(key));
   }
 
   /**
@@ -221,8 +222,8 @@ class ThumbnailCache {
 export const thumbnailCache = new ThumbnailCache();
 
 // Cleanup on page unload (for better memory management)
-if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', () => {
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeunload", () => {
     thumbnailCache.destroy();
   });
 }

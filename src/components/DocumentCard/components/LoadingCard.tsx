@@ -1,7 +1,7 @@
 import React from "react";
-import { Box, Card, IconButton, Skeleton, Chip } from "@mui/material";
+import { Box, Card, Chip, IconButton, Skeleton } from "@mui/material";
 import { MoreVert, Share } from "@mui/icons-material";
-import { SxProps, Theme, alpha, useTheme } from "@mui/material/styles";
+import { alpha, SxProps, Theme, useTheme } from "@mui/material/styles";
 import { cardTheme } from "../theme";
 
 /**
@@ -13,7 +13,7 @@ interface LoadingCardProps {
 
 /**
  * Enhanced unified loading state component with improved shimmer animations
- * 
+ *
  * This component provides a consistent loading experience across
  * all parts of the card (content, metadata, actions) with sophisticated
  * skeleton animations and better visual hierarchy.
@@ -59,7 +59,9 @@ export const LoadingCard: React.FC<LoadingCardProps> = ({ sx }) => {
           left: "-100%",
           width: "100%",
           height: "100%",
-          background: `linear-gradient(90deg, transparent, ${alpha(theme.palette.common.white, 0.3)}, transparent)`,
+          background: `linear-gradient(90deg, transparent, ${
+            alpha(theme.palette.common.white, 0.3)
+          }, transparent)`,
           animation: "sweep 2s ease-in-out infinite",
           zIndex: 1,
         },
@@ -76,10 +78,10 @@ export const LoadingCard: React.FC<LoadingCardProps> = ({ sx }) => {
     >
       {/* Content skeleton */}
       <ContentSkeleton shimmerStyles={shimmerStyles} />
-      
+
       {/* Metadata skeleton */}
       <MetaSkeleton shimmerStyles={shimmerStyles} />
-      
+
       {/* Actions skeleton */}
       <ActionsSkeleton shimmerStyles={shimmerStyles} />
     </Card>
@@ -123,7 +125,7 @@ const ContentSkeleton: React.FC<SkeletonProps> = ({ shimmerStyles }) => (
         variant="text"
         width="70%"
         height={28}
-        sx={{ 
+        sx={{
           alignSelf: "center",
           ...shimmerStyles,
           borderRadius: 4,
@@ -131,22 +133,22 @@ const ContentSkeleton: React.FC<SkeletonProps> = ({ shimmerStyles }) => (
       />
 
       {/* Content lines */}
-      <Skeleton 
-        variant="text" 
-        width="90%" 
-        height={18} 
+      <Skeleton
+        variant="text"
+        width="90%"
+        height={18}
         sx={{ ...shimmerStyles, borderRadius: 3 }}
       />
-      <Skeleton 
-        variant="text" 
-        width="75%" 
-        height={18} 
+      <Skeleton
+        variant="text"
+        width="75%"
+        height={18}
         sx={{ ...shimmerStyles, borderRadius: 3 }}
       />
-      <Skeleton 
-        variant="text" 
-        width="85%" 
-        height={18} 
+      <Skeleton
+        variant="text"
+        width="85%"
+        height={18}
         sx={{ ...shimmerStyles, borderRadius: 3 }}
       />
 
@@ -155,8 +157,8 @@ const ContentSkeleton: React.FC<SkeletonProps> = ({ shimmerStyles }) => (
         variant="rectangular"
         width="100%"
         height={70}
-        sx={{ 
-          mt: 1, 
+        sx={{
+          mt: 1,
           borderRadius: 6,
           ...shimmerStyles,
         }}
@@ -170,12 +172,12 @@ const ContentSkeleton: React.FC<SkeletonProps> = ({ shimmerStyles }) => (
  */
 const MetaSkeleton: React.FC<SkeletonProps> = ({ shimmerStyles }) => (
   <Box sx={{ p: 1.5, pb: 1, position: "relative", zIndex: 0 }}>
-    <Box 
-      sx={{ 
-        display: "flex", 
-        gap: 1, 
+    <Box
+      sx={{
+        display: "flex",
+        gap: 1,
         overflow: "hidden",
-        flexWrap: "wrap"
+        flexWrap: "wrap",
       }}
     >
       {/* Status chip skeleton */}
@@ -183,7 +185,7 @@ const MetaSkeleton: React.FC<SkeletonProps> = ({ shimmerStyles }) => (
         variant="rectangular"
         width={75}
         height={26}
-        sx={{ 
+        sx={{
           borderRadius: 13,
           ...shimmerStyles,
         }}
@@ -193,7 +195,7 @@ const MetaSkeleton: React.FC<SkeletonProps> = ({ shimmerStyles }) => (
         variant="rectangular"
         width={95}
         height={26}
-        sx={{ 
+        sx={{
           borderRadius: 13,
           ...shimmerStyles,
         }}
@@ -203,7 +205,7 @@ const MetaSkeleton: React.FC<SkeletonProps> = ({ shimmerStyles }) => (
         variant="rectangular"
         width={115}
         height={26}
-        sx={{ 
+        sx={{
           borderRadius: 13,
           ...shimmerStyles,
         }}

@@ -5,10 +5,10 @@ import { useDocumentURL } from "../../DocumentURLContext";
 
 /**
  * Consolidated state management hook for PostCard component
- * 
+ *
  * This hook consolidates all the state calculations that were previously
  * scattered across multiple useMemo hooks in the PostCard component.
- * 
+ *
  * @param userDocument - The user document (can be local, cloud, or both)
  * @param user - The current user
  * @returns Consolidated post state including document, author, postState, and href
@@ -36,7 +36,9 @@ export const usePostState = (userDocument?: UserDocument, user?: User) => {
     })();
 
     // Get the document to display (prefer local if available)
-    const document = userDocument ? (userDocument.local || userDocument.cloud) : null;
+    const document = userDocument
+      ? (userDocument.local || userDocument.cloud)
+      : null;
 
     // Get author (from cloud document or current user)
     const author = userDocument?.cloud?.author ?? user;

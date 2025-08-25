@@ -427,7 +427,11 @@ const BlogStatsSection: React.FC = () => {
             },
           }}
         >
-          <Typography variant="h4" color="primary.main" sx={{ fontWeight: 600 }}>
+          <Typography
+            variant="h4"
+            color="primary.main"
+            sx={{ fontWeight: 600 }}
+          >
             {stats.posts}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
@@ -452,7 +456,11 @@ const BlogStatsSection: React.FC = () => {
             },
           }}
         >
-          <Typography variant="h4" color="success.main" sx={{ fontWeight: 600 }}>
+          <Typography
+            variant="h4"
+            color="success.main"
+            sx={{ fontWeight: 600 }}
+          >
             {stats.publishedPosts}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
@@ -477,7 +485,11 @@ const BlogStatsSection: React.FC = () => {
             },
           }}
         >
-          <Typography variant="h4" color="warning.main" sx={{ fontWeight: 600 }}>
+          <Typography
+            variant="h4"
+            color="warning.main"
+            sx={{ fontWeight: 600 }}
+          >
             {stats.draftPosts}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>

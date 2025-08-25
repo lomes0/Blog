@@ -30,7 +30,7 @@ const BrowserBreadcrumbs: React.FC<BrowserBreadcrumbsProps> = ({
           fontWeight: "bold",
           fontSize: {
             xs: "1.05rem",
-            sm: "1.25rem", 
+            sm: "1.25rem",
             md: "1.35rem",
           },
         }}
