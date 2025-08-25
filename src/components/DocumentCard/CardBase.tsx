@@ -115,9 +115,10 @@ const CardBase: React.FC<SimplifiedCardBaseProps> = ({
             position: "relative",
             display: "flex",
             flexDirection: "column",
-            minHeight: "240px", // Adequate height for blog content
+            height: "240px", // Fixed height instead of minHeight
             padding: cardTheme.spacing.contentPadding,
             paddingBottom: cardTheme.spacing.sectionGap,
+            overflow: "hidden", // Prevent content from expanding beyond container
           }}
         >
           {topContent}

@@ -67,13 +67,15 @@ const PostThumbnail: React.FC<{ userDocument?: UserDocument }> = memo(
         }}
         sx={{
           width: "100%",
-          height: "100%",
+          height: "220px", // Increased height for more thumbnail space
           display: "flex",
           flexDirection: "column",
           padding: 2,
           "& img": {
             maxWidth: "100%",
             height: "auto",
+            maxHeight: "160px", // Increased image height limit
+            objectFit: "cover",
           },
           "& table": {
             fontSize: "0.75rem",
