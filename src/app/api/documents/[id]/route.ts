@@ -131,6 +131,7 @@ export async function PATCH(
       name: body.name,
       head: body.head,
       handle: body.handle,
+      createdAt: body.createdAt,
       updatedAt: body.updatedAt,
       published: body.published,
       collab: body.collab,

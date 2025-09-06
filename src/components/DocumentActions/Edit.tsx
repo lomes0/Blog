@@ -74,6 +74,7 @@ const EditDocument: React.FC<
     collab: isCollab,
     background_image: document?.background_image || null,
     sort_order: document?.sort_order || null,
+    createdAt: document?.createdAt || new Date().toISOString(),
   });
 
   const [validating, setValidating] = useState(false);
@@ -93,6 +94,7 @@ const EditDocument: React.FC<
       collab: isCollab,
       background_image: document?.background_image || null,
       sort_order: document?.sort_order || null,
+      createdAt: document?.createdAt || new Date().toISOString(),
     });
     setValidating(false);
     setValidationErrors({});
@@ -204,6 +206,10 @@ const EditDocument: React.FC<
     if (input.sort_order !== document?.sort_order) {
       partial.sort_order = input.sort_order;
     }
+    // Add createdAt to the update if it has changed
+    if (input.createdAt && input.createdAt !== document?.createdAt) {
+      partial.createdAt = input.createdAt;
+    }
     // Preserve parentId when updating document
     if (document?.parentId) {
       partial.parentId = document.parentId;
@@ -314,6 +320,66 @@ const EditDocument: React.FC<
                 ? `https://matheditor.me/view/${input.handle}`
                 : "This will be used in the URL of your document"}
             />
+
+            {/* Publication Date Section */}
+            <Typography
+              variant="subtitle2"
+              color="text.secondary"
+              gutterBottom
+              sx={{ mt: 2, mb: 1 }}
+            >
+              Publication Date
+            </Typography>
+            <Box sx={{ display: "flex", gap: 1 }}>
+              <TextField
+                size="small"
+                label="Date"
+                type="date"
+                disabled={!isAuthor}
+                value={input.createdAt
+                  ? new Date(input.createdAt).toISOString().slice(0, 10)
+                  : ""}
+                onChange={(e) => {
+                  if (e.target.value && input.createdAt) {
+                    const currentDate = new Date(input.createdAt);
+                    const newDate = new Date(e.target.value);
+                    newDate.setHours(
+                      currentDate.getHours(),
+                      currentDate.getMinutes(),
+                    );
+                    updateInput({ createdAt: newDate.toISOString() });
+                  }
+                }}
+                InputLabelProps={{
+                  shrink: true,
+                }}
+                sx={{ flex: 1 }}
+              />
+              <TextField
+                size="small"
+                label="Time"
+                type="time"
+                disabled={!isAuthor}
+                value={input.createdAt
+                  ? new Date(input.createdAt).toTimeString().slice(0, 5)
+                  : ""}
+                onChange={(e) => {
+                  if (e.target.value && input.createdAt) {
+                    const currentDate = new Date(input.createdAt);
+                    const [hours, minutes] = e.target.value.split(":");
+                    currentDate.setHours(parseInt(hours), parseInt(minutes));
+                    updateInput({ createdAt: currentDate.toISOString() });
+                  }
+                }}
+                InputLabelProps={{
+                  shrink: true,
+                }}
+                sx={{ flex: 1 }}
+              />
+            </Box>
+            <FormHelperText sx={{ mt: 0.5 }}>
+              The date and time when this post was published
+            </FormHelperText>
 
             {/* Background image uploader for directories */}
             {isDirectory && isAuthor && (
