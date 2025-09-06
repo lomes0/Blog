@@ -87,7 +87,9 @@ const NewDocument: React.FC<{ cloudDocument?: CloudDocument }> = (
   const user = useSelector((state) => state.user);
   const unauthenticated = initialized && !user;
   const isOnline = useOnlineStatus();
-  const [input, setInput] = useState<Partial<DocumentCreateInput>>({});
+  const [input, setInput] = useState<Partial<DocumentCreateInput>>({
+    published: true, // Default to published for blog posts
+  });
   const [validating, setValidating] = useState(false);
   const [validationErrors, setValidationErrors] = useState<
     Record<string, string>
@@ -349,8 +351,10 @@ const NewDocument: React.FC<{ cloudDocument?: CloudDocument }> = (
                     onChange={() =>
                       updateInput({
                         private: !input.private,
-                        published: input.published &&
-                          input.private,
+                        // Private posts cannot be published
+                        published: input.private
+                          ? (input.published ?? true)
+                          : false,
                         collab: input.collab &&
                           input.private,
                       })}
@@ -359,6 +363,22 @@ const NewDocument: React.FC<{ cloudDocument?: CloudDocument }> = (
               />
               <FormHelperText>
                 Private documents are only accessible to authors and coauthors.
+              </FormHelperText>
+              <FormControlLabel
+                label="Published"
+                control={
+                  <Checkbox
+                    checked={input.published ?? true}
+                    disabled={!isOnline || input.private}
+                    onChange={() =>
+                      updateInput({
+                        published: !(input.published ?? true),
+                      })}
+                  />
+                }
+              />
+              <FormHelperText>
+                Published posts appear in your blog and are publicly accessible.
               </FormHelperText>
               <FormControlLabel
                 label="Collab"

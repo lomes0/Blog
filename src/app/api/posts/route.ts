@@ -1,8 +1,8 @@
 import { authOptions } from "@/lib/auth";
 import {
   createPost,
+  findAllPosts,
   findPostsByAuthorId,
-  findPublishedPosts,
   findUserPost,
 } from "@/repositories/post";
 import {
@@ -23,8 +23,8 @@ export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
-      const publishedPosts = await findPublishedPosts();
-      response.data = publishedPosts;
+      const allPosts = await findAllPosts();
+      response.data = allPosts;
       return NextResponse.json(response, { status: 200 });
     }
     const { user } = session;

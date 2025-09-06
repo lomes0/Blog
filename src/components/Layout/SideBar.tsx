@@ -96,6 +96,7 @@ const SideBar: React.FC = () => {
     const items = [
       { text: "Home", icon: <Home />, path: "/" },
       { text: "Browse Posts", icon: <LibraryBooks />, path: "/browse" },
+      { text: "Posts", icon: <LibraryBooks />, path: "/posts" },
       { text: "Series", icon: <CollectionsBookmark />, path: "/series" },
     ];
 
@@ -103,7 +104,7 @@ const SideBar: React.FC = () => {
     if (user) {
       items.push(
         { text: "Dashboard", icon: <Dashboard />, path: "/dashboard" },
-        { text: "New Post", icon: <Create />, path: "/new" },
+        // { text: "New Post", icon: <Create />, path: "/new" },
       );
     }
 

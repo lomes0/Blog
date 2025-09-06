@@ -90,24 +90,92 @@ const findPublishedPosts = async (limit?: number) => {
   return cloudPosts;
 };
 
+// Find all posts (published and unpublished)
+const findAllPosts = async (limit?: number) => {
+  console.log("findAllPosts called with limit:", limit);
+
+  const posts = await prisma.document.findMany({
+    where: {
+      type: PrismaDocumentType.DOCUMENT, // Only regular documents, not directories
+    },
+    select: {
+      id: true,
+      handle: true,
+      name: true,
+      createdAt: true,
+      updatedAt: true,
+      published: true,
+      collab: true,
+      private: true,
+      baseId: true,
+      head: true,
+      type: true,
+      background_image: true,
+      revisions: {
+        select: {
+          id: true,
+          documentId: true,
+          createdAt: true,
+          author: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              handle: true,
+              image: true,
+            },
+          },
+        },
+      },
+      author: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          handle: true,
+          image: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    take: limit,
+  });
+
+  const cloudPosts = posts.map((post) => {
+    const revisions = post.collab
+      ? post.revisions
+      : post.revisions.filter((revision) => revision.id === post.head);
+
+    // Cast to CloudDocument to maintain compatibility during transition
+    const cloudPost = {
+      ...post,
+      coauthors: [], // Remove coauthor complexity for simple blog
+      revisions: revisions as any,
+      type: PrismaDocumentType.DOCUMENT, // Always DOCUMENT for posts
+      head: post.head || "",
+    } as CloudDocument;
+
+    return cloudPost;
+  });
+
+  console.log("findAllPosts found", cloudPosts.length, "posts");
+  console.log("Post IDs:", cloudPosts.map((p) => p.id));
+
+  return cloudPosts;
+};
+
 // Transform: findUserDocument → findUserPost
 const findUserPost = async (
   handle: string,
   revisions?: "all" | string | null,
 ) => {
-  console.log(
-    "findUserPost called with handle:",
-    handle,
-    "revisions:",
-    revisions,
-  );
-
   // First, let's check if the document exists at all (without type filter)
   const anyDocument = await prisma.document.findFirst({
     where: validate(handle) ? { id: handle } : { handle: handle.toLowerCase() },
     select: { id: true, name: true, type: true },
   });
-  console.log("Any document with this handle:", anyDocument);
 
   const post = await prisma.document.findFirst({
     where: {
@@ -443,6 +511,7 @@ const findCloudStorageUsageByAuthorId = async (authorId: string) => {
 export {
   createPost,
   deletePost,
+  findAllPosts,
   findCloudStorageUsageByAuthorId,
   findEditorPost,
   findPostsByAuthorId,

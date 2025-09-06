@@ -1,10 +1,10 @@
-import { findPublishedPosts } from "@/repositories/post";
+import { findAllPosts } from "@/repositories/post";
 import { MetadataRoute } from "next";
 
 const PUBLIC_URL = process.env.PUBLIC_URL;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const publishedPosts = await findPublishedPosts();
+  const allPosts = await findAllPosts();
   const now = new Date().toISOString();
   return [
     {
@@ -31,7 +31,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${PUBLIC_URL}/privacy`,
       lastModified: now,
     },
-    ...publishedPosts.map((post) => ({
+    ...allPosts.map((post) => ({
       url: `${PUBLIC_URL}/view/${post.handle || post.id}`,
       lastModified: post.updatedAt,
     })),

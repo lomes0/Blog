@@ -1,5 +1,5 @@
 import Home from "@/components/Home";
-import { findPublishedPosts } from "@/repositories/post";
+import { findAllPosts } from "@/repositories/post";
 import { findAllSeries } from "@/repositories/series";
 import { UserDocument } from "@/types";
 import type { Metadata } from "next";
@@ -16,16 +16,16 @@ export const metadata: Metadata = {
 
 const page = async () => {
   const session = await getServerSession(authOptions);
-  const publishedPosts = await findPublishedPosts(12);
+  const allPosts = await findAllPosts(12);
   const allSeries = await findAllSeries();
 
-  const staticDocuments: UserDocument[] = publishedPosts.map(
+  const staticDocuments: UserDocument[] = allPosts.map(
     (post) => ({
       id: post.id,
       cloud: post,
     }),
   );
-  const staticThumbnails = publishedPosts.reduce((acc, post) => {
+  const staticThumbnails = allPosts.reduce((acc, post) => {
     acc[post.head] = findRevisionThumbnail(post.head);
     return acc;
   }, {} as Record<string, Promise<string | null>>);
