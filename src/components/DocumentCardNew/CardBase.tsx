@@ -1,7 +1,7 @@
 "use client";
 import * as React from "react";
 import { ReactNode } from "react";
-import { SxProps, Theme, useTheme } from "@mui/material/styles";
+import { alpha, SxProps, Theme, useTheme } from "@mui/material/styles";
 import {
   Box,
   Card,
@@ -36,8 +36,8 @@ interface SimplifiedCardBaseProps {
 }
 
 /**
- * Simplified CardBase for blog posts
- * Removes complex configuration options while keeping core functionality
+ * Modern BlogCard Base Component
+ * Enhanced for contemporary blog design with improved aesthetics and UX
  */
 const CardBase: React.FC<SimplifiedCardBaseProps> = ({
   title,
@@ -57,7 +57,7 @@ const CardBase: React.FC<SimplifiedCardBaseProps> = ({
   // Format title for tooltips
   const formattedTitle = typeof title === "string" ? title : "Post";
 
-  // Blog-oriented card styles with subtle interactions
+  // Modern blog card styles with enhanced visual appeal
   const cardStyles = {
     display: "flex",
     flexDirection: "column",
@@ -69,33 +69,33 @@ const CardBase: React.FC<SimplifiedCardBaseProps> = ({
     borderRadius: cardTheme.borderRadius,
     backgroundColor: cardTheme.colors.cardBackground,
     boxShadow: cardTheme.colors.shadow.default,
-    border: `1px solid ${theme.palette.divider}`,
+    border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
     overflow: "hidden",
-    transition: theme.transitions.create([
-      "box-shadow",
-      "transform",
-      "border-color",
-    ], {
-      duration: theme.transitions.duration.standard,
-    }),
-    "&:hover": !prefersReducedMotion
-      ? {
-        transform: "translateY(-4px)",
-        boxShadow: cardTheme.colors.shadow.hover,
-        borderColor: theme.palette.primary.light,
-      }
-      : {},
+
+    // Simplified hover effects (no animations)
+    "&:hover": {
+      boxShadow: cardTheme.colors.shadow.hover,
+      borderColor: alpha(theme.palette.primary.main, 0.3),
+      backgroundColor: cardTheme.colors.hover.cardBackground,
+    },
+
+    // Enhanced focus states
     "&:focus-within": {
       boxShadow: cardTheme.colors.shadow.focus,
-      outline: `2px solid ${theme.palette.primary.main}`,
-      outlineOffset: "2px",
+      outline: `${cardTheme.accessibility.focusRingWidth}px solid ${
+        alpha(theme.palette.primary.main, 0.4)
+      }`,
+      outlineOffset: cardTheme.accessibility.focusRingOffset,
     },
-    // Responsive adjustments for blog layout
+
+    // Responsive design improvements
     [theme.breakpoints.down("md")]: {
-      minHeight: "340px",
+      minHeight: "350px",
+      borderRadius: 5, // Slightly less rounded on tablets
     },
     [theme.breakpoints.down("sm")]: {
-      minHeight: "320px",
+      minHeight: "330px",
+      borderRadius: 4, // Even less rounded on mobile
     },
     ...sx,
   };
@@ -109,28 +109,53 @@ const CardBase: React.FC<SimplifiedCardBaseProps> = ({
           ...cardStyles,
         } as SxProps<Theme>}
       >
-        {/* Top content area - optimized for blog content */}
+        {/* Enhanced content area with modern blog styling */}
         <Box
+          className="content-area"
           sx={{
             flex: 1,
             width: "100%",
             position: "relative",
             display: "flex",
             flexDirection: "column",
-            height: cardTheme.minHeight.post, // Use theme value instead of hardcoded
+            // Calculated height: total card height minus action bar height
+            minHeight:
+              `calc(${cardTheme.minHeight.post} - ${cardTheme.actionBar.totalHeight})`,
             padding: cardTheme.spacing.contentPadding,
             paddingBottom: cardTheme.spacing.sectionGap,
-            overflow: "hidden", // Prevent content from expanding beyond container
+            overflow: "hidden",
+
+            // Simplified image styling (no animations)
+            "& .post-image": {
+              borderRadius: cardTheme.image.borderRadius,
+              overflow: "hidden",
+            },
+
+            // Better text rendering
+            "& h1, & h2, & h3": {
+              fontSize: cardTheme.typography.titleSize,
+              fontWeight: cardTheme.typography.titleWeight,
+              lineHeight: cardTheme.typography.titleLineHeight,
+              color: cardTheme.colors.textPrimary,
+              marginBottom: cardTheme.spacing.titleMargin,
+            },
+
+            "& p": {
+              fontSize: cardTheme.typography.excerptSize,
+              lineHeight: cardTheme.typography.excerptLineHeight,
+              color: cardTheme.colors.textSecondary,
+            },
           }}
         >
           {topContent}
         </Box>
 
-        {/* Clickable area for navigation */}
+        {/* Enhanced clickable area with better accessibility */}
         <Tooltip
           title={formattedTitle}
-          enterDelay={prefersReducedMotion ? 0 : 700}
+          enterDelay={prefersReducedMotion ? 0 : 500}
           placement="top"
+          arrow
         >
           <CardActionArea
             component={Link}
@@ -142,48 +167,58 @@ const CardBase: React.FC<SimplifiedCardBaseProps> = ({
               top: 0,
               left: 0,
               right: 0,
-              bottom: cardTheme.actionBar.height, // Leave space for action bar
+              bottom: cardTheme.actionBar.totalHeight, // Use theme value for consistency
               zIndex: 1,
               borderRadius:
                 `${cardTheme.borderRadius}px ${cardTheme.borderRadius}px 0 0`,
+
               "&:hover": {
                 backgroundColor: "transparent",
               },
+
               "&:focus-visible": {
-                outline: `2px solid ${theme.palette.primary.main}`,
-                outlineOffset: 2,
+                outline:
+                  `${cardTheme.accessibility.focusRingWidth}px solid ${theme.palette.primary.main}`,
+                outlineOffset: cardTheme.accessibility.focusRingOffset,
+                borderRadius: cardTheme.borderRadius,
+              },
+
+              // Better touch targets on mobile
+              [theme.breakpoints.down("sm")]: {
+                "&:focus-visible": {
+                  outline: `2px solid ${theme.palette.primary.main}`,
+                },
               },
             }}
           />
         </Tooltip>
 
-        {/* Bottom section - Action bar only */}
+        {/* Modern blog action bar with enhanced design */}
         <Box
           sx={{
-            flexShrink: 0, // Don't shrink
+            flexShrink: 0,
             display: "flex",
             flexDirection: "column",
             position: "relative",
             zIndex: 2,
           }}
         >
-          {/* Blog-style action bar */}
           <Box
+            className="action-bar"
             sx={{
               px: cardTheme.spacing.contentPadding,
-              py: 2, // More generous padding for blog layout
+              py: 1.5, // Reduced padding (12px total)
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              borderTop: "1px solid",
-              borderColor: "divider",
-              backgroundColor: theme.palette.background.default,
-              minHeight: "72px", // Adequate height for blog metadata
+              borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+              backgroundColor: "transparent", // No background
+              height: cardTheme.actionBar.totalHeight, // Use theme value for consistency
               zIndex: 3,
               pointerEvents: "auto",
             }}
           >
-            {/* Chips area */}
+            {/* Enhanced chips area with better spacing */}
             <Box
               sx={{
                 display: "flex",
@@ -192,23 +227,40 @@ const CardBase: React.FC<SimplifiedCardBaseProps> = ({
                 alignItems: "center",
                 flex: "1 1 auto",
                 minWidth: 0,
-                flexWrap: "wrap", // Allow wrapping on smaller screens
+                flexWrap: "wrap",
+
+                // Simplified chip styling (no animations)
+                "& .MuiChip-root": {
+                  // No hover effects
+                },
               }}
             >
               {chipContent}
             </Box>
 
-            {/* Actions area */}
+            {/* Enhanced actions area */}
             <Box
               sx={{
                 display: "flex",
                 ml: "auto",
-                gap: 0.5, // Slightly larger gap for blog actions
-                mr: -0.5,
+                gap: 0.5, // Reduced gap for tighter spacing
+                mr: 0, // Minimal margin to move icons closer to the right edge
+
                 "& button": {
-                  minWidth: 40, // Slightly larger for better touch targets
-                  minHeight: 40,
-                  padding: 0.75,
+                  minWidth: cardTheme.accessibility.minimumTouchTarget,
+                  minHeight: cardTheme.accessibility.minimumTouchTarget,
+                  padding: 1,
+                  borderRadius: 2,
+
+                  // Simplified button styles (no animations)
+                  "&:hover": {
+                    backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                  },
+
+                  "&:focus-visible": {
+                    outline: `2px solid ${theme.palette.primary.main}`,
+                    outlineOffset: 2,
+                  },
                 },
               }}
             >

@@ -1,6 +1,6 @@
 import React from "react";
 import { Avatar, Chip, Skeleton } from "@mui/material";
-import { Edit, LibraryBooks, Public } from "@mui/icons-material";
+import { Edit, LibraryBooks, Person, Public } from "@mui/icons-material";
 import { Series, User } from "@/types";
 import { cardTheme } from "./theme";
 
@@ -14,7 +14,7 @@ export interface PostState {
 }
 
 /**
- * Create status chip based on post state
+ * Create modern status chip based on post state
  */
 export const createStatusChip = (postState: PostState) => {
   if (postState.isLoading) return null;
@@ -24,14 +24,25 @@ export const createStatusChip = (postState: PostState) => {
       <Chip
         key="draft-chip"
         size="small"
-        variant="outlined"
-        icon={<Edit />}
+        variant="filled"
+        icon={<Edit sx={{ fontSize: 14 }} />}
         label="Draft"
         sx={{
-          bgcolor: cardTheme.colors.status.draft.bg,
+          background: cardTheme.colors.status.draft.bg,
           borderColor: cardTheme.colors.status.draft.border,
           color: cardTheme.colors.status.draft.text,
-          fontWeight: "bold",
+          fontWeight: 600,
+          fontSize: cardTheme.typography.metaSize,
+          height: 28,
+
+          "& .MuiChip-icon": {
+            color: cardTheme.colors.status.draft.icon,
+          },
+
+          // Simplified hover (no animations)
+          "&:hover": {
+            background: cardTheme.colors.status.draft.bg,
+          },
         }}
       />
     );
@@ -46,7 +57,7 @@ export const createStatusChip = (postState: PostState) => {
 };
 
 /**
- * Create author chip with avatar
+ * Create modern author chip with enhanced design
  */
 export const createAuthorChip = (author?: User | null, showAuthor = true) => {
   if (!showAuthor || !author) return null;
@@ -55,23 +66,42 @@ export const createAuthorChip = (author?: User | null, showAuthor = true) => {
     <Chip
       key="author-chip"
       size="small"
-      variant="outlined"
+      variant="filled"
       avatar={
         <Avatar
           alt={author.name ?? "User"}
           src={author.image ?? undefined}
-          sx={{ width: 20, height: 20 }}
-        />
+          sx={{
+            width: 22,
+            height: 22,
+            fontSize: "0.75rem",
+            border: "2px solid white",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+          }}
+        >
+          {!author.image && <Person sx={{ fontSize: 14 }} />}
+        </Avatar>
       }
       label={author.name ?? "User"}
       sx={{
+        background: cardTheme.colors.author.bg,
+        borderColor: cardTheme.colors.author.border,
+        color: cardTheme.colors.author.text,
+        fontWeight: 500,
+        fontSize: cardTheme.typography.authorSize,
+        height: 32,
+
         "& .MuiChip-label": {
-          padding: "0 4px",
-          marginLeft: "4px",
+          padding: "0 8px",
+          marginLeft: "6px",
         },
         "& .MuiChip-avatar": {
-          marginLeft: "4px",
+          marginLeft: "6px",
           marginRight: 0,
+        },
+
+        "&:hover": {
+          background: cardTheme.colors.author.bg,
         },
       }}
     />
@@ -79,7 +109,7 @@ export const createAuthorChip = (author?: User | null, showAuthor = true) => {
 };
 
 /**
- * Create series chip with navigation
+ * Create modern series chip with enhanced navigation
  */
 export const createSeriesChip = (
   series?: Series | null,
@@ -96,21 +126,31 @@ export const createSeriesChip = (
     <Chip
       key="series-chip"
       size="small"
-      variant="outlined"
-      icon={<LibraryBooks />}
+      variant="filled"
+      icon={<LibraryBooks sx={{ fontSize: 14 }} />}
       label={label}
       onClick={() => {
         window.location.href = `/series/${series.id}`;
       }}
       sx={{
-        bgcolor: cardTheme.colors.series.bg,
+        background: cardTheme.colors.series.bg,
         borderColor: cardTheme.colors.series.border,
         color: cardTheme.colors.series.text,
-        fontWeight: "bold",
+        fontWeight: 600,
+        fontSize: cardTheme.typography.metaSize,
+        height: 28,
         cursor: "pointer",
+
+        "& .MuiChip-icon": {
+          color: cardTheme.colors.series.icon,
+        },
+
         "&:hover": {
-          bgcolor: cardTheme.colors.series.bg,
-          opacity: 0.8,
+          background: cardTheme.colors.series.bg,
+        },
+
+        "&:active": {
+          // No transform effects
         },
       }}
     />

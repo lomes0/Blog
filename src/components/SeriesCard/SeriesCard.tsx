@@ -5,8 +5,8 @@ import { SxProps, Theme } from "@mui/material/styles";
 import { Box, Chip, IconButton, Skeleton } from "@mui/material";
 import { Article, Folder, MoreVert } from "@mui/icons-material";
 import { Series, User } from "@/types";
-import CardBase from "../DocumentCard/CardBase";
-import { cardTheme } from "../DocumentCard/theme";
+import CardBase from "../DocumentCardNew/CardBase";
+import { cardTheme } from "../DocumentCardNew/theme";
 
 // Define proper interface for component props
 interface SeriesCardProps {

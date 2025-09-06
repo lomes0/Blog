@@ -62,8 +62,10 @@ const PostThumbnail: React.FC<{ userDocument?: UserDocument }> = memo(
         className="post-thumbnail"
         dangerouslySetInnerHTML={{
           __html: thumbnail
-            .replaceAll("<a", "<span")
-            .replaceAll("</a", "</span"),
+            .replaceAll("<a", "<span") // Basic link sanitization
+            .replaceAll("</a", "</span")
+            .replaceAll("<script", "<span") // Prevent script injection
+            .replaceAll("</script", "</span"),
         }}
         sx={{
           width: "100%",

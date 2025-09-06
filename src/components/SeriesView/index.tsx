@@ -18,7 +18,7 @@ import {
 } from "@mui/icons-material";
 import Grid from "@mui/material/Grid2";
 import Link from "next/link";
-import DocumentCard from "../DocumentCard";
+import DocumentCard from "../DocumentCardNew";
 
 interface SeriesViewProps {
   series: Series;

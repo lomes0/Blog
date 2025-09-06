@@ -5,10 +5,10 @@ import Typography from "@mui/material/Typography";
 import { useTheme } from "@mui/material/styles";
 import { useMediaQuery } from "@mui/material";
 import { User, UserDocument } from "@/types";
-import DraggableDocumentCard from "./DocumentCard/DraggablePostCard";
-import SkeletonCard from "./DocumentCard/components/LoadingCard";
+import DraggableDocumentCard from "./DocumentCardNew/DraggablePostCard";
+import SkeletonCard from "./DocumentCardNew/components/LoadingCard";
 import { SxProps, Theme } from "@mui/material/styles";
-import { cardTheme } from "./DocumentCard/theme";
+import { cardTheme } from "./DocumentCardNew/theme";
 import { useResponsiveDocumentGrid } from "./DocumentGrid/hooks/useResponsiveDocumentGrid";
 import { useDocumentGridPerformance } from "./DocumentGrid/hooks/useDocumentGridPerformance";
 import DocumentGridHeader from "./DocumentGrid/DocumentGridHeader";
@@ -211,12 +211,15 @@ const DocumentGrid: React.FC<DocumentGridProps> = ({
       sx={{
         display: "flex",
         flexDirection: "column",
-        gap: 3, // Using MUI spacing scale instead of cardTheme.spacing.cardGap
+        gap: cardTheme.spacing.cardGap, // Use enhanced theme spacing
         width: "100%",
         maxWidth: "100%",
-        // Improved responsive spacing
+        // Enhanced responsive spacing for blog layout
+        [theme.breakpoints.down("md")]: {
+          gap: cardTheme.spacing.cardGap * 0.75,
+        },
         [theme.breakpoints.down("sm")]: {
-          gap: 2,
+          gap: cardTheme.spacing.cardGap * 0.5,
         },
         ...sx,
       }}
@@ -226,11 +229,11 @@ const DocumentGrid: React.FC<DocumentGridProps> = ({
       <Grid
         container
         spacing={{
-          xs: 3,
-          sm: 4,
-          md: 5,
-          lg: 5,
-          xl: 6,
+          xs: cardTheme.spacing.cardGap,
+          sm: cardTheme.spacing.cardGap * 1.25,
+          md: cardTheme.spacing.cardGap * 1.5,
+          lg: cardTheme.spacing.cardGap * 1.75,
+          xl: cardTheme.spacing.cardGap * 2,
         }}
         sx={{
           width: "100%",

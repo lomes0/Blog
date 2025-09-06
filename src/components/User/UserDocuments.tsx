@@ -1,7 +1,7 @@
 "use client";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { UserDocument } from "@/types";
-import DocumentCard from "../DocumentCard";
+import DocumentCard from "../DocumentCardNew";
 import Grid from "@mui/material/Grid2";
 import { Box, Pagination, Typography } from "@mui/material";
 import { Pageview } from "@mui/icons-material";

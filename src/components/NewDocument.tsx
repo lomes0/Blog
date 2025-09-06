@@ -12,7 +12,7 @@ import {
 } from "@/types";
 import { useCallback, useEffect, useState } from "react";
 import { actions, useDispatch, useSelector } from "@/store";
-import DocumentCard from "./DocumentCard";
+import DocumentCard from "./DocumentCardNew";
 import {
   Avatar,
   Box,
