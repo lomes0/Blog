@@ -30,7 +30,7 @@ const DocumentBrowser: React.FC<DocumentBrowserProps> = () => {
   const [loading] = useState(false); // Remove loading state since we're using synchronous filtering
   const [sortValue, setSortValue] = useState({
     key: "createdAt",
-    direction: "desc",
+    direction: "asc",
   });
 
   // Use custom hooks for complex logic
