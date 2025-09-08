@@ -35,7 +35,7 @@ const StatusActions: React.FC<StatusActionsProps> = ({
   const localDocument = userDocument?.local;
   const cloudDocument = userDocument?.cloud;
   const document = cloudDocument || localDocument;
-  const currentStatus = document?.status || DocumentStatus.NEUTRAL;
+  const currentStatus = document?.status || DocumentStatus.ACTIVE;
   const isAuthor = cloudDocument ? cloudDocument.author : true;
 
   // Only show status actions if user is the author
@@ -104,7 +104,7 @@ const StatusActions: React.FC<StatusActionsProps> = ({
       case DocumentStatus.DONE:
         return "Mark as Done";
       default:
-        return "Mark as Neutral";
+        return "Mark as Active";
     }
   };
 

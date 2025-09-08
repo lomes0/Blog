@@ -40,8 +40,8 @@ model Document {
   head   String? @db.Uuid
   collab Boolean @default(false)
 
-  // Status field for marking documents as active, done, or neutral
-  status DocumentStatus @default(NEUTRAL)
+  // Status field for marking documents as active or done
+  status DocumentStatus @default(ACTIVE)
 
   // Series support for blog posts
   seriesId    String? @db.Uuid
@@ -83,7 +83,6 @@ enum DocumentType {
 }
 
 enum DocumentStatus {
-  NEUTRAL
   ACTIVE
   DONE
 }

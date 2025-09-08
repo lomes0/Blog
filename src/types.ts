@@ -59,7 +59,6 @@ export type EditorDocument = {
 export type DocumentType = "DOCUMENT";
 
 export enum DocumentStatus {
-  NEUTRAL = "NEUTRAL",
   ACTIVE = "ACTIVE",
   DONE = "DONE",
 }

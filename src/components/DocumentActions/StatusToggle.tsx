@@ -41,19 +41,17 @@ const StatusToggle: React.FC<StatusToggleProps> = ({
   if (!isAuthor) return null;
 
   const document = isLocal ? localDocument : cloudDocument;
-  const currentStatus = document?.status || DocumentStatus.NEUTRAL;
+  const currentStatus = document?.status || DocumentStatus.ACTIVE;
 
-  // Cycle through statuses: Neutral → Active → Done → Neutral
+  // Cycle through statuses: Active → Done → Active
   const getNextStatus = (current: DocumentStatus): DocumentStatus => {
     switch (current) {
-      case DocumentStatus.NEUTRAL:
-        return DocumentStatus.ACTIVE;
       case DocumentStatus.ACTIVE:
         return DocumentStatus.DONE;
       case DocumentStatus.DONE:
-        return DocumentStatus.NEUTRAL;
+        return DocumentStatus.ACTIVE;
       default:
-        return DocumentStatus.NEUTRAL;
+        return DocumentStatus.ACTIVE;
     }
   };
 
@@ -75,7 +73,7 @@ const StatusToggle: React.FC<StatusToggleProps> = ({
       case DocumentStatus.DONE:
         return "Done";
       default:
-        return "Neutral";
+        return "Active";
     }
   };
 

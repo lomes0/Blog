@@ -32,6 +32,7 @@ export const usePostState = (userDocument?: UserDocument, user?: User) => {
         isDraft: hasLocal && !hasCloud,
         isPublished: hasCloud,
         isLoading: false,
+        documentStatus: cloudDocument?.status || localDocument?.status,
       };
     })();
 

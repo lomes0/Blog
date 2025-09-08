@@ -1,7 +1,7 @@
 import React from "react";
 import { Avatar, Chip, Skeleton } from "@mui/material";
-import { Edit, LibraryBooks, Person, Public } from "@mui/icons-material";
-import { Series, User } from "@/types";
+import { Edit, LibraryBooks, Person } from "@mui/icons-material";
+import { Series, User, DocumentStatus } from "@/types";
 import { cardTheme } from "./theme";
 
 /**
@@ -11,6 +11,7 @@ export interface PostState {
   isDraft: boolean;
   isPublished: boolean;
   isLoading: boolean;
+  documentStatus?: DocumentStatus; // Add document status
 }
 
 /**
@@ -19,6 +20,7 @@ export interface PostState {
 export const createStatusChip = (postState: PostState) => {
   if (postState.isLoading) return null;
 
+  // Only show draft status, no status chip for published posts
   if (postState.isDraft) {
     return (
       <Chip
@@ -39,7 +41,6 @@ export const createStatusChip = (postState: PostState) => {
             color: cardTheme.colors.status.draft.icon,
           },
 
-          // Simplified hover (no animations)
           "&:hover": {
             background: cardTheme.colors.status.draft.bg,
           },
@@ -48,11 +49,7 @@ export const createStatusChip = (postState: PostState) => {
     );
   }
 
-  // Published chip removed - no chip shown for published posts
-  if (postState.isPublished) {
-    return null;
-  }
-
+  // No chip for published posts
   return null;
 };
 

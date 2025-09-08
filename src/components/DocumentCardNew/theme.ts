@@ -69,6 +69,18 @@ export const cardTheme = {
         text: "#16a34a",
         icon: "#22c55e",
       },
+      active: {
+        bg: "linear-gradient(135deg, #eff6ff 0%, #bfdbfe 100%)",
+        border: "#3b82f6",
+        text: "#2563eb",
+        icon: "#3b82f6",
+      },
+      done: {
+        bg: "linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%)",
+        border: "#64748b",
+        text: "#475569",
+        icon: "#64748b",
+      },
     },
 
     // Enhanced series colors

@@ -160,7 +160,7 @@ export default function EditDocumentInfo(
               <Typography component="h2" variant="h6">
                 {localDocument.name}
               </Typography>
-              {localDocument.status && localDocument.status !== "NEUTRAL" && (
+              {localDocument.status && (
                 <Chip
                   size="small"
                   icon={localDocument.status === "ACTIVE"
