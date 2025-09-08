@@ -1,81 +1,257 @@
-import React from "react";
-import { Box, Skeleton, Typography } from "@mui/material";
-import { Article } from "@mui/icons-material";
+import React, { useState } from "react";
+import { 
+  Box, 
+  Button, 
+  Chip, 
+  IconButton, 
+  InputAdornment, 
+  Menu, 
+  MenuItem, 
+  Skeleton, 
+  TextField, 
+  Typography,
+  useMediaQuery
+} from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+import { 
+  Add, 
+  Article, 
+  Clear, 
+  FilterList, 
+  Search, 
+  Today,
+  CalendarMonth,
+  Schedule
+} from "@mui/icons-material";
+import { useRouter } from "next/navigation";
+import { TimeFilterValue } from "../hooks/usePostsTimeFilter";
 
 interface PostsHeaderProps {
   totalCount: number;
   loading: boolean;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
+  timeFilter?: TimeFilterValue;
+  onTimeFilterChange?: (filter: TimeFilterValue) => void;
+  onNewPost?: () => void;
 }
 
 /**
- * Header component displaying page title and posts count
- * with modern blog styling
+ * Header component displaying page title, posts count, search, filters, and new post button
+ * Enhanced for content management workflow
  */
-const PostsHeader: React.FC<PostsHeaderProps> = ({ totalCount, loading }) => {
+const PostsHeader: React.FC<PostsHeaderProps> = ({ 
+  totalCount, 
+  loading,
+  searchQuery = "",
+  onSearchChange,
+  timeFilter = "all",
+  onTimeFilterChange,
+  onNewPost
+}) => {
+  const theme = useTheme();
+  const router = useRouter();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  
+  // Filter menu state
+  const [filterAnchorEl, setFilterAnchorEl] = useState<null | HTMLElement>(null);
+  const filterMenuOpen = Boolean(filterAnchorEl);
+
+  // Time filter options
+  const timeFilterOptions = [
+    { value: "all", label: "All Time", icon: <Schedule /> },
+    { value: "thisYear", label: "This Year", icon: <CalendarMonth /> },
+    { value: "thisMonth", label: "This Month", icon: <Today /> },
+    { value: "lastMonth", label: "Last Month", icon: <Today /> },
+    { value: "last3Months", label: "Last 3 Months", icon: <CalendarMonth /> },
+    { value: "last6Months", label: "Last 6 Months", icon: <CalendarMonth /> },
+  ];
+
+  const handleNewPost = () => {
+    if (onNewPost) {
+      onNewPost();
+    } else {
+      router.push("/new");
+    }
+  };
+
+  const handleFilterClick = (event: React.MouseEvent<HTMLElement>) => {
+    setFilterAnchorEl(event.currentTarget);
+  };
+
+  const handleFilterClose = () => {
+    setFilterAnchorEl(null);
+  };
+
+  const handleTimeFilterSelect = (value: string) => {
+    onTimeFilterChange?.(value as TimeFilterValue);
+    handleFilterClose();
+  };
+
+  const clearSearch = () => {
+    onSearchChange?.("");
+  };
+
+  const activeTimeFilter = timeFilterOptions.find(option => option.value === timeFilter);
+
   return (
     <Box
       sx={{
-        mb: 6,
+        mb: 4,
         pt: 2,
-        textAlign: { xs: "center", md: "left" },
-        borderBottom: "1px solid",
-        borderColor: "divider",
-        pb: 4,
+        pb: 3,
       }}
     >
+      {/* Simple, clean toolbar */}
       <Box
         sx={{
           display: "flex",
           alignItems: "center",
-          justifyContent: { xs: "center", md: "flex-start" },
           gap: 2,
-          mb: 2,
+          flexWrap: "wrap",
         }}
       >
-        <Article
+        {/* Search Field - takes most space */}
+        <TextField
+          size="small"
+          placeholder="Search posts..."
+          value={searchQuery}
+          onChange={(e) => onSearchChange?.(e.target.value)}
           sx={{
-            fontSize: 40,
-            color: "primary.main",
-            display: { xs: "none", sm: "block" },
+            flex: "1 1 300px",
+            minWidth: 250,
+            maxWidth: 500,
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 1.5,
+            },
+          }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search sx={{ color: "text.secondary", fontSize: 20 }} />
+              </InputAdornment>
+            ),
+            endAdornment: searchQuery && (
+              <InputAdornment position="end">
+                <IconButton size="small" onClick={clearSearch}>
+                  <Clear sx={{ fontSize: 18 }} />
+                </IconButton>
+              </InputAdornment>
+            ),
           }}
         />
-        <Typography
-          variant="h1"
-          component="h1"
+
+        {/* Filter Button */}
+        <Button
+          variant="outlined"
+          startIcon={<FilterList />}
+          onClick={handleFilterClick}
+          size="small"
           sx={{
-            fontSize: { xs: "2rem", sm: "2.5rem", md: "3rem" },
-            fontWeight: 700,
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-            backgroundClip: "text",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
+            borderRadius: 1.5,
+            textTransform: "none",
+            px: 2,
+            minWidth: "auto",
+            whiteSpace: "nowrap",
           }}
         >
-          All Posts
-        </Typography>
+          {activeTimeFilter?.label || "All Time"}
+        </Button>
+
+        {/* New Post Button */}
+        <Button
+          variant="contained"
+          startIcon={<Add />}
+          onClick={handleNewPost}
+          size="small"
+          sx={{
+            borderRadius: 1.5,
+            textTransform: "none",
+            fontWeight: 600,
+            px: 2.5,
+            boxShadow: 1,
+            "&:hover": {
+              boxShadow: 2,
+            },
+          }}
+        >
+          New Post
+        </Button>
       </Box>
 
-      {loading
-        ? (
-          <Skeleton
-            variant="text"
-            width={140}
-            height={28}
-            sx={{ mx: { xs: "auto", md: 0 } }}
-          />
-        )
-        : (
+      {/* Active Filters - Only show when needed */}
+      {(searchQuery || timeFilter !== "all") && (
+        <Box 
+          sx={{ 
+            display: "flex", 
+            alignItems: "center",
+            gap: 1, 
+            mt: 2,
+            pt: 2,
+            borderTop: "1px solid",
+            borderColor: "divider",
+          }}
+        >
           <Typography
-            variant="subtitle1"
+            variant="caption"
             color="text.secondary"
             sx={{
-              fontSize: "1.1rem",
               fontWeight: 500,
+              mr: 1,
             }}
           >
-            {totalCount} {totalCount === 1 ? "post" : "posts"} total
+            Filters:
           </Typography>
-        )}
+          {searchQuery && (
+            <Chip
+              label={searchQuery}
+              onDelete={clearSearch}
+              size="small"
+              variant="outlined"
+            />
+          )}
+          {timeFilter !== "all" && (
+            <Chip
+              label={activeTimeFilter?.label}
+              onDelete={() => onTimeFilterChange?.("all")}
+              size="small"
+              variant="outlined"
+            />
+          )}
+        </Box>
+      )}
+
+      {/* Filter Menu */}
+      <Menu
+        anchorEl={filterAnchorEl}
+        open={filterMenuOpen}
+        onClose={handleFilterClose}
+        PaperProps={{
+          sx: {
+            mt: 1,
+            minWidth: 180,
+            borderRadius: 2,
+            boxShadow: 3,
+          },
+        }}
+      >
+        {timeFilterOptions.map((option) => (
+          <MenuItem
+            key={option.value}
+            onClick={() => handleTimeFilterSelect(option.value)}
+            selected={timeFilter === option.value}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1.5,
+              py: 1,
+            }}
+          >
+            {option.icon}
+            {option.label}
+          </MenuItem>
+        ))}
+      </Menu>
     </Box>
   );
 };

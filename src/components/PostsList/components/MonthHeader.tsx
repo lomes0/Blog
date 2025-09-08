@@ -1,20 +1,24 @@
 import React from "react";
-import { Box, Chip, Typography } from "@mui/material";
-import { CalendarMonth } from "@mui/icons-material";
+import { Box, Chip, Typography, useMediaQuery } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+import { CalendarMonth, TrendingUp } from "@mui/icons-material";
 
 interface MonthHeaderProps {
   monthLabel: string;
   postCount: number;
   monthKey?: string;
+  isLatest?: boolean;
 }
 
 /**
- * Header component for each month section showing the month and post count
- * Format: "January 2024" with count chip
+ * Header component for each month section showing the month
+ * Clean, minimal design focused on the month name
  */
 const MonthHeader: React.FC<MonthHeaderProps> = (
-  { monthLabel, postCount, monthKey },
+  { monthLabel, postCount, monthKey, isLatest = false },
 ) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const headerId = monthKey ? `month-header-${monthKey}` : undefined;
 
   return (
@@ -25,49 +29,88 @@ const MonthHeader: React.FC<MonthHeaderProps> = (
         alignItems: "center",
         gap: 2,
         flexWrap: "wrap",
+        position: "relative",
+        // Add subtle animation
+        animation: isLatest ? "slideInFromLeft 0.5s ease-out" : "none",
+        "@keyframes slideInFromLeft": {
+          "0%": {
+            opacity: 0,
+            transform: "translateX(-20px)",
+          },
+          "100%": {
+            opacity: 1,
+            transform: "translateX(0)",
+          },
+        },
       }}
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-        <CalendarMonth
+        {/* Month icon with latest indicator */}
+        <Box
           sx={{
-            fontSize: 28,
-            color: "primary.main",
-            opacity: 0.8,
+            position: "relative",
+            display: "flex",
+            alignItems: "center",
           }}
-          aria-hidden="true"
-        />
+        >
+          <CalendarMonth
+            sx={{
+              fontSize: 28,
+              color: isLatest ? "primary.main" : "text.secondary",
+              opacity: isLatest ? 1 : 0.8,
+              transition: "all 0.3s ease",
+            }}
+            aria-hidden="true"
+          />
+          {/* Latest indicator */}
+          {isLatest && (
+            <TrendingUp
+              sx={{
+                position: "absolute",
+                top: -4,
+                right: -4,
+                fontSize: 12,
+                color: "success.main",
+                bgcolor: "background.paper",
+                borderRadius: "50%",
+                p: 0.25,
+              }}
+            />
+          )}
+        </Box>
+        
         <Typography
           id={headerId}
           variant="h2"
           component="h2"
           sx={{
             fontSize: { xs: "1.5rem", sm: "1.75rem", md: "2rem" },
-            fontWeight: 600,
-            color: "text.primary",
+            fontWeight: isLatest ? 700 : 600,
+            color: isLatest ? "primary.main" : "text.primary",
             letterSpacing: "-0.025em",
+            transition: "all 0.3s ease",
           }}
         >
           {monthLabel}
         </Typography>
       </Box>
 
-      {
-        /* <Chip
-        label={`${postCount} ${postCount === 1 ? "post" : "posts"}`}
-        size="medium"
-        variant="outlined"
-        aria-label={`${postCount} posts in ${monthLabel}`}
-        sx={{
-          fontWeight: 500,
-          borderColor: "primary.main",
-          backgroundColor: "primary.main",
-          color: "primary.contrastText",
-          "& .MuiChip-label": {
-            px: 1.5
-          }
-        }}
-      /> */
-      }
+      {/* Latest badge */}
+      {isLatest && !isMobile && (
+        <Chip
+          label="Latest"
+          size="small"
+          color="success"
+          variant="outlined"
+          sx={{
+            fontSize: "0.75rem",
+            height: 24,
+            "& .MuiChip-label": {
+              px: 1,
+            },
+          }}
+        />
+      )}
     </Box>
   );
 };

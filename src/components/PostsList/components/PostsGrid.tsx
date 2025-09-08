@@ -29,24 +29,29 @@ const PostsGrid: React.FC<PostsGridProps> = ({ posts }) => {
   return (
     <Grid
       container
-      spacing={getSpacing()}
+      spacing={{ xs: 2, sm: 3, md: 4 }}
+      sx={{
+        mb: 4,
+      }}
     >
-      {posts.map((post) => (
+      {posts.map((document, index) => (
         <Grid
-          key={post.id}
+          key={document.id}
           size={{ xs: 12, sm: 6, md: 4, lg: 3 }}
           sx={{
-            display: "flex",
+            animation: `fadeInUp 0.6s ease ${index * 0.1}s both`,
           }}
         >
           <DocumentCard
-            userDocument={post}
+            userDocument={document}
             user={user}
             sx={{
-              width: "100%",
               height: "100%",
-              display: "flex",
-              flexDirection: "column",
+              transition: "all 0.3s ease",
+              "&:hover": {
+                transform: "translateY(-4px)",
+                boxShadow: 4,
+              },
             }}
           />
         </Grid>

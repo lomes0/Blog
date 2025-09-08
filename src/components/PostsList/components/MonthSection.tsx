@@ -15,13 +15,14 @@ export interface MonthGroup {
 
 interface MonthSectionProps {
   monthGroup: MonthGroup;
+  isLatest?: boolean;
 }
 
 /**
  * Component that renders a section for one month containing
  * the month header and grid of posts for that month
  */
-const MonthSection: React.FC<MonthSectionProps> = ({ monthGroup }) => {
+const MonthSection: React.FC<MonthSectionProps> = ({ monthGroup, isLatest = false }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -34,12 +35,15 @@ const MonthSection: React.FC<MonthSectionProps> = ({ monthGroup }) => {
       sx={{
         mb: { xs: 8, md: 12 },
         "&:last-child": { mb: { xs: 4, md: 6 } },
+        // Removed hover effect styling
+        p: { xs: 2, sm: 3 },
       }}
     >
       <MonthHeader
         monthLabel={monthGroup.monthLabel}
         postCount={monthGroup.count}
         monthKey={monthGroup.monthKey}
+        isLatest={isLatest}
       />
       <Box
         id={`month-posts-${monthGroup.monthKey}`}

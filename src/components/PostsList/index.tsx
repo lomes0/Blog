@@ -6,6 +6,7 @@ import Grid from "@mui/material/Grid2";
 
 // Import components
 import MonthSection from "./components/MonthSection";
+import PostsHeader from "./components/PostsHeader";
 import SkeletonCard from "@/components/DocumentCardNew/components/LoadingCard";
 
 // Import custom hooks
@@ -96,15 +97,25 @@ const PostsLoadingState: React.FC = () => {
 
 /**
  * Main PostsList component that displays blog posts organized by month
- * Replaces the simple h1 title in posts/page.tsx
- * Features: Responsive design, accessibility, SEO optimization
+ * Features: Search, time filtering, responsive design, accessibility, SEO optimization
  */
 const PostsList: React.FC<PostsListProps> = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  // Use custom hook to get posts data grouped by month
-  const { monthGroups, loading, totalCount } = usePostsData();
+  // Use custom hook to get posts data with search and filtering
+  const { 
+    monthGroups, 
+    loading, 
+    totalCount, 
+    filteredCount,
+    searchQuery,
+    setSearchQuery,
+    timeFilter,
+    setTimeFilter,
+    hasActiveFilters,
+    searchResults
+  } = usePostsData();
 
   return (
     <Box
@@ -120,6 +131,16 @@ const PostsList: React.FC<PostsListProps> = () => {
       role="main"
       aria-label="Blog posts organized by month"
     >
+      {/* Enhanced Header with Search and Filters */}
+      <PostsHeader
+        totalCount={hasActiveFilters ? filteredCount : totalCount}
+        loading={loading}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        timeFilter={timeFilter}
+        onTimeFilterChange={setTimeFilter}
+      />
+
       {/* Monthly Sections */}
       {loading
         ? (
@@ -131,7 +152,7 @@ const PostsList: React.FC<PostsListProps> = () => {
         ? (
           <section
             role="region"
-            aria-label="No posts available"
+            aria-label={hasActiveFilters ? "No posts match filters" : "No posts available"}
             aria-live="polite"
           >
             <Box
@@ -149,7 +170,7 @@ const PostsList: React.FC<PostsListProps> = () => {
                   filter: "grayscale(0.3)",
                 }}
               >
-                📝
+                {hasActiveFilters ? "🔍" : "📝"}
               </Box>
               <Box
                 sx={{
@@ -159,7 +180,12 @@ const PostsList: React.FC<PostsListProps> = () => {
                   color: "text.primary",
                 }}
               >
-                No posts yet
+                {hasActiveFilters 
+                  ? searchQuery 
+                    ? `No posts found for "${searchQuery}"`
+                    : "No posts found in this time period"
+                  : "No posts yet"
+                }
               </Box>
               <Box
                 sx={{
@@ -169,8 +195,10 @@ const PostsList: React.FC<PostsListProps> = () => {
                   lineHeight: 1.6,
                 }}
               >
-                Start writing your first blog post and share your thoughts with
-                the world!
+                {hasActiveFilters
+                  ? "Try adjusting your search or filter criteria"
+                  : "Start writing your first blog post and share your thoughts with the world!"
+                }
               </Box>
             </Box>
           </section>
@@ -178,13 +206,16 @@ const PostsList: React.FC<PostsListProps> = () => {
         : (
           <section
             role="region"
-            aria-label={`${totalCount} blog posts organized by month`}
+            aria-label={`${filteredCount} blog posts organized by month`}
             aria-live="polite"
           >
             <Box>
-              {monthGroups.map((monthGroup) => (
+              {monthGroups.map((monthGroup, index) => (
                 <Box key={monthGroup.monthKey}>
-                  <MonthSection monthGroup={monthGroup} />
+                  <MonthSection 
+                    monthGroup={monthGroup} 
+                    isLatest={index === 0} // First month is the latest
+                  />
                 </Box>
               ))}
             </Box>
