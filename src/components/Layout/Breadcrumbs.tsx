@@ -50,6 +50,14 @@ const Breadcrumbs: React.FC = () => {
         });
         break;
 
+      case "posts":
+        breadcrumbs.push({
+          label: "Posts",
+          href: "/posts",
+          icon: <LibraryBooks sx={{ fontSize: 16, mr: 0.5 }} />,
+        });
+        break;
+
       case "series":
         breadcrumbs.push({
           label: "Series",
