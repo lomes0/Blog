@@ -95,7 +95,7 @@ const SideBar: React.FC = () => {
   const navigationItems = useMemo((): NavigationItem[] => {
     const items = [
       { text: "Home", icon: <Home />, path: "/" },
-      { text: "Browse Posts", icon: <LibraryBooks />, path: "/browse" },
+      // { text: "Browse Posts", icon: <LibraryBooks />, path: "/browse" },
       { text: "Posts", icon: <LibraryBooks />, path: "/posts" },
       { text: "Series", icon: <CollectionsBookmark />, path: "/series" },
     ];
