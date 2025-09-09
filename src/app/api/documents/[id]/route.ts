@@ -129,7 +129,6 @@ export async function PATCH(
 
     const input: Prisma.DocumentUncheckedUpdateInput = {
       name: body.name,
-      description: body.description,
       head: body.head,
       handle: body.handle,
       createdAt: body.createdAt,
@@ -141,6 +140,7 @@ export async function PATCH(
       background_image: body.background_image,
       sort_order: body.sort_order,
       status: body.status,
+      ...(body.description !== undefined && { description: body.description }),
     };
 
     if (body.handle && body.handle !== userPost.handle) {

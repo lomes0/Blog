@@ -88,7 +88,6 @@ export async function POST(request: Request) {
       id: body.id,
       authorId: user.id,
       name: body.name,
-      description: body.description,
       createdAt: body.createdAt,
       updatedAt: body.updatedAt,
       head: body.head,
@@ -97,6 +96,7 @@ export async function POST(request: Request) {
       private: body.private,
       parentId: body.parentId, // Include parentId when creating document
       type: body.type || "DOCUMENT", // Ensure posts are created as DOCUMENT type
+      ...(body.description !== undefined && { description: body.description }),
       revisions: {
         create: {
           id: body.head || undefined,

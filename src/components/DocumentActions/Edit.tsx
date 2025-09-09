@@ -88,6 +88,7 @@ const EditDocument: React.FC<
     setInput({
       name,
       handle,
+      description: document?.description || "",
       coauthors: cloudDocument?.coauthors.map((u) => u.email) ?? [],
       private: isPrivate,
       published: isPublished,
@@ -182,6 +183,9 @@ const EditDocument: React.FC<
     }
     if (input.handle !== handle) {
       partial.handle = input.handle || null;
+    }
+    if (input.description !== document?.description) {
+      partial.description = input.description || null;
     }
     if (
       input.coauthors?.join(",") !==

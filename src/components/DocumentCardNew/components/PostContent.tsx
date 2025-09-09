@@ -54,8 +54,8 @@ export const PostContent: React.FC<PostContentProps> = ({
         p: { xs: 2, sm: 3 },
         display: "flex",
         flexDirection: "column",
-        gap: 2,
-        minHeight: 160,
+        height: 200, // Fixed height instead of minHeight
+        overflow: "hidden", // Prevent overflow
       }}
     >
       {/* Blog post title */}
@@ -73,6 +73,7 @@ export const PostContent: React.FC<PostContentProps> = ({
           textOverflow: "ellipsis",
           fontSize: { xs: "1.25rem", sm: "1.5rem" },
           mb: 1,
+          flexShrink: 0, // Don't shrink the title
           "&:hover": {
             color: "primary.main",
           },
@@ -89,6 +90,7 @@ export const PostContent: React.FC<PostContentProps> = ({
           gap: 1.5,
           flexWrap: "wrap",
           mb: 1,
+          flexShrink: 0, // Don't shrink the meta info
         }}
       >
         {formattedDate && (
@@ -156,7 +158,8 @@ export const PostContent: React.FC<PostContentProps> = ({
           overflow: "hidden",
           textOverflow: "ellipsis",
           fontSize: "1rem",
-          mt: "auto",
+          flex: 1, // Take up remaining space
+          minHeight: 0, // Allow shrinking
         }}
       >
         {document?.description || "Click to read this article and discover the insights shared within..."}
@@ -171,6 +174,7 @@ export const PostContent: React.FC<PostContentProps> = ({
           fontSize: "0.875rem",
           mt: 1,
           alignSelf: "flex-start",
+          flexShrink: 0, // Don't shrink the read more indicator
         }}
       >
         Read more →
