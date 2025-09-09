@@ -3,14 +3,16 @@ import { useSidebarState } from "@/components/Layout/SideBar/hooks/useSidebarSta
 import { Box, useMediaQuery } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 
-export default function ViewContainerWrapper({ children }: { children: React.ReactNode }) {
+export default function ViewContainerWrapper(
+  { children }: { children: React.ReactNode },
+) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { open } = useSidebarState();
-  
+
   // Calculate sidebar width dynamically
   const sidebarWidth = isMobile ? 0 : (open ? 240 : 72);
-  
+
   // Calculate the offset needed to center content relative to the full viewport
   // We need to shift the content left by half the sidebar width to achieve true centering
   const centerOffset = sidebarWidth;

@@ -104,17 +104,17 @@ const PostsList: React.FC<PostsListProps> = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   // Use custom hook to get posts data with search and filtering
-  const { 
-    monthGroups, 
-    loading, 
-    totalCount, 
+  const {
+    monthGroups,
+    loading,
+    totalCount,
     filteredCount,
     searchQuery,
     setSearchQuery,
     timeFilter,
     setTimeFilter,
     hasActiveFilters,
-    searchResults
+    searchResults,
   } = usePostsData();
 
   return (
@@ -152,7 +152,9 @@ const PostsList: React.FC<PostsListProps> = () => {
         ? (
           <section
             role="region"
-            aria-label={hasActiveFilters ? "No posts match filters" : "No posts available"}
+            aria-label={hasActiveFilters
+              ? "No posts match filters"
+              : "No posts available"}
             aria-live="polite"
           >
             <Box
@@ -180,12 +182,11 @@ const PostsList: React.FC<PostsListProps> = () => {
                   color: "text.primary",
                 }}
               >
-                {hasActiveFilters 
-                  ? searchQuery 
+                {hasActiveFilters
+                  ? searchQuery
                     ? `No posts found for "${searchQuery}"`
                     : "No posts found in this time period"
-                  : "No posts yet"
-                }
+                  : "No posts yet"}
               </Box>
               <Box
                 sx={{
@@ -197,8 +198,7 @@ const PostsList: React.FC<PostsListProps> = () => {
               >
                 {hasActiveFilters
                   ? "Try adjusting your search or filter criteria"
-                  : "Start writing your first blog post and share your thoughts with the world!"
-                }
+                  : "Start writing your first blog post and share your thoughts with the world!"}
               </Box>
             </Box>
           </section>
@@ -212,8 +212,8 @@ const PostsList: React.FC<PostsListProps> = () => {
             <Box>
               {monthGroups.map((monthGroup, index) => (
                 <Box key={monthGroup.monthKey}>
-                  <MonthSection 
-                    monthGroup={monthGroup} 
+                  <MonthSection
+                    monthGroup={monthGroup}
                     isLatest={index === 0} // First month is the latest
                   />
                 </Box>

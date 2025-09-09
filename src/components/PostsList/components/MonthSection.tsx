@@ -22,7 +22,9 @@ interface MonthSectionProps {
  * Component that renders a section for one month containing
  * the month header and grid of posts for that month
  */
-const MonthSection: React.FC<MonthSectionProps> = ({ monthGroup, isLatest = false }) => {
+const MonthSection: React.FC<MonthSectionProps> = (
+  { monthGroup, isLatest = false },
+) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 

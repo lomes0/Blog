@@ -78,7 +78,7 @@ const MonthHeader: React.FC<MonthHeaderProps> = (
             />
           )}
         </Box>
-        
+
         <Typography
           id={headerId}
           variant="h2"

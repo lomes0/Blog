@@ -6,7 +6,7 @@ import { useState } from "react";
 import { usePostsFiltering } from "./usePostsFiltering";
 import { usePostsGrouping } from "./usePostsGrouping";
 import { usePostsSearch } from "./usePostsSearch";
-import { usePostsTimeFilter, TimeFilterValue } from "./usePostsTimeFilter";
+import { TimeFilterValue, usePostsTimeFilter } from "./usePostsTimeFilter";
 
 // Import the MonthGroup type from components
 import type { MonthGroup } from "../components/MonthSection";

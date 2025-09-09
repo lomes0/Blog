@@ -2,12 +2,12 @@ import { useMemo } from "react";
 import { UserDocument } from "@/types";
 import { getPostCreatedAt } from "../utils/postHelpers";
 
-export type TimeFilterValue = 
-  | "all" 
-  | "thisYear" 
-  | "thisMonth" 
-  | "lastMonth" 
-  | "last3Months" 
+export type TimeFilterValue =
+  | "all"
+  | "thisYear"
+  | "thisMonth"
+  | "lastMonth"
+  | "last3Months"
   | "last6Months";
 
 interface UsePostsTimeFilterProps {
@@ -56,7 +56,9 @@ export const usePostsTimeFilter = ({
           };
         case "lastMonth":
           const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-          const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+          const lastMonthYear = currentMonth === 0
+            ? currentYear - 1
+            : currentYear;
           return {
             start: new Date(lastMonthYear, lastMonth, 1),
             end: new Date(lastMonthYear, lastMonth + 1, 0, 23, 59, 59),
@@ -91,7 +93,7 @@ export const usePostsTimeFilter = ({
     const filterLabels: Record<TimeFilterValue, string> = {
       all: "All Time",
       thisYear: "This Year",
-      thisMonth: "This Month", 
+      thisMonth: "This Month",
       lastMonth: "Last Month",
       last3Months: "Last 3 Months",
       last6Months: "Last 6 Months",

@@ -1,7 +1,7 @@
 import React from "react";
 import { Avatar, Chip, Skeleton } from "@mui/material";
 import { Edit, LibraryBooks, Person } from "@mui/icons-material";
-import { Series, User, DocumentStatus } from "@/types";
+import { DocumentStatus, Series, User } from "@/types";
 import { cardTheme } from "./theme";
 
 /**

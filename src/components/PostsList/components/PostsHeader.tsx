@@ -1,27 +1,27 @@
 import React, { useState } from "react";
-import { 
-  Box, 
-  Button, 
-  Chip, 
-  IconButton, 
-  InputAdornment, 
-  Menu, 
-  MenuItem, 
-  Skeleton, 
-  TextField, 
+import {
+  Box,
+  Button,
+  Chip,
+  IconButton,
+  InputAdornment,
+  Menu,
+  MenuItem,
+  Skeleton,
+  TextField,
   Typography,
-  useMediaQuery
+  useMediaQuery,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { 
-  Add, 
-  Article, 
-  Clear, 
-  FilterList, 
-  Search, 
-  Today,
+import {
+  Add,
+  Article,
   CalendarMonth,
-  Schedule
+  Clear,
+  FilterList,
+  Schedule,
+  Search,
+  Today,
 } from "@mui/icons-material";
 import { useRouter } from "next/navigation";
 import { TimeFilterValue } from "../hooks/usePostsTimeFilter";
@@ -40,21 +40,23 @@ interface PostsHeaderProps {
  * Header component displaying page title, posts count, search, filters, and new post button
  * Enhanced for content management workflow
  */
-const PostsHeader: React.FC<PostsHeaderProps> = ({ 
-  totalCount, 
+const PostsHeader: React.FC<PostsHeaderProps> = ({
+  totalCount,
   loading,
   searchQuery = "",
   onSearchChange,
   timeFilter = "all",
   onTimeFilterChange,
-  onNewPost
+  onNewPost,
 }) => {
   const theme = useTheme();
   const router = useRouter();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  
+
   // Filter menu state
-  const [filterAnchorEl, setFilterAnchorEl] = useState<null | HTMLElement>(null);
+  const [filterAnchorEl, setFilterAnchorEl] = useState<null | HTMLElement>(
+    null,
+  );
   const filterMenuOpen = Boolean(filterAnchorEl);
 
   // Time filter options
@@ -92,7 +94,9 @@ const PostsHeader: React.FC<PostsHeaderProps> = ({
     onSearchChange?.("");
   };
 
-  const activeTimeFilter = timeFilterOptions.find(option => option.value === timeFilter);
+  const activeTimeFilter = timeFilterOptions.find((option) =>
+    option.value === timeFilter
+  );
 
   return (
     <Box
@@ -181,11 +185,11 @@ const PostsHeader: React.FC<PostsHeaderProps> = ({
 
       {/* Active Filters - Only show when needed */}
       {(searchQuery || timeFilter !== "all") && (
-        <Box 
-          sx={{ 
-            display: "flex", 
+        <Box
+          sx={{
+            display: "flex",
             alignItems: "center",
-            gap: 1, 
+            gap: 1,
             mt: 2,
             pt: 2,
             borderTop: "1px solid",

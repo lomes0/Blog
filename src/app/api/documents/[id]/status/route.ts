@@ -11,7 +11,10 @@ export async function GET(
   props: { params: Promise<{ id: string }> },
 ) {
   const params = await props.params;
-  return NextResponse.json({ message: "Status endpoint reached", id: params.id });
+  return NextResponse.json({
+    message: "Status endpoint reached",
+    id: params.id,
+  });
 }
 
 export async function PATCH(
@@ -19,15 +22,15 @@ export async function PATCH(
   props: { params: Promise<{ id: string }> },
 ) {
   const params = await props.params;
-  
-  console.log('Status API called with ID:', params.id);
-  
+
+  console.log("Status API called with ID:", params.id);
+
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json(
         { error: { title: "Unauthorized", subtitle: "Please sign in" } },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -40,7 +43,7 @@ export async function PATCH(
             subtitle: "Account is disabled for violating terms of service",
           },
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -49,7 +52,7 @@ export async function PATCH(
     if (!userPost) {
       return NextResponse.json(
         { error: { title: "Document not found" } },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -66,15 +69,15 @@ export async function PATCH(
             subtitle: "You are not authorized to edit this document",
           },
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
     const body = await request.json();
     const { status } = body;
 
-    console.log('Received request body:', body);
-    console.log('Status to update:', status);
+    console.log("Received request body:", body);
+    console.log("Status to update:", status);
 
     // Validate status
     if (!status || !Object.values(DocumentStatus).includes(status)) {
@@ -85,7 +88,7 @@ export async function PATCH(
             subtitle: "Invalid status value",
           },
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -103,7 +106,7 @@ export async function PATCH(
             subtitle: "Failed to update document",
           },
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -123,7 +126,7 @@ export async function PATCH(
           subtitle: "Failed to update document status",
         },
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

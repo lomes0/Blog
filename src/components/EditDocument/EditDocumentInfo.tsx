@@ -161,17 +161,17 @@ export default function EditDocumentInfo(
                 {localDocument.name}
               </Typography>
               {localDocument.description && (
-                <Typography 
-                  variant="body2" 
+                <Typography
+                  variant="body2"
                   color="text.secondary"
-                  sx={{ 
-                    mb: 1, 
-                    fontStyle: 'italic',
+                  sx={{
+                    mb: 1,
+                    fontStyle: "italic",
                     lineHeight: 1.5,
                     padding: "6px 8px",
                     backgroundColor: "action.hover",
                     borderRadius: 0.5,
-                    fontSize: "0.875rem"
+                    fontSize: "0.875rem",
                   }}
                 >
                   {localDocument.description}

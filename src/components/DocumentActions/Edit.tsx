@@ -318,15 +318,15 @@ const EditDocument: React.FC<
               value={input.description || ""}
               onChange={(e) => updateInput({ description: e.target.value })}
               helperText="This description will appear in post previews and help with SEO"
-              sx={{ 
-                "& .MuiInputBase-root": { 
+              sx={{
+                "& .MuiInputBase-root": {
                   minHeight: 80,
                   alignItems: "flex-start",
-                  padding: "8px 12px"
+                  padding: "8px 12px",
                 },
                 "& .MuiInputBase-input": {
-                  resize: "vertical"
-                }
+                  resize: "vertical",
+                },
               }}
             />
             <TextField

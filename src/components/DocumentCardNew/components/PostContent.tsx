@@ -162,7 +162,8 @@ export const PostContent: React.FC<PostContentProps> = ({
           minHeight: 0, // Allow shrinking
         }}
       >
-        {document?.description || "Click to read this article and discover the insights shared within..."}
+        {document?.description ||
+          "Click to read this article and discover the insights shared within..."}
       </Typography>
 
       {/* Read more indicator */}

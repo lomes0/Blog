@@ -70,18 +70,18 @@ export default function ViewDocumentInfo(
             {cloudDocument.name}
           </Typography>
           {cloudDocument.description && (
-            <Typography 
-              variant="body1" 
+            <Typography
+              variant="body1"
               color="text.secondary"
-              sx={{ 
-                mb: 2, 
-                fontStyle: 'italic',
+              sx={{
+                mb: 2,
+                fontStyle: "italic",
                 lineHeight: 1.6,
                 padding: "8px 12px",
                 backgroundColor: "action.hover",
                 borderRadius: 1,
                 border: "1px solid",
-                borderColor: "divider"
+                borderColor: "divider",
               }}
             >
               {cloudDocument.description}
