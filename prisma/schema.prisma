@@ -27,12 +27,13 @@ model Series {
 
 // Main content model with hierarchical structure (used for both posts and directories)
 model Document {
-  id        String   @id @default(uuid()) @db.Uuid
-  handle    String?  @unique
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now())
-  authorId  String   @db.Uuid
+  id          String   @id @default(uuid()) @db.Uuid
+  handle      String?  @unique
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now())
+  authorId    String   @db.Uuid
   published Boolean  @default(false)
   private   Boolean  @default(false)
 

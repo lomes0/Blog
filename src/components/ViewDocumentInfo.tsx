@@ -69,6 +69,24 @@ export default function ViewDocumentInfo(
           <Typography component="h2" variant="h6">
             {cloudDocument.name}
           </Typography>
+          {cloudDocument.description && (
+            <Typography 
+              variant="body1" 
+              color="text.secondary"
+              sx={{ 
+                mb: 2, 
+                fontStyle: 'italic',
+                lineHeight: 1.6,
+                padding: "8px 12px",
+                backgroundColor: "action.hover",
+                borderRadius: 1,
+                border: "1px solid",
+                borderColor: "divider"
+              }}
+            >
+              {cloudDocument.description}
+            </Typography>
+          )}
           <Typography variant="subtitle2" color="text.secondary">
             Created: {new Date(cloudDocument.createdAt).toLocaleString(
               undefined,

@@ -16,6 +16,7 @@ const findPublishedDocuments = async (limit?: number) => {
       id: true,
       handle: true,
       name: true,
+      description: true,
       createdAt: true,
       updatedAt: true,
       published: true,

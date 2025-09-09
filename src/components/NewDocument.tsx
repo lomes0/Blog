@@ -297,6 +297,28 @@ const NewDocument: React.FC<{ cloudDocument?: CloudDocument }> = (
             margin="normal"
             size="small"
             fullWidth
+            multiline
+            rows={3}
+            label="Description"
+            placeholder="A brief description of your document (optional)"
+            value={input.description || ""}
+            onChange={(e) => updateInput({ description: e.target.value })}
+            helperText="This description will appear in document previews and help with SEO"
+            sx={{ 
+              "& .MuiInputBase-root": { 
+                minHeight: 80,
+                alignItems: "flex-start",
+                padding: "8px 12px"
+              },
+              "& .MuiInputBase-input": {
+                resize: "vertical"
+              }
+            }}
+          />
+          <TextField
+            margin="normal"
+            size="small"
+            fullWidth
             label="Document Handle"
             disabled={!isOnline}
             value={input.handle || ""}

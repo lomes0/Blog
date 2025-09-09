@@ -88,6 +88,7 @@ export async function POST(request: Request) {
       id: body.id,
       authorId: user.id,
       name: body.name,
+      description: body.description,
       createdAt: body.createdAt,
       updatedAt: body.updatedAt,
       head: body.head,

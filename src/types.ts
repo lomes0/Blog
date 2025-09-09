@@ -39,6 +39,7 @@ export interface DocumentStorageUsage {
 export type EditorDocument = {
   id: string;
   name: string;
+  description?: string | null;
   head: string;
   data: SerializedEditorState;
   createdAt: string | Date;

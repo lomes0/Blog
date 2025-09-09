@@ -129,6 +129,7 @@ export async function PATCH(
 
     const input: Prisma.DocumentUncheckedUpdateInput = {
       name: body.name,
+      description: body.description,
       head: body.head,
       handle: body.handle,
       createdAt: body.createdAt,

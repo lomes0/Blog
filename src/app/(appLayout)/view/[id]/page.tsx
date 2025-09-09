@@ -47,6 +47,7 @@ export async function generateMetadata(
       // Simplified blog structure: no coauthors, only authors can access private posts
       if (isAuthor) {
         metadata.title = document.name;
+        metadata.description = document.description || undefined;
         metadata.subtitle = revision
           ? `Last updated: ${
             new Date(revision.createdAt).toLocaleString(undefined, {
@@ -66,6 +67,7 @@ export async function generateMetadata(
       }
     } else {
       metadata.title = document.name;
+      metadata.description = document.description || undefined;
       metadata.subtitle = revision
         ? `Last updated: ${
           new Date(revision.createdAt).toLocaleString(undefined, {
