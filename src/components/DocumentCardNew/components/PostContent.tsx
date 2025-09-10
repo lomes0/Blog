@@ -176,6 +176,12 @@ export const PostContent: React.FC<PostContentProps> = ({
           mt: 1,
           alignSelf: "flex-start",
           flexShrink: 0, // Don't shrink the read more indicator
+          cursor: "pointer",
+          "&:hover": {
+            fontWeight: 700,
+            textDecoration: "underline",
+            color: "primary.dark",
+          },
         }}
       >
         Read more →
