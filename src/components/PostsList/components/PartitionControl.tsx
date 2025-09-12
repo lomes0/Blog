@@ -6,7 +6,6 @@ import {
   MenuItem,
   Select,
   SelectChangeEvent,
-  Tooltip,
   Typography,
 } from "@mui/material";
 import { PartitionGranularity } from "@/types/partitioning";
@@ -65,48 +64,42 @@ export const PartitionControl: React.FC<PartitionControlProps> = ({
     onGranularityChange(event.target.value as PartitionGranularity);
   };
 
-  const selectedOption = granularityOptions.find((option) =>
-    option.value === granularity
-  );
-
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-      <Tooltip title={selectedOption?.description || ""} arrow>
-        <FormControl size="small" sx={{ minWidth: 120 }}>
-          <Select
-            value={granularity}
-            onChange={handleChange}
-            disabled={disabled}
-            sx={{
+      <FormControl size="small" sx={{ minWidth: 120 }}>
+        <Select
+          value={granularity}
+          onChange={handleChange}
+          disabled={disabled}
+          sx={{
+            borderRadius: 1.5,
+            height: "40px", // Consistent height with other buttons
+            "& .MuiSelect-select": {
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              px: 2,
+            },
+            "& .MuiOutlinedInput-notchedOutline": {
               borderRadius: 1.5,
-              height: "40px", // Consistent height with other buttons
-              "& .MuiSelect-select": {
+            },
+          }}
+        >
+          {granularityOptions.map((option) => (
+            <MenuItem
+              key={option.value}
+              value={option.value}
+              sx={{
                 display: "flex",
                 alignItems: "center",
                 gap: 1,
-                px: 2,
-              },
-              "& .MuiOutlinedInput-notchedOutline": {
-                borderRadius: 1.5,
-              },
-            }}
-          >
-            {granularityOptions.map((option) => (
-              <MenuItem
-                key={option.value}
-                value={option.value}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                }}
-              >
-                <Typography variant="body2">{option.label}</Typography>
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </Tooltip>
+              }}
+            >
+              <Typography variant="body2">{option.label}</Typography>
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
 
       {postCount > 0 && (
         <Typography
