@@ -180,8 +180,8 @@ const NewDocument: React.FC<{ cloudDocument?: CloudDocument }> = (
       if (saveToCloud && isOnline && user) {
         dispatch(actions.createCloudDocument(payload));
       }
-      const href = `/edit/${payload.handle || payload.id}`;
-      navigate(href);
+      // Document created successfully - stay on current page
+      // User can manually navigate to edit or view the document if needed
     }
   };
 
