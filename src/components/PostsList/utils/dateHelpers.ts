@@ -49,16 +49,18 @@ export const getDayKey = (date: Date | string): string => {
 export const getWeekKey = (date: Date | string): string => {
   const dateObj = typeof date === "string" ? new Date(date) : date;
   const year = dateObj.getFullYear();
-  
+
   // Get the first day of the year
   const startOfYear = new Date(year, 0, 1);
-  
+
   // Calculate the difference in days
-  const daysDiff = Math.floor((dateObj.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24));
-  
+  const daysDiff = Math.floor(
+    (dateObj.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24),
+  );
+
   // Calculate week number (ISO week numbering)
   const weekNumber = Math.ceil((daysDiff + startOfYear.getDay() + 1) / 7);
-  
+
   return `${year}-W${String(weekNumber).padStart(2, "0")}`;
 };
 
@@ -92,7 +94,10 @@ export const getHalfYearKey = (date: Date | string): string => {
  * @param granularity - Partitioning granularity
  * @returns Time key appropriate for the granularity
  */
-export const getTimeKey = (date: Date | string, granularity: PartitionGranularity): string => {
+export const getTimeKey = (
+  date: Date | string,
+  granularity: PartitionGranularity,
+): string => {
   switch (granularity) {
     case "day":
       return getDayKey(date);
@@ -117,7 +122,10 @@ export const getTimeKey = (date: Date | string, granularity: PartitionGranularit
  * @param granularity - Partitioning granularity
  * @returns Formatted header string
  */
-export const formatTimeHeader = (timeKey: string, granularity: PartitionGranularity): string => {
+export const formatTimeHeader = (
+  timeKey: string,
+  granularity: PartitionGranularity,
+): string => {
   switch (granularity) {
     case "day":
       // Convert "2024-01-15" to "January 15, 2024"
@@ -164,7 +172,10 @@ export const monthKeyToDate = (monthKey: string): Date => {
  * @param granularity - Partitioning granularity
  * @returns Date object representing the start of that time period
  */
-export const timeKeyToDate = (timeKey: string, granularity: PartitionGranularity): Date => {
+export const timeKeyToDate = (
+  timeKey: string,
+  granularity: PartitionGranularity,
+): Date => {
   switch (granularity) {
     case "day":
       return new Date(timeKey);

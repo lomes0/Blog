@@ -29,11 +29,11 @@ export const usePostsGrouping = ({
   const { monthGroups, timeGroups, totalCount } = useMemo(() => {
     // Always provide month groups for backward compatibility
     const monthGroups = groupPostsByMonth(posts);
-    
+
     // Provide flexible time groups based on granularity
     const groupingFunction = getGroupingFunction(granularity);
     const timeGroups = groupingFunction(posts);
-    
+
     const totalCount = posts.length;
 
     return { monthGroups, timeGroups, totalCount };

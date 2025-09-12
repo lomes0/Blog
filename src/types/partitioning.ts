@@ -3,7 +3,13 @@
  */
 
 // Supported partitioning granularities
-export type PartitionGranularity = "day" | "week" | "month" | "quarter" | "halfyear" | "year";
+export type PartitionGranularity =
+  | "day"
+  | "week"
+  | "month"
+  | "quarter"
+  | "halfyear"
+  | "year";
 
 // Configuration for post partitioning
 export interface PartitionConfig {

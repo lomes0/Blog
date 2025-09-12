@@ -11,7 +11,7 @@ import { getPostCreatedAt, sortPostsByDate } from "./postHelpers";
  */
 export const groupPostsByTime = (
   posts: UserDocument[],
-  granularity: PartitionGranularity = "month"
+  granularity: PartitionGranularity = "month",
 ): TimeGroup[] => {
   const groups = new Map<string, UserDocument[]>();
 
@@ -98,8 +98,8 @@ export const groupPostsByHalfYear = (posts: UserDocument[]): TimeGroup[] => {
  * @returns Grouping function
  */
 export const getGroupingFunction = (
-  granularity: PartitionGranularity
-): ((posts: UserDocument[]) => TimeGroup[]) => {
+  granularity: PartitionGranularity,
+): (posts: UserDocument[]) => TimeGroup[] => {
   switch (granularity) {
     case "day":
       return groupPostsByDay;

@@ -62,9 +62,9 @@ export const usePostsData = (): UsePostsDataReturn => {
   });
 
   // Use flexible grouping hook with granularity support
-  const { monthGroups, timeGroups } = usePostsGrouping({ 
-    posts: searchFilteredPosts, 
-    granularity 
+  const { monthGroups, timeGroups } = usePostsGrouping({
+    posts: searchFilteredPosts,
+    granularity,
   });
 
   // Calculate filter stats

@@ -53,7 +53,9 @@ const TimeHeader: React.FC<{
  * Generic section component for displaying posts grouped by any time period
  * Replaces MonthSection with flexible time period support (without boxing)
  */
-const TimeSection: React.FC<TimeSectionProps> = ({ timeGroup, isLatest = false }) => {
+const TimeSection: React.FC<TimeSectionProps> = (
+  { timeGroup, isLatest = false },
+) => {
   return (
     <Box
       component="section"

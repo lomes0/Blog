@@ -65,7 +65,9 @@ export const PartitionControl: React.FC<PartitionControlProps> = ({
     onGranularityChange(event.target.value as PartitionGranularity);
   };
 
-  const selectedOption = granularityOptions.find(option => option.value === granularity);
+  const selectedOption = granularityOptions.find((option) =>
+    option.value === granularity
+  );
 
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>

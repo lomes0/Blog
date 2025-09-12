@@ -12,9 +12,9 @@ import {
   PostDocumentsResponse,
 } from "@/types";
 import {
+  PartitionedPostsResponse,
   PartitionGranularity,
   PostsQueryParams,
-  PartitionedPostsResponse,
 } from "@/types/partitioning";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
@@ -25,13 +25,19 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  
+
   // Parse query parameters for partitioning
   const queryParams: PostsQueryParams = {
     groupBy: (searchParams.get("groupBy") as PartitionGranularity) || "month",
-    limit: searchParams.get("limit") ? parseInt(searchParams.get("limit")!) : undefined,
-    offset: searchParams.get("offset") ? parseInt(searchParams.get("offset")!) : undefined,
-    published: searchParams.get("published") ? searchParams.get("published") === "true" : undefined,
+    limit: searchParams.get("limit")
+      ? parseInt(searchParams.get("limit")!)
+      : undefined,
+    offset: searchParams.get("offset")
+      ? parseInt(searchParams.get("offset")!)
+      : undefined,
+    published: searchParams.get("published")
+      ? searchParams.get("published") === "true"
+      : undefined,
   };
 
   const response: GetDocumentsResponse = {};
