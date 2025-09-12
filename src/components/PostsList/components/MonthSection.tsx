@@ -35,10 +35,7 @@ const MonthSection: React.FC<MonthSectionProps> = (
       aria-labelledby={`month-header-${monthGroup.monthKey}`}
       aria-describedby={`month-posts-${monthGroup.monthKey}`}
       sx={{
-        mb: { xs: 8, md: 12 },
-        "&:last-child": { mb: { xs: 4, md: 6 } },
-        // Removed hover effect styling
-        p: { xs: 2, sm: 3 },
+        mb: { xs: 4, md: 6 },
       }}
     >
       <MonthHeader

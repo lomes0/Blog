@@ -25,6 +25,8 @@ import {
 } from "@mui/icons-material";
 import { useRouter } from "next/navigation";
 import { TimeFilterValue } from "../hooks/usePostsTimeFilter";
+import { PartitionGranularity } from "@/types/partitioning";
+import { PartitionControl } from "./PartitionControl";
 
 interface PostsHeaderProps {
   totalCount: number;
@@ -33,6 +35,8 @@ interface PostsHeaderProps {
   onSearchChange?: (query: string) => void;
   timeFilter?: TimeFilterValue;
   onTimeFilterChange?: (filter: TimeFilterValue) => void;
+  granularity?: PartitionGranularity;
+  onGranularityChange?: (granularity: PartitionGranularity) => void;
   onNewPost?: () => void;
 }
 
@@ -47,6 +51,8 @@ const PostsHeader: React.FC<PostsHeaderProps> = ({
   onSearchChange,
   timeFilter = "all",
   onTimeFilterChange,
+  granularity = "month",
+  onGranularityChange,
   onNewPost,
 }) => {
   const theme = useTheme();
@@ -127,6 +133,7 @@ const PostsHeader: React.FC<PostsHeaderProps> = ({
             maxWidth: 500,
             "& .MuiOutlinedInput-root": {
               borderRadius: 1.5,
+              height: "40px", // Consistent height with buttons
             },
           }}
           InputProps={{
@@ -145,6 +152,24 @@ const PostsHeader: React.FC<PostsHeaderProps> = ({
           }}
         />
 
+        {/* New Post Button */}
+        <Button
+          variant="outlined"
+          startIcon={<Add />}
+          onClick={handleNewPost}
+          size="small"
+          sx={{
+            borderRadius: 1.5,
+            textTransform: "none",
+            px: 2,
+            minWidth: "auto",
+            whiteSpace: "nowrap",
+            height: "40px", // Consistent height
+          }}
+        >
+          New Post
+        </Button>
+
         {/* Filter Button */}
         <Button
           variant="outlined"
@@ -157,30 +182,20 @@ const PostsHeader: React.FC<PostsHeaderProps> = ({
             px: 2,
             minWidth: "auto",
             whiteSpace: "nowrap",
+            height: "40px", // Consistent height
           }}
         >
           {activeTimeFilter?.label || "All Time"}
         </Button>
 
-        {/* New Post Button */}
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={handleNewPost}
-          size="small"
-          sx={{
-            borderRadius: 1.5,
-            textTransform: "none",
-            fontWeight: 600,
-            px: 2.5,
-            boxShadow: 1,
-            "&:hover": {
-              boxShadow: 2,
-            },
-          }}
-        >
-          New Post
-        </Button>
+        {/* Partition Control - Group By */}
+        {totalCount > 0 && (
+          <PartitionControl
+            granularity={granularity}
+            onGranularityChange={onGranularityChange || (() => {})}
+            postCount={totalCount}
+          />
+        )}
       </Box>
 
       {/* Active Filters - Only show when needed */}

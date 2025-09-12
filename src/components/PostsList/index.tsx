@@ -6,6 +6,7 @@ import Grid from "@mui/material/Grid2";
 
 // Import components
 import MonthSection from "./components/MonthSection";
+import TimeSection from "./components/TimeSection";
 import PostsHeader from "./components/PostsHeader";
 import SkeletonCard from "@/components/DocumentCardNew/components/LoadingCard";
 
@@ -96,16 +97,17 @@ const PostsLoadingState: React.FC = () => {
 };
 
 /**
- * Main PostsList component that displays blog posts organized by month
- * Features: Search, time filtering, responsive design, accessibility, SEO optimization
+ * Main PostsList component that displays blog posts with flexible partitioning
+ * Features: Search, time filtering, partitioning control, responsive design, accessibility, SEO optimization
  */
 const PostsList: React.FC<PostsListProps> = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  // Use custom hook to get posts data with search and filtering
+  // Use custom hook to get posts data with search, filtering, and partitioning
   const {
     monthGroups,
+    timeGroups,
     loading,
     totalCount,
     filteredCount,
@@ -113,9 +115,14 @@ const PostsList: React.FC<PostsListProps> = () => {
     setSearchQuery,
     timeFilter,
     setTimeFilter,
+    granularity,
+    setGranularity,
     hasActiveFilters,
     searchResults,
   } = usePostsData();
+
+  // Use timeGroups for display to support flexible partitioning
+  const displayGroups = timeGroups;
 
   return (
     <Box
@@ -129,7 +136,7 @@ const PostsList: React.FC<PostsListProps> = () => {
       }}
       // Accessibility attributes
       role="main"
-      aria-label="Blog posts organized by month"
+      aria-label="Blog posts with flexible partitioning"
     >
       {/* Enhanced Header with Search and Filters */}
       <PostsHeader
@@ -139,16 +146,18 @@ const PostsList: React.FC<PostsListProps> = () => {
         onSearchChange={setSearchQuery}
         timeFilter={timeFilter}
         onTimeFilterChange={setTimeFilter}
+        granularity={granularity}
+        onGranularityChange={setGranularity}
       />
 
-      {/* Monthly Sections */}
+      {/* Time-Based Sections */}
       {loading
         ? (
           <section aria-label="Loading posts" aria-live="polite">
             <PostsLoadingState />
           </section>
         )
-        : monthGroups.length === 0
+        : displayGroups.length === 0
         ? (
           <section
             role="region"
@@ -206,15 +215,15 @@ const PostsList: React.FC<PostsListProps> = () => {
         : (
           <section
             role="region"
-            aria-label={`${filteredCount} blog posts organized by month`}
+            aria-label={`${filteredCount} blog posts organized by ${granularity}`}
             aria-live="polite"
           >
             <Box>
-              {monthGroups.map((monthGroup, index) => (
-                <Box key={monthGroup.monthKey}>
-                  <MonthSection
-                    monthGroup={monthGroup}
-                    isLatest={index === 0} // First month is the latest
+              {displayGroups.map((timeGroup, index) => (
+                <Box key={timeGroup.timeKey}>
+                  <TimeSection
+                    timeGroup={timeGroup}
+                    isLatest={index === 0} // First period is the latest
                   />
                 </Box>
               ))}

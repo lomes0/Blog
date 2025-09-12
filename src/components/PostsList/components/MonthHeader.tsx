@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Chip, Typography, useMediaQuery } from "@mui/material";
+import { Box, Typography, useMediaQuery } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { CalendarMonth, TrendingUp } from "@mui/icons-material";
 
@@ -94,23 +94,6 @@ const MonthHeader: React.FC<MonthHeaderProps> = (
           {monthLabel}
         </Typography>
       </Box>
-
-      {/* Latest badge */}
-      {isLatest && !isMobile && (
-        <Chip
-          label="Latest"
-          size="small"
-          color="success"
-          variant="outlined"
-          sx={{
-            fontSize: "0.75rem",
-            height: 24,
-            "& .MuiChip-label": {
-              px: 1,
-            },
-          }}
-        />
-      )}
     </Box>
   );
 };

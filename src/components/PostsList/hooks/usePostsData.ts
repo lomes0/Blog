@@ -1,5 +1,6 @@
 import { useSelector } from "@/store";
 import { UserDocument } from "@/types";
+import { PartitionGranularity, TimeGroup } from "@/types/partitioning";
 import { useState } from "react";
 
 // Import custom hooks
@@ -13,6 +14,7 @@ import type { MonthGroup } from "../components/MonthSection";
 
 interface UsePostsDataReturn {
   monthGroups: MonthGroup[];
+  timeGroups: TimeGroup[]; // New flexible groups
   loading: boolean;
   totalCount: number;
   filteredCount: number;
@@ -22,6 +24,9 @@ interface UsePostsDataReturn {
   setSearchQuery: (query: string) => void;
   timeFilter: TimeFilterValue;
   setTimeFilter: (filter: TimeFilterValue) => void;
+  // Partitioning control
+  granularity: PartitionGranularity;
+  setGranularity: (granularity: PartitionGranularity) => void;
   // Filter stats
   hasActiveFilters: boolean;
   searchResults: {
@@ -31,13 +36,15 @@ interface UsePostsDataReturn {
 }
 
 /**
- * Custom hook to fetch and organize all posts data by month with search and filtering
+ * Custom hook to fetch and organize all posts data with flexible partitioning
  * Shows all documents regardless of published status
+ * Supports day, week, month, and year partitioning
  */
 export const usePostsData = (): UsePostsDataReturn => {
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [timeFilter, setTimeFilter] = useState<TimeFilterValue>("all");
+  const [granularity, setGranularity] = useState<PartitionGranularity>("month");
 
   // Use custom filtering hook to get all posts
   const { allPosts, totalCount } = usePostsFiltering();
@@ -54,8 +61,11 @@ export const usePostsData = (): UsePostsDataReturn => {
     searchQuery,
   });
 
-  // Use custom grouping hook for month-based organization
-  const { monthGroups } = usePostsGrouping({ posts: searchFilteredPosts });
+  // Use flexible grouping hook with granularity support
+  const { monthGroups, timeGroups } = usePostsGrouping({ 
+    posts: searchFilteredPosts, 
+    granularity 
+  });
 
   // Calculate filter stats
   const filteredCount = searchFilteredPosts.length;
@@ -63,6 +73,7 @@ export const usePostsData = (): UsePostsDataReturn => {
 
   return {
     monthGroups,
+    timeGroups,
     loading: false, // TODO: Add actual loading state in future steps
     totalCount,
     filteredCount,
@@ -72,6 +83,9 @@ export const usePostsData = (): UsePostsDataReturn => {
     setSearchQuery,
     timeFilter,
     setTimeFilter,
+    // Partitioning control
+    granularity,
+    setGranularity,
     // Filter stats
     hasActiveFilters,
     searchResults,

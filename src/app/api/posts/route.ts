@@ -11,6 +11,11 @@ import {
   GetDocumentsResponse,
   PostDocumentsResponse,
 } from "@/types";
+import {
+  PartitionGranularity,
+  PostsQueryParams,
+  PartitionedPostsResponse,
+} from "@/types/partitioning";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
@@ -18,12 +23,22 @@ import { validateHandle } from "../documents/utils";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  
+  // Parse query parameters for partitioning
+  const queryParams: PostsQueryParams = {
+    groupBy: (searchParams.get("groupBy") as PartitionGranularity) || "month",
+    limit: searchParams.get("limit") ? parseInt(searchParams.get("limit")!) : undefined,
+    offset: searchParams.get("offset") ? parseInt(searchParams.get("offset")!) : undefined,
+    published: searchParams.get("published") ? searchParams.get("published") === "true" : undefined,
+  };
+
   const response: GetDocumentsResponse = {};
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
-      const allPosts = await findAllPosts();
+      const allPosts = await findAllPosts(queryParams.limit);
       response.data = allPosts;
       return NextResponse.json(response, { status: 200 });
     }
