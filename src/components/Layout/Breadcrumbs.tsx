@@ -44,8 +44,8 @@ const Breadcrumbs: React.FC = () => {
     switch (segments[0]) {
       case "browse":
         breadcrumbs.push({
-          label: "Browse Posts",
-          href: "/browse",
+          label: "Posts",
+          href: "/posts",
           icon: <LibraryBooks sx={{ fontSize: 16, mr: 0.5 }} />,
         });
         break;
@@ -95,8 +95,8 @@ const Breadcrumbs: React.FC = () => {
 
       case "edit":
         breadcrumbs.push({
-          label: "Browse Posts",
-          href: "/browse",
+          label: "Posts",
+          href: "/posts",
           icon: <LibraryBooks sx={{ fontSize: 16, mr: 0.5 }} />,
         });
         breadcrumbs.push({
@@ -107,8 +107,8 @@ const Breadcrumbs: React.FC = () => {
 
       case "view":
         breadcrumbs.push({
-          label: "Browse Posts",
-          href: "/browse",
+          label: "Posts",
+          href: "/posts",
           icon: <LibraryBooks sx={{ fontSize: 16, mr: 0.5 }} />,
         });
         breadcrumbs.push({ label: "View Post" });

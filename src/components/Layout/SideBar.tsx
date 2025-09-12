@@ -22,11 +22,13 @@ import { useTheme } from "@mui/material/styles";
 import {
   ChevronLeft,
   ChevronRight,
+  Code,
   CollectionsBookmark,
   Create,
   Dashboard,
   Home,
   LibraryBooks,
+  StickyNote2,
 } from "@mui/icons-material";
 import { styles } from "./styles";
 import type { User } from "@/types";
@@ -103,6 +105,7 @@ const SideBar: React.FC = () => {
     // Add user-specific navigation items if authenticated
     if (user) {
       items.push(
+        { text: "Notes", icon: <StickyNote2 />, path: "/notes" },
         { text: "Dashboard", icon: <Dashboard />, path: "/dashboard" },
         // { text: "New Post", icon: <Create />, path: "/new" },
       );

@@ -1,7 +1,11 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import SplashScreen from "../SplashScreen";
-import { EditorDocument, EditorDocumentRevision } from "@/types";
+import {
+  DocumentCreateInput,
+  EditorDocument,
+  EditorDocumentRevision,
+} from "@/types";
 import { actions, useDispatch, useSelector } from "@/store";
 import { usePathname, useRouter } from "next/navigation";
 import type { EditorState, LexicalEditor } from "lexical";
@@ -333,12 +337,96 @@ const DocumentEditor: React.FC<React.PropsWithChildren> = ({ children }) => {
           cloudResponse.type ===
             actions.getCloudDocument.rejected.type
         ) {
-          setError(
-            cloudResponse.payload as {
-              title: string;
-              subtitle?: string;
-            },
-          );
+          // Special handling for "notes" - auto-create if it doesn't exist
+          if (id === "notes" && user) {
+            try {
+              const now = new Date().toISOString();
+              const documentId = uuidv4();
+              const revisionId = uuidv4();
+
+              const newDocument: EditorDocument = {
+                id: documentId,
+                name: "My Notes",
+                description: "Your personal notes document",
+                handle: "notes",
+                createdAt: now,
+                updatedAt: now,
+                head: revisionId,
+                type: "DOCUMENT",
+                data: {
+                  root: {
+                    children: [
+                      {
+                        children: [
+                          {
+                            detail: 0,
+                            format: 0,
+                            mode: "normal",
+                            style: "",
+                            text:
+                              "Welcome to your personal notes! This document will automatically save your changes.",
+                            type: "text",
+                            version: 1,
+                          },
+                        ],
+                        direction: "ltr",
+                        format: "",
+                        indent: 0,
+                        type: "paragraph",
+                        version: 1,
+                      },
+                    ],
+                    direction: "ltr",
+                    format: "",
+                    indent: 0,
+                    type: "root",
+                    version: 1,
+                  },
+                } as any,
+              };
+
+              // Create the document locally first
+              await dispatch(actions.createLocalDocument(newDocument));
+
+              // Create the initial revision
+              const revision = {
+                id: revisionId,
+                documentId: documentId,
+                createdAt: now,
+                data: newDocument.data,
+              };
+
+              await dispatch(actions.createLocalRevision(revision));
+
+              // Then save to cloud with additional properties
+              const cloudDocumentPayload: DocumentCreateInput = {
+                ...newDocument,
+                published: false,
+                private: true,
+                collab: false,
+              };
+
+              await dispatch(actions.createCloudDocument(cloudDocumentPayload));
+
+              // Create the revision in cloud
+              await dispatch(actions.createCloudRevision(revision));
+
+              setDocument(ensureValidDocumentData(newDocument));
+            } catch (error) {
+              console.error("Failed to create notes document:", error);
+              setError({
+                title: "Failed to Create Notes",
+                subtitle: "Please try again",
+              });
+            }
+          } else {
+            setError(
+              cloudResponse.payload as {
+                title: string;
+                subtitle?: string;
+              },
+            );
+          }
         }
       }
     };
@@ -346,7 +434,7 @@ const DocumentEditor: React.FC<React.PropsWithChildren> = ({ children }) => {
     return () => {
       dispatch(actions.setDiff({ open: false }));
     };
-  }, []);
+  }, [dispatch, user]);
 
   const handleSaveAndNavigate = useCallback(async () => {
     const success = await saveToCloud();
