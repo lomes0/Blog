@@ -106,7 +106,7 @@ const SideBar: React.FC = () => {
     if (user) {
       items.push(
         { text: "Notes", icon: <StickyNote2 />, path: "/notes" },
-        { text: "Dashboard", icon: <Dashboard />, path: "/dashboard" },
+        // { text: "Dashboard", icon: <Dashboard />, path: "/dashboard" },
         // { text: "New Post", icon: <Create />, path: "/new" },
       );
     }
