@@ -20,7 +20,7 @@ export const selectStandalonePosts = createSelector(
     });
     return documents.filter((doc) => {
       const docData = doc.cloud || doc.local;
-      return docData?.type === "DOCUMENT" && !seriesPostIds.has(doc.id);
+      return docData?.type === "DOCUMENT" && !seriesPostIds.has(doc.id) && !docData.parentId;
     });
   },
 );
@@ -46,7 +46,7 @@ export const selectAllPosts = createSelector(
 
     const standalonePosts = documents.filter((doc) => {
       const docData = doc.cloud || doc.local;
-      return docData?.type === "DOCUMENT" && !seriesPostIds.has(doc.id);
+      return docData?.type === "DOCUMENT" && !seriesPostIds.has(doc.id) && !docData.parentId;
     });
 
     return [...seriesPosts, ...standalonePosts];
