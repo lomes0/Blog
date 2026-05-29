@@ -186,6 +186,8 @@ const SideBar: React.FC = () => {
           flexShrink: 0,
           display: "flex",
           flexDirection: "row",
+          borderTop: "1px solid",
+          borderColor: "divider",
           alignItems: "center",
           justifyContent: isExpanded ? "space-between" : "center",
           minHeight: USER_ITEM_MIN_HEIGHT,
