@@ -6,26 +6,50 @@ import {
   EntityState,
   PayloadAction,
 } from "@reduxjs/toolkit";
-import NProgress from "nprogress";
-import documentDB, { revisionDB } from "@/indexeddb";
 import {
   Announcement,
   AppState,
-  BackupDocument,
   CloudDocumentRevision,
-  Document,
-  DocumentCreateInput,
-  DocumentStorageUsage,
-  DocumentUpdateInput,
-  EditorDocument,
   EditorDocumentRevision,
   EMPTY_EDITOR_STATE,
   UserDocument,
 } from "../types";
 
-import { apiClient } from "@/api";
-import { validate } from "uuid";
 import { duplicateDocument } from "./app/duplicateDocument";
+
+// ── Domain thunks (split into separate files for maintainability) ────────────
+import { loadSession } from "./thunks/sessionThunks";
+import {
+  createCloudDocument,
+  createLocalDocument,
+  deleteCloudDocument,
+  deleteLocalDocument,
+  forkCloudDocument,
+  forkLocalDocument,
+  getCloudDocument,
+  getDocumentById,
+  getLocalDocument,
+  loadCloudDocuments,
+  loadLocalDocuments,
+  syncLocalToCloud,
+  updateCloudDocument,
+  updateLocalDocument,
+} from "./thunks/documentThunks";
+import {
+  createCloudRevision,
+  createLocalRevision,
+  deleteCloudRevision,
+  deleteLocalRevision,
+  getCloudRevision,
+  getLocalDocumentRevisions,
+  getLocalRevision,
+  updateLocalRevision,
+} from "./thunks/revisionThunks";
+import {
+  getCloudDocumentThumbnail,
+  getCloudStorageUsage,
+  getLocalStorageUsage,
+} from "./thunks/storageThunks";
 import {
   createSeries,
   deleteSeries,
@@ -48,9 +72,6 @@ function prependOneDoc(
     adapterState.ids.unshift(entity.id);
   }
 }
-
-const toErrorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : "Unknown error";
 
 const initialState: AppState = {
   documents: documentsAdapter.getInitialState(),
@@ -81,7 +102,6 @@ export const triggerAutosaveBeforeNavigation = createAction<
 >("app/triggerAutosaveBeforeNavigation");
 
 export const load = createAsyncThunk("app/load", async (_, thunkAPI) => {
-  // Load series LAST so it's the freshest data
   await Promise.allSettled([
     thunkAPI.dispatch(loadSession()),
     thunkAPI.dispatch(loadLocalDocuments()),
@@ -92,773 +112,7 @@ export const load = createAsyncThunk("app/load", async (_, thunkAPI) => {
   await thunkAPI.dispatch(loadSeries());
 });
 
-export const loadSession = createAsyncThunk(
-  "app/loadSession",
-  async (_, thunkAPI) => {
-    try {
-      const data = await apiClient.auth.getSession();
-      if (!data) {
-        return thunkAPI.rejectWithValue({
-          title: "Something went wrong",
-          subtitle: "session not found",
-        });
-      }
-      if (!data.user) return thunkAPI.fulfillWithValue(undefined);
-      const user = {
-        id: data.user.id,
-        handle: data.user.handle,
-        name: data.user.name,
-        email: data.user.email,
-        image: data.user.image,
-      };
-      return thunkAPI.fulfillWithValue(user);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    }
-  },
-);
-
-export const loadLocalDocuments = createAsyncThunk(
-  "app/loadLocalDocuments",
-  async (_, thunkAPI) => {
-    try {
-      const documents = await documentDB.getAll();
-      const revisions = await revisionDB.getAll();
-      const localDocuments: EditorDocument[] = await Promise.all(
-        documents.map(async (document) => {
-          const { data: _data, ...rest } = document;
-          const backupDocument: BackupDocument = {
-            ...document,
-            revisions: revisions.filter((revision) =>
-              revision.documentId === document.id
-            ),
-          };
-          const localRevisions = backupDocument.revisions.map((
-            { data: _data, ...rest },
-          ) => ({
-            ...rest,
-            // Ensure dates are serialized to strings
-            createdAt: rest.createdAt instanceof Date
-              ? rest.createdAt.toISOString()
-              : rest.createdAt,
-          }));
-          const localDocument: EditorDocument = {
-            ...rest,
-            // Ensure dates are serialized to strings
-            createdAt: rest.createdAt instanceof Date
-              ? rest.createdAt.toISOString()
-              : rest.createdAt,
-            updatedAt: rest.updatedAt instanceof Date
-              ? rest.updatedAt.toISOString()
-              : rest.updatedAt,
-            data: EMPTY_EDITOR_STATE,
-            revisions: localRevisions.map((rev) => ({
-              ...rev,
-              data: EMPTY_EDITOR_STATE,
-            })),
-          };
-          return localDocument;
-        }),
-      );
-      return thunkAPI.fulfillWithValue(localDocuments);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    }
-  },
-);
-
-export const loadCloudDocuments = createAsyncThunk(
-  "app/loadCloudDocuments",
-  async (arg: Document[] | undefined, thunkAPI) => {
-    try {
-      NProgress.start();
-      if (arg) {
-        return thunkAPI.fulfillWithValue(
-          arg,
-        );
-      }
-      const data = await apiClient.documents.list();
-      return thunkAPI.fulfillWithValue(data ?? []);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    } finally {
-      NProgress.done();
-    }
-  },
-);
-
-export async function fetchLocalStorageUsage(): Promise<
-  DocumentStorageUsage[]
-> {
-  const documents = await documentDB.getAll();
-  const revisions = await revisionDB.getAll();
-  const localStorageUsage: DocumentStorageUsage[] = [];
-  documents.sort((a, b) => {
-    const first = a.updatedAt;
-    const second = b.updatedAt;
-    if (!first && !second) return 0;
-    if (!first) return 1;
-    if (!second) return -1;
-    return new Date(second).getTime() - new Date(first).getTime();
-  }).forEach((document) => {
-    const backupDocument: BackupDocument = {
-      ...document,
-      revisions: revisions.filter((revision) =>
-        revision.documentId === document.id
-      ),
-    };
-    const backupDocumentSize = new Blob([JSON.stringify(backupDocument)]).size;
-    localStorageUsage.push({
-      id: document.id,
-      name: document.name,
-      size: backupDocumentSize,
-    });
-  });
-  return localStorageUsage;
-}
-
-export async function fetchCloudStorageUsage(): Promise<
-  DocumentStorageUsage[]
-> {
-  const data = await apiClient.storage.getUsage();
-  if (!data) throw new Error("failed to get cloud storage usage");
-  return data;
-}
-
-export const getLocalStorageUsage = createAsyncThunk(
-  "app/getLocalStorageUsage",
-  async (_, thunkAPI) => {
-    try {
-      return thunkAPI.fulfillWithValue(await fetchLocalStorageUsage());
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    }
-  },
-);
-
-export const getCloudStorageUsage = createAsyncThunk(
-  "app/getCloudStorageUsage",
-  async (_, thunkAPI) => {
-    try {
-      return thunkAPI.fulfillWithValue(await fetchCloudStorageUsage());
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    }
-  },
-);
-
-export const getCloudDocumentThumbnail = createAsyncThunk(
-  "app/getCloudDocumentThumbnail",
-  async (id: string, thunkAPI) => {
-    try {
-      const data = await apiClient.thumbnails.get(id);
-      if (!data) {
-        return thunkAPI.rejectWithValue({
-          title: "Something went wrong",
-          subtitle: "thumbnail not found",
-        });
-      }
-      return thunkAPI.fulfillWithValue(data);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    }
-  },
-);
-
-export const getLocalDocument = createAsyncThunk(
-  "app/getLocalDocument",
-  async (id: string, thunkAPI) => {
-    try {
-      const isValidId = validate(id);
-      const document = isValidId
-        ? await documentDB.getByID(id)
-        : await documentDB.getOneByKey("handle", id);
-      if (!document) {
-        return thunkAPI.rejectWithValue({
-          title: "Something went wrong",
-          subtitle: "document not found",
-        });
-      }
-      return thunkAPI.fulfillWithValue(document);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    }
-  },
-);
-
-export const getLocalRevision = createAsyncThunk(
-  "app/getLocalRevision",
-  async (id: string, thunkAPI) => {
-    try {
-      const revision = await revisionDB.getByID(id);
-      if (!revision) {
-        return thunkAPI.rejectWithValue({
-          title: "Something went wrong",
-          subtitle: "revision not found",
-        });
-      }
-      return thunkAPI.fulfillWithValue(revision);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    }
-  },
-);
-
-export const getLocalDocumentRevisions = createAsyncThunk(
-  "app/getLocalDocumentRevisions",
-  async (id: string, thunkAPI) => {
-    try {
-      const revisions = await revisionDB.getManyByKey("documentId", id);
-      return thunkAPI.fulfillWithValue(revisions);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    }
-  },
-);
-
-export const getCloudDocument = createAsyncThunk(
-  "app/getCloudDocument",
-  async (id: string, thunkAPI) => {
-    try {
-      NProgress.start();
-      const data = await apiClient.documents.get(id);
-      if (!data) {
-        return thunkAPI.rejectWithValue({
-          title: "Something went wrong",
-          subtitle: "document not found",
-        });
-      }
-      return thunkAPI.fulfillWithValue(data);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    } finally {
-      NProgress.done();
-    }
-  },
-);
-
-export const getCloudRevision = createAsyncThunk(
-  "app/getCloudRevision",
-  async (id: string, thunkAPI) => {
-    try {
-      NProgress.start();
-      const data = await apiClient.revisions.get(id);
-      if (!data) {
-        return thunkAPI.rejectWithValue({
-          title: "Something went wrong",
-          subtitle: "revision not found",
-        });
-      }
-      return thunkAPI.fulfillWithValue(data);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    } finally {
-      NProgress.done();
-    }
-  },
-);
-
-export const forkLocalDocument = createAsyncThunk(
-  "app/forkLocalDocument",
-  async (
-    arg: { id: string; revisionId?: string | null },
-    thunkAPI,
-  ) => {
-    try {
-      const { id, revisionId } = arg;
-      const isValidId = validate(id);
-      const document = isValidId
-        ? await documentDB.getByID(id)
-        : await documentDB.getOneByKey("handle", id);
-      if (!document) {
-        return thunkAPI.rejectWithValue({
-          title: "Something went wrong",
-          subtitle: "document not found",
-        });
-      }
-      if (!revisionId || revisionId === document.head) {
-        return thunkAPI
-          .fulfillWithValue(document);
-      }
-      const revision = await revisionDB.getByID(revisionId);
-      if (!revision) {
-        return thunkAPI.rejectWithValue({
-          title: "Something went wrong",
-          subtitle: "revision not found",
-        });
-      }
-      return thunkAPI.fulfillWithValue({
-        ...document,
-        head: revision.id,
-        updatedAt: revision.createdAt,
-        data: revision.data,
-      });
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    }
-  },
-);
-
-export const forkCloudDocument = createAsyncThunk(
-  "app/forkCloudDocument",
-  async (
-    arg: { id: string; revisionId?: string | null },
-    thunkAPI,
-  ) => {
-    try {
-      const { id, revisionId } = arg;
-      NProgress.start();
-      const data = await apiClient.documents.fork(id, revisionId);
-      if (!data) {
-        return thunkAPI.rejectWithValue({
-          title: "Something went wrong",
-          subtitle: "document not found",
-        });
-      }
-      return thunkAPI.fulfillWithValue(data);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    } finally {
-      NProgress.done();
-    }
-  },
-);
-
-export const createLocalDocument = createAsyncThunk(
-  "app/createLocalDocument",
-  async (arg: DocumentCreateInput, thunkAPI) => {
-    try {
-      const {
-        coauthors: _coauthors,
-        published: _published,
-        collab: _collab,
-        private: _isPrivate,
-        revisions,
-        ...document
-      } = arg;
-      const id = await documentDB.add(document);
-      if (!id) {
-        return thunkAPI.rejectWithValue({
-          title: "Something went wrong",
-          subtitle: "failed to create document",
-        });
-      }
-      const { data, ...rest } = document;
-      if (revisions) await revisionDB.addMany(revisions);
-      const localDocumentRevisions = (revisions ?? []).map((
-        { data: _data, ...rest },
-      ) => rest);
-      const localDocument: EditorDocument = {
-        ...rest,
-        data,
-        revisions: localDocumentRevisions.map((rev) => ({
-          ...rev,
-          data: EMPTY_EDITOR_STATE,
-        })),
-      };
-      return thunkAPI.fulfillWithValue(localDocument);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    }
-  },
-);
-
-export const createLocalRevision = createAsyncThunk(
-  "app/createLocalRevision",
-  async (revision: EditorDocumentRevision, thunkAPI) => {
-    try {
-      const id = await revisionDB.add(revision);
-      if (!id) {
-        return thunkAPI.rejectWithValue({
-          title: "Something went wrong",
-          subtitle: "failed to create revision",
-        });
-      }
-      const { data: _data, ...rest } = revision;
-      return thunkAPI.fulfillWithValue(rest);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    }
-  },
-);
-
-export const updateLocalRevision = createAsyncThunk(
-  "app/updateLocalRevision",
-  async (revision: EditorDocumentRevision, thunkAPI) => {
-    try {
-      await revisionDB.update(revision);
-      const { data: _data, ...rest } = revision;
-      return thunkAPI.fulfillWithValue(rest);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    }
-  },
-);
-
-export const createCloudDocument = createAsyncThunk(
-  "app/createCloudDocument",
-  async (arg: DocumentCreateInput, thunkAPI) => {
-    try {
-      NProgress.start();
-      const data = await apiClient.documents.create(arg);
-      if (!data) {
-        return thunkAPI.rejectWithValue({
-          title: "Something went wrong",
-          subtitle: "failed to create document",
-        });
-      }
-      return thunkAPI.fulfillWithValue(data);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    } finally {
-      NProgress.done();
-    }
-  },
-);
-
-export const createCloudRevision = createAsyncThunk(
-  "app/createCloudRevision",
-  async (revision: EditorDocumentRevision, thunkAPI) => {
-    try {
-      NProgress.start();
-      const data = await apiClient.revisions.create(revision);
-      if (!data) {
-        return thunkAPI.rejectWithValue({
-          title: "Something went wrong",
-          subtitle: "failed to create revision",
-        });
-      }
-      return thunkAPI.fulfillWithValue(data);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    } finally {
-      NProgress.done();
-    }
-  },
-);
-
-export const syncLocalToCloud = createAsyncThunk(
-  "app/syncLocalToCloud",
-  async (
-    payload: {
-      id: string;
-      localHead: string;
-      updatedAt: string | Date;
-      parentId?: string | null;
-    },
-    thunkAPI,
-  ) => {
-    try {
-      NProgress.start();
-      const { id, localHead, updatedAt, parentId } = payload;
-
-      // Regular edits update documentDB (not revisionDB), so read from there
-      const localDoc = await documentDB.getByID(id);
-      if (!localDoc?.data) {
-        return thunkAPI.rejectWithValue({
-          title: "Sync failed",
-          subtitle: "Local document not found",
-        });
-      }
-
-      const revision: EditorDocumentRevision = {
-        id: localHead,
-        documentId: id,
-        data: localDoc.data,
-        createdAt: updatedAt,
-      };
-
-      try {
-        await thunkAPI.dispatch(createCloudRevision(revision)).unwrap();
-      } catch (e) {
-        return thunkAPI.rejectWithValue(e);
-      }
-
-      try {
-        await thunkAPI.dispatch(
-          updateCloudDocument({
-            id,
-            partial: { head: localHead, updatedAt, parentId },
-          }),
-        ).unwrap();
-      } catch (e) {
-        return thunkAPI.rejectWithValue(e);
-      }
-
-      return thunkAPI.fulfillWithValue(undefined);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    } finally {
-      NProgress.done();
-    }
-  },
-);
-
-export const updateLocalDocument = createAsyncThunk(
-  "app/updateLocalDocument",
-  async (
-    arg: { id: string; partial: DocumentUpdateInput },
-    thunkAPI,
-  ) => {
-    try {
-      const { id, partial } = arg;
-      const {
-        coauthors: _coauthors,
-        published: _published,
-        collab: _collab,
-        private: _isPrivate,
-        revisions,
-        ...document
-      } = partial;
-      const result = await documentDB.patch(id, document);
-      if (!result) {
-        return thunkAPI.rejectWithValue({
-          title: "Something went wrong",
-          subtitle: "failed to update document",
-        });
-      }
-      const payload: { id: string; partial: Partial<EditorDocument> } = {
-        id,
-        partial: { ...document },
-      };
-      if (revisions) {
-        await revisionDB.addMany(revisions);
-        const localDocumentRevisions = (revisions ?? []).map((
-          { data: _data, ...rest },
-        ) => rest);
-        payload.partial.revisions = localDocumentRevisions.map((rev) => ({
-          ...rev,
-          data: EMPTY_EDITOR_STATE,
-        }));
-      }
-
-      return thunkAPI.fulfillWithValue(payload);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    }
-  },
-);
-
-export const updateCloudDocument = createAsyncThunk(
-  "app/updateCloudDocument",
-  async (
-    arg: { id: string; partial: DocumentUpdateInput },
-    thunkAPI,
-  ) => {
-    try {
-      NProgress.start();
-      const { id, partial } = arg;
-      const data = await apiClient.documents.update(id, partial);
-      if (!data) {
-        return thunkAPI.rejectWithValue({
-          title: "Something went wrong",
-          subtitle: "failed to update document",
-        });
-      }
-      return thunkAPI.fulfillWithValue(data);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    } finally {
-      NProgress.done();
-    }
-  },
-);
-
-export const deleteLocalDocument = createAsyncThunk(
-  "app/deleteLocalDocument",
-  async (id: string, thunkAPI) => {
-    try {
-      await documentDB.deleteByID(id);
-      await revisionDB.deleteManyByKey("documentId", id);
-      return thunkAPI.fulfillWithValue(id);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    }
-  },
-);
-
-export const deleteLocalRevision = createAsyncThunk(
-  "app/deleteLocalRevision",
-  async (arg: { id: string; documentId: string }, thunkAPI) => {
-    try {
-      await revisionDB.deleteByID(arg.id);
-      return thunkAPI.fulfillWithValue(arg);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    }
-  },
-);
-
-export const deleteCloudDocument = createAsyncThunk(
-  "app/deleteCloudDocument",
-  async (id: string, thunkAPI) => {
-    try {
-      NProgress.start();
-      const data = await apiClient.documents.delete(id);
-      if (!data) {
-        return thunkAPI.rejectWithValue({
-          title: "Something went wrong",
-          subtitle: "failed to delete document",
-        });
-      }
-      return thunkAPI.fulfillWithValue(data);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    } finally {
-      NProgress.done();
-    }
-  },
-);
-
-export const deleteCloudRevision = createAsyncThunk(
-  "app/deleteCloudRevision",
-  async (arg: { id: string; documentId: string }, thunkAPI) => {
-    try {
-      NProgress.start();
-      const data = await apiClient.revisions.delete(arg.id);
-      if (!data) {
-        return thunkAPI.rejectWithValue({
-          title: "Something went wrong",
-          subtitle: "failed to delete revision",
-        });
-      }
-      return thunkAPI.fulfillWithValue(data);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    } finally {
-      NProgress.done();
-    }
-  },
-);
-
-export const getDocumentById = createAsyncThunk(
-  "app/getDocumentById",
-  async (id: string, thunkAPI) => {
-    try {
-      const state = thunkAPI.getState() as AppState;
-      const userDocument = state.documents.entities[id];
-      if (!userDocument) {
-        return thunkAPI.rejectWithValue({
-          title: "Something went wrong",
-          subtitle: "document not found",
-        });
-      }
-      return thunkAPI.fulfillWithValue(userDocument);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    }
-  },
-);
-
-// Series and user/alert thunks are defined in ./thunks/seriesThunks and ./thunks/userThunks
-export { createSeries, deleteSeries, loadSeries, updateSeries };
-export { alert, updateUser };
-
-// Add a special action to handle the auto-save before navigation
+// ── Slice ────────────────────────────────────────────────────────────────────
 export const appSlice = createSlice({
   name: "app",
   initialState,
@@ -993,8 +247,7 @@ export const appSlice = createSlice({
         state.ui.initialized = true;
       })
       .addCase(loadSession.fulfilled, (state, action) => {
-        const user = action.payload;
-        state.user = user;
+        state.user = action.payload;
       })
       .addCase(loadLocalDocuments.fulfilled, (state, action) => {
         const documents = action.payload;
@@ -1221,12 +474,13 @@ export const appSlice = createSlice({
         const localDocument = userDocument.local;
         if (!localDocument) return;
         if (!localDocument.revisions) return;
-        const revision = localDocument.revisions.find((
-          revision: EditorDocumentRevision,
-        ) => revision.id === id);
+        const revision = localDocument.revisions.find(
+          (revision: EditorDocumentRevision) => revision.id === id,
+        );
         if (!revision) return;
-        localDocument.revisions = localDocument.revisions
-          .filter((revision: EditorDocumentRevision) => revision.id !== id);
+        localDocument.revisions = localDocument.revisions.filter(
+          (revision: EditorDocumentRevision) => revision.id !== id,
+        );
       })
       .addCase(deleteCloudDocument.fulfilled, (state, action) => {
         const id = action.payload;
@@ -1255,17 +509,14 @@ export const appSlice = createSlice({
         state.ui.announcements.push({ message });
       })
       .addCase(deleteCloudRevision.fulfilled, (state, action) => {
-        const { id, documentId } = action.payload;
+        const { id, documentId } = action.payload as CloudDocumentRevision;
         const userDocument = state.documents.entities[documentId];
         if (!userDocument) return;
         const cloudDocument = userDocument.cloud;
         if (!cloudDocument) return;
-        const revision = cloudDocument.revisions.find((
-          revision: CloudDocumentRevision,
-        ) => revision.id === id);
-        if (!revision) return;
-        cloudDocument.revisions = cloudDocument.revisions
-          .filter((revision) => revision.id !== id);
+        cloudDocument.revisions = cloudDocument.revisions.filter(
+          (revision) => revision.id !== id,
+        );
       })
       .addCase(deleteCloudRevision.rejected, (state, action) => {
         const message = action.payload as {
@@ -1275,8 +526,7 @@ export const appSlice = createSlice({
         state.ui.announcements.push({ message });
       })
       .addCase(updateUser.fulfilled, (state, action) => {
-        const user = action.payload;
-        state.user = user;
+        state.user = action.payload;
       })
       .addCase(updateUser.rejected, (state, action) => {
         const message = action.payload as {
@@ -1286,7 +536,6 @@ export const appSlice = createSlice({
         state.ui.announcements.push({ message });
       })
       .addCase(duplicateDocument.fulfilled, (state, action) => {
-        // Add the duplicated document to the state
         const duplicatedDoc = action.payload;
         const newUserDocument: UserDocument = {
           id: duplicatedDoc.id,
@@ -1302,8 +551,8 @@ export const appSlice = createSlice({
         state.ui.announcements.push({ message });
       })
       .addCase(alert.pending, (state, action) => {
-        const alert = action.meta.arg;
-        state.ui.alerts.push(alert);
+        const alertPayload = action.meta.arg;
+        state.ui.alerts.push(alertPayload);
       })
       .addCase(alert.fulfilled, (state) => {
         state.ui.alerts.shift();
@@ -1374,7 +623,47 @@ export const appSlice = createSlice({
   },
 });
 
-// Re-export the duplicateDocument action
-export { duplicateDocument };
+// ── Re-exports so external consumers keep the same import paths ──────────────
+export { loadSession } from "./thunks/sessionThunks";
+
+export {
+  loadLocalDocuments,
+  loadCloudDocuments,
+  getLocalDocument,
+  getCloudDocument,
+  forkLocalDocument,
+  forkCloudDocument,
+  createLocalDocument,
+  createCloudDocument,
+  updateLocalDocument,
+  updateCloudDocument,
+  deleteLocalDocument,
+  deleteCloudDocument,
+  syncLocalToCloud,
+  getDocumentById,
+} from "./thunks/documentThunks";
+
+export {
+  getLocalRevision,
+  getLocalDocumentRevisions,
+  getCloudRevision,
+  createLocalRevision,
+  updateLocalRevision,
+  createCloudRevision,
+  deleteLocalRevision,
+  deleteCloudRevision,
+} from "./thunks/revisionThunks";
+
+export {
+  fetchLocalStorageUsage,
+  fetchCloudStorageUsage,
+  getLocalStorageUsage,
+  getCloudStorageUsage,
+  getCloudDocumentThumbnail,
+} from "./thunks/storageThunks";
+
+export { createSeries, deleteSeries, loadSeries, updateSeries } from "./thunks/seriesThunks";
+export { alert, updateUser } from "./thunks/userThunks";
+export { duplicateDocument } from "./app/duplicateDocument";
 
 export default appSlice.reducer;
