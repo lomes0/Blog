@@ -37,6 +37,9 @@ const getPostCreatedAtTime = (doc: UserDocument): number => {
   return createdAt ? new Date(createdAt).getTime() : 0;
 };
 
+const sortPostsByCreatedAtDesc = (posts: UserDocument[]): UserDocument[] =>
+  [...posts].sort((a, b) => getPostCreatedAtTime(b) - getPostCreatedAtTime(a));
+
 /**
  * Get the creation date timestamp from a Series
  */
@@ -92,12 +95,7 @@ export const groupPostsBySeries = (
         postsByIdMap.get(post.id) ?? { id: post.id, cloud: post }
       );
 
-      // Sort posts within series by creation time (newest first)
-      const sortedPosts = [...seriesPosts].sort((a, b) => {
-        const timeA = getPostCreatedAtTime(a);
-        const timeB = getPostCreatedAtTime(b);
-        return timeB - timeA; // Newest first
-      });
+      const sortedPosts = sortPostsByCreatedAtDesc(seriesPosts);
 
       result.push({
         type: "series",
@@ -285,14 +283,7 @@ export const deduplicateSeriesAcrossPartitions = <
       new Map(posts.map((post) => [post.id, post])).values(),
     );
 
-    // Sort by series order
-    uniquePosts.sort((a, b) => {
-      const orderA = getPostSeriesOrder(a) ?? Infinity;
-      const orderB = getPostSeriesOrder(b) ?? Infinity;
-      return orderA - orderB;
-    });
-
-    seriesAllPostsMap.set(seriesId, uniquePosts);
+    seriesAllPostsMap.set(seriesId, sortPostsByCreatedAtDesc(uniquePosts));
   });
 
   // Build a map of seriesId -> correct timeKey based on series.createdAt
