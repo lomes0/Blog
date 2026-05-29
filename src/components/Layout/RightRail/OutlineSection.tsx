@@ -39,6 +39,18 @@ export default function OutlineSection({ activeDocId }: OutlineSectionProps) {
   const headings = needsDomFallback ? domHeadings : jsonHeadings;
   const wordCount = countWords(docData);
 
+  // In view mode (/view/[id]), doc.local.data is always EMPTY_EDITOR_STATE
+  // because loadLocalDocuments stores a placeholder to avoid loading all
+  // document content into memory at startup. The rendered HTML is already in
+  // the DOM, so we query h2/h3 directly — same approach used by scrollTo().
+  //
+  // Alternatives if this ever needs to change:
+  //   B) Fetch the revision's Lexical JSON from the API in a useEffect here
+  //      and feed it to extractHeadings — correct data but an extra round-trip.
+  //   C) Have ViewDocument dispatch an action to hydrate doc.local.data from
+  //      the revision JSON, so OutlineSection picks it up via the normal Redux
+  //      path — most architecturally consistent but requires threading the raw
+  //      Lexical JSON through the server component and a new Redux action.
   useEffect(() => {
     if (!needsDomFallback) return;
     const el = document.getElementById("app-main");
