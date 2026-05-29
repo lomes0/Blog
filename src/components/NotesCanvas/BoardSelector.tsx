@@ -242,7 +242,7 @@ export default function BoardSelector({
         scrollButtons={false}
         sx={{
           minHeight: 32,
-          flex: 1,
+          flexShrink: 1,
           minWidth: 0,
           "& .MuiTabs-indicator": { height: 2, borderRadius: "2px 2px 0 0" },
           "& .MuiTabs-flexContainer": { gap: 0.25 },
