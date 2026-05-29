@@ -53,7 +53,7 @@ import {
   Toolbar,
   useScrollTrigger,
 } from "@mui/material";
-import { Redo, Undo } from "@mui/icons-material";
+import { Redo, Undo } from "lucide-react";
 import { $isIFrameNode } from "@/editor/nodes/IFrameNode";
 import { $findMatchingParent, IS_APPLE } from "@lexical/utils";
 import { $isTableNode, TableNode } from "@/editor/nodes/TableNode";
@@ -421,7 +421,7 @@ function ToolbarPlugin(
                   );
                 }}
               >
-                <Undo fontSize="small" />
+                <Undo size={18} />
               </IconButton>
               <IconButton
                 title={IS_APPLE ? "Redo (⌘Y)" : "Redo (Ctrl+Y)"}
@@ -434,7 +434,7 @@ function ToolbarPlugin(
                   );
                 }}
               >
-                <Redo fontSize="small" />
+                <Redo size={18} />
               </IconButton>
             </Box>
             <Box

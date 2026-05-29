@@ -54,29 +54,29 @@ import {
   Typography,
 } from "@mui/material";
 import {
-  AttachFile,
+  AlignCenter,
+  AlignJustify,
+  AlignLeft,
+  AlignRight,
   Brush,
+  ChevronDown,
   Code,
-  Expand,
-  FormatAlignCenter,
-  FormatAlignJustify,
-  FormatAlignLeft,
-  FormatAlignRight,
-  FormatListBulleted,
-  FormatListNumbered,
-  FormatQuote,
-  Functions,
-  HorizontalRule,
-  Image as ImageIcon,
-  ImageSearch,
-  InsertPageBreak,
-  PlaylistAddCheck,
-  StickyNote2,
-  TableChart,
-  ViewColumn,
-  ViewWeek,
-  Web,
-} from "@mui/icons-material";
+  Columns2,
+  Globe,
+  Image,
+  Kanban,
+  List,
+  ListChecks,
+  ListOrdered,
+  Minus,
+  Paperclip,
+  Quote,
+  ScanSearch,
+  Scissors,
+  Sigma,
+  StickyNote,
+  Table,
+} from "lucide-react";
 import { IFrameNode } from "@/editor/nodes/IFrameNode";
 import { LayoutContainerNode } from "@/editor/nodes/LayoutNode";
 import { DetailsContainerNode } from "@/editor/nodes/DetailsNode";
@@ -127,12 +127,12 @@ const GraphIcon = (
 
 const FormatAlignIcon = (alignment: string) =>
   alignment === "left"
-    ? <FormatAlignLeft />
+    ? <AlignLeft />
     : alignment === "center"
-    ? <FormatAlignCenter />
+    ? <AlignCenter />
     : alignment === "right"
-    ? <FormatAlignRight />
-    : <FormatAlignJustify />;
+    ? <AlignRight />
+    : <AlignJustify />;
 
 function IconMenu(
   { options, selectedIndex, setHighlightedIndex, selectOptionAndCleanUp }: {
@@ -285,7 +285,7 @@ export default function ComponentPickerMenuPlugin() {
 
       options.push(
         new ComponentPickerOption(`${rows}x${columns} Table`, {
-          icon: <TableChart />,
+          icon: <Table />,
           keywords: ["table"],
           keyboardShortcut: `${rows}x${columns}`,
           onSelect: () =>
@@ -302,7 +302,7 @@ export default function ComponentPickerMenuPlugin() {
         ...Array.from({ length: 5 }, (_, i) => i + 1).map(
           (columns) =>
             new ComponentPickerOption(`${rows}x${columns} Table`, {
-              icon: <TableChart />,
+              icon: <Table />,
               keywords: ["table"],
               keyboardShortcut: `${rows}x${columns}`,
               onSelect: () =>
@@ -338,7 +338,7 @@ export default function ComponentPickerMenuPlugin() {
           }),
       ),
       new ComponentPickerOption("Numbered List", {
-        icon: <FormatListNumbered />,
+        icon: <ListOrdered />,
         keywords: ["numbered list", "ordered list", "ol"],
         keyboardShortcut: "1.",
         onSelect: () =>
@@ -348,7 +348,7 @@ export default function ComponentPickerMenuPlugin() {
           ),
       }),
       new ComponentPickerOption("Bulleted List", {
-        icon: <FormatListBulleted />,
+        icon: <List />,
         keywords: ["bulleted list", "unordered list", "ul"],
         keyboardShortcut: "*",
         onSelect: () =>
@@ -358,7 +358,7 @@ export default function ComponentPickerMenuPlugin() {
           ),
       }),
       new ComponentPickerOption("Check List", {
-        icon: <PlaylistAddCheck />,
+        icon: <ListChecks />,
         keywords: ["check list", "todo list"],
         keyboardShortcut: "[x]",
         onSelect: () =>
@@ -368,7 +368,7 @@ export default function ComponentPickerMenuPlugin() {
           ),
       }),
       new ComponentPickerOption("Quote", {
-        icon: <FormatQuote />,
+        icon: <Quote />,
         keywords: ["block quote"],
         keyboardShortcut: ">",
         onSelect: () =>
@@ -403,7 +403,7 @@ export default function ComponentPickerMenuPlugin() {
           }),
       }),
       new ComponentPickerOption("Divider", {
-        icon: <HorizontalRule />,
+        icon: <Minus />,
         keywords: ["horizontal rule", "divider", "hr"],
         keyboardShortcut: "---",
         onSelect: () =>
@@ -413,14 +413,14 @@ export default function ComponentPickerMenuPlugin() {
           ),
       }),
       new ComponentPickerOption("Math", {
-        icon: <Functions />,
+        icon: <Sigma />,
         keywords: ["equation", "latex", "math"],
         keyboardShortcut: "$$",
         onSelect: () =>
           editor.dispatchCommand(INSERT_MATH_COMMAND, { value: "" }),
       }),
       new ComponentPickerOption("OCR", {
-        icon: <ImageSearch />,
+        icon: <ScanSearch />,
         keywords: ["ocr", "image", "text"],
         keyboardShortcut: "/ocr",
         onSelect: openOCRDialog,
@@ -474,7 +474,7 @@ export default function ComponentPickerMenuPlugin() {
     if (editor.hasNode(ImageNode)) {
       baseOptions.push(
         new ComponentPickerOption("Image", {
-          icon: <ImageIcon />,
+          icon: <Image />,
           keywords: ["image", "photo", "picture", "img"],
           keyboardShortcut: "/img",
           onSelect: openImageDialog,
@@ -496,7 +496,7 @@ export default function ComponentPickerMenuPlugin() {
     if (editor.hasNode(SketchNode)) {
       baseOptions.push(
         new ComponentPickerOption("Sketch", {
-          icon: <Brush />,
+          icon: <Brush size={18} />,
           keywords: ["excalidraw", "sketch", "drawing", "diagram"],
           keyboardShortcut: "/sketch",
           onSelect: openSketchDialog,
@@ -507,7 +507,7 @@ export default function ComponentPickerMenuPlugin() {
     if (editor.hasNode(StickyNode)) {
       baseOptions.push(
         new ComponentPickerOption("Note", {
-          icon: <StickyNote2 />,
+          icon: <StickyNote />,
           keywords: ["sticky", "note", "sticky note"],
           keyboardShortcut: "/note",
           onSelect: () =>
@@ -522,7 +522,7 @@ export default function ComponentPickerMenuPlugin() {
     if (editor.hasNode(KanbanNode)) {
       baseOptions.push(
         new ComponentPickerOption("Kanban Board", {
-          icon: <ViewWeek />,
+          icon: <Kanban />,
           keywords: ["kanban", "board", "tasks", "workflow", "todo", "backlog"],
           keyboardShortcut: "/kanban",
           onSelect: () =>
@@ -537,7 +537,7 @@ export default function ComponentPickerMenuPlugin() {
     if (editor.hasNode(TableNode)) {
       baseOptions.push(
         new ComponentPickerOption("Table", {
-          icon: <TableChart />,
+          icon: <Table />,
           keywords: [
             "table",
             "grid",
@@ -554,7 +554,7 @@ export default function ComponentPickerMenuPlugin() {
     if (editor.hasNode(LayoutContainerNode)) {
       baseOptions.push(
         new ComponentPickerOption("Columns", {
-          icon: <ViewColumn />,
+          icon: <Columns2 />,
           keywords: ["columns", "layout", "col"],
           keyboardShortcut: "/col",
           onSelect: openLayoutDialog,
@@ -565,7 +565,7 @@ export default function ComponentPickerMenuPlugin() {
     if (editor.hasNode(PageBreakNode)) {
       baseOptions.push(
         new ComponentPickerOption("Page Break", {
-          icon: <InsertPageBreak />,
+          icon: <Scissors />,
           keywords: ["page break", "break", "page"],
           keyboardShortcut: "/page",
           onSelect: () => editor.dispatchCommand(INSERT_PAGE_BREAK, undefined),
@@ -576,7 +576,7 @@ export default function ComponentPickerMenuPlugin() {
     if (editor.hasNode(IFrameNode)) {
       baseOptions.push(
         new ComponentPickerOption("IFrame", {
-          icon: <Web />,
+          icon: <Globe />,
           keywords: ["iframe", "embed"],
           keyboardShortcut: "/iframe",
           onSelect: openIFrameDialog,
@@ -587,7 +587,7 @@ export default function ComponentPickerMenuPlugin() {
     if (editor.hasNode(DetailsContainerNode)) {
       baseOptions.push(
         new ComponentPickerOption("Details", {
-          icon: <Expand />,
+          icon: <ChevronDown />,
           keywords: ["details", "summary", "expand", "collapse"],
           keyboardShortcut: "/details",
           onSelect: () =>
@@ -602,7 +602,7 @@ export default function ComponentPickerMenuPlugin() {
     if (editor.hasNode(AttachmentNode)) {
       baseOptions.push(
         new ComponentPickerOption("Attachment", {
-          icon: <AttachFile />,
+          icon: <Paperclip />,
           keywords: ["attachment", "attach", "file", "upload"],
           keyboardShortcut: "/attach",
           onSelect: openAttachmentDialog,

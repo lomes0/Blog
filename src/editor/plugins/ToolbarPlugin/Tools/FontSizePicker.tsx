@@ -1,4 +1,4 @@
-import { TextDecrease, TextIncrease } from "@mui/icons-material";
+import { AArrowDown, AArrowUp } from "lucide-react";
 import { Box, IconButton, SxProps, TextField, Theme } from "@mui/material";
 import { useCallback } from "react";
 
@@ -90,7 +90,7 @@ export const FontSizePicker = ({ fontSize, updateFontSize, onBlur, sx }: {
           }}
           aria-label="increase font size"
         >
-          <TextDecrease fontSize="small" />
+          <AArrowDown size={18} />
         </IconButton>
         <TextField
           hiddenLabel
@@ -184,7 +184,7 @@ export const FontSizePicker = ({ fontSize, updateFontSize, onBlur, sx }: {
           }}
           aria-label="decrease font size"
         >
-          <TextIncrease fontSize="small" />
+          <AArrowUp size={18} />
         </IconButton>
       </Box>
     )

@@ -8,7 +8,7 @@ import {
   Skeleton,
   Typography,
 } from "@mui/material";
-import { OpenInNew, Refresh } from "@mui/icons-material";
+import { ExternalLink, RefreshCw } from "lucide-react";
 import { NodeKey } from "lexical";
 import { detectLanguage } from "@/utils/languageDetection";
 import { AttachmentContentCache, attachmentContentDB } from "@/indexeddb";
@@ -304,7 +304,7 @@ export default function AttachmentPreview({
             onClick={onOpenInSidebar}
             title="Open in sidebar"
           >
-            <OpenInNew fontSize="small" />
+            <ExternalLink size={18} />
           </IconButton>
         )}
       </Box>
@@ -340,7 +340,7 @@ export default function AttachmentPreview({
               sx={{ mb: 1 }}
               action={
                 <IconButton size="small" onClick={handleRefresh}>
-                  <Refresh fontSize="small" />
+                  <RefreshCw size={18} />
                 </IconButton>
               }
             >

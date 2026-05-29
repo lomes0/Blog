@@ -9,14 +9,14 @@ import { SET_DIALOGS_COMMAND } from "../Dialogs/commands";
 import { SxProps, Theme } from "@mui/material/styles";
 import { Box, SvgIcon, ToggleButton, ToggleButtonGroup } from "@mui/material";
 import {
-  ClosedCaption,
-  ClosedCaptionDisabled,
-  Delete,
-  Draw,
-  Edit,
-  FilterBAndW,
-  ViewHeadline,
-} from "@mui/icons-material";
+  AlignLeft,
+  Captions,
+  CaptionsOff,
+  Contrast,
+  PenLine,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { $isIFrameNode, IFrameNode } from "@/editor/nodes/IFrameNode";
 
 const FormatImageRight = () => (
@@ -107,7 +107,7 @@ export default function ImageTools(
         }}
       >
         <ToggleButton value="edit" key="edit" onClick={openDialog}>
-          <Edit fontSize="small" />
+          <Pencil size={18} />
         </ToggleButton>
         {isImageNode && (
           <ToggleButton
@@ -115,7 +115,7 @@ export default function ImageTools(
             key="sketch"
             onClick={openSketchDialog}
           >
-            <Draw fontSize="small" />
+            <PenLine size={18} />
           </ToggleButton>
         )}
         <ToggleButton
@@ -127,7 +127,7 @@ export default function ImageTools(
             });
           }}
         >
-          <Delete fontSize="small" />
+          <Trash2 size={18} />
         </ToggleButton>
       </ToggleButtonGroup>
       <Box
@@ -151,8 +151,8 @@ export default function ImageTools(
             onClick={toggleShowCaption}
           >
             {node.getShowCaption()
-              ? <ClosedCaption fontSize="small" />
-              : <ClosedCaptionDisabled fontSize="small" />}
+              ? <Captions size={18} />
+              : <CaptionsOff size={18} />}
           </ToggleButton>
           <ToggleButton
             value="filter-toggle"
@@ -164,7 +164,7 @@ export default function ImageTools(
               });
             }}
           >
-            <FilterBAndW fontSize="small" />
+            <Contrast size={18} />
           </ToggleButton>
         </ToggleButtonGroup>
         <ToggleButtonGroup
@@ -189,7 +189,7 @@ export default function ImageTools(
               updateStyle({ "float": "none" });
             }}
           >
-            <ViewHeadline fontSize="small" />
+            <AlignLeft size={18} />
           </ToggleButton>
           <ToggleButton
             value="float-right"

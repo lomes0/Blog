@@ -1,4 +1,4 @@
-import { ContentPaste, UploadFile } from "@mui/icons-material";
+import { ClipboardPaste, FileUp } from "lucide-react";
 import type { ChangeEvent } from "react";
 import {
   Button,
@@ -152,7 +152,7 @@ const OCRDialog: React.FC<{ editor: LexicalEditor }> = ({ editor }) => {
         <Button
           variant="outlined"
           sx={{ my: 1, mr: 1 }}
-          startIcon={<UploadFile />}
+          startIcon={<FileUp size={18} />}
           component="label"
           disabled={loading}
         >
@@ -169,7 +169,7 @@ const OCRDialog: React.FC<{ editor: LexicalEditor }> = ({ editor }) => {
         <Button
           variant="outlined"
           sx={{ my: 1 }}
-          startIcon={<ContentPaste />}
+          startIcon={<ClipboardPaste size={18} />}
           onClick={readFromClipboard}
           disabled={loading}
         >

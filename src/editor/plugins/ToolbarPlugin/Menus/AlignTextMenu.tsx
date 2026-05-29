@@ -22,13 +22,13 @@ import {
   MenuItem,
 } from "@mui/material";
 import {
-  FormatAlignCenter,
-  FormatAlignJustify,
-  FormatAlignLeft,
-  FormatAlignRight,
-  FormatIndentDecrease,
-  FormatIndentIncrease,
-} from "@mui/icons-material";
+  AlignCenter,
+  AlignJustify,
+  AlignLeft,
+  AlignRight,
+  IndentDecrease,
+  IndentIncrease,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useMenuState } from "@/hooks/useMenuState";
 import { getSelectedNode } from "@/editor/utils/getSelectedNode";
@@ -100,11 +100,10 @@ export default function AlignTextMenu(
         aria-label="Align Text"
         onClick={handleClick}
       >
-        {formatType === "left" && <FormatAlignLeft fontSize="small" />}
-        {formatType === "center" && <FormatAlignCenter fontSize="small" />}
-        {formatType === "right" &&
-          <FormatAlignRight fontSize="small" />}
-        {formatType === "justify" && <FormatAlignJustify fontSize="small" />}
+        {formatType === "left" && <AlignLeft size={18} />}
+        {formatType === "center" && <AlignCenter size={18} />}
+        {formatType === "right" && <AlignRight size={18} />}
+        {formatType === "justify" && <AlignJustify size={18} />}
       </IconButton>
       <Menu
         id="align-menu"
@@ -132,7 +131,7 @@ export default function AlignTextMenu(
           }}
         >
           <ListItemIcon>
-            <FormatAlignLeft fontSize="small" />
+            <AlignLeft size={18} />
           </ListItemIcon>
           <ListItemText>Left Align</ListItemText>
         </MenuItem>
@@ -146,7 +145,7 @@ export default function AlignTextMenu(
           }}
         >
           <ListItemIcon>
-            <FormatAlignCenter fontSize="small" />
+            <AlignCenter size={18} />
           </ListItemIcon>
           <ListItemText>Center Align</ListItemText>
         </MenuItem>
@@ -157,7 +156,7 @@ export default function AlignTextMenu(
           }}
         >
           <ListItemIcon>
-            <FormatAlignRight fontSize="small" />
+            <AlignRight size={18} />
           </ListItemIcon>
           <ListItemText>Right Align</ListItemText>
         </MenuItem>
@@ -171,7 +170,7 @@ export default function AlignTextMenu(
           }}
         >
           <ListItemIcon>
-            <FormatAlignJustify fontSize="small" />
+            <AlignJustify size={18} />
           </ListItemIcon>
           <ListItemText>Justify Align</ListItemText>
         </MenuItem>
@@ -188,8 +187,8 @@ export default function AlignTextMenu(
         >
           <ListItemIcon>
             {isRTL
-              ? <FormatIndentDecrease fontSize="small" />
-              : <FormatIndentIncrease fontSize="small" />}
+              ? <IndentDecrease size={18} />
+              : <IndentIncrease size={18} />}
           </ListItemIcon>
           <ListItemText>Indent</ListItemText>
         </MenuItem>
@@ -204,8 +203,8 @@ export default function AlignTextMenu(
         >
           <ListItemIcon>
             {isRTL
-              ? <FormatIndentIncrease fontSize="small" />
-              : <FormatIndentDecrease fontSize="small" />}
+              ? <IndentIncrease size={18} />
+              : <IndentDecrease size={18} />}
           </ListItemIcon>
           <ListItemText>Outdent</ListItemText>
         </MenuItem>

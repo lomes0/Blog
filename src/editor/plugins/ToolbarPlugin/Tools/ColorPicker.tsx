@@ -7,13 +7,7 @@ import {
   MenuItem,
   ToggleButton,
 } from "@mui/material";
-import {
-  Circle,
-  CircleOutlined,
-  FormatClear,
-  FormatColorFill,
-  FormatColorReset,
-} from "@mui/icons-material";
+import { Circle, Eraser, Palette, X } from "lucide-react";
 
 export const textPalette = [
   "#d7170b",
@@ -88,7 +82,7 @@ export default function ColorPicker(
       {toggle === "menuitem" && (
         <MenuItem onClick={handleClick}>
           <ListItemIcon>
-            <FormatColorFill />
+            <Palette />
           </ListItemIcon>
           <ListItemText>{label}</ListItemText>
         </MenuItem>
@@ -101,7 +95,7 @@ export default function ColorPicker(
           className="MuiToggleButtonGroup-grouped MuiToggleButtonGroup-groupedHorizontal"
           selected={open}
         >
-          <FormatColorFill fontSize="small" />
+          <Palette size={18} />
         </ToggleButton>
       )}
       <Menu
@@ -129,7 +123,7 @@ export default function ColorPicker(
             }}
             selected={color === textColor}
           >
-            <CircleOutlined style={{ color }} />
+            <Circle style={{ color }} />
           </MenuItem>
         ))}
         <MenuItem
@@ -139,7 +133,7 @@ export default function ColorPicker(
           }}
           selected={textColor === "inherit"}
         >
-          <FormatClear />
+          <X />
         </MenuItem>
         {backgroundPalette.map((color, index) => (
           <MenuItem
@@ -150,10 +144,8 @@ export default function ColorPicker(
             selected={color === backgroundColor}
           >
             <Circle
-              style={{
-                backgroundColor: color,
-                color: "transparent",
-              }}
+              fill={color}
+              color={color}
             />
           </MenuItem>
         ))}
@@ -164,7 +156,7 @@ export default function ColorPicker(
           }}
           selected={backgroundColor === "inherit"}
         >
-          <FormatColorReset />
+          <Eraser />
         </MenuItem>
       </Menu>
     </>

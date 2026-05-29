@@ -16,7 +16,7 @@ import {
   Switch,
   TextField,
 } from "@mui/material";
-import { Add, Remove } from "@mui/icons-material";
+import { Minus, Plus } from "lucide-react";
 
 const initialFormData = { rows: "3", columns: "3", includeHeaders: true };
 
@@ -83,7 +83,7 @@ function TableDialog({ editor }: { editor: LexicalEditor }) {
             }}
           >
             <IconButton onClick={() => setRows(+formData.rows - 1)}>
-              <Remove />
+              <Minus size={18} />
             </IconButton>
             <TextField
               type="number"
@@ -97,7 +97,7 @@ function TableDialog({ editor }: { editor: LexicalEditor }) {
               autoFocus
             />
             <IconButton onClick={() => setRows(+formData.rows + 1)}>
-              <Add />
+              <Plus size={18} />
             </IconButton>
           </FormControl>
           <FormControl
@@ -111,7 +111,7 @@ function TableDialog({ editor }: { editor: LexicalEditor }) {
             <IconButton
               onClick={() => setColumns(+formData.columns - 1)}
             >
-              <Remove />
+              <Minus size={18} />
             </IconButton>
             <TextField
               type="number"
@@ -127,7 +127,7 @@ function TableDialog({ editor }: { editor: LexicalEditor }) {
             <IconButton
               onClick={() => setColumns(+formData.columns + 1)}
             >
-              <Add />
+              <Plus size={18} />
             </IconButton>
           </FormControl>
           <FormControlLabel

@@ -17,7 +17,7 @@ import {
   Typography,
 } from "@mui/material";
 import useLocalStorage from "@/hooks/useLocalStorage";
-import { ViewHeadline } from "@mui/icons-material";
+import { AlignLeft } from "lucide-react";
 import { AI_MODELS } from "@/lib/ai";
 
 function AIDialog({ editor }: { editor: LexicalEditor }) {
@@ -115,7 +115,7 @@ function AIDialog({ editor }: { editor: LexicalEditor }) {
                   setFormData({ provider: model.provider, model: model.id })}
               >
                 <ListItemIcon>
-                  <ViewHeadline fontSize="small" />
+                  <AlignLeft size={18} />
                 </ListItemIcon>
                 <ListItemText>{model.name}</ListItemText>
                 {model.metadata?.fast && (

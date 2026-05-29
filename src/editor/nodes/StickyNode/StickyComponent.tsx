@@ -4,7 +4,7 @@ import { useLexicalNodeSelection } from "@lexical/react/useLexicalNodeSelection"
 import { lazy, Suspense } from "react";
 import { editorConfig } from "./config";
 import { IconButton } from "@mui/material";
-import { DragIndicator } from "@mui/icons-material";
+import { GripVertical } from "lucide-react";
 import "./StickyNode.css";
 
 const NestedEditor = lazy(() => import("@/editor/NestedEditor"));
@@ -31,7 +31,7 @@ export default function StickyComponent(
           onMouseDown={() => setSelected(true)}
           onMouseUp={() => setSelected(false)}
         >
-          <DragIndicator fontSize="inherit" />
+          <GripVertical />
         </IconButton>
       </div>
       <Suspense fallback={children}>

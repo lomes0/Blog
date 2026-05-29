@@ -16,7 +16,7 @@ import {
   Typography,
   useMediaQuery,
 } from "@mui/material";
-import { Add, AttachFile, UploadFile } from "@mui/icons-material";
+import { FileUp, Paperclip, Plus } from "lucide-react";
 import { ANNOUNCE_COMMAND } from "@/editor/commands";
 import { INSERT_ATTACHMENT_COMMAND } from "@/editor/plugins/AttachmentPlugin";
 import { apiClient } from "@/api";
@@ -195,7 +195,7 @@ function AttachmentDialog({ editor }: { editor: LexicalEditor }) {
     >
       <DialogTitle id="attachment-dialog-title">
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <AttachFile />
+          <Paperclip size={18} />
           Attach File
         </Box>
       </DialogTitle>
@@ -211,7 +211,7 @@ function AttachmentDialog({ editor }: { editor: LexicalEditor }) {
             sx={{ my: 2, py: 2 }}
             startIcon={isUploading
               ? <CircularProgress size={20} />
-              : <UploadFile />}
+              : <FileUp size={18} />}
             component="label"
             disabled={isUploading}
           >
@@ -263,7 +263,7 @@ function AttachmentDialog({ editor }: { editor: LexicalEditor }) {
             <Button
               variant="outlined"
               sx={{ minWidth: 120 }}
-              startIcon={isUploading ? <CircularProgress size={20} /> : <Add />}
+              startIcon={isUploading ? <CircularProgress size={20} /> : <Plus size={18} />}
               onClick={handleCreateBlank}
               disabled={!blankFilename.trim() || isUploading}
             >

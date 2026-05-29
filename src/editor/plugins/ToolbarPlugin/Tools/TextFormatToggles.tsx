@@ -24,15 +24,15 @@ import { $getSelectionStyleValueForProperty } from "@lexical/selection";
 import { SxProps, Theme } from "@mui/material/styles";
 import { SvgIcon, ToggleButton, ToggleButtonGroup } from "@mui/material";
 import {
+  Bold,
   Code,
-  FormatBold,
-  FormatItalic,
-  FormatStrikethrough,
-  FormatUnderlined,
+  Italic,
   Link,
+  Strikethrough,
   Subscript,
   Superscript,
-} from "@mui/icons-material";
+  Underline,
+} from "lucide-react";
 import { getSelectedNode } from "@/editor/utils/getSelectedNode";
 import { SET_DIALOGS_COMMAND } from "../Dialogs/commands";
 
@@ -211,7 +211,7 @@ export default function TextFormatToggles(
           IS_APPLE ? "⌘B" : "Ctrl+B"
         }`}
       >
-        <FormatBold fontSize="small" />
+        <Bold size={18} />
       </ToggleButton>
       <ToggleButton
         value="italic"
@@ -220,7 +220,7 @@ export default function TextFormatToggles(
           IS_APPLE ? "⌘I" : "Ctrl+I"
         }`}
       >
-        <FormatItalic fontSize="small" />
+        <Italic size={18} />
       </ToggleButton>
       <ToggleButton
         value="underline"
@@ -229,7 +229,7 @@ export default function TextFormatToggles(
           IS_APPLE ? "⌘U" : "Ctrl+U"
         }`}
       >
-        <FormatUnderlined fontSize="small" />
+        <Underline size={18} />
       </ToggleButton>
       <ToggleButton
         value="highlight"
@@ -247,7 +247,7 @@ export default function TextFormatToggles(
           IS_APPLE ? "⌘E" : "Ctrl+E"
         }`}
       >
-        <Code fontSize="small" />
+        <Code size={18} />
       </ToggleButton>
       <ToggleButton
         value="strikethrough"
@@ -258,21 +258,21 @@ export default function TextFormatToggles(
           IS_APPLE ? "⌘+⇧+S" : "Ctrl+Shift+S"
         }`}
       >
-        <FormatStrikethrough fontSize="small" />
+        <Strikethrough size={18} />
       </ToggleButton>
       <ToggleButton
         value="subscript"
         title="Subscript"
         aria-label="Format text with subscript"
       >
-        <Subscript fontSize="small" />
+        <Subscript size={18} />
       </ToggleButton>
       <ToggleButton
         value="superscript"
         title="Superscript"
         aria-label="Format text with superscript"
       >
-        <Superscript fontSize="small" />
+        <Superscript size={18} />
       </ToggleButton>
       <ToggleButton
         value="link"
@@ -280,7 +280,7 @@ export default function TextFormatToggles(
         aria-label={`Insert a link. Shortcut: ${IS_APPLE ? "⌘K" : "Ctrl+K"}`}
         onClick={openLinkDialog}
       >
-        <Link fontSize="small" />
+        <Link size={18} />
       </ToggleButton>
       <ColorPicker
         onColorChange={onColorChange}

@@ -28,13 +28,13 @@ import {
   SvgIcon,
 } from "@mui/material";
 import {
+  AlignLeft,
   Code,
-  FormatListBulleted,
-  FormatListNumbered,
-  FormatQuote,
-  PlaylistAddCheck,
-  ViewHeadline,
-} from "@mui/icons-material";
+  List,
+  ListChecks,
+  ListOrdered,
+  Quote,
+} from "lucide-react";
 import { $isTableSelection } from "@/editor/nodes/TableNode";
 import { useCallback } from "react";
 
@@ -239,7 +239,7 @@ export function BlockFormatSelect({ editor, blockType }: {
     >
       <MenuItem value="paragraph" onClick={formatParagraph}>
         <ListItemIcon>
-          <ViewHeadline fontSize="small" />
+          <AlignLeft size={18} />
         </ListItemIcon>
         <ListItemText>Normal</ListItemText>
       </MenuItem>
@@ -269,31 +269,31 @@ export function BlockFormatSelect({ editor, blockType }: {
       </MenuItem>
       <MenuItem value="bullet" onClick={formatBulletList}>
         <ListItemIcon>
-          <FormatListBulleted fontSize="small" />
+          <List size={18} />
         </ListItemIcon>
         <ListItemText>Bullet List</ListItemText>
       </MenuItem>
       <MenuItem value="number" onClick={formatNumberedList}>
         <ListItemIcon>
-          <FormatListNumbered fontSize="small" />
+          <ListOrdered size={18} />
         </ListItemIcon>
         <ListItemText>Numbered List</ListItemText>
       </MenuItem>
       <MenuItem value="check" onClick={formatCheckList}>
         <ListItemIcon>
-          <PlaylistAddCheck fontSize="small" />
+          <ListChecks size={18} />
         </ListItemIcon>
         <ListItemText>Check List</ListItemText>
       </MenuItem>
       <MenuItem value="quote" onClick={formatQuote}>
         <ListItemIcon>
-          <FormatQuote fontSize="small" />
+          <Quote size={18} />
         </ListItemIcon>
         <ListItemText>Quote</ListItemText>
       </MenuItem>
       <MenuItem value="code" onClick={formatCode}>
         <ListItemIcon>
-          <Code fontSize="small" />
+          <Code size={18} />
         </ListItemIcon>
         <ListItemText>CodeBlock</ListItemText>
       </MenuItem>

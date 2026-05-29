@@ -24,7 +24,7 @@ import {
   Typography,
   useMediaQuery,
 } from "@mui/material";
-import { UploadFile } from "@mui/icons-material";
+import { FileUp } from "lucide-react";
 import { ANNOUNCE_COMMAND } from "@/editor/commands";
 
 const ACCEPTABLE_IMAGE_TYPES = [
@@ -184,7 +184,7 @@ function ImageDialog(
           <Button
             variant="outlined"
             sx={{ my: 2 }}
-            startIcon={<UploadFile />}
+            startIcon={<FileUp size={18} />}
             component="label"
           >
             Upload File

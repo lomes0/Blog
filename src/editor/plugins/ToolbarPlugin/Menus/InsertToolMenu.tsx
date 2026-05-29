@@ -27,19 +27,20 @@ import {
   Typography,
 } from "@mui/material";
 import {
-  Add,
-  AttachFile,
   Brush,
-  Expand,
-  Functions,
-  HorizontalRule,
-  Image as ImageIcon,
-  InsertPageBreak,
-  StickyNote2,
-  TableChart,
-  ViewColumn,
-  Web,
-} from "@mui/icons-material";
+  ChevronDown,
+  Columns2,
+  Globe,
+  Image,
+  Minus,
+  Paperclip,
+  Plus,
+  Scissors,
+  SeparatorHorizontal,
+  Sigma,
+  StickyNote,
+  Table,
+} from "lucide-react";
 import { IFrameNode } from "@/editor/nodes/IFrameNode";
 import { LayoutContainerNode } from "@/editor/nodes/LayoutNode";
 import { DetailsContainerNode } from "@/editor/nodes/DetailsNode";
@@ -85,7 +86,7 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
         aria-label="Insert"
         onClick={handleClick}
       >
-        <Add fontSize="small" />
+        <Plus size={18} />
       </IconButton>
       <Menu
         id="insert-menu"
@@ -111,7 +112,7 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
             }}
           >
             <ListItemIcon>
-              <HorizontalRule fontSize="small" />
+              <Minus size={18} />
             </ListItemIcon>
             <ListItemText>Divider</ListItemText>
             <Typography variant="body2" color="text.secondary">
@@ -130,7 +131,7 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
             }}
           >
             <ListItemIcon>
-              <InsertPageBreak fontSize="small" />
+              <Scissors size={18} />
             </ListItemIcon>
             <ListItemText>Page</ListItemText>
             <Typography variant="body2" color="text.secondary">
@@ -148,7 +149,7 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
             }}
           >
             <ListItemIcon>
-              <Functions fontSize="small" />
+              <Sigma size={18} />
             </ListItemIcon>
             <ListItemText>Math</ListItemText>
             <Typography variant="body2" color="text.secondary">
@@ -180,7 +181,7 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
             }}
           >
             <ListItemIcon>
-              <Brush fontSize="small" />
+              <Brush size={18} />
             </ListItemIcon>
             <ListItemText>Sketch</ListItemText>
             <Typography
@@ -200,7 +201,7 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
             }}
           >
             <ListItemIcon>
-              <ImageIcon fontSize="small" />
+              <Image size={18} />
             </ListItemIcon>
             <ListItemText>Image</ListItemText>
             <Typography variant="body2" color="text.secondary">
@@ -216,7 +217,7 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
             }}
           >
             <ListItemIcon>
-              <AttachFile fontSize="small" />
+              <Paperclip size={18} />
             </ListItemIcon>
             <ListItemText>Attachment</ListItemText>
             <Typography variant="body2" color="text.secondary">
@@ -232,7 +233,7 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
             }}
           >
             <ListItemIcon>
-              <TableChart fontSize="small" />
+              <Table size={18} />
             </ListItemIcon>
             <ListItemText>Table</ListItemText>
             <Typography variant="body2" color="text.secondary">
@@ -248,7 +249,7 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
             }}
           >
             <ListItemIcon>
-              <ViewColumn fontSize="small" />
+              <Columns2 size={18} />
             </ListItemIcon>
             <ListItemText>Columns</ListItemText>
             <Typography variant="body2" color="text.secondary">
@@ -267,7 +268,7 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
             }}
           >
             <ListItemIcon>
-              <StickyNote2 fontSize="small" />
+              <StickyNote size={18} />
             </ListItemIcon>
             <ListItemText>Note</ListItemText>
             <Typography variant="body2" color="text.secondary">
@@ -283,7 +284,7 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
             }}
           >
             <ListItemIcon>
-              <Web fontSize="small" />
+              <Globe size={18} />
             </ListItemIcon>
             <ListItemText>IFrame</ListItemText>
             <Typography variant="body2" color="text.secondary">
@@ -302,7 +303,7 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
             }}
           >
             <ListItemIcon>
-              <Expand fontSize="small" />
+              <ChevronDown size={18} />
             </ListItemIcon>
             <ListItemText>Details</ListItemText>
             <Typography variant="body2" color="text.secondary">

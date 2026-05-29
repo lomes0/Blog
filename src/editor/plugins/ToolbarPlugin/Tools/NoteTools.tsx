@@ -14,7 +14,7 @@ import {
   ToggleButtonGroup,
   Typography,
 } from "@mui/material";
-import { ArrowDropDown, Delete, Note } from "@mui/icons-material";
+import { ChevronDown, StickyNote, Trash2 } from "lucide-react";
 import {
   $getNodeStyleValueForProperty,
   $patchStyle,
@@ -118,8 +118,8 @@ export default function NoteTools(
         aria-expanded={open ? "true" : undefined}
         variant="outlined"
         onClick={handleClick}
-        startIcon={<Note />}
-        endIcon={<ArrowDropDown />}
+        startIcon={<StickyNote size={18} />}
+        endIcon={<ChevronDown size={18} />}
         sx={{
           color: "text.primary",
           borderColor: "divider",
@@ -194,7 +194,7 @@ export default function NoteTools(
         />
         <MenuItem onClick={deleteNode}>
           <ListItemIcon>
-            <Delete fontSize="small" />
+            <Trash2 size={18} />
           </ListItemIcon>
           <ListItemText>Delete Note</ListItemText>
         </MenuItem>

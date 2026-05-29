@@ -27,7 +27,7 @@ import {
   ToggleButtonGroup,
   Typography,
 } from "@mui/material";
-import { Delete, Draw, Edit, Menu, Save } from "@mui/icons-material";
+import { Menu, PenLine, Pencil, Save, Trash2 } from "lucide-react";
 import { useTheme } from "@mui/material/styles";
 import { ANNOUNCE_COMMAND } from "@/editor/commands";
 import { Announcement } from "@/types";
@@ -354,7 +354,7 @@ export default function MathTools(
         exclusive
       >
         <ToggleButton value="edit" onClick={openEditDialog}>
-          <Edit fontSize="small" />
+          <Pencil size={18} />
         </ToggleButton>
         <Dialog
           open={open}
@@ -418,7 +418,7 @@ export default function MathTools(
             });
           }}
         >
-          <Delete fontSize="small" />
+          <Trash2 size={18} />
         </ToggleButton>
       </ToggleButtonGroup>
       <Box
@@ -452,7 +452,7 @@ export default function MathTools(
             value="draw"
             disabled={!isOnline}
           >
-            <Draw fontSize="small" />
+            <PenLine size={18} />
           </ToggleButton>
           {value === "draw" && (
             <Collapse in={value === "draw"}>
@@ -501,7 +501,7 @@ export default function MathTools(
                   }}
                   disabled={loading}
                 >
-                  <Save fontSize="small" />
+                  <Save size={18} />
                 </IconButton>
                 <LinearProgress
                   sx={{
@@ -562,7 +562,7 @@ export default function MathTools(
               }, 0);
             }}
           >
-            <Menu fontSize="small" />
+            <Menu size={18} />
           </ToggleButton>
         </ToggleButtonGroup>
       </Box>

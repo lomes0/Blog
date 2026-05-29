@@ -26,7 +26,7 @@ import {
   TextField,
 } from "@mui/material";
 import { type LinkNode, TOGGLE_LINK_COMMAND } from "@lexical/link";
-import { LinkOff } from "@mui/icons-material";
+import { Unlink } from "lucide-react";
 import { $isImageNode } from "@/editor/nodes/ImageNode";
 import { $isMathNode } from "@/editor/nodes/MathNode";
 import { $isTableNode } from "@/editor/nodes/TableNode";
@@ -291,7 +291,7 @@ function LinkDialog(
         {node && (
           <Button
             onClick={handleDelete}
-            startIcon={<LinkOff />}
+            startIcon={<Unlink size={18} />}
             color="error"
             sx={{ mr: "auto" }}
           >

@@ -27,13 +27,6 @@ import {
   Typography,
 } from "@mui/material";
 import {
-  ArrowDropDown,
-  Delete,
-  TableChart,
-  Texture,
-  ViewHeadline,
-} from "@mui/icons-material";
-import {
   $deleteTableColumn__EXPERIMENTAL,
   $deleteTableRow__EXPERIMENTAL,
   $getNodeTriplet,
@@ -54,16 +47,20 @@ import {
   TableSelection,
 } from "@/editor/nodes/TableNode";
 import {
-  FormatAlignCenter,
-  FormatAlignLeft,
-  FormatAlignRight,
-} from "@mui/icons-material";
-import {
   $getNodeStyleValueForProperty,
   $patchStyle,
   getStyleObjectFromCSS,
 } from "@/editor/nodes/utils";
 import ColorPicker from "./ColorPicker";
+import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
+  ChevronDown,
+  Grid3x3,
+  Table,
+  Trash2,
+} from "lucide-react";
 
 function computeSelectionCount(selection: TableSelection): {
   columns: number;
@@ -688,8 +685,8 @@ export default function TableTools(
         aria-expanded={open ? "true" : undefined}
         variant="outlined"
         onClick={handleClick}
-        startIcon={<TableChart fontSize="small" />}
-        endIcon={<ArrowDropDown fontSize="small" />}
+        startIcon={<Table size={18} />}
+        endIcon={<ChevronDown size={18} />}
         sx={{
           color: "text.primary",
           borderColor: "divider",
@@ -741,7 +738,7 @@ export default function TableTools(
                 updateFormat("left");
               }}
             >
-              <FormatAlignLeft fontSize="small" />
+              <AlignLeft size={18} />
             </ToggleButton>
             <ToggleButton
               value="align-center"
@@ -751,7 +748,7 @@ export default function TableTools(
                 updateFormat("center");
               }}
             >
-              <FormatAlignCenter fontSize="small" />
+              <AlignCenter size={18} />
             </ToggleButton>,
             <ToggleButton
               value="align-right"
@@ -761,7 +758,7 @@ export default function TableTools(
                 updateFormat("right");
               }}
             >
-              <FormatAlignRight fontSize="small" />
+              <AlignRight size={18} />
             </ToggleButton>
           </ToggleButtonGroup>
         </MenuItem>
@@ -789,7 +786,7 @@ export default function TableTools(
                 updateFormat("justify");
               }}
             >
-              <ViewHeadline fontSize="small" />
+              <AlignLeft size={18} />
             </ToggleButton>,
             <ToggleButton
               value="float-right"
@@ -867,9 +864,9 @@ export default function TableTools(
         </MenuItem>
         <MenuItem onClick={toggleRowStriping}>
           <ListItemIcon>
-            <Texture
-              sx={{ transform: "rotate(45deg)" }}
-              fontSize="small"
+            <Grid3x3
+              size={18}
+              style={{ transform: "rotate(45deg)" }}
             />
           </ListItemIcon>
           <ListItemText>
@@ -934,7 +931,7 @@ export default function TableTools(
         </MenuItem>
         <MenuItem onClick={deleteTableAtSelection}>
           <ListItemIcon>
-            <Delete fontSize="small" />
+            <Trash2 size={18} />
           </ListItemIcon>
           <ListItemText>Delete Table</ListItemText>
         </MenuItem>

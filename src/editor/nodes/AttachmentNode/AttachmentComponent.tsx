@@ -18,25 +18,24 @@ import { $isAttachmentNode } from ".";
 import { Box, CircularProgress, IconButton, Typography } from "@mui/material";
 import {
   Archive,
+  ChevronDown,
+  ChevronUp,
   Code,
-  ContentCopy,
-  Delete,
-  Description,
+  Copy,
   Download,
-  Edit,
-  ExpandLess,
-  ExpandMore,
-  InsertDriveFile,
-  OpenInNew,
-  PictureAsPdf,
-} from "@mui/icons-material";
+  ExternalLink,
+  File,
+  FileText,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { downloadFile } from "@/utils/downloadFile";
 import { formatSize } from "@/utils/formatSize";
 import AttachmentPreview from "./AttachmentPreview";
 import { actions, useDispatch } from "@/store";
 
 function getFileIcon(mimetype: string) {
-  if (mimetype.startsWith("application/pdf")) return <PictureAsPdf />;
+  if (mimetype.startsWith("application/pdf")) return <FileText />;
   if (
     mimetype.includes("zip") || mimetype.includes("tar") ||
     mimetype.includes("rar")
@@ -47,9 +46,9 @@ function getFileIcon(mimetype: string) {
     return <Code />;
   }
   if (mimetype.includes("document") || mimetype.includes("word")) {
-    return <Description />;
+    return <FileText />;
   }
-  return <InsertDriveFile />;
+  return <File />;
 }
 
 function getFileType(mimetype: string, filename: string): string {
@@ -359,7 +358,7 @@ export default function AttachmentComponent({
               title={copied ? "Copied!" : "Copy to clipboard"}
               sx={{ p: 0.5 }}
             >
-              <ContentCopy fontSize="small" />
+              <Copy size={18} />
             </IconButton>
           )}
           <IconButton
@@ -371,7 +370,7 @@ export default function AttachmentComponent({
           >
             {isDownloading
               ? <CircularProgress size={16} />
-              : <Download fontSize="small" />}
+              : <Download size={18} />}
           </IconButton>
           <IconButton
             size="small"
@@ -382,7 +381,7 @@ export default function AttachmentComponent({
             title="Open in sidebar"
             sx={{ p: 0.5 }}
           >
-            <OpenInNew fontSize="small" />
+            <ExternalLink size={18} />
           </IconButton>
           {!editing && isTextFile(mimetype, filename) && (
             <IconButton
@@ -398,7 +397,7 @@ export default function AttachmentComponent({
                 "&:hover": { bgcolor: "action.hover" },
               }}
             >
-              <Edit fontSize="small" />
+              <Pencil size={18} />
             </IconButton>
           )}
           {isSelected && (
@@ -412,7 +411,7 @@ export default function AttachmentComponent({
               title="Delete attachment"
               sx={{ p: 0.5 }}
             >
-              <Delete fontSize="small" />
+              <Trash2 size={18} />
             </IconButton>
           )}
           <IconButton
@@ -422,8 +421,8 @@ export default function AttachmentComponent({
             sx={{ p: 0.5 }}
           >
             {expanded
-              ? <ExpandLess fontSize="small" />
-              : <ExpandMore fontSize="small" />}
+              ? <ChevronUp size={18} />
+              : <ChevronDown size={18} />}
           </IconButton>
         </Box>
       </Box>

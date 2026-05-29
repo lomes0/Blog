@@ -30,20 +30,20 @@ import {
   Typography,
 } from "@mui/material";
 import {
-  ArrowDropDown,
-  ArrowDropUp,
-  ArrowRight,
-  AutoAwesome,
-  Autorenew,
-  Compress,
-  Computer,
-  ImageSearch,
-  PlayArrow,
-  RecordVoiceOver,
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  Mic,
+  Minimize2,
+  Monitor,
+  Play,
+  RefreshCcw,
+  ScanSearch,
   Send,
-  UnfoldLess,
-  UnfoldMore,
-} from "@mui/icons-material";
+  Sparkles,
+} from "lucide-react";
 import { SxProps, Theme } from "@mui/material/styles";
 import { useCompletion } from "@ai-sdk/react";
 import { SET_DIALOGS_COMMAND } from "../Dialogs/commands";
@@ -412,9 +412,9 @@ export default function AITools(
           />
         );
       case "ollama":
-        return <Computer fontSize="small" />;
+        return <Monitor size={18} />;
       default:
-        return <AutoAwesome fontSize="small" />;
+        return <Sparkles size={18} />;
     }
   };
 
@@ -427,16 +427,12 @@ export default function AITools(
         aria-expanded={open ? "true" : undefined}
         variant="outlined"
         onClick={openMenu}
-        startIcon={<AutoAwesome color={isLoading ? "disabled" : "action"} />}
+        startIcon={<Sparkles style={{ color: isLoading ? "var(--mui-palette-action-disabled)" : "var(--mui-palette-action-active)" }} />}
         endIcon={isLoading
           ? <CircularProgress size={16} color="inherit" />
           : open
-          ? <ArrowDropUp color={isLoading ? "disabled" : "action"} />
-          : (
-            <ArrowDropDown
-              color={isLoading ? "disabled" : "action"}
-            />
-          )}
+          ? <ChevronUp style={{ color: isLoading ? "var(--mui-palette-action-disabled)" : "var(--mui-palette-action-active)" }} />
+          : <ChevronDown style={{ color: isLoading ? "var(--mui-palette-action-disabled)" : "var(--mui-palette-action-active)" }} />}
         sx={{
           color: "text.primary",
           borderColor: "divider",
@@ -463,7 +459,7 @@ export default function AITools(
         aria-expanded={modelMenuOpen ? "true" : undefined}
         variant="outlined"
         onClick={handleModelMenuClick}
-        endIcon={<ArrowDropDown fontSize="small" />}
+        endIcon={<ChevronDown size={18} />}
         sx={{
           color: "text.secondary",
           borderColor: "divider",
@@ -559,7 +555,7 @@ export default function AITools(
         </MenuItem>
         <MenuItem disabled={isLoading} onClick={handleContinue}>
           <ListItemIcon>
-            <PlayArrow />
+            <Play />
           </ListItemIcon>
           <ListItemText>Continue Writing</ListItemText>
         </MenuItem>
@@ -568,7 +564,7 @@ export default function AITools(
           onClick={handleRewrite}
         >
           <ListItemIcon>
-            <Autorenew />
+            <RefreshCcw />
           </ListItemIcon>
           <ListItemText>Rewrite</ListItemText>
         </MenuItem>
@@ -577,7 +573,7 @@ export default function AITools(
           onClick={handleShorter}
         >
           <ListItemIcon>
-            <UnfoldLess />
+            <ChevronsDownUp />
           </ListItemIcon>
           <ListItemText>Shorter</ListItemText>
         </MenuItem>
@@ -586,7 +582,7 @@ export default function AITools(
           onClick={handleLonger}
         >
           <ListItemIcon>
-            <UnfoldMore />
+            <ChevronsUpDown />
           </ListItemIcon>
           <ListItemText>Longer</ListItemText>
         </MenuItem>
@@ -595,7 +591,7 @@ export default function AITools(
           onClick={handleSummarize}
         >
           <ListItemIcon>
-            <Compress />
+            <Minimize2 />
           </ListItemIcon>
           <ListItemText>Summarize</ListItemText>
         </MenuItem>
@@ -604,17 +600,17 @@ export default function AITools(
           onClick={handleToneMenuOpen}
         >
           <ListItemIcon>
-            <RecordVoiceOver />
+            <Mic />
           </ListItemIcon>
           <ListItemText>Change Tone</ListItemText>
-          <ArrowRight fontSize="small" sx={{ ml: "auto" }} />
+          <ChevronRight size={18} style={{ marginLeft: "auto" }} />
         </MenuItem>
         <MenuItem
           disabled={isLoading || !isCollapsed}
           onClick={handleOCR}
         >
           <ListItemIcon>
-            <ImageSearch />
+            <ScanSearch />
           </ListItemIcon>
           <ListItemText>Image to Text</ListItemText>
         </MenuItem>
