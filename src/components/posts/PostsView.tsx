@@ -167,24 +167,17 @@ const PostsView: React.FC<PostsViewProps> = ({ series, user: serverUser }) => {
   const { setActions, clearActions } = useTopBarActions();
 
   useEffect(() => {
-    const toolbarNode = isSeries
-      ? (
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-            flexWrap: "wrap",
-          }}
-        >
-          <ViewToggle view={viewType} onChange={setViewType} />
-          <NewPostSplitButton
-            isSeries
-            canEdit={canEdit}
-            onNewPost={() => setCreatePostDrawerOpen(true)}
-            onNewSeries={() => {}}
-            onAddRemovePosts={() => setAddDialogOpen(true)}
-          />
+    const toolbarNode = (
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+        <ViewToggle view={viewType} onChange={setViewType} />
+        <NewPostSplitButton
+          isSeries={isSeries}
+          canEdit={canEdit}
+          onNewPost={isSeries ? () => setCreatePostDrawerOpen(true) : () => router.push("/new")}
+          onNewSeries={() => setCreateSeriesDrawerOpen(true)}
+          onAddRemovePosts={isSeries ? () => setAddDialogOpen(true) : undefined}
+        />
+        {isSeries && (
           <SeriesSearchAndControls
             viewType={viewType}
             canEdit={canEdit}
@@ -195,18 +188,9 @@ const PostsView: React.FC<PostsViewProps> = ({ series, user: serverUser }) => {
             onSaveTimeChanges={handleSaveTimeChanges}
             onDiscardTimeChanges={handleDiscardTimeChanges}
           />
-        </Box>
-      )
-      : (
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <ViewToggle view={viewType} onChange={setViewType} />
-          <NewPostSplitButton
-            canEdit={canEdit}
-            onNewPost={() => router.push("/new")}
-            onNewSeries={() => setCreateSeriesDrawerOpen(true)}
-          />
-        </Box>
-      );
+        )}
+      </Box>
+    );
 
     setActions(toolbarNode);
     return () => clearActions();
@@ -246,7 +230,19 @@ const PostsView: React.FC<PostsViewProps> = ({ series, user: serverUser }) => {
       {/* ── Content: series mode ── */}
       {isSeries && (
         <>
-          <SectionDivider label="Posts" color="primary.main" />
+          <Box sx={{ mb: { xs: 3, md: 4 } }}>
+            <Typography variant="h5" component="h1" fontWeight={700}>
+              {series!.title}
+            </Typography>
+            {series!.description && (
+              <Typography variant="body1" color="text.secondary" sx={{ mt: 0.5 }}>
+                {series!.description}
+              </Typography>
+            )}
+            <Typography variant="caption" color="text.disabled" sx={{ mt: 0.75, display: "block" }}>
+              {series!.posts.length} {series!.posts.length === 1 ? "post" : "posts"}
+            </Typography>
+          </Box>
           {seriesUserDocs.length === 0
             ? (
               <EmptyState
@@ -259,16 +255,36 @@ const PostsView: React.FC<PostsViewProps> = ({ series, user: serverUser }) => {
             )
             : viewType === "compact"
             ? (
-              <PostsCompactListView
-                posts={seriesUserDocs}
-                user={user}
-                isTimeEditMode={isTimeEditMode}
-                pendingChanges={pendingTimeChanges}
-                onTimeAdjust={canEdit ? handleTimeAdjust : undefined}
-                onTimeReset={canEdit ? handleTimeReset : undefined}
-              />
+              isTimeEditMode
+                ? (
+                  <>
+                    <SectionDivider label="Posts" color="primary.main" />
+                    <PostsCompactListView
+                      posts={seriesUserDocs}
+                      user={user}
+                      isTimeEditMode
+                      pendingChanges={pendingTimeChanges}
+                      onTimeAdjust={canEdit ? handleTimeAdjust : undefined}
+                      onTimeReset={canEdit ? handleTimeReset : undefined}
+                    />
+                  </>
+                )
+                : (
+                  <PostsListView
+                    posts={seriesUserDocs}
+                    series={[]}
+                    user={user}
+                    density={density}
+                    tagStyle={tagStyle}
+                  />
+                )
             )
-            : <PostsGrid posts={seriesUserDocs} user={user} />}
+            : (
+              <>
+                <SectionDivider label="Posts" color="primary.main" />
+                <PostsGrid posts={seriesUserDocs} user={user} />
+              </>
+            )}
         </>
       )}
 

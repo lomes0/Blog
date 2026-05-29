@@ -210,6 +210,16 @@ export function PostsListView({
     [dispatch, router],
   );
 
+  const handleMoveToSeries = useCallback(
+    async (postId: string, seriesId: string) => {
+      await dispatch(
+        actions.updateCloudDocument({ id: postId, partial: { seriesId } }),
+      );
+      router.refresh();
+    },
+    [dispatch, router],
+  );
+
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -248,6 +258,7 @@ export function PostsListView({
   const hasPosts = posts.length > 0;
   const hasSeries = series.length > 0;
 
+
   return (
     <Box sx={{ width: "100%", position: "relative" }}>
       {/* Posts section */}
@@ -274,6 +285,8 @@ export function PostsListView({
               onDelete={handleDeletePost}
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
+              availableSeries={hasSeries ? series : undefined}
+              onMoveToSeries={hasSeries ? (seriesId) => handleMoveToSeries(post.id, seriesId) : undefined}
             />
           ))}
         </Box>
@@ -321,6 +334,8 @@ export function PostsListView({
                 onDropPost={handleDropPost}
                 dragOverSeriesId={dragOverSeriesId}
                 onDragOverSeries={setDragOverSeriesId}
+                availableSeries={series.filter((other) => other.id !== s.id)}
+                onMovePost={handleMoveToSeries}
               />
             );
           })}

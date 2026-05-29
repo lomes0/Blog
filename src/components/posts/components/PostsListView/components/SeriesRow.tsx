@@ -50,6 +50,9 @@ interface SeriesRowProps {
   onDropPost: (seriesId: string, postId: string) => void;
   dragOverSeriesId: string | null;
   onDragOverSeries: (seriesId: string | null) => void;
+  /** Other series a child post can be moved to (current series excluded). */
+  availableSeries?: Series[];
+  onMovePost?: (postId: string, seriesId: string) => void;
 }
 
 export const SeriesRow = React.memo(function SeriesRow({
@@ -79,6 +82,8 @@ export const SeriesRow = React.memo(function SeriesRow({
   onDropPost,
   dragOverSeriesId,
   onDragOverSeries,
+  availableSeries,
+  onMovePost,
 }: SeriesRowProps) {
   const postCount = posts.length;
   const isDragOver = dragOverSeriesId === series.id;
@@ -334,6 +339,8 @@ export const SeriesRow = React.memo(function SeriesRow({
               onDragStart={onDragStart}
               onDragEnd={onDragEnd}
               indent={8}
+              availableSeries={availableSeries}
+              onMoveToSeries={onMovePost ? (seriesId) => onMovePost(p.id, seriesId) : undefined}
             />
           ))}
           {!inlineAll && (

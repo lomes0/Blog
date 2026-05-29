@@ -2,7 +2,7 @@
 import React, { useCallback, useRef } from "react";
 import { Box, Checkbox, InputBase, Typography } from "@mui/material";
 import { GripVertical } from "lucide-react";
-import { User, UserDocument } from "@/types";
+import { Series, User, UserDocument } from "@/types";
 import { useRouter } from "next/navigation";
 import { formatRelativeDate } from "@/utils/dateFormat";
 import { ListDensity, TagStyle } from "../types";
@@ -29,6 +29,9 @@ interface PostRowProps {
   onDragEnd: () => void;
   /** Left indent in px (for series children). */
   indent?: number;
+  /** Series the post can be moved to. Hidden when empty. */
+  availableSeries?: Series[];
+  onMoveToSeries?: (seriesId: string) => void;
 }
 
 export const PostRow = React.memo(function PostRow({
@@ -47,6 +50,8 @@ export const PostRow = React.memo(function PostRow({
   onDragStart,
   onDragEnd,
   indent = 0,
+  availableSeries,
+  onMoveToSeries,
 }: PostRowProps) {
   const router = useRouter();
   const document = post.cloud || post.local;
@@ -244,7 +249,8 @@ export const PostRow = React.memo(function PostRow({
           mode="post"
           onRename={() => onRenameStart(post.id, name)}
           onDelete={() => onDelete(post)}
-          onMoveToSeries={() => {}}
+          availableSeries={availableSeries}
+          onMoveToSeries={onMoveToSeries}
         />
       </Box>
     </Box>
