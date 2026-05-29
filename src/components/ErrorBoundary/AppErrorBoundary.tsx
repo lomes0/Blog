@@ -8,7 +8,7 @@ import {
   Paper,
   Typography,
 } from "@mui/material";
-import { ErrorOutline, Home, Refresh } from "@mui/icons-material";
+import { AlertCircle, Home, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface Props {
@@ -80,12 +80,9 @@ class AppErrorBoundary extends Component<Props, State> {
               backgroundColor: "background.paper",
             }}
           >
-            <ErrorOutline
-              sx={{
-                fontSize: 80,
-                color: "error.main",
-                mb: 3,
-              }}
+            <AlertCircle
+              size={80}
+              style={{ color: "var(--mui-palette-error-main)", marginBottom: 24 }}
             />
 
             <Typography
@@ -145,7 +142,7 @@ class AppErrorBoundary extends Component<Props, State> {
             >
               <Button
                 variant="contained"
-                startIcon={<Refresh />}
+                startIcon={<RefreshCw />}
                 onClick={this.handleRetry}
                 sx={{ minWidth: 120 }}
               >

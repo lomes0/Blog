@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation";
 import { actions, useDispatch, useSelector } from "@/store";
 import React from "react";
 import { Button, IconButton, Snackbar, Typography } from "@mui/material";
-import { Close } from "@mui/icons-material";
+import { X } from "lucide-react";
 import { signIn } from "next-auth/react";
 
 function Announcer() {
@@ -63,7 +63,7 @@ function Announcer() {
               color="inherit"
               onClick={handleClose}
             >
-              <Close fontSize="small" />
+              <X size={18} />
             </IconButton>
           </>
         )

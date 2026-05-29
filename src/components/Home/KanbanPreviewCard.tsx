@@ -1,6 +1,6 @@
 "use client";
 import { Box, Typography } from "@mui/material";
-import { ViewKanbanOutlined } from "@mui/icons-material";
+import { Kanban } from "lucide-react";
 import { UserDocument } from "@/types";
 
 interface KanbanPreviewCardProps {
@@ -57,7 +57,7 @@ export default function KanbanPreviewCard({
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <ViewKanbanOutlined sx={{ fontSize: 20, color: "text.secondary" }} />
+          <Kanban size={20} style={{ color: "var(--mui-palette-text-secondary)" }} />
           <Typography
             variant="subtitle1"
             sx={{

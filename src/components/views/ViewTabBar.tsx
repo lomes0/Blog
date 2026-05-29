@@ -1,6 +1,6 @@
 "use client";
 import { Box, Typography } from "@mui/material";
-import { Description } from "@mui/icons-material";
+import { FileText } from "lucide-react";
 import type { TabMeta } from "@/components/EditDocument/EditorTabBar";
 
 interface ViewTabBarProps {
@@ -59,8 +59,9 @@ const ViewTabBar: React.FC<ViewTabBarProps> = (
               },
             }}
           >
-            <Description
-              sx={{ fontSize: 14, color: "text.secondary", flexShrink: 0 }}
+            <FileText
+              size={14}
+              style={{ color: "var(--mui-palette-text-secondary)", flexShrink: 0 }}
             />
             <Typography
               noWrap

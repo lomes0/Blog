@@ -1,7 +1,7 @@
 "use client";
 import React, { useContext, useState } from "react";
 import { Box, Fade, Tooltip } from "@mui/material";
-import { DeleteForever } from "@mui/icons-material";
+import { Trash2 } from "lucide-react";
 import { useTheme } from "@mui/material/styles";
 import { actions, useDispatch } from "@/store";
 import { v4 as uuid } from "uuid";
@@ -115,9 +115,9 @@ const TrashBin: React.FC = () => {
                   cursor: "default",
                 }}
               >
-                <DeleteForever
-                  sx={{
-                    fontSize: 32, // Smaller icon size
+                <Trash2
+                  size={32}
+                  style={{
                     color: isDropTarget
                       ? theme.palette.error.dark
                       : theme.palette.error.main,

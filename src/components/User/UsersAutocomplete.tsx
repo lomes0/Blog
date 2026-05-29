@@ -3,8 +3,7 @@ import * as React from "react";
 import Checkbox from "@mui/material/Checkbox";
 import TextField from "@mui/material/TextField";
 import Autocomplete from "@mui/material/Autocomplete";
-import CheckBoxOutlineBlankIcon from "@mui/icons-material/CheckBoxOutlineBlank";
-import CheckBoxIcon from "@mui/icons-material/CheckBox";
+import { Square, SquareCheck } from "lucide-react";
 import { Document, User } from "@/types";
 import { extractCollaborators } from "@/utils/collaborators";
 import { actions, documentsSelectors, useDispatch, useSelector } from "@/store";
@@ -17,8 +16,8 @@ import {
 } from "@mui/material";
 import { SxProps, Theme } from "@mui/material/styles";
 
-const icon = <CheckBoxOutlineBlankIcon fontSize="small" />;
-const checkedIcon = <CheckBoxIcon fontSize="small" />;
+const icon = <Square size={18} />;
+const checkedIcon = <SquareCheck size={18} />;
 
 export default function UsersAutocomplete({
   label,

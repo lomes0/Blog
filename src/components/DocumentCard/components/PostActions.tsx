@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { Box, IconButton } from "@mui/material";
-import { MoreVert, Share } from "@mui/icons-material";
+import { MoreVertical, Share2 } from "lucide-react";
 
 import { User, UserDocument } from "@/types";
 import PostActionMenu from "../PostActionMenu";
@@ -21,10 +21,10 @@ interface PostActionsProps {
 const ActionsSkeleton: React.FC = () => (
   <Box sx={{ display: "flex", gap: 0.5, alignItems: "center" }}>
     <IconButton aria-label="Share Post" size="small" disabled>
-      <Share />
+      <Share2 />
     </IconButton>
     <IconButton aria-label="Post Actions" size="small" disabled>
-      <MoreVert />
+      <MoreVertical />
     </IconButton>
   </Box>
 );

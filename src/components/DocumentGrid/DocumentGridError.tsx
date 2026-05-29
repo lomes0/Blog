@@ -1,6 +1,6 @@
 import React from "react";
 import { Alert, AlertTitle, Box, Button } from "@mui/material";
-import { Refresh } from "@mui/icons-material";
+import { RefreshCw } from "lucide-react";
 
 interface DocumentGridErrorProps {
   /** The error that occurred */
@@ -57,7 +57,7 @@ const DocumentGridError: React.FC<DocumentGridErrorProps> = ({
       {showRetry && onRetry && (
         <Button
           variant="outlined"
-          startIcon={<Refresh />}
+          startIcon={<RefreshCw />}
           onClick={onRetry}
           sx={{
             mt: 2,

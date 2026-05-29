@@ -9,7 +9,7 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
-import { Close } from "@mui/icons-material";
+import { X } from "lucide-react";
 
 type ViewType = "notes" | "kanban" | "readme" | "posts";
 
@@ -73,7 +73,7 @@ export default function FullViewDialog({
             aria-label="close"
             sx={{ color: "text.primary" }}
           >
-            <Close />
+            <X />
           </IconButton>
         </Toolbar>
       </AppBar>

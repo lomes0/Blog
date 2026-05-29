@@ -11,7 +11,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { Add, Close } from "@mui/icons-material";
+import { Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/api";
 
@@ -119,7 +119,7 @@ const CreateSeriesDrawer: React.FC<CreateSeriesDrawerProps> = ({
             aria-label="close"
             disabled={loading}
           >
-            <Close />
+            <X />
           </IconButton>
         </Box>
 
@@ -188,7 +188,7 @@ const CreateSeriesDrawer: React.FC<CreateSeriesDrawerProps> = ({
             type="submit"
             variant="contained"
             disabled={loading || !title.trim()}
-            startIcon={loading ? <CircularProgress size={20} /> : <Add />}
+            startIcon={loading ? <CircularProgress size={20} /> : <Plus />}
           >
             {loading ? "Creating..." : "Create Series"}
           </Button>

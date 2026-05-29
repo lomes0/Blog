@@ -11,13 +11,7 @@ import {
   ListItemText,
   Typography,
 } from "@mui/material";
-import {
-  CloudDownload,
-  Download,
-  ErrorOutline,
-  InfoOutlined,
-  WarningAmber,
-} from "@mui/icons-material";
+import { AlertCircle, AlertTriangle, CloudDownload, Download, Info } from "lucide-react";
 import { useExportImportActions } from "@/hooks/useExportImportActions";
 import { useAsyncOp } from "@/hooks/useAsyncOp";
 
@@ -62,7 +56,7 @@ export const ExportTab: React.FC = () => {
           and uploaded files as a single <code>.zip</code> archive.
         </Typography>
         {!user && (
-          <Alert severity="info" sx={{ mb: 1.5 }} icon={<InfoOutlined />}>
+          <Alert severity="info" sx={{ mb: 1.5 }} icon={<Info />}>
             Sign in to export cloud documents.
           </Alert>
         )}
@@ -77,7 +71,7 @@ export const ExportTab: React.FC = () => {
           {cloud.loading ? "Exporting…" : "Export cloud backup"}
         </Button>
         <Collapse in={Boolean(cloud.error)}>
-          <Alert severity="error" sx={{ mt: 1.5 }} icon={<ErrorOutline />}>
+          <Alert severity="error" sx={{ mt: 1.5 }} icon={<AlertCircle />}>
             {cloud.error}
           </Alert>
         </Collapse>
@@ -117,12 +111,12 @@ export const ExportTab: React.FC = () => {
           </Alert>
         </Collapse>
         {local.error && (
-          <Alert severity="warning" icon={<WarningAmber />} sx={{ mt: 1.5 }}>
+          <Alert severity="warning" icon={<AlertTriangle />} sx={{ mt: 1.5 }}>
             {local.error}
           </Alert>
         )}
         {local.data && local.data.warnings.length > 0 && (
-          <Alert severity="warning" icon={<WarningAmber />} sx={{ mt: 1.5 }}>
+          <Alert severity="warning" icon={<AlertTriangle />} sx={{ mt: 1.5 }}>
             <Typography variant="body2" fontWeight={500} gutterBottom>
               {local.data.warnings.length} warning
               {local.data.warnings.length !== 1 ? "s" : ""}

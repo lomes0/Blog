@@ -1,6 +1,6 @@
 "use client";
 import { Box, SpeedDial, SpeedDialAction, SpeedDialIcon } from "@mui/material";
-import { Add, Palette } from "@mui/icons-material";
+import { Palette, Plus } from "lucide-react";
 import { useState } from "react";
 import { NOTE_COLOR_LIST, NOTE_COLORS } from "./noteColors";
 
@@ -31,7 +31,7 @@ export default function NotesToolbar({
       {/* Speed Dial for Color Selection */}
       <SpeedDial
         ariaLabel="Add note"
-        icon={<SpeedDialIcon icon={<Add />} openIcon={<Palette />} />}
+        icon={<SpeedDialIcon icon={<Plus />} openIcon={<Palette />} />}
         onClose={() => setOpen(false)}
         onOpen={() => setOpen(true)}
         open={open}

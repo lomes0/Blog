@@ -1,5 +1,5 @@
 "use client";
-import { MoreVert, Share } from "@mui/icons-material";
+import { MoreVertical, Share2 } from "lucide-react";
 import { IconButton } from "@mui/material";
 import dynamic from "next/dynamic";
 
@@ -17,14 +17,14 @@ const PostActionMenu = dynamic(
           size="small"
           disabled
         >
-          <Share />
+          <Share2 />
         </IconButton>
         <IconButton
           aria-label="Post Actions"
           size="small"
           disabled
         >
-          <MoreVert />
+          <MoreVertical />
         </IconButton>
       </>
     ),

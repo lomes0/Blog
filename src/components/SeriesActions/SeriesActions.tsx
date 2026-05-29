@@ -6,7 +6,7 @@ import {
   Menu,
   MenuItem,
 } from "@mui/material";
-import { Delete, Edit, MoreVert } from "@mui/icons-material";
+import { MoreVertical, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useMenuState } from "@/hooks/useMenuState";
 
@@ -41,7 +41,7 @@ export default function SeriesActions(
         aria-expanded={open ? "true" : undefined}
         onClick={handleClick}
       >
-        <MoreVert />
+        <MoreVertical />
       </IconButton>
       <Menu
         id="series-menu"
@@ -58,13 +58,13 @@ export default function SeriesActions(
           onClick={handleClose}
         >
           <ListItemIcon>
-            <Edit fontSize="small" />
+            <Pencil size={18} />
           </ListItemIcon>
           <ListItemText>Edit</ListItemText>
         </MenuItem>
         <MenuItem onClick={handleDelete}>
           <ListItemIcon>
-            <Delete fontSize="small" />
+            <Trash2 size={18} />
           </ListItemIcon>
           <ListItemText>Delete</ListItemText>
         </MenuItem>

@@ -1,4 +1,4 @@
-import { Pageview } from "@mui/icons-material";
+import { FileSearch } from "lucide-react";
 import { Box, Typography } from "@mui/material";
 import UserCard from "./UserCard";
 
@@ -15,7 +15,7 @@ const UserNotFound: React.FC = () => {
           gap: 2,
         }}
       >
-        <Pageview sx={{ width: 64, height: 64, fontSize: 64 }} />
+        <FileSearch size={64} />
         <Typography variant="overline" component="p">
           User not found
         </Typography>

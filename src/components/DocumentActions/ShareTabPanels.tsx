@@ -14,7 +14,7 @@ import {
   Slider,
   Switch,
 } from "@mui/material";
-import { ContentCopy } from "@mui/icons-material";
+import { Copy } from "lucide-react";
 import { Document, User } from "@/types";
 import UsersAutocomplete from "../User/UsersAutocomplete";
 import { DateDisplay } from "@/components/shared/DateDisplay";
@@ -258,7 +258,7 @@ export const ShareCopyLinkButton: React.FC<ShareCopyLinkProps> = ({
   return (
     <Box sx={{ p: 2 }}>
       <Button
-        startIcon={<ContentCopy />}
+        startIcon={<Copy />}
         variant="outlined"
         disabled={disabled}
         onClick={copyLink}

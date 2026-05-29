@@ -11,7 +11,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import { Article, CloudUpload } from "@mui/icons-material";
+import { CloudUpload, FileText } from "lucide-react";
 import {
   actions,
   documentsSelectors,
@@ -133,7 +133,7 @@ export const PostItem = memo(
                 position: "relative",
               }}
             >
-              <Article sx={{ fontSize: "0.85em", color: "text.secondary" }} />
+              <FileText size={14} style={{ color: "var(--mui-palette-text-secondary)" }} />
               {isDirty && (
                 <Box
                   component="span"
@@ -199,7 +199,7 @@ export const PostItem = memo(
                     "&:hover": { bgcolor: "action.hover" },
                   }}
                 >
-                  <CloudUpload sx={{ fontSize: 14 }} />
+                  <CloudUpload size={14} />
                 </IconButton>
               </Tooltip>
             )}

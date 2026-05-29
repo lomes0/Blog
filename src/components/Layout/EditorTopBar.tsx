@@ -12,16 +12,19 @@ import {
   Typography,
 } from "@mui/material";
 import {
-  CollectionsBookmark,
-  Create,
-  Dashboard,
-  Edit,
-  LibraryBooks,
-  MoreHoriz,
+  BookOpen,
+  LayoutDashboard,
+  Library,
+  Maximize2,
+  Menu as MenuIcon,
+  MoreHorizontal,
+  PanelRight,
+  Pencil,
+  PenLine,
   Save,
-  StickyNote2,
-} from "@mui/icons-material";
-import { Maximize2, Menu as MenuIcon, PanelRight, Search } from "lucide-react";
+  Search,
+  StickyNote,
+} from "lucide-react";
 import RouterLink from "next/link";
 import { shallowEqual } from "react-redux";
 import { documentsSelectors, selectIsDirty, useSelector } from "@/store";
@@ -142,7 +145,7 @@ const EditorTopBar: React.FC = () => {
         items.push({
           label: "Posts",
           href: "/posts",
-          icon: <LibraryBooks sx={{ fontSize: 16, mr: 0.5 }} />,
+          icon: <BookOpen size={16} style={{ marginRight: 4 }} />,
         });
         break;
 
@@ -150,13 +153,13 @@ const EditorTopBar: React.FC = () => {
         items.push({
           label: "Posts",
           href: "/posts",
-          icon: <LibraryBooks sx={{ fontSize: 16, mr: 0.5 }} />,
+          icon: <BookOpen size={16} style={{ marginRight: 4 }} />,
         });
         if (segments.length > 1) {
           items.push({
             label: seriesTitle || "Series",
             href: `/series/${segments[1]}`,
-            icon: <CollectionsBookmark sx={{ fontSize: 16, mr: 0.5 }} />,
+            icon: <Library size={16} style={{ marginRight: 4 }} />,
           });
         }
         break;
@@ -165,7 +168,7 @@ const EditorTopBar: React.FC = () => {
         items.push({
           label: "Posts",
           href: "/posts",
-          icon: <LibraryBooks sx={{ fontSize: 16, mr: 0.5 }} />,
+          icon: <BookOpen size={16} style={{ marginRight: 4 }} />,
         });
         if (segments.length > 1) {
           const sId = segments[1];
@@ -173,14 +176,14 @@ const EditorTopBar: React.FC = () => {
             items.push({
               label: seriesTitle || "Series",
               href: `/series/${sId}`,
-              icon: <CollectionsBookmark sx={{ fontSize: 16, mr: 0.5 }} />,
+              icon: <Library size={16} style={{ marginRight: 4 }} />,
             });
             items.push({ label: "Edit", href: `/series/${sId}/edit` });
           } else {
             items.push({
               label: seriesTitle || "Series",
               href: `/series/${sId}`,
-              icon: <CollectionsBookmark sx={{ fontSize: 16, mr: 0.5 }} />,
+              icon: <Library size={16} style={{ marginRight: 4 }} />,
             });
           }
         }
@@ -190,7 +193,7 @@ const EditorTopBar: React.FC = () => {
         items.push({
           label: "Dashboard",
           href: "/dashboard",
-          icon: <Dashboard sx={{ fontSize: 16, mr: 0.5 }} />,
+          icon: <LayoutDashboard size={16} style={{ marginRight: 4 }} />,
         });
         break;
 
@@ -198,12 +201,12 @@ const EditorTopBar: React.FC = () => {
         items.push({
           label: "Posts",
           href: "/posts",
-          icon: <LibraryBooks sx={{ fontSize: 16, mr: 0.5 }} />,
+          icon: <BookOpen size={16} style={{ marginRight: 4 }} />,
         });
         items.push({
           label: "New Post",
           href: "/new",
-          icon: <Create sx={{ fontSize: 16, mr: 0.5 }} />,
+          icon: <PenLine size={16} style={{ marginRight: 4 }} />,
         });
         break;
 
@@ -212,19 +215,19 @@ const EditorTopBar: React.FC = () => {
         items.push({
           label: "Posts",
           href: "/posts",
-          icon: <LibraryBooks sx={{ fontSize: 16, mr: 0.5 }} />,
+          icon: <BookOpen size={16} style={{ marginRight: 4 }} />,
         });
         if (docSeriesId) {
           items.push({
             label: docSeriesTitle || "Series",
             href: `/series/${docSeriesId}`,
-            icon: <CollectionsBookmark sx={{ fontSize: 16, mr: 0.5 }} />,
+            icon: <Library size={16} style={{ marginRight: 4 }} />,
           });
         }
         items.push({
           label: editId ? docName || "Edit Post" : "Edit Post",
           href: editId ? `/edit/${editId}` : "/edit",
-          icon: <Edit sx={{ fontSize: 16, mr: 0.5 }} />,
+          icon: <Pencil size={16} style={{ marginRight: 4 }} />,
         });
         if (activeTabName) {
           items.push({ label: activeTabName });
@@ -237,13 +240,13 @@ const EditorTopBar: React.FC = () => {
         items.push({
           label: "Posts",
           href: "/posts",
-          icon: <LibraryBooks sx={{ fontSize: 16, mr: 0.5 }} />,
+          icon: <BookOpen size={16} style={{ marginRight: 4 }} />,
         });
         if (docSeriesId) {
           items.push({
             label: docSeriesTitle || "Series",
             href: `/series/${docSeriesId}`,
-            icon: <CollectionsBookmark sx={{ fontSize: 16, mr: 0.5 }} />,
+            icon: <Library size={16} style={{ marginRight: 4 }} />,
           });
         }
         items.push({
@@ -267,7 +270,7 @@ const EditorTopBar: React.FC = () => {
         items.push({
           label: "Notes",
           href: "/notes",
-          icon: <StickyNote2 sx={{ fontSize: 16, mr: 0.5 }} />,
+          icon: <StickyNote size={16} style={{ marginRight: 4 }} />,
         });
         break;
 
@@ -395,7 +398,7 @@ const EditorTopBar: React.FC = () => {
               aria-label="More options"
               sx={{ color: "text.secondary" }}
             >
-              <MoreHoriz fontSize="small" />
+              <MoreHorizontal size={18} />
             </IconButton>
           </Tooltip>
           <Menu
@@ -429,7 +432,7 @@ const EditorTopBar: React.FC = () => {
                     variant="outlined"
                     size="small"
                     onClick={triggerSave}
-                    startIcon={<Save fontSize="small" />}
+                    startIcon={<Save size={18} />}
                     sx={{
                       flexShrink: 0,
                       ...(isDirty && {
@@ -457,7 +460,7 @@ const EditorTopBar: React.FC = () => {
                 onClick={() => router.push(`/edit/${docId}`)}
                 aria-label="Edit document"
               >
-                <Edit fontSize="small" />
+                <Pencil size={18} />
               </IconButton>
             )}
         </>

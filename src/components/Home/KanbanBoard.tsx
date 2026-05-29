@@ -8,7 +8,7 @@ import {
   Paper,
   Typography,
 } from "@mui/material";
-import { DragIndicator } from "@mui/icons-material";
+import { GripVertical } from "lucide-react";
 import { UserDocument } from "@/types";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -209,12 +209,9 @@ export default function KanbanBoard(
                                 gap: 1,
                               }}
                             >
-                              <DragIndicator
-                                sx={{
-                                  fontSize: 16,
-                                  color: "text.disabled",
-                                  mt: 0.2,
-                                }}
+                              <GripVertical
+                                size={16}
+                                style={{ color: "var(--mui-palette-text-disabled)", marginTop: "1.6px" }}
                               />
                               <Box sx={{ flex: 1, minWidth: 0 }}>
                                 <Typography

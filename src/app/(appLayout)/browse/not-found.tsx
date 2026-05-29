@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { Box, Button, Container, Typography } from "@mui/material";
-import { ArrowBack, Folder } from "@mui/icons-material";
+import { ArrowLeft, Folder } from "lucide-react";
 import Link from "next/link";
 
 /**
@@ -30,12 +30,8 @@ export default function BrowseNotFound() {
         }}
       >
         <Folder
-          sx={{
-            width: 64,
-            height: 64,
-            color: "text.secondary",
-            opacity: 0.6,
-          }}
+          size={64}
+          style={{ color: "var(--mui-palette-text-secondary)", opacity: 0.6 }}
         />
         <Typography variant="h6">Post not found</Typography>
         <Typography variant="body2" color="text.secondary" align="center">
@@ -45,7 +41,7 @@ export default function BrowseNotFound() {
         <Button
           component={Link}
           href="/browse"
-          startIcon={<ArrowBack />}
+          startIcon={<ArrowLeft />}
           variant="contained"
           sx={{ borderRadius: 1.5, mt: 2 }}
         >

@@ -18,7 +18,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { Add, Article } from "@mui/icons-material";
+import { FileText, Plus } from "lucide-react";
 import useOnlineStatus from "@/hooks/useOnlineStatus";
 import UsersAutocomplete from "./User/UsersAutocomplete";
 import { Document } from "@/types";
@@ -152,7 +152,7 @@ const NewDocument: React.FC<{ cloudDocument?: Document }> = (
         }}
       >
         <Avatar sx={{ my: 2, bgcolor: "primary.main" }}>
-          <Article />
+          <FileText />
         </Avatar>
         <Typography component="h1" variant="h5">
           {baseId ? "Fork a document" : "Create a new document"}
@@ -271,7 +271,7 @@ const NewDocument: React.FC<{ cloudDocument?: Document }> = (
             disabled={!!(baseId && !base) || validating || hasErrors}
             fullWidth
             variant="contained"
-            startIcon={<Add />}
+            startIcon={<Plus />}
             sx={{ my: 2 }}
           >
             Create

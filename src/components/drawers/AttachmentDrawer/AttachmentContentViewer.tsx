@@ -1,6 +1,6 @@
 "use client";
 import { Alert, Box, CircularProgress, IconButton } from "@mui/material";
-import { Refresh } from "@mui/icons-material";
+import { RefreshCw } from "lucide-react";
 import AttachmentEditor from "@/editor/nodes/AttachmentNode/AttachmentEditor";
 
 interface AttachmentContentViewerProps {
@@ -80,7 +80,7 @@ export default function AttachmentContentViewer({
             severity="error"
             action={
               <IconButton size="small" onClick={onRefresh}>
-                <Refresh fontSize="small" />
+                <RefreshCw size={18} />
               </IconButton>
             }
           >

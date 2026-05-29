@@ -14,7 +14,7 @@ import {
   IconButton,
   TextField,
 } from "@mui/material";
-import { Settings } from "@mui/icons-material";
+import { Settings } from "lucide-react";
 import useOnlineStatus from "@/hooks/useOnlineStatus";
 import { useHandleValidation } from "@/components/DocumentActions/hooks/useHandleValidation";
 

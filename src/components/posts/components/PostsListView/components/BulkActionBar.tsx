@@ -1,7 +1,6 @@
 import React from "react";
 import { Box, Button, Fade, Paper, Tooltip, Typography } from "@mui/material";
-import { Close } from "@mui/icons-material";
-import { Trash2 } from "lucide-react";
+import { Trash2, X } from "lucide-react";
 
 interface BulkActionBarProps {
   count: number;
@@ -98,7 +97,7 @@ export function BulkActionBar(
             p: 0.5,
           }}
         >
-          <Close sx={{ fontSize: 16 }} />
+          <X size={16} />
         </Button>
       </Paper>
     </Fade>

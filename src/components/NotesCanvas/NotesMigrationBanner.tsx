@@ -14,8 +14,7 @@ import {
   migrateNotesFromIndexedDB,
   type MigrationResult,
 } from "@/utils/migrateNotes";
-import CloudUploadIcon from "@mui/icons-material/CloudUpload";
-import CloseIcon from "@mui/icons-material/Close";
+import { CloudUpload, X } from "lucide-react";
 
 export default function NotesMigrationBanner() {
   const { status } = useSession();
@@ -85,7 +84,7 @@ export default function NotesMigrationBanner() {
         boxShadow: 2,
       }}
     >
-      <CloudUploadIcon />
+      <CloudUpload />
 
       {!result && (
         <>
@@ -115,7 +114,7 @@ export default function NotesMigrationBanner() {
             onClick={handleDismiss}
             sx={{ color: "info.contrastText", minWidth: "auto", p: 1 }}
           >
-            <CloseIcon />
+            <X />
           </Button>
         </>
       )}

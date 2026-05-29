@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, IconButton, Tooltip, Typography } from "@mui/material";
-import { Add, Remove, Undo } from "@mui/icons-material";
+import { Minus, Plus, Undo } from "lucide-react";
 
 const TimeAdjustColumn: React.FC<{
   label: string;
@@ -48,7 +48,7 @@ const TimeAdjustColumn: React.FC<{
             },
           }}
         >
-          <Add sx={{ fontSize: 14 }} />
+          <Plus size={14} />
         </IconButton>
       </Tooltip>
       <Tooltip title={tooltipMinus} arrow placement="left">
@@ -66,7 +66,7 @@ const TimeAdjustColumn: React.FC<{
             "&:hover": { bgcolor: "error.light", color: "error.contrastText" },
           }}
         >
-          <Remove sx={{ fontSize: 14 }} />
+          <Minus size={14} />
         </IconButton>
       </Tooltip>
     </Box>
@@ -98,7 +98,7 @@ export const TimeStepperControls: React.FC<{
               "&:hover": { bgcolor: "warning.light", color: "warning.dark" },
             }}
           >
-            <Undo sx={{ fontSize: 16 }} />
+            <Undo size={16} />
           </IconButton>
         </Tooltip>
       )}

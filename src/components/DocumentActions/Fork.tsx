@@ -1,6 +1,6 @@
 "use client";
 import { UserDocument } from "@/types";
-import { FileCopy } from "@mui/icons-material";
+import { Copy } from "lucide-react";
 import {
   IconButton,
   ListItemIcon,
@@ -38,7 +38,7 @@ const ForkDocument: React.FC<
     return (
       <MenuItem onClick={handleFork}>
         <ListItemIcon>
-          <FileCopy />
+          <Copy />
         </ListItemIcon>
         <ListItemText>Fork</ListItemText>
       </MenuItem>
@@ -50,7 +50,7 @@ const ForkDocument: React.FC<
       onClick={handleFork}
       size="small"
     >
-      <FileCopy />
+      <Copy />
     </IconButton>
   );
 };

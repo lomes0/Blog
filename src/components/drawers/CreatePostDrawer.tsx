@@ -11,7 +11,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { Add, Close } from "@mui/icons-material";
+import { Plus, X } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { useRouter } from "next/navigation";
 import useOnlineStatus from "@/hooks/useOnlineStatus";
@@ -180,7 +180,7 @@ const CreatePostDrawer: React.FC<CreatePostDrawerProps> = ({
             aria-label="close"
             disabled={isSubmitting}
           >
-            <Close />
+            <X />
           </IconButton>
         </Box>
 
@@ -250,7 +250,7 @@ const CreatePostDrawer: React.FC<CreatePostDrawerProps> = ({
           <Button
             type="submit"
             variant="contained"
-            startIcon={isSubmitting ? <CircularProgress size={20} /> : <Add />}
+            startIcon={isSubmitting ? <CircularProgress size={20} /> : <Plus />}
             disabled={hasErrors || validating || isSubmitting}
           >
             {isSubmitting ? "Creating..." : "Create Post"}

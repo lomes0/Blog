@@ -8,7 +8,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { DeleteForever } from "@mui/icons-material";
+import { Trash2 } from "lucide-react";
 import { DocumentStatus, User, UserDocument } from "@/types";
 import { useRouter } from "next/navigation";
 import PostActionMenu from "@/components/DocumentCard/PostActionMenu";
@@ -214,7 +214,7 @@ const PostCompactListItem: React.FC<PostCompactListItemProps> = ({
                     },
                   }}
                 >
-                  <DeleteForever sx={{ fontSize: 15 }} />
+                  <Trash2 size={15} />
                 </IconButton>
               </Tooltip>
             )}

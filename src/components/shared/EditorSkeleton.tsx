@@ -1,24 +1,23 @@
 "use client";
 import {
-  Add,
-  ArrowDropDown,
-  AutoAwesome,
+  AArrowDown,
+  AArrowUp,
+  AlignLeft,
+  Bold,
+  ChevronDown,
   Code,
-  FormatAlignLeft,
-  FormatBold,
-  FormatColorFill,
-  FormatItalic,
-  FormatStrikethrough,
-  FormatUnderlined,
+  Italic,
   Link,
+  PaintBucket,
+  Plus,
   Redo,
+  Sparkles,
+  Strikethrough,
   Subscript,
   Superscript,
-  TextDecrease,
-  TextIncrease,
+  Underline,
   Undo,
-  ViewHeadline,
-} from "@mui/icons-material";
+} from "lucide-react";
 import {
   AppBar,
   Box,
@@ -109,10 +108,10 @@ export const EditorSkeleton: React.FC<PropsWithChildren> = ({ children }) => {
               }}
             >
               <IconButton aria-label="Undo" disabled>
-                <Undo fontSize="small" />
+                <Undo size={18} />
               </IconButton>
               <IconButton aria-label="Redo" disabled>
-                <Redo fontSize="small" />
+                <Redo size={18} />
               </IconButton>
             </Box>
             <Box
@@ -154,7 +153,7 @@ export const EditorSkeleton: React.FC<PropsWithChildren> = ({ children }) => {
               >
                 <MenuItem value="paragraph">
                   <ListItemIcon>
-                    <ViewHeadline fontSize="small" />
+                    <AlignLeft size={18} />
                   </ListItemIcon>
                   <ListItemText>Normal</ListItemText>
                 </MenuItem>
@@ -233,7 +232,7 @@ export const EditorSkeleton: React.FC<PropsWithChildren> = ({ children }) => {
                     }}
                     aria-label="increase font size"
                   >
-                    <TextDecrease fontSize="small" />
+                    <AArrowDown size={18} />
                   </IconButton>
                   <TextField
                     hiddenLabel
@@ -283,7 +282,7 @@ export const EditorSkeleton: React.FC<PropsWithChildren> = ({ children }) => {
                     }}
                     aria-label="decrease font size"
                   >
-                    <TextIncrease fontSize="small" />
+                    <AArrowUp size={18} />
                   </IconButton>
                 </Box>
               </Box>
@@ -293,15 +292,15 @@ export const EditorSkeleton: React.FC<PropsWithChildren> = ({ children }) => {
                 aria-haspopup="true"
                 variant="outlined"
                 startIcon={
-                  <AutoAwesome
-                    color={"action"}
-                    fontSize="small"
+                  <Sparkles
+                    size={18}
+                    style={{ color: "var(--mui-palette-action-active)" }}
                   />
                 }
                 endIcon={
-                  <ArrowDropDown
-                    color={"action"}
-                    fontSize="small"
+                  <ChevronDown
+                    size={18}
+                    style={{ color: "var(--mui-palette-action-active)" }}
                   />
                 }
                 sx={{
@@ -334,34 +333,34 @@ export const EditorSkeleton: React.FC<PropsWithChildren> = ({ children }) => {
                 sx={{ display: { xs: "none", lg: "flex" } }}
               >
                 <ToggleButton value="bold">
-                  <FormatBold fontSize="small" />
+                  <Bold size={18} />
                 </ToggleButton>
                 <ToggleButton value="italic">
-                  <FormatItalic fontSize="small" />
+                  <Italic size={18} />
                 </ToggleButton>
                 <ToggleButton value="underline">
-                  <FormatUnderlined fontSize="small" />
+                  <Underline size={18} />
                 </ToggleButton>
                 <ToggleButton value="highlight">
                   <Highlight />
                 </ToggleButton>
                 <ToggleButton value="code">
-                  <Code fontSize="small" />
+                  <Code size={18} />
                 </ToggleButton>
                 <ToggleButton value="strikethrough">
-                  <FormatStrikethrough fontSize="small" />
+                  <Strikethrough size={18} />
                 </ToggleButton>
                 <ToggleButton value="subscript">
-                  <Subscript fontSize="small" />
+                  <Subscript size={18} />
                 </ToggleButton>
                 <ToggleButton value="superscript">
-                  <Superscript fontSize="small" />
+                  <Superscript size={18} />
                 </ToggleButton>
                 <ToggleButton value="link">
-                  <Link fontSize="small" />
+                  <Link size={18} />
                 </ToggleButton>
                 <ToggleButton value="color">
-                  <FormatColorFill fontSize="small" />
+                  <PaintBucket size={18} />
                 </ToggleButton>
               </ToggleButtonGroup>
             </Box>
@@ -373,10 +372,10 @@ export const EditorSkeleton: React.FC<PropsWithChildren> = ({ children }) => {
               }}
             >
               <IconButton aria-label="Insert">
-                <Add fontSize="small" />
+                <Plus size={18} />
               </IconButton>
               <IconButton aria-label="Align Text">
-                <FormatAlignLeft fontSize="small" />
+                <AlignLeft size={18} />
               </IconButton>
             </Box>
           </Container>

@@ -1,7 +1,7 @@
 "use client";
 
 import { UserDocument } from "@/types";
-import { Settings } from "@mui/icons-material";
+import { Settings } from "lucide-react";
 import {
   Box,
   Button,

@@ -15,13 +15,7 @@ import {
   Popover,
   TextField,
 } from "@mui/material";
-import {
-  ContentCopy,
-  ContentCut,
-  Delete,
-  MoreHoriz,
-  Palette,
-} from "@mui/icons-material";
+import { Copy, MoreHorizontal, Palette, Scissors, Trash2 } from "lucide-react";
 import { useNotesClipboard } from "@/contexts/NotesClipboardContext";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
@@ -270,7 +264,7 @@ export default function DraggableNote({
               "&:hover": { opacity: 1 },
             }}
           >
-            <Palette sx={{ fontSize: "14px" }} />
+            <Palette size={14} />
           </IconButton>
           <IconButton
             size="small"
@@ -284,7 +278,7 @@ export default function DraggableNote({
               "&:hover": { opacity: 1 },
             }}
           >
-            <MoreHoriz sx={{ fontSize: "14px" }} />
+            <MoreHorizontal size={14} />
           </IconButton>
         </Box>
 
@@ -370,16 +364,16 @@ export default function DraggableNote({
           slotProps={{ paper: { elevation: 2 } }}
         >
           <MenuItem onClick={handleCut} dense>
-            <ContentCut sx={{ fontSize: 15, mr: 1 }} />
+            <Scissors size={15} style={{ marginRight: 8 }} />
             Cut
           </MenuItem>
           <MenuItem onClick={handleCopy} dense>
-            <ContentCopy sx={{ fontSize: 15, mr: 1 }} />
+            <Copy size={15} style={{ marginRight: 8 }} />
             Copy
           </MenuItem>
           <Divider />
           <MenuItem onClick={handleDelete} dense sx={{ color: "error.main" }}>
-            <Delete sx={{ fontSize: 15, mr: 1 }} />
+            <Trash2 size={15} style={{ marginRight: 8 }} />
             Delete
           </MenuItem>
         </Menu>

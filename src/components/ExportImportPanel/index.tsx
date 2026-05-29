@@ -11,7 +11,7 @@
 
 import React, { useState } from "react";
 import { Box, Paper, Tab, Tabs, Typography } from "@mui/material";
-import { Download, UploadFile } from "@mui/icons-material";
+import { Download, FileUp } from "lucide-react";
 import { ExportTab } from "./ExportTab";
 import { ImportTab } from "./ImportTab";
 
@@ -59,14 +59,14 @@ export const ExportImportPanel: React.FC = () => {
         sx={{ borderBottom: 1, borderColor: "divider" }}
       >
         <Tab
-          icon={<Download fontSize="small" />}
+          icon={<Download size={18} />}
           iconPosition="start"
           label="Export"
           id="export-import-tab-0"
           aria-controls="export-import-tabpanel-0"
         />
         <Tab
-          icon={<UploadFile fontSize="small" />}
+          icon={<FileUp size={18} />}
           iconPosition="start"
           label="Import"
           id="export-import-tab-1"

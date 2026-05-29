@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Box, LinearProgress, Link, Typography } from "@mui/material";
-import { TableChart } from "@mui/icons-material";
+import { Table } from "lucide-react";
 import { documentsSelectors, useSelector } from "@/store";
 import { countWords, extractHeadings } from "@/utils/editorContent";
 import RailSection from "./RailSection";
@@ -57,7 +57,7 @@ export default function OutlineSection({ activeDocId }: OutlineSectionProps) {
     <RailSection
       title="Outline"
       count={headings.length || undefined}
-      icon={<TableChart fontSize="small" />}
+      icon={<Table size={18} />}
       iconLabel="Outline"
       defaultOpen={true}
     >

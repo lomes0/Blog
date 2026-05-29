@@ -16,7 +16,7 @@ import NotesCanvas from "../NotesCanvas";
 import KanbanBoard from "./KanbanBoard";
 import ReadmeViewer from "./ReadmeViewer";
 import { CardErrorBoundary } from "@/components/ErrorBoundary";
-import { StickyNote2 } from "@mui/icons-material";
+import { StickyNote } from "lucide-react";
 import { useNotesBoards } from "@/hooks/useNotesBoards";
 import { useNotesZoom } from "@/hooks/useNotesZoom";
 import BoardSelector from "../NotesCanvas/BoardSelector";
@@ -111,12 +111,9 @@ const Home: React.FC<{
                       py: 0.75,
                     }}
                   >
-                    <StickyNote2
-                      sx={{
-                        fontSize: 18,
-                        color: "text.secondary",
-                        flexShrink: 0,
-                      }}
+                    <StickyNote
+                      size={18}
+                      style={{ color: "var(--mui-palette-text-secondary)", flexShrink: 0 }}
                     />
                     <BoardSelector
                       boards={boards}

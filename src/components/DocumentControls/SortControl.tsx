@@ -1,4 +1,4 @@
-import { ArrowDownward, ArrowUpward } from "@mui/icons-material";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import {
   Box,
   ListItemText,
@@ -54,8 +54,8 @@ const DocumentSortControl: React.FC<{
         aria-label="sort direction"
       >
         {sortDirection === "asc"
-          ? <ArrowUpward fontSize="small" />
-          : <ArrowDownward fontSize="small" />}
+          ? <ArrowUp size={18} />
+          : <ArrowDown size={18} />}
       </ToggleButton>
       <Select
         value={sortKey}

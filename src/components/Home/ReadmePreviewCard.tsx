@@ -1,6 +1,6 @@
 "use client";
 import { Box, CircularProgress, Typography } from "@mui/material";
-import { Add, ArticleOutlined } from "@mui/icons-material";
+import { FileText, Plus } from "lucide-react";
 import { UserDocument } from "@/types";
 import htmr from "htmr";
 import { DateDisplay } from "@/components/shared/DateDisplay";
@@ -141,13 +141,9 @@ function ReadmeEmptyState({ creating, error }: ReadmeEmptyStateProps) {
         )
         : (
           <>
-            <Add
-              sx={{
-                fontSize: 40,
-                color: "text.secondary",
-                opacity: 0.4,
-                mb: 1,
-              }}
+            <Plus
+              size={40}
+              style={{ color: "var(--mui-palette-text-secondary)", opacity: 0.4, marginBottom: 8 }}
             />
             <Typography
               variant="body2"
@@ -212,7 +208,7 @@ export default function ReadmePreviewCard({
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <ArticleOutlined sx={{ fontSize: 20, color: "text.secondary" }} />
+          <FileText size={20} style={{ color: "var(--mui-palette-text-secondary)" }} />
           <Typography
             variant="subtitle1"
             sx={{

@@ -4,7 +4,7 @@ import type { UserDocument } from "@/types";
 import DocumentCard from "../DocumentCard";
 import Grid from "@mui/material/Grid2";
 import { Box, Pagination, Typography } from "@mui/material";
-import { Pageview } from "@mui/icons-material";
+import { FileSearch } from "lucide-react";
 import DocumentSortControl from "../DocumentControls/SortControl";
 
 const UserDocuments: React.FC<{ documents?: UserDocument[]; pages?: number }> =
@@ -121,9 +121,7 @@ const UserDocuments: React.FC<{ documents?: UserDocument[]; pages?: number }> =
               gap: 2,
             }}
           >
-            <Pageview
-              sx={{ width: 64, height: 64, fontSize: 64 }}
-            />
+            <FileSearch size={64} />
             <Typography variant="overline" component="p">
               No documents found
             </Typography>

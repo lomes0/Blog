@@ -1,7 +1,7 @@
 "use client";
 import React, { Component, ErrorInfo, ReactNode } from "react";
 import { Alert, Button, Card, CardContent, Typography } from "@mui/material";
-import { ErrorOutline, Refresh } from "@mui/icons-material";
+import { AlertCircle, RefreshCw } from "lucide-react";
 
 interface Props {
   children: ReactNode;
@@ -75,12 +75,9 @@ class CardErrorBoundary extends Component<Props, State> {
               p: 3,
             }}
           >
-            <ErrorOutline
-              sx={{
-                fontSize: 48,
-                color: "error.main",
-                mb: 2,
-              }}
+            <AlertCircle
+              size={48}
+              style={{ color: "var(--mui-palette-error-main)", marginBottom: 16 }}
             />
 
             <Typography variant="h6" color="error.main" gutterBottom>
@@ -110,7 +107,7 @@ class CardErrorBoundary extends Component<Props, State> {
             <Button
               variant="outlined"
               size="small"
-              startIcon={<Refresh />}
+              startIcon={<RefreshCw />}
               onClick={this.handleRetry}
               sx={{
                 borderColor: "error.main",

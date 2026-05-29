@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { Box, Button, Tooltip } from "@mui/material";
-import { FilterList, PostAdd } from "@mui/icons-material";
+import { FilePlus, ListFilter } from "lucide-react";
 import DocumentSortControl from "../../DocumentControls/SortControl";
 
 interface BrowserHeaderProps {
@@ -34,7 +34,7 @@ const BrowserHeader: React.FC<BrowserHeaderProps> = ({
       <Tooltip title="Create a new blog post">
         <Button
           variant="outlined"
-          startIcon={<PostAdd />}
+          startIcon={<FilePlus />}
           onClick={onCreateDocument}
           sx={{
             borderRadius: 1.5,
@@ -67,12 +67,9 @@ const BrowserHeader: React.FC<BrowserHeaderProps> = ({
               borderColor: "divider",
             }}
           >
-            <FilterList
-              fontSize="small"
-              sx={{
-                mr: 0.5,
-                color: "text.secondary",
-              }}
+            <ListFilter
+              size={18}
+              style={{ marginRight: 4, color: "var(--mui-palette-text-secondary)" }}
             />
           </Box>
           <DocumentSortControl

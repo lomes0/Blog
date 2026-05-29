@@ -1,6 +1,6 @@
 "use client";
 import { Box, Button } from "@mui/material";
-import { ContentPaste } from "@mui/icons-material";
+import { ClipboardPaste } from "lucide-react";
 import { useNotesClipboard } from "@/contexts/NotesClipboardContext";
 import type { Note, NotesCanvas as CanvasData } from "@/types/notes";
 
@@ -59,7 +59,7 @@ export default function PasteButton({ addNote, canvas }: PasteButtonProps) {
         size="small"
         disableElevation
         onClick={handlePaste}
-        startIcon={<ContentPaste sx={{ fontSize: 14 }} />}
+        startIcon={<ClipboardPaste size={14} />}
         sx={{ fontSize: "0.75rem", py: 0.5, px: 1.5, textTransform: "none" }}
       >
         Paste

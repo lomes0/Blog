@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { Avatar, Box, Chip, Link, Typography } from "@mui/material";
-import { Cloud, History, MobileFriendly } from "@mui/icons-material";
+import { Cloud, History, Smartphone } from "lucide-react";
 import { createSelector } from "@reduxjs/toolkit";
 import { documentsSelectors, useSelector } from "@/store";
 import type { RootState } from "@/store";
@@ -89,7 +89,7 @@ export default function RevisionsSection({
     <RailSection
       title="Revisions"
       count={revisions.length || undefined}
-      icon={<History fontSize="small" />}
+      icon={<History size={18} />}
       iconLabel="Revisions"
       defaultOpen={true}
     >
@@ -164,12 +164,8 @@ export default function RevisionsSection({
                   <Chip
                     size="small"
                     icon={isCloud
-                      ? <Cloud sx={{ fontSize: "0.7rem !important" }} />
-                      : (
-                        <MobileFriendly
-                          sx={{ fontSize: "0.7rem !important" }}
-                        />
-                      )}
+                      ? <Cloud size={11} />
+                      : <Smartphone size={11} />}
                     label={isCloud ? "Cloud" : "Local"}
                     sx={{
                       height: 16,

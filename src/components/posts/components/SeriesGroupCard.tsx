@@ -10,7 +10,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { Delete, Edit, MoreVert } from "@mui/icons-material";
+import { MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { SxProps, Theme } from "@mui/material/styles";
 import { Series, User, UserDocument } from "@/types";
 import { createCardTheme } from "@/components/DocumentCard/theme";
@@ -171,7 +171,7 @@ function CollapsedView({
             size="small"
             onClick={onMenuOpen}
           >
-            <MoreVert />
+            <MoreVertical />
           </IconButton>
         )}
       </Box>
@@ -285,7 +285,7 @@ function ExpandedView({
               size="small"
               onClick={onMenuOpen}
             >
-              <MoreVert />
+              <MoreVertical />
             </IconButton>
           )}
         </Box>
@@ -320,13 +320,13 @@ function SeriesContextMenu({
     >
       <MenuItem onClick={onEdit}>
         <ListItemIcon>
-          <Edit fontSize="small" />
+          <Pencil size={18} />
         </ListItemIcon>
         <ListItemText>Edit</ListItemText>
       </MenuItem>
       <MenuItem onClick={onDelete} sx={{ color: "error.main" }}>
         <ListItemIcon>
-          <Delete fontSize="small" sx={{ color: "error.main" }} />
+          <Trash2 size={18} style={{ color: "var(--mui-palette-error-main)" }} />
         </ListItemIcon>
         <ListItemText>Delete</ListItemText>
       </MenuItem>

@@ -1,7 +1,7 @@
 "use client";
 import { actions, useDispatch } from "@/store";
 import { UserDocument } from "@/types";
-import { DeleteForever } from "@mui/icons-material";
+import { Trash2 } from "lucide-react";
 import {
   IconButton,
   ListItemIcon,
@@ -59,7 +59,7 @@ const DeleteBothDocument: React.FC<{
     return (
       <MenuItem onClick={handleDelete}>
         <ListItemIcon>
-          <DeleteForever />
+          <Trash2 />
         </ListItemIcon>
         <ListItemText>Delete</ListItemText>
       </MenuItem>
@@ -71,7 +71,7 @@ const DeleteBothDocument: React.FC<{
       onClick={handleDelete}
       size="small"
     >
-      <DeleteForever />
+      <Trash2 />
     </IconButton>
   );
 };

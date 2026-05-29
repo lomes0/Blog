@@ -1,7 +1,7 @@
 "use client";
 import { actions, useDispatch, useSelector } from "@/store";
 import { EditorDocument, UserDocument } from "@/types";
-import { CloudSync, CloudUpload } from "@mui/icons-material";
+import { CloudUpload, RefreshCcw } from "lucide-react";
 import {
   Button,
   IconButton,
@@ -135,7 +135,7 @@ const UploadDocument: React.FC<
         sx={sx}
       >
         <ListItemIcon>
-          {isUploaded ? <CloudSync /> : <CloudUpload />}
+          {isUploaded ? <RefreshCcw /> : <CloudUpload />}
         </ListItemIcon>
         <ListItemText>
           {isUploaded ? "Update Cloud" : "Save to Cloud"}
@@ -147,7 +147,7 @@ const UploadDocument: React.FC<
     return (
       <Button
         onClick={isUploaded ? handleUpdate : handleCreate}
-        startIcon={isUploaded ? <CloudSync /> : <CloudUpload />}
+        startIcon={isUploaded ? <RefreshCcw /> : <CloudUpload />}
         sx={sx}
       >
         {isUploaded ? "Update Cloud" : "Save to Cloud"}
@@ -161,7 +161,7 @@ const UploadDocument: React.FC<
       size="small"
       sx={sx}
     >
-      {isUploaded ? <CloudSync /> : <CloudUpload />}
+      {isUploaded ? <RefreshCcw /> : <CloudUpload />}
     </IconButton>
   );
 };

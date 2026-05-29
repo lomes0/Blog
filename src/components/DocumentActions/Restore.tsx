@@ -1,7 +1,7 @@
 "use client";
 import { actions, useDispatch } from "@/store";
 import { UserDocument } from "@/types";
-import { Restore } from "@mui/icons-material";
+import { RotateCcw } from "lucide-react";
 import {
   Button,
   IconButton,
@@ -120,7 +120,7 @@ const RestoreDocument: React.FC<
     return (
       <MenuItem onClick={handleRestore} sx={sx}>
         <ListItemIcon>
-          <Restore />
+          <RotateCcw />
         </ListItemIcon>
         <ListItemText>
           Restore Cloud
@@ -130,7 +130,7 @@ const RestoreDocument: React.FC<
   }
   if (variant === "button") {
     return (
-      <Button onClick={handleRestore} startIcon={<Restore />} sx={sx}>
+      <Button onClick={handleRestore} startIcon={<RotateCcw />} sx={sx}>
         Restore Cloud
       </Button>
     );
@@ -142,7 +142,7 @@ const RestoreDocument: React.FC<
       size="small"
       sx={sx}
     >
-      {<Restore />}
+      {<RotateCcw />}
     </IconButton>
   );
 };

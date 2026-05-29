@@ -1,11 +1,6 @@
 "use client";
 import { Box, IconButton, Tooltip } from "@mui/material";
-import {
-  History,
-  Info,
-  Link as LinkIcon,
-  TableChart,
-} from "@mui/icons-material";
+import { History, Info, Link as LinkIcon, Table } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useSelector } from "@/store";
 import { type RailMode, useLayoutMode } from "@/contexts/LayoutModeContext";
@@ -63,7 +58,7 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
             onClick={toggleRail}
             aria-label="Expand outline"
           >
-            <TableChart fontSize="small" />
+            <Table size={18} />
           </IconButton>
         </Tooltip>
         <Tooltip title="Expand properties" placement="left">
@@ -72,7 +67,7 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
             onClick={toggleRail}
             aria-label="Expand properties"
           >
-            <Info fontSize="small" />
+            <Info size={18} />
           </IconButton>
         </Tooltip>
         <Tooltip title="Expand revisions" placement="left">
@@ -81,7 +76,7 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
             onClick={toggleRail}
             aria-label="Expand revisions"
           >
-            <History fontSize="small" />
+            <History size={18} />
           </IconButton>
         </Tooltip>
         <Tooltip title="Expand backlinks" placement="left">
@@ -90,7 +85,7 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
             onClick={toggleRail}
             aria-label="Expand backlinks"
           >
-            <LinkIcon fontSize="small" />
+            <LinkIcon size={18} />
           </IconButton>
         </Tooltip>
       </Box>

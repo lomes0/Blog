@@ -18,10 +18,7 @@ import {
 } from "@/utils/languageDetection";
 import { downloadFile } from "@/utils/downloadFile";
 import { formatSize } from "@/utils/formatSize";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
-import DownloadIcon from "@mui/icons-material/Download";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import { ChevronDown, ChevronUp, Download, ExternalLink } from "lucide-react";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
 import IconButton from "@mui/material/IconButton";
@@ -177,13 +174,13 @@ const ViewAttachment: React.FC<ViewAttachmentProps> = ({
         </span>
         <Tooltip title="Download">
           <IconButton size="small" onClick={handleDownload}>
-            <DownloadIcon fontSize="small" />
+            <Download size={18} />
           </IconButton>
         </Tooltip>
         {canPreview && (
           <Tooltip title="Open in sidebar">
             <IconButton size="small" onClick={handleOpenInSidebar}>
-              <OpenInNewIcon fontSize="small" />
+              <ExternalLink size={18} />
             </IconButton>
           </Tooltip>
         )}
@@ -191,8 +188,8 @@ const ViewAttachment: React.FC<ViewAttachmentProps> = ({
           <Tooltip title={expanded ? "Collapse" : "Expand"}>
             <IconButton size="small">
               {expanded
-                ? <ExpandLessIcon fontSize="small" />
-                : <ExpandMoreIcon fontSize="small" />}
+                ? <ChevronUp size={18} />
+                : <ChevronDown size={18} />}
             </IconButton>
           </Tooltip>
         )}

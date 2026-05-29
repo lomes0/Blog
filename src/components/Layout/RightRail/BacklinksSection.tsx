@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Box, Link, Typography } from "@mui/material";
-import { Article, Link as LinkIcon } from "@mui/icons-material";
+import { FileText, Link as LinkIcon } from "lucide-react";
 import RouterLink from "next/link";
 import RailSection from "./RailSection";
 
@@ -41,7 +41,7 @@ export default function BacklinksSection({ rootId }: BacklinksSectionProps) {
     <RailSection
       title="Backlinks"
       count={backlinks.length || undefined}
-      icon={<LinkIcon fontSize="small" />}
+      icon={<LinkIcon size={18} />}
       iconLabel="Backlinks"
       defaultOpen={false}
     >
@@ -83,7 +83,7 @@ export default function BacklinksSection({ rootId }: BacklinksSectionProps) {
                   },
                 }}
               >
-                <Article sx={{ fontSize: "0.9rem", flexShrink: 0 }} />
+                <FileText size={14} style={{ flexShrink: 0 }} />
                 <Box
                   component="span"
                   sx={{

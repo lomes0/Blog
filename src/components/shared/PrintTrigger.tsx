@@ -1,7 +1,7 @@
 "use client";
 
 import { IconButton, Tooltip } from "@mui/material";
-import PrintIcon from "@mui/icons-material/Print";
+import { Printer } from "lucide-react";
 
 export default function PrintButton() {
   const handlePrint = () => {
@@ -30,7 +30,7 @@ export default function PrintButton() {
         }}
         size="large"
       >
-        <PrintIcon />
+        <Printer />
       </IconButton>
     </Tooltip>
   );

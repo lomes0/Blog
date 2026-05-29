@@ -1,6 +1,6 @@
 "use client";
 import { Box, Link, Paper, Typography } from "@mui/material";
-import { TableChart } from "@mui/icons-material";
+import { Table } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { documentsSelectors, useSelector } from "@/store";
 import { extractHeadings } from "@/utils/editorContent";
@@ -62,7 +62,7 @@ const FloatingOutlinePill: React.FC = () => {
       }}
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.25 }}>
-        <TableChart sx={{ fontSize: 13, color: "text.secondary" }} />
+        <Table size={13} style={{ color: "var(--mui-palette-text-secondary)" }} />
         <Typography variant="caption" fontWeight={700} color="text.primary">
           Outline
         </Typography>

@@ -10,7 +10,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { ChevronRight, DeleteOutline } from "@mui/icons-material";
+import { ChevronRight, Trash2 } from "lucide-react";
 import { Series, User, UserDocument } from "@/types";
 import { actions, useDispatch } from "@/store";
 import { useRouter } from "next/navigation";
@@ -143,7 +143,7 @@ export const PostsCompactListView: React.FC<PostsCompactListViewProps> = ({
               onClick={() => handleDeleteSeries(series.id, series.title)}
               sx={deleteIconSx}
             >
-              <DeleteOutline fontSize="small" />
+              <Trash2 size={18} />
             </IconButton>
           </Tooltip>
         )}
@@ -167,9 +167,9 @@ export const PostsCompactListView: React.FC<PostsCompactListViewProps> = ({
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
               <ChevronRight
-                sx={{
-                  fontSize: 18,
-                  color: "text.secondary",
+                size={18}
+                style={{
+                  color: "var(--mui-palette-text-secondary)",
                   flexShrink: 0,
                   transition: "transform 0.2s ease",
                   transform: isExpanded ? "rotate(90deg)" : "none",

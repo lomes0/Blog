@@ -1,6 +1,6 @@
 "use client";
 import { Box, Typography } from "@mui/material";
-import { ArticleOutlined } from "@mui/icons-material";
+import { FileText } from "lucide-react";
 import { UserDocument } from "@/types";
 import { useRouter } from "next/navigation";
 import { DateDisplay } from "@/components/shared/DateDisplay";
@@ -36,7 +36,7 @@ export default function RecentPostsPreviewCard({
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <ArticleOutlined sx={{ fontSize: 20, color: "text.secondary" }} />
+          <FileText size={20} style={{ color: "var(--mui-palette-text-secondary)" }} />
           <Typography
             variant="subtitle1"
             sx={{

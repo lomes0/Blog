@@ -1,7 +1,7 @@
 "use client";
 import { useCallback } from "react";
 import { Box, IconButton, SwipeableDrawer, Typography } from "@mui/material";
-import { AttachFile, Close } from "@mui/icons-material";
+import { Paperclip, X } from "lucide-react";
 import { actions, RootState, useDispatch, useSelector } from "@/store";
 import { getLanguageDisplayName } from "@/utils/languageDetection";
 import { formatFileSize, isEditable } from "./attachmentUtils";
@@ -70,7 +70,7 @@ export default function AttachmentDrawer() {
             gap: 1,
           }}
         >
-          <AttachFile />
+          <Paperclip />
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography variant="h6" noWrap>
               {filename || "Attachment"}
@@ -81,7 +81,7 @@ export default function AttachmentDrawer() {
             </Typography>
           </Box>
           <IconButton onClick={handleClose}>
-            <Close />
+            <X />
           </IconButton>
         </Box>
 

@@ -8,13 +8,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import {
-  Add,
-  Close,
-  Description,
-  KeyboardArrowDown,
-  MoreHoriz,
-} from "@mui/icons-material";
+import { ChevronDown, FileText, MoreHorizontal, Plus, X } from "lucide-react";
 import {
   DragDropContext,
   Draggable,
@@ -128,8 +122,9 @@ const TabItem: React.FC<TabItemProps> = ({
           }}
         >
           {/* Tab icon */}
-          <Description
-            sx={{ fontSize: 14, color: "text.secondary", flexShrink: 0 }}
+          <FileText
+            size={14}
+            style={{ color: "var(--mui-palette-text-secondary)", flexShrink: 0 }}
           />
 
           {/* Dirty indicator */}
@@ -215,7 +210,7 @@ const TabItem: React.FC<TabItemProps> = ({
                   color: "text.secondary",
                 }}
               >
-                <MoreHoriz sx={{ fontSize: 14 }} />
+                <MoreHorizontal size={14} />
               </IconButton>
             </Tooltip>
           )}
@@ -238,7 +233,7 @@ const TabItem: React.FC<TabItemProps> = ({
                   "&:hover": { color: "error.main" },
                 }}
               >
-                <Close sx={{ fontSize: 14 }} />
+                <X size={14} />
               </IconButton>
             </Tooltip>
           )}
@@ -349,7 +344,7 @@ const EditorTabBar: React.FC<EditorTabBarProps> = ({
               borderColor: "divider",
             }}
           >
-            <Add fontSize="small" />
+            <Plus size={18} />
           </IconButton>
         </Tooltip>
         <TabOverflowMenu
@@ -385,7 +380,7 @@ const TabOverflowMenu: React.FC<TabOverflowMenuProps> = (
             borderColor: "divider",
           }}
         >
-          <KeyboardArrowDown fontSize="small" />
+          <ChevronDown size={18} />
         </IconButton>
       </Tooltip>
       <Menu
@@ -403,7 +398,7 @@ const TabOverflowMenu: React.FC<TabOverflowMenuProps> = (
             }}
             sx={{ gap: 1 }}
           >
-            <Description sx={{ fontSize: 16, color: "text.secondary" }} />
+            <FileText size={16} style={{ color: "var(--mui-palette-text-secondary)" }} />
             {tab.name}
           </MenuItem>
         ))}

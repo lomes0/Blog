@@ -5,7 +5,7 @@ import ZoomControls from "@/components/NotesCanvas/ZoomControls";
 import { useNotesBoards } from "@/hooks/useNotesBoards";
 import { useNotesZoom } from "@/hooks/useNotesZoom";
 import { Box } from "@mui/material";
-import { StickyNote2 } from "@mui/icons-material";
+import { StickyNote } from "lucide-react";
 import { NotesClipboardProvider } from "@/contexts/NotesClipboardContext";
 
 export default function NotesPage() {
@@ -42,7 +42,7 @@ export default function NotesPage() {
             flexShrink: 0,
           }}
         >
-          <StickyNote2 sx={{ fontSize: 20, color: "text.secondary" }} />
+          <StickyNote size={20} style={{ color: "var(--mui-palette-text-secondary)" }} />
           <BoardSelector
             boards={boards}
             activeCanvasId={activeCanvasId}

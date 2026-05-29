@@ -1,6 +1,6 @@
 "use client";
 import { Box, Button, CircularProgress, Typography } from "@mui/material";
-import { Add, Description } from "@mui/icons-material";
+import { FileText, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import ViewDocument from "@/components/views/ViewDocument";
@@ -179,7 +179,7 @@ export default function ReadmeViewer({ documents }: ReadmeViewerProps) {
           px: 3,
         }}
       >
-        <Description sx={{ fontSize: 64, color: "text.disabled" }} />
+        <FileText size={64} style={{ color: "var(--mui-palette-text-disabled)" }} />
         <Typography variant="h6" color="text.secondary">
           No README found
         </Typography>
@@ -188,7 +188,7 @@ export default function ReadmeViewer({ documents }: ReadmeViewerProps) {
         </Typography>
         <Button
           variant="contained"
-          startIcon={<Add />}
+          startIcon={<Plus />}
           onClick={handleCreateReadme}
         >
           Create README

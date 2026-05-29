@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Box, Chip, Collapse, IconButton, Typography } from "@mui/material";
-import { ExpandLess, ExpandMore } from "@mui/icons-material";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 interface RailSectionProps {
   title: string;
@@ -80,8 +80,8 @@ const RailSection: React.FC<RailSectionProps> = ({
           sx={{ p: 0, pointerEvents: "none" }}
         >
           {open
-            ? <ExpandLess fontSize="small" />
-            : <ExpandMore fontSize="small" />}
+            ? <ChevronUp size={18} />
+            : <ChevronDown size={18} />}
         </IconButton>
       </Box>
       <Collapse in={open}>

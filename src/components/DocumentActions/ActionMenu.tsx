@@ -7,7 +7,7 @@ import {
   Menu,
   MenuItem,
 } from "@mui/material";
-import { Edit, MoreVert } from "@mui/icons-material";
+import { MoreVertical, Pencil } from "lucide-react";
 import DownloadDocument from "./Download";
 import DeleteBothDocument from "./DeleteBoth";
 import UploadDocument from "./Upload";
@@ -61,7 +61,7 @@ function DocumentActionMenu(
         onClick={openMenu}
         size="small"
       >
-        <MoreVert />
+        <MoreVertical />
       </IconButton>
       <Menu
         id={`${id}-action-menu`}
@@ -86,7 +86,7 @@ function DocumentActionMenu(
             }}
           >
             <ListItemIcon>
-              <Edit />
+              <Pencil />
             </ListItemIcon>
             <ListItemText>Edit</ListItemText>
           </MenuItem>

@@ -16,12 +16,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import {
-  Add,
-  ChatOutlined,
-  DescriptionOutlined,
-  Remove,
-} from "@mui/icons-material";
+import { FileText, MessageSquare, Minus, Plus } from "lucide-react";
 import { styles } from "../styles";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
@@ -41,8 +36,8 @@ const NAV_ITEM_MIN_HEIGHT = 36;
 const USER_ITEM_MIN_HEIGHT = 40;
 
 const navigationItems = [
-  { text: "Posts", icon: <DescriptionOutlined />, path: "/posts" },
-  { text: "Notes", icon: <ChatOutlined />, path: "/notes" },
+  { text: "Posts", icon: <FileText size={20} />, path: "/posts" },
+  { text: "Notes", icon: <MessageSquare size={20} />, path: "/notes" },
 ];
 
 const SideBar: React.FC = () => {
@@ -255,7 +250,7 @@ const SideBar: React.FC = () => {
                   disabled={sidebarFontSize <= 10}
                   aria-label="Decrease sidebar font size"
                 >
-                  <Remove sx={{ fontSize: "0.85em" }} />
+                  <Minus size={14} />
                 </IconButton>
               </span>
             </Tooltip>
@@ -284,7 +279,7 @@ const SideBar: React.FC = () => {
                   disabled={sidebarFontSize >= 24}
                   aria-label="Increase sidebar font size"
                 >
-                  <Add sx={{ fontSize: "0.85em" }} />
+                  <Plus size={14} />
                 </IconButton>
               </span>
             </Tooltip>

@@ -1,7 +1,7 @@
 "use client";
 import { actions, useDispatch } from "@/store";
 import { BackupDocument, UserDocument } from "@/types";
-import { Download } from "@mui/icons-material";
+import { Download } from "lucide-react";
 import {
   IconButton,
   ListItemIcon,

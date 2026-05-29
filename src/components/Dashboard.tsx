@@ -6,7 +6,7 @@ import Grid from "@mui/material/Grid2";
 import { Box, CircularProgress, Paper, Typography } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { PieChart } from "@mui/x-charts/PieChart";
-import { Cloud, Login, Storage } from "@mui/icons-material";
+import { Cloud, Database, LogIn } from "lucide-react";
 import { useStorageUsage } from "@/hooks/useStorageUsage";
 
 const Dashboard: React.FC = () => {
@@ -84,7 +84,7 @@ const StorageChart: React.FC = () => {
           {localStorageUsage.loading && <StorageEmptyState loading />}
           {!localStorageUsage.loading && !localStorageUsage.usage && (
             <StorageEmptyState
-              icon={<Storage sx={{ width: 64, height: 64, fontSize: 64 }} />}
+              icon={<Database size={64} />}
               label="Local storage is empty"
             />
           )}
@@ -141,13 +141,13 @@ const StorageChart: React.FC = () => {
           )}
           {initialized && !user && !cloudStorageUsage.loading && (
             <StorageEmptyState
-              icon={<Login sx={{ width: 64, height: 64, fontSize: 64 }} />}
+              icon={<LogIn size={64} />}
               label="Please login to use cloud storage"
             />
           )}
           {user && !cloudStorageUsage.loading && !cloudStorageUsage.usage && (
             <StorageEmptyState
-              icon={<Cloud sx={{ width: 64, height: 64, fontSize: 64 }} />}
+              icon={<Cloud size={64} />}
               label="Cloud storage is empty"
             />
           )}

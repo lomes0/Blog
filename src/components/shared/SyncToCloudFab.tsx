@@ -1,5 +1,5 @@
 "use client";
-import { CloudUpload } from "@mui/icons-material";
+import { CloudUpload } from "lucide-react";
 import { Fab, Tooltip } from "@mui/material";
 import { actions, documentsSelectors, useDispatch, useSelector } from "@/store";
 import { useRouter } from "next/navigation";

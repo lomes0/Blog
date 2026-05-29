@@ -3,7 +3,7 @@ import * as React from "react";
 import { ReactNode } from "react";
 import { alpha, SxProps, Theme } from "@mui/material/styles";
 import { Box, Card, CardActionArea, Tooltip } from "@mui/material";
-import { EditNote } from "@mui/icons-material";
+import { Pencil } from "lucide-react";
 import Link from "next/link";
 import { DocumentStatus } from "@/types";
 
@@ -118,13 +118,9 @@ const CardBase: React.FC<SimplifiedCardBaseProps> = ({
           {chipContent}
           {isDirty && (
             <Tooltip title="Unsaved changes" arrow placement="top">
-              <EditNote
-                sx={{
-                  fontSize: 16,
-                  color: "primary.main",
-                  opacity: 0.75,
-                  flexShrink: 0,
-                }}
+              <Pencil
+                size={16}
+                style={{ color: "var(--mui-palette-primary-main)", opacity: 0.75, flexShrink: 0 }}
               />
             </Tooltip>
           )}

@@ -1,6 +1,6 @@
 "use client";
 import { Box, Divider, IconButton, Tooltip, Typography } from "@mui/material";
-import { ZoomIn, ZoomOut } from "@mui/icons-material";
+import { ZoomIn, ZoomOut } from "lucide-react";
 import { NotesZoom } from "@/hooks/useNotesZoom";
 
 interface ZoomControlsProps {
@@ -33,7 +33,7 @@ export default function ZoomControls({ zoom }: ZoomControlsProps) {
               disabled={!canZoomOut}
               sx={{ borderRadius: 0, px: 0.5, height: "100%" }}
             >
-              <ZoomOut sx={{ fontSize: 15 }} />
+              <ZoomOut size={15} />
             </IconButton>
           </span>
         </Tooltip>
@@ -65,7 +65,7 @@ export default function ZoomControls({ zoom }: ZoomControlsProps) {
               disabled={!canZoomIn}
               sx={{ borderRadius: 0, px: 0.5, height: "100%" }}
             >
-              <ZoomIn sx={{ fontSize: 15 }} />
+              <ZoomIn size={15} />
             </IconButton>
           </span>
         </Tooltip>

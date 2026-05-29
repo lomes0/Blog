@@ -12,12 +12,7 @@ import {
   TextField,
   Tooltip,
 } from "@mui/material";
-import {
-  Add,
-  Delete,
-  DriveFileRenameOutline,
-  MoreHoriz,
-} from "@mui/icons-material";
+import { FilePen, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { CanvasSummary } from "@/types/notes";
 import { useRenameBoardState } from "./hooks/useRenameBoardState";
 import { useAddBoardState } from "./hooks/useAddBoardState";
@@ -56,7 +51,7 @@ function BoardContextMenu({
       slotProps={{ paper: { elevation: 2 } }}
     >
       <MenuItem onClick={onRenameClick} dense>
-        <DriveFileRenameOutline sx={{ fontSize: 16, mr: 1 }} />
+        <FilePen size={16} style={{ marginRight: 8 }} />
         Rename
       </MenuItem>
       <MenuItem
@@ -65,7 +60,7 @@ function BoardContextMenu({
         disabled={!canDelete}
         sx={{ color: canDelete ? "error.main" : undefined }}
       >
-        <Delete sx={{ fontSize: 16, mr: 1 }} />
+        <Trash2 size={16} style={{ marginRight: 8 }} />
         Delete
       </MenuItem>
     </Menu>
@@ -160,7 +155,7 @@ function AddBoardSection({
   return (
     <Tooltip title="New board">
       <IconButton size="small" onClick={onAddClick} sx={{ flexShrink: 0 }}>
-        <Add sx={{ fontSize: 18 }} />
+        <Plus size={18} />
       </IconButton>
     </Tooltip>
   );
@@ -304,7 +299,7 @@ export default function BoardSelector({
                         "&:hover": { opacity: 1 },
                       }}
                     >
-                      <MoreHoriz sx={{ fontSize: 14 }} />
+                      <MoreHorizontal size={14} />
                     </IconButton>
                   )}
                 </Box>

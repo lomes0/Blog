@@ -8,7 +8,7 @@ import {
   ListItemText,
   Typography,
 } from "@mui/material";
-import { ErrorOutline, WarningAmber } from "@mui/icons-material";
+import { AlertCircle, AlertTriangle } from "lucide-react";
 import type { ImportSummary } from "@/lib/export/manifest";
 
 export const ImportSummaryDisplay: React.FC<{ summary: ImportSummary }> = ({
@@ -23,7 +23,7 @@ export const ImportSummaryDisplay: React.FC<{ summary: ImportSummary }> = ({
     <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
       <Alert
         severity={hasErrors ? "warning" : "success"}
-        icon={hasErrors ? <WarningAmber /> : undefined}
+        icon={hasErrors ? <AlertTriangle /> : undefined}
       >
         <Typography variant="subtitle2" gutterBottom>
           Import complete
@@ -67,7 +67,7 @@ export const ImportSummaryDisplay: React.FC<{ summary: ImportSummary }> = ({
       )}
 
       {hasWarnings && (
-        <Alert severity="warning" icon={<WarningAmber />}>
+        <Alert severity="warning" icon={<AlertTriangle />}>
           <Typography variant="body2" fontWeight={500} gutterBottom>
             {summary.warnings.length} warning
             {summary.warnings.length !== 1 ? "s" : ""}
@@ -86,7 +86,7 @@ export const ImportSummaryDisplay: React.FC<{ summary: ImportSummary }> = ({
       )}
 
       {hasErrors && (
-        <Alert severity="error" icon={<ErrorOutline />}>
+        <Alert severity="error" icon={<AlertCircle />}>
           <Typography variant="body2" fontWeight={500} gutterBottom>
             {summary.errors.length} error
             {summary.errors.length !== 1 ? "s" : ""}

@@ -9,13 +9,7 @@ import {
   Collapse,
   Typography,
 } from "@mui/material";
-import {
-  CloudUpload,
-  Download,
-  ErrorOutline,
-  InfoOutlined,
-  UploadFile,
-} from "@mui/icons-material";
+import { AlertCircle, CloudUpload, Download, FileUp, Info } from "lucide-react";
 import { useExportImportActions } from "@/hooks/useExportImportActions";
 import { useAsyncOp } from "@/hooks/useAsyncOp";
 import type { ImportSummary } from "@/lib/export/manifest";
@@ -58,7 +52,7 @@ export const ImportTab: React.FC = () => {
           <Chip
             key={t}
             label={t === "cloud" ? "Cloud (database)" : "Local (this browser)"}
-            icon={t === "cloud" ? <CloudUpload /> : <Download />}
+            icon={t === "cloud" ? <CloudUpload size={18} /> : <Download size={18} />}
             variant={target === t ? "filled" : "outlined"}
             color={target === t ? "primary" : "default"}
             onClick={() => setTarget(t)}
@@ -67,7 +61,7 @@ export const ImportTab: React.FC = () => {
       </Box>
 
       {target === "cloud" && !user && (
-        <Alert severity="info" icon={<InfoOutlined />}>
+        <Alert severity="info" icon={<Info />}>
           Sign in to import into the cloud database.
         </Alert>
       )}
@@ -88,7 +82,7 @@ export const ImportTab: React.FC = () => {
           <Button
             component="span"
             variant="outlined"
-            startIcon={<UploadFile />}
+            startIcon={<FileUp />}
             disabled={op.loading}
           >
             Choose .zip file
@@ -119,7 +113,7 @@ export const ImportTab: React.FC = () => {
       </Box>
 
       <Collapse in={Boolean(op.error)}>
-        <Alert severity="error" icon={<ErrorOutline />}>
+        <Alert severity="error" icon={<AlertCircle />}>
           {op.error}
         </Alert>
       </Collapse>

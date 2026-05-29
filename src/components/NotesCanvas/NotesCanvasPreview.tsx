@@ -1,6 +1,6 @@
 "use client";
 import { alpha, Box, Typography } from "@mui/material";
-import { StickyNote2Outlined } from "@mui/icons-material";
+import { StickyNote } from "lucide-react";
 import StaticNoteCard from "./StaticNoteCard";
 import type { NotesCanvas as CanvasData } from "@/types/notes";
 
@@ -46,7 +46,7 @@ export default function NotesCanvasPreview(
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <StickyNote2Outlined sx={{ fontSize: 20, color: "text.secondary" }} />
+          <StickyNote size={20} style={{ color: "var(--mui-palette-text-secondary)" }} />
           <Typography
             variant="subtitle1"
             sx={{
@@ -101,7 +101,7 @@ export default function NotesCanvasPreview(
                 color: "text.secondary",
               }}
             >
-              <StickyNote2Outlined sx={{ fontSize: 48, opacity: 0.3 }} />
+              <StickyNote size={48} style={{ opacity: 0.3 }} />
               <Typography variant="body2" sx={{ opacity: 0.7 }}>
                 No notes yet
               </Typography>

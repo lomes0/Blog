@@ -8,7 +8,7 @@ import {
   InputBase,
   Typography,
 } from "@mui/material";
-import { ChevronRight } from "@mui/icons-material";
+import { ChevronRight } from "lucide-react";
 import { Series, User, UserDocument } from "@/types";
 import { formatRelativeDate } from "@/utils/dateFormat";
 import { ListDensity, TagStyle } from "../types";
@@ -199,11 +199,11 @@ export const SeriesRow = React.memo(function SeriesRow({
 
         {/* Chevron — direct flex sibling so it aligns with the gutter */}
         <ChevronRight
-          sx={{
-            fontSize: 16,
-            color: "text.secondary",
+          size={16}
+          style={{
+            color: "var(--mui-palette-text-secondary)",
             flexShrink: 0,
-            mr: 0.75,
+            marginRight: 6,
             transition: "transform 120ms",
             transform: isExpanded ? "rotate(90deg)" : "none",
           }}

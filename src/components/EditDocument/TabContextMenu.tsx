@@ -7,15 +7,7 @@ import {
   MenuItem,
   Typography,
 } from "@mui/material";
-import {
-  CallSplit,
-  ContentCopy,
-  Delete,
-  DriveFileMove,
-  DriveFileRenameOutline,
-  PushPin,
-  SwapVert,
-} from "@mui/icons-material";
+import { ArrowUpDown, Copy, FilePen, FolderInput, Pin, Split, Trash2 } from "lucide-react";
 
 interface TabContextMenuProps {
   anchorEl: HTMLElement | null;
@@ -56,7 +48,7 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
     >
       <MenuItem onClick={wrap(() => onRename(tabId))}>
         <ListItemIcon>
-          <DriveFileRenameOutline fontSize="small" />
+          <FilePen size={18} />
         </ListItemIcon>
         <ListItemText>Rename</ListItemText>
         <Typography variant="caption" color="text.disabled" sx={{ ml: 2 }}>
@@ -66,7 +58,7 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
 
       <MenuItem onClick={wrap(() => onDuplicate(tabId))}>
         <ListItemIcon>
-          <ContentCopy fontSize="small" />
+          <Copy size={18} />
         </ListItemIcon>
         <ListItemText>Duplicate tab</ListItemText>
         <Typography variant="caption" color="text.disabled" sx={{ ml: 2 }}>
@@ -77,7 +69,7 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
       {!isRoot && (
         <MenuItem onClick={wrap(() => onMove(tabId))}>
           <ListItemIcon>
-            <DriveFileMove fontSize="small" />
+            <FolderInput size={18} />
           </ListItemIcon>
           <ListItemText>Move to other post…</ListItemText>
         </MenuItem>
@@ -86,7 +78,7 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
       {!isRoot && (
         <MenuItem onClick={wrap(() => onSplitOff(tabId))}>
           <ListItemIcon>
-            <CallSplit fontSize="small" />
+            <Split size={18} />
           </ListItemIcon>
           <ListItemText>Split off as new post</ListItemText>
         </MenuItem>
@@ -96,14 +88,14 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
 
       <MenuItem disabled>
         <ListItemIcon>
-          <PushPin fontSize="small" />
+          <Pin size={18} />
         </ListItemIcon>
         <ListItemText>Pin tab</ListItemText>
       </MenuItem>
 
       <MenuItem disabled>
         <ListItemIcon>
-          <SwapVert fontSize="small" />
+          <ArrowUpDown size={18} />
         </ListItemIcon>
         <ListItemText>Reorder…</ListItemText>
       </MenuItem>
@@ -116,7 +108,7 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
         sx={{ color: isRoot ? undefined : "error.main" }}
       >
         <ListItemIcon>
-          <Delete fontSize="small" color={isRoot ? "disabled" : "error"} />
+          <Trash2 size={18} style={{ color: isRoot ? "var(--mui-palette-action-disabled)" : "var(--mui-palette-error-main)" }} />
         </ListItemIcon>
         <ListItemText>Delete tab</ListItemText>
         <Typography variant="caption" color="text.disabled" sx={{ ml: 2 }}>

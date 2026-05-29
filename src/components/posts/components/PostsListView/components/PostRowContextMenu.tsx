@@ -8,8 +8,7 @@ import {
   MenuItem,
   Tooltip,
 } from "@mui/material";
-import { MoreHoriz } from "@mui/icons-material";
-import { Pencil, Tag, Trash2 } from "lucide-react";
+import { MoreHorizontal, Pencil, Tag, Trash2 } from "lucide-react";
 
 interface PostRowContextMenuProps {
   /** Pass "series" to show series-specific items (no move-to-series). */
@@ -61,7 +60,7 @@ export function PostRowContextMenu({
           ...(open && { opacity: 1 }),
         }}
       >
-        <MoreHoriz sx={{ fontSize: 16 }} />
+        <MoreHorizontal size={16} />
       </IconButton>
       <Menu
         anchorEl={anchor}

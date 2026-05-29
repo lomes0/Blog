@@ -1,5 +1,5 @@
 "use client";
-import { Share } from "@mui/icons-material";
+import { CloudOff, Share2 } from "lucide-react";
 import {
   Box,
   Button,
@@ -15,7 +15,6 @@ import {
   Tabs,
   Typography,
 } from "@mui/material";
-import { CloudOff } from "@mui/icons-material";
 import { UserDocument } from "@/types";
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
@@ -77,7 +76,7 @@ const ShareDocument: React.FC<{
         ? (
           <MenuItem onClick={openShareDialog}>
             <ListItemIcon>
-              <Share />
+              <Share2 />
             </ListItemIcon>
             <ListItemText>Share</ListItemText>
           </MenuItem>
@@ -88,7 +87,7 @@ const ShareDocument: React.FC<{
             onClick={openShareDialog}
             size="small"
           >
-            <Share />
+            <Share2 />
           </IconButton>
         )}
       <Dialog
@@ -132,7 +131,7 @@ const ShareDocument: React.FC<{
                   gap: 2,
                 }}
               >
-                <CloudOff sx={{ width: 64, height: 64, fontSize: 64 }} />
+                <CloudOff size={64} />
                 <Typography variant="overline" component="p">
                   Please save document to the cloud first
                 </Typography>

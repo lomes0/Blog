@@ -1,6 +1,6 @@
 "use client";
 import { Avatar, Box, Chip, Divider, Typography } from "@mui/material";
-import { Info } from "@mui/icons-material";
+import { Info } from "lucide-react";
 import RouterLink from "next/link";
 import { documentsSelectors, useSelector } from "@/store";
 import type { RootState } from "@/store";
@@ -83,7 +83,7 @@ export default function PropertiesSection({
   return (
     <RailSection
       title="Properties"
-      icon={<Info fontSize="small" />}
+      icon={<Info size={18} />}
       iconLabel="Properties"
       defaultOpen={true}
     >

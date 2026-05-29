@@ -1,7 +1,7 @@
 "use client";
 import React, { useMemo, useState } from "react";
 import { Box, IconButton, List } from "@mui/material";
-import { Clear, Search } from "@mui/icons-material";
+import { Search, X } from "lucide-react";
 import type { SeriesGroupItem } from "@/utils/posts/seriesGrouping";
 import type { PostItemActions } from "./hooks/useSidebarActions";
 import { PostItem } from "./PostItem";
@@ -89,7 +89,8 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
           }}
         >
           <Search
-            sx={{ fontSize: "1em", color: "text.disabled", flexShrink: 0 }}
+            size={14}
+            style={{ color: "var(--mui-palette-text-disabled)", flexShrink: 0 }}
           />
           <Box
             component="input"
@@ -115,7 +116,7 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
               onClick={() => setActivePostsSearch("")}
               sx={{ p: 0.25, opacity: 0.6, "&:hover": { opacity: 1 } }}
             >
-              <Clear sx={{ fontSize: "0.9em" }} />
+              <X size={14} />
             </IconButton>
           )}
         </Box>

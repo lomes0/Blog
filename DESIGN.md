@@ -330,6 +330,47 @@ and `src/components/Layout/ThemeProvider.tsx`.
 
 ---
 
+## 16. Icons
+
+This project uses **`lucide-react`** for all icons.
+
+```tsx
+import { IconName } from 'lucide-react'
+```
+
+### Size
+
+| Context | Prop |
+|---|---|
+| Default UI (buttons, menus, dialogs) | omit — defaults to `24` |
+| Dense UI (toolbars, chips, table rows) | `size={18}` |
+| Large decorative | `size={32}` |
+
+### Color
+
+Lucide icons inherit `currentColor` from their parent by default — no prop
+needed in most cases. For explicit color overrides, pass `style`:
+
+```tsx
+<AlertCircle style={{ color: 'var(--mui-palette-error-main)' }} />
+```
+
+Do **not** use MUI `color` prop values — they do not apply to lucide icons.
+
+### Stroke width
+
+Default is `2`. Use `strokeWidth={1.5}` only for large decorative icons (e.g.
+empty-state illustrations). Never change stroke width in dense UI.
+
+### Migration note
+
+`SvgIcon` from `@mui/material` (not `@mui/icons-material`) remains in use in
+`src/editor/plugins/ToolbarPlugin/Tools/TableTools.tsx` for 31 custom Google
+Material Symbols paths. This is intentional. The `@mui/icons-material` package
+has been removed; `@mui/material` stays.
+
+---
+
 ## 15. Quick-Reference Cheat Sheet
 
 ```

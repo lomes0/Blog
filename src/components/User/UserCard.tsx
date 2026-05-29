@@ -17,7 +17,8 @@ import {
   Skeleton,
   Typography,
 } from "@mui/material";
-import { Google, Share } from "@mui/icons-material";
+import { Share2 } from "lucide-react";
+import GoogleIcon from "./GoogleIcon";
 
 const UserCard: React.FC<{ user?: User; showActions?: boolean }> = memo(
   ({ user, showActions }) => {
@@ -109,7 +110,7 @@ const UserCard: React.FC<{ user?: User; showActions?: boolean }> = memo(
             {showLogin && (
               <Button
                 size="small"
-                startIcon={<Google />}
+                startIcon={<GoogleIcon />}
                 onClick={login}
               >
                 <Typography
@@ -132,7 +133,7 @@ const UserCard: React.FC<{ user?: User; showActions?: boolean }> = memo(
                   aria-label="Share"
                   onClick={handleShare}
                 >
-                  <Share />
+                  <Share2 size={18} />
                 </IconButton>
               )}
             </Box>

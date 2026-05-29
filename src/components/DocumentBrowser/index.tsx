@@ -2,7 +2,7 @@
 import { documentsSelectors, useSelector } from "@/store";
 import { useMemo, useState } from "react";
 import { Box, Container, Fade } from "@mui/material";
-import { PostAdd } from "@mui/icons-material";
+import { FilePlus } from "lucide-react";
 import { UserDocument } from "@/types";
 import { sortDocuments } from "../DocumentControls/sortDocuments";
 import DocumentGrid from "../DocumentGrid";
@@ -127,13 +127,9 @@ const DocumentBrowser: React.FC<DocumentBrowserProps> = () => {
                 ? (
                   <EmptyState
                     icon={
-                      <PostAdd
-                        sx={{
-                          width: 64,
-                          height: 64,
-                          color: "text.secondary",
-                          opacity: 0.6,
-                        }}
+                      <FilePlus
+                        size={64}
+                        style={{ color: "var(--mui-palette-text-secondary)", opacity: 0.6 }}
                       />
                     }
                     title="No blog posts yet"

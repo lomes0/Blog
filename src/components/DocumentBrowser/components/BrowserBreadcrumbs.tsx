@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { Breadcrumbs, Typography } from "@mui/material";
-import { LibraryBooks } from "@mui/icons-material";
+import { BookOpen } from "lucide-react";
 
 /**
  * Breadcrumb navigation component for the blog browser
@@ -24,7 +24,7 @@ const BrowserBreadcrumbs: React.FC = () => {
           },
         }}
       >
-        <LibraryBooks sx={{ mr: 0.5, fontSize: "inherit" }} />
+        <BookOpen style={{ marginRight: 4 }} />
         Blog Posts
       </Typography>
     </Breadcrumbs>

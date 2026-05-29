@@ -1,5 +1,5 @@
 "use client";
-import { Cached } from "@mui/icons-material";
+import { RefreshCcw } from "lucide-react";
 import { Box, IconButton, Link, Typography } from "@mui/material";
 import RouterLink from "next/link";
 import { usePathname } from "next/navigation";
@@ -62,7 +62,7 @@ const FooterWithFloatingAction: React.FC = () => {
             }`,
             }}
           />
-          <Cached />
+          <RefreshCcw />
         </IconButton>
         <Typography variant="button">
           <Link
