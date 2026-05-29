@@ -16,7 +16,7 @@ import NotesCanvas, { NotesCanvasHandle } from "../NotesCanvas";
 import KanbanBoard from "./KanbanBoard";
 import ReadmeViewer from "./ReadmeViewer";
 import { CardErrorBoundary } from "@/components/ErrorBoundary";
-import { StickyNote } from "lucide-react";
+import { SquarePen, StickyNote } from "lucide-react";
 import { useNotesBoards } from "@/hooks/useNotesBoards";
 import { useNotesZoom } from "@/hooks/useNotesZoom";
 import BoardSelector from "../NotesCanvas/BoardSelector";
@@ -153,8 +153,8 @@ const Home: React.FC<{
                           transition: "all 0.15s ease",
                         }}
                       >
-                        <StickyNote size={14} />
-                        + Add note
+                        <SquarePen size={14} />
+                        Add note
                       </Box>
                     </Tooltip>
 

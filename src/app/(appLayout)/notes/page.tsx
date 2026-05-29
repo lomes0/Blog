@@ -6,7 +6,7 @@ import { NOTE_COLOR_LIST, NOTE_COLORS, NOTE_SWATCH_COLORS } from "@/components/N
 import { useNotesBoards } from "@/hooks/useNotesBoards";
 import { useNotesZoom } from "@/hooks/useNotesZoom";
 import { Box, Divider, Popover, Tooltip } from "@mui/material";
-import { StickyNote } from "lucide-react";
+import { SquarePen, StickyNote } from "lucide-react";
 import { useRef, useState } from "react";
 import { NotesClipboardProvider } from "@/contexts/NotesClipboardContext";
 
@@ -82,8 +82,8 @@ export default function NotesPage() {
                 transition: "all 0.15s ease",
               }}
             >
-              <StickyNote size={14} />
-              + Add note
+              <SquarePen size={14} />
+              Add note
             </Box>
           </Tooltip>
 
