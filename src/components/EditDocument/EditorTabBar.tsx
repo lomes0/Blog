@@ -105,7 +105,7 @@ const TabItem: React.FC<TabItemProps> = ({
             px: 1.5,
             py: 0.75,
             minWidth: 80,
-            maxWidth: 180,
+            maxWidth: 200,
             cursor: "pointer",
             userSelect: "none",
             bgcolor: isActive
@@ -166,7 +166,7 @@ const TabItem: React.FC<TabItemProps> = ({
                   borderRadius: 0.5,
                   bgcolor: "background.paper",
                   color: "text.primary",
-                  fontSize: "0.8rem",
+                  fontSize: "0.85rem",
                   fontFamily: "inherit",
                   px: 0.5,
                   py: 0,
@@ -184,7 +184,7 @@ const TabItem: React.FC<TabItemProps> = ({
                 sx={{
                   flex: 1,
                   minWidth: 0,
-                  fontSize: "0.8rem",
+                  fontSize: "0.85rem",
                   fontWeight: isActive ? 600 : 400,
                   color: isActive ? "text.primary" : "text.secondary",
                 }}
@@ -287,6 +287,10 @@ const EditorTabBar: React.FC<EditorTabBarProps> = ({
         borderBottom: "1px solid",
         borderColor: "divider",
         bgcolor: "background.paper",
+        mb: 2,
+        ml: { xs: -5, sm: -10, md: -12 },
+        mr: { xs: -4, sm: -6, md: -8 },
+        pl: 2,
         overflowX: "auto",
         overflowY: "hidden",
         flexShrink: 0,
