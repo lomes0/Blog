@@ -3,12 +3,15 @@ import { Box, Typography } from "@mui/material";
 import { useNotesStore } from "@/hooks/useNotesStore";
 import { useCanvasZoomShortcuts } from "@/hooks/useCanvasZoomShortcuts";
 import DraggableNote from "./DraggableNote";
-import NotesToolbar from "./NotesToolbar";
 import NotesCanvasPreview from "./NotesCanvasPreview";
 import NotesMigrationBanner from "./NotesMigrationBanner";
 import PasteButton from "./PasteButton";
 import { NOTES_ZOOM_DEFAULT } from "@/hooks/useNotesZoom";
-import { useCallback, useEffect, useRef } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from "react";
+
+export interface NotesCanvasHandle {
+  addNote: (color: string) => void;
+}
 
 // Virtual canvas dimensions for consistent coordinate system
 const VIRTUAL_CANVAS_WIDTH = 1920;
@@ -25,7 +28,7 @@ interface NotesCanvasProps {
   onResetZoom?: () => void;
 }
 
-export default function NotesCanvas(
+const NotesCanvas = forwardRef<NotesCanvasHandle, NotesCanvasProps>(function NotesCanvas(
   {
     preview = false,
     onViewFull,
@@ -34,7 +37,8 @@ export default function NotesCanvas(
     onZoomIn,
     onZoomOut,
     onResetZoom,
-  }: NotesCanvasProps,
+  },
+  ref,
 ) {
   const {
     canvas,
@@ -84,13 +88,7 @@ export default function NotesCanvas(
     [addNote, canvas, scale],
   );
 
-  const handleClearAll = useCallback(() => {
-    if (
-      canvas && window.confirm("Are you sure you want to delete all notes?")
-    ) {
-      canvas.notes.forEach((note) => deleteNote(note.id));
-    }
-  }, [canvas, deleteNote]);
+  useImperativeHandle(ref, () => ({ addNote: handleAddNote }), [handleAddNote]);
 
   // Refresh notes when in preview mode
   useEffect(() => {
@@ -158,10 +156,6 @@ export default function NotesCanvas(
           overflow: "hidden",
         }}
       >
-        <NotesToolbar
-          onAddNote={handleAddNote}
-          onClearAll={handleClearAll}
-        />
         <PasteButton addNote={addNote} canvas={canvas} />
 
         <Box
@@ -218,4 +212,6 @@ export default function NotesCanvas(
       </Box>
     </>
   );
-}
+});
+
+export default NotesCanvas;
