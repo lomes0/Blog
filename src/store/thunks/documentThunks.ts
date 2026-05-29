@@ -1,5 +1,4 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import NProgress from "nprogress";
 import documentDB, { revisionDB } from "@/indexeddb";
 import {
   AppState,
@@ -72,7 +71,6 @@ export const loadCloudDocuments = createAsyncThunk(
   "app/loadCloudDocuments",
   async (arg: Document[] | undefined, thunkAPI) => {
     try {
-      NProgress.start();
       if (arg) {
         return thunkAPI.fulfillWithValue(arg);
       }
@@ -84,8 +82,6 @@ export const loadCloudDocuments = createAsyncThunk(
         title: "Something went wrong",
         subtitle: toErrorMessage(error),
       });
-    } finally {
-      NProgress.done();
     }
   },
 );
@@ -119,7 +115,6 @@ export const getCloudDocument = createAsyncThunk(
   "app/getCloudDocument",
   async (id: string, thunkAPI) => {
     try {
-      NProgress.start();
       const data = await apiClient.documents.get(id);
       if (!data) {
         return thunkAPI.rejectWithValue({
@@ -134,8 +129,6 @@ export const getCloudDocument = createAsyncThunk(
         title: "Something went wrong",
         subtitle: toErrorMessage(error),
       });
-    } finally {
-      NProgress.done();
     }
   },
 );
@@ -192,7 +185,6 @@ export const forkCloudDocument = createAsyncThunk(
   ) => {
     try {
       const { id, revisionId } = arg;
-      NProgress.start();
       const data = await apiClient.documents.fork(id, revisionId);
       if (!data) {
         return thunkAPI.rejectWithValue({
@@ -207,8 +199,6 @@ export const forkCloudDocument = createAsyncThunk(
         title: "Something went wrong",
         subtitle: toErrorMessage(error),
       });
-    } finally {
-      NProgress.done();
     }
   },
 );
@@ -260,7 +250,6 @@ export const createCloudDocument = createAsyncThunk(
   "app/createCloudDocument",
   async (arg: DocumentCreateInput, thunkAPI) => {
     try {
-      NProgress.start();
       const data = await apiClient.documents.create(arg);
       if (!data) {
         return thunkAPI.rejectWithValue({
@@ -275,8 +264,6 @@ export const createCloudDocument = createAsyncThunk(
         title: "Something went wrong",
         subtitle: toErrorMessage(error),
       });
-    } finally {
-      NProgress.done();
     }
   },
 );
@@ -337,7 +324,6 @@ export const updateCloudDocument = createAsyncThunk(
     thunkAPI,
   ) => {
     try {
-      NProgress.start();
       const { id, partial } = arg;
       const data = await apiClient.documents.update(id, partial);
       if (!data) {
@@ -353,8 +339,6 @@ export const updateCloudDocument = createAsyncThunk(
         title: "Something went wrong",
         subtitle: toErrorMessage(error),
       });
-    } finally {
-      NProgress.done();
     }
   },
 );
@@ -380,7 +364,6 @@ export const deleteCloudDocument = createAsyncThunk(
   "app/deleteCloudDocument",
   async (id: string, thunkAPI) => {
     try {
-      NProgress.start();
       const data = await apiClient.documents.delete(id);
       if (!data) {
         return thunkAPI.rejectWithValue({
@@ -395,8 +378,6 @@ export const deleteCloudDocument = createAsyncThunk(
         title: "Something went wrong",
         subtitle: toErrorMessage(error),
       });
-    } finally {
-      NProgress.done();
     }
   },
 );
@@ -413,7 +394,6 @@ export const syncLocalToCloud = createAsyncThunk(
     thunkAPI,
   ) => {
     try {
-      NProgress.start();
       const { id, localHead, updatedAt, parentId } = payload;
 
       const localDoc = await documentDB.getByID(id);
@@ -455,8 +435,6 @@ export const syncLocalToCloud = createAsyncThunk(
         title: "Something went wrong",
         subtitle: toErrorMessage(error),
       });
-    } finally {
-      NProgress.done();
     }
   },
 );

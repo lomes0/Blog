@@ -41,6 +41,7 @@ import {
   updateUser,
 } from "./app";
 import { Action, configureStore, ThunkAction } from "@reduxjs/toolkit";
+import { nprogressMiddleware } from "./nprogressMiddleware";
 
 export const actions = {
   ...appSlice.actions,
@@ -87,7 +88,11 @@ export const actions = {
   deleteSeries,
 };
 
-export const store = configureStore({ reducer: appSlice.reducer });
+export const store = configureStore({
+  reducer: appSlice.reducer,
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware().concat(nprogressMiddleware),
+});
 
 export type AppDispatch = typeof store.dispatch;
 export type RootState = ReturnType<typeof store.getState>;

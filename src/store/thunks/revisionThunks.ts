@@ -1,5 +1,4 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import NProgress from "nprogress";
 import { revisionDB } from "@/indexeddb";
 import { CloudDocumentRevision, EditorDocumentRevision } from "@/types";
 import { apiClient } from "@/api";
@@ -49,7 +48,6 @@ export const getCloudRevision = createAsyncThunk(
   "app/getCloudRevision",
   async (id: string, thunkAPI) => {
     try {
-      NProgress.start();
       const data = await apiClient.revisions.get(id);
       if (!data) {
         return thunkAPI.rejectWithValue({
@@ -64,8 +62,6 @@ export const getCloudRevision = createAsyncThunk(
         title: "Something went wrong",
         subtitle: toErrorMessage(error),
       });
-    } finally {
-      NProgress.done();
     }
   },
 );
@@ -114,7 +110,6 @@ export const createCloudRevision = createAsyncThunk(
   "app/createCloudRevision",
   async (revision: EditorDocumentRevision, thunkAPI) => {
     try {
-      NProgress.start();
       const data = await apiClient.revisions.create(revision);
       if (!data) {
         return thunkAPI.rejectWithValue({
@@ -129,8 +124,6 @@ export const createCloudRevision = createAsyncThunk(
         title: "Something went wrong",
         subtitle: toErrorMessage(error),
       });
-    } finally {
-      NProgress.done();
     }
   },
 );
@@ -155,7 +148,6 @@ export const deleteCloudRevision = createAsyncThunk(
   "app/deleteCloudRevision",
   async (arg: { id: string; documentId: string }, thunkAPI) => {
     try {
-      NProgress.start();
       const data = await apiClient.revisions.delete(arg.id);
       if (!data) {
         return thunkAPI.rejectWithValue({
@@ -170,8 +162,6 @@ export const deleteCloudRevision = createAsyncThunk(
         title: "Something went wrong",
         subtitle: toErrorMessage(error),
       });
-    } finally {
-      NProgress.done();
     }
   },
 );

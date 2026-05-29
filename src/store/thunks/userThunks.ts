@@ -1,6 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { Alert, User } from "@/types";
-import NProgress from "nprogress";
 import { apiClient } from "@/api";
 
 const toErrorMessage = (error: unknown): string =>
@@ -13,7 +12,6 @@ export const updateUser = createAsyncThunk(
     thunkAPI,
   ) => {
     try {
-      NProgress.start();
       const { id, partial } = arg;
       const data = await apiClient.users.update(id, partial);
       if (!data) {
@@ -30,8 +28,6 @@ export const updateUser = createAsyncThunk(
         title: "Something went wrong",
         subtitle: toErrorMessage(error),
       });
-    } finally {
-      NProgress.done();
     }
   },
 );
