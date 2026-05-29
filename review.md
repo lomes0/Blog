@@ -1,16 +1,3 @@
-## Critical
-
-**1. God Object — app.ts (1,381 lines)**
-A single file owns ~30 async thunks spanning IndexedDB, cloud API, revisions, series, user ops, storage, *and* all UI state (tabs, drawer, pagination, diffs). It's completely untestable in isolation and will keep growing.
-
-**2. UI side-effects inside Redux thunks — app.ts**
-`NProgress.start()` / `NProgress.done()` is called 21 times directly inside thunks. Progress-bar state should be driven by middleware watching loading flags, not scattered through data-fetching code.
-
-**3. Dead database query in `findDocument` — document.ts**
-Lines 141–145 execute a `prisma.document.findFirst` whose return value is immediately discarded, then lines 147+ run a nearly identical second query. Every document GET pays two DB round-trips when one would do.
-
----
-
 ## Major
 
 **4. 30+ copy-pasted `try/catch` blocks — app.ts**

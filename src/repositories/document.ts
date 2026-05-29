@@ -137,12 +137,6 @@ const findDocument = async (
   handle: string,
   revisions?: "all" | string | null,
 ) => {
-  // First, let's check if the document exists at all (without type filter)
-  await prisma.document.findFirst({
-    where: validate(handle) ? { id: handle } : { handle: handle.toLowerCase() },
-    select: { id: true, name: true, type: true },
-  });
-
   const doc = await prisma.document.findFirst({
     where: {
       AND: [
