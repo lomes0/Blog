@@ -31,18 +31,23 @@ The AI does not execute tools directly against the database or file system.
 Tools are editor mutations defined on the client. The flow:
 
 1. Client sends `{ messages, documentContext, documentTitle }` to `/api/copilot`
-2. Server calls Claude (via AI SDK) with tool definitions in the request
+2. Server calls Claude (via AI SDK `streamText`) with tool definitions — **no
+   `execute` functions**; the server is a planner only
 3. Claude either responds with text, or calls one or more tools
-4. Server-side tool calls are **collected**, not executed — the server responds
-   to Claude with `{ success: true }` so Claude can continue its reply
-5. Server streams back the assistant's final text response, and appends a
-   `<tool-calls>` JSON block at the end of the stream
-6. Client renders the streamed text, parses the tool calls, and shows an
-   **Apply** button on the message
-7. Clicking Apply runs the tool executors against `editorRef.current`
+4. Tool calls stream back to the client as first-class AI SDK stream parts
+   (not a sentinel string hack)
+5. Client renders the streamed text; pending tool invocations accumulate in
+   `message.toolInvocations` with `state: "call"`
+6. The message shows an **Apply** button listing the pending actions
+7. Clicking Apply:
+   a. Runs the tool executors against `editorRef` from `ActiveEditorContext`
+   b. Calls `addToolResult` for each invocation, which sends the results back
+      to the server and triggers the next model step (agentic continuation)
+8. Clicking Dismiss drops the pending invocations without calling `addToolResult`
 
-This keeps the Lexical mutations on the client where they belong, while letting
-Claude plan and sequence multiple actions in a single turn.
+This keeps Lexical mutations on the client, uses the AI SDK's native tool-call
+stream format (no sentinel), gives users explicit control before mutations fire,
+and preserves multi-step agentic behavior through `addToolResult`.
 
 ---
 
@@ -52,6 +57,9 @@ Claude plan and sequence multiple actions in a single turn.
 src/
 ├── app/api/copilot/
 │   └── route.ts                        Stage 2 — new API route
+│
+├── contexts/
+│   └── ActiveEditorContext.ts          Stage 5 — editor ref context
 │
 ├── editor/
 │   ├── utils/
@@ -64,22 +72,22 @@ src/
 ├── components/
 │   └── CopilotPanel/                   Stages 5–6 — UI
 │       ├── CopilotPanel.tsx            panel shell + layout
-│       ├── CopilotChat.tsx             message list + input
+│       ├── CopilotChat.tsx             useChat + message list + input
 │       ├── CopilotMessage.tsx          single message + Apply
 │       └── QuickActions.tsx            chip shortcuts
 │
 └── store/
-    └── app.ts                          Stage 3 — Redux copilot slice
+    └── app.ts                          Stage 3 — add ui.copilot.open only
 ```
 
 Existing files modified:
 
 | File                                                   | Change                                   |
 | ------------------------------------------------------ | ---------------------------------------- |
-| `src/components/EditDocument/TabbedDocumentEditor.tsx` | Add split layout, track active editorRef |
+| `src/components/EditDocument/TabbedDocumentEditor.tsx` | Add split layout, set ActiveEditorContext |
 | `src/components/EditDocument/EditorTabPanel.tsx`       | Expose editorRef via callback prop       |
 | `src/editor/plugins/ToolbarPlugin/index.tsx`           | Add copilot toggle button                |
-| `src/store/app.ts`                                     | Add `ui.copilot` state                   |
+| `src/store/app.ts`                                     | Add `ui.copilot.open: boolean` only      |
 | `src/lib/ai/prompts.ts`                                | Add copilot system prompt                |
 
 ---
@@ -140,8 +148,9 @@ truncate body paragraphs to their first sentence and note `[truncated]`.
 ## Stage 2 — API Route
 
 **Goal:** An endpoint that accepts the chat thread plus document context, runs
-the Claude tool-use agentic loop server-side, and streams back the final text
-along with collected tool calls.
+the Claude tool-use agentic loop server-side, and streams back text and tool
+calls as AI SDK data stream parts. No sentinel hacks, no `collectedActions`
+array — tool calls are first-class stream events.
 
 **New file:** `src/app/api/copilot/route.ts`
 
@@ -150,14 +159,19 @@ export const runtime = "edge";
 export const POST = withApiHandler(async (req: Request) => { ... });
 ```
 
+**Edge runtime note:** Before shipping, verify all AI provider adapters used
+by this codebase have no Node-only deps (`fs`, `path`, Node-specific `crypto`,
+etc.). Any provider using a Node SDK will fail silently on Vercel Edge. Use
+`export const runtime = "nodejs"` as a fallback if needed.
+
 ### Request body
 
 ```ts
 {
-  messages: { role: "user" | "assistant"; content: string }[];
+  messages: CoreMessage[];       // AI SDK message format (includes toolInvocations)
   documentTitle: string;
-  documentContext: string;   // output of serializeForCopilot()
-  selectedText?: string;     // if user has a selection active
+  documentContext: string;       // output of serializeForCopilot()
+  selectedText?: string;         // if user has a selection active
   provider: AIProviderType;
   model: string;
 }
@@ -166,7 +180,8 @@ export const POST = withApiHandler(async (req: Request) => { ... });
 ### Tool definitions passed to Claude
 
 Defined as Vercel AI SDK `tools` objects. Each has a `description` and
-`parameters` (Zod schema).
+`parameters` (Zod schema). **No `execute` functions** — execution happens on
+the client via `addToolResult`.
 
 ```ts
 const editorTools = {
@@ -226,7 +241,10 @@ const editorTools = {
     parameters: z.object({ afterNodeKey: z.string().optional() }),
   },
   replace_text: {
-    description: "Replace the text content of a paragraph or heading node",
+    description:
+      "Replace the text content of a paragraph or heading node. " +
+      "WARNING: This destroys inline formatting (bold, italic, links). " +
+      "Only use on plain-text nodes.",
     parameters: z.object({ nodeKey: z.string(), newText: z.string() }),
   },
   replace_selection: {
@@ -236,50 +254,22 @@ const editorTools = {
 };
 ```
 
-### Agentic loop
-
-Use AI SDK `streamText` with `maxSteps: 5` (prevents infinite loops). The SDK
-handles the agentic loop automatically — when Claude calls a tool, the SDK calls
-our `execute` function, waits for the result, and passes it back to Claude for
-the next step.
-
-Since the actual execution happens on the client, the server-side `execute`
-functions are stubs that return a confirmation string. The real goal is to
-collect the tool calls so they can be sent to the client.
+### Route handler
 
 ```ts
-const collectedActions: EditorAction[] = [];
-
 const result = streamText({
   model: modelInstance,
-  messages: buildMessages(body),
-  tools: Object.fromEntries(
-    Object.entries(editorTools).map(([name, tool]) => [
-      name,
-      {
-        ...tool,
-        execute: async (params) => {
-          collectedActions.push({ type: name, params });
-          return { success: true };
-        },
-      },
-    ]),
-  ),
+  system: COPILOT_SYSTEM_PROMPT(body.documentTitle, body.documentContext, body.selectedText),
+  messages: body.messages,
+  tools: editorTools,
   maxSteps: 5,
 });
+
+return result.toDataStreamResponse();
 ```
 
-### Response format
-
-Stream the text response normally. After the text stream ends, append a sentinel
-line with the serialized tool calls:
-
-```
-\n\n__COPILOT_ACTIONS__:{"actions":[{"type":"insert_table","params":{...}}]}
-```
-
-The client strips this line from the displayed message and parses it separately.
-This avoids a second round-trip or a custom streaming protocol.
+No `execute` stubs, no `collectedActions`. The AI SDK handles the data stream
+format. Tool calls arrive at the client as structured `toolCall` parts.
 
 ### System prompt
 
@@ -296,47 +286,30 @@ export const COPILOT_SYSTEM_PROMPT = (
   `\n\nDocument structure:\n${context}` +
   (selection ? `\n\nThe user currently has selected: "${selection}"` : "") +
   `\n\nWhen the user asks you to make an edit, use the available tools to do so. ` +
+  `Before calling tools, briefly describe what changes you will make (e.g. ` +
+  `"I'll insert a 3×4 table after the Introduction heading and add a Summary section."). ` +
   `After calling tools, confirm briefly what you did. ` +
   `When answering questions, respond concisely without calling tools.`;
 ```
+
+Asking Claude to narrate its planned changes before calling tools gives the
+Apply button context to display.
 
 ---
 
 ## Stage 3 — Redux State
 
-**Goal:** Track panel open/closed state and per-document message threads in the
-existing Redux slice.
+**Goal:** Track panel open/closed state only. Message threads are owned by
+`useChat` (local React state), not Redux. This eliminates the message reducers
+and keeps the store small.
 
-### Types to add in `src/types.ts`
-
-```ts
-export type CopilotAction = {
-  type: string;
-  params: Record<string, unknown>;
-};
-
-export type CopilotMessage = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  actions?: CopilotAction[]; // present on assistant messages after Apply is available
-  applied?: boolean; // true once Apply has been clicked
-  timestamp: number;
-};
-
-export type CopilotThread = {
-  messages: CopilotMessage[];
-};
-```
-
-### Additions to `AppState.ui` in `src/store/app.ts`
+### Addition to `AppState.ui` in `src/store/app.ts`
 
 ```ts
 ui: {
   // ... existing fields
   copilot: {
     open: boolean;
-    threads: Record<string, CopilotThread>; // keyed by documentId
   }
 }
 ```
@@ -346,21 +319,29 @@ Initial state:
 ```ts
 copilot: {
   open: false,
-  threads: {},
 }
 ```
 
-### Reducers to add
+### Reducer to add
 
 ```ts
 setCopilotOpen(state, action: PayloadAction<boolean>)
-addCopilotMessage(state, action: PayloadAction<{ documentId: string; message: CopilotMessage }>)
-updateCopilotMessage(state, action: PayloadAction<{ documentId: string; messageId: string; patch: Partial<CopilotMessage> }>)
-clearCopilotThread(state, action: PayloadAction<string>)   // by documentId
 ```
 
-No persistence — threads live in-memory only. They reset on page refresh.
-Per-document threads survive tab switches within the same session.
+No `addCopilotMessage`, `updateCopilotMessage`, or `clearCopilotThread` —
+`useChat` handles all of that.
+
+### Types to add in `src/types.ts`
+
+```ts
+export type CopilotAction = {
+  type: string;
+  params: Record<string, unknown>;
+};
+```
+
+`CopilotMessage` and `CopilotThread` are not needed — use the AI SDK's
+`Message` type from `ai/react`.
 
 ---
 
@@ -405,6 +386,10 @@ editor.update(() => {
 ```
 
 **`replace_text`**
+
+Replaces content with a new plain-text paragraph. **Known limitation:** destroys
+all inline formatting (bold, italic, links) on the original node. Only safe on
+nodes that are confirmed plain-text. A formatting-aware version is deferred.
 
 ```ts
 editor.update(() => {
@@ -506,8 +491,7 @@ function insertAfterNodeOrAtEnd(node: LexicalNode, afterNodeKey?: string) {
 }
 ```
 
-**Dispatcher:** A single `applyActions` function iterates the action list and
-calls the right executor:
+**Dispatcher:**
 
 ```ts
 export function applyActions(
@@ -522,59 +506,69 @@ export function applyActions(
 
 ---
 
-## Stage 5 — Panel Shell and Layout
+## Stage 5 — Panel Shell, Layout, and Editor Context
 
-**Goal:** Add the Copilot panel to the editor layout and wire the toggle button.
+**Goal:** Add the Copilot panel to the editor layout, wire the toggle button,
+and expose the active editor ref via React context so components don't need
+prop drilling.
+
+### New file: `src/contexts/ActiveEditorContext.ts`
+
+```ts
+import { createContext } from "react";
+import type { RefObject } from "react";
+import type { LexicalEditor } from "lexical";
+
+export const ActiveEditorContext = createContext<RefObject<LexicalEditor | null>>(
+  { current: null },
+);
+```
 
 ### Layout change in `TabbedDocumentEditor`
 
-The current layout is a flex column. When `ui.copilot.open` is true, wrap the
-tab panels in a flex row so the copilot panel sits to the right.
+When `ui.copilot.open` is true, wrap the tab panels in a flex row so the copilot
+panel sits to the right. Set `ActiveEditorContext` when the active tab changes.
 
 ```tsx
-// TabbedDocumentEditor.tsx
 const copilotOpen = useSelector((state) => state.ui.copilot.open);
 const [activeEditorRef, setActiveEditorRef] =
   useState<React.RefObject<LexicalEditor | null>>(() => ({ current: null }));
 
-// Pass the active editorRef up from EditorTabPanel
 const handleEditorReady = useCallback(
   (ref: React.RefObject<LexicalEditor | null>) => {
     setActiveEditorRef(ref);
   },
-  []
+  [],
 );
 
 return (
-  <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-    <EditorTabBar ... />
+  <ActiveEditorContext.Provider value={activeEditorRef}>
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <EditorTabBar ... />
 
-    <Box sx={{ display: "flex", flex: 1, overflow: "hidden" }}>
-      {/* Tab panels */}
-      <Box sx={{ flex: 1, overflow: "hidden" }}>
-        {tabs.tabIds.map((tabId) => (
-          <EditorTabPanel
-            key={tabId}
-            ...
-            isActive={tabId === tabs.activeTabId}
-            onEditorReady={tabId === tabs.activeTabId ? handleEditorReady : undefined}
-          />
-        ))}
+      <Box sx={{ display: "flex", flex: 1, overflow: "hidden" }}>
+        <Box sx={{ flex: 1, overflow: "hidden" }}>
+          {tabs.tabIds.map((tabId) => (
+            <EditorTabPanel
+              key={tabId}
+              ...
+              isActive={tabId === tabs.activeTabId}
+              onEditorReady={tabId === tabs.activeTabId ? handleEditorReady : undefined}
+            />
+          ))}
+        </Box>
+
+        {copilotOpen && (
+          <CopilotPanel documentId={tabs.activeTabId ?? ""} />
+        )}
       </Box>
-
-      {/* Copilot panel */}
-      {copilotOpen && (
-        <CopilotPanel
-          documentId={tabs.activeTabId ?? ""}
-          editorRef={activeEditorRef}
-        />
-      )}
     </Box>
-
-    {/* dialogs unchanged */}
-  </Box>
+  </ActiveEditorContext.Provider>
 );
 ```
+
+Note: `CopilotPanel` no longer receives `editorRef` as a prop — it reads it
+from `ActiveEditorContext`.
 
 ### Change in `EditorTabPanel`
 
@@ -586,7 +580,6 @@ interface EditorTabPanelProps {
   onEditorReady?: (ref: React.RefObject<LexicalEditor | null>) => void;
 }
 
-// Inside the component, after editorRef is defined:
 useEffect(() => {
   if (isActive) onEditorReady?.(editorRef);
 }, [isActive, onEditorReady]);
@@ -594,13 +587,11 @@ useEffect(() => {
 
 ### Toggle button in `ToolbarPlugin`
 
-Add a `SmartToyOutlined` (or `AutoAwesome`) icon button at the far right of the
-toolbar. Dispatches `actions.setCopilotOpen(!copilotOpen)`.
+Add a `SmartToyOutlined` icon button at the far right of the toolbar.
 
 ```tsx
 import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
 
-// In toolbar JSX, right-aligned:
 <Tooltip title="Copilot">
   <IconButton
     size="small"
@@ -609,15 +600,15 @@ import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
   >
     <SmartToyOutlinedIcon fontSize="small" />
   </IconButton>
-</Tooltip>;
+</Tooltip>
 ```
 
 ### `CopilotPanel` component
 
 `src/components/CopilotPanel/CopilotPanel.tsx`
 
-A fixed-width Box (not a MUI Drawer — a Drawer would overlay content; we want
-the editor to shrink). Use `borderLeft: 1, borderColor: "divider"`.
+A fixed-width Box (not a Drawer — a Drawer overlays content; we want the editor
+to shrink). Reads `editorRef` from context internally.
 
 ```tsx
 <Box
@@ -632,7 +623,6 @@ the editor to shrink). Use `borderLeft: 1, borderColor: "divider"`.
     bgcolor: "background.paper",
   }}
 >
-  {/* Header */}
   <Box
     sx={{
       px: 2,
@@ -646,17 +636,13 @@ the editor to shrink). Use `borderLeft: 1, borderColor: "divider"`.
   >
     <SmartToyOutlinedIcon fontSize="small" color="primary" />
     <Typography variant="subtitle2" sx={{ flex: 1 }}>Copilot</Typography>
-    <IconButton
-      size="small"
-      onClick={() => dispatch(actions.setCopilotOpen(false))}
-    >
+    <IconButton size="small" onClick={() => dispatch(actions.setCopilotOpen(false))}>
       <CloseIcon fontSize="small" />
     </IconButton>
   </Box>
 
-  {/* Chat */}
-  <CopilotChat documentId={documentId} editorRef={editorRef} />
-</Box>;
+  <CopilotChat documentId={documentId} />
+</Box>
 ```
 
 ---
@@ -667,113 +653,65 @@ the editor to shrink). Use `borderLeft: 1, borderColor: "divider"`.
 
 `src/components/CopilotPanel/CopilotChat.tsx`
 
-Owns the input state and streaming logic. Reads messages from Redux.
+Uses `useChat` from `ai/react`. Reads `editorRef` from `ActiveEditorContext`.
+Message list state, streaming, abort, and error handling are all provided by
+the hook.
 
 **Props:**
 
 ```ts
-{
-  documentId: string;
-  editorRef: React.RefObject<LexicalEditor | null>;
-}
+{ documentId: string }
+```
+
+**Hook setup:**
+
+```ts
+const editorRef = useContext(ActiveEditorContext);
+
+const { messages, input, setInput, handleSubmit, stop, isLoading, error, addToolResult } =
+  useChat({
+    api: "/api/copilot",
+    body: {
+      documentTitle,
+      documentContext: editorRef.current
+        ? serializeForCopilot(editorRef.current)
+        : "",
+      selectedText,
+      provider,
+      model: modelId,
+    },
+  });
+```
+
+`documentContext` and `selectedText` are evaluated fresh on each submit because
+`body` is re-evaluated per call. Capture `selectedText` from the editor
+synchronously on submit (before any async gap):
+
+```ts
+const handleSend = (e: React.FormEvent) => {
+  selectedTextRef.current = editorRef.current?.getEditorState().read(() => {
+    const sel = $getSelection();
+    return $isRangeSelection(sel) ? sel.getTextContent() : undefined;
+  });
+  handleSubmit(e);
+};
 ```
 
 **Layout:**
 
 ```
 flex column, full height
-├── QuickActions (fixed top, shown only when thread is empty)
+├── LinearProgress (shown while isLoading)
+├── QuickActions (shown only when messages is empty)
 ├── message list (flex: 1, overflow-y: auto)
+├── error banner (shown when error is set)
 └── input row (fixed bottom)
-```
-
-**Sending a message:**
-
-```ts
-const handleSend = async (text: string) => {
-  // 1. Capture selection from editor before async gap
-  const selectedText = editorRef.current?.getEditorState().read(() => {
-    const sel = $getSelection();
-    return $isRangeSelection(sel) ? sel.getTextContent() : undefined;
-  });
-
-  // 2. Serialize the current document
-  const documentContext = editorRef.current
-    ? serializeForCopilot(editorRef.current)
-    : "";
-
-  // 3. Add user message to Redux
-  const userMessage: CopilotMessage = {
-    id: crypto.randomUUID(),
-    role: "user",
-    content: text,
-    timestamp: Date.now(),
-  };
-  dispatch(actions.addCopilotMessage({ documentId, message: userMessage }));
-
-  // 4. Add a streaming placeholder for the assistant
-  const assistantId = crypto.randomUUID();
-  dispatch(actions.addCopilotMessage({
-    documentId,
-    message: {
-      id: assistantId,
-      role: "assistant",
-      content: "",
-      timestamp: Date.now(),
-    },
-  }));
-
-  // 5. Call /api/copilot and stream into the placeholder
-  const response = await fetch("/api/copilot", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      messages: [...priorMessages, userMessage],
-      documentTitle,
-      documentContext,
-      selectedText,
-      provider,
-      model: modelId,
-    }),
-  });
-
-  const reader = response.body!.getReader();
-  const decoder = new TextDecoder();
-  let full = "";
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    full += decoder.decode(value, { stream: true });
-
-    // Strip the actions sentinel before displaying
-    const displayText = full.split("\n\n__COPILOT_ACTIONS__:")[0];
-    dispatch(actions.updateCopilotMessage({
-      documentId,
-      messageId: assistantId,
-      patch: { content: displayText },
-    }));
-  }
-
-  // 6. Parse actions from sentinel
-  const sentinelMatch = full.match(/__COPILOT_ACTIONS__:(.+)$/m);
-  if (sentinelMatch) {
-    const { actions: editorActions } = JSON.parse(sentinelMatch[1]);
-    dispatch(actions.updateCopilotMessage({
-      documentId,
-      messageId: assistantId,
-      patch: { actions: editorActions },
-    }));
-  }
-};
 ```
 
 **Input row:**
 
 ```tsx
-<Box
-  sx={{ p: 1, borderTop: 1, borderColor: "divider", display: "flex", gap: 1 }}
->
+<Box sx={{ p: 1, borderTop: 1, borderColor: "divider", display: "flex", gap: 1 }}>
   <TextField
     fullWidth
     size="small"
@@ -783,84 +721,106 @@ const handleSend = async (text: string) => {
     onKeyDown={(e) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        handleSend(input);
+        handleSend(e as unknown as React.FormEvent);
       }
     }}
     multiline
     maxRows={4}
-    disabled={isStreaming}
+    disabled={isLoading}
   />
-  <IconButton
-    color="primary"
-    onClick={() => handleSend(input)}
-    disabled={!input.trim() || isStreaming}
-  >
-    <SendIcon fontSize="small" />
-  </IconButton>
-</Box>;
+  {isLoading ? (
+    <IconButton onClick={stop}>
+      <StopIcon fontSize="small" />
+    </IconButton>
+  ) : (
+    <IconButton
+      color="primary"
+      onClick={handleSend}
+      disabled={!input.trim()}
+    >
+      <SendIcon fontSize="small" />
+    </IconButton>
+  )}
+</Box>
 ```
+
+When streaming, the Send button becomes a Stop button that calls `stop()`.
 
 ### `CopilotMessage` component
 
 `src/components/CopilotPanel/CopilotMessage.tsx`
 
-Renders markdown (use the existing markdown renderer in the codebase if
-available, otherwise a simple approach: wrap in `<Typography component="div">`
-and split on newlines).
+Reads `editorRef` from `ActiveEditorContext`. Receives an AI SDK `Message`
+object.
 
-Apply button shown only when `message.actions?.length > 0 && !message.applied`:
+Pending tool invocations are in `message.toolInvocations` where
+`invocation.state === "call"`. These are shown as the Apply target.
 
 ```tsx
-{
-  message.actions?.length > 0 && !message.applied && (
-    <Box sx={{ mt: 1, display: "flex", gap: 1 }}>
-      <Button
-        size="small"
-        variant="contained"
-        startIcon={<CheckIcon />}
-        onClick={() => {
-          applyActions(editorRef.current!, message.actions!);
-          dispatch(actions.updateCopilotMessage({
-            documentId,
-            messageId: message.id,
-            patch: { applied: true },
-          }));
-        }}
-      >
-        Apply
-      </Button>
-      <Button
-        size="small"
-        variant="outlined"
-        onClick={() =>
-          dispatch(actions.updateCopilotMessage({
-            documentId,
-            messageId: message.id,
-            patch: { actions: undefined },
-          }))}
-      >
-        Dismiss
-      </Button>
-    </Box>
-  );
-}
+const editorRef = useContext(ActiveEditorContext);
+const pendingInvocations = message.toolInvocations?.filter(
+  (inv) => inv.state === "call",
+) ?? [];
+const appliedInvocations = message.toolInvocations?.filter(
+  (inv) => inv.state === "result",
+) ?? [];
 ```
 
-After applying, replace the Apply/Dismiss row with a quiet confirmation chip:
+Apply button shown when there are pending invocations:
 
 ```tsx
-{
-  message.applied && (
-    <Chip
+{pendingInvocations.length > 0 && (
+  <Box sx={{ mt: 1, display: "flex", gap: 1 }}>
+    <Button
       size="small"
-      icon={<CheckIcon />}
-      label="Applied"
-      color="success"
+      variant="contained"
+      startIcon={<CheckIcon />}
+      onClick={() => {
+        // Execute mutations in the editor
+        applyActions(
+          editorRef.current!,
+          pendingInvocations.map((inv) => ({
+            type: inv.toolName,
+            params: inv.args,
+          })),
+        );
+        // Advance the agentic loop — sends tool results back to the model
+        for (const inv of pendingInvocations) {
+          addToolResult({ toolCallId: inv.toolCallId, result: { success: true } });
+        }
+      }}
+    >
+      Apply
+    </Button>
+    <Button
+      size="small"
       variant="outlined"
-      sx={{ mt: 1 }}
-    />
-  );
-}
+      onClick={() => {
+        // Dismiss without applying — send a cancelled result so the model knows
+        for (const inv of pendingInvocations) {
+          addToolResult({ toolCallId: inv.toolCallId, result: { cancelled: true } });
+        }
+      }}
+    >
+      Dismiss
+    </Button>
+  </Box>
+)}
+```
+
+After all invocations are results, show the Applied chip:
+
+```tsx
+{pendingInvocations.length === 0 && appliedInvocations.length > 0 && (
+  <Chip
+    size="small"
+    icon={<CheckIcon />}
+    label="Applied"
+    color="success"
+    variant="outlined"
+    sx={{ mt: 1 }}
+  />
+)}
 ```
 
 ### `QuickActions` component
@@ -871,23 +831,15 @@ Row of Chip buttons shown when the thread is empty, to bootstrap common flows:
 
 ```tsx
 const QUICK_ACTIONS = [
-  {
-    label: "Improve writing",
-    prompt: "Improve the writing quality of this document.",
-  },
+  { label: "Improve writing", prompt: "Improve the writing quality of this document." },
   { label: "Fix grammar", prompt: "Fix any grammar and spelling mistakes." },
-  {
-    label: "Make shorter",
-    prompt: "Shorten this document while keeping all key information.",
-  },
-  {
-    label: "Add examples",
-    prompt: "Add concrete examples to illustrate the main points.",
-  },
+  { label: "Make shorter", prompt: "Shorten this document while keeping all key information." },
+  { label: "Add examples", prompt: "Add concrete examples to illustrate the main points." },
   { label: "Summarize", prompt: "Summarize this document in 3 bullet points." },
 ];
 
 // Render as wrapping row of outlined Chips
+// onClick: setInput(prompt) and focus the input
 ```
 
 ---
@@ -896,19 +848,19 @@ const QUICK_ACTIONS = [
 
 After all stages are implemented, verify the following end-to-end flows:
 
-- [ ] Copilot toggle button appears in toolbar; clicking it opens/closes the
-      panel
+- [ ] Copilot toggle button appears in toolbar; clicking it opens/closes the panel
 - [ ] Panel slides in and the editor shrinks (not overlapped)
 - [ ] Sending a message shows the user bubble immediately
 - [ ] Assistant response streams in token-by-token
+- [ ] LinearProgress appears while streaming; stop button cancels the stream
 - [ ] After a structural request (e.g. "add a table"), the Apply button appears
-- [ ] Clicking Apply inserts the table in the Lexical editor
-- [ ] Clicking Dismiss removes the Apply button but keeps the text
-- [ ] Applied message shows the green "Applied" chip
-- [ ] Switching tabs clears the active editorRef and loads the tab's thread
+- [ ] Clicking Apply inserts the table in the Lexical editor; Applied chip appears
+- [ ] Clicking Dismiss sends a cancelled result and removes the Apply button
+- [ ] Switching tabs updates the ActiveEditorContext ref; Copilot uses the new editor
 - [ ] Quick action chips pre-fill the input
 - [ ] Selection is captured: select text → send message → AI references it
-- [ ] Panel state survives tab switches within the same session
+- [ ] Network error during streaming shows the error banner (not a stuck empty message)
+- [ ] Edge runtime: verify all AI provider adapters work without Node-only deps
 
 ---
 
@@ -932,15 +884,30 @@ Follow DESIGN.md conventions throughout.
 
 ---
 
-## Deferred / Out of Scope
+## Known Limitations (v1)
 
-These are reasonable next iterations, not required for the first version:
+- **`replace_text` is lossy** — creates a plain-text paragraph, destroying all
+  inline formatting (bold, italic, links). Documented in the tool description so
+  Claude avoids it on formatted nodes. A formatting-aware version is deferred.
+- **No thread persistence** — threads reset on page refresh. Per-document threads
+  survive tab switches within the same session (held by `useChat` state in
+  `CopilotChat`, which is mounted for the lifetime of the panel).
+- **agentic loop requires user approval** — each tool-call batch waits for Apply
+  before the model continues. This is intentional (user control) but means a
+  5-step agentic plan requires 5 Apply clicks. Auto-approve is a future option.
+
+---
+
+## Deferred / Out of Scope
 
 - **Multiple named threads per document** — single thread is fine initially
 - **Thread persistence** — saving threads to IndexedDB or the database
-- **Image insertion** — `insert_image` requires knowing a valid URL; leave for
-  later
-- **Graph/Sketch insertion** — these require separate creation UIs
+- **Image insertion** — `insert_image` requires knowing a valid URL
+- **Graph/Sketch insertion** — require separate creation UIs
 - **Model selector in the panel** — reuse the global AI provider setting
 - **Undo integration** — Lexical history already tracks mutations; Ctrl+Z works
   naturally after Apply
+- **Auto-approve mode** — call `addToolResult` in an `onToolCall` callback
+  instead of waiting for user click
+- **Formatting-aware `replace_text`** — walk existing children, preserve inline
+  nodes, only replace text content
