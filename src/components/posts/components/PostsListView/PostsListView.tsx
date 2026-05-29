@@ -298,7 +298,7 @@ export function PostsListView({
           <SectionBand
             label="Series"
             count={series.length}
-            color="secondary.main"
+            color="primary.main"
           />
           {series.map((s) => {
             const seriesPosts: UserDocument[] = s.posts.map((p) => ({
