@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Box, LinearProgress, Link, Typography } from "@mui/material";
 import { Table } from "lucide-react";
 import { documentsSelectors, useSelector } from "@/store";
-import { countWords, extractHeadings } from "@/utils/editorContent";
+import { countWords, extractHeadings, type OutlineHeading } from "@/utils/editorContent";
 import RailSection from "./RailSection";
 
 const WORDS_PER_MIN = 200;
@@ -12,8 +12,21 @@ interface OutlineSectionProps {
   activeDocId: string | null;
 }
 
+function extractDomHeadings(): OutlineHeading[] {
+  const el = document.getElementById("app-main");
+  if (!el) return [];
+  const result: OutlineHeading[] = [];
+  el.querySelectorAll("h2, h3").forEach((h) => {
+    const level = parseInt(h.tagName.slice(1), 10) as 2 | 3;
+    const text = h.textContent?.trim() ?? "";
+    if (text) result.push({ text, level, key: text });
+  });
+  return result;
+}
+
 export default function OutlineSection({ activeDocId }: OutlineSectionProps) {
   const [scrollPct, setScrollPct] = useState(0);
+  const [domHeadings, setDomHeadings] = useState<OutlineHeading[]>([]);
 
   const docData = useSelector((state) => {
     if (!activeDocId) return undefined;
@@ -21,8 +34,22 @@ export default function OutlineSection({ activeDocId }: OutlineSectionProps) {
     return doc?.local?.data;
   });
 
-  const headings = extractHeadings(docData);
+  const jsonHeadings = extractHeadings(docData);
+  const needsDomFallback = jsonHeadings.length === 0;
+  const headings = needsDomFallback ? domHeadings : jsonHeadings;
   const wordCount = countWords(docData);
+
+  useEffect(() => {
+    if (!needsDomFallback) return;
+    const el = document.getElementById("app-main");
+    if (!el) return;
+    setDomHeadings(extractDomHeadings());
+    const observer = new MutationObserver(() =>
+      setDomHeadings(extractDomHeadings())
+    );
+    observer.observe(el, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [needsDomFallback]);
   const readMinutes = Math.max(1, Math.ceil(wordCount / WORDS_PER_MIN));
 
   useEffect(() => {
