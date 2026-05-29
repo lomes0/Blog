@@ -36,7 +36,6 @@ import {
   Paperclip,
   Plus,
   Scissors,
-  SeparatorHorizontal,
   Sigma,
   StickyNote,
   Table,

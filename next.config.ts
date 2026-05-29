@@ -167,9 +167,6 @@ const nextConfig: NextConfig = {
     "@mui/material": {
       transform: "@mui/material/{{member}}",
     },
-    "@mui/icons-material": {
-      transform: "@mui/icons-material/{{member}}",
-    },
   },
   webpack: (config, { isServer }) => {
     if (isServer) {
