@@ -5,14 +5,14 @@ import { useRouter } from "next/navigation";
 import { Series, User, UserDocument } from "@/types";
 import { DragProvider } from "@/contexts/DragContext";
 import TrashBin from "./TrashBin";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useDocuments } from "@/hooks/useDocuments";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import KanbanPreviewCard from "./KanbanPreviewCard";
 import ReadmePreviewCard from "./ReadmePreviewCard";
 import RecentPostsPreviewCard from "./RecentPostsPreviewCard";
 import FullViewDialog from "./FullViewDialog";
-import NotesCanvas from "../NotesCanvas";
+import NotesCanvas, { NotesCanvasHandle } from "../NotesCanvas";
 import KanbanBoard from "./KanbanBoard";
 import ReadmeViewer from "./ReadmeViewer";
 import { CardErrorBoundary } from "@/components/ErrorBoundary";
@@ -22,6 +22,8 @@ import { useNotesZoom } from "@/hooks/useNotesZoom";
 import BoardSelector from "../NotesCanvas/BoardSelector";
 import ZoomControls from "../NotesCanvas/ZoomControls";
 import { NotesClipboardProvider } from "@/contexts/NotesClipboardContext";
+import { NOTE_COLOR_LIST, NOTE_COLORS, NOTE_SWATCH_COLORS } from "../NotesCanvas/noteColors";
+import { Divider, Popover, Tooltip } from "@mui/material";
 
 type ViewType = "notes" | "kanban" | "readme" | "posts" | null;
 
@@ -41,6 +43,8 @@ const Home: React.FC<{
     deleteBoard,
   } = useNotesBoards();
   const zoom = useNotesZoom(activeCanvasId);
+  const canvasRef = useRef<NotesCanvasHandle>(null);
+  const [colorAnchor, setColorAnchor] = useState<HTMLElement | null>(null);
   const [notesHeight, setNotesHeight] = useLocalStorage(
     "notesCanvasHeight",
     400,
@@ -123,6 +127,77 @@ const Home: React.FC<{
                       onRenameBoard={renameBoard}
                       onDeleteBoard={deleteBoard}
                     />
+
+                    <Divider orientation="vertical" flexItem sx={{ my: 0.5 }} />
+
+                    <Tooltip title="Add note">
+                      <Box
+                        component="button"
+                        onClick={(e: React.MouseEvent<HTMLElement>) => setColorAnchor(e.currentTarget)}
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 0.5,
+                          px: 1.25,
+                          height: 28,
+                          border: "1px solid",
+                          borderColor: "divider",
+                          borderRadius: "14px",
+                          bgcolor: "action.hover",
+                          cursor: "pointer",
+                          flexShrink: 0,
+                          fontSize: "0.8125rem",
+                          fontWeight: 500,
+                          color: "text.secondary",
+                          "&:hover": { bgcolor: "action.selected", color: "text.primary" },
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        <StickyNote size={14} />
+                        + Add note
+                      </Box>
+                    </Tooltip>
+
+                    <Popover
+                      open={!!colorAnchor}
+                      anchorEl={colorAnchor}
+                      onClose={() => setColorAnchor(null)}
+                      anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+                      transformOrigin={{ vertical: "top", horizontal: "left" }}
+                      slotProps={{ paper: { elevation: 2, sx: { mt: 0.5 } } }}
+                    >
+                      <Box sx={{ display: "flex", gap: 0.75, p: 1 }}>
+                        {NOTE_COLOR_LIST.map((color) => (
+                          <Tooltip key={color.value} title={color.name}>
+                            <Box
+                              component="button"
+                              onClick={() => {
+                                canvasRef.current?.addNote(color.value);
+                                setColorAnchor(null);
+                              }}
+                              sx={{
+                                width: 28,
+                                height: 28,
+                                borderRadius: "50%",
+                                background: NOTE_COLORS[color.value],
+                                border: "2px solid",
+                                borderColor: "transparent",
+                                cursor: "pointer",
+                                p: 0,
+                                outline: "none",
+                                transition: "all 0.15s ease",
+                                "&:hover": {
+                                  borderColor: NOTE_SWATCH_COLORS[color.value],
+                                  transform: "scale(1.2)",
+                                  boxShadow: `0 2px 8px ${NOTE_SWATCH_COLORS[color.value]}88`,
+                                },
+                              }}
+                            />
+                          </Tooltip>
+                        ))}
+                      </Box>
+                    </Popover>
+
                     <ZoomControls zoom={zoom} />
                   </Box>
                   <Box
@@ -139,6 +214,7 @@ const Home: React.FC<{
                     }}
                   >
                     <NotesCanvas
+                      ref={canvasRef}
                       canvasId={activeCanvasId}
                       scale={zoom.scale}
                       onZoomIn={zoom.zoomIn}
