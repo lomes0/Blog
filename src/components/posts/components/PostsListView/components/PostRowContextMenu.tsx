@@ -83,45 +83,20 @@ export function PostRowContextMenu({
         </MenuItem>
 
         {mode === "post" && onMoveToSeries && availableSeries && availableSeries.length > 0 && (
-          <>
-            <MenuItem
-              dense
-              onClick={(e) => {
-                e.stopPropagation();
-                setSeriesMenuAnchor(e.currentTarget);
-              }}
-              sx={{ justifyContent: "space-between" }}
-            >
-              <ListItemIcon>
-                <FolderOpen size={15} />
-              </ListItemIcon>
-              <ListItemText>Move to series</ListItemText>
-              <ChevronRight size={14} style={{ marginLeft: 8, flexShrink: 0 }} />
-            </MenuItem>
-            <Menu
-              anchorEl={seriesMenuAnchor}
-              open={Boolean(seriesMenuAnchor)}
-              onClose={() => setSeriesMenuAnchor(null)}
-              onClick={(e) => e.stopPropagation()}
-              transformOrigin={{ horizontal: "left", vertical: "top" }}
-              anchorOrigin={{ horizontal: "right", vertical: "top" }}
-              PaperProps={{ sx: { minWidth: 180 } }}
-            >
-              {availableSeries.map((s) => (
-                <MenuItem
-                  key={s.id}
-                  dense
-                  onClick={() => {
-                    setSeriesMenuAnchor(null);
-                    handleClose();
-                    onMoveToSeries(s.id);
-                  }}
-                >
-                  <ListItemText>{s.title}</ListItemText>
-                </MenuItem>
-              ))}
-            </Menu>
-          </>
+          <MenuItem
+            dense
+            onClick={(e) => {
+              e.stopPropagation();
+              setSeriesMenuAnchor(e.currentTarget);
+            }}
+            sx={{ justifyContent: "space-between" }}
+          >
+            <ListItemIcon>
+              <FolderOpen size={15} />
+            </ListItemIcon>
+            <ListItemText>Move to series</ListItemText>
+            <ChevronRight size={14} style={{ marginLeft: 8, flexShrink: 0 }} />
+          </MenuItem>
         )}
 
         <Tooltip title="Coming soon" placement="left">
@@ -146,6 +121,32 @@ export function PostRowContextMenu({
           </ListItemText>
         </MenuItem>
       </Menu>
+
+      {mode === "post" && onMoveToSeries && availableSeries && availableSeries.length > 0 && (
+        <Menu
+          anchorEl={seriesMenuAnchor}
+          open={Boolean(seriesMenuAnchor)}
+          onClose={() => setSeriesMenuAnchor(null)}
+          onClick={(e) => e.stopPropagation()}
+          transformOrigin={{ horizontal: "left", vertical: "top" }}
+          anchorOrigin={{ horizontal: "right", vertical: "top" }}
+          PaperProps={{ sx: { minWidth: 180 } }}
+        >
+          {availableSeries.map((s) => (
+            <MenuItem
+              key={s.id}
+              dense
+              onClick={() => {
+                setSeriesMenuAnchor(null);
+                handleClose();
+                onMoveToSeries(s.id);
+              }}
+            >
+              <ListItemText>{s.title}</ListItemText>
+            </MenuItem>
+          ))}
+        </Menu>
+      )}
     </>
   );
 }
