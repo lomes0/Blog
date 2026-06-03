@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Box } from "@mui/material";
 import type { LexicalEditor, SerializedEditorState } from "lexical";
 import dynamic from "next/dynamic";
@@ -66,6 +66,7 @@ interface EditorTabPanelProps {
   rootId: string;
   isActive: boolean;
   onDiscard?: () => void;
+  onEditorReady?: (ref: React.RefObject<LexicalEditor | null>) => void;
 }
 
 /**
@@ -79,8 +80,13 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
   rootId,
   isActive,
   onDiscard,
+  onEditorReady,
 }) => {
   const editorRef = useRef<LexicalEditor>(null);
+
+  useEffect(() => {
+    if (isActive) onEditorReady?.(editorRef);
+  }, [isActive, onEditorReady]);
   const showDiff = useSelector((state) => state.ui.diff.open);
 
   // Redux document for useCloudSave (stable reference, same pattern as EditDocumentContent).

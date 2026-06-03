@@ -210,7 +210,9 @@ export default function AttachmentEditor({
           color="primary"
           onClick={handleSave}
           disabled={isSaving || !isDirty}
-          startIcon={isSaving ? <CircularProgress size={16} /> : <Save size={18} />}
+          startIcon={isSaving
+            ? <CircularProgress size={16} />
+            : <Save size={18} />}
           size="small"
         >
           {isSaving ? "Saving..." : "Save"}

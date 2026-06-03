@@ -2,7 +2,11 @@
 import NotesCanvas, { NotesCanvasHandle } from "@/components/NotesCanvas";
 import BoardSelector from "@/components/NotesCanvas/BoardSelector";
 import ZoomControls from "@/components/NotesCanvas/ZoomControls";
-import { NOTE_COLOR_LIST, NOTE_COLORS, NOTE_SWATCH_COLORS } from "@/components/NotesCanvas/noteColors";
+import {
+  NOTE_COLOR_LIST,
+  NOTE_COLORS,
+  NOTE_SWATCH_COLORS,
+} from "@/components/NotesCanvas/noteColors";
 import { useNotesBoards } from "@/hooks/useNotesBoards";
 import { useNotesZoom } from "@/hooks/useNotesZoom";
 import { Box, Divider, Popover, Tooltip } from "@mui/material";
@@ -46,7 +50,10 @@ export default function NotesPage() {
             flexShrink: 0,
           }}
         >
-          <StickyNote size={20} style={{ color: "var(--mui-palette-text-secondary)" }} />
+          <StickyNote
+            size={20}
+            style={{ color: "var(--mui-palette-text-secondary)" }}
+          />
           <BoardSelector
             boards={boards}
             activeCanvasId={activeCanvasId}
@@ -62,7 +69,8 @@ export default function NotesPage() {
           <Tooltip title="Add note">
             <Box
               component="button"
-              onClick={(e: React.MouseEvent<HTMLElement>) => setColorAnchor(e.currentTarget)}
+              onClick={(e: React.MouseEvent<HTMLElement>) =>
+                setColorAnchor(e.currentTarget)}
               sx={{
                 display: "flex",
                 alignItems: "center",
@@ -78,7 +86,10 @@ export default function NotesPage() {
                 fontSize: "0.8125rem",
                 fontWeight: 500,
                 color: "text.secondary",
-                "&:hover": { bgcolor: "action.selected", color: "text.primary" },
+                "&:hover": {
+                  bgcolor: "action.selected",
+                  color: "text.primary",
+                },
                 transition: "all 0.15s ease",
               }}
             >
@@ -118,7 +129,9 @@ export default function NotesPage() {
                       "&:hover": {
                         borderColor: NOTE_SWATCH_COLORS[color.value],
                         transform: "scale(1.2)",
-                        boxShadow: `0 2px 8px ${NOTE_SWATCH_COLORS[color.value]}88`,
+                        boxShadow: `0 2px 8px ${
+                          NOTE_SWATCH_COLORS[color.value]
+                        }88`,
                       },
                     }}
                   />

@@ -1,5 +1,7 @@
 "use client";
 import { useCallback, useState } from "react";
+import React from "react";
+import type { LexicalEditor } from "lexical";
 import {
   Box,
   Button,
@@ -15,6 +17,8 @@ import {
 import { useRouter } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 import { actions, documentsSelectors, useDispatch, useSelector } from "@/store";
+import { ActiveEditorContext } from "@/contexts/ActiveEditorContext";
+import CopilotPanel from "@/components/CopilotPanel/CopilotPanel";
 import { apiClient } from "@/api";
 import EditorTabBar, { type TabMeta } from "./EditorTabBar";
 import EditorTabPanel from "./EditorTabPanel";
@@ -53,6 +57,18 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
   const router = useRouter();
   const tabs = useSelector((state) => state.ui.tabs);
   const user = useSelector((state) => state.user);
+  const copilotOpen = useSelector((state) => state.ui.copilot.open);
+
+  const [activeEditorRef, setActiveEditorRef] = useState<
+    React.RefObject<LexicalEditor | null>
+  >(() => ({ current: null }));
+
+  const handleEditorReady = useCallback(
+    (ref: React.RefObject<LexicalEditor | null>) => {
+      setActiveEditorRef(ref);
+    },
+    [],
+  );
 
   // All root-level posts for the "Move to other post" picker.
   const allDocuments = useSelector((state) =>
@@ -303,107 +319,118 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     .filter((m): m is TabMeta => !!m);
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      {orderedTabs.length > 0 && (
-        <EditorTabBar
-          tabs={orderedTabs}
-          activeTabId={tabs.activeTabId}
-          dirtyTabIds={tabs.dirtyTabIds}
-          rootTabId={rootId}
-          renamingTabId={renamingTabId}
-          onSwitch={handleSwitch}
-          onClose={handleCloseRequest}
-          onAdd={handleAdd}
-          onRename={handleRename}
-          onReorder={handleReorder}
-          onContextMenu={handleOpenContextMenu}
+    <ActiveEditorContext.Provider value={activeEditorRef}>
+      <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+        {orderedTabs.length > 0 && (
+          <EditorTabBar
+            tabs={orderedTabs}
+            activeTabId={tabs.activeTabId}
+            dirtyTabIds={tabs.dirtyTabIds}
+            rootTabId={rootId}
+            renamingTabId={renamingTabId}
+            onSwitch={handleSwitch}
+            onClose={handleCloseRequest}
+            onAdd={handleAdd}
+            onRename={handleRename}
+            onReorder={handleReorder}
+            onContextMenu={handleOpenContextMenu}
+          />
+        )}
+
+        <Box sx={{ display: "flex", flex: 1, overflow: "hidden" }}>
+          <Box sx={{ flex: 1, overflow: "hidden" }}>
+            {tabs.tabIds.map((tabId) => (
+              <EditorTabPanel
+                key={tabId}
+                docId={tabId}
+                rootId={rootId}
+                isActive={tabId === tabs.activeTabId}
+                onDiscard={handleDiscard}
+                onEditorReady={tabId === tabs.activeTabId
+                  ? handleEditorReady
+                  : undefined}
+              />
+            ))}
+          </Box>
+
+          {copilotOpen && <CopilotPanel documentId={tabs.activeTabId ?? ""} />}
+        </Box>
+
+        {/* Context menu */}
+        <TabContextMenu
+          anchorEl={contextMenuAnchor}
+          tabId={contextMenuTabId}
+          isRoot={contextMenuIsRoot}
+          onClose={handleCloseContextMenu}
+          onRename={handleRenameFromMenu}
+          onDuplicate={handleDuplicate}
+          onMove={handleMoveRequest}
+          onSplitOff={handleSplitOff}
+          onDelete={handleCloseRequest}
         />
-      )}
 
-      {tabs.tabIds.map((tabId) => (
-        <EditorTabPanel
-          key={tabId}
-          docId={tabId}
-          rootId={rootId}
-          isActive={tabId === tabs.activeTabId}
-          onDiscard={handleDiscard}
-        />
-      ))}
+        {/* Delete confirmation dialog */}
+        <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)}>
+          <DialogTitle>Delete tab?</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              {`Delete "${deleteTarget?.name}"? This cannot be undone.`}
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button color="error" onClick={handleDeleteConfirm}>
+              Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
 
-      {/* Context menu */}
-      <TabContextMenu
-        anchorEl={contextMenuAnchor}
-        tabId={contextMenuTabId}
-        isRoot={contextMenuIsRoot}
-        onClose={handleCloseContextMenu}
-        onRename={handleRenameFromMenu}
-        onDuplicate={handleDuplicate}
-        onMove={handleMoveRequest}
-        onSplitOff={handleSplitOff}
-        onDelete={handleCloseRequest}
-      />
-
-      {/* Delete confirmation dialog */}
-      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)}>
-        <DialogTitle>Delete tab?</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            {`Delete "${deleteTarget?.name}"? This cannot be undone.`}
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteTarget(null)}>Cancel</Button>
-          <Button color="error" onClick={handleDeleteConfirm}>
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Move to other post dialog */}
-      <Dialog
-        open={!!moveDialogTabId}
-        onClose={() => setMoveDialogTabId(null)}
-        fullWidth
-        maxWidth="xs"
-      >
-        <DialogTitle>Move tab to another post</DialogTitle>
-        <DialogContent sx={{ p: 0 }}>
-          {availablePosts.length === 0
-            ? (
-              <DialogContentText sx={{ p: 3 }}>
-                No other posts available.
-              </DialogContentText>
-            )
-            : (
-              <List dense disablePadding>
-                {availablePosts.map((doc) => {
-                  const d = doc.cloud ?? doc.local;
-                  const name = d?.name ?? doc.id;
-                  return (
-                    <ListItemButton
-                      key={doc.id}
-                      selected={moveTargetPostId === doc.id}
-                      onClick={() => setMoveTargetPostId(doc.id)}
-                    >
-                      <ListItemText primary={name} />
-                    </ListItemButton>
-                  );
-                })}
-              </List>
-            )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setMoveDialogTabId(null)}>Cancel</Button>
-          <Button
-            variant="contained"
-            disabled={!moveTargetPostId}
-            onClick={handleMoveConfirm}
-          >
-            Move
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+        {/* Move to other post dialog */}
+        <Dialog
+          open={!!moveDialogTabId}
+          onClose={() => setMoveDialogTabId(null)}
+          fullWidth
+          maxWidth="xs"
+        >
+          <DialogTitle>Move tab to another post</DialogTitle>
+          <DialogContent sx={{ p: 0 }}>
+            {availablePosts.length === 0
+              ? (
+                <DialogContentText sx={{ p: 3 }}>
+                  No other posts available.
+                </DialogContentText>
+              )
+              : (
+                <List dense disablePadding>
+                  {availablePosts.map((doc) => {
+                    const d = doc.cloud ?? doc.local;
+                    const name = d?.name ?? doc.id;
+                    return (
+                      <ListItemButton
+                        key={doc.id}
+                        selected={moveTargetPostId === doc.id}
+                        onClick={() => setMoveTargetPostId(doc.id)}
+                      >
+                        <ListItemText primary={name} />
+                      </ListItemButton>
+                    );
+                  })}
+                </List>
+              )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setMoveDialogTabId(null)}>Cancel</Button>
+            <Button
+              variant="contained"
+              disabled={!moveTargetPostId}
+              onClick={handleMoveConfirm}
+            >
+              Move
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
+    </ActiveEditorContext.Provider>
   );
 };
 

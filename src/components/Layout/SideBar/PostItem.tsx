@@ -133,7 +133,10 @@ export const PostItem = memo(
                 position: "relative",
               }}
             >
-              <FileText size={14} style={{ color: "var(--mui-palette-text-secondary)" }} />
+              <FileText
+                size={14}
+                style={{ color: "var(--mui-palette-text-secondary)" }}
+              />
               {isDirty && (
                 <Box
                   component="span"

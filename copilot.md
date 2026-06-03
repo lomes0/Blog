@@ -34,16 +34,17 @@ Tools are editor mutations defined on the client. The flow:
 2. Server calls Claude (via AI SDK `streamText`) with tool definitions — **no
    `execute` functions**; the server is a planner only
 3. Claude either responds with text, or calls one or more tools
-4. Tool calls stream back to the client as first-class AI SDK stream parts
-   (not a sentinel string hack)
+4. Tool calls stream back to the client as first-class AI SDK stream parts (not
+   a sentinel string hack)
 5. Client renders the streamed text; pending tool invocations accumulate in
    `message.toolInvocations` with `state: "call"`
 6. The message shows an **Apply** button listing the pending actions
-7. Clicking Apply:
-   a. Runs the tool executors against `editorRef` from `ActiveEditorContext`
-   b. Calls `addToolResult` for each invocation, which sends the results back
-      to the server and triggers the next model step (agentic continuation)
-8. Clicking Dismiss drops the pending invocations without calling `addToolResult`
+7. Clicking Apply: a. Runs the tool executors against `editorRef` from
+   `ActiveEditorContext` b. Calls `addToolResult` for each invocation, which
+   sends the results back to the server and triggers the next model step
+   (agentic continuation)
+8. Clicking Dismiss drops the pending invocations without calling
+   `addToolResult`
 
 This keeps Lexical mutations on the client, uses the AI SDK's native tool-call
 stream format (no sentinel), gives users explicit control before mutations fire,
@@ -82,13 +83,13 @@ src/
 
 Existing files modified:
 
-| File                                                   | Change                                   |
-| ------------------------------------------------------ | ---------------------------------------- |
+| File                                                   | Change                                    |
+| ------------------------------------------------------ | ----------------------------------------- |
 | `src/components/EditDocument/TabbedDocumentEditor.tsx` | Add split layout, set ActiveEditorContext |
-| `src/components/EditDocument/EditorTabPanel.tsx`       | Expose editorRef via callback prop       |
-| `src/editor/plugins/ToolbarPlugin/index.tsx`           | Add copilot toggle button                |
-| `src/store/app.ts`                                     | Add `ui.copilot.open: boolean` only      |
-| `src/lib/ai/prompts.ts`                                | Add copilot system prompt                |
+| `src/components/EditDocument/EditorTabPanel.tsx`       | Expose editorRef via callback prop        |
+| `src/editor/plugins/ToolbarPlugin/index.tsx`           | Add copilot toggle button                 |
+| `src/store/app.ts`                                     | Add `ui.copilot.open: boolean` only       |
+| `src/lib/ai/prompts.ts`                                | Add copilot system prompt                 |
 
 ---
 
@@ -159,8 +160,8 @@ export const runtime = "edge";
 export const POST = withApiHandler(async (req: Request) => { ... });
 ```
 
-**Edge runtime note:** Before shipping, verify all AI provider adapters used
-by this codebase have no Node-only deps (`fs`, `path`, Node-specific `crypto`,
+**Edge runtime note:** Before shipping, verify all AI provider adapters used by
+this codebase have no Node-only deps (`fs`, `path`, Node-specific `crypto`,
 etc.). Any provider using a Node SDK will fail silently on Vercel Edge. Use
 `export const runtime = "nodejs"` as a fallback if needed.
 
@@ -180,8 +181,8 @@ etc.). Any provider using a Node SDK will fail silently on Vercel Edge. Use
 ### Tool definitions passed to Claude
 
 Defined as Vercel AI SDK `tools` objects. Each has a `description` and
-`parameters` (Zod schema). **No `execute` functions** — execution happens on
-the client via `addToolResult`.
+`parameters` (Zod schema). **No `execute` functions** — execution happens on the
+client via `addToolResult`.
 
 ```ts
 const editorTools = {
@@ -241,8 +242,7 @@ const editorTools = {
     parameters: z.object({ afterNodeKey: z.string().optional() }),
   },
   replace_text: {
-    description:
-      "Replace the text content of a paragraph or heading node. " +
+    description: "Replace the text content of a paragraph or heading node. " +
       "WARNING: This destroys inline formatting (bold, italic, links). " +
       "Only use on plain-text nodes.",
     parameters: z.object({ nodeKey: z.string(), newText: z.string() }),
@@ -259,7 +259,11 @@ const editorTools = {
 ```ts
 const result = streamText({
   model: modelInstance,
-  system: COPILOT_SYSTEM_PROMPT(body.documentTitle, body.documentContext, body.selectedText),
+  system: COPILOT_SYSTEM_PROMPT(
+    body.documentTitle,
+    body.documentContext,
+    body.selectedText,
+  ),
   messages: body.messages,
   tools: editorTools,
   maxSteps: 5,
@@ -340,8 +344,8 @@ export type CopilotAction = {
 };
 ```
 
-`CopilotMessage` and `CopilotThread` are not needed — use the AI SDK's
-`Message` type from `ai/react`.
+`CopilotMessage` and `CopilotThread` are not needed — use the AI SDK's `Message`
+type from `ai/react`.
 
 ---
 
@@ -509,8 +513,8 @@ export function applyActions(
 ## Stage 5 — Panel Shell, Layout, and Editor Context
 
 **Goal:** Add the Copilot panel to the editor layout, wire the toggle button,
-and expose the active editor ref via React context so components don't need
-prop drilling.
+and expose the active editor ref via React context so components don't need prop
+drilling.
 
 ### New file: `src/contexts/ActiveEditorContext.ts`
 
@@ -519,7 +523,9 @@ import { createContext } from "react";
 import type { RefObject } from "react";
 import type { LexicalEditor } from "lexical";
 
-export const ActiveEditorContext = createContext<RefObject<LexicalEditor | null>>(
+export const ActiveEditorContext = createContext<
+  RefObject<LexicalEditor | null>
+>(
   { current: null },
 );
 ```
@@ -567,8 +573,8 @@ return (
 );
 ```
 
-Note: `CopilotPanel` no longer receives `editorRef` as a prop — it reads it
-from `ActiveEditorContext`.
+Note: `CopilotPanel` no longer receives `editorRef` as a prop — it reads it from
+`ActiveEditorContext`.
 
 ### Change in `EditorTabPanel`
 
@@ -600,7 +606,7 @@ import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
   >
     <SmartToyOutlinedIcon fontSize="small" />
   </IconButton>
-</Tooltip>
+</Tooltip>;
 ```
 
 ### `CopilotPanel` component
@@ -636,13 +642,16 @@ to shrink). Reads `editorRef` from context internally.
   >
     <SmartToyOutlinedIcon fontSize="small" color="primary" />
     <Typography variant="subtitle2" sx={{ flex: 1 }}>Copilot</Typography>
-    <IconButton size="small" onClick={() => dispatch(actions.setCopilotOpen(false))}>
+    <IconButton
+      size="small"
+      onClick={() => dispatch(actions.setCopilotOpen(false))}
+    >
       <CloseIcon fontSize="small" />
     </IconButton>
   </Box>
 
   <CopilotChat documentId={documentId} />
-</Box>
+</Box>;
 ```
 
 ---
@@ -654,13 +663,15 @@ to shrink). Reads `editorRef` from context internally.
 `src/components/CopilotPanel/CopilotChat.tsx`
 
 Uses `useChat` from `ai/react`. Reads `editorRef` from `ActiveEditorContext`.
-Message list state, streaming, abort, and error handling are all provided by
-the hook.
+Message list state, streaming, abort, and error handling are all provided by the
+hook.
 
 **Props:**
 
 ```ts
-{ documentId: string }
+{
+  documentId: string;
+}
 ```
 
 **Hook setup:**
@@ -668,19 +679,27 @@ the hook.
 ```ts
 const editorRef = useContext(ActiveEditorContext);
 
-const { messages, input, setInput, handleSubmit, stop, isLoading, error, addToolResult } =
-  useChat({
-    api: "/api/copilot",
-    body: {
-      documentTitle,
-      documentContext: editorRef.current
-        ? serializeForCopilot(editorRef.current)
-        : "",
-      selectedText,
-      provider,
-      model: modelId,
-    },
-  });
+const {
+  messages,
+  input,
+  setInput,
+  handleSubmit,
+  stop,
+  isLoading,
+  error,
+  addToolResult,
+} = useChat({
+  api: "/api/copilot",
+  body: {
+    documentTitle,
+    documentContext: editorRef.current
+      ? serializeForCopilot(editorRef.current)
+      : "",
+    selectedText,
+    provider,
+    model: modelId,
+  },
+});
 ```
 
 `documentContext` and `selectedText` are evaluated fresh on each submit because
@@ -711,7 +730,9 @@ flex column, full height
 **Input row:**
 
 ```tsx
-<Box sx={{ p: 1, borderTop: 1, borderColor: "divider", display: "flex", gap: 1 }}>
+<Box
+  sx={{ p: 1, borderTop: 1, borderColor: "divider", display: "flex", gap: 1 }}
+>
   <TextField
     fullWidth
     size="small"
@@ -728,20 +749,22 @@ flex column, full height
     maxRows={4}
     disabled={isLoading}
   />
-  {isLoading ? (
-    <IconButton onClick={stop}>
-      <StopIcon fontSize="small" />
-    </IconButton>
-  ) : (
-    <IconButton
-      color="primary"
-      onClick={handleSend}
-      disabled={!input.trim()}
-    >
-      <SendIcon fontSize="small" />
-    </IconButton>
-  )}
-</Box>
+  {isLoading
+    ? (
+      <IconButton onClick={stop}>
+        <StopIcon fontSize="small" />
+      </IconButton>
+    )
+    : (
+      <IconButton
+        color="primary"
+        onClick={handleSend}
+        disabled={!input.trim()}
+      >
+        <SendIcon fontSize="small" />
+      </IconButton>
+    )}
+</Box>;
 ```
 
 When streaming, the Send button becomes a Stop button that calls `stop()`.
@@ -769,58 +792,68 @@ const appliedInvocations = message.toolInvocations?.filter(
 Apply button shown when there are pending invocations:
 
 ```tsx
-{pendingInvocations.length > 0 && (
-  <Box sx={{ mt: 1, display: "flex", gap: 1 }}>
-    <Button
-      size="small"
-      variant="contained"
-      startIcon={<CheckIcon />}
-      onClick={() => {
-        // Execute mutations in the editor
-        applyActions(
-          editorRef.current!,
-          pendingInvocations.map((inv) => ({
-            type: inv.toolName,
-            params: inv.args,
-          })),
-        );
-        // Advance the agentic loop — sends tool results back to the model
-        for (const inv of pendingInvocations) {
-          addToolResult({ toolCallId: inv.toolCallId, result: { success: true } });
-        }
-      }}
-    >
-      Apply
-    </Button>
-    <Button
-      size="small"
-      variant="outlined"
-      onClick={() => {
-        // Dismiss without applying — send a cancelled result so the model knows
-        for (const inv of pendingInvocations) {
-          addToolResult({ toolCallId: inv.toolCallId, result: { cancelled: true } });
-        }
-      }}
-    >
-      Dismiss
-    </Button>
-  </Box>
-)}
+{
+  pendingInvocations.length > 0 && (
+    <Box sx={{ mt: 1, display: "flex", gap: 1 }}>
+      <Button
+        size="small"
+        variant="contained"
+        startIcon={<CheckIcon />}
+        onClick={() => {
+          // Execute mutations in the editor
+          applyActions(
+            editorRef.current!,
+            pendingInvocations.map((inv) => ({
+              type: inv.toolName,
+              params: inv.args,
+            })),
+          );
+          // Advance the agentic loop — sends tool results back to the model
+          for (const inv of pendingInvocations) {
+            addToolResult({
+              toolCallId: inv.toolCallId,
+              result: { success: true },
+            });
+          }
+        }}
+      >
+        Apply
+      </Button>
+      <Button
+        size="small"
+        variant="outlined"
+        onClick={() => {
+          // Dismiss without applying — send a cancelled result so the model knows
+          for (const inv of pendingInvocations) {
+            addToolResult({
+              toolCallId: inv.toolCallId,
+              result: { cancelled: true },
+            });
+          }
+        }}
+      >
+        Dismiss
+      </Button>
+    </Box>
+  );
+}
 ```
 
 After all invocations are results, show the Applied chip:
 
 ```tsx
-{pendingInvocations.length === 0 && appliedInvocations.length > 0 && (
-  <Chip
-    size="small"
-    icon={<CheckIcon />}
-    label="Applied"
-    color="success"
-    variant="outlined"
-    sx={{ mt: 1 }}
-  />
-)}
+{
+  pendingInvocations.length === 0 && appliedInvocations.length > 0 && (
+    <Chip
+      size="small"
+      icon={<CheckIcon />}
+      label="Applied"
+      color="success"
+      variant="outlined"
+      sx={{ mt: 1 }}
+    />
+  );
+}
 ```
 
 ### `QuickActions` component
@@ -831,10 +864,19 @@ Row of Chip buttons shown when the thread is empty, to bootstrap common flows:
 
 ```tsx
 const QUICK_ACTIONS = [
-  { label: "Improve writing", prompt: "Improve the writing quality of this document." },
+  {
+    label: "Improve writing",
+    prompt: "Improve the writing quality of this document.",
+  },
   { label: "Fix grammar", prompt: "Fix any grammar and spelling mistakes." },
-  { label: "Make shorter", prompt: "Shorten this document while keeping all key information." },
-  { label: "Add examples", prompt: "Add concrete examples to illustrate the main points." },
+  {
+    label: "Make shorter",
+    prompt: "Shorten this document while keeping all key information.",
+  },
+  {
+    label: "Add examples",
+    prompt: "Add concrete examples to illustrate the main points.",
+  },
   { label: "Summarize", prompt: "Summarize this document in 3 bullet points." },
 ];
 
@@ -848,18 +890,22 @@ const QUICK_ACTIONS = [
 
 After all stages are implemented, verify the following end-to-end flows:
 
-- [ ] Copilot toggle button appears in toolbar; clicking it opens/closes the panel
+- [ ] Copilot toggle button appears in toolbar; clicking it opens/closes the
+      panel
 - [ ] Panel slides in and the editor shrinks (not overlapped)
 - [ ] Sending a message shows the user bubble immediately
 - [ ] Assistant response streams in token-by-token
 - [ ] LinearProgress appears while streaming; stop button cancels the stream
 - [ ] After a structural request (e.g. "add a table"), the Apply button appears
-- [ ] Clicking Apply inserts the table in the Lexical editor; Applied chip appears
+- [ ] Clicking Apply inserts the table in the Lexical editor; Applied chip
+      appears
 - [ ] Clicking Dismiss sends a cancelled result and removes the Apply button
-- [ ] Switching tabs updates the ActiveEditorContext ref; Copilot uses the new editor
+- [ ] Switching tabs updates the ActiveEditorContext ref; Copilot uses the new
+      editor
 - [ ] Quick action chips pre-fill the input
 - [ ] Selection is captured: select text → send message → AI references it
-- [ ] Network error during streaming shows the error banner (not a stuck empty message)
+- [ ] Network error during streaming shows the error banner (not a stuck empty
+      message)
 - [ ] Edge runtime: verify all AI provider adapters work without Node-only deps
 
 ---
@@ -889,9 +935,9 @@ Follow DESIGN.md conventions throughout.
 - **`replace_text` is lossy** — creates a plain-text paragraph, destroying all
   inline formatting (bold, italic, links). Documented in the tool description so
   Claude avoids it on formatted nodes. A formatting-aware version is deferred.
-- **No thread persistence** — threads reset on page refresh. Per-document threads
-  survive tab switches within the same session (held by `useChat` state in
-  `CopilotChat`, which is mounted for the lifetime of the panel).
+- **No thread persistence** — threads reset on page refresh. Per-document
+  threads survive tab switches within the same session (held by `useChat` state
+  in `CopilotChat`, which is mounted for the lifetime of the panel).
 - **agentic loop requires user approval** — each tool-call batch waits for Apply
   before the model continues. This is intentional (user control) but means a
   5-step agentic plan requires 5 Apply clicks. Auto-approve is a future option.

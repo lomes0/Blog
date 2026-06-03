@@ -55,7 +55,14 @@ function PostListItem(
           />
         </ListItemIcon>
         <ListItemIcon sx={{ minWidth: 36 }}>
-          <FileText size={20} style={{ color: iconColor === "primary" ? "var(--mui-palette-primary-main)" : "var(--mui-palette-action-active)" }} />
+          <FileText
+            size={20}
+            style={{
+              color: iconColor === "primary"
+                ? "var(--mui-palette-primary-main)"
+                : "var(--mui-palette-action-active)",
+            }}
+          />
         </ListItemIcon>
         <ListItemText
           primary={post.name}
@@ -180,7 +187,13 @@ const AddPostsDialog: React.FC<AddPostsDialogProps> = ({
           : allPostCount === 0
           ? (
             <Box sx={{ textAlign: "center", py: 6, px: 2 }}>
-              <Search size={48} style={{ color: "var(--mui-palette-text-secondary)", marginBottom: 16 }} />
+              <Search
+                size={48}
+                style={{
+                  color: "var(--mui-palette-text-secondary)",
+                  marginBottom: 16,
+                }}
+              />
               <Typography variant="h6" color="text.secondary" gutterBottom>
                 No posts available
               </Typography>
@@ -244,7 +257,9 @@ const AddPostsDialog: React.FC<AddPostsDialogProps> = ({
           variant="contained"
           onClick={handleAddPosts}
           disabled={submitting}
-          startIcon={submitting ? <CircularProgress size={16} /> : <Plus size={18} />}
+          startIcon={submitting
+            ? <CircularProgress size={16} />
+            : <Plus size={18} />}
         >
           {submitting ? "Saving..." : "Save Changes"}
         </Button>

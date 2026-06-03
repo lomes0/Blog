@@ -120,7 +120,11 @@ const CardBase: React.FC<SimplifiedCardBaseProps> = ({
             <Tooltip title="Unsaved changes" arrow placement="top">
               <Pencil
                 size={16}
-                style={{ color: "var(--mui-palette-primary-main)", opacity: 0.75, flexShrink: 0 }}
+                style={{
+                  color: "var(--mui-palette-primary-main)",
+                  opacity: 0.75,
+                  flexShrink: 0,
+                }}
               />
             </Tooltip>
           )}

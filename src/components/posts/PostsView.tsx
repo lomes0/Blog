@@ -168,12 +168,16 @@ const PostsView: React.FC<PostsViewProps> = ({ series, user: serverUser }) => {
 
   useEffect(() => {
     const toolbarNode = (
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+      <Box
+        sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}
+      >
         <ViewToggle view={viewType} onChange={setViewType} />
         <NewPostSplitButton
           isSeries={isSeries}
           canEdit={canEdit}
-          onNewPost={isSeries ? () => setCreatePostDrawerOpen(true) : () => router.push("/new")}
+          onNewPost={isSeries
+            ? () => setCreatePostDrawerOpen(true)
+            : () => router.push("/new")}
           onNewSeries={() => setCreateSeriesDrawerOpen(true)}
           onAddRemovePosts={isSeries ? () => setAddDialogOpen(true) : undefined}
         />
@@ -235,12 +239,21 @@ const PostsView: React.FC<PostsViewProps> = ({ series, user: serverUser }) => {
               {series!.title}
             </Typography>
             {series!.description && (
-              <Typography variant="body1" color="text.secondary" sx={{ mt: 0.5 }}>
+              <Typography
+                variant="body1"
+                color="text.secondary"
+                sx={{ mt: 0.5 }}
+              >
                 {series!.description}
               </Typography>
             )}
-            <Typography variant="caption" color="text.disabled" sx={{ mt: 0.75, display: "block" }}>
-              {series!.posts.length} {series!.posts.length === 1 ? "post" : "posts"}
+            <Typography
+              variant="caption"
+              color="text.disabled"
+              sx={{ mt: 0.75, display: "block" }}
+            >
+              {series!.posts.length}{" "}
+              {series!.posts.length === 1 ? "post" : "posts"}
             </Typography>
           </Box>
           {seriesUserDocs.length === 0

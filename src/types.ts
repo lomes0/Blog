@@ -45,8 +45,14 @@ export interface AppState {
     attachmentPreview: AttachmentPreviewState | null;
     attachmentModified: { url: string; timestamp: number } | null;
     tabs: TabsState;
+    copilot: { open: boolean };
   };
 }
+
+export type CopilotAction = {
+  type: string;
+  params: Record<string, unknown>;
+};
 
 export interface DocumentStorageUsage {
   id: string;

@@ -8,7 +8,14 @@ import {
   MenuItem,
   Tooltip,
 } from "@mui/material";
-import { ChevronRight, FolderOpen, MoreHorizontal, Pencil, Tag, Trash2 } from "lucide-react";
+import {
+  ChevronRight,
+  FolderOpen,
+  MoreHorizontal,
+  Pencil,
+  Tag,
+  Trash2,
+} from "lucide-react";
 import { Series } from "@/types";
 
 interface PostRowContextMenuProps {
@@ -29,7 +36,9 @@ export function PostRowContextMenu({
   onMoveToSeries,
 }: PostRowContextMenuProps) {
   const [anchor, setAnchor] = useState<null | HTMLElement>(null);
-  const [seriesMenuAnchor, setSeriesMenuAnchor] = useState<null | HTMLElement>(null);
+  const [seriesMenuAnchor, setSeriesMenuAnchor] = useState<null | HTMLElement>(
+    null,
+  );
   const open = Boolean(anchor);
 
   const handleOpen = (e: React.MouseEvent<HTMLElement>) => {
@@ -82,7 +91,8 @@ export function PostRowContextMenu({
           <ListItemText>Rename</ListItemText>
         </MenuItem>
 
-        {mode === "post" && onMoveToSeries && availableSeries && availableSeries.length > 0 && (
+        {mode === "post" && onMoveToSeries && availableSeries &&
+          availableSeries.length > 0 && (
           <MenuItem
             dense
             onClick={(e) => {
@@ -122,7 +132,8 @@ export function PostRowContextMenu({
         </MenuItem>
       </Menu>
 
-      {mode === "post" && onMoveToSeries && availableSeries && availableSeries.length > 0 && (
+      {mode === "post" && onMoveToSeries && availableSeries &&
+        availableSeries.length > 0 && (
         <Menu
           anchorEl={seriesMenuAnchor}
           open={Boolean(seriesMenuAnchor)}

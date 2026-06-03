@@ -28,3 +28,18 @@ export const getSystemPrompt = (option: AIOptionType): string => {
 export const getToneSystemPrompt = (tone: string): string =>
   BASE_SYSTEM_PROMPT +
   ` You are asked to rewrite what the user writes in a ${tone} tone, preserving the original meaning and information.`;
+
+export const COPILOT_SYSTEM_PROMPT = (
+  title: string,
+  context: string,
+  selection?: string,
+): string =>
+  `You are a writing assistant embedded in a blog editor. ` +
+  `The user is editing a document titled "${title}". ` +
+  `\n\nDocument structure:\n${context}` +
+  (selection ? `\n\nThe user currently has selected: "${selection}"` : "") +
+  `\n\nWhen the user asks you to make an edit, use the available tools to do so. ` +
+  `Before calling tools, briefly describe what changes you will make (e.g. ` +
+  `"I'll insert a 3×4 table after the Introduction heading and add a Summary section."). ` +
+  `After calling tools, confirm briefly what you did. ` +
+  `When answering questions, respond concisely without calling tools.`;

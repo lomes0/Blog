@@ -129,7 +129,10 @@ const DocumentBrowser: React.FC<DocumentBrowserProps> = () => {
                     icon={
                       <FilePlus
                         size={64}
-                        style={{ color: "var(--mui-palette-text-secondary)", opacity: 0.6 }}
+                        style={{
+                          color: "var(--mui-palette-text-secondary)",
+                          opacity: 0.6,
+                        }}
                       />
                     }
                     title="No blog posts yet"

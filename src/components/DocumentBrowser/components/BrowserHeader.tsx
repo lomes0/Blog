@@ -69,7 +69,10 @@ const BrowserHeader: React.FC<BrowserHeaderProps> = ({
           >
             <ListFilter
               size={18}
-              style={{ marginRight: 4, color: "var(--mui-palette-text-secondary)" }}
+              style={{
+                marginRight: 4,
+                color: "var(--mui-palette-text-secondary)",
+              }}
             />
           </Box>
           <DocumentSortControl

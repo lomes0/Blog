@@ -52,7 +52,9 @@ export const ImportTab: React.FC = () => {
           <Chip
             key={t}
             label={t === "cloud" ? "Cloud (database)" : "Local (this browser)"}
-            icon={t === "cloud" ? <CloudUpload size={18} /> : <Download size={18} />}
+            icon={t === "cloud"
+              ? <CloudUpload size={18} />
+              : <Download size={18} />}
             variant={target === t ? "filled" : "outlined"}
             color={target === t ? "primary" : "default"}
             onClick={() => setTarget(t)}

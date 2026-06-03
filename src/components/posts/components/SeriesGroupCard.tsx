@@ -326,7 +326,10 @@ function SeriesContextMenu({
       </MenuItem>
       <MenuItem onClick={onDelete} sx={{ color: "error.main" }}>
         <ListItemIcon>
-          <Trash2 size={18} style={{ color: "var(--mui-palette-error-main)" }} />
+          <Trash2
+            size={18}
+            style={{ color: "var(--mui-palette-error-main)" }}
+          />
         </ListItemIcon>
         <ListItemText>Delete</ListItemText>
       </MenuItem>

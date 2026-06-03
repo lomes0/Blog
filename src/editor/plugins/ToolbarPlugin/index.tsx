@@ -51,8 +51,11 @@ import {
   Container,
   IconButton,
   Toolbar,
+  Tooltip,
   useScrollTrigger,
 } from "@mui/material";
+import { Bot } from "lucide-react";
+import { actions, useDispatch, useSelector } from "@/store";
 import { Redo, Undo } from "lucide-react";
 import { $isIFrameNode } from "@/editor/nodes/IFrameNode";
 import { $findMatchingParent, IS_APPLE } from "@lexical/utils";
@@ -94,6 +97,8 @@ function ToolbarPlugin(
 ) {
   const [editor] = useLexicalComposerContext();
   const [activeEditor, setActiveEditor] = useState(editor);
+  const dispatch = useDispatch();
+  const copilotOpen = useSelector((state) => state.ui.copilot.open);
   const [blockType, setBlockType] = useState<
     keyof typeof blockTypeToBlockName
   >("paragraph");
@@ -518,6 +523,16 @@ function ToolbarPlugin(
                 editor={activeEditor}
                 isRTL={isRTL}
               />
+              <Tooltip title="Copilot">
+                <IconButton
+                  size="small"
+                  color={copilotOpen ? "primary" : "default"}
+                  onClick={() => dispatch(actions.setCopilotOpen(!copilotOpen))}
+                  aria-label="Toggle Copilot"
+                >
+                  <Bot size={18} />
+                </IconButton>
+              </Tooltip>
             </Box>
           </Container>
         </Toolbar>

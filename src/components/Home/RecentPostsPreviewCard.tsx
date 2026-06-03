@@ -36,7 +36,10 @@ export default function RecentPostsPreviewCard({
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <FileText size={20} style={{ color: "var(--mui-palette-text-secondary)" }} />
+          <FileText
+            size={20}
+            style={{ color: "var(--mui-palette-text-secondary)" }}
+          />
           <Typography
             variant="subtitle1"
             sx={{

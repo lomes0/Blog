@@ -79,9 +79,7 @@ const RailSection: React.FC<RailSectionProps> = ({
           aria-hidden="true"
           sx={{ p: 0, pointerEvents: "none" }}
         >
-          {open
-            ? <ChevronUp size={18} />
-            : <ChevronDown size={18} />}
+          {open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
         </IconButton>
       </Box>
       <Collapse in={open}>

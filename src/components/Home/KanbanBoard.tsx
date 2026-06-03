@@ -211,7 +211,10 @@ export default function KanbanBoard(
                             >
                               <GripVertical
                                 size={16}
-                                style={{ color: "var(--mui-palette-text-disabled)", marginTop: "1.6px" }}
+                                style={{
+                                  color: "var(--mui-palette-text-disabled)",
+                                  marginTop: "1.6px",
+                                }}
                               />
                               <Box sx={{ flex: 1, minWidth: 0 }}>
                                 <Typography

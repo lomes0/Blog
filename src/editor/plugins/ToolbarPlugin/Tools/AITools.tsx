@@ -32,9 +32,9 @@ import {
 import {
   ChevronDown,
   ChevronRight,
-  ChevronUp,
   ChevronsDownUp,
   ChevronsUpDown,
+  ChevronUp,
   Mic,
   Minimize2,
   Monitor,
@@ -427,12 +427,36 @@ export default function AITools(
         aria-expanded={open ? "true" : undefined}
         variant="outlined"
         onClick={openMenu}
-        startIcon={<Sparkles style={{ color: isLoading ? "var(--mui-palette-action-disabled)" : "var(--mui-palette-action-active)" }} />}
+        startIcon={
+          <Sparkles
+            style={{
+              color: isLoading
+                ? "var(--mui-palette-action-disabled)"
+                : "var(--mui-palette-action-active)",
+            }}
+          />
+        }
         endIcon={isLoading
           ? <CircularProgress size={16} color="inherit" />
           : open
-          ? <ChevronUp style={{ color: isLoading ? "var(--mui-palette-action-disabled)" : "var(--mui-palette-action-active)" }} />
-          : <ChevronDown style={{ color: isLoading ? "var(--mui-palette-action-disabled)" : "var(--mui-palette-action-active)" }} />}
+          ? (
+            <ChevronUp
+              style={{
+                color: isLoading
+                  ? "var(--mui-palette-action-disabled)"
+                  : "var(--mui-palette-action-active)",
+              }}
+            />
+          )
+          : (
+            <ChevronDown
+              style={{
+                color: isLoading
+                  ? "var(--mui-palette-action-disabled)"
+                  : "var(--mui-palette-action-active)",
+              }}
+            />
+          )}
         sx={{
           color: "text.primary",
           borderColor: "divider",

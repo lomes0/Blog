@@ -143,7 +143,11 @@ function ReadmeEmptyState({ creating, error }: ReadmeEmptyStateProps) {
           <>
             <Plus
               size={40}
-              style={{ color: "var(--mui-palette-text-secondary)", opacity: 0.4, marginBottom: 8 }}
+              style={{
+                color: "var(--mui-palette-text-secondary)",
+                opacity: 0.4,
+                marginBottom: 8,
+              }}
             />
             <Typography
               variant="body2"
@@ -208,7 +212,10 @@ export default function ReadmePreviewCard({
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <FileText size={20} style={{ color: "var(--mui-palette-text-secondary)" }} />
+          <FileText
+            size={20}
+            style={{ color: "var(--mui-palette-text-secondary)" }}
+          />
           <Typography
             variant="subtitle1"
             sx={{

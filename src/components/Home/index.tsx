@@ -22,7 +22,11 @@ import { useNotesZoom } from "@/hooks/useNotesZoom";
 import BoardSelector from "../NotesCanvas/BoardSelector";
 import ZoomControls from "../NotesCanvas/ZoomControls";
 import { NotesClipboardProvider } from "@/contexts/NotesClipboardContext";
-import { NOTE_COLOR_LIST, NOTE_COLORS, NOTE_SWATCH_COLORS } from "../NotesCanvas/noteColors";
+import {
+  NOTE_COLOR_LIST,
+  NOTE_COLORS,
+  NOTE_SWATCH_COLORS,
+} from "../NotesCanvas/noteColors";
 import { Divider, Popover, Tooltip } from "@mui/material";
 
 type ViewType = "notes" | "kanban" | "readme" | "posts" | null;
@@ -117,7 +121,10 @@ const Home: React.FC<{
                   >
                     <StickyNote
                       size={18}
-                      style={{ color: "var(--mui-palette-text-secondary)", flexShrink: 0 }}
+                      style={{
+                        color: "var(--mui-palette-text-secondary)",
+                        flexShrink: 0,
+                      }}
                     />
                     <BoardSelector
                       boards={boards}
@@ -133,7 +140,8 @@ const Home: React.FC<{
                     <Tooltip title="Add note">
                       <Box
                         component="button"
-                        onClick={(e: React.MouseEvent<HTMLElement>) => setColorAnchor(e.currentTarget)}
+                        onClick={(e: React.MouseEvent<HTMLElement>) =>
+                          setColorAnchor(e.currentTarget)}
                         sx={{
                           display: "flex",
                           alignItems: "center",
@@ -149,7 +157,10 @@ const Home: React.FC<{
                           fontSize: "0.8125rem",
                           fontWeight: 500,
                           color: "text.secondary",
-                          "&:hover": { bgcolor: "action.selected", color: "text.primary" },
+                          "&:hover": {
+                            bgcolor: "action.selected",
+                            color: "text.primary",
+                          },
                           transition: "all 0.15s ease",
                         }}
                       >
@@ -189,7 +200,9 @@ const Home: React.FC<{
                                 "&:hover": {
                                   borderColor: NOTE_SWATCH_COLORS[color.value],
                                   transform: "scale(1.2)",
-                                  boxShadow: `0 2px 8px ${NOTE_SWATCH_COLORS[color.value]}88`,
+                                  boxShadow: `0 2px 8px ${
+                                    NOTE_SWATCH_COLORS[color.value]
+                                  }88`,
                                 },
                               }}
                             />

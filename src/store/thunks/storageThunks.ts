@@ -6,7 +6,9 @@ import { apiClient } from "@/api";
 const toErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : "Unknown error";
 
-export async function fetchLocalStorageUsage(): Promise<DocumentStorageUsage[]> {
+export async function fetchLocalStorageUsage(): Promise<
+  DocumentStorageUsage[]
+> {
   const documents = await documentDB.getAll();
   const revisions = await revisionDB.getAll();
   const localStorageUsage: DocumentStorageUsage[] = [];
@@ -26,7 +28,8 @@ export async function fetchLocalStorageUsage(): Promise<DocumentStorageUsage[]> 
           (revision) => revision.documentId === document.id,
         ),
       };
-      const backupDocumentSize = new Blob([JSON.stringify(backupDocument)]).size;
+      const backupDocumentSize =
+        new Blob([JSON.stringify(backupDocument)]).size;
       localStorageUsage.push({
         id: document.id,
         name: document.name,
@@ -36,7 +39,9 @@ export async function fetchLocalStorageUsage(): Promise<DocumentStorageUsage[]> 
   return localStorageUsage;
 }
 
-export async function fetchCloudStorageUsage(): Promise<DocumentStorageUsage[]> {
+export async function fetchCloudStorageUsage(): Promise<
+  DocumentStorageUsage[]
+> {
   const data = await apiClient.storage.getUsage();
   if (!data) throw new Error("failed to get cloud storage usage");
   return data;

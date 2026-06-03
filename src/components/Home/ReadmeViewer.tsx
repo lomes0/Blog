@@ -179,7 +179,10 @@ export default function ReadmeViewer({ documents }: ReadmeViewerProps) {
           px: 3,
         }}
       >
-        <FileText size={64} style={{ color: "var(--mui-palette-text-disabled)" }} />
+        <FileText
+          size={64}
+          style={{ color: "var(--mui-palette-text-disabled)" }}
+        />
         <Typography variant="h6" color="text.secondary">
           No README found
         </Typography>

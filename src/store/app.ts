@@ -25,13 +25,10 @@ import {
   deleteCloudDocument,
   deleteLocalDocument,
   forkCloudDocument,
-  forkLocalDocument,
   getCloudDocument,
-  getDocumentById,
   getLocalDocument,
   loadCloudDocuments,
   loadLocalDocuments,
-  syncLocalToCloud,
   updateCloudDocument,
   updateLocalDocument,
 } from "./thunks/documentThunks";
@@ -41,15 +38,8 @@ import {
   deleteCloudRevision,
   deleteLocalRevision,
   getCloudRevision,
-  getLocalDocumentRevisions,
-  getLocalRevision,
   updateLocalRevision,
 } from "./thunks/revisionThunks";
-import {
-  getCloudDocumentThumbnail,
-  getCloudStorageUsage,
-  getLocalStorageUsage,
-} from "./thunks/storageThunks";
 import {
   createSeries,
   deleteSeries,
@@ -93,6 +83,9 @@ const initialState: AppState = {
       tabIds: [],
       activeTabId: null,
       dirtyTabIds: [],
+    },
+    copilot: {
+      open: false,
     },
   },
 };
@@ -228,6 +221,9 @@ export const appSlice = createSlice({
     },
     clearAttachmentModified: (state) => {
       state.ui.attachmentModified = null;
+    },
+    setCopilotOpen: (state, action: PayloadAction<boolean>) => {
+      state.ui.copilot.open = action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -627,42 +623,47 @@ export const appSlice = createSlice({
 export { loadSession } from "./thunks/sessionThunks";
 
 export {
-  loadLocalDocuments,
-  loadCloudDocuments,
-  getLocalDocument,
-  getCloudDocument,
-  forkLocalDocument,
-  forkCloudDocument,
-  createLocalDocument,
   createCloudDocument,
-  updateLocalDocument,
-  updateCloudDocument,
-  deleteLocalDocument,
+  createLocalDocument,
   deleteCloudDocument,
-  syncLocalToCloud,
+  deleteLocalDocument,
+  forkCloudDocument,
+  forkLocalDocument,
+  getCloudDocument,
   getDocumentById,
+  getLocalDocument,
+  loadCloudDocuments,
+  loadLocalDocuments,
+  syncLocalToCloud,
+  updateCloudDocument,
+  updateLocalDocument,
 } from "./thunks/documentThunks";
 
 export {
-  getLocalRevision,
-  getLocalDocumentRevisions,
-  getCloudRevision,
-  createLocalRevision,
-  updateLocalRevision,
   createCloudRevision,
-  deleteLocalRevision,
+  createLocalRevision,
   deleteCloudRevision,
+  deleteLocalRevision,
+  getCloudRevision,
+  getLocalDocumentRevisions,
+  getLocalRevision,
+  updateLocalRevision,
 } from "./thunks/revisionThunks";
 
 export {
-  fetchLocalStorageUsage,
   fetchCloudStorageUsage,
-  getLocalStorageUsage,
-  getCloudStorageUsage,
+  fetchLocalStorageUsage,
   getCloudDocumentThumbnail,
+  getCloudStorageUsage,
+  getLocalStorageUsage,
 } from "./thunks/storageThunks";
 
-export { createSeries, deleteSeries, loadSeries, updateSeries } from "./thunks/seriesThunks";
+export {
+  createSeries,
+  deleteSeries,
+  loadSeries,
+  updateSeries,
+} from "./thunks/seriesThunks";
 export { alert, updateUser } from "./thunks/userThunks";
 export { duplicateDocument } from "./app/duplicateDocument";
 

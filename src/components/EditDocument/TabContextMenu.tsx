@@ -7,7 +7,15 @@ import {
   MenuItem,
   Typography,
 } from "@mui/material";
-import { ArrowUpDown, Copy, FilePen, FolderInput, Pin, Split, Trash2 } from "lucide-react";
+import {
+  ArrowUpDown,
+  Copy,
+  FilePen,
+  FolderInput,
+  Pin,
+  Split,
+  Trash2,
+} from "lucide-react";
 
 interface TabContextMenuProps {
   anchorEl: HTMLElement | null;
@@ -108,7 +116,14 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
         sx={{ color: isRoot ? undefined : "error.main" }}
       >
         <ListItemIcon>
-          <Trash2 size={18} style={{ color: isRoot ? "var(--mui-palette-action-disabled)" : "var(--mui-palette-error-main)" }} />
+          <Trash2
+            size={18}
+            style={{
+              color: isRoot
+                ? "var(--mui-palette-action-disabled)"
+                : "var(--mui-palette-error-main)",
+            }}
+          />
         </ListItemIcon>
         <ListItemText>Delete tab</ListItemText>
         <Typography variant="caption" color="text.disabled" sx={{ ml: 2 }}>

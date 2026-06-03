@@ -170,12 +170,18 @@ export const SeriesRow = React.memo(function SeriesRow({
             : isDragOver
             ? "action.selected"
             : "transparent",
-          outline: isDragOver ? "1.5px solid" : isSelected ? "1px solid" : "none",
+          outline: isDragOver
+            ? "1.5px solid"
+            : isSelected
+            ? "1px solid"
+            : "none",
           outlineColor: isDragOver ? "primary.main" : "secondary.main",
           outlineOffset: -1,
           transition: "background-color 80ms",
           "&:hover": {
-            bgcolor: isSelected || isDragOver ? "action.selected" : "action.hover",
+            bgcolor: isSelected || isDragOver
+              ? "action.selected"
+              : "action.hover",
           },
           "&:hover .row-checkbox-grip": { visibility: "visible" },
           "&:hover .row-actions-btn": { opacity: 1 },
@@ -214,8 +220,10 @@ export const SeriesRow = React.memo(function SeriesRow({
           }}
         />
 
-        {/* Title area — title row + sub-line; being the tallest child drives
-            the row height, and both gutter + chevron center against it */}
+        {
+          /* Title area — title row + sub-line; being the tallest child drives
+            the row height, and both gutter + chevron center against it */
+        }
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             {editingSeriesName !== undefined
@@ -340,7 +348,9 @@ export const SeriesRow = React.memo(function SeriesRow({
               onDragEnd={onDragEnd}
               indent={8}
               availableSeries={availableSeries}
-              onMoveToSeries={onMovePost ? (seriesId) => onMovePost(p.id, seriesId) : undefined}
+              onMoveToSeries={onMovePost
+                ? (seriesId) => onMovePost(p.id, seriesId)
+                : undefined}
             />
           ))}
           {!inlineAll && (

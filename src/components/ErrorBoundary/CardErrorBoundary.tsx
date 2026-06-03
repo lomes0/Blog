@@ -77,7 +77,10 @@ class CardErrorBoundary extends Component<Props, State> {
           >
             <AlertCircle
               size={48}
-              style={{ color: "var(--mui-palette-error-main)", marginBottom: 16 }}
+              style={{
+                color: "var(--mui-palette-error-main)",
+                marginBottom: 16,
+              }}
             />
 
             <Typography variant="h6" color="error.main" gutterBottom>

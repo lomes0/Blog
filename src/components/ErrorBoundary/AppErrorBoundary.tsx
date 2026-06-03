@@ -82,7 +82,10 @@ class AppErrorBoundary extends Component<Props, State> {
           >
             <AlertCircle
               size={80}
-              style={{ color: "var(--mui-palette-error-main)", marginBottom: 24 }}
+              style={{
+                color: "var(--mui-palette-error-main)",
+                marginBottom: 24,
+              }}
             />
 
             <Typography

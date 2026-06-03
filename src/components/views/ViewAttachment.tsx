@@ -187,9 +187,7 @@ const ViewAttachment: React.FC<ViewAttachmentProps> = ({
         {canPreview && (
           <Tooltip title={expanded ? "Collapse" : "Expand"}>
             <IconButton size="small">
-              {expanded
-                ? <ChevronUp size={18} />
-                : <ChevronDown size={18} />}
+              {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
             </IconButton>
           </Tooltip>
         )}

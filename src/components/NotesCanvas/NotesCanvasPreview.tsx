@@ -46,7 +46,10 @@ export default function NotesCanvasPreview(
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <StickyNote size={20} style={{ color: "var(--mui-palette-text-secondary)" }} />
+          <StickyNote
+            size={20}
+            style={{ color: "var(--mui-palette-text-secondary)" }}
+          />
           <Typography
             variant="subtitle1"
             sx={{

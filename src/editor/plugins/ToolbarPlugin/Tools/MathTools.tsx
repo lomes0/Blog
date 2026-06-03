@@ -27,7 +27,7 @@ import {
   ToggleButtonGroup,
   Typography,
 } from "@mui/material";
-import { Menu, PenLine, Pencil, Save, Trash2 } from "lucide-react";
+import { Menu, Pencil, PenLine, Save, Trash2 } from "lucide-react";
 import { useTheme } from "@mui/material/styles";
 import { ANNOUNCE_COMMAND } from "@/editor/commands";
 import { Announcement } from "@/types";

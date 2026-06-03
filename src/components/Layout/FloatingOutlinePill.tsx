@@ -62,7 +62,10 @@ const FloatingOutlinePill: React.FC = () => {
       }}
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.25 }}>
-        <Table size={13} style={{ color: "var(--mui-palette-text-secondary)" }} />
+        <Table
+          size={13}
+          style={{ color: "var(--mui-palette-text-secondary)" }}
+        />
         <Typography variant="caption" fontWeight={700} color="text.primary">
           Outline
         </Typography>

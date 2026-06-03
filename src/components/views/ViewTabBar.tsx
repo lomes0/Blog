@@ -61,7 +61,10 @@ const ViewTabBar: React.FC<ViewTabBarProps> = (
           >
             <FileText
               size={14}
-              style={{ color: "var(--mui-palette-text-secondary)", flexShrink: 0 }}
+              style={{
+                color: "var(--mui-palette-text-secondary)",
+                flexShrink: 0,
+              }}
             />
             <Typography
               noWrap

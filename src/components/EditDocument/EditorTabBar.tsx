@@ -124,7 +124,10 @@ const TabItem: React.FC<TabItemProps> = ({
           {/* Tab icon */}
           <FileText
             size={14}
-            style={{ color: "var(--mui-palette-text-secondary)", flexShrink: 0 }}
+            style={{
+              color: "var(--mui-palette-text-secondary)",
+              flexShrink: 0,
+            }}
           />
 
           {/* Dirty indicator */}
@@ -402,7 +405,10 @@ const TabOverflowMenu: React.FC<TabOverflowMenuProps> = (
             }}
             sx={{ gap: 1 }}
           >
-            <FileText size={16} style={{ color: "var(--mui-palette-text-secondary)" }} />
+            <FileText
+              size={16}
+              style={{ color: "var(--mui-palette-text-secondary)" }}
+            />
             {tab.name}
           </MenuItem>
         ))}

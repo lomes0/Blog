@@ -420,9 +420,7 @@ export default function AttachmentComponent({
             title={expanded ? "Collapse preview" : "Expand preview"}
             sx={{ p: 0.5 }}
           >
-            {expanded
-              ? <ChevronUp size={18} />
-              : <ChevronDown size={18} />}
+            {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
           </IconButton>
         </Box>
       </Box>

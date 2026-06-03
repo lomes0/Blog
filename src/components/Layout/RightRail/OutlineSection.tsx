@@ -3,7 +3,11 @@ import { useEffect, useState } from "react";
 import { Box, LinearProgress, Link, Typography } from "@mui/material";
 import { Table } from "lucide-react";
 import { documentsSelectors, useSelector } from "@/store";
-import { countWords, extractHeadings, type OutlineHeading } from "@/utils/editorContent";
+import {
+  countWords,
+  extractHeadings,
+  type OutlineHeading,
+} from "@/utils/editorContent";
 import RailSection from "./RailSection";
 
 const WORDS_PER_MIN = 200;

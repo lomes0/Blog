@@ -258,7 +258,6 @@ export function PostsListView({
   const hasPosts = posts.length > 0;
   const hasSeries = series.length > 0;
 
-
   return (
     <Box sx={{ width: "100%", position: "relative" }}>
       {/* Posts section */}
@@ -286,7 +285,9 @@ export function PostsListView({
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
               availableSeries={hasSeries ? series : undefined}
-              onMoveToSeries={hasSeries ? (seriesId) => handleMoveToSeries(post.id, seriesId) : undefined}
+              onMoveToSeries={hasSeries
+                ? (seriesId) => handleMoveToSeries(post.id, seriesId)
+                : undefined}
             />
           ))}
         </Box>
