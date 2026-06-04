@@ -48,7 +48,6 @@ const SideBar: React.FC = () => {
     sidebarMode,
     sidebarOpen: open,
     toggleSidebar,
-    toggleSidebarCompact,
     isMobile,
     isResizing,
     startResize,
@@ -68,10 +67,7 @@ const SideBar: React.FC = () => {
     ...postItemActions
   } = useSidebarActions();
 
-  const { shortcutHint } = useKeyboardShortcuts({
-    onToggleSidebar: toggleSidebar,
-    enabled: true,
-  });
+  useKeyboardShortcuts({ onToggleSidebar: toggleSidebar, enabled: true });
 
   const user = useSelector((state: RootState) => state.user);
   const filteredDocuments = useSelector(selectUserFilteredDocuments);
@@ -111,14 +107,11 @@ const SideBar: React.FC = () => {
           flexDirection: "column",
           height: "100vh",
           fontSize: `${sidebarFontSize}px`,
+          bgcolor: "rgb(244, 245, 248)",
         },
       }}
     >
-      <SidebarHeader
-        open={isExpanded}
-        toggleSidebarCompact={toggleSidebarCompact}
-        shortcutHint={shortcutHint}
-      />
+      <SidebarHeader open={isExpanded} />
 
       <Box
         role="navigation"

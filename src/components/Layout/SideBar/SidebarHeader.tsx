@@ -1,21 +1,14 @@
 import React from "react";
 import RouterLink from "next/link";
 import Image from "next/image";
-import { Box, IconButton, Tooltip } from "@mui/material";
+import { Box, Tooltip } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface SidebarHeaderProps {
   open: boolean;
-  toggleSidebarCompact: () => void;
-  shortcutHint: string;
 }
 
-export const SidebarHeader: React.FC<SidebarHeaderProps> = ({
-  open,
-  toggleSidebarCompact,
-  shortcutHint,
-}) => {
+export const SidebarHeader: React.FC<SidebarHeaderProps> = ({ open }) => {
   const theme = useTheme();
 
   return (
@@ -58,21 +51,6 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({
         </Tooltip>
       )}
 
-      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-        <Tooltip
-          title={`${open ? "Collapse" : "Expand"} sidebar (${shortcutHint})`}
-        >
-          <IconButton
-            size="small"
-            onClick={toggleSidebarCompact}
-            aria-label={`${open ? "Collapse" : "Expand"} sidebar`}
-          >
-            {open
-              ? <ChevronLeft size={18} strokeWidth={2} />
-              : <ChevronRight size={18} strokeWidth={2} />}
-          </IconButton>
-        </Tooltip>
-      </Box>
     </Box>
   );
 };
