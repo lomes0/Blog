@@ -35,7 +35,7 @@ const CopilotMessage: React.FC<CopilotMessageProps> = (
 
   const textContent = textParts.map((p) => p.text).join("");
 
-  const handleApply = async () => {
+  const handleAccept = async () => {
     if (!editorRef.current) return;
     const acts: CopilotAction[] = pendingParts.map((p) => ({
       type: getToolName(p),
@@ -54,7 +54,7 @@ const CopilotMessage: React.FC<CopilotMessageProps> = (
     }
   };
 
-  const handleDismiss = async () => {
+  const handleDiscard = async () => {
     type ErrorOutput = (
       args: {
         tool: string;
@@ -98,14 +98,22 @@ const CopilotMessage: React.FC<CopilotMessageProps> = (
         )}
 
         {pendingParts.length > 0 && (
-          <Box sx={{ mt: 1 }}>
+          <Box
+            sx={{
+              mt: textContent ? 1 : 0,
+              p: 1,
+              border: 1,
+              borderColor: isUser ? "primary.light" : "divider",
+              borderRadius: 1,
+              bgcolor: isUser ? "primary.dark" : "background.paper",
+            }}
+          >
             <Typography
               variant="caption"
               color={isUser ? "primary.contrastText" : "text.secondary"}
               display="block"
-              sx={{ mb: 0.5 }}
+              sx={{ mb: 0.75 }}
             >
-              Pending:{" "}
               {pendingParts.map((p) => formatToolName(getToolName(p))).join(
                 ", ",
               )}
@@ -115,18 +123,19 @@ const CopilotMessage: React.FC<CopilotMessageProps> = (
                 size="small"
                 variant="contained"
                 startIcon={<Check size={14} />}
-                onClick={handleApply}
+                onClick={handleAccept}
                 sx={{ py: 0.25 }}
               >
-                Apply
+                Accept
               </Button>
               <Button
                 size="small"
-                variant="outlined"
-                onClick={handleDismiss}
+                variant="text"
+                color="error"
+                onClick={handleDiscard}
                 sx={{ py: 0.25 }}
               >
-                Dismiss
+                Discard
               </Button>
             </Box>
           </Box>

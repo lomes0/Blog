@@ -8,3 +8,7 @@ export const ActiveEditorContext = createContext<
 >(
   { current: null },
 );
+
+export const SetActiveEditorContext = createContext<
+  (ref: RefObject<LexicalEditor | null>) => void
+>(() => {});

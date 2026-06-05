@@ -1,8 +1,8 @@
 "use client";
 import { Box, IconButton, Tooltip } from "@mui/material";
-import { History, Info, Link as LinkIcon, Table } from "lucide-react";
+import { Bot, History, Info, Link as LinkIcon, Table } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useSelector } from "@/store";
+import { actions, useDispatch, useSelector } from "@/store";
 import { type RailMode, useLayoutMode } from "@/contexts/LayoutModeContext";
 import OutlineSection from "./OutlineSection";
 import PropertiesSection from "./PropertiesSection";
@@ -15,6 +15,8 @@ interface RightRailProps {
 
 const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
   const { toggleRail, isRailResizing, startRailResize } = useLayoutMode();
+  const dispatch = useDispatch();
+  const copilotOpen = useSelector((state) => state.ui.copilot.open);
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean);
   const mode = segments[0] === "edit"
@@ -52,6 +54,16 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
           displayPrint: "none",
         }}
       >
+        <Tooltip title="Copilot" placement="left">
+          <IconButton
+            size="small"
+            color={copilotOpen ? "primary" : "default"}
+            onClick={() => dispatch(actions.setCopilotOpen(!copilotOpen))}
+            aria-label="Toggle Copilot"
+          >
+            <Bot size={18} />
+          </IconButton>
+        </Tooltip>
         <Tooltip title="Expand outline" placement="left">
           <IconButton
             size="small"

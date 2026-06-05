@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useState } from "react";
+import { useCallback, useContext, useState } from "react";
 import React from "react";
 import type { LexicalEditor } from "lexical";
 import {
@@ -17,8 +17,7 @@ import {
 import { useRouter } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 import { actions, documentsSelectors, useDispatch, useSelector } from "@/store";
-import { ActiveEditorContext } from "@/contexts/ActiveEditorContext";
-import CopilotPanel from "@/components/CopilotPanel/CopilotPanel";
+import { SetActiveEditorContext } from "@/contexts/ActiveEditorContext";
 import { apiClient } from "@/api";
 import EditorTabBar, { type TabMeta } from "./EditorTabBar";
 import EditorTabPanel from "./EditorTabPanel";
@@ -57,17 +56,14 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
   const router = useRouter();
   const tabs = useSelector((state) => state.ui.tabs);
   const user = useSelector((state) => state.user);
-  const copilotOpen = useSelector((state) => state.ui.copilot.open);
 
-  const [activeEditorRef, setActiveEditorRef] = useState<
-    React.RefObject<LexicalEditor | null>
-  >(() => ({ current: null }));
+  const setActiveEditorRef = useContext(SetActiveEditorContext);
 
   const handleEditorReady = useCallback(
     (ref: React.RefObject<LexicalEditor | null>) => {
       setActiveEditorRef(ref);
     },
-    [],
+    [setActiveEditorRef],
   );
 
   // All root-level posts for the "Move to other post" picker.
@@ -319,8 +315,7 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     .filter((m): m is TabMeta => !!m);
 
   return (
-    <ActiveEditorContext.Provider value={activeEditorRef}>
-      <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
         {orderedTabs.length > 0 && (
           <EditorTabBar
             tabs={orderedTabs}
@@ -353,7 +348,6 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
             ))}
           </Box>
 
-          {copilotOpen && <CopilotPanel documentId={tabs.activeTabId ?? ""} />}
         </Box>
 
         {/* Context menu */}
@@ -430,7 +424,6 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
           </DialogActions>
         </Dialog>
       </Box>
-    </ActiveEditorContext.Provider>
   );
 };
 

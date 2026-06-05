@@ -1,7 +1,8 @@
 "use client";
-import { useCallback, useContext, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
+import { getToolName, isToolUIPart } from "ai";
 import { $getSelection, $isRangeSelection } from "lexical";
 import {
   Box,
@@ -13,29 +14,30 @@ import {
 import { Send, Square } from "lucide-react";
 import { ActiveEditorContext } from "@/contexts/ActiveEditorContext";
 import { serializeForCopilot } from "@/editor/utils/serializeForCopilot";
+import { applyActions } from "@/editor/utils/copilotToolExecutors";
 import { documentsSelectors, useSelector } from "@/store";
-import useLocalStorage from "@/hooks/useLocalStorage";
+import type { CopilotAction } from "@/types";
 import CopilotMessage from "./CopilotMessage";
 import QuickActions from "./QuickActions";
 
 interface CopilotChatProps {
   documentId: string;
+  llmConfig: { provider: string; model: string };
+  onRegisterAcceptAll: (fn: () => void) => void;
+  onPendingCountChange: (n: number) => void;
 }
 
-const CopilotChat: React.FC<CopilotChatProps> = ({ documentId }) => {
+const CopilotChat: React.FC<CopilotChatProps> = (
+  { documentId, llmConfig, onRegisterAcceptAll, onPendingCountChange },
+) => {
   const editorRef = useContext(ActiveEditorContext);
   const doc = useSelector((state) =>
     documentsSelectors.selectById(state, documentId)
   );
   const documentTitle = doc?.cloud?.name ?? doc?.local?.name ?? "Untitled";
 
-  const [llmConfig] = useLocalStorage("llm", {
-    provider: "google",
-    model: "gemini-2.5-flash",
-  });
   const [input, setInput] = useState("");
 
-  // Refs so prepareSendMessagesRequest always sees fresh values
   const editorRefRef = useRef(editorRef);
   editorRefRef.current = editorRef;
   const documentTitleRef = useRef(documentTitle);
@@ -70,6 +72,48 @@ const CopilotChat: React.FC<CopilotChatProps> = ({ documentId }) => {
 
   const isLoading = status === "submitted" || status === "streaming";
 
+  // Keep the accept-all function and pending count up to date whenever messages change
+  const addToolOutputRef = useRef(addToolOutput);
+  addToolOutputRef.current = addToolOutput;
+
+  const acceptAll = useCallback(() => {
+    if (!editorRefRef.current.current) return;
+    for (const msg of messages) {
+      const pending = msg.parts
+        .filter(isToolUIPart)
+        .filter((p) => p.state === "input-available");
+      if (pending.length === 0) continue;
+      const acts: CopilotAction[] = pending.map((p) => ({
+        type: getToolName(p),
+        params: ((p as { input?: unknown }).input ?? {}) as Record<
+          string,
+          unknown
+        >,
+      }));
+      applyActions(editorRefRef.current.current, acts);
+      for (const p of pending) {
+        void addToolOutputRef.current({
+          tool: getToolName(p),
+          toolCallId: p.toolCallId,
+          output: { success: true },
+        });
+      }
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    onRegisterAcceptAll(acceptAll);
+    const count = messages.reduce((acc, msg) => {
+      return (
+        acc +
+        msg.parts
+          .filter(isToolUIPart)
+          .filter((p) => p.state === "input-available").length
+      );
+    }, 0);
+    onPendingCountChange(count);
+  }, [acceptAll, messages, onRegisterAcceptAll, onPendingCountChange]);
+
   const handleSend = useCallback(() => {
     if (!input.trim() || isLoading) return;
     selectedTextRef.current = editorRefRef.current.current?.getEditorState()
@@ -88,7 +132,6 @@ const CopilotChat: React.FC<CopilotChatProps> = ({ documentId }) => {
     }
   };
 
-  // Cast addToolOutput to a generic form for CopilotMessage
   type GenericAddToolOutput = (
     args: { tool: string; toolCallId: string; output: unknown },
   ) => Promise<void>;
@@ -168,7 +211,7 @@ const CopilotChat: React.FC<CopilotChatProps> = ({ documentId }) => {
         <TextField
           fullWidth
           size="small"
-          placeholder="Ask anything…"
+          placeholder={`Ask Copilot to edit '${documentTitle}'…`}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
