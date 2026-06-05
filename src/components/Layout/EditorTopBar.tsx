@@ -245,13 +245,8 @@ const EditorTopBar: React.FC = () => {
         display: "flex",
         alignItems: "center",
         gap: 0,
-        ...(isFocus && {
-          position: "sticky",
-          top: 0,
-          zIndex: "appBar",
-          bgcolor: "background.paper",
-          backdropFilter: "blur(8px)",
-        }),
+        flexShrink: 0,
+        bgcolor: "background.paper",
       }}
     >
       {/* Hamburger */}

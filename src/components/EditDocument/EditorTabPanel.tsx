@@ -127,6 +127,7 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
             namespace={`matheditor-${docId}`}
             onSave={triggerSave}
             onDiscard={onDiscard}
+            isActive={isActive}
           />
           <EditDocumentInfo />
         </>

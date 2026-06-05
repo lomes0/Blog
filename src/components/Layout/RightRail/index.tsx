@@ -105,7 +105,12 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
               )
               : (
                 <Box
-                  sx={{ display: "flex", flexDirection: "column", gap: 1, p: 1 }}
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 1,
+                    p: 1,
+                  }}
                 >
                   <OutlineSection activeDocId={activeDocId} />
                   <PropertiesSection

@@ -26,7 +26,12 @@ export default function DocumentHeader({
   );
 
   return (
-    <Box sx={{ pt: 2, pb: 0 }}>
+    <Box
+      sx={{
+        pt: 2,
+        pb: 0,
+      }}
+    >
       {/* Title + save state on the same row */}
       <Box
         sx={{

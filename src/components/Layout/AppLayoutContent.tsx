@@ -20,10 +20,12 @@ import {
 } from "@/contexts/ActiveEditorContext";
 import FloatingOutlinePill from "./FloatingOutlinePill";
 import { TopBarTabsProvider } from "@/contexts/TopBarTabsContext";
+import { useToolbarSlot } from "@/contexts/ToolbarSlotContext";
 
 const COPILOT_W = 380;
 
 const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
+  const { setSlotEl } = useToolbarSlot();
   const dispatch = useDispatch();
   const initialized = useSelector((state: RootState) => state.ui.initialized);
   const { isResizing, getEffectiveWidth } = useSidebarWidth();
@@ -82,12 +84,15 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
               component="main"
               sx={{
                 minWidth: 0,
-                overflow: "auto",
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
                 position: "relative",
               }}
             >
               <Box id="back-to-top-anchor" />
               <EditorTopBar />
+              <Box ref={setSlotEl} sx={{ flexShrink: 0 }} />
               <FloatingOutlinePill />
               <HydrationManager>
                 <Container
@@ -100,6 +105,7 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
                     mx: isFocus ? "auto" : 0,
                     my: 2,
                     flex: 1,
+                    minHeight: 0,
                     position: "relative",
                     overflow: "auto",
                     width: "100%",

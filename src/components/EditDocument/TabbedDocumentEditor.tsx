@@ -355,9 +355,9 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
   useEffect(() => () => setTabBar(null), [setTabBar]);
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <Box sx={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        <Box sx={{ flex: 1, overflow: "hidden" }}>
+    <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
+      <Box sx={{ display: "flex", flex: 1 }}>
+        <Box sx={{ flex: 1 }}>
           {tabs.tabIds.map((tabId) => (
             <EditorTabPanel
               key={tabId}
@@ -387,7 +387,11 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
       />
 
       {/* Delete confirmation dialog */}
-      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)}>
+      <Dialog
+        open={!!deleteTarget}
+        onClose={() =>
+          setDeleteTarget(null)}
+      >
         <DialogTitle>Delete tab?</DialogTitle>
         <DialogContent>
           <DialogContentText>

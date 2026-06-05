@@ -24,6 +24,7 @@ const ConnectedEditor: React.FC<{
   onSave?: () => void;
   onDiscard?: () => void;
   namespace?: string;
+  isActive?: boolean;
 }> = (
   {
     document,
@@ -33,6 +34,7 @@ const ConnectedEditor: React.FC<{
     onSave,
     onDiscard,
     namespace,
+    isActive,
   },
 ) => {
   const dispatch = useDispatch();
@@ -118,6 +120,7 @@ const ConnectedEditor: React.FC<{
       ignoreHistoryMerge={ignoreHistoryMerge}
       onSave={onSave}
       onDiscard={onDiscard}
+      isActive={isActive}
     />
   );
 };

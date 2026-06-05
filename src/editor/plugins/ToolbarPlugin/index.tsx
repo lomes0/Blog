@@ -23,6 +23,8 @@ import {
 } from "lexical";
 import { useHash } from "react-use";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useToolbarSlot } from "@/contexts/ToolbarSlotContext";
 import { BlockFormatSelect } from "./Menus/BlockFormatSelect";
 import InsertToolMenu from "./Menus/InsertToolMenu";
 import TextFormatToggles from "./Tools/TextFormatToggles";
@@ -45,15 +47,7 @@ import {
   TableDialog,
 } from "./Dialogs";
 import { $isStickyNode, StickyNode } from "@/editor/nodes/StickyNode";
-import {
-  AppBar,
-  Box,
-  Container,
-  IconButton,
-  Toolbar,
-  Tooltip,
-  useScrollTrigger,
-} from "@mui/material";
+import { Box, IconButton, Tooltip } from "@mui/material";
 import { Check, Redo, Save, Undo } from "lucide-react";
 import { selectIsDirty, useSelector } from "@/store";
 import { $isIFrameNode } from "@/editor/nodes/IFrameNode";
@@ -89,9 +83,12 @@ const blockTypeToBlockName = {
 interface ToolbarPluginProps {
   onSave?: () => void;
   onDiscard?: () => void;
+  isActive?: boolean;
 }
 
-function ToolbarPlugin({ onSave, onDiscard }: ToolbarPluginProps) {
+function ToolbarPlugin(
+  { onSave, onDiscard, isActive = true }: ToolbarPluginProps,
+) {
   const [editor] = useLexicalComposerContext();
   const [activeEditor, setActiveEditor] = useState(editor);
 
@@ -109,9 +106,7 @@ function ToolbarPlugin({ onSave, onDiscard }: ToolbarPluginProps) {
   const [dialogs, setDialogs] = useState<EditorDialogs>({});
   const isTouched = useRef<boolean>(false);
   const [hash] = useHash();
-  const [containerBounds, setContainerBounds] = useState<
-    { left: number; width: number } | null
-  >(null);
+  const { slotEl } = useToolbarSlot();
 
   const $updateToolbar = useCallback(() => {
     const selection = $getSelection();
@@ -273,30 +268,6 @@ function ToolbarPlugin({ onSave, onDiscard }: ToolbarPluginProps) {
     );
   }, [activeEditor, dialogs]);
 
-  const toolbarTrigger = useScrollTrigger({
-    disableHysteresis: true,
-    threshold: 32,
-  });
-
-  useEffect(() => {
-    const lightThemeMeta = document.querySelector(
-      'meta[name="theme-color"][media="(prefers-color-scheme: light)"]',
-    );
-    const darkThemeMeta = document.querySelector(
-      'meta[name="theme-color"][media="(prefers-color-scheme: dark)"]',
-    );
-    if (lightThemeMeta && darkThemeMeta) {
-      lightThemeMeta.setAttribute(
-        "content",
-        toolbarTrigger ? "#ffffff" : "#1976d2",
-      );
-      darkThemeMeta.setAttribute(
-        "content",
-        toolbarTrigger ? "#121212" : "#272727",
-      );
-    }
-  }, [toolbarTrigger]);
-
   useEffect(() => {
     if (!hash) return;
     const scrollIntoView = (behavior?: ScrollBehavior) => {
@@ -328,27 +299,6 @@ function ToolbarPlugin({ onSave, onDiscard }: ToolbarPluginProps) {
   const showNoteTools = !!selectedSticky;
   const isDialogOpen = Object.values(dialogs).some((dialog) => dialog?.open);
 
-  // Track the editor container bounds for floating toolbar positioning
-  useEffect(() => {
-    const container = document.getElementById("editor-main-container");
-    if (!container) return;
-
-    const updateBounds = () => {
-      const rect = container.getBoundingClientRect();
-      setContainerBounds({ left: rect.left, width: rect.width });
-    };
-
-    updateBounds();
-    const resizeObserver = new ResizeObserver(updateBounds);
-    resizeObserver.observe(container);
-    window.addEventListener("resize", updateBounds);
-
-    return () => {
-      resizeObserver.disconnect();
-      window.removeEventListener("resize", updateBounds);
-    };
-  }, []);
-
   useEffect(() => {
     if (isDialogOpen) return;
     const selection = activeEditor.getEditorState().read($getSelection);
@@ -361,192 +311,133 @@ function ToolbarPlugin({ onSave, onDiscard }: ToolbarPluginProps) {
     }, 0);
   }, [isDialogOpen, activeEditor]);
 
-  return (
-    <>
-      <AppBar
-        elevation={toolbarTrigger ? 0 : 0}
-        position={toolbarTrigger ? "fixed" : "static"}
+  const toolbarContent = (
+    <Box
+      className="editor-toolbar"
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 2,
+        px: 1.5,
+        py: 0.5,
+        bgcolor: "background.default",
+        borderBottom: 1,
+        borderColor: "divider",
+        displayPrint: "none",
+      }}
+    >
+      <Box
         sx={{
-          ...(toolbarTrigger && containerBounds && {
-            // Center relative to the editor container
-            left: containerBounds.left + containerBounds.width / 2,
-            transform: "translateX(-50%)",
-            width: Math.min(containerBounds.width - 24, 1400),
-            maxWidth: 1400,
-            top: 12,
-            borderRadius: 2,
-            boxShadow: 4,
-          }),
-          background: toolbarTrigger
-            ? "rgba(var(--mui-palette-background-defaultChannel) / 0.92) !important"
-            : "var(--mui-palette-background-default) !important",
-          backdropFilter: toolbarTrigger ? "blur(12px)" : "none",
-          border: toolbarTrigger ? 1 : 0,
-          borderColor: "divider",
-          transition: "none",
+          display: "flex",
+          alignItems: "center",
+          flexShrink: 0,
         }}
       >
-        <Toolbar
-          className="editor-toolbar"
-          sx={{
-            position: "relative",
-            displayPrint: "none",
-            alignItems: "center",
-            px: "0 !important",
-            py: 1,
+        <IconButton
+          title={IS_APPLE ? "Undo (⌘Z)" : "Undo (Ctrl+Z)"}
+          aria-label="Undo"
+          disabled={!canUndo}
+          onClick={() => {
+            activeEditor.dispatchCommand(UNDO_COMMAND, undefined);
           }}
         >
-          <Container
-            maxWidth={false}
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 2,
-              px: toolbarTrigger ? 2 : "0 !important",
-              minWidth: 0,
-            }}
-          >
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                flexShrink: 0,
-              }}
-            >
-              <IconButton
-                title={IS_APPLE ? "Undo (⌘Z)" : "Undo (Ctrl+Z)"}
-                aria-label="Undo"
-                disabled={!canUndo}
-                onClick={() => {
-                  activeEditor.dispatchCommand(
-                    UNDO_COMMAND,
-                    undefined,
-                  );
+          <Undo size={18} />
+        </IconButton>
+        <IconButton
+          title={IS_APPLE ? "Redo (⌘Y)" : "Redo (Ctrl+Y)"}
+          aria-label="Redo"
+          disabled={!canRedo}
+          onClick={() => {
+            activeEditor.dispatchCommand(REDO_COMMAND, undefined);
+          }}
+        >
+          <Redo size={18} />
+        </IconButton>
+      </Box>
+      <Box
+        sx={{
+          display: "flex",
+          gap: 0.5,
+          overflow: "auto",
+          alignItems: "center",
+          justifyContent: "center",
+          flex: 1,
+          minWidth: 0,
+          "&::-webkit-scrollbar": { display: "none" },
+          scrollbarWidth: "none",
+        }}
+      >
+        {showMathTools && (
+          <MathTools editor={activeEditor} node={selectedNode} />
+        )}
+        {showImageTools && (
+          <ImageTools editor={activeEditor} node={selectedNode} />
+        )}
+        {showTextTools && (
+          <>
+            {blockType in blockTypeToBlockName && (
+              <BlockFormatSelect
+                blockType={blockType}
+                editor={activeEditor}
+              />
+            )}
+            {showCodeTools && (
+              <CodeTools editor={activeEditor} node={selectedNode} />
+            )}
+            {showTextFormatTools && <FontSelect editor={activeEditor} />}
+            <AITools editor={activeEditor} />
+            {showTableTools && (
+              <TableTools editor={activeEditor} node={selectedTable} />
+            )}
+            {showNoteTools && (
+              <NoteTools editor={editor} node={selectedSticky} />
+            )}
+            {showTextFormatTools && (
+              <TextFormatToggles
+                editor={activeEditor}
+                sx={{
+                  display: { xs: "none", md: "flex" },
+                  flexShrink: 0,
                 }}
-              >
-                <Undo size={18} />
-              </IconButton>
-              <IconButton
-                title={IS_APPLE ? "Redo (⌘Y)" : "Redo (Ctrl+Y)"}
-                aria-label="Redo"
-                disabled={!canRedo}
-                onClick={() => {
-                  activeEditor.dispatchCommand(
-                    REDO_COMMAND,
-                    undefined,
-                  );
-                }}
-              >
-                <Redo size={18} />
-              </IconButton>
-            </Box>
-            <Box
-              sx={{
-                display: "flex",
-                gap: 0.5,
-                overflow: "auto",
-                alignItems: "center",
-                justifyContent: "center",
-                flex: 1,
-                minWidth: 0,
-                "&::-webkit-scrollbar": { display: "none" },
-                scrollbarWidth: "none",
-              }}
+              />
+            )}
+          </>
+        )}
+      </Box>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 0.5,
+          flexShrink: 0,
+        }}
+      >
+        <InsertToolMenu editor={activeEditor} />
+        <AlignTextMenu editor={activeEditor} isRTL={isRTL} />
+        {onSave && (
+          <Tooltip title="Save">
+            <IconButton
+              onClick={onSave}
+              color={isDirty ? "primary" : "default"}
             >
-              {showMathTools && (
-                <MathTools
-                  editor={activeEditor}
-                  node={selectedNode}
-                />
-              )}
-              {showImageTools && (
-                <ImageTools
-                  editor={activeEditor}
-                  node={selectedNode}
-                />
-              )}
-              {showTextTools && (
-                <>
-                  {blockType in blockTypeToBlockName && (
-                    <BlockFormatSelect
-                      blockType={blockType}
-                      editor={activeEditor}
-                    />
-                  )}
-                  {showCodeTools && (
-                    <CodeTools
-                      editor={activeEditor}
-                      node={selectedNode}
-                    />
-                  )}
-                  {showTextFormatTools && <FontSelect editor={activeEditor} />}
-                  <AITools editor={activeEditor} />
-                  {showTableTools && (
-                    <TableTools
-                      editor={activeEditor}
-                      node={selectedTable}
-                    />
-                  )}
-                  {showNoteTools && (
-                    <NoteTools
-                      editor={editor}
-                      node={selectedSticky}
-                    />
-                  )}
-                  {showTextFormatTools && (
-                    <TextFormatToggles
-                      editor={activeEditor}
-                      sx={{
-                        display: {
-                          xs: "none",
-                          md: "flex",
-                        },
-                        flexShrink: 0,
-                      }}
-                    />
-                  )}
-                </>
-              )}
-            </Box>
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 0.5,
-                flexShrink: 0,
-              }}
-            >
-              <InsertToolMenu editor={activeEditor} />
-              <AlignTextMenu editor={activeEditor} isRTL={isRTL} />
-              {onSave && (
-                <Tooltip title="Save">
-                  <IconButton
-                    onClick={onSave}
-                    color={isDirty ? "primary" : "default"}
-                  >
-                    <Save size={18} />
-                  </IconButton>
-                </Tooltip>
-              )}
-              {onDiscard && (
-                <Tooltip title="Done">
-                  <IconButton onClick={onDiscard}>
-                    <Check size={18} />
-                  </IconButton>
-                </Tooltip>
-              )}
-            </Box>
-          </Container>
-        </Toolbar>
-      </AppBar>
-      {toolbarTrigger && (
-        <Box
-          sx={(theme) => ({
-            ...theme.mixins.toolbar,
-            displayPrint: "none",
-          })}
-        />
-      )}
+              <Save size={18} />
+            </IconButton>
+          </Tooltip>
+        )}
+        {onDiscard && (
+          <Tooltip title="Done">
+            <IconButton onClick={onDiscard}>
+              <Check size={18} />
+            </IconButton>
+          </Tooltip>
+        )}
+      </Box>
+    </Box>
+  );
+
+  return (
+    <>
+      {slotEl && isActive && createPortal(toolbarContent, slotEl)}
       {dialogs.image?.open && (
         <ImageDialog
           editor={activeEditor}
