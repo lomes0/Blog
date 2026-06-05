@@ -7,9 +7,11 @@ import {
   Link as LinkIcon,
   PanelRightClose,
   PanelRightOpen,
+  Settings,
   Sparkles,
   Table,
 } from "lucide-react";
+import SettingsPanel from "./SettingsPanel";
 import { usePathname } from "next/navigation";
 import { actions, useDispatch, useSelector } from "@/store";
 import { type RailMode, useLayoutMode } from "@/contexts/LayoutModeContext";
@@ -29,6 +31,7 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
   const { toggleRail, isRailResizing, startRailResize } = useLayoutMode();
   const dispatch = useDispatch();
   const copilotOpen = useSelector((state) => state.ui.copilot.open);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean);
   const mode = segments[0] === "edit"
@@ -210,7 +213,22 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
             <LinkIcon size={18} />
           </IconButton>
         </Tooltip>
+        <Tooltip title="Settings" placement="left">
+          <IconButton
+            size="small"
+            color={settingsOpen ? "primary" : "default"}
+            onClick={() => setSettingsOpen((prev) => !prev)}
+            aria-label="Settings"
+            sx={{ mt: "auto", mb: 1 }}
+          >
+            <Settings size={18} />
+          </IconButton>
+        </Tooltip>
       </Box>
+      <SettingsPanel
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+      />
     </Box>
   );
 };

@@ -36,7 +36,7 @@ const theme = createTheme({
       },
     },
   },
-  cssVariables: { colorSchemeSelector: "media" },
+  cssVariables: { colorSchemeSelector: "class" },
   typography: {
     fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
     h1: {
@@ -114,7 +114,7 @@ export default function ThemeProvider(
 ) {
   return (
     <AppRouterCacheProvider options={cacheOptions}>
-      <MuiThemeProvider theme={theme}>
+      <MuiThemeProvider theme={theme} defaultMode="system">
         <CssBaseline />
         {children}
       </MuiThemeProvider>

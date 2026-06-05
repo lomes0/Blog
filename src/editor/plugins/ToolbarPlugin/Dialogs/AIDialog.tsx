@@ -16,15 +16,12 @@ import {
   Select,
   Typography,
 } from "@mui/material";
-import useLocalStorage from "@/hooks/useLocalStorage";
+import { useAIModel } from "@/contexts/AIModelContext";
 import { AlignLeft } from "lucide-react";
 import { AI_MODELS } from "@/lib/ai";
 
 function AIDialog({ editor }: { editor: LexicalEditor }) {
-  const [llm, setLlm] = useLocalStorage("llm", {
-    provider: "google",
-    model: "gemini-2.5-flash",
-  });
+  const { llm, setLlm } = useAIModel();
   const [formData, setFormData] = useState(llm);
 
   const handleSubmit = (

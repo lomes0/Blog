@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import ThemeProvider from "@/components/Layout/ThemeProvider";
 import AuthProvider from "@/components/shared/AuthProvider";
 import { FloatingActionsProvider } from "@/components/Layout/FloatingActions";
+import { AIModelProvider } from "@/contexts/AIModelContext";
+import InitColorSchemeScript from "@mui/material/InitColorSchemeScript";
 import "mathlive/static.css";
 import "@/editor/theme.css";
 import "./globals.css";
@@ -73,12 +75,17 @@ export default function RootLayout(
 ) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <InitColorSchemeScript attribute="class" />
+      </head>
       <body>
         <AuthProvider>
           <ThemeProvider>
-            <FloatingActionsProvider>
-              {children}
-            </FloatingActionsProvider>
+            <AIModelProvider>
+              <FloatingActionsProvider>
+                {children}
+              </FloatingActionsProvider>
+            </AIModelProvider>
           </ThemeProvider>
         </AuthProvider>
       </body>

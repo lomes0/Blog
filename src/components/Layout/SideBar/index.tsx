@@ -21,8 +21,6 @@ import {
   Maximize2,
   MessageSquare,
   Minimize2,
-  Minus,
-  Plus,
 } from "lucide-react";
 import { styles } from "../styles";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
@@ -64,8 +62,7 @@ const SideBar: React.FC = () => {
   const { viewMode, setFocus, setRead } = useLayoutMode();
   const isFocus = viewMode === "focus";
   const isExpanded = sidebarMode === "full" && !isFocus;
-  const { sidebarFontSize, increaseFontSize, decreaseFontSize, resetFontSize } =
-    useSidebarFontSize();
+  const { sidebarFontSize } = useSidebarFontSize();
   const {
     contextMenu,
     handleCloseContextMenu,
@@ -244,53 +241,6 @@ const SideBar: React.FC = () => {
             flexShrink: 0,
           }}
         >
-          {isExpanded && (
-            <>
-              <Tooltip title="Decrease font size">
-                <span>
-                  <IconButton
-                    size="small"
-                    onClick={decreaseFontSize}
-                    disabled={sidebarFontSize <= 10}
-                    aria-label="Decrease sidebar font size"
-                  >
-                    <Minus size={14} />
-                  </IconButton>
-                </span>
-              </Tooltip>
-              <Tooltip
-                title={`Font size: ${sidebarFontSize}px (click to reset)`}
-              >
-                <IconButton
-                  size="small"
-                  onClick={resetFontSize}
-                  aria-label="Reset sidebar font size"
-                  sx={{
-                    fontSize: "0.7em",
-                    minWidth: "28px",
-                    fontWeight: sidebarFontSize !== 16 ? "bold" : "normal",
-                    color: sidebarFontSize !== 16
-                      ? "primary.main"
-                      : "text.secondary",
-                  }}
-                >
-                  {sidebarFontSize}
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Increase font size">
-                <span>
-                  <IconButton
-                    size="small"
-                    onClick={increaseFontSize}
-                    disabled={sidebarFontSize >= 24}
-                    aria-label="Increase sidebar font size"
-                  >
-                    <Plus size={14} />
-                  </IconButton>
-                </span>
-              </Tooltip>
-            </>
-          )}
           <Tooltip
             title={isFocus ? "Exit focus mode (F)" : "Focus mode (F)"}
             placement="right"

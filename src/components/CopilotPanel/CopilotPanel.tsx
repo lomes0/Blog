@@ -4,7 +4,7 @@ import { Box, Button, IconButton, Typography } from "@mui/material";
 import { History, Maximize2, Plus, X } from "lucide-react";
 import { actions, documentsSelectors, useDispatch, useSelector } from "@/store";
 import { AI_MODELS } from "@/lib/ai/models";
-import useLocalStorage from "@/hooks/useLocalStorage";
+import { useAIModel } from "@/contexts/AIModelContext";
 import CopilotChat from "./CopilotChat";
 
 interface CopilotPanelProps {
@@ -14,10 +14,7 @@ interface CopilotPanelProps {
 const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
   const dispatch = useDispatch();
 
-  const [llmConfig, setLlmConfig] = useLocalStorage("llm", {
-    provider: "google",
-    model: "gemini-2.5-flash",
-  });
+  const { llm: llmConfig, setLlm: setLlmConfig } = useAIModel();
 
   const [chatKey, setChatKey] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
