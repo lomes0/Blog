@@ -11,6 +11,7 @@ import { Box, Container } from "@mui/material";
 import { actions, type RootState, useDispatch, useSelector } from "@/store";
 import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
 import { useLayoutMode } from "@/contexts/LayoutModeContext";
+import { usePathname } from "next/navigation";
 import { COMPACT_WIDTH } from "@/components/Layout/SideBar/constants";
 import { RAIL_COMPACT_W } from "@/contexts/LayoutModeContext";
 import {
@@ -30,6 +31,16 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
   const activeTabId = useSelector(
     (state: RootState) => state.ui.tabs.activeTabId,
   );
+  const pathname = usePathname();
+  const segments = pathname.split("/").filter(Boolean);
+  const routeMode = segments[0] === "edit"
+    ? "edit"
+    : segments[0] === "view"
+    ? "view"
+    : null;
+  const routeDocId = routeMode ? (segments[1] ?? null) : null;
+  // In edit mode use the active tab; in view mode fall back to the URL doc id.
+  const copilotDocumentId = activeTabId ?? routeDocId ?? "";
 
   const [activeEditorRef, setActiveEditorRef] = useState<
     RefObject<LexicalEditor | null>
@@ -110,7 +121,7 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
             </HydrationManager>
           </Box>
           {copilotOpen && (
-            <CopilotPanel documentId={activeTabId ?? ""} />
+            <CopilotPanel documentId={copilotDocumentId} />
           )}
           <RightRail railMode={isFocus ? "hidden" : railMode} />
         </Box>
