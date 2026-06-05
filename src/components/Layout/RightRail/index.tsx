@@ -1,6 +1,13 @@
 "use client";
 import { Box, IconButton, Tooltip } from "@mui/material";
-import { History, Info, Link as LinkIcon, Sparkles, Table } from "lucide-react";
+import {
+  History,
+  Info,
+  Link as LinkIcon,
+  PanelRightClose,
+  Sparkles,
+  Table,
+} from "lucide-react";
 import { usePathname } from "next/navigation";
 import { actions, useDispatch, useSelector } from "@/store";
 import { type RailMode, useLayoutMode } from "@/contexts/LayoutModeContext";
@@ -31,75 +38,85 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
 
   if (railMode === "hidden") return null;
 
+  // The compact strip is always rendered as the rightmost element.
+  // In full mode it appears to the right of the full panel.
+  const compactStrip = (
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        pt: 1,
+        gap: 0.5,
+        borderLeft: "1px solid",
+        borderColor: "divider",
+        bgcolor: "background.paper",
+        height: "100vh",
+        width: 54,
+        flexShrink: 0,
+        position: "sticky",
+        top: 0,
+        overflow: "hidden",
+        displayPrint: "none",
+      }}
+    >
+      <Tooltip title="Copilot" placement="left">
+        <IconButton
+          size="small"
+          color={copilotOpen ? "primary" : "default"}
+          onClick={() => dispatch(actions.setCopilotOpen(!copilotOpen))}
+          aria-label="Toggle Copilot"
+        >
+          <Sparkles size={18} />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="Outline" placement="left">
+        <IconButton
+          size="small"
+          onClick={railMode === "compact" ? toggleRail : undefined}
+          aria-label={railMode === "compact" ? "Expand rail" : "Outline"}
+        >
+          <Table size={18} />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="Properties" placement="left">
+        <IconButton
+          size="small"
+          onClick={railMode === "compact" ? toggleRail : undefined}
+          aria-label={railMode === "compact" ? "Expand rail" : "Properties"}
+        >
+          <Info size={18} />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="Revisions" placement="left">
+        <IconButton
+          size="small"
+          onClick={railMode === "compact" ? toggleRail : undefined}
+          aria-label={railMode === "compact" ? "Expand rail" : "Revisions"}
+        >
+          <History size={18} />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="Backlinks" placement="left">
+        <IconButton
+          size="small"
+          onClick={railMode === "compact" ? toggleRail : undefined}
+          aria-label={railMode === "compact" ? "Expand rail" : "Backlinks"}
+        >
+          <LinkIcon size={18} />
+        </IconButton>
+      </Tooltip>
+    </Box>
+  );
+
   if (railMode === "compact") {
     return (
       <Box
         component="aside"
         role="complementary"
         aria-label="Document information"
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          pt: 1,
-          gap: 0.5,
-          borderLeft: "1px solid",
-          borderColor: "divider",
-          bgcolor: "background.paper",
-          height: "100vh",
-          position: "sticky",
-          top: 0,
-          overflow: "hidden",
-          flexShrink: 0,
-          displayPrint: "none",
-        }}
       >
-        <Tooltip title="Copilot" placement="left">
-          <IconButton
-            size="small"
-            color={copilotOpen ? "primary" : "default"}
-            onClick={() => dispatch(actions.setCopilotOpen(!copilotOpen))}
-            aria-label="Toggle Copilot"
-          >
-            <Sparkles size={18} />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="Expand outline" placement="left">
-          <IconButton
-            size="small"
-            onClick={toggleRail}
-            aria-label="Expand outline"
-          >
-            <Table size={18} />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="Expand properties" placement="left">
-          <IconButton
-            size="small"
-            onClick={toggleRail}
-            aria-label="Expand properties"
-          >
-            <Info size={18} />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="Expand revisions" placement="left">
-          <IconButton
-            size="small"
-            onClick={toggleRail}
-            aria-label="Expand revisions"
-          >
-            <History size={18} />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="Expand backlinks" placement="left">
-          <IconButton
-            size="small"
-            onClick={toggleRail}
-            aria-label="Expand backlinks"
-          >
-            <LinkIcon size={18} />
-          </IconButton>
-        </Tooltip>
+        {compactStrip}
       </Box>
     );
   }
@@ -109,9 +126,9 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
       component="aside"
       role="complementary"
       aria-label="Document information"
-      sx={{ position: "relative" }}
+      sx={{ display: "flex", position: "relative" }}
     >
-      {/* Drag handle on the left edge */}
+      {/* Drag handle on the left edge of the full panel */}
       <Box
         onMouseDown={startRailResize}
         sx={{
@@ -136,14 +153,34 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
           display: "flex",
           flexDirection: "column",
           height: "100vh",
+          flex: 1,
           position: "sticky",
           top: 0,
           overflowY: "auto",
           overflowX: "hidden",
-          flexShrink: 0,
           displayPrint: "none",
         }}
       >
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "flex-end",
+            px: 0.5,
+            pt: 0.5,
+            flexShrink: 0,
+          }}
+        >
+          <Tooltip title="Collapse rail" placement="left">
+            <IconButton
+              size="small"
+              onClick={toggleRail}
+              aria-label="Collapse rail"
+            >
+              <PanelRightClose size={16} />
+            </IconButton>
+          </Tooltip>
+        </Box>
+
         {!rootId
           ? (
             <Box sx={{ p: 2, color: "text.disabled", fontSize: "0.75rem" }}>
@@ -169,6 +206,7 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
             </Box>
           )}
       </Box>
+      {compactStrip}
     </Box>
   );
 };

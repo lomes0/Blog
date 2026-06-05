@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useContext, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import React from "react";
 import type { LexicalEditor } from "lexical";
 import {
@@ -19,7 +19,8 @@ import { v4 as uuidv4 } from "uuid";
 import { actions, documentsSelectors, useDispatch, useSelector } from "@/store";
 import { SetActiveEditorContext } from "@/contexts/ActiveEditorContext";
 import { apiClient } from "@/api";
-import EditorTabBar, { type TabMeta } from "./EditorTabBar";
+import { type TabMeta } from "./EditorTabBar";
+import { useTopBarTabs } from "@/contexts/TopBarTabsContext";
 import EditorTabPanel from "./EditorTabPanel";
 import TabContextMenu from "./TabContextMenu";
 import type { DocumentCreateInput } from "@/types";
@@ -58,6 +59,7 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
   const user = useSelector((state) => state.user);
 
   const setActiveEditorRef = useContext(SetActiveEditorContext);
+  const { setTabBar } = useTopBarTabs();
 
   const handleEditorReady = useCallback(
     (ref: React.RefObject<LexicalEditor | null>) => {
@@ -310,120 +312,141 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
   }, [dispatch]);
 
   // Build the ordered tab list from Redux tabIds + local metadata.
-  const orderedTabs: TabMeta[] = tabs.tabIds
-    .map((id) => tabMetas.find((m) => m.id === id))
-    .filter((m): m is TabMeta => !!m);
+  const orderedTabs = useMemo(
+    () =>
+      tabs.tabIds
+        .map((id) => tabMetas.find((m) => m.id === id))
+        .filter((m): m is TabMeta => !!m),
+    [tabs.tabIds, tabMetas],
+  );
+
+  // Sync tab state into the top bar context whenever it changes.
+  useEffect(() => {
+    if (orderedTabs.length === 0) return;
+    setTabBar({
+      tabs: orderedTabs,
+      activeTabId: tabs.activeTabId,
+      dirtyTabIds: tabs.dirtyTabIds,
+      rootTabId: rootId,
+      renamingTabId: renamingTabId,
+      onSwitch: handleSwitch,
+      onClose: handleCloseRequest,
+      onAdd: handleAdd,
+      onRename: handleRename,
+      onReorder: handleReorder,
+      onContextMenu: handleOpenContextMenu,
+    });
+  }, [
+    orderedTabs,
+    tabs.activeTabId,
+    tabs.dirtyTabIds,
+    rootId,
+    renamingTabId,
+    setTabBar,
+    handleSwitch,
+    handleCloseRequest,
+    handleAdd,
+    handleRename,
+    handleReorder,
+    handleOpenContextMenu,
+  ]);
+
+  // Clear the top bar tab context on unmount only.
+  useEffect(() => () => setTabBar(null), [setTabBar]);
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-        {orderedTabs.length > 0 && (
-          <EditorTabBar
-            tabs={orderedTabs}
-            activeTabId={tabs.activeTabId}
-            dirtyTabIds={tabs.dirtyTabIds}
-            rootTabId={rootId}
-            renamingTabId={renamingTabId}
-            onSwitch={handleSwitch}
-            onClose={handleCloseRequest}
-            onAdd={handleAdd}
-            onRename={handleRename}
-            onReorder={handleReorder}
-            onContextMenu={handleOpenContextMenu}
-          />
-        )}
-
-        <Box sx={{ display: "flex", flex: 1, overflow: "hidden" }}>
-          <Box sx={{ flex: 1, overflow: "hidden" }}>
-            {tabs.tabIds.map((tabId) => (
-              <EditorTabPanel
-                key={tabId}
-                docId={tabId}
-                rootId={rootId}
-                isActive={tabId === tabs.activeTabId}
-                onDiscard={handleDiscard}
-                onEditorReady={tabId === tabs.activeTabId
-                  ? handleEditorReady
-                  : undefined}
-              />
-            ))}
-          </Box>
-
+      <Box sx={{ display: "flex", flex: 1, overflow: "hidden" }}>
+        <Box sx={{ flex: 1, overflow: "hidden" }}>
+          {tabs.tabIds.map((tabId) => (
+            <EditorTabPanel
+              key={tabId}
+              docId={tabId}
+              rootId={rootId}
+              isActive={tabId === tabs.activeTabId}
+              onDiscard={handleDiscard}
+              onEditorReady={tabId === tabs.activeTabId
+                ? handleEditorReady
+                : undefined}
+            />
+          ))}
         </Box>
-
-        {/* Context menu */}
-        <TabContextMenu
-          anchorEl={contextMenuAnchor}
-          tabId={contextMenuTabId}
-          isRoot={contextMenuIsRoot}
-          onClose={handleCloseContextMenu}
-          onRename={handleRenameFromMenu}
-          onDuplicate={handleDuplicate}
-          onMove={handleMoveRequest}
-          onSplitOff={handleSplitOff}
-          onDelete={handleCloseRequest}
-        />
-
-        {/* Delete confirmation dialog */}
-        <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)}>
-          <DialogTitle>Delete tab?</DialogTitle>
-          <DialogContent>
-            <DialogContentText>
-              {`Delete "${deleteTarget?.name}"? This cannot be undone.`}
-            </DialogContentText>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setDeleteTarget(null)}>Cancel</Button>
-            <Button color="error" onClick={handleDeleteConfirm}>
-              Delete
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* Move to other post dialog */}
-        <Dialog
-          open={!!moveDialogTabId}
-          onClose={() => setMoveDialogTabId(null)}
-          fullWidth
-          maxWidth="xs"
-        >
-          <DialogTitle>Move tab to another post</DialogTitle>
-          <DialogContent sx={{ p: 0 }}>
-            {availablePosts.length === 0
-              ? (
-                <DialogContentText sx={{ p: 3 }}>
-                  No other posts available.
-                </DialogContentText>
-              )
-              : (
-                <List dense disablePadding>
-                  {availablePosts.map((doc) => {
-                    const d = doc.cloud ?? doc.local;
-                    const name = d?.name ?? doc.id;
-                    return (
-                      <ListItemButton
-                        key={doc.id}
-                        selected={moveTargetPostId === doc.id}
-                        onClick={() => setMoveTargetPostId(doc.id)}
-                      >
-                        <ListItemText primary={name} />
-                      </ListItemButton>
-                    );
-                  })}
-                </List>
-              )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setMoveDialogTabId(null)}>Cancel</Button>
-            <Button
-              variant="contained"
-              disabled={!moveTargetPostId}
-              onClick={handleMoveConfirm}
-            >
-              Move
-            </Button>
-          </DialogActions>
-        </Dialog>
       </Box>
+
+      {/* Context menu */}
+      <TabContextMenu
+        anchorEl={contextMenuAnchor}
+        tabId={contextMenuTabId}
+        isRoot={contextMenuIsRoot}
+        onClose={handleCloseContextMenu}
+        onRename={handleRenameFromMenu}
+        onDuplicate={handleDuplicate}
+        onMove={handleMoveRequest}
+        onSplitOff={handleSplitOff}
+        onDelete={handleCloseRequest}
+      />
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)}>
+        <DialogTitle>Delete tab?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {`Delete "${deleteTarget?.name}"? This cannot be undone.`}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteTarget(null)}>Cancel</Button>
+          <Button color="error" onClick={handleDeleteConfirm}>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Move to other post dialog */}
+      <Dialog
+        open={!!moveDialogTabId}
+        onClose={() => setMoveDialogTabId(null)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Move tab to another post</DialogTitle>
+        <DialogContent sx={{ p: 0 }}>
+          {availablePosts.length === 0
+            ? (
+              <DialogContentText sx={{ p: 3 }}>
+                No other posts available.
+              </DialogContentText>
+            )
+            : (
+              <List dense disablePadding>
+                {availablePosts.map((doc) => {
+                  const d = doc.cloud ?? doc.local;
+                  const name = d?.name ?? doc.id;
+                  return (
+                    <ListItemButton
+                      key={doc.id}
+                      selected={moveTargetPostId === doc.id}
+                      onClick={() => setMoveTargetPostId(doc.id)}
+                    >
+                      <ListItemText primary={name} />
+                    </ListItemButton>
+                  );
+                })}
+              </List>
+            )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setMoveDialogTabId(null)}>Cancel</Button>
+          <Button
+            variant="contained"
+            disabled={!moveTargetPostId}
+            onClick={handleMoveConfirm}
+          >
+            Move
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 };
 

@@ -74,7 +74,6 @@ export default function SaveStateIndicator({
         display: "inline-flex",
         alignItems: "center",
         gap: 0.5,
-        ml: 1.5,
         verticalAlign: "middle",
       }}
     >

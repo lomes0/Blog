@@ -27,11 +27,9 @@ export const SubTabList: React.FC<SubTabListProps> = (
         listStyle: "none",
         p: 0,
         m: 0,
-        pl: "22px",
-        ml: "20px",
+        pl: "14px",
+        ml: "12px",
         mb: 0.5,
-        borderLeft: "1.5px dashed",
-        borderLeftColor: "info.main",
       }}
     >
       {tabs.map((tab) => {
@@ -58,15 +56,11 @@ export const SubTabList: React.FC<SubTabListProps> = (
               borderRadius: "5px",
               fontSize: "0.72em",
               cursor: "pointer",
-              color: isActive ? "info.main" : "text.secondary",
-              fontWeight: isActive ? 700 : 400,
-              bgcolor: isActive
-                ? "rgba(var(--mui-palette-info-mainChannel) / 0.12)"
-                : "transparent",
+              color: "text.secondary",
+              fontWeight: isActive ? 600 : 400,
+              bgcolor: isActive ? "action.selected" : "transparent",
               "&:hover": {
-                bgcolor: isActive
-                  ? "rgba(var(--mui-palette-info-mainChannel) / 0.18)"
-                  : "action.hover",
+                bgcolor: "action.hover",
               },
             }}
           >
@@ -78,7 +72,7 @@ export const SubTabList: React.FC<SubTabListProps> = (
                 height: 6,
                 borderRadius: "2px",
                 flexShrink: 0,
-                bgcolor: isActive ? "info.main" : "info.light",
+                bgcolor: isActive ? "text.secondary" : "text.disabled",
               }}
             />
             <Box
@@ -100,7 +94,7 @@ export const SubTabList: React.FC<SubTabListProps> = (
                   width: 6,
                   height: 6,
                   borderRadius: "50%",
-                  bgcolor: "info.main",
+                  bgcolor: "warning.main",
                   flexShrink: 0,
                 }}
               />

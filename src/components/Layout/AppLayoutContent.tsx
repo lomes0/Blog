@@ -19,6 +19,7 @@ import {
   SetActiveEditorContext,
 } from "@/contexts/ActiveEditorContext";
 import FloatingOutlinePill from "./FloatingOutlinePill";
+import { TopBarTabsProvider } from "@/contexts/TopBarTabsContext";
 
 const COPILOT_W = 380;
 
@@ -55,78 +56,76 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
   const railW = isFocus
     ? 0
     : railMode === "full"
-    ? railWidth
-    : railMode === "compact"
-    ? RAIL_COMPACT_W
-    : 0;
+    ? railWidth + RAIL_COMPACT_W
+    : RAIL_COMPACT_W;
 
   const copilotCol = copilotOpen ? `${COPILOT_W}px ` : "";
 
   return (
-    <SetActiveEditorContext.Provider value={setActiveEditorRef}>
-      <ActiveEditorContext.Provider value={activeEditorRef}>
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: `${sidebarW}px 1fr ${copilotCol}${railW}px`,
-            height: "100vh",
-            overflow: "hidden",
-            transition: isResizing || isRailResizing
-              ? "none"
-              : "grid-template-columns 225ms cubic-bezier(0.4, 0, 0.6, 1)",
-          }}
-        >
-          <SideBar />
+    <TopBarTabsProvider>
+      <SetActiveEditorContext.Provider value={setActiveEditorRef}>
+        <ActiveEditorContext.Provider value={activeEditorRef}>
           <Box
-            id="app-main"
-            component="main"
             sx={{
-              minWidth: 0,
-              overflow: "auto",
-              position: "relative",
+              display: "grid",
+              gridTemplateColumns: `${sidebarW}px 1fr ${copilotCol}${railW}px`,
+              height: "100vh",
+              overflow: "hidden",
+              transition: isResizing || isRailResizing
+                ? "none"
+                : "grid-template-columns 225ms cubic-bezier(0.4, 0, 0.6, 1)",
             }}
           >
-            <Box id="back-to-top-anchor" />
-            <EditorTopBar />
-            <FloatingOutlinePill />
-            <HydrationManager>
-              <Container
-                className="editor-container"
-                id="editor-main-container"
-                maxWidth={false}
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  mx: isFocus ? "auto" : 0,
-                  my: 2,
-                  flex: 1,
-                  position: "relative",
-                  overflow: "auto",
-                  width: "100%",
-                  maxWidth: isFocus ? 720 : undefined,
-                  pl: {
-                    xs: 5,
-                    sm: 10,
-                    md: 12,
-                  },
-                  pr: {
-                    xs: 4,
-                    sm: 6,
-                    md: 8,
-                  },
-                }}
-              >
-                {children}
-              </Container>
-            </HydrationManager>
+            <SideBar />
+            <Box
+              id="app-main"
+              component="main"
+              sx={{
+                minWidth: 0,
+                overflow: "auto",
+                position: "relative",
+              }}
+            >
+              <Box id="back-to-top-anchor" />
+              <EditorTopBar />
+              <FloatingOutlinePill />
+              <HydrationManager>
+                <Container
+                  className="editor-container"
+                  id="editor-main-container"
+                  maxWidth={false}
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    mx: isFocus ? "auto" : 0,
+                    my: 2,
+                    flex: 1,
+                    position: "relative",
+                    overflow: "auto",
+                    width: "100%",
+                    maxWidth: isFocus ? 720 : undefined,
+                    pl: {
+                      xs: 5,
+                      sm: 10,
+                      md: 12,
+                    },
+                    pr: {
+                      xs: 4,
+                      sm: 6,
+                      md: 8,
+                    },
+                  }}
+                >
+                  {children}
+                </Container>
+              </HydrationManager>
+            </Box>
+            {copilotOpen && <CopilotPanel documentId={copilotDocumentId} />}
+            <RightRail railMode={isFocus ? "hidden" : railMode} />
           </Box>
-          {copilotOpen && (
-            <CopilotPanel documentId={copilotDocumentId} />
-          )}
-          <RightRail railMode={isFocus ? "hidden" : railMode} />
-        </Box>
-      </ActiveEditorContext.Provider>
-    </SetActiveEditorContext.Provider>
+        </ActiveEditorContext.Provider>
+      </SetActiveEditorContext.Provider>
+    </TopBarTabsProvider>
   );
 };
 

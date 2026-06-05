@@ -39,7 +39,13 @@ interface CopilotChatProps {
 }
 
 const CopilotChat: React.FC<CopilotChatProps> = (
-  { documentId, llmConfig, setLlmConfig, onRegisterAcceptAll, onPendingCountChange },
+  {
+    documentId,
+    llmConfig,
+    setLlmConfig,
+    onRegisterAcceptAll,
+    onPendingCountChange,
+  },
 ) => {
   const editorRef = useContext(ActiveEditorContext);
   const doc = useSelector((state) =>
@@ -48,7 +54,9 @@ const CopilotChat: React.FC<CopilotChatProps> = (
   const documentTitle = doc?.cloud?.name ?? doc?.local?.name ?? "Untitled";
 
   const [input, setInput] = useState("");
-  const [modelMenuAnchor, setModelMenuAnchor] = useState<null | HTMLElement>(null);
+  const [modelMenuAnchor, setModelMenuAnchor] = useState<null | HTMLElement>(
+    null,
+  );
 
   const editorRefRef = useRef(editorRef);
   editorRefRef.current = editorRef;
@@ -96,7 +104,10 @@ const CopilotChat: React.FC<CopilotChatProps> = (
       if (pending.length === 0) continue;
       const acts: CopilotAction[] = pending.map((p) => ({
         type: getToolName(p),
-        params: ((p as { input?: unknown }).input ?? {}) as Record<string, unknown>,
+        params: ((p as { input?: unknown }).input ?? {}) as Record<
+          string,
+          unknown
+        >,
       }));
       applyActions(editorRefRef.current.current, acts);
       for (const p of pending) {
@@ -286,7 +297,11 @@ const CopilotChat: React.FC<CopilotChatProps> = (
             gap: 0.25,
           }}
         >
-          <IconButton size="small" aria-label="Mention" sx={{ color: "text.secondary" }}>
+          <IconButton
+            size="small"
+            aria-label="Mention"
+            sx={{ color: "text.secondary" }}
+          >
             <AtSign size={15} />
           </IconButton>
 
@@ -315,7 +330,10 @@ const CopilotChat: React.FC<CopilotChatProps> = (
                 display: "inline-block",
               }}
             />
-            <Typography variant="caption" sx={{ color: "text.secondary", lineHeight: 1 }}>
+            <Typography
+              variant="caption"
+              sx={{ color: "text.secondary", lineHeight: 1 }}
+            >
               {currentModel?.name ?? llmConfig.model}
             </Typography>
             <ChevronDown size={12} />
@@ -368,10 +386,16 @@ const CopilotChat: React.FC<CopilotChatProps> = (
                 size="small"
                 aria-label="Send"
                 sx={{
-                  bgcolor: input.trim() ? "primary.main" : "action.disabledBackground",
-                  color: input.trim() ? "primary.contrastText" : "action.disabled",
+                  bgcolor: input.trim()
+                    ? "primary.main"
+                    : "action.disabledBackground",
+                  color: input.trim()
+                    ? "primary.contrastText"
+                    : "action.disabled",
                   "&:hover": {
-                    bgcolor: input.trim() ? "primary.dark" : "action.disabledBackground",
+                    bgcolor: input.trim()
+                      ? "primary.dark"
+                      : "action.disabledBackground",
                   },
                   transition: "background-color 0.15s",
                 }}

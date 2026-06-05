@@ -13,6 +13,7 @@ import { useCloudSave } from "./hooks/useCloudSave";
 import { useDocumentLoader } from "./hooks/useDocumentLoader";
 import type { EditorDocument } from "@/types";
 import DocumentHeader from "./DocumentHeader";
+import { triggerSave } from "./saveRegistry";
 
 const EditDocumentInfo = dynamic(
   () => import("@/components/EditDocument/EditDocumentInfo"),
@@ -124,6 +125,7 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
             document={documentForEditor}
             editorRef={editorRef}
             namespace={`matheditor-${docId}`}
+            onSave={triggerSave}
             onDiscard={onDiscard}
           />
           <EditDocumentInfo />

@@ -20,8 +20,6 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({ open }) => {
         justifyContent: open ? "space-between" : "center",
         flexShrink: 0,
         minHeight: 64,
-        borderBottom: "1px solid",
-        borderColor: "divider",
       }}
     >
       {open && (
@@ -50,7 +48,6 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({ open }) => {
           </Box>
         </Tooltip>
       )}
-
     </Box>
   );
 };

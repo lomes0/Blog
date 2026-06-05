@@ -2,18 +2,26 @@
 import { Document, DocumentStatus } from "@/types";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import ViewAttachmentEnhancer from "./ViewAttachmentEnhancer";
 import SyncToCloudFab from "../shared/SyncToCloudFab";
 import LocalDocumentView from "./LocalDocumentView";
 import ChildDocumentView from "./ChildDocumentView";
-import ViewTabBar from "./ViewTabBar";
+import { useTopBarTabs } from "@/contexts/TopBarTabsContext";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
+import IconButton from "@mui/material/IconButton";
+import Menu from "@mui/material/Menu";
+import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
+import { MoreHorizontal, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { apiClient } from "@/api";
 import type { TabMeta } from "@/components/EditDocument/EditorTabBar";
+import ShareDocument from "@/components/DocumentActions/Share";
+import DownloadDocument from "@/components/DocumentActions/Download";
+import ForkDocument from "@/components/DocumentActions/Fork";
 
 const ViewDocumentInfo = dynamic(
   () => import("./ViewDocumentInfo"),
@@ -31,6 +39,9 @@ const ViewDocument: React.FC<
 
   const [tabs, setTabs] = useState<TabMeta[]>([]);
   const [activeTabId, setActiveTabId] = useState(cloudDocument.id);
+  const [moreAnchor, setMoreAnchor] = useState<null | HTMLElement>(null);
+
+  const { setTabBar } = useTopBarTabs();
 
   // Fetch root metadata + all children to populate the tab strip.
   useEffect(() => {
@@ -55,6 +66,21 @@ const ViewDocument: React.FC<
 
   const handleTabSwitch = (tabId: string) => setActiveTabId(tabId);
 
+  // Register tabs with the top bar context.
+  useEffect(() => {
+    if (tabs.length === 0) return;
+    setTabBar({
+      tabs,
+      activeTabId,
+      rootTabId: rootId,
+      onSwitch: handleTabSwitch,
+    });
+    return () => setTabBar(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabs, activeTabId, rootId]);
+
+  const router = useRouter();
+  const userDocument = { id: cloudDocument.id, cloud: cloudDocument };
   const authorLabel = cloudDocument.author.handle || cloudDocument.author.name;
   const updatedDate = cloudDocument.updatedAt
     ? format(new Date(cloudDocument.updatedAt), "MMM d, yyyy")
@@ -65,12 +91,6 @@ const ViewDocument: React.FC<
 
   return (
     <Box sx={{ minHeight: "100vh" }}>
-      <ViewTabBar
-        tabs={tabs}
-        activeTabId={activeTabId}
-        onSwitch={handleTabSwitch}
-      />
-
       <Box sx={{ px: { xs: 1, sm: 2, md: 2 } }}>
         {/* Document header */}
         <Box sx={{ pt: 2, pb: 0 }}>
@@ -127,6 +147,47 @@ const ViewDocument: React.FC<
                 </Typography>
               </>
             )}
+            <Tooltip title="Edit">
+              <IconButton
+                size="small"
+                onClick={() => router.push(`/edit/${cloudDocument.id}`)}
+                aria-label="Edit document"
+                sx={{ color: "text.secondary", ml: 0.5 }}
+              >
+                <Pencil size={14} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="More options">
+              <IconButton
+                size="small"
+                onClick={(e) => setMoreAnchor(e.currentTarget)}
+                aria-label="More options"
+                sx={{ color: "text.secondary" }}
+              >
+                <MoreHorizontal size={14} />
+              </IconButton>
+            </Tooltip>
+            <Menu
+              anchorEl={moreAnchor}
+              open={Boolean(moreAnchor)}
+              onClose={() => setMoreAnchor(null)}
+            >
+              <ShareDocument
+                userDocument={userDocument}
+                variant="menuitem"
+                closeMenu={() => setMoreAnchor(null)}
+              />
+              <DownloadDocument
+                userDocument={userDocument}
+                variant="menuitem"
+                closeMenu={() => setMoreAnchor(null)}
+              />
+              <ForkDocument
+                userDocument={userDocument}
+                variant="menuitem"
+                closeMenu={() => setMoreAnchor(null)}
+              />
+            </Menu>
           </Box>
           <Divider />
         </Box>

@@ -1,14 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import {
-  Box,
-  IconButton,
-  Menu,
-  MenuItem,
-  Tooltip,
-  Typography,
-} from "@mui/material";
-import { ChevronDown, FileText, MoreHorizontal, Plus, X } from "lucide-react";
+import { Box, IconButton, Tooltip, Typography } from "@mui/material";
+import { FileText, MoreHorizontal, Plus, X } from "lucide-react";
 import {
   DragDropContext,
   Draggable,
@@ -327,93 +320,25 @@ const EditorTabBar: React.FC<EditorTabBarProps> = ({
                 />
               ))}
               {provided.placeholder}
+              <Tooltip title="New sub-doc">
+                <IconButton
+                  size="small"
+                  onClick={onAdd}
+                  sx={{
+                    px: 1.5,
+                    borderRadius: 0,
+                    borderLeft: "1px solid",
+                    borderColor: "divider",
+                  }}
+                >
+                  <Plus size={18} />
+                </IconButton>
+              </Tooltip>
             </Box>
           )}
         </Droppable>
       </DragDropContext>
-
-      <Box
-        sx={{
-          ml: "auto",
-          display: "flex",
-          alignItems: "stretch",
-          flexShrink: 0,
-        }}
-      >
-        <Tooltip title="New sub-doc">
-          <IconButton
-            size="small"
-            onClick={onAdd}
-            sx={{
-              px: 1.5,
-              borderRadius: 0,
-              borderLeft: "1px solid",
-              borderColor: "divider",
-            }}
-          >
-            <Plus size={18} />
-          </IconButton>
-        </Tooltip>
-        <TabOverflowMenu
-          tabs={tabs}
-          activeTabId={activeTabId}
-          onSwitch={onSwitch}
-        />
-      </Box>
     </Box>
-  );
-};
-
-interface TabOverflowMenuProps {
-  tabs: TabMeta[];
-  activeTabId: string | null;
-  onSwitch: (id: string) => void;
-}
-
-const TabOverflowMenu: React.FC<TabOverflowMenuProps> = (
-  { tabs, activeTabId, onSwitch },
-) => {
-  const [anchor, setAnchor] = useState<null | HTMLElement>(null);
-  return (
-    <>
-      <Tooltip title="Show all tabs">
-        <IconButton
-          size="small"
-          onClick={(e) => setAnchor(e.currentTarget)}
-          sx={{
-            px: 1,
-            borderRadius: 0,
-            borderLeft: "1px solid",
-            borderColor: "divider",
-          }}
-        >
-          <ChevronDown size={18} />
-        </IconButton>
-      </Tooltip>
-      <Menu
-        anchorEl={anchor}
-        open={Boolean(anchor)}
-        onClose={() => setAnchor(null)}
-      >
-        {tabs.map((tab) => (
-          <MenuItem
-            key={tab.id}
-            selected={tab.id === activeTabId}
-            onClick={() => {
-              onSwitch(tab.id);
-              setAnchor(null);
-            }}
-            sx={{ gap: 1 }}
-          >
-            <FileText
-              size={16}
-              style={{ color: "var(--mui-palette-text-secondary)" }}
-            />
-            {tab.name}
-          </MenuItem>
-        ))}
-      </Menu>
-    </>
   );
 };
 

@@ -1,47 +1,35 @@
 "use client";
 import * as React from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   Box,
   Breadcrumbs as MuiBreadcrumbs,
-  Button,
+  Divider,
   IconButton,
   Link,
-  Menu,
   Tooltip,
   Typography,
 } from "@mui/material";
 import {
   BookOpen,
+  ChevronDown,
+  FileText,
   LayoutDashboard,
   Library,
-  Maximize2,
   Menu as MenuIcon,
-  MoreHorizontal,
-  PanelRight,
-  Pencil,
   PenLine,
-  Save,
-  Search,
+  Plus,
   StickyNote,
+  X,
 } from "lucide-react";
 import RouterLink from "next/link";
 import { shallowEqual } from "react-redux";
-import { documentsSelectors, selectIsDirty, useSelector } from "@/store";
+import { documentsSelectors, useSelector } from "@/store";
 import type { RootState } from "@/store";
-import { triggerSave } from "@/components/EditDocument/saveRegistry";
 import { useLayoutMode } from "@/contexts/LayoutModeContext";
 import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
 import { useTopBarActions } from "@/contexts/TopBarActionsContext";
-import ShareDocument from "@/components/DocumentActions/Share";
-import DownloadDocument from "@/components/DocumentActions/Download";
-import ForkDocument from "@/components/DocumentActions/Fork";
-
-const RAIL_MODE_LABELS: Record<string, string> = {
-  full: "Collapse rail to icons",
-  compact: "Hide rail",
-  hidden: "Show rail",
-};
+import { useTopBarTabs } from "@/contexts/TopBarTabsContext";
 
 interface BreadcrumbItem {
   label: string;
@@ -51,10 +39,10 @@ interface BreadcrumbItem {
 
 const EditorTopBar: React.FC = () => {
   const pathname = usePathname();
-  const router = useRouter();
-  const { railMode, toggleRail, viewMode, setFocus, setRead } = useLayoutMode();
+  const { viewMode, setFocus, setRead } = useLayoutMode();
   const { toggleSidebarCompact, sidebarMode } = useSidebarWidth();
   const { actions } = useTopBarActions();
+  const { tabBar } = useTopBarTabs();
   const isFocus = viewMode === "focus";
 
   React.useEffect(() => {
@@ -72,8 +60,6 @@ const EditorTopBar: React.FC = () => {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [isFocus, setFocus, setRead]);
-
-  const [moreAnchor, setMoreAnchor] = React.useState<null | HTMLElement>(null);
 
   const segments = React.useMemo(
     () => pathname.split("/").filter(Boolean),
@@ -95,30 +81,17 @@ const EditorTopBar: React.FC = () => {
     return undefined;
   }, [segments]);
 
-  const isDirty = useSelector(selectIsDirty);
-
   const {
     docName,
     docSeriesId,
     seriesTitle,
     docSeriesTitle,
-    activeTabName,
-    userDocument,
   } = useSelector(
     (state: RootState) => {
       const doc = docId
         ? documentsSelectors.selectById(state, docId)
         : undefined;
       const dSeriesId = doc?.cloud?.seriesId || doc?.local?.seriesId;
-
-      const { activeTabId, tabIds } = state.ui.tabs;
-      const isMultiTab = tabIds.length > 1;
-      const activeDoc = isMultiTab && activeTabId && activeTabId !== docId
-        ? documentsSelectors.selectById(state, activeTabId)
-        : undefined;
-      const activeTabName = isMultiTab && activeDoc
-        ? activeDoc.local?.name ?? activeDoc.cloud?.name
-        : undefined;
 
       return {
         docName: doc?.cloud?.name || doc?.local?.name,
@@ -129,8 +102,6 @@ const EditorTopBar: React.FC = () => {
         docSeriesTitle: dSeriesId
           ? state.series.find((s) => s.id === dSeriesId)?.title
           : undefined,
-        activeTabName,
-        userDocument: doc,
       };
     },
     shallowEqual,
@@ -210,31 +181,6 @@ const EditorTopBar: React.FC = () => {
         });
         break;
 
-      case "edit": {
-        const editId = segments[1];
-        items.push({
-          label: "Posts",
-          href: "/posts",
-          icon: <BookOpen size={16} style={{ marginRight: 4 }} />,
-        });
-        if (docSeriesId) {
-          items.push({
-            label: docSeriesTitle || "Series",
-            href: `/series/${docSeriesId}`,
-            icon: <Library size={16} style={{ marginRight: 4 }} />,
-          });
-        }
-        items.push({
-          label: editId ? docName || "Edit Post" : "Edit Post",
-          href: editId ? `/edit/${editId}` : "/edit",
-          icon: <Pencil size={16} style={{ marginRight: 4 }} />,
-        });
-        if (activeTabName) {
-          items.push({ label: activeTabName });
-        }
-        break;
-      }
-
       case "view": {
         const viewId = segments[1];
         items.push({
@@ -253,9 +199,6 @@ const EditorTopBar: React.FC = () => {
           label: viewId ? docName || "Post" : "Post",
           href: viewId ? `/view/${viewId}` : "/posts",
         });
-        if (activeTabName) {
-          items.push({ label: activeTabName });
-        }
         break;
       }
 
@@ -286,23 +229,22 @@ const EditorTopBar: React.FC = () => {
     docSeriesId,
     docSeriesTitle,
     docName,
-    activeTabName,
   ]);
 
-  const handleMoreClose = React.useCallback(() => setMoreAnchor(null), []);
-
   if (pathname === "/") return null;
+
+  const hasTabs = isDocPage && tabBar && tabBar.tabs.length > 1;
 
   return (
     <Box
       sx={{
-        minHeight: 64,
-        px: 2,
+        minHeight: 40,
+        px: 1.5,
         borderBottom: "1px solid",
         borderColor: "divider",
         display: "flex",
         alignItems: "center",
-        gap: 1,
+        gap: 0,
         ...(isFocus && {
           position: "sticky",
           top: 0,
@@ -322,182 +264,249 @@ const EditorTopBar: React.FC = () => {
           aria-label={sidebarMode === "full"
             ? "Collapse sidebar"
             : "Expand sidebar"}
-          sx={{ flexShrink: 0, color: "text.secondary" }}
+          sx={{ flexShrink: 0, color: "text.secondary", mr: 0.5 }}
         >
           <MenuIcon size={16} strokeWidth={2} />
         </IconButton>
       </Tooltip>
 
-      {/* Breadcrumbs */}
-      <MuiBreadcrumbs
-        aria-label="breadcrumb"
-        separator="/"
-        sx={{ flex: 1, minWidth: 0 }}
-      >
-        {breadcrumbs.map((item, index) => {
-          const isLast = index === breadcrumbs.length - 1;
-
-          if (item.href) {
-            return (
-              <Link
-                key={index}
-                component={RouterLink}
-                href={item.href}
-                underline="hover"
-                color={isLast ? "text.primary" : "inherit"}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  fontSize: "0.875rem",
-                  fontWeight: isLast ? 600 : 400,
-                  "&:hover": { color: "primary.main" },
-                }}
-              >
-                {item.icon}
-                {item.label}
-              </Link>
-            );
-          }
-
-          return (
+      {/* Edit/view pages: compact document name */}
+      {isDocPage
+        ? (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.5,
+              px: 0.75,
+              py: 0.5,
+              borderRadius: 1,
+              cursor: "default",
+              flexShrink: 0,
+              maxWidth: 200,
+              "&:hover": { bgcolor: "action.hover" },
+            }}
+          >
+            <FileText
+              size={14}
+              style={{
+                color: "var(--mui-palette-text-secondary)",
+                flexShrink: 0,
+              }}
+            />
             <Typography
-              key={index}
-              color="text.primary"
+              noWrap
               sx={{
-                display: "flex",
-                alignItems: "center",
-                fontSize: "0.875rem",
-                fontWeight: isLast ? 600 : 400,
+                fontSize: "0.8125rem",
+                fontWeight: 500,
+                color: "text.primary",
               }}
             >
-              {item.icon}
-              {item.label}
+              {docName || "Untitled"}
             </Typography>
-          );
-        })}
-      </MuiBreadcrumbs>
-
-      {/* Right cluster — doc actions (edit/view pages only) */}
-      {isDocPage && userDocument && (
-        <>
-          <Tooltip title="Search">
-            <IconButton
-              size="small"
-              aria-label="Search"
-              sx={{ color: "text.secondary" }}
-            >
-              <Search size={16} strokeWidth={2} />
-            </IconButton>
-          </Tooltip>
-
-          {/* More menu */}
-          <Tooltip title="More options">
-            <IconButton
-              size="small"
-              onClick={(e) => setMoreAnchor(e.currentTarget)}
-              aria-label="More options"
-              sx={{ color: "text.secondary" }}
-            >
-              <MoreHorizontal size={18} />
-            </IconButton>
-          </Tooltip>
-          <Menu
-            anchorEl={moreAnchor}
-            open={Boolean(moreAnchor)}
-            onClose={handleMoreClose}
+            <ChevronDown
+              size={13}
+              style={{
+                color: "var(--mui-palette-text-disabled)",
+                flexShrink: 0,
+              }}
+            />
+          </Box>
+        )
+        : (
+          /* Non-edit pages: full breadcrumb chain */
+          <MuiBreadcrumbs
+            aria-label="breadcrumb"
+            separator="/"
+            sx={{ flex: 1, minWidth: 0 }}
           >
-            <ShareDocument
-              userDocument={userDocument}
-              variant="menuitem"
-              closeMenu={handleMoreClose}
-            />
-            <DownloadDocument
-              userDocument={userDocument}
-              variant="menuitem"
-              closeMenu={handleMoreClose}
-            />
-            <ForkDocument
-              userDocument={userDocument}
-              variant="menuitem"
-              closeMenu={handleMoreClose}
-            />
-          </Menu>
+            {breadcrumbs.map((item, index) => {
+              const isLast = index === breadcrumbs.length - 1;
 
-          {/* Edit / Done primary button */}
-          {isEditPage
-            ? (
-              <>
-                <Tooltip title="Save changes">
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={triggerSave}
-                    startIcon={<Save size={18} />}
+              if (item.href) {
+                return (
+                  <Link
+                    key={index}
+                    component={RouterLink}
+                    href={item.href}
+                    underline="hover"
+                    color={isLast ? "text.primary" : "inherit"}
                     sx={{
-                      flexShrink: 0,
-                      ...(isDirty && {
-                        borderColor: "primary.main",
-                        color: "primary.main",
-                      }),
+                      display: "flex",
+                      alignItems: "center",
+                      fontSize: "0.875rem",
+                      fontWeight: isLast ? 600 : 400,
+                      "&:hover": { color: "primary.main" },
                     }}
                   >
-                    Save
-                  </Button>
-                </Tooltip>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => router.push(`/view/${docId}`)}
-                  sx={{ flexShrink: 0 }}
+                    {item.icon}
+                    {item.label}
+                  </Link>
+                );
+              }
+
+              return (
+                <Typography
+                  key={index}
+                  color="text.primary"
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    fontSize: "0.875rem",
+                    fontWeight: isLast ? 600 : 400,
+                  }}
                 >
-                  Done
-                </Button>
-              </>
-            )
-            : (
-              <IconButton
-                size="small"
-                onClick={() => router.push(`/edit/${docId}`)}
-                aria-label="Edit document"
-              >
-                <Pencil size={18} />
-              </IconButton>
+                  {item.icon}
+                  {item.label}
+                </Typography>
+              );
+            })}
+          </MuiBreadcrumbs>
+        )}
+
+      {/* Inline tabs — only on edit pages when tabs exist */}
+      {hasTabs && (
+        <>
+          <Divider
+            orientation="vertical"
+            flexItem
+            sx={{ mx: 1, my: 0.75 }}
+          />
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.25,
+              overflowX: "auto",
+              overflowY: "hidden",
+              flex: 1,
+              minWidth: 0,
+              "&::-webkit-scrollbar": { height: 2 },
+              "&::-webkit-scrollbar-thumb": { bgcolor: "divider" },
+            }}
+          >
+            {tabBar.tabs.map((tab) => {
+              const isActive = tab.id === tabBar.activeTabId;
+              const isDirty = tabBar.dirtyTabIds?.includes(tab.id) ?? false;
+              const isRoot = tab.id === tabBar.rootTabId;
+
+              return (
+                <Box
+                  key={tab.id}
+                  onClick={() => tabBar.onSwitch(tab.id)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    tabBar.onContextMenu?.(tab.id, isRoot, e.currentTarget);
+                  }}
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0.5,
+                    px: 1,
+                    py: 0.375,
+                    borderRadius: 1,
+                    cursor: "pointer",
+                    userSelect: "none",
+                    flexShrink: 0,
+                    bgcolor: isActive ? "primary.main" : "transparent",
+                    "&:hover": {
+                      bgcolor: isActive ? "primary.dark" : "action.hover",
+                    },
+                    "&:hover .tab-close-btn": { opacity: 1 },
+                    transition: "background-color 0.15s",
+                  }}
+                >
+                  <FileText
+                    size={13}
+                    style={{
+                      color: isActive
+                        ? "var(--mui-palette-primary-contrastText)"
+                        : "var(--mui-palette-text-secondary)",
+                      flexShrink: 0,
+                    }}
+                  />
+                  {isDirty && (
+                    <Box
+                      sx={{
+                        width: 5,
+                        height: 5,
+                        borderRadius: "50%",
+                        bgcolor: isActive
+                          ? "primary.contrastText"
+                          : "warning.main",
+                        flexShrink: 0,
+                        opacity: isActive ? 0.7 : 1,
+                      }}
+                    />
+                  )}
+                  <Typography
+                    noWrap
+                    sx={{
+                      fontSize: "0.8rem",
+                      fontWeight: isActive ? 600 : 400,
+                      color: isActive
+                        ? "primary.contrastText"
+                        : "text.secondary",
+                      maxWidth: 120,
+                    }}
+                  >
+                    {tab.name}
+                  </Typography>
+                  {!isRoot && tabBar.onClose && (
+                    <IconButton
+                      className="tab-close-btn"
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        tabBar.onClose!(tab.id);
+                      }}
+                      sx={{
+                        opacity: isActive ? 0.7 : 0,
+                        p: 0.125,
+                        transition: "opacity 0.15s",
+                        color: isActive
+                          ? "primary.contrastText"
+                          : "text.secondary",
+                        "&:hover": {
+                          color: isActive
+                            ? "primary.contrastText"
+                            : "error.main",
+                          opacity: 1,
+                        },
+                      }}
+                    >
+                      <X size={11} />
+                    </IconButton>
+                  )}
+                </Box>
+              );
+            })}
+
+            {tabBar.onAdd && (
+              <Tooltip title="New sub-doc">
+                <IconButton
+                  size="small"
+                  onClick={tabBar.onAdd}
+                  sx={{
+                    flexShrink: 0,
+                    color: "text.secondary",
+                    p: 0.5,
+                    "&:hover": { color: "primary.main" },
+                  }}
+                >
+                  <Plus size={15} />
+                </IconButton>
+              </Tooltip>
             )}
+          </Box>
         </>
       )}
 
-      {/* Page-level actions (e.g. view toggle, new post/series on posts pages) */}
+      {/* Spacer — pushes actions/save-indicator to the right */}
+      {!hasTabs && <Box sx={{ flex: 1 }} />}
+
+      {/* Page-level actions slot */}
       {actions}
-
-      {/* Focus mode toggle */}
-      <Tooltip title={isFocus ? "Exit focus mode (F)" : "Focus mode (F)"}>
-        <IconButton
-          size="small"
-          onClick={isFocus ? setRead : setFocus}
-          aria-label={isFocus ? "Exit focus mode" : "Enter focus mode"}
-          sx={{
-            color: isFocus ? "primary.main" : "text.secondary",
-            flexShrink: 0,
-          }}
-        >
-          <Maximize2 size={16} strokeWidth={2} />
-        </IconButton>
-      </Tooltip>
-
-      {/* Rail toggle */}
-      <Tooltip title={RAIL_MODE_LABELS[railMode]}>
-        <IconButton
-          size="small"
-          onClick={toggleRail}
-          aria-label={RAIL_MODE_LABELS[railMode]}
-          sx={{
-            color: railMode === "hidden" ? "text.disabled" : "text.secondary",
-            flexShrink: 0,
-          }}
-        >
-          <PanelRight size={16} strokeWidth={2} />
-        </IconButton>
-      </Tooltip>
     </Box>
   );
 };

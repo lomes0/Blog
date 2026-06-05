@@ -16,7 +16,14 @@ import {
   Tooltip,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { FileText, MessageSquare, Minus, Plus } from "lucide-react";
+import {
+  FileText,
+  Maximize2,
+  MessageSquare,
+  Minimize2,
+  Minus,
+  Plus,
+} from "lucide-react";
 import { styles } from "../styles";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
@@ -54,8 +61,9 @@ const SideBar: React.FC = () => {
     getEffectiveWidth,
   } = useSidebarWidth();
 
-  const { viewMode } = useLayoutMode();
-  const isExpanded = sidebarMode === "full" && viewMode !== "focus";
+  const { viewMode, setFocus, setRead } = useLayoutMode();
+  const isFocus = viewMode === "focus";
+  const isExpanded = sidebarMode === "full" && !isFocus;
   const { sidebarFontSize, increaseFontSize, decreaseFontSize, resetFontSize } =
     useSidebarFontSize();
   const {
@@ -228,58 +236,75 @@ const SideBar: React.FC = () => {
           </Box>
         </Tooltip>
 
-        {isExpanded && (
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 0.25,
-              flexShrink: 0,
-            }}
-          >
-            <Tooltip title="Decrease font size">
-              <span>
-                <IconButton
-                  size="small"
-                  onClick={decreaseFontSize}
-                  disabled={sidebarFontSize <= 10}
-                  aria-label="Decrease sidebar font size"
-                >
-                  <Minus size={14} />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip title={`Font size: ${sidebarFontSize}px (click to reset)`}>
-              <IconButton
-                size="small"
-                onClick={resetFontSize}
-                aria-label="Reset sidebar font size"
-                sx={{
-                  fontSize: "0.7em",
-                  minWidth: "28px",
-                  fontWeight: sidebarFontSize !== 16 ? "bold" : "normal",
-                  color: sidebarFontSize !== 16
-                    ? "primary.main"
-                    : "text.secondary",
-                }}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 0.25,
+            flexShrink: 0,
+          }}
+        >
+          {isExpanded && (
+            <>
+              <Tooltip title="Decrease font size">
+                <span>
+                  <IconButton
+                    size="small"
+                    onClick={decreaseFontSize}
+                    disabled={sidebarFontSize <= 10}
+                    aria-label="Decrease sidebar font size"
+                  >
+                    <Minus size={14} />
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Tooltip
+                title={`Font size: ${sidebarFontSize}px (click to reset)`}
               >
-                {sidebarFontSize}
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Increase font size">
-              <span>
                 <IconButton
                   size="small"
-                  onClick={increaseFontSize}
-                  disabled={sidebarFontSize >= 24}
-                  aria-label="Increase sidebar font size"
+                  onClick={resetFontSize}
+                  aria-label="Reset sidebar font size"
+                  sx={{
+                    fontSize: "0.7em",
+                    minWidth: "28px",
+                    fontWeight: sidebarFontSize !== 16 ? "bold" : "normal",
+                    color: sidebarFontSize !== 16
+                      ? "primary.main"
+                      : "text.secondary",
+                  }}
                 >
-                  <Plus size={14} />
+                  {sidebarFontSize}
                 </IconButton>
-              </span>
-            </Tooltip>
-          </Box>
-        )}
+              </Tooltip>
+              <Tooltip title="Increase font size">
+                <span>
+                  <IconButton
+                    size="small"
+                    onClick={increaseFontSize}
+                    disabled={sidebarFontSize >= 24}
+                    aria-label="Increase sidebar font size"
+                  >
+                    <Plus size={14} />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </>
+          )}
+          <Tooltip
+            title={isFocus ? "Exit focus mode (F)" : "Focus mode (F)"}
+            placement="right"
+          >
+            <IconButton
+              size="small"
+              onClick={isFocus ? setRead : setFocus}
+              aria-label={isFocus ? "Exit focus mode" : "Enter focus mode"}
+              sx={{ color: isFocus ? "primary.main" : "text.secondary" }}
+            >
+              {isFocus ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
 
       {isExpanded && !isMobile && (

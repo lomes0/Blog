@@ -23,7 +23,9 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
   const [pendingCount, setPendingCount] = useState(0);
   const acceptAllRef = useRef<(() => void) | null>(null);
 
-  const doc = useSelector((state) => documentsSelectors.selectById(state, documentId));
+  const doc = useSelector((state) =>
+    documentsSelectors.selectById(state, documentId)
+  );
   const documentTitle = doc?.cloud?.name ?? doc?.local?.name ?? "Untitled";
   const currentModel = AI_MODELS.find((m) => m.id === llmConfig.model);
 
@@ -87,7 +89,13 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
             size="small"
             variant="contained"
             onClick={handleAcceptAll}
-            sx={{ textTransform: "none", fontSize: "0.7rem", py: 0.25, px: 1, flexShrink: 0 }}
+            sx={{
+              textTransform: "none",
+              fontSize: "0.7rem",
+              py: 0.25,
+              px: 1,
+              flexShrink: 0,
+            }}
           >
             Accept all
           </Button>

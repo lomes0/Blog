@@ -51,9 +51,11 @@ import {
   Container,
   IconButton,
   Toolbar,
+  Tooltip,
   useScrollTrigger,
 } from "@mui/material";
-import { Redo, Undo } from "lucide-react";
+import { Check, Redo, Save, Undo } from "lucide-react";
+import { selectIsDirty, useSelector } from "@/store";
 import { $isIFrameNode } from "@/editor/nodes/IFrameNode";
 import { $findMatchingParent, IS_APPLE } from "@lexical/utils";
 import { $isTableNode, TableNode } from "@/editor/nodes/TableNode";
@@ -89,9 +91,7 @@ interface ToolbarPluginProps {
   onDiscard?: () => void;
 }
 
-function ToolbarPlugin(
-  { onSave: _onSave, onDiscard: _onDiscard }: ToolbarPluginProps,
-) {
+function ToolbarPlugin({ onSave, onDiscard }: ToolbarPluginProps) {
   const [editor] = useLexicalComposerContext();
   const [activeEditor, setActiveEditor] = useState(editor);
 
@@ -316,6 +316,8 @@ function ToolbarPlugin(
     setTimeout(() => scrollIntoView("smooth"), 0);
   }, [hash]);
 
+  const isDirty = useSelector(selectIsDirty);
+
   const showMathTools = $isMathNode(selectedNode);
   const showImageTools = $isImageNode(selectedNode);
   const showCodeTools = $isCodeNode(selectedNode);
@@ -515,11 +517,24 @@ function ToolbarPlugin(
               }}
             >
               <InsertToolMenu editor={activeEditor} />
-              <AlignTextMenu
-                editor={activeEditor}
-                isRTL={isRTL}
-              />
-
+              <AlignTextMenu editor={activeEditor} isRTL={isRTL} />
+              {onSave && (
+                <Tooltip title="Save">
+                  <IconButton
+                    onClick={onSave}
+                    color={isDirty ? "primary" : "default"}
+                  >
+                    <Save size={18} />
+                  </IconButton>
+                </Tooltip>
+              )}
+              {onDiscard && (
+                <Tooltip title="Done">
+                  <IconButton onClick={onDiscard}>
+                    <Check size={18} />
+                  </IconButton>
+                </Tooltip>
+              )}
             </Box>
           </Container>
         </Toolbar>

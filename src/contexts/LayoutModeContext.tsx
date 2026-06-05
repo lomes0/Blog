@@ -11,7 +11,7 @@ import React, {
 export type RailMode = "full" | "compact" | "hidden";
 export type ViewMode = "read" | "focus" | "edit";
 
-const RAIL_CYCLE: RailMode[] = ["full", "compact", "hidden"];
+const RAIL_CYCLE: RailMode[] = ["full", "compact"];
 const RAIL_MODE_KEY = "ui.railMode";
 const RAIL_WIDTH_KEY = "ui.railWidth";
 export const RAIL_DEFAULT_W = 280;
@@ -57,6 +57,7 @@ export const LayoutModeProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     const saved = localStorage.getItem(RAIL_MODE_KEY) as RailMode | null;
     if (saved && RAIL_CYCLE.includes(saved)) setRailMode(saved);
+    else if (saved === "hidden") setRailMode("compact");
   }, []);
 
   useEffect(() => {

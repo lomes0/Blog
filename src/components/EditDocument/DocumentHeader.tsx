@@ -12,19 +12,14 @@ interface DocumentHeaderProps {
 
 export default function DocumentHeader({
   docId,
-  rootId,
 }: DocumentHeaderProps) {
   const { name } = useSelector(
     (state: RootState) => {
-      const rootUserDoc = documentsSelectors.selectById(state, rootId);
       const activeUserDoc = documentsSelectors.selectById(state, docId);
-
-      const cloudDoc = rootUserDoc?.cloud;
       const localDoc = activeUserDoc?.local;
       const effectiveDoc = localDoc ?? activeUserDoc?.cloud;
-
       return {
-        name: effectiveDoc?.name ?? cloudDoc?.name ?? "Untitled",
+        name: effectiveDoc?.name ?? "Untitled",
       };
     },
     shallowEqual,
@@ -32,24 +27,25 @@ export default function DocumentHeader({
 
   return (
     <Box sx={{ pt: 2, pb: 0 }}>
-      {/* Title + save state */}
+      {/* Title + save state on the same row */}
       <Box
         sx={{
           display: "flex",
           alignItems: "baseline",
-          flexWrap: "wrap",
-          gap: 0.5,
+          gap: 2,
           mb: 2,
         }}
       >
         <Typography
           variant="h4"
           component="h1"
-          sx={{ fontWeight: 700, lineHeight: 1.1 }}
+          sx={{ fontWeight: 700, lineHeight: 1.1, flex: 1, minWidth: 0 }}
         >
           {name}
         </Typography>
-        <SaveStateIndicator docId={docId} />
+        <Box sx={{ flexShrink: 0 }}>
+          <SaveStateIndicator docId={docId} />
+        </Box>
       </Box>
 
       <Divider />
