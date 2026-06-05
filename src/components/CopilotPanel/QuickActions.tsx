@@ -1,21 +1,23 @@
 "use client";
-import { Box, Chip, Typography } from "@mui/material";
+import { Box, Chip } from "@mui/material";
+import { List, Plus } from "lucide-react";
 
 const QUICK_ACTIONS = [
   {
-    label: "Improve writing",
-    prompt: "Improve the writing quality of this document.",
-  },
-  { label: "Fix grammar", prompt: "Fix any grammar and spelling mistakes." },
-  {
-    label: "Make shorter",
-    prompt: "Shorten this document while keeping all key information.",
+    label: "Summarize doc",
+    prompt: "Summarize this document in 3 bullet points.",
+    icon: <List size={13} />,
   },
   {
-    label: "Add examples",
-    prompt: "Add concrete examples to illustrate the main points.",
+    label: "Fix grammar",
+    prompt: "Fix any grammar and spelling mistakes.",
+    icon: <Plus size={13} />,
   },
-  { label: "Summarize", prompt: "Summarize this document in 3 bullet points." },
+  {
+    label: "Add section",
+    prompt: "Suggest and add a new section to this document.",
+    icon: <Plus size={13} />,
+  },
 ];
 
 interface QuickActionsProps {
@@ -23,27 +25,18 @@ interface QuickActionsProps {
 }
 
 const QuickActions: React.FC<QuickActionsProps> = ({ onSelect }) => (
-  <Box>
-    <Typography
-      variant="caption"
-      color="text.secondary"
-      display="block"
-      sx={{ mb: 1 }}
-    >
-      Quick actions
-    </Typography>
-    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-      {QUICK_ACTIONS.map((action) => (
-        <Chip
-          key={action.label}
-          label={action.label}
-          size="small"
-          variant="outlined"
-          onClick={() => onSelect(action.prompt)}
-          sx={{ cursor: "pointer" }}
-        />
-      ))}
-    </Box>
+  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+    {QUICK_ACTIONS.map((action) => (
+      <Chip
+        key={action.label}
+        label={action.label}
+        size="small"
+        variant="outlined"
+        icon={action.icon}
+        onClick={() => onSelect(action.prompt)}
+        sx={{ cursor: "pointer", fontSize: "0.75rem" }}
+      />
+    ))}
   </Box>
 );
 

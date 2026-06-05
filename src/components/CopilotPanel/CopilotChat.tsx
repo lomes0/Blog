@@ -8,27 +8,38 @@ import {
   Box,
   IconButton,
   LinearProgress,
+  Menu,
+  MenuItem,
   TextField,
   Typography,
 } from "@mui/material";
-import { Send, Square } from "lucide-react";
+import { AtSign, ChevronDown, Send, Sparkles, Square } from "lucide-react";
 import { ActiveEditorContext } from "@/contexts/ActiveEditorContext";
 import { serializeForCopilot } from "@/editor/utils/serializeForCopilot";
 import { applyActions } from "@/editor/utils/copilotToolExecutors";
 import { documentsSelectors, useSelector } from "@/store";
+import { AI_MODELS } from "@/lib/ai/models";
 import type { CopilotAction } from "@/types";
 import CopilotMessage from "./CopilotMessage";
 import QuickActions from "./QuickActions";
 
+const PROVIDER_COLOR: Record<string, string> = {
+  anthropic: "#D97757",
+  google: "#4285F4",
+  azure: "#0078D4",
+  ollama: "#888888",
+};
+
 interface CopilotChatProps {
   documentId: string;
   llmConfig: { provider: string; model: string };
+  setLlmConfig: (config: { provider: string; model: string }) => void;
   onRegisterAcceptAll: (fn: () => void) => void;
   onPendingCountChange: (n: number) => void;
 }
 
 const CopilotChat: React.FC<CopilotChatProps> = (
-  { documentId, llmConfig, onRegisterAcceptAll, onPendingCountChange },
+  { documentId, llmConfig, setLlmConfig, onRegisterAcceptAll, onPendingCountChange },
 ) => {
   const editorRef = useContext(ActiveEditorContext);
   const doc = useSelector((state) =>
@@ -37,6 +48,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
   const documentTitle = doc?.cloud?.name ?? doc?.local?.name ?? "Untitled";
 
   const [input, setInput] = useState("");
+  const [modelMenuAnchor, setModelMenuAnchor] = useState<null | HTMLElement>(null);
 
   const editorRefRef = useRef(editorRef);
   editorRefRef.current = editorRef;
@@ -72,7 +84,6 @@ const CopilotChat: React.FC<CopilotChatProps> = (
 
   const isLoading = status === "submitted" || status === "streaming";
 
-  // Keep the accept-all function and pending count up to date whenever messages change
   const addToolOutputRef = useRef(addToolOutput);
   addToolOutputRef.current = addToolOutput;
 
@@ -85,10 +96,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
       if (pending.length === 0) continue;
       const acts: CopilotAction[] = pending.map((p) => ({
         type: getToolName(p),
-        params: ((p as { input?: unknown }).input ?? {}) as Record<
-          string,
-          unknown
-        >,
+        params: ((p as { input?: unknown }).input ?? {}) as Record<string, unknown>,
       }));
       applyActions(editorRefRef.current.current, acts);
       for (const p of pending) {
@@ -132,6 +140,14 @@ const CopilotChat: React.FC<CopilotChatProps> = (
     }
   };
 
+  const handleModelSelect = (modelId: string, provider: string) => {
+    setLlmConfig({ provider, model: modelId });
+    setModelMenuAnchor(null);
+  };
+
+  const currentModel = AI_MODELS.find((m) => m.id === llmConfig.model);
+  const providerColor = PROVIDER_COLOR[llmConfig.provider] ?? "#888";
+
   type GenericAddToolOutput = (
     args: { tool: string; toolCallId: string; output: unknown },
   ) => Promise<void>;
@@ -148,18 +164,48 @@ const CopilotChat: React.FC<CopilotChatProps> = (
     >
       {isLoading && <LinearProgress sx={{ flexShrink: 0 }} />}
 
+      {/* Scrollable message / empty-state area */}
       {messages.length === 0
         ? (
-          <Box sx={{ flex: 1, overflow: "hidden auto", p: 2 }}>
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              align="center"
-              sx={{ mb: 2 }}
+          <Box
+            sx={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              p: 3,
+              gap: 2,
+              overflow: "hidden",
+            }}
+          >
+            <Box
+              sx={{
+                width: 64,
+                height: 64,
+                bgcolor: "primary.main",
+                borderRadius: 3,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
             >
-              Ask Copilot anything about your document
-            </Typography>
-            <QuickActions onSelect={(prompt) => setInput(prompt)} />
+              <Sparkles size={28} color="white" />
+            </Box>
+            <Box sx={{ textAlign: "center" }}>
+              <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                Ask Copilot to edit this doc
+              </Typography>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ maxWidth: 260, mx: "auto" }}
+              >
+                Describe a change in plain language. I&apos;ll show a preview
+                before anything touches your document.
+              </Typography>
+            </Box>
           </Box>
         )
         : (
@@ -197,45 +243,142 @@ const CopilotChat: React.FC<CopilotChatProps> = (
         </Box>
       )}
 
+      {/* Quick actions — visible only in empty state */}
+      {messages.length === 0 && (
+        <Box sx={{ px: 1.5, pb: 1, flexShrink: 0 }}>
+          <QuickActions onSelect={(prompt) => setInput(prompt)} />
+        </Box>
+      )}
+
+      {/* Input area */}
       <Box
         sx={{
-          p: 1,
+          px: 1.5,
+          pt: 1,
+          pb: 1.5,
           borderTop: 1,
           borderColor: "divider",
-          display: "flex",
-          gap: 1,
           flexShrink: 0,
-          alignItems: "flex-end",
         }}
       >
         <TextField
           fullWidth
           size="small"
-          placeholder={`Ask Copilot to edit '${documentTitle}'…`}
+          placeholder={`Ask Copilot to edit "${documentTitle}", or / for commands…`}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           multiline
           maxRows={4}
           disabled={isLoading}
+          sx={{
+            "& .MuiOutlinedInput-root": { borderRadius: 2 },
+          }}
         />
-        {isLoading
-          ? (
-            <IconButton onClick={stop} size="small" sx={{ mb: 0.25 }}>
-              <Square size={16} />
-            </IconButton>
-          )
-          : (
-            <IconButton
-              color="primary"
-              onClick={handleSend}
-              disabled={!input.trim()}
-              size="small"
-              sx={{ mb: 0.25 }}
-            >
-              <Send size={16} />
-            </IconButton>
-          )}
+
+        {/* Footer row: @ · model selector · send */}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            mt: 0.75,
+            gap: 0.25,
+          }}
+        >
+          <IconButton size="small" aria-label="Mention" sx={{ color: "text.secondary" }}>
+            <AtSign size={15} />
+          </IconButton>
+
+          <IconButton
+            size="small"
+            onClick={(e) => setModelMenuAnchor(e.currentTarget)}
+            aria-label="Select model"
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.5,
+              borderRadius: 1,
+              px: 0.75,
+              color: "text.secondary",
+              fontSize: "0.75rem",
+            }}
+          >
+            <Box
+              component="span"
+              sx={{
+                width: 10,
+                height: 10,
+                borderRadius: "2px",
+                bgcolor: providerColor,
+                flexShrink: 0,
+                display: "inline-block",
+              }}
+            />
+            <Typography variant="caption" sx={{ color: "text.secondary", lineHeight: 1 }}>
+              {currentModel?.name ?? llmConfig.model}
+            </Typography>
+            <ChevronDown size={12} />
+          </IconButton>
+
+          <Menu
+            anchorEl={modelMenuAnchor}
+            open={Boolean(modelMenuAnchor)}
+            onClose={() => setModelMenuAnchor(null)}
+            slotProps={{ paper: { sx: { minWidth: 200 } } }}
+            anchorOrigin={{ vertical: "top", horizontal: "left" }}
+            transformOrigin={{ vertical: "bottom", horizontal: "left" }}
+          >
+            {AI_MODELS.map((m) => (
+              <MenuItem
+                key={m.id}
+                selected={m.id === llmConfig.model}
+                onClick={() => handleModelSelect(m.id, m.provider)}
+                sx={{ fontSize: "0.8rem" }}
+              >
+                <Box
+                  component="span"
+                  sx={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: "2px",
+                    bgcolor: PROVIDER_COLOR[m.provider] ?? "#888",
+                    mr: 1,
+                    flexShrink: 0,
+                    display: "inline-block",
+                  }}
+                />
+                {m.name}
+              </MenuItem>
+            ))}
+          </Menu>
+
+          <Box sx={{ flex: 1 }} />
+
+          {isLoading
+            ? (
+              <IconButton onClick={stop} size="small">
+                <Square size={15} />
+              </IconButton>
+            )
+            : (
+              <IconButton
+                onClick={handleSend}
+                disabled={!input.trim()}
+                size="small"
+                aria-label="Send"
+                sx={{
+                  bgcolor: input.trim() ? "primary.main" : "action.disabledBackground",
+                  color: input.trim() ? "primary.contrastText" : "action.disabled",
+                  "&:hover": {
+                    bgcolor: input.trim() ? "primary.dark" : "action.disabledBackground",
+                  },
+                  transition: "background-color 0.15s",
+                }}
+              >
+                <Send size={15} />
+              </IconButton>
+            )}
+        </Box>
       </Box>
     </Box>
   );

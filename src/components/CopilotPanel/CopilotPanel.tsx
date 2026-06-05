@@ -1,15 +1,8 @@
 "use client";
 import { useRef, useState } from "react";
-import {
-  Box,
-  Button,
-  IconButton,
-  Menu,
-  MenuItem,
-  Typography,
-} from "@mui/material";
-import { Bot, ChevronDown, X } from "lucide-react";
-import { actions, useDispatch } from "@/store";
+import { Box, Button, IconButton, Typography } from "@mui/material";
+import { History, Maximize2, Plus, X } from "lucide-react";
+import { actions, documentsSelectors, useDispatch, useSelector } from "@/store";
 import { AI_MODELS } from "@/lib/ai/models";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import CopilotChat from "./CopilotChat";
@@ -26,18 +19,13 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
     model: "gemini-2.5-flash",
   });
 
-  const [modelMenuAnchor, setModelMenuAnchor] = useState<null | HTMLElement>(
-    null,
-  );
+  const [chatKey, setChatKey] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
   const acceptAllRef = useRef<(() => void) | null>(null);
 
+  const doc = useSelector((state) => documentsSelectors.selectById(state, documentId));
+  const documentTitle = doc?.cloud?.name ?? doc?.local?.name ?? "Untitled";
   const currentModel = AI_MODELS.find((m) => m.id === llmConfig.model);
-
-  const handleModelSelect = (modelId: string, provider: string) => {
-    setLlmConfig({ provider, model: modelId });
-    setModelMenuAnchor(null);
-  };
 
   const handleAcceptAll = () => {
     acceptAllRef.current?.();
@@ -58,69 +46,59 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
         flexShrink: 0,
       }}
     >
+      {/* Header */}
       <Box
         sx={{
-          px: 2,
-          py: 1,
+          px: 1.5,
+          py: 0.75,
           borderBottom: 1,
           borderColor: "divider",
           display: "flex",
           alignItems: "center",
-          gap: 1,
+          gap: 0.5,
           flexShrink: 0,
         }}
       >
-        <Bot size={16} color="var(--mui-palette-primary-main)" />
-        <Typography variant="subtitle2">Copilot</Typography>
-
-        <Button
+        <IconButton
           size="small"
-          variant="text"
-          endIcon={<ChevronDown size={14} />}
-          onClick={(e) => setModelMenuAnchor(e.currentTarget)}
-          sx={{
-            ml: 0.5,
-            textTransform: "none",
-            fontSize: "0.75rem",
-            color: "text.secondary",
-            py: 0.25,
-            px: 0.75,
-            minWidth: 0,
-          }}
+          onClick={() => setChatKey((k) => k + 1)}
+          aria-label="New conversation"
         >
-          {currentModel?.name ?? llmConfig.model}
-        </Button>
+          <Plus size={16} />
+        </IconButton>
 
-        <Menu
-          anchorEl={modelMenuAnchor}
-          open={Boolean(modelMenuAnchor)}
-          onClose={() => setModelMenuAnchor(null)}
-          slotProps={{ paper: { sx: { minWidth: 200 } } }}
-        >
-          {AI_MODELS.map((m) => (
-            <MenuItem
-              key={m.id}
-              selected={m.id === llmConfig.model}
-              onClick={() => handleModelSelect(m.id, m.provider)}
-              sx={{ fontSize: "0.8rem" }}
-            >
-              {m.name}
-            </MenuItem>
-          ))}
-        </Menu>
+        <Box sx={{ flex: 1, minWidth: 0, ml: 0.5 }}>
+          <Typography variant="subtitle2" sx={{ lineHeight: 1.2 }}>
+            Copilot
+          </Typography>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            noWrap
+            display="block"
+          >
+            Editing &ldquo;{documentTitle}&rdquo; &middot;{" "}
+            {currentModel?.name ?? llmConfig.model}
+          </Typography>
+        </Box>
 
-        <Box sx={{ flex: 1 }} />
+        {pendingCount > 0 && (
+          <Button
+            size="small"
+            variant="contained"
+            onClick={handleAcceptAll}
+            sx={{ textTransform: "none", fontSize: "0.7rem", py: 0.25, px: 1, flexShrink: 0 }}
+          >
+            Accept all
+          </Button>
+        )}
 
-        <Button
-          size="small"
-          variant="contained"
-          disabled={pendingCount === 0}
-          onClick={handleAcceptAll}
-          sx={{ textTransform: "none", fontSize: "0.75rem", py: 0.25 }}
-        >
-          Preview & accept
-        </Button>
-
+        <IconButton size="small" aria-label="Conversation history">
+          <History size={16} />
+        </IconButton>
+        <IconButton size="small" aria-label="Expand">
+          <Maximize2 size={16} />
+        </IconButton>
         <IconButton
           size="small"
           onClick={() => dispatch(actions.setCopilotOpen(false))}
@@ -131,8 +109,10 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
       </Box>
 
       <CopilotChat
+        key={chatKey}
         documentId={documentId}
         llmConfig={llmConfig}
+        setLlmConfig={setLlmConfig}
         onRegisterAcceptAll={(fn) => {
           acceptAllRef.current = fn;
         }}

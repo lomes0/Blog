@@ -1,6 +1,6 @@
 "use client";
 import { Box, IconButton, Tooltip } from "@mui/material";
-import { Bot, History, Info, Link as LinkIcon, Table } from "lucide-react";
+import { History, Info, Link as LinkIcon, Plus, Table } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { actions, useDispatch, useSelector } from "@/store";
 import { type RailMode, useLayoutMode } from "@/contexts/LayoutModeContext";
@@ -61,7 +61,7 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
             onClick={() => dispatch(actions.setCopilotOpen(!copilotOpen))}
             aria-label="Toggle Copilot"
           >
-            <Bot size={18} />
+            <Plus size={18} />
           </IconButton>
         </Tooltip>
         <Tooltip title="Expand outline" placement="left">
