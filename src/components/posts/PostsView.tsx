@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Box, Typography } from "@mui/material";
 import Grid from "@mui/material/Grid2";
 import { useRouter } from "next/navigation";
@@ -13,7 +13,6 @@ import { ViewToggle, type ViewType } from "@/components/shared/ViewToggle";
 import { EmptyState } from "@/components/shared/EmptyState";
 import DocumentCard from "@/components/DocumentCard";
 import { PostsCompactListView } from "./components/PostsCompactListView";
-import { useTopBarActions } from "@/contexts/TopBarActionsContext";
 import {
   type ListDensity,
   PostsListView,
@@ -163,60 +162,6 @@ const PostsView: React.FC<PostsViewProps> = ({ series, user: serverUser }) => {
     [standalonePosts],
   );
 
-  // ── Top bar actions ───────────────────────────────────────────────────────
-  const { setActions, clearActions } = useTopBarActions();
-
-  useEffect(() => {
-    const toolbarNode = (
-      <Box
-        sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}
-      >
-        <ViewToggle view={viewType} onChange={setViewType} />
-        <NewPostSplitButton
-          isSeries={isSeries}
-          canEdit={canEdit}
-          onNewPost={isSeries
-            ? () => setCreatePostDrawerOpen(true)
-            : () => router.push("/new")}
-          onNewSeries={() => setCreateSeriesDrawerOpen(true)}
-          onAddRemovePosts={isSeries ? () => setAddDialogOpen(true) : undefined}
-        />
-        {isSeries && (
-          <SeriesSearchAndControls
-            viewType={viewType}
-            canEdit={canEdit}
-            isTimeEditMode={isTimeEditMode}
-            isSavingTimeChanges={isSavingTimeChanges}
-            pendingTimeChanges={pendingTimeChanges}
-            onToggleTimeEdit={handleToggleTimeEditMode}
-            onSaveTimeChanges={handleSaveTimeChanges}
-            onDiscardTimeChanges={handleDiscardTimeChanges}
-          />
-        )}
-      </Box>
-    );
-
-    setActions(toolbarNode);
-    return () => clearActions();
-  }, [
-    isSeries,
-    viewType,
-    setViewType,
-    canEdit,
-    isTimeEditMode,
-    isSavingTimeChanges,
-    pendingTimeChanges,
-    handleToggleTimeEditMode,
-    handleSaveTimeChanges,
-    handleDiscardTimeChanges,
-    setCreatePostDrawerOpen,
-    setAddDialogOpen,
-    setCreateSeriesDrawerOpen,
-    router,
-    setActions,
-    clearActions,
-  ]);
-
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <Box
@@ -231,22 +176,31 @@ const PostsView: React.FC<PostsViewProps> = ({ series, user: serverUser }) => {
       role="main"
       aria-label={isSeries ? `Series: ${series!.title}` : "Blog posts"}
     >
-      {/* ── Content: series mode ── */}
-      {isSeries && (
-        <>
-          <Box sx={{ mb: { xs: 3, md: 4 } }}>
-            <Typography variant="h5" component="h1" fontWeight={700}>
-              {series!.title}
+      {/* ── In-page header ── */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          mb: { xs: 3, md: 4 },
+          gap: 2,
+          flexWrap: "wrap",
+        }}
+      >
+        <Box>
+          <Typography variant="h5" component="h1" fontWeight={700}>
+            {isSeries ? series!.title : "All Posts"}
+          </Typography>
+          {isSeries && series!.description && (
+            <Typography
+              variant="body1"
+              color="text.secondary"
+              sx={{ mt: 0.5 }}
+            >
+              {series!.description}
             </Typography>
-            {series!.description && (
-              <Typography
-                variant="body1"
-                color="text.secondary"
-                sx={{ mt: 0.5 }}
-              >
-                {series!.description}
-              </Typography>
-            )}
+          )}
+          {isSeries && (
             <Typography
               variant="caption"
               color="text.disabled"
@@ -255,7 +209,48 @@ const PostsView: React.FC<PostsViewProps> = ({ series, user: serverUser }) => {
               {series!.posts.length}{" "}
               {series!.posts.length === 1 ? "post" : "posts"}
             </Typography>
-          </Box>
+          )}
+        </Box>
+
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            flexWrap: "wrap",
+            flexShrink: 0,
+          }}
+        >
+          {isSeries && (
+            <SeriesSearchAndControls
+              viewType={viewType}
+              canEdit={canEdit}
+              isTimeEditMode={isTimeEditMode}
+              isSavingTimeChanges={isSavingTimeChanges}
+              pendingTimeChanges={pendingTimeChanges}
+              onToggleTimeEdit={handleToggleTimeEditMode}
+              onSaveTimeChanges={handleSaveTimeChanges}
+              onDiscardTimeChanges={handleDiscardTimeChanges}
+            />
+          )}
+          <ViewToggle view={viewType} onChange={setViewType} />
+          <NewPostSplitButton
+            isSeries={isSeries}
+            canEdit={canEdit}
+            onNewPost={isSeries
+              ? () => setCreatePostDrawerOpen(true)
+              : () => router.push("/new")}
+            onNewSeries={() => setCreateSeriesDrawerOpen(true)}
+            onAddRemovePosts={isSeries
+              ? () => setAddDialogOpen(true)
+              : undefined}
+          />
+        </Box>
+      </Box>
+
+      {/* ── Content: series mode ── */}
+      {isSeries && (
+        <>
           {seriesUserDocs.length === 0
             ? (
               <EmptyState

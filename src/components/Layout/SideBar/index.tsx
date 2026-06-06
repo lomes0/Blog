@@ -16,12 +16,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import {
-  FileText,
-  Maximize2,
-  MessageSquare,
-  Minimize2,
-} from "lucide-react";
+import { FileText, Maximize2, MessageSquare, Minimize2 } from "lucide-react";
 import { styles } from "../styles";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useSidebarWidth } from "@/contexts/SidebarWidthContext";

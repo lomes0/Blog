@@ -66,7 +66,9 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ open, onClose }) => {
         </IconButton>
       </DialogTitle>
 
-      <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 3, pt: 1 }}>
+      <DialogContent
+        sx={{ display: "flex", flexDirection: "column", gap: 3, pt: 1 }}
+      >
         {/* Appearance */}
         <Box>
           <Typography
@@ -76,7 +78,13 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ open, onClose }) => {
           >
             Appearance
           </Typography>
-          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
             <Box>
               <Typography variant="body1">Theme</Typography>
               <Typography variant="body2" color="text.secondary">
@@ -87,7 +95,9 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ open, onClose }) => {
               size="small"
               exclusive
               value={mode ?? "system"}
-              onChange={(_, val) => { if (val) setMode(val); }}
+              onChange={(_, val) => {
+                if (val) setMode(val);
+              }}
               aria-label="Color scheme"
             >
               <Tooltip title="System">
@@ -108,7 +118,14 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ open, onClose }) => {
             </ToggleButtonGroup>
           </Box>
 
-          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mt: 2 }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              mt: 2,
+            }}
+          >
             <Box>
               <Typography variant="body1">Sidebar font size</Typography>
               <Typography variant="body2" color="text.secondary">
@@ -137,7 +154,9 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ open, onClose }) => {
                     minWidth: 32,
                     fontSize: "0.75rem",
                     fontWeight: sidebarFontSize !== 16 ? 700 : 400,
-                    color: sidebarFontSize !== 16 ? "primary.main" : "text.secondary",
+                    color: sidebarFontSize !== 16
+                      ? "primary.main"
+                      : "text.secondary",
                   }}
                 >
                   {sidebarFontSize}
@@ -170,7 +189,14 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ open, onClose }) => {
           >
             AI
           </Typography>
-          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 2,
+            }}
+          >
             <Box sx={{ minWidth: 0 }}>
               <Typography variant="body1">Default model</Typography>
               <Typography variant="body2" color="text.secondary">

@@ -7,7 +7,10 @@ interface LLMConfig {
   model: string;
 }
 
-const DEFAULT_LLM: LLMConfig = { provider: "google", model: "gemini-2.5-flash" };
+const DEFAULT_LLM: LLMConfig = {
+  provider: "google",
+  model: "gemini-2.5-flash",
+};
 
 interface AIModelContextType {
   llm: LLMConfig;

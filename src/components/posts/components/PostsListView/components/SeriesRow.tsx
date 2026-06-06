@@ -146,7 +146,7 @@ export const SeriesRow = React.memo(function SeriesRow({
     })
     .slice(0, SERIES_PREVIEW_COUNT);
 
-  const padY = density === "compact" ? 2 : 5;
+  const rowHeight = density === "compact" ? 36 : 44;
 
   return (
     <Box>
@@ -160,7 +160,7 @@ export const SeriesRow = React.memo(function SeriesRow({
         sx={{
           display: "flex",
           alignItems: "center",
-          py: `${padY}px`,
+          minHeight: rowHeight,
           px: 1,
           borderRadius: 1,
           position: "relative",
@@ -186,6 +186,7 @@ export const SeriesRow = React.memo(function SeriesRow({
           "&:hover .row-checkbox-grip": { visibility: "visible" },
           "&:hover .row-actions-btn": { opacity: 1 },
           "&:hover .row-date": { opacity: 0.45 },
+          "&:hover .row-post-count": { opacity: 1 },
         }}
       >
         {/* Gutter — 22px, checkbox only, no drag handle for series */}
@@ -208,7 +209,7 @@ export const SeriesRow = React.memo(function SeriesRow({
           />
         </Box>
 
-        {/* Chevron — direct flex sibling so it aligns with the gutter */}
+        {/* Chevron — direct flex sibling so it aligns with the title */}
         <ChevronRight
           size={16}
           style={{
@@ -220,67 +221,70 @@ export const SeriesRow = React.memo(function SeriesRow({
           }}
         />
 
-        {
-          /* Title area — title row + sub-line; being the tallest child drives
-            the row height, and both gutter + chevron center against it */
-        }
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            {editingSeriesName !== undefined
-              ? (
-                <InputBase
-                  autoFocus
-                  value={editingSeriesName}
-                  onChange={(e) => {
-                    e.stopPropagation();
-                    onSeriesRenameChange(series.id, e.target.value);
-                  }}
-                  onBlur={() => onSeriesRenameCommit(series.id)}
-                  onKeyDown={(e) => {
-                    e.stopPropagation();
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      onSeriesRenameCommit(series.id);
-                    }
-                    if (e.key === "Escape") onSeriesRenameCancel(series.id);
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                  sx={{
-                    fontWeight: 600,
-                    fontSize: "0.875rem",
-                    flex: 1,
-                    minWidth: 0,
-                    borderBottom: "1px solid",
-                    borderColor: "primary.main",
-                    "& input": { p: 0 },
-                  }}
-                />
-              )
-              : (
-                <Typography
-                  noWrap
-                  sx={{
-                    fontWeight: 600,
-                    fontSize: "0.875rem",
-                    color: "text.primary",
-                  }}
-                >
-                  {series.title}
-                </Typography>
-              )}
-          </Box>
+        {/* Title area */}
+        <Box
+          sx={{
+            flex: 1,
+            minWidth: 0,
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+          }}
+        >
+          {editingSeriesName !== undefined
+            ? (
+              <InputBase
+                autoFocus
+                value={editingSeriesName}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  onSeriesRenameChange(series.id, e.target.value);
+                }}
+                onBlur={() => onSeriesRenameCommit(series.id)}
+                onKeyDown={(e) => {
+                  e.stopPropagation();
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    onSeriesRenameCommit(series.id);
+                  }
+                  if (e.key === "Escape") onSeriesRenameCancel(series.id);
+                }}
+                onClick={(e) => e.stopPropagation()}
+                sx={{
+                  fontWeight: 600,
+                  fontSize: "0.875rem",
+                  flex: 1,
+                  minWidth: 0,
+                  borderBottom: "1px solid",
+                  borderColor: "primary.main",
+                  "& input": { p: 0 },
+                }}
+              />
+            )
+            : (
+              <Typography
+                noWrap
+                sx={{
+                  fontWeight: 600,
+                  fontSize: "0.875rem",
+                  color: "text.primary",
+                }}
+              >
+                {series.title}
+              </Typography>
+            )}
           <Typography
+            className="row-post-count"
             variant="caption"
             sx={{
               color: "text.disabled",
               fontSize: "0.71875rem",
-              mt: "2px",
-              display: "block",
+              flexShrink: 0,
+              opacity: 0,
+              transition: "opacity 120ms",
             }}
           >
-            series · {postCount} {postCount === 1 ? "post" : "posts"}
-            {mostRecentDate &&
-              ` · updated ${formatRelativeDate(mostRecentDate)}`}
+            {postCount} {postCount === 1 ? "post" : "posts"}
           </Typography>
         </Box>
 
