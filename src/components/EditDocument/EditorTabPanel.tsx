@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef } from "react";
-import { Box } from "@mui/material";
+import { Box, Button, Divider } from "@mui/material";
 import type { LexicalEditor, SerializedEditorState } from "lexical";
 import dynamic from "next/dynamic";
 import { useSelector as useReduxSelector } from "react-redux";
@@ -14,6 +14,9 @@ import { useDocumentLoader } from "./hooks/useDocumentLoader";
 import type { EditorDocument } from "@/types";
 import DocumentHeader from "./DocumentHeader";
 import { triggerSave } from "./saveRegistry";
+import { useTopBarActions } from "@/contexts/TopBarActionsContext";
+import SaveStateIndicator from "./SaveStateIndicator";
+import { Check, Share2 } from "lucide-react";
 
 const EditDocumentInfo = dynamic(
   () => import("@/components/EditDocument/EditDocumentInfo"),
@@ -84,10 +87,53 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
   onEditorReady,
 }) => {
   const editorRef = useRef<LexicalEditor>(null);
+  const { setActions, clearActions } = useTopBarActions();
 
   useEffect(() => {
     if (isActive) onEditorReady?.(editorRef);
   }, [isActive, onEditorReady]);
+
+  useEffect(() => {
+    if (!isActive) return;
+    setActions(
+      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+        <SaveStateIndicator docId={docId} />
+        <Divider orientation="vertical" flexItem sx={{ mx: 0.75, my: 0.5 }} />
+        <Button
+          size="small"
+          startIcon={<Share2 size={14} />}
+          sx={{
+            color: "text.secondary",
+            textTransform: "none",
+            fontWeight: 500,
+            fontSize: "0.8125rem",
+            px: 1.25,
+          }}
+        >
+          Share
+        </Button>
+        {onDiscard && (
+          <Button
+            size="small"
+            onClick={onDiscard}
+            startIcon={<Check size={14} />}
+            sx={{
+              color: "text.primary",
+              textTransform: "none",
+              fontWeight: 600,
+              fontSize: "0.8125rem",
+              px: 1.25,
+              bgcolor: "action.hover",
+              "&:hover": { bgcolor: "action.selected" },
+            }}
+          >
+            Done
+          </Button>
+        )}
+      </Box>,
+    );
+    return clearActions;
+  }, [isActive, docId, onDiscard, setActions, clearActions]);
   const showDiff = useSelector((state) => state.ui.diff.open);
 
   // Redux document for useCloudSave (stable reference, same pattern as EditDocumentContent).

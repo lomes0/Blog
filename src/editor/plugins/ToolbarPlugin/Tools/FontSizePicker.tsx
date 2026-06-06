@@ -1,4 +1,4 @@
-import { AArrowDown, AArrowUp } from "lucide-react";
+import { Minus, Plus } from "lucide-react";
 import { Box, IconButton, SxProps, TextField, Theme } from "@mui/material";
 import { useCallback } from "react";
 
@@ -76,21 +76,9 @@ export const FontSizePicker = ({ fontSize, updateFontSize, onBlur, sx }: {
             decreaseFontSize();
             onBlur();
           }}
-          sx={{
-            width: 36,
-            height: 36,
-            borderRadius: 1,
-            borderTopRightRadius: 0,
-            borderBottomRightRadius: 0,
-            borderRight: "none",
-            borderWidth: 1,
-            borderStyle: "solid",
-            borderColor: "divider",
-            "&:hover": { borderColor: "primary.main" },
-          }}
-          aria-label="increase font size"
+          aria-label="decrease font size"
         >
-          <AArrowDown size={18} />
+          <Minus size={16} />
         </IconButton>
         <TextField
           hiddenLabel
@@ -171,20 +159,9 @@ export const FontSizePicker = ({ fontSize, updateFontSize, onBlur, sx }: {
             increaseFontSize();
             onBlur();
           }}
-          sx={{
-            width: 36,
-            height: 36,
-            borderRadius: 1,
-            borderTopLeftRadius: 0,
-            borderBottomLeftRadius: 0,
-            borderWidth: 1,
-            borderStyle: "solid",
-            borderColor: "divider",
-            "&:hover": { borderColor: "primary.main" },
-          }}
-          aria-label="decrease font size"
+          aria-label="increase font size"
         >
-          <AArrowUp size={18} />
+          <Plus size={16} />
         </IconButton>
       </Box>
     )

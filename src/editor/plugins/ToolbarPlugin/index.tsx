@@ -11,7 +11,6 @@ import {
 import { $isListNode, ListNode } from "@lexical/list";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { $isHeadingNode } from "@lexical/rich-text";
-import { $isParentElementRTL } from "@lexical/selection";
 import { $getNearestNodeOfType, mergeRegister } from "@lexical/utils";
 import {
   CAN_REDO_COMMAND,
@@ -28,7 +27,6 @@ import { useToolbarSlot } from "@/contexts/ToolbarSlotContext";
 import { BlockFormatSelect } from "./Menus/BlockFormatSelect";
 import InsertToolMenu from "./Menus/InsertToolMenu";
 import TextFormatToggles from "./Tools/TextFormatToggles";
-import AlignTextMenu from "./Menus/AlignTextMenu";
 import { $isMathNode } from "@/editor/nodes/MathNode";
 import MathTools from "./Tools/MathTools";
 import { $isImageNode } from "@/editor/nodes/ImageNode";
@@ -47,9 +45,8 @@ import {
   TableDialog,
 } from "./Dialogs";
 import { $isStickyNode, StickyNode } from "@/editor/nodes/StickyNode";
-import { Box, IconButton, Tooltip } from "@mui/material";
-import { Check, Redo, Save, Undo } from "lucide-react";
-import { selectIsDirty, useSelector } from "@/store";
+import { Box, Divider, IconButton, Tooltip } from "@mui/material";
+import { Link, Redo, Undo } from "lucide-react";
 import { $isIFrameNode } from "@/editor/nodes/IFrameNode";
 import { $findMatchingParent, IS_APPLE } from "@lexical/utils";
 import { $isTableNode, TableNode } from "@/editor/nodes/TableNode";
@@ -81,21 +78,16 @@ const blockTypeToBlockName = {
 };
 
 interface ToolbarPluginProps {
-  onSave?: () => void;
-  onDiscard?: () => void;
   isActive?: boolean;
 }
 
-function ToolbarPlugin(
-  { onSave, onDiscard, isActive = true }: ToolbarPluginProps,
-) {
+function ToolbarPlugin({ isActive = true }: ToolbarPluginProps) {
   const [editor] = useLexicalComposerContext();
   const [activeEditor, setActiveEditor] = useState(editor);
 
   const [blockType, setBlockType] = useState<
     keyof typeof blockTypeToBlockName
   >("paragraph");
-  const [isRTL, setIsRTL] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const [selectedNode, setSelectedNode] = useState<LexicalNode | null>(null);
@@ -133,7 +125,6 @@ function ToolbarPlugin(
       const elementKey = element.getKey();
       const elementDOM = activeEditor.getElementByKey(elementKey);
 
-      setIsRTL($isParentElementRTL(selection));
 
       if (elementDOM !== null) {
         if ($isListNode(element)) {
@@ -287,8 +278,6 @@ function ToolbarPlugin(
     setTimeout(() => scrollIntoView("smooth"), 0);
   }, [hash]);
 
-  const isDirty = useSelector(selectIsDirty);
-
   const showMathTools = $isMathNode(selectedNode);
   const showImageTools = $isImageNode(selectedNode);
   const showCodeTools = $isCodeNode(selectedNode);
@@ -317,29 +306,25 @@ function ToolbarPlugin(
       sx={{
         display: "flex",
         alignItems: "center",
-        gap: 2,
         px: 1.5,
         py: 0.5,
         bgcolor: "background.default",
         borderBottom: 1,
         borderColor: "divider",
         displayPrint: "none",
+        overflow: "hidden",
       }}
     >
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          flexShrink: 0,
-        }}
-      >
+      {/* Left spacer — centers the toolbar content */}
+      <Box sx={{ flex: 1 }} />
+
+      {/* Undo / Redo */}
+      <Box sx={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
         <IconButton
           title={IS_APPLE ? "Undo (⌘Z)" : "Undo (Ctrl+Z)"}
           aria-label="Undo"
           disabled={!canUndo}
-          onClick={() => {
-            activeEditor.dispatchCommand(UNDO_COMMAND, undefined);
-          }}
+          onClick={() => activeEditor.dispatchCommand(UNDO_COMMAND, undefined)}
         >
           <Undo size={18} />
         </IconButton>
@@ -347,22 +332,21 @@ function ToolbarPlugin(
           title={IS_APPLE ? "Redo (⌘Y)" : "Redo (Ctrl+Y)"}
           aria-label="Redo"
           disabled={!canRedo}
-          onClick={() => {
-            activeEditor.dispatchCommand(REDO_COMMAND, undefined);
-          }}
+          onClick={() => activeEditor.dispatchCommand(REDO_COMMAND, undefined)}
         >
           <Redo size={18} />
         </IconButton>
       </Box>
+
+      <Divider orientation="vertical" flexItem sx={{ mx: 1, my: 0.75 }} />
+
+      {/* Scrollable center section */}
       <Box
         sx={{
           display: "flex",
           gap: 0.5,
           overflow: "auto",
           alignItems: "center",
-          justifyContent: "center",
-          flex: 1,
-          minWidth: 0,
           "&::-webkit-scrollbar": { display: "none" },
           scrollbarWidth: "none",
         }}
@@ -376,16 +360,12 @@ function ToolbarPlugin(
         {showTextTools && (
           <>
             {blockType in blockTypeToBlockName && (
-              <BlockFormatSelect
-                blockType={blockType}
-                editor={activeEditor}
-              />
+              <BlockFormatSelect blockType={blockType} editor={activeEditor} />
             )}
             {showCodeTools && (
               <CodeTools editor={activeEditor} node={selectedNode} />
             )}
             {showTextFormatTools && <FontSelect editor={activeEditor} />}
-            <AITools editor={activeEditor} />
             {showTableTools && (
               <TableTools editor={activeEditor} node={selectedTable} />
             )}
@@ -395,43 +375,45 @@ function ToolbarPlugin(
             {showTextFormatTools && (
               <TextFormatToggles
                 editor={activeEditor}
-                sx={{
-                  display: { xs: "none", md: "flex" },
-                  flexShrink: 0,
-                }}
+                sx={{ flexShrink: 0 }}
               />
             )}
           </>
         )}
       </Box>
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 0.5,
-          flexShrink: 0,
-        }}
-      >
-        <InsertToolMenu editor={activeEditor} />
-        <AlignTextMenu editor={activeEditor} isRTL={isRTL} />
-        {onSave && (
-          <Tooltip title="Save">
-            <IconButton
-              onClick={onSave}
-              color={isDirty ? "primary" : "default"}
+
+      {/* Insert + Link + AI — always visible alongside text tools */}
+      {showTextTools && showTextFormatTools && (
+        <>
+          <Divider orientation="vertical" flexItem sx={{ mx: 1, my: 0.75 }} />
+          <Box
+            sx={{ display: "flex", alignItems: "center", gap: 0.5, flexShrink: 0 }}
+          >
+            <InsertToolMenu editor={activeEditor} />
+            <Tooltip
+              title={IS_APPLE ? "Insert Link (⌘K)" : "Insert Link (Ctrl+K)"}
             >
-              <Save size={18} />
-            </IconButton>
-          </Tooltip>
-        )}
-        {onDiscard && (
-          <Tooltip title="Done">
-            <IconButton onClick={onDiscard}>
-              <Check size={18} />
-            </IconButton>
-          </Tooltip>
-        )}
-      </Box>
+              <IconButton
+                size="small"
+                aria-label="Insert link"
+                onClick={() =>
+                  activeEditor.dispatchCommand(SET_DIALOGS_COMMAND, {
+                    link: { open: true },
+                  })}
+              >
+                <Link size={18} />
+              </IconButton>
+            </Tooltip>
+          </Box>
+          <Divider orientation="vertical" flexItem sx={{ mx: 1, my: 0.75 }} />
+          <Box sx={{ flexShrink: 0 }}>
+            <AITools editor={activeEditor} />
+          </Box>
+        </>
+      )}
+
+      {/* Right spacer */}
+      <Box sx={{ flex: 1 }} />
     </Box>
   );
 

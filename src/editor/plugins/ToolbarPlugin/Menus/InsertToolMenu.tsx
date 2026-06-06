@@ -18,7 +18,7 @@ import { StickyNode } from "@/editor/nodes/StickyNode";
 import { PageBreakNode } from "@/editor/nodes/PageBreakNode";
 import { INSERT_PAGE_BREAK } from "@/editor/plugins/PageBreakPlugin";
 import {
-  IconButton,
+  Button,
   ListItemIcon,
   ListItemText,
   Menu,
@@ -77,16 +77,34 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
 
   return (
     <>
-      <IconButton
+      <Button
         id="insert-button"
         aria-controls={open ? "insert-menu" : undefined}
         aria-haspopup="true"
         aria-expanded={open ? "true" : undefined}
         aria-label="Insert"
         onClick={handleClick}
+        startIcon={<Plus size={16} />}
+        endIcon={<ChevronDown size={14} />}
+        sx={{
+          color: "text.secondary",
+          textTransform: "none",
+          fontWeight: 500,
+          fontSize: "0.8125rem",
+          px: 1.25,
+          height: 34,
+          minWidth: 0,
+          border: "1px solid",
+          borderColor: "divider",
+          bgcolor: "transparent",
+          "&:hover": { bgcolor: "action.hover", borderColor: "divider" },
+          "& .MuiButton-startIcon": { mr: 0.5, ml: 0 },
+          "& .MuiButton-endIcon": { ml: 0.25, mr: 0 },
+        }}
+        variant="outlined"
       >
-        <Plus size={18} />
-      </IconButton>
+        Insert
+      </Button>
       <Menu
         id="insert-menu"
         aria-labelledby="insert-button"

@@ -19,6 +19,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useMenuState } from "@/hooks/useMenuState";
 import {
+  Box,
   Button,
   CircularProgress,
   IconButton,
@@ -34,7 +35,6 @@ import {
   ChevronRight,
   ChevronsDownUp,
   ChevronsUpDown,
-  ChevronUp,
   Mic,
   Minimize2,
   Monitor,
@@ -425,79 +425,38 @@ export default function AITools(
         aria-controls={open ? "ai-tools-menu" : undefined}
         aria-haspopup="true"
         aria-expanded={open ? "true" : undefined}
-        variant="outlined"
+        variant="contained"
         onClick={openMenu}
         startIcon={
-          <Sparkles
-            style={{
-              color: isLoading
-                ? "var(--mui-palette-action-disabled)"
-                : "var(--mui-palette-action-active)",
-            }}
-          />
+          <Sparkles size={16} />
         }
         endIcon={isLoading
-          ? <CircularProgress size={16} color="inherit" />
-          : open
-          ? (
-            <ChevronUp
-              style={{
-                color: isLoading
-                  ? "var(--mui-palette-action-disabled)"
-                  : "var(--mui-palette-action-active)",
-              }}
-            />
-          )
-          : (
-            <ChevronDown
-              style={{
-                color: isLoading
-                  ? "var(--mui-palette-action-disabled)"
-                  : "var(--mui-palette-action-active)",
-              }}
-            />
-          )}
+          ? <CircularProgress size={14} color="inherit" />
+          : <ChevronDown size={15} />}
         sx={{
-          color: "text.primary",
-          borderColor: "divider",
-          p: 1,
-          minWidth: 0,
-          height: 36,
-          "& .MuiButton-startIcon": { mr: { xs: 0, sm: 1 }, ml: 0 },
-          "& .MuiButton-endIcon": { mr: 0, ml: isLoading ? 1 : 0 },
-          "& .MuiButton-endIcon > svg": { fontSize: 20 },
-        }}
-        disabled={isLoading}
-      >
-        <Typography
-          variant="button"
-          sx={{ display: { xs: "none", sm: "block" } }}
-        >
-          AI
-        </Typography>
-      </Button>
-      <Button
-        id="ai-model-button"
-        aria-controls={modelMenuOpen ? "ai-model-menu" : undefined}
-        aria-haspopup="true"
-        aria-expanded={modelMenuOpen ? "true" : undefined}
-        variant="outlined"
-        onClick={handleModelMenuClick}
-        endIcon={<ChevronDown size={18} />}
-        sx={{
-          color: "text.secondary",
-          borderColor: "divider",
-          p: 1,
-          minWidth: 140,
-          height: 36,
-          ml: 0.5,
+          bgcolor: "primary.50",
+          color: "primary.700",
+          boxShadow: "none",
+          border: "1px solid",
+          borderColor: "primary.200",
           textTransform: "none",
+          fontWeight: 600,
+          fontSize: "0.8125rem",
+          px: 1.5,
+          height: 34,
+          minWidth: 0,
+          whiteSpace: "nowrap",
+          "&:hover": {
+            bgcolor: "primary.100",
+            boxShadow: "none",
+            borderColor: "primary.300",
+          },
+          "& .MuiButton-startIcon": { mr: 0.75, ml: 0 },
+          "& .MuiButton-endIcon": { ml: 0.5, mr: 0 },
         }}
         disabled={isLoading}
       >
-        <Typography variant="caption" sx={{ fontSize: "0.75rem" }}>
-          {currentModel?.name || "Unknown"}
-        </Typography>
+        Ask AI
       </Button>
       <Menu
         id="ai-tools-menu"
@@ -519,6 +478,32 @@ export default function AITools(
           "& .MuiMenuItem-root": { minHeight: 36 },
         }}
       >
+        {/* Model selector header */}
+        <MenuItem
+          onClick={handleModelMenuClick}
+          sx={{
+            borderBottom: "1px solid",
+            borderColor: "divider",
+            bgcolor: "action.hover",
+            mb: 0.5,
+            justifyContent: "space-between",
+            gap: 2,
+            "&:hover": { bgcolor: "action.selected" },
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            {currentModel && getProviderIcon(currentModel.provider)}
+            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+              {currentModel?.name || "Model"}
+            </Typography>
+          </Box>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+            <Typography variant="caption" color="text.secondary">
+              Change
+            </Typography>
+            <ChevronDown size={14} style={{ color: "var(--mui-palette-text-secondary)" }} />
+          </Box>
+        </MenuItem>
         <MenuItem
           sx={{
             p: 0,

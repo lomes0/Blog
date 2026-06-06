@@ -22,12 +22,24 @@ import { $isMathNode, MathNode } from "@/editor/nodes/MathNode";
 import { $patchStyle } from "@/editor/nodes/utils";
 import { $getSelectionStyleValueForProperty } from "@lexical/selection";
 import { SxProps, Theme } from "@mui/material/styles";
-import { SvgIcon, ToggleButton, ToggleButtonGroup } from "@mui/material";
+import {
+  Box,
+  IconButton,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
+  SvgIcon,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
+} from "@mui/material";
 import {
   Bold,
   Code,
   Italic,
   Link,
+  MoreHorizontal,
   Strikethrough,
   Subscript,
   Superscript,
@@ -49,6 +61,9 @@ const Highlight = () => (
 export default function TextFormatToggles(
   { editor, sx }: { editor: LexicalEditor; sx?: SxProps<Theme> | undefined },
 ) {
+  const [overflowAnchor, setOverflowAnchor] = useState<HTMLElement | null>(
+    null,
+  );
   const [format, setFormat] = useState<{ [key: string]: boolean }>({});
   const [textColor, setTextColor] = useState<string>();
   const [backgroundColor, setBackgroundColor] = useState<string>();
@@ -195,99 +210,126 @@ export default function TextFormatToggles(
   const openLinkDialog = () =>
     editor.dispatchCommand(SET_DIALOGS_COMMAND, { link: { open: true } });
 
+  const handleOverflowFormat = (fmt: TextFormatType) => {
+    editor.dispatchCommand(FORMAT_TEXT_COMMAND, fmt);
+    setOverflowAnchor(null);
+  };
+
   return (
-    <ToggleButtonGroup
-      size="small"
-      sx={{ ...sx }}
-      value={formatKeys}
-      onChange={handleFormat}
-      aria-label="text formatting"
-      id="text-format-toggles"
-    >
-      <ToggleButton
-        value="bold"
-        title={IS_APPLE ? "Bold (⌘B)" : "Bold (Ctrl+B)"}
-        aria-label={`Format text as bold. Shortcut: ${
-          IS_APPLE ? "⌘B" : "Ctrl+B"
-        }`}
+    <Box sx={{ display: "flex", alignItems: "center", ...sx }}>
+      <ToggleButtonGroup
+        size="small"
+        value={formatKeys}
+        onChange={handleFormat}
+        aria-label="text formatting"
+        id="text-format-toggles"
       >
-        <Bold size={18} />
-      </ToggleButton>
-      <ToggleButton
-        value="italic"
-        title={IS_APPLE ? "Italic (⌘I)" : "Italic (Ctrl+I)"}
-        aria-label={`Format text as italics. Shortcut: ${
-          IS_APPLE ? "⌘I" : "Ctrl+I"
-        }`}
+        <ToggleButton
+          value="bold"
+          title={IS_APPLE ? "Bold (⌘B)" : "Bold (Ctrl+B)"}
+          aria-label={`Format text as bold. Shortcut: ${
+            IS_APPLE ? "⌘B" : "Ctrl+B"
+          }`}
+        >
+          <Bold size={18} />
+        </ToggleButton>
+        <ToggleButton
+          value="italic"
+          title={IS_APPLE ? "Italic (⌘I)" : "Italic (Ctrl+I)"}
+          aria-label={`Format text as italics. Shortcut: ${
+            IS_APPLE ? "⌘I" : "Ctrl+I"
+          }`}
+        >
+          <Italic size={18} />
+        </ToggleButton>
+        <ToggleButton
+          value="underline"
+          title={IS_APPLE ? "Underline (⌘U)" : "Underline (Ctrl+U)"}
+          aria-label={`Format text to underlined. Shortcut: ${
+            IS_APPLE ? "⌘U" : "Ctrl+U"
+          }`}
+        >
+          <Underline size={18} />
+        </ToggleButton>
+        <ToggleButton
+          value="link"
+          title={IS_APPLE ? "Insert Link (⌘K)" : "Insert Link (Ctrl+K)"}
+          aria-label={`Insert a link. Shortcut: ${IS_APPLE ? "⌘K" : "Ctrl+K"}`}
+          onClick={openLinkDialog}
+        >
+          <Link size={18} />
+        </ToggleButton>
+        <ColorPicker
+          onColorChange={onColorChange}
+          textColor={textColor}
+          backgroundColor={backgroundColor}
+          onClose={restoreFocus}
+        />
+      </ToggleButtonGroup>
+
+      {/* More formatting options */}
+      <IconButton
+        size="small"
+        title="More formatting"
+        aria-label="More formatting options"
+        onClick={(e) => setOverflowAnchor(e.currentTarget)}
+        sx={{ ml: 0.25 }}
       >
-        <Italic size={18} />
-      </ToggleButton>
-      <ToggleButton
-        value="underline"
-        title={IS_APPLE ? "Underline (⌘U)" : "Underline (Ctrl+U)"}
-        aria-label={`Format text to underlined. Shortcut: ${
-          IS_APPLE ? "⌘U" : "Ctrl+U"
-        }`}
+        <MoreHorizontal size={18} />
+      </IconButton>
+      <Menu
+        anchorEl={overflowAnchor}
+        open={Boolean(overflowAnchor)}
+        onClose={() => setOverflowAnchor(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        transformOrigin={{ vertical: "top", horizontal: "center" }}
+        sx={{ "& .MuiMenuItem-root": { minHeight: 36 } }}
       >
-        <Underline size={18} />
-      </ToggleButton>
-      <ToggleButton
-        value="highlight"
-        title={IS_APPLE ? "Highlight (⌘+⇧+H)" : "Highlight (Ctrl+Shift+H)"}
-        aria-label={`Format text as highlight. Shortcut: ${
-          IS_APPLE ? "⌘+⇧+H" : "Ctrl+Shift+H"
-        }`}
-      >
-        <Highlight />
-      </ToggleButton>
-      <ToggleButton
-        value="code"
-        title={IS_APPLE ? "Inline code (⌘E)" : "Inline code (Ctrl+E)"}
-        aria-label={`Format text as Inline code. Shortcut: ${
-          IS_APPLE ? "⌘E" : "Ctrl+E"
-        }`}
-      >
-        <Code size={18} />
-      </ToggleButton>
-      <ToggleButton
-        value="strikethrough"
-        title={IS_APPLE
-          ? "Strikethrough (⌘+⇧+S)"
-          : "Strikethrough (Ctrl+Shift+S)"}
-        aria-label={`Format text as strikethrough. Shortcut: ${
-          IS_APPLE ? "⌘+⇧+S" : "Ctrl+Shift+S"
-        }`}
-      >
-        <Strikethrough size={18} />
-      </ToggleButton>
-      <ToggleButton
-        value="subscript"
-        title="Subscript"
-        aria-label="Format text with subscript"
-      >
-        <Subscript size={18} />
-      </ToggleButton>
-      <ToggleButton
-        value="superscript"
-        title="Superscript"
-        aria-label="Format text with superscript"
-      >
-        <Superscript size={18} />
-      </ToggleButton>
-      <ToggleButton
-        value="link"
-        title={IS_APPLE ? "Insert Link (⌘K)" : "Insert Link (Ctrl+K)"}
-        aria-label={`Insert a link. Shortcut: ${IS_APPLE ? "⌘K" : "Ctrl+K"}`}
-        onClick={openLinkDialog}
-      >
-        <Link size={18} />
-      </ToggleButton>
-      <ColorPicker
-        onColorChange={onColorChange}
-        textColor={textColor}
-        backgroundColor={backgroundColor}
-        onClose={restoreFocus}
-      />
-    </ToggleButtonGroup>
+        <MenuItem
+          selected={format.highlight}
+          onClick={() => handleOverflowFormat("highlight")}
+        >
+          <ListItemIcon><Highlight /></ListItemIcon>
+          <ListItemText>Highlight</ListItemText>
+          <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
+            {IS_APPLE ? "⌘⇧H" : "Ctrl+Shift+H"}
+          </Typography>
+        </MenuItem>
+        <MenuItem
+          selected={format.code}
+          onClick={() => handleOverflowFormat("code")}
+        >
+          <ListItemIcon><Code size={18} /></ListItemIcon>
+          <ListItemText>Inline Code</ListItemText>
+          <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
+            {IS_APPLE ? "⌘E" : "Ctrl+E"}
+          </Typography>
+        </MenuItem>
+        <MenuItem
+          selected={format.strikethrough}
+          onClick={() => handleOverflowFormat("strikethrough")}
+        >
+          <ListItemIcon><Strikethrough size={18} /></ListItemIcon>
+          <ListItemText>Strikethrough</ListItemText>
+          <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
+            {IS_APPLE ? "⌘⇧S" : "Ctrl+Shift+S"}
+          </Typography>
+        </MenuItem>
+        <MenuItem
+          selected={format.subscript}
+          onClick={() => handleOverflowFormat("subscript")}
+        >
+          <ListItemIcon><Subscript size={18} /></ListItemIcon>
+          <ListItemText>Subscript</ListItemText>
+        </MenuItem>
+        <MenuItem
+          selected={format.superscript}
+          onClick={() => handleOverflowFormat("superscript")}
+        >
+          <ListItemIcon><Superscript size={18} /></ListItemIcon>
+          <ListItemText>Superscript</ListItemText>
+        </MenuItem>
+      </Menu>
+    </Box>
   );
 }
