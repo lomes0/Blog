@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Box, Button, CircularProgress } from "@mui/material";
 import {
   CLEAR_HISTORY_COMMAND,
+  type EditorState,
   type LexicalEditor,
   type SerializedEditorState,
 } from "lexical";
@@ -16,6 +17,7 @@ import type { RootState } from "@/store";
 import { useCloudSave } from "./hooks/useCloudSave";
 import { useDirtyTracking } from "./hooks/useDirtyTracking";
 import { useDocumentLoader } from "./hooks/useDocumentLoader";
+import { useLocalDraft } from "./hooks/useLocalDraft";
 import type { EditorDocument } from "@/types";
 import DocumentHeader from "./DocumentHeader";
 import { triggerSave } from "./saveRegistry";
@@ -147,7 +149,15 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
   );
 
   const { lastSavedCloud } = useCloudSave(reduxDocument, editorRef);
-  const handleEditorChange = useDirtyTracking(docId, lastSavedCloud);
+  const trackDirty = useDirtyTracking(docId, lastSavedCloud);
+  const trackDraft = useLocalDraft(docId, lastSavedCloud);
+  const handleEditorChange = useCallback(
+    (editorState: EditorState, editor: LexicalEditor) => {
+      trackDirty(editorState, editor);
+      trackDraft(editorState, editor);
+    },
+    [trackDirty, trackDraft],
+  );
   const { isLoading, error, loadedDocument } = useDocumentLoader(
     docId,
     lastSavedCloud,
