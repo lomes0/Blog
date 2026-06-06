@@ -8,9 +8,18 @@
  *
  * Lexical owns the contentEditable DOM of each code block, so we cannot inject
  * chrome as child elements without fighting reconciliation. Instead we portal
- * the chrome to `document.body` and position it over each block using the
- * block's bounding rect, recomputing on editor updates, scroll and resize. The
- * code block reserves top/bottom padding (see theme.css) so the head/footer
+ * the chrome into the editor's scroll container and position it over each block
+ * using the block's bounding rect, recomputing on editor updates and resize.
+ *
+ * The chrome is portaled into the nearest scrollable ancestor (rather than
+ * `document.body`) so it rides the editor's scroll natively. If it were anchored
+ * to `document.body` it would only move via the JS reposition, which lands a
+ * frame behind the browser's native scroll of the code text — the two desync
+ * and the head/footer/active-line judder up and down while scrolling. Anchored
+ * inside the scroll container, absolute positioning keeps the chrome glued to
+ * the block with no per-frame lag.
+ *
+ * The code block reserves top/bottom padding (see theme.css) so the head/footer
  * never cover code, and the gutter stays aligned.
  */
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
@@ -52,9 +61,45 @@ interface ActiveCaret {
   key: NodeKey;
   line: number;
   col: number;
-  /** Page-space top of the caret line (viewport top + scrollY at capture). */
+  /** Top of the caret line, in the portal container's coordinate space. */
   lineTop: number;
   lineHeight: number;
+}
+
+/** Nearest scrollable ancestor of `el`, or `document.body` if none. */
+function findScrollContainer(el: HTMLElement | null): HTMLElement {
+  let node = el?.parentElement ?? null;
+  while (node && node !== document.body) {
+    const { overflowY, overflowX } = window.getComputedStyle(node);
+    const scrollable = (v: string) =>
+      v === "auto" || v === "scroll" || v === "overlay";
+    if (scrollable(overflowY) || scrollable(overflowX)) return node;
+    node = node.parentElement;
+  }
+  return document.body;
+}
+
+/**
+ * Convert a viewport-space rect to the portal container's coordinate space so an
+ * absolutely-positioned child sits over `rect`. For a real scroll container this
+ * is offset-from-container-padding-box + scroll; for the `document.body` fallback
+ * it reduces to page coordinates (viewport + window scroll).
+ */
+function rectToContainerSpace(
+  rect: { top: number; left: number },
+  container: HTMLElement,
+): { top: number; left: number } {
+  if (container === document.body || container === document.documentElement) {
+    return {
+      top: rect.top + window.scrollY,
+      left: rect.left + window.scrollX,
+    };
+  }
+  const cRect = container.getBoundingClientRect();
+  return {
+    top: rect.top - cRect.top - container.clientTop + container.scrollTop,
+    left: rect.left - cRect.left - container.clientLeft + container.scrollLeft,
+  };
 }
 
 /* ----------------------------- icons ----------------------------- */
@@ -254,10 +299,11 @@ function LanguageDropdown(
 /* ------------------------- block chrome -------------------------- */
 
 function CodeBlockChrome(
-  { editor, nodeKey, element, caret, reflow }: {
+  { editor, nodeKey, element, container, caret, reflow }: {
     editor: LexicalEditor;
     nodeKey: NodeKey;
     element: HTMLElement;
+    container: HTMLElement;
     caret: ActiveCaret | null;
     reflow: number;
   },
@@ -305,8 +351,7 @@ function CodeBlockChrome(
   // reflow participates in positioning by forcing a re-render + re-measure.
   void reflow;
   const rect = element.getBoundingClientRect();
-  const top = rect.top + window.scrollY;
-  const left = rect.left + window.scrollX;
+  const { top, left } = rectToContainerSpace(rect, container);
   const width = rect.width;
 
   const headerStyle: CSSProperties = {
@@ -395,8 +440,24 @@ export default function CodeActionMenuPlugin(
   const [codeKeys, setCodeKeys] = useState<NodeKey[]>([]);
   const [caret, setCaret] = useState<ActiveCaret | null>(null);
   const [reflow, setReflow] = useState(0);
+  const [scrollEl, setScrollEl] = useState<HTMLElement | null>(null);
   const keysRef = useRef<Set<NodeKey>>(new Set());
   const rafRef = useRef(0);
+
+  // The element we portal into and measure against. Resolved to the editor's
+  // nearest scrollable ancestor so the chrome scrolls natively with the code.
+  const container = anchorElem ?? scrollEl ??
+    (typeof document !== "undefined" ? document.body : null);
+  const containerRef = useRef<HTMLElement | null>(container);
+  containerRef.current = container;
+
+  // Resolve the scroll container from the editor root (re-resolve if it remounts).
+  useEffect(() => {
+    if (anchorElem) return;
+    return editor.registerRootListener((root) => {
+      setScrollEl(root ? findScrollContainer(root) : null);
+    });
+  }, [editor, anchorElem]);
 
   const scheduleReflow = useCallback(() => {
     cancelAnimationFrame(rafRef.current);
@@ -453,19 +514,20 @@ export default function CodeActionMenuPlugin(
 
         let lineTop = 0;
         let lineHeight = 22;
+        const ctn = containerRef.current;
         const domSel = window.getSelection();
-        if (domSel && domSel.rangeCount > 0) {
+        if (ctn && domSel && domSel.rangeCount > 0) {
           const rect = domSel.getRangeAt(0).getBoundingClientRect();
           if (rect.height > 0) {
-            lineTop = rect.top + window.scrollY;
+            lineTop = rectToContainerSpace(rect, ctn).top;
             lineHeight = rect.height;
           } else {
             const el = editor.getElementByKey(codeNode.getKey());
             if (el) {
               const cs = window.getComputedStyle(el);
               lineHeight = parseFloat(cs.lineHeight) || 22;
-              lineTop = el.getBoundingClientRect().top + window.scrollY +
-                HEADER_HEIGHT + (line - 1) * lineHeight;
+              lineTop = rectToContainerSpace(el.getBoundingClientRect(), ctn)
+                .top + HEADER_HEIGHT + (line - 1) * lineHeight;
             }
           }
         }
@@ -493,8 +555,6 @@ export default function CodeActionMenuPlugin(
     };
   }, [scheduleReflow]);
 
-  const container = anchorElem ??
-    (typeof document !== "undefined" ? document.body : null);
   if (!container) return null;
 
   return createPortal(
@@ -508,6 +568,7 @@ export default function CodeActionMenuPlugin(
             editor={editor}
             nodeKey={key}
             element={element}
+            container={container}
             caret={caret}
             reflow={reflow}
           />

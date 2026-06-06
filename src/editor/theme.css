@@ -328,8 +328,9 @@
 
 /* ============================================================
    EDIT-MODE CODE CHROME (floating header + footer + active line)
-   Rendered by CodeActionMenuPlugin and portaled to <body>, so dark mode
-   is keyed off `html.dark` (matching toolbar.css) rather than [theme].
+   Rendered by CodeActionMenuPlugin and portaled into the editor's scroll
+   container, so dark mode is keyed off `html.dark` (matching toolbar.css)
+   rather than [theme].
    ============================================================ */
 
 /* Reserve room inside editor code blocks for the floating header/footer and
