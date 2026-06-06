@@ -22,7 +22,7 @@ const ConnectedEditor: React.FC<{
   ) => void;
   ignoreHistoryMerge?: boolean;
   onSave?: () => void;
-  onDiscard?: () => void;
+  onReset?: () => void;
   namespace?: string;
   isActive?: boolean;
 }> = (
@@ -32,7 +32,7 @@ const ConnectedEditor: React.FC<{
     onChange,
     ignoreHistoryMerge,
     onSave,
-    onDiscard,
+    onReset,
     namespace,
     isActive,
   },
@@ -119,7 +119,7 @@ const ConnectedEditor: React.FC<{
       editorRef={editorRefCallback}
       ignoreHistoryMerge={ignoreHistoryMerge}
       onSave={onSave}
-      onDiscard={onDiscard}
+      onReset={onReset}
       isActive={isActive}
     />
   );

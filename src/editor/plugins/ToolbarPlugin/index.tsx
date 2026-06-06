@@ -29,6 +29,7 @@ import { useHash } from "react-use";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useToolbarSlot } from "@/contexts/ToolbarSlotContext";
+import { selectIsDirty, useSelector } from "@/store";
 import { BlockFormatSelect } from "./Menus/BlockFormatSelect";
 import InsertToolMenu from "./Menus/InsertToolMenu";
 import TextFormatToggles from "./Tools/TextFormatToggles";
@@ -51,7 +52,7 @@ import {
 } from "./Dialogs";
 import { $isStickyNode, StickyNode } from "@/editor/nodes/StickyNode";
 import { Box, Divider, IconButton, Tooltip } from "@mui/material";
-import { Link, Redo, Undo } from "lucide-react";
+import { Link, Redo, RotateCcw, Undo } from "lucide-react";
 import { $isIFrameNode } from "@/editor/nodes/IFrameNode";
 import { $findMatchingParent, IS_APPLE } from "@lexical/utils";
 import { $isTableNode, TableNode } from "@/editor/nodes/TableNode";
@@ -84,9 +85,10 @@ const blockTypeToBlockName = {
 
 interface ToolbarPluginProps {
   isActive?: boolean;
+  onReset?: () => void;
 }
 
-function ToolbarPlugin({ isActive = true }: ToolbarPluginProps) {
+function ToolbarPlugin({ isActive = true, onReset }: ToolbarPluginProps) {
   const [editor] = useLexicalComposerContext();
   const [activeEditor, setActiveEditor] = useState(editor);
 
@@ -95,6 +97,7 @@ function ToolbarPlugin({ isActive = true }: ToolbarPluginProps) {
   >("paragraph");
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
+  const isDirty = useSelector(selectIsDirty);
   const [selectedNode, setSelectedNode] = useState<LexicalNode | null>(null);
   const [selectedTable, setSelectedTable] = useState<TableNode | null>(null);
   const [selectedSticky, setSelectedSticky] = useState<StickyNode | null>(
@@ -324,6 +327,19 @@ function ToolbarPlugin({ isActive = true }: ToolbarPluginProps) {
 
       {/* Undo / Redo */}
       <Box sx={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
+        {onReset && (
+          <Tooltip title="Reset to last saved">
+            <span>
+              <IconButton
+                aria-label="Reset to last saved"
+                disabled={!isDirty}
+                onClick={onReset}
+              >
+                <RotateCcw size={18} />
+              </IconButton>
+            </span>
+          </Tooltip>
+        )}
         <IconButton
           title={IS_APPLE ? "Undo (⌘Z)" : "Undo (Ctrl+Z)"}
           aria-label="Undo"

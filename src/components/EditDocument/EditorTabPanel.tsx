@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Box, Button, CircularProgress } from "@mui/material";
-import type { LexicalEditor, SerializedEditorState } from "lexical";
+import { CLEAR_HISTORY_COMMAND, type LexicalEditor, type SerializedEditorState } from "lexical";
 import dynamic from "next/dynamic";
 import { useSelector as useReduxSelector } from "react-redux";
 import ConnectedEditor from "@/components/ConnectedEditor";
@@ -16,7 +16,7 @@ import type { EditorDocument } from "@/types";
 import DocumentHeader from "./DocumentHeader";
 import { triggerSave } from "./saveRegistry";
 import { useTopBarActions } from "@/contexts/TopBarActionsContext";
-import { Save, X } from "lucide-react";
+import { Save } from "lucide-react";
 
 const EditDocumentInfo = dynamic(
   () => import("@/components/EditDocument/EditDocumentInfo"),
@@ -103,7 +103,6 @@ interface EditorTabPanelProps {
   docId: string;
   rootId: string;
   isActive: boolean;
-  onDiscard?: () => void;
   onEditorReady?: (ref: React.RefObject<LexicalEditor | null>) => void;
 }
 
@@ -117,7 +116,6 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
   docId,
   rootId,
   isActive,
-  onDiscard,
   onEditorReady,
 }) => {
   const editorRef = useRef<LexicalEditor>(null);
@@ -129,29 +127,9 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
 
   useEffect(() => {
     if (!isActive) return;
-    setActions(
-      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-        {onDiscard && (
-          <Button
-            size="small"
-            onClick={onDiscard}
-            startIcon={<X size={14} />}
-            sx={{
-              color: "text.secondary",
-              textTransform: "none",
-              fontWeight: 600,
-              fontSize: "0.8125rem",
-              px: 1.25,
-            }}
-          >
-            Discard
-          </Button>
-        )}
-        <SaveButton />
-      </Box>,
-    );
+    setActions(<SaveButton />);
     return clearActions;
-  }, [isActive, onDiscard, setActions, clearActions]);
+  }, [isActive, setActions, clearActions]);
   const showDiff = useSelector((state) => state.ui.diff.open);
 
   // Redux document for useCloudSave (stable reference, same pattern as EditDocumentContent).
@@ -170,6 +148,21 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
     docId,
     lastSavedCloud,
   );
+
+  const handleReset = useCallback(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const dataStr = lastSavedCloud.current ??
+      (loadedDocument?.data ? JSON.stringify(loadedDocument.data) : null);
+    if (!dataStr) return;
+    try {
+      const newState = editor.parseEditorState(dataStr);
+      editor.setEditorState(newState);
+      editor.dispatchCommand(CLEAR_HISTORY_COMMAND, undefined);
+    } catch (e) {
+      console.error("Failed to reset editor state:", e);
+    }
+  }, [editorRef, lastSavedCloud, loadedDocument]);
 
   const documentForEditor = useMemo(
     () => loadedDocument ? ensureValidDocumentData(loadedDocument) : undefined,
@@ -192,7 +185,7 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
             namespace={`matheditor-${docId}`}
             onChange={handleEditorChange}
             onSave={triggerSave}
-            onDiscard={onDiscard}
+            onReset={handleReset}
             isActive={isActive}
           />
           <EditDocumentInfo />

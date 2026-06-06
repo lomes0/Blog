@@ -14,7 +14,6 @@ import {
   ListItemButton,
   ListItemText,
 } from "@mui/material";
-import { useRouter } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 import { actions, documentsSelectors, useDispatch, useSelector } from "@/store";
 import { SetActiveEditorContext } from "@/contexts/ActiveEditorContext";
@@ -54,7 +53,6 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
   rootId,
 }) => {
   const dispatch = useDispatch();
-  const router = useRouter();
   const tabs = useSelector((state) => state.ui.tabs);
   const user = useSelector((state) => state.user);
 
@@ -206,10 +204,6 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
       .map((id, i) => apiClient.documents.update(id, { sort_order: i }));
     await Promise.all(updates);
   }, [dispatch]);
-
-  const handleDiscard = useCallback(() => {
-    router.push(`/view/${rootId}`);
-  }, [router, rootId]);
 
   // ---- Context menu ----
 
@@ -364,7 +358,6 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
               docId={tabId}
               rootId={rootId}
               isActive={tabId === tabs.activeTabId}
-              onDiscard={handleDiscard}
               onEditorReady={tabId === tabs.activeTabId
                 ? handleEditorReady
                 : undefined}
