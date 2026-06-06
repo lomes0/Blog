@@ -214,14 +214,10 @@ export function useNotesStore(canvasId: string | null) {
             throw new Error(data.error?.subtitle || "Failed to update note");
           }
 
-          // Update with server response
-          setCanvas((prev) => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              notes: prev.notes.map((n) => (n.id === id ? data.data : n)),
-            };
-          });
+          // The optimistic update already applied these changes locally. Do not
+          // replace the note with the server response here: a position drag is
+          // only persisted via a debounced PATCH, so the server copy can still
+          // hold a stale position and clobber what the user just dragged to.
         } catch (err) {
           console.error("Error updating note:", err);
           setError(
@@ -304,12 +300,18 @@ export function useNotesStore(canvasId: string | null) {
           throw new Error(data.error?.subtitle || "Failed to reorder note");
         }
 
-        // Update with server response
+        // Only adopt the server's zIndex. Never replace the whole note here:
+        // bring-to-front fires on mousedown, and its response can arrive after
+        // a drag completes. Since the dragged position is only persisted via a
+        // debounced PATCH, the server copy still holds the pre-drag position —
+        // overwriting it would make the note jump back on release.
         setCanvas((prev) => {
           if (!prev) return prev;
           return {
             ...prev,
-            notes: prev.notes.map((n) => (n.id === id ? data.data : n)),
+            notes: prev.notes.map((n) =>
+              n.id === id ? { ...n, zIndex: data.data.zIndex } : n
+            ),
           };
         });
       } catch (err) {

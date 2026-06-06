@@ -24,6 +24,10 @@ export interface NotesCanvasHandle {
 const VIRTUAL_CANVAS_WIDTH = 1920;
 const VIRTUAL_CANVAS_HEIGHT = 1080;
 
+// Extra room (in virtual units) kept beyond the furthest note so the board can
+// always grow as notes are dragged toward its edges, giving an unbounded feel.
+const CANVAS_GROW_MARGIN = 800;
+
 interface NotesCanvasProps {
   preview?: boolean;
   onViewFull?: () => void;
@@ -78,16 +82,37 @@ const NotesCanvas = forwardRef<NotesCanvasHandle, NotesCanvasProps>(
       return () => observer.disconnect();
     }, [preview]);
 
-    // Virtual canvas dimensions, expanded so the note area always covers at
-    // least the visible viewport. Keeping these in virtual units lets the
-    // transform scale map them back to the grid the user actually sees.
+    // Virtual canvas dimensions (in unscaled units). The board grows so that:
+    //  - it always covers at least the default virtual canvas,
+    //  - it always covers at least the visible viewport, and
+    //  - it always extends a margin beyond the furthest note.
+    // The last point is what makes the canvas feel unbounded: the grid
+    // background is fixed to the viewport (so it looks infinite), but the
+    // draggable bounds are the board's actual size. Without growing the board
+    // to follow the notes, drags get clamped at the fixed virtual edge even
+    // though the grid still appears beyond it.
+    const noteExtentX = canvas
+      ? canvas.notes.reduce(
+          (max, n) => Math.max(max, n.position.x + n.size.width),
+          0,
+        )
+      : 0;
+    const noteExtentY = canvas
+      ? canvas.notes.reduce(
+          (max, n) => Math.max(max, n.position.y + n.size.height),
+          0,
+        )
+      : 0;
+
     const canvasWidth = Math.max(
       VIRTUAL_CANVAS_WIDTH,
       Math.ceil(containerSize.width / scale),
+      Math.ceil(noteExtentX + CANVAS_GROW_MARGIN),
     );
     const canvasHeight = Math.max(
       VIRTUAL_CANVAS_HEIGHT,
       Math.ceil(containerSize.height / scale),
+      Math.ceil(noteExtentY + CANVAS_GROW_MARGIN),
     );
 
     useCanvasZoomShortcuts({
