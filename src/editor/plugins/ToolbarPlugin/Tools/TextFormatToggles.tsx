@@ -289,7 +289,9 @@ export default function TextFormatToggles(
           selected={format.highlight}
           onClick={() => handleOverflowFormat("highlight")}
         >
-          <ListItemIcon><Highlight /></ListItemIcon>
+          <ListItemIcon>
+            <Highlight />
+          </ListItemIcon>
           <ListItemText>Highlight</ListItemText>
           <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
             {IS_APPLE ? "⌘⇧H" : "Ctrl+Shift+H"}
@@ -299,7 +301,9 @@ export default function TextFormatToggles(
           selected={format.code}
           onClick={() => handleOverflowFormat("code")}
         >
-          <ListItemIcon><Code size={18} /></ListItemIcon>
+          <ListItemIcon>
+            <Code size={18} />
+          </ListItemIcon>
           <ListItemText>Inline Code</ListItemText>
           <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
             {IS_APPLE ? "⌘E" : "Ctrl+E"}
@@ -309,7 +313,9 @@ export default function TextFormatToggles(
           selected={format.strikethrough}
           onClick={() => handleOverflowFormat("strikethrough")}
         >
-          <ListItemIcon><Strikethrough size={18} /></ListItemIcon>
+          <ListItemIcon>
+            <Strikethrough size={18} />
+          </ListItemIcon>
           <ListItemText>Strikethrough</ListItemText>
           <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
             {IS_APPLE ? "⌘⇧S" : "Ctrl+Shift+S"}
@@ -319,14 +325,18 @@ export default function TextFormatToggles(
           selected={format.subscript}
           onClick={() => handleOverflowFormat("subscript")}
         >
-          <ListItemIcon><Subscript size={18} /></ListItemIcon>
+          <ListItemIcon>
+            <Subscript size={18} />
+          </ListItemIcon>
           <ListItemText>Subscript</ListItemText>
         </MenuItem>
         <MenuItem
           selected={format.superscript}
           onClick={() => handleOverflowFormat("superscript")}
         >
-          <ListItemIcon><Superscript size={18} /></ListItemIcon>
+          <ListItemIcon>
+            <Superscript size={18} />
+          </ListItemIcon>
           <ListItemText>Superscript</ListItemText>
         </MenuItem>
       </Menu>

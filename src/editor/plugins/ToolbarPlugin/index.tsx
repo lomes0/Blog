@@ -1,4 +1,9 @@
 "use client";
+import "@fontsource/hanken-grotesk/400.css";
+import "@fontsource/hanken-grotesk/500.css";
+import "@fontsource/hanken-grotesk/600.css";
+import "@fontsource/hanken-grotesk/700.css";
+import "./toolbar.css";
 import {
   $getNodeByKey,
   $getSelection,
@@ -124,7 +129,6 @@ function ToolbarPlugin({ isActive = true }: ToolbarPluginProps) {
         : anchorNode.getTopLevelElementOrThrow();
       const elementKey = element.getKey();
       const elementDOM = activeEditor.getElementByKey(elementKey);
-
 
       if (elementDOM !== null) {
         if ($isListNode(element)) {
@@ -387,7 +391,12 @@ function ToolbarPlugin({ isActive = true }: ToolbarPluginProps) {
         <>
           <Divider orientation="vertical" flexItem sx={{ mx: 1, my: 0.75 }} />
           <Box
-            sx={{ display: "flex", alignItems: "center", gap: 0.5, flexShrink: 0 }}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.5,
+              flexShrink: 0,
+            }}
           >
             <InsertToolMenu editor={activeEditor} />
             <Tooltip

@@ -359,9 +359,6 @@ const EditorTopBar: React.FC = () => {
           </MuiBreadcrumbs>
         )}
 
-      {/* Page-level actions slot — right after the title */}
-      {actions}
-
       {/* Inline tabs — only on edit pages when tabs exist */}
       {hasTabs && (
         <>
@@ -377,7 +374,7 @@ const EditorTopBar: React.FC = () => {
               gap: 0.25,
               overflowX: "auto",
               overflowY: "hidden",
-              flex: 1,
+              flexShrink: 1,
               minWidth: 0,
               "&::-webkit-scrollbar": { height: 2 },
               "&::-webkit-scrollbar-thumb": { bgcolor: "divider" },
@@ -402,23 +399,26 @@ const EditorTopBar: React.FC = () => {
                     gap: 0.5,
                     px: 1,
                     py: 0.375,
-                    borderRadius: 1,
                     cursor: "pointer",
                     userSelect: "none",
                     flexShrink: 0,
-                    bgcolor: isActive ? "primary.main" : "transparent",
+                    width: 105,
+                    bgcolor: "transparent",
+                    borderBottom: 2,
+                    borderColor: isActive ? "primary.main" : "transparent",
+                    borderRadius: 0,
                     "&:hover": {
-                      bgcolor: isActive ? "primary.dark" : "action.hover",
+                      bgcolor: isActive ? "transparent" : "action.hover",
                     },
                     "&:hover .tab-close-btn": { opacity: 1 },
-                    transition: "background-color 0.15s",
+                    transition: "background-color 0.15s, border-color 0.15s",
                   }}
                 >
                   <FileText
                     size={13}
                     style={{
                       color: isActive
-                        ? "var(--mui-palette-primary-contrastText)"
+                        ? "var(--mui-palette-primary-main)"
                         : "var(--mui-palette-text-secondary)",
                       flexShrink: 0,
                     }}
@@ -429,11 +429,8 @@ const EditorTopBar: React.FC = () => {
                         width: 5,
                         height: 5,
                         borderRadius: "50%",
-                        bgcolor: isActive
-                          ? "primary.contrastText"
-                          : "warning.main",
+                        bgcolor: "warning.main",
                         flexShrink: 0,
-                        opacity: isActive ? 0.7 : 1,
                       }}
                     />
                   )}
@@ -442,10 +439,9 @@ const EditorTopBar: React.FC = () => {
                     sx={{
                       fontSize: "0.8rem",
                       fontWeight: isActive ? 600 : 400,
-                      color: isActive
-                        ? "primary.contrastText"
-                        : "text.secondary",
-                      maxWidth: 120,
+                      color: isActive ? "primary.main" : "text.secondary",
+                      flex: 1,
+                      minWidth: 0,
                     }}
                   >
                     {tab.name}
@@ -462,13 +458,9 @@ const EditorTopBar: React.FC = () => {
                         opacity: isActive ? 0.7 : 0,
                         p: 0.125,
                         transition: "opacity 0.15s",
-                        color: isActive
-                          ? "primary.contrastText"
-                          : "text.secondary",
+                        color: isActive ? "primary.main" : "text.secondary",
                         "&:hover": {
-                          color: isActive
-                            ? "primary.contrastText"
-                            : "error.main",
+                          color: "error.main",
                           opacity: 1,
                         },
                       }}
@@ -497,11 +489,19 @@ const EditorTopBar: React.FC = () => {
               </Tooltip>
             )}
           </Box>
+          <Divider
+            orientation="vertical"
+            flexItem
+            sx={{ mx: 1, my: 0.75 }}
+          />
         </>
       )}
 
-      {/* Spacer — fills remaining space when no tabs */}
-      {!hasTabs && <Box sx={{ flex: 1 }} />}
+      {/* Page-level actions slot — right after the sub-doc tabs (or title) */}
+      {actions}
+
+      {/* Trailing spacer — keeps actions left-aligned, fills the rest */}
+      <Box sx={{ flex: 1 }} />
     </Box>
   );
 };

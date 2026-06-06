@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CIFS — Editor (Redesign)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --ink:#1b1b1f;
+  --ink-2:#5b5b66;
+  --ink-3:#8a8a96;
+  --disabled:#c7c7cf;
+  --line:#e9e9ee;
+  --line-strong:#dededf;
+  --surface:#ffffff;
+  --hover:#f3f3f5;
+  --active:#ebebef;
+  --sel-bg:#e8edff;
+  --accent:#5b5bd6;        /* AI / interactive accent */
+  --accent-soft:#eeeefc;
+  --accent-ink:#4a4ac4;
+  --primary:#1b1b1f;       /* Done primary */
+  --primary-hover:#000000;
+  --good:#1f9d57;
+  --radius:9px;
+  --radius-sm:7px;
+  --tb-h:52px;
+  --top-h:50px;
+  --rail-w:48px;
+  font-synthesis-weight:none;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;height:100%;}
+body{
+  font-family:"Hanken Grotesk",system-ui,sans-serif;
+  color:var(--ink);
+  background:#fcfcfd;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+.app{display:flex;flex-direction:column;height:100vh;overflow:hidden;background:var(--surface);}
+
+/* ───────── Top chrome ───────── */
+.topbar{
+  height:var(--top-h);flex:0 0 auto;
+  display:flex;align-items:center;gap:8px;
+  padding:0 10px 0 8px;
+  border-bottom:1px solid var(--line);
+  background:var(--surface);
+}
+.topbar .left{display:flex;align-items:center;gap:4px;min-width:0;}
+.topbar .right{display:flex;align-items:center;gap:8px;margin-left:auto;}
+.actions{display:flex;align-items:center;gap:2px;}
+/* quiet chrome buttons — present but not attention-grabbing */
+.qbtn{
+  height:30px;display:inline-flex;align-items:center;gap:6px;padding:0 10px;
+  border:none;background:transparent;color:var(--ink-2);border-radius:7px;cursor:pointer;
+  font:inherit;font-size:13px;font-weight:500;transition:background .12s ease,color .12s ease;white-space:nowrap;
+}
+.qbtn:hover{background:var(--hover);color:var(--ink);}
+.qbtn:active{background:var(--active);}
+.qbtn svg{width:15px;height:15px;color:var(--ink-3);}
+.qbtn:hover svg{color:var(--ink-2);}
+.qbtn.done{background:var(--hover);color:var(--ink);font-weight:600;}
+.qbtn.done svg{color:var(--ink-2);}
+.qbtn.done:hover{background:var(--active);}
+/* collaborator presence (balances the right side) */
+.presence{display:flex;align-items:center;}
+.presence .ava{
+  width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  color:#fff;font-size:12px;font-weight:600;border:2px solid var(--surface);margin-left:-7px;cursor:pointer;
+}
+.presence .ava:first-child{margin-left:0;}
+.presence .ava.more{background:var(--hover);color:var(--ink-2);}
+.crumb{
+  display:flex;align-items:center;gap:7px;
+  padding:5px 8px;border-radius:var(--radius-sm);cursor:pointer;
+  color:var(--ink);font-weight:600;font-size:14px;max-width:340px;
+}
+.crumb:hover{background:var(--hover);}
+.crumb .doc-ico{color:var(--ink-3);display:flex;}
+.crumb .chev{color:var(--ink-3);display:flex;}
+
+/* save / autosave status */
+.savestate{
+  display:flex;align-items:center;gap:7px;margin-left:6px;
+  font-size:13px;color:var(--ink-2);
+  padding:5px 9px;border-radius:var(--radius-sm);cursor:default;user-select:none;
+}
+.savestate .dot{width:7px;height:7px;border-radius:50%;background:var(--good);flex:0 0 auto;}
+.savestate.saving .dot{background:var(--ink-3);animation:pulse 1s ease-in-out infinite;}
+.savestate.unsaved .dot{background:#e0a72e;}
+@keyframes pulse{50%{opacity:.35;}}
+
+.vrule{width:1px;height:24px;background:var(--line-strong);margin:0 2px;flex:0 0 auto;}
+
+/* ───────── Generic icon button ───────── */
+.ibtn{
+  --sz:34px;
+  width:var(--sz);height:var(--sz);flex:0 0 auto;
+  display:inline-flex;align-items:center;justify-content:center;
+  border:none;background:transparent;color:var(--ink);
+  border-radius:var(--radius-sm);cursor:pointer;position:relative;
+  transition:background .12s ease,color .12s ease;
+}
+.ibtn:hover{background:var(--hover);}
+.ibtn:active{background:var(--active);}
+.ibtn.on{background:var(--accent-soft);color:var(--accent-ink);}
+.ibtn[disabled]{color:var(--disabled);cursor:default;}
+.ibtn[disabled]:hover{background:transparent;}
+.ibtn svg{width:18px;height:18px;}
+
+/* labelled menu button (Normal / font / size) */
+.mbtn{
+  height:34px;display:inline-flex;align-items:center;gap:7px;
+  padding:0 9px;border:none;background:transparent;color:var(--ink);
+  border-radius:var(--radius-sm);cursor:pointer;font:inherit;font-size:13.5px;font-weight:500;
+  transition:background .12s ease;white-space:nowrap;
+}
+.mbtn:hover{background:var(--hover);}
+.mbtn .chev{color:var(--ink-3);display:flex;margin-left:-2px;}
+.mbtn .lead{color:var(--ink-3);display:flex;}
+
+/* primary button */
+.pbtn{
+  height:34px;display:inline-flex;align-items:center;gap:7px;
+  padding:0 15px;border:none;border-radius:8px;cursor:pointer;font:inherit;
+  font-size:13.5px;font-weight:600;background:var(--primary);color:#fff;
+  transition:background .12s ease,transform .05s ease;
+}
+.pbtn:hover{background:var(--primary-hover);}
+.pbtn:active{transform:translateY(.5px);}
+.pbtn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line-strong);}
+.pbtn.ghost:hover{background:var(--hover);}
+
+/* ───────── Format toolbar ───────── */
+.toolbar{
+  height:var(--tb-h);flex:0 0 auto;
+  display:flex;align-items:center;gap:2px;
+  padding:0 12px;border-bottom:1px solid var(--line);
+  background:var(--surface);overflow:hidden;
+}
+.tb-spacer{flex:1 1 auto;}
+.group{display:flex;align-items:center;gap:1px;flex:0 0 auto;}
+.group-sep{width:1px;height:26px;background:var(--line);margin:0 8px;flex:0 0 auto;}
+
+/* font-size stepper */
+.stepper{display:flex;align-items:center;gap:0;}
+.stepper .val{
+  min-width:34px;height:30px;display:inline-flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:600;color:var(--ink);border-radius:6px;cursor:text;
+}
+.stepper .val:hover{background:var(--hover);}
+
+/* AI button */
+.ai-btn{
+  height:34px;display:inline-flex;align-items:center;gap:8px;
+  padding:0 13px 0 11px;border-radius:8px;cursor:pointer;font:inherit;
+  font-size:13.5px;font-weight:600;
+  color:var(--accent-ink);background:var(--accent-soft);white-space:nowrap;
+  border:1px solid transparent;transition:background .12s ease,border-color .12s ease;
+}
+.ai-btn:hover{background:#e6e6fb;border-color:#dcdcfa;}
+.ai-btn svg{width:17px;height:17px;}
+.ai-btn .chev{color:var(--accent);opacity:.7;}
+
+/* color swatch button shows a bar */
+.swatch{position:relative;}
+.swatch::after{
+  content:"";position:absolute;left:8px;right:8px;bottom:6px;height:3px;border-radius:2px;
+  background:linear-gradient(90deg,#1b1b1f 0 60%,#ffd54a 60% 100%);
+}
+
+/* ───────── Tooltips ───────── */
+[data-tip]{position:relative;}
+[data-tip]::before{
+  content:attr(data-tip);position:absolute;top:calc(100% + 8px);left:50%;
+  transform:translateX(-50%) translateY(2px);
+  background:#26262c;color:#fff;font-size:11.5px;font-weight:500;line-height:1;
+  padding:6px 8px;border-radius:6px;white-space:nowrap;pointer-events:none;
+  opacity:0;transition:opacity .12s ease .35s,transform .12s ease .35s;z-index:80;
+  letter-spacing:.1px;
+}
+[data-tip]::after{ }
+[data-tip][data-kbd]::before{content:attr(data-tip) "  " attr(data-kbd);}
+.ibtn[data-tip]:hover::before,.mbtn[data-tip]:hover::before,.ai-btn[data-tip]:hover::before,
+.savestate[data-tip]:hover::before,.pbtn[data-tip]:hover::before,.railbtn[data-tip]:hover::before{
+  opacity:1;transform:translateX(-50%) translateY(0);
+}
+/* rail tooltips point left */
+.railbtn[data-tip]::before{
+  top:50%;left:auto;right:calc(100% + 8px);
+  transform:translateY(-50%) translateX(2px);
+}
+.railbtn[data-tip]:hover::before{transform:translateY(-50%) translateX(0);}
+
+/* ───────── Body: editor + rail ───────── */
+.work{flex:1 1 auto;display:flex;min-height:0;}
+.scroll{flex:1 1 auto;overflow:auto;}
+.page{max-width:760px;margin:0 auto;padding:54px 40px 200px;}
+.doc-title{
+  font-family:"Newsreader",serif;font-weight:600;font-size:38px;letter-spacing:-.01em;
+  margin:0 0 6px;outline:none;
+}
+.doc-meta{display:flex;align-items:center;gap:10px;color:var(--ink-3);font-size:13px;margin-bottom:22px;}
+.doc-rule{border:none;border-top:1px solid var(--line);margin:0 0 26px;}
+.doc-body{font-family:"Newsreader",serif;font-size:18px;line-height:1.7;color:#26262c;outline:none;}
+.doc-body h2{font-size:24px;font-weight:600;letter-spacing:-.01em;margin:30px 0 10px;}
+.doc-body p{margin:0 0 16px;}
+.doc-body ul{margin:0 0 16px;padding-left:22px;}
+.doc-body li{margin:0 0 6px;}
+.doc-body code{
+  font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:.86em;
+  background:#f1f1f4;padding:1px 6px;border-radius:5px;color:#3a3a44;
+}
+.doc-body ::selection{background:var(--sel-bg);}
+.doc-body .hl{background:#fff1a8;border-radius:3px;padding:0 2px;}
+
+/* right rail */
+.rail{
+  width:var(--rail-w);flex:0 0 auto;border-left:1px solid var(--line);
+  background:var(--surface);display:flex;flex-direction:column;align-items:center;
+  padding:8px 0;gap:2px;
+}
+.rail .grow{flex:1 1 auto;}
+.railbtn{
+  width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;
+  border:none;background:transparent;color:var(--ink-2);border-radius:8px;cursor:pointer;
+  position:relative;transition:background .12s ease,color .12s ease;
+}
+.railbtn:hover{background:var(--hover);color:var(--ink);}
+.railbtn.on{background:var(--accent-soft);color:var(--accent-ink);}
+.railbtn svg{width:19px;height:19px;}
+.rail-sep{width:22px;height:1px;background:var(--line);margin:6px 0;}
+
+/* ───────── Popovers ───────── */
+.pop{
+  position:absolute;z-index:90;background:#fff;border:1px solid var(--line-strong);
+  border-radius:12px;box-shadow:0 8px 30px rgba(20,20,30,.13),0 2px 6px rgba(20,20,30,.06);
+  padding:6px;min-width:200px;display:none;
+}
+.pop.open{display:block;animation:pop .12s ease;}
+@keyframes pop{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:none;}}
+.pop-h{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);padding:8px 10px 4px;}
+.item{
+  display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;
+  font-size:14px;color:var(--ink);white-space:nowrap;
+}
+.item:hover{background:var(--hover);}
+.item .k{margin-left:auto;color:var(--ink-3);font-size:12px;}
+.item.sel{background:var(--accent-soft);color:var(--accent-ink);font-weight:600;}
+.item .ck{margin-left:auto;color:var(--accent);display:none;}
+.item.sel .ck{display:flex;}
+.item .ico{color:var(--ink-3);display:flex;}
+.item.sel .ico{color:var(--accent-ink);}
+.pop-div{height:1px;background:var(--line);margin:6px 4px;}
+
+/* color popover grid */
+.swatches{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;padding:6px;}
+.sw{width:24px;height:24px;border-radius:6px;cursor:pointer;border:1px solid rgba(0,0,0,.08);}
+.sw:hover{transform:scale(1.08);}
+
+/* AI popover */
+.pop.ai{min-width:300px;padding:0;overflow:hidden;}
+.ai-model{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:11px 13px;border-bottom:1px solid var(--line);background:#fafafb;cursor:pointer;
+}
+.ai-model:hover{background:var(--hover);}
+.ai-model .ml{display:flex;align-items:center;gap:9px;font-size:13px;}
+.ai-model .badge{font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--accent-ink);background:var(--accent-soft);padding:3px 6px;border-radius:5px;}
+.ai-model .mr{display:flex;align-items:center;gap:6px;color:var(--ink-2);font-size:13px;font-weight:600;}
+.ai-body{padding:6px;}
+.ai-prompt{
+  display:flex;align-items:center;gap:8px;margin:6px;padding:9px 11px;
+  border:1px solid var(--line-strong);border-radius:9px;color:var(--ink-3);font-size:13.5px;cursor:text;
+}
+.ai-prompt svg{color:var(--accent);width:16px;height:16px;}
+
+/* model submenu */
+.model-list .item{justify-content:flex-start;}
+.model-list .sub{font-size:12px;color:var(--ink-3);font-weight:400;}
+
+/* ───────── Floating selection toolbar ───────── */
+.fsel{
+  position:fixed;z-index:95;display:none;align-items:center;gap:1px;
+  background:#26262c;border-radius:11px;padding:4px;
+  box-shadow:0 10px 30px rgba(0,0,0,.28);
+}
+.fsel.open{display:flex;animation:pop .1s ease;}
+.fsel .fb{
+  width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;
+  border:none;background:transparent;color:#e7e7ec;border-radius:7px;cursor:pointer;
+}
+.fsel .fb:hover{background:rgba(255,255,255,.12);color:#fff;}
+.fsel .fb.on{background:rgba(124,124,240,.32);color:#fff;}
+.fsel .fb svg{width:17px;height:17px;}
+.fsel .fsep{width:1px;height:20px;background:rgba(255,255,255,.16);margin:0 4px;}
+.fsel .fai{
+  display:inline-flex;align-items:center;gap:6px;padding:0 11px;height:32px;border-radius:7px;
+  border:none;cursor:pointer;font:inherit;font-size:13px;font-weight:600;
+  color:#fff;background:linear-gradient(90deg,#6d6df0,#8a6df0);
+}
+.fsel .fai:hover{filter:brightness(1.08);}
+.fsel .fai svg{width:15px;height:15px;}
+
+/* read-only mode */
+.app.readonly .toolbar{display:none;}
+.app.readonly .reading-pill{display:inline-flex;}
+.reading-pill{
+  display:none;align-items:center;gap:6px;font-size:12.5px;font-weight:600;
+  color:var(--ink-2);background:var(--hover);padding:5px 10px;border-radius:999px;
+}
+
+/* overlay to catch outside-clicks for popovers */
+.scrim{position:fixed;inset:0;z-index:85;display:none;}
+.scrim.on{display:block;}
+
+/* annotation callouts toggle */
+.notes-tag{
+  position:fixed;left:14px;bottom:14px;z-index:60;display:flex;align-items:center;gap:8px;
+  background:#26262c;color:#fff;font-size:12.5px;font-weight:500;padding:8px 12px;border-radius:999px;
+  box-shadow:0 6px 20px rgba(0,0,0,.22);cursor:pointer;user-select:none;
+}
+.notes-tag .sw{width:8px;height:8px;border-radius:50%;background:#7c7cf0;border:none;}
+.callout{position:fixed;z-index:59;pointer-events:none;}
+.callout .bub{
+  pointer-events:none;background:#26262c;color:#fff;font-size:12px;line-height:1.4;font-weight:500;
+  padding:8px 11px;border-radius:9px;max-width:230px;box-shadow:0 6px 20px rgba(0,0,0,.22);
+}
+.callout .num{
+  display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;
+  background:#7c7cf0;color:#fff;font-size:11px;font-weight:700;margin-right:6px;
+}
+.callouts-hidden .callout{display:none;}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- ░░░ TOP CHROME ░░░ -->
+  <header class="topbar">
+    <div class="left">
+      <button class="ibtn" data-tip="Menu" aria-label="Menu">${'menu'}</button>
+      <div class="crumb" id="docMenuBtn" data-tip="Document options">
+        <span class="doc-ico">${'file'}</span>
+        <span>CIFS</span>
+        <span class="chev">${'chev'}</span>
+      </div>
+      <div class="savestate" id="saveState" data-tip="Autosaved to the cloud">
+        <span class="dot"></span><span class="txt">Saved 19m ago</span>
+      </div>
+      <span class="reading-pill">${'eye'} Reading mode</span>
+      <div class="vrule"></div>
+      <div class="actions">
+        <button class="ibtn" data-tip="Version history" id="histBtn" aria-label="Version history">${'history'}</button>
+        <button class="qbtn" data-tip="Share document" id="shareBtn">${'share'} Share</button>
+        <button class="qbtn done" id="doneBtn" data-tip="Finish editing — switch to read-only">${'check'} Done</button>
+      </div>
+    </div>
+    <div class="right">
+      <div class="presence" aria-label="Collaborators">
+        <span class="ava" style="background:#5b5bd6">A</span>
+        <span class="ava" style="background:#1f9d57">M</span>
+        <span class="ava more">+3</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ░░░ FORMAT TOOLBAR ░░░ -->
+  <div class="toolbar" id="toolbar">
+    <div class="tb-spacer"></div>
+
+    <!-- history -->
+    <div class="group">
+      <button class="ibtn" disabled data-tip="Undo" data-kbd="⌘Z" aria-label="Undo">${'undo'}</button>
+      <button class="ibtn" disabled data-tip="Redo" data-kbd="⌘⇧Z" aria-label="Redo">${'redo'}</button>
+    </div>
+    <div class="group-sep"></div>
+
+    <!-- text structure -->
+    <div class="group">
+      <button class="mbtn" id="blockBtn" data-tip="Paragraph style">
+        <span class="lead">${'type'}</span><span>Normal</span><span class="chev">${'chev'}</span>
+      </button>
+      <button class="mbtn" id="fontBtn" data-tip="Font">
+        <span>Roboto</span><span class="chev">${'chev'}</span>
+      </button>
+      <div class="stepper">
+        <button class="ibtn" data-tip="Smaller" aria-label="Decrease font size" id="szDown">${'minus'}</button>
+        <span class="val" id="szVal">16</span>
+        <button class="ibtn" data-tip="Larger" aria-label="Increase font size" id="szUp">${'plus'}</button>
+      </div>
+    </div>
+    <div class="group-sep"></div>
+
+    <!-- inline format -->
+    <div class="group">
+      <button class="ibtn fmt" data-cmd="bold" data-tip="Bold" data-kbd="⌘B">${'bold'}</button>
+      <button class="ibtn fmt" data-cmd="italic" data-tip="Italic" data-kbd="⌘I">${'italic'}</button>
+      <button class="ibtn fmt" data-cmd="underline" data-tip="Underline" data-kbd="⌘U">${'underline'}</button>
+      <button class="ibtn swatch" id="colorBtn" data-tip="Text & highlight color" aria-label="Color">${'palette'}</button>
+      <button class="ibtn" id="moreBtn" data-tip="More formatting">${'dots'}</button>
+    </div>
+    <div class="group-sep"></div>
+
+    <!-- insert -->
+    <div class="group">
+      <button class="mbtn" id="insertBtn" data-tip="Insert">
+        <span class="lead">${'plus'}</span><span>Insert</span><span class="chev">${'chev'}</span>
+      </button>
+      <button class="ibtn fmt" data-cmd="link" data-tip="Insert link" data-kbd="⌘K">${'link'}</button>
+    </div>
+    <div class="group-sep"></div>
+
+    <!-- AI -->
+    <div class="group">
+      <button class="ai-btn" id="aiBtn" data-tip="Ask AI — write, edit, summarize">
+        ${'sparkles'}<span>Ask AI</span><span class="chev">${'chev'}</span>
+      </button>
+    </div>
+
+    <div class="tb-spacer"></div>
+  </div>
+
+  <!-- ░░░ WORKSPACE ░░░ -->
+  <div class="work">
+    <div class="scroll">
+      <div class="page">
+        <h1 class="doc-title" contenteditable="true" spellcheck="false">CIFS</h1>
+        <div class="doc-meta"><span>Protocols / Networking</span><span>·</span><span>Last edited 19m ago</span></div>
+        <hr class="doc-rule" />
+        <div class="doc-body" id="docBody" contenteditable="true" spellcheck="false">
+          <p><strong>CIFS (Common Internet File System)</strong> is a network file-sharing protocol that lets applications read and write to files and request services from server programs across a network. It is a public, platform-independent dialect of <span class="hl">SMB (Server Message Block)</span>.</p>
+          <h2>How it works</h2>
+          <p>A client issues requests to a server to open, read, write, and close files over TCP/IP — typically on port <code>445</code>. The server authenticates the session, then brokers concurrent access so multiple clients can share the same files safely.</p>
+          <ul>
+            <li>Transparent access to remote files as if they were local</li>
+            <li>Record- and file-level locking to prevent conflicting writes</li>
+            <li>Read-ahead and write-behind caching for performance</li>
+          </ul>
+          <p>Select any text in this document to see the contextual formatting bar, or press <strong>Done</strong> to preview read-only mode.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- right rail: PANELS ONLY (clear rule) -->
+    <aside class="rail">
+      <button class="railbtn" data-tip="Collapse panel" id="collapseBtn">${'panel'}</button>
+      <div class="rail-sep"></div>
+      <button class="railbtn" data-tip="Document outline">${'outline'}</button>
+      <button class="railbtn" data-tip="Comments">${'comment'}</button>
+      <button class="railbtn" data-tip="References & backlinks">${'link2'}</button>
+      <button class="railbtn" data-tip="Document info">${'info'}</button>
+      <div class="grow"></div>
+      <button class="railbtn" data-tip="Settings">${'gear'}</button>
+    </aside>
+  </div>
+</div>
+
+<!-- floating selection toolbar -->
+<div class="fsel" id="fsel">
+  <button class="fb" data-cmd="bold" data-tip="Bold">${'bold'}</button>
+  <button class="fb" data-cmd="italic" data-tip="Italic">${'italic'}</button>
+  <button class="fb" data-cmd="underline" data-tip="Underline">${'underline'}</button>
+  <button class="fb" data-cmd="link" data-tip="Link">${'link'}</button>
+  <button class="fb" data-cmd="hl" data-tip="Highlight">${'highlighter'}</button>
+  <span class="fsep"></span>
+  <button class="fai" id="fselAi">${'sparkles'} Ask AI</button>
+</div>
+
+<!-- popovers -->
+<div class="pop" id="blockPop">
+  <div class="pop-h">Text style</div>
+  <div class="item sel" data-v="Normal"><span class="ico">${'type'}</span>Normal<span class="ck">${'tick'}</span></div>
+  <div class="item" data-v="Heading 1"><span class="ico">${'h1'}</span>Heading 1<span class="ck">${'tick'}</span></div>
+  <div class="item" data-v="Heading 2"><span class="ico">${'h2'}</span>Heading 2<span class="ck">${'tick'}</span></div>
+  <div class="item" data-v="Heading 3"><span class="ico">${'h3'}</span>Heading 3<span class="ck">${'tick'}</span></div>
+  <div class="pop-div"></div>
+  <div class="item" data-v="Bulleted list"><span class="ico">${'bullet'}</span>Bulleted list<span class="ck">${'tick'}</span></div>
+  <div class="item" data-v="Numbered list"><span class="ico">${'numbered'}</span>Numbered list<span class="ck">${'tick'}</span></div>
+  <div class="item" data-v="Quote"><span class="ico">${'quote'}</span>Quote<span class="ck">${'tick'}</span></div>
+  <div class="item" data-v="Code block"><span class="ico">${'code'}</span>Code block<span class="ck">${'tick'}</span></div>
+</div>
+
+<div class="pop" id="fontPop">
+  <div class="pop-h">Font</div>
+  <div class="item sel" data-v="Roboto">Roboto<span class="ck">${'tick'}</span></div>
+  <div class="item" data-v="Newsreader" style="font-family:'Newsreader',serif">Newsreader<span class="ck">${'tick'}</span></div>
+  <div class="item" data-v="Hanken Grotesk">Hanken Grotesk<span class="ck">${'tick'}</span></div>
+  <div class="item" data-v="Mono" style="font-family:ui-monospace,monospace">Monospace<span class="ck">${'tick'}</span></div>
+</div>
+
+<div class="pop" id="colorPop">
+  <div class="pop-h">Text color</div>
+  <div class="swatches" data-kind="text">
+    <span class="sw" style="background:#1b1b1f"></span>
+    <span class="sw" style="background:#5b5b66"></span>
+    <span class="sw" style="background:#c1442e"></span>
+    <span class="sw" style="background:#c98a17"></span>
+    <span class="sw" style="background:#1f9d57"></span>
+    <span class="sw" style="background:#2b6bd6"></span>
+  </div>
+  <div class="pop-div"></div>
+  <div class="pop-h">Highlight</div>
+  <div class="swatches" data-kind="hl">
+    <span class="sw" style="background:#fff1a8"></span>
+    <span class="sw" style="background:#cdeccd"></span>
+    <span class="sw" style="background:#cfe0fb"></span>
+    <span class="sw" style="background:#f6d2e0"></span>
+    <span class="sw" style="background:#e7dcf8"></span>
+    <span class="sw" style="background:transparent;border-style:dashed"></span>
+  </div>
+</div>
+
+<div class="pop" id="morePop">
+  <div class="item" data-cmd="strike"><span class="ico">${'strike'}</span>Strikethrough<span class="k">⌘⇧X</span></div>
+  <div class="item" data-cmd="code"><span class="ico">${'code'}</span>Inline code<span class="k">⌘E</span></div>
+  <div class="item" data-cmd="sub"><span class="ico">${'sub'}</span>Subscript</div>
+  <div class="item" data-cmd="sup"><span class="ico">${'sup'}</span>Superscript</div>
+  <div class="pop-div"></div>
+  <div class="item" data-cmd="clear"><span class="ico">${'eraser'}</span>Clear formatting</div>
+</div>
+
+<div class="pop" id="insertPop">
+  <div class="item"><span class="ico">${'image'}</span>Image</div>
+  <div class="item"><span class="ico">${'table'}</span>Table</div>
+  <div class="item"><span class="ico">${'code'}</span>Code block</div>
+  <div class="item"><span class="ico">${'divider'}</span>Divider</div>
+  <div class="item"><span class="ico">${'attach'}</span>File attachment</div>
+  <div class="item"><span class="ico">${'emoji'}</span>Emoji</div>
+</div>
+
+<div class="pop ai" id="aiPop">
+  <div class="ai-model" id="modelSwitch">
+    <div class="ml">${'cpu'}<span>Model</span><span class="badge">CLAUDE SONNET 4</span></div>
+    <div class="mr">Change ${'chev'}</div>
+  </div>
+  <div class="ai-prompt">${'sparkles'}<span>Ask AI to write or edit…</span></div>
+  <div class="ai-body">
+    <div class="item"><span class="ico">${'pencil'}</span>Continue writing</div>
+    <div class="item"><span class="ico">${'list'}</span>Summarize document</div>
+    <div class="item"><span class="ico">${'wand'}</span>Improve writing</div>
+    <div class="item"><span class="ico">${'spell'}</span>Fix spelling & grammar</div>
+    <div class="item"><span class="ico">${'translate'}</span>Translate…</div>
+  </div>
+</div>
+
+<div class="pop" id="modelPop">
+  <div class="pop-h">Model</div>
+  <div class="model-list">
+    <div class="item sel"><div><div>Claude Sonnet 4</div><div class="sub">Balanced · everyday writing</div></div><span class="ck">${'tick'}</span></div>
+    <div class="item"><div><div>Claude Opus 4</div><div class="sub">Most capable · long-form</div></div><span class="ck">${'tick'}</span></div>
+    <div class="item"><div><div>Claude Haiku 4</div><div class="sub">Fastest · quick edits</div></div><span class="ck">${'tick'}</span></div>
+  </div>
+</div>
+
+<div class="pop" id="docPop">
+  <div class="item"><span class="ico">${'pencil'}</span>Rename</div>
+  <div class="item"><span class="ico">${'copy'}</span>Duplicate</div>
+  <div class="item"><span class="ico">${'download'}</span>Export…</div>
+  <div class="pop-div"></div>
+  <div class="item"><span class="ico">${'history'}</span>Version history</div>
+  <div class="item"><span class="ico">${'info'}</span>Document info</div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+
+<!-- annotation callouts explaining the redesign -->
+<div class="notes-tag" id="notesTag"><span class="sw"></span>Redesign notes: on</div>
+
+<script>
+/* ---------- icon set (lucide-style strokes) ---------- */
+const ICONS = {
+  menu:'<line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>',
+  file:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>',
+  chev:'<polyline points="6 9 12 15 18 9"/>',
+  history:'<path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/>',
+  share:'<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/>',
+  check:'<polyline points="20 6 9 17 4 12"/>',
+  eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
+  undo:'<path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>',
+  redo:'<path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/>',
+  type:'<polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/>',
+  minus:'<line x1="5" y1="12" x2="19" y2="12"/>',
+  plus:'<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+  bold:'<path d="M6 4h8a4 4 0 0 1 0 8H6z"/><path d="M6 12h9a4 4 0 0 1 0 8H6z"/>',
+  italic:'<line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/>',
+  underline:'<path d="M6 4v6a6 6 0 0 0 12 0V4"/><line x1="4" y1="21" x2="20" y2="21"/>',
+  palette:'<circle cx="13.5" cy="6.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="17.5" cy="10.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="8.5" cy="7.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="6.5" cy="12.5" r="1.3" fill="currentColor" stroke="none"/><path d="M12 2a10 10 0 1 0 0 20 2.5 2.5 0 0 0 2-4 2.5 2.5 0 0 1 2-4h2a4 4 0 0 0 4-4 10 10 0 0 0-10-8z"/>',
+  dots:'<circle cx="5" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.4" fill="currentColor" stroke="none"/>',
+  link:'<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1.5-1.5"/>',
+  sparkles:'<path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z"/><path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8z"/>',
+  panel:'<rect x="3" y="3" width="18" height="18" rx="2"/><line x1="15" y1="3" x2="15" y2="21"/>',
+  outline:'<line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4.5" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.3" fill="currentColor" stroke="none"/>',
+  comment:'<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-4-1L3 20l1.1-4.5A8.4 8.4 0 0 1 12 3.5a8.4 8.4 0 0 1 9 8z"/>',
+  link2:'<path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 0 1 0 10h-2"/><line x1="8" y1="12" x2="16" y2="12"/>',
+  info:'<circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><circle cx="12" cy="8" r="1" fill="currentColor" stroke="none"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/>',
+  tick:'<polyline points="20 6 9 17 4 12"/>',
+  h1:'<path d="M4 6v12M12 6v12M4 12h8"/><path d="M17 10l2-1v9"/>',
+  h2:'<path d="M4 6v12M11 6v12M4 12h7"/><path d="M16 9a2 2 0 1 1 3 1.6L16 18h4"/>',
+  h3:'<path d="M4 6v12M11 6v12M4 12h7"/><path d="M16 8.5a2 2 0 1 1 2 2.4 2 2 0 1 1-2 2.6"/>',
+  bullet:'<line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4.5" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.3" fill="currentColor" stroke="none"/>',
+  numbered:'<line x1="10" y1="6" x2="20" y2="6"/><line x1="10" y1="12" x2="20" y2="12"/><line x1="10" y1="18" x2="20" y2="18"/><text x="3" y="8" font-size="7" fill="currentColor" stroke="none">1</text><text x="3" y="14" font-size="7" fill="currentColor" stroke="none">2</text><text x="3" y="20" font-size="7" fill="currentColor" stroke="none">3</text>',
+  quote:'<path d="M6 7H3v6h3l2-3V7zm9 0h-3v6h3l2-3V7z" fill="currentColor" stroke="none"/>',
+  code:'<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
+  strike:'<path d="M16 5H9a3 3 0 0 0-1 5.8"/><path d="M8 19h7a3 3 0 0 0 1-5.8"/><line x1="4" y1="12" x2="20" y2="12"/>',
+  sub:'<path d="M5 6l8 10M13 6L5 16"/><path d="M21 20h-4l3-3a1.4 1.4 0 1 0-2.4-1" />',
+  sup:'<path d="M5 8l8 10M13 8L5 18"/><path d="M21 6h-4l3-3a1.4 1.4 0 1 0-2.4-1"/>',
+  eraser:'<path d="M19 20H8.5L3 14.5a2 2 0 0 1 0-2.8l8-8a2 2 0 0 1 2.8 0l5.5 5.5a2 2 0 0 1 0 2.8L13 19"/><line x1="18" y1="20" x2="22" y2="20"/>',
+  image:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>',
+  table:'<rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/>',
+  divider:'<line x1="3" y1="12" x2="21" y2="12"/>',
+  attach:'<path d="M21 12.5l-8.5 8.5a5 5 0 0 1-7-7L13 6a3.3 3.3 0 0 1 4.7 4.7L9.4 19"/>',
+  emoji:'<circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><circle cx="9" cy="9.5" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="9.5" r="1" fill="currentColor" stroke="none"/>',
+  cpu:'<rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 1.5v2.5M15 1.5v2.5M9 20v2.5M15 20v2.5M1.5 9H4M1.5 15H4M20 9h2.5M20 15h2.5"/>',
+  pencil:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  list:'<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>',
+  wand:'<path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8l1.4 1.4M17.8 6.2l1.4-1.4"/><path d="M3 21l9-9"/><path d="M12.5 8.5l3 3"/>',
+  spell:'<path d="M4 18l4-12 4 12M5.5 14h5"/><path d="M14 14l2 2 4-4"/>',
+  translate:'<path d="M4 5h7M8 3v2c0 4-2 7-5 8"/><path d="M5 9c0 3 3 5 6 5"/><path d="M13 20l4-9 4 9M14.5 17h5"/>',
+  copy:'<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+  highlighter:'<path d="M9 11l-4 4v3h3l4-4"/><path d="M13 7l4 4 4-4-4-4z" /><path d="M13 7l-4 4"/>',
+};
+function svg(name){const p=ICONS[name]||'';return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'+p+'</svg>';}
+// replace ${'name'} placeholders left in markup
+document.body.innerHTML = document.body.innerHTML.replace(/\$\{'([a-z0-9]+)'\}/gi,(m,n)=>svg(n));
+
+/* ---------- popover plumbing ---------- */
+const scrim=document.getElementById('scrim');
+let openPop=null;
+function place(pop,anchor,align){
+  const r=anchor.getBoundingClientRect();
+  pop.style.visibility='hidden';pop.classList.add('open');
+  const pw=pop.offsetWidth;
+  let left=(align==='right')? r.right-pw : r.left;
+  left=Math.max(8,Math.min(left,innerWidth-pw-8));
+  pop.style.left=left+'px';
+  pop.style.top=(r.bottom+6)+'px';
+  pop.style.visibility='';
+}
+function closePop(){if(openPop){openPop.classList.remove('open');openPop=null;}scrim.classList.remove('on');}
+function toggle(popId,anchor,align){
+  const pop=document.getElementById(popId);
+  if(openPop===pop){closePop();return;}
+  closePop();place(pop,anchor,align||'left');openPop=pop;scrim.classList.add('on');
+}
+scrim.addEventListener('click',closePop);
+window.addEventListener('keydown',e=>{if(e.key==='Escape')closePop();});
+
+const bind=(id,pop,align)=>{const el=document.getElementById(id);el&&el.addEventListener('click',e=>{e.stopPropagation();toggle(pop,el,align);});};
+bind('blockBtn','blockPop');
+bind('fontBtn','fontPop');
+bind('colorBtn','colorPop');
+bind('moreBtn','morePop','right');
+bind('insertBtn','insertPop');
+bind('aiBtn','aiPop','right');
+bind('docMenuBtn','docPop');
+
+/* block style + font reflect selection */
+function wireSelect(popId,labelEl,fmt){
+  document.querySelectorAll('#'+popId+' .item[data-v]').forEach(it=>{
+    it.addEventListener('click',()=>{
+      it.parentElement.querySelectorAll('.item').forEach(x=>x.classList.remove('sel'));
+      it.classList.add('sel');
+      if(labelEl) labelEl.textContent=fmt?fmt(it.dataset.v):it.dataset.v;
+      closePop();
+    });
+  });
+}
+const blockLabel=document.querySelector('#blockBtn span:nth-child(2)');
+const fontLabel=document.querySelector('#fontBtn span:first-child');
+wireSelect('blockPop',blockLabel);
+wireSelect('fontPop',fontLabel);
+
+/* color swatches */
+document.querySelectorAll('#colorPop .sw').forEach(sw=>sw.addEventListener('click',()=>{document.execCommand && document.execCommand('styleWithCSS',false,true);closePop();}));
+
+/* model switcher inside AI popover */
+document.getElementById('modelSwitch').addEventListener('click',e=>{
+  e.stopPropagation();const a=document.getElementById('modelSwitch');toggle('modelPop',a,'left');
+});
+document.querySelectorAll('#modelPop .item').forEach(it=>it.addEventListener('click',()=>{
+  document.querySelectorAll('#modelPop .item').forEach(x=>x.classList.remove('sel'));
+  it.classList.add('sel');
+  const name=it.querySelector('div div').textContent;
+  document.querySelector('#modelSwitch .badge').textContent=name.toUpperCase();
+  closePop();
+}));
+
+/* font-size stepper */
+let size=16;const szVal=document.getElementById('szVal');
+document.getElementById('szUp').addEventListener('click',()=>{size=Math.min(96,size+1);szVal.textContent=size;});
+document.getElementById('szDown').addEventListener('click',()=>{size=Math.max(8,size-1);szVal.textContent=size;});
+
+/* inline format toggles (visual only) */
+function applyCmd(btn){
+  const c=btn.dataset.cmd;
+  if(['bold','italic','underline','strike','hl'].includes(c)) btn.classList.toggle('on');
+}
+document.querySelectorAll('.fmt').forEach(b=>b.addEventListener('click',()=>applyCmd(b)));
+document.querySelectorAll('#morePop .item[data-cmd]').forEach(b=>b.addEventListener('click',closePop));
+
+/* ---------- Done / read-only ---------- */
+const app=document.getElementById('app');
+const doneBtn=document.getElementById('doneBtn');
+let reading=false;
+function setReading(on){
+  reading=on;app.classList.toggle('readonly',on);
+  document.getElementById('docBody').contentEditable=String(!on);
+  document.querySelector('.doc-title').contentEditable=String(!on);
+  doneBtn.innerHTML = on ? svg('pencil')+' Edit' : svg('check')+' Done';
+  doneBtn.setAttribute('data-tip', on ? 'Resume editing' : 'Finish editing — switch to read-only');
+  if(on) fsel.classList.remove('open');
+}
+doneBtn.addEventListener('click',()=>setReading(!reading));
+
+/* simulate autosave cycle */
+const saveState=document.getElementById('saveState');
+const docBody=document.getElementById('docBody');
+let saveTimer;
+function touchSave(){
+  saveState.className='savestate unsaved';saveState.querySelector('.txt').textContent='Unsaved changes';
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{
+    saveState.className='savestate saving';saveState.querySelector('.txt').textContent='Saving…';
+    setTimeout(()=>{saveState.className='savestate';saveState.querySelector('.txt').textContent='Saved just now';},900);
+  },1100);
+}
+docBody.addEventListener('input',touchSave);
+document.querySelector('.doc-title').addEventListener('input',touchSave);
+
+/* ---------- contextual selection toolbar ---------- */
+const fsel=document.getElementById('fsel');
+function updateSel(){
+  if(reading){fsel.classList.remove('open');return;}
+  const s=window.getSelection();
+  if(!s||s.isCollapsed||s.rangeCount===0){fsel.classList.remove('open');return;}
+  const r=s.getRangeAt(0);
+  if(!docBody.contains(r.commonAncestorContainer)){fsel.classList.remove('open');return;}
+  const rect=r.getBoundingClientRect();
+  if(rect.width<2&&rect.height<2){fsel.classList.remove('open');return;}
+  fsel.classList.add('open');
+  const fw=fsel.offsetWidth,fh=fsel.offsetHeight;
+  let left=rect.left+rect.width/2-fw/2;
+  left=Math.max(10,Math.min(left,innerWidth-fw-10));
+  let top=rect.top-fh-10;if(top<70)top=rect.bottom+10;
+  fsel.style.left=left+'px';fsel.style.top=top+'px';
+}
+document.addEventListener('selectionchange',()=>setTimeout(updateSel,0));
+window.addEventListener('scroll',()=>{if(fsel.classList.contains('open'))updateSel();},true);
+fsel.querySelectorAll('.fb').forEach(b=>b.addEventListener('mousedown',e=>{e.preventDefault();b.classList.toggle('on');}));
+document.getElementById('fselAi').addEventListener('mousedown',e=>{e.preventDefault();fsel.classList.remove('open');const a=document.getElementById('aiBtn');toggle('aiPop',a,'right');});
+
+/* collapse panel toggle (visual) */
+document.getElementById('collapseBtn').addEventListener('click',function(){this.classList.toggle('on');});
+
+/* ---------- redesign annotation callouts ---------- */
+const NOTES=[
+  {sel:'#saveState',  t:'Autosave is the source of truth — surfaced as live status, no manual Save icon needed.',side:'below'},
+  {sel:'#doneBtn',    t:'“Done” is now a labelled primary button in the doc chrome. It exits to read-only — never confused with Save.',side:'below'},
+  {sel:'#aiBtn',      t:'One AI entry point. The model picker lives inside its popover, off the formatting strip.',side:'below'},
+  {sel:'#moreBtn',    t:'Rare inline formats (strike, code, sub/sup) collapse into one overflow to declutter.',side:'below'},
+  {sel:'.rail',       t:'Right rail = panels only. Insert actions (incl. Table) moved to the toolbar; AI is no longer duplicated here.',side:'left'},
+];
+let notesOn=false;
+const tag=document.getElementById('notesTag');
+tag.innerHTML='<span class="sw"></span>Redesign notes: off';
+function renderNotes(){
+  document.querySelectorAll('.callout').forEach(n=>n.remove());
+  if(!notesOn)return;
+  NOTES.forEach((n,i)=>{
+    const el=document.querySelector(n.sel);if(!el)return;
+    const r=el.getBoundingClientRect();
+    const c=document.createElement('div');c.className='callout';
+    c.innerHTML='<div class="bub"><span class="num">'+(i+1)+'</span>'+n.t+'</div>';
+    document.body.appendChild(c);
+    const cw=c.offsetWidth;
+    if(n.side==='left'){
+      c.style.top=(r.top+r.height/2-c.offsetHeight/2)+'px';
+      c.style.left=(r.left-cw-12)+'px';
+    }else{
+      let left=r.left+r.width/2-cw/2;left=Math.max(10,Math.min(left,innerWidth-cw-10));
+      c.style.left=left+'px';c.style.top=(r.bottom+10)+'px';
+    }
+  });
+}
+tag.addEventListener('click',()=>{notesOn=!notesOn;tag.querySelector('span:last-child')&&(tag.lastChild.textContent='Redesign notes: '+(notesOn?'on':'off'));tag.innerHTML='<span class="sw"></span>Redesign notes: '+(notesOn?'on':'off');renderNotes();});
+window.addEventListener('resize',()=>{renderNotes();if(fsel.classList.contains('open'))updateSel();});
+setTimeout(renderNotes,120);
+</script>
+</body>
+</html>

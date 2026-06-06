@@ -92,7 +92,13 @@ export default function SaveStateIndicator({
         component="span"
         variant="caption"
         color="text.secondary"
-        sx={{ fontWeight: 400, lineHeight: 1 }}
+        noWrap
+        sx={{
+          fontWeight: 400,
+          lineHeight: 1,
+          minWidth: 92,
+          fontVariantNumeric: "tabular-nums",
+        }}
       >
         {isDirty
           ? "Unsaved changes"

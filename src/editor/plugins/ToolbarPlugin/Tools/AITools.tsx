@@ -427,9 +427,7 @@ export default function AITools(
         aria-expanded={open ? "true" : undefined}
         variant="contained"
         onClick={openMenu}
-        startIcon={
-          <Sparkles size={16} />
-        }
+        startIcon={<Sparkles size={16} />}
         endIcon={isLoading
           ? <CircularProgress size={14} color="inherit" />
           : <ChevronDown size={15} />}
@@ -456,7 +454,7 @@ export default function AITools(
         }}
         disabled={isLoading}
       >
-        Ask AI
+        AI
       </Button>
       <Menu
         id="ai-tools-menu"
@@ -501,7 +499,10 @@ export default function AITools(
             <Typography variant="caption" color="text.secondary">
               Change
             </Typography>
-            <ChevronDown size={14} style={{ color: "var(--mui-palette-text-secondary)" }} />
+            <ChevronDown
+              size={14}
+              style={{ color: "var(--mui-palette-text-secondary)" }}
+            />
           </Box>
         </MenuItem>
         <MenuItem
