@@ -7,9 +7,10 @@ import { useSelector as useReduxSelector } from "react-redux";
 import ConnectedEditor from "@/components/ConnectedEditor";
 import SplashScreen from "@/components/shared/SplashScreen";
 import DiffView from "@/components/Diff";
-import { documentsSelectors, useSelector } from "@/store";
+import { documentsSelectors, selectIsDirty, useSelector } from "@/store";
 import type { RootState } from "@/store";
 import { useCloudSave } from "./hooks/useCloudSave";
+import { useDirtyTracking } from "./hooks/useDirtyTracking";
 import { useDocumentLoader } from "./hooks/useDocumentLoader";
 import type { EditorDocument } from "@/types";
 import DocumentHeader from "./DocumentHeader";
@@ -25,6 +26,7 @@ const EditDocumentInfo = dynamic(
 /** Save button that persists the current revision(s) to the cloud. */
 function SaveButton() {
   const [isSaving, setIsSaving] = useState(false);
+  const isDirty = useSelector(selectIsDirty);
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
@@ -38,7 +40,7 @@ function SaveButton() {
     <Button
       size="small"
       onClick={handleSave}
-      disabled={isSaving}
+      disabled={isSaving || !isDirty}
       startIcon={isSaving
         ? <CircularProgress size={14} color="inherit" />
         : <Save size={14} />}
@@ -163,6 +165,7 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
   );
 
   const { lastSavedCloud } = useCloudSave(reduxDocument, editorRef);
+  const handleEditorChange = useDirtyTracking(docId, lastSavedCloud);
   const { isLoading, error, loadedDocument } = useDocumentLoader(
     docId,
     lastSavedCloud,
@@ -187,6 +190,7 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
             document={documentForEditor}
             editorRef={editorRef}
             namespace={`matheditor-${docId}`}
+            onChange={handleEditorChange}
             onSave={triggerSave}
             onDiscard={onDiscard}
             isActive={isActive}

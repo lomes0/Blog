@@ -59,6 +59,10 @@ export function useDocumentLoader(
                 typeof actions.getCloudDocument.fulfilled
               >["payload"];
             if (editorDocument.head !== cloudEditorDocument.head) {
+              // Local is ahead of (or diverged from) cloud. Use the cloud
+              // content as the saved baseline so live dirty tracking agrees
+              // that there are unsaved changes to persist.
+              lastSavedCloud.current = JSON.stringify(cloudEditorDocument.data);
               if (id) dispatch(actions.markTabDirty(id));
             } else {
               lastSavedCloud.current = JSON.stringify(editorDocument.data);
