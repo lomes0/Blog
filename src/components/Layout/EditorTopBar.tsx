@@ -359,6 +359,9 @@ const EditorTopBar: React.FC = () => {
           </MuiBreadcrumbs>
         )}
 
+      {/* Page-level actions slot — right after the title */}
+      {actions}
+
       {/* Inline tabs — only on edit pages when tabs exist */}
       {hasTabs && (
         <>
@@ -497,11 +500,8 @@ const EditorTopBar: React.FC = () => {
         </>
       )}
 
-      {/* Spacer — pushes actions/save-indicator to the right */}
+      {/* Spacer — fills remaining space when no tabs */}
       {!hasTabs && <Box sx={{ flex: 1 }} />}
-
-      {/* Page-level actions slot */}
-      {actions}
     </Box>
   );
 };
