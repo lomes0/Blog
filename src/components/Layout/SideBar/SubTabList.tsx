@@ -57,7 +57,7 @@ export const SubTabList: React.FC<SubTabListProps> = (
               fontSize: "0.72em",
               cursor: "pointer",
               color: "text.secondary",
-              fontWeight: isActive ? 600 : 400,
+              fontWeight: 400,
               bgcolor: isActive ? "action.selected" : "transparent",
               "&:hover": {
                 bgcolor: "action.hover",
@@ -72,7 +72,7 @@ export const SubTabList: React.FC<SubTabListProps> = (
                 height: 6,
                 borderRadius: "2px",
                 flexShrink: 0,
-                bgcolor: isActive ? "text.secondary" : "text.disabled",
+                bgcolor: "text.disabled",
               }}
             />
             <Box
