@@ -55,6 +55,17 @@ function replaceSelection(
   });
 }
 
+function insertParagraph(
+  editor: LexicalEditor,
+  params: Record<string, unknown>,
+) {
+  editor.update(() => {
+    const para = $createParagraphNode();
+    para.append($createTextNode(params.text as string));
+    insertAfterNodeOrAtEnd(para, params.afterNodeKey as string | undefined);
+  });
+}
+
 function insertTable(editor: LexicalEditor, params: Record<string, unknown>) {
   editor.update(() => {
     const headers = params.headers as string[] | undefined;
@@ -125,6 +136,7 @@ const EXECUTORS: Record<
   string,
   (editor: LexicalEditor, params: Record<string, unknown>) => void
 > = {
+  insert_paragraph: insertParagraph,
   remove_node: removeNode,
   replace_text: replaceText,
   replace_selection: replaceSelection,

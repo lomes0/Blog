@@ -13,7 +13,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { AtSign, ChevronDown, Send, Sparkles, Square } from "lucide-react";
+import { ChevronDown, Send, Sparkles, Square } from "lucide-react";
 import { ActiveEditorContext } from "@/contexts/ActiveEditorContext";
 import { serializeForCopilot } from "@/editor/utils/serializeForCopilot";
 import { applyActions } from "@/editor/utils/copilotToolExecutors";
@@ -245,12 +245,16 @@ const CopilotChat: React.FC<CopilotChatProps> = (
           sx={{
             px: 2,
             py: 1,
-            bgcolor: "error.light",
+            bgcolor: "error.main",
             color: "error.contrastText",
             flexShrink: 0,
           }}
         >
-          <Typography variant="caption">{error.message}</Typography>
+          <Typography variant="caption">
+            {/Unauthorized|sign in|401/i.test(error.message)
+              ? "Sign in to use Copilot."
+              : error.message}
+          </Typography>
         </Box>
       )}
 
@@ -275,7 +279,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
         <TextField
           fullWidth
           size="small"
-          placeholder={`Ask Copilot to edit "${documentTitle}", or / for commands…`}
+          placeholder={`Ask Copilot to edit "${documentTitle}"…`}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -297,14 +301,6 @@ const CopilotChat: React.FC<CopilotChatProps> = (
             gap: 0.25,
           }}
         >
-          <IconButton
-            size="small"
-            aria-label="Mention"
-            sx={{ color: "text.secondary" }}
-          >
-            <AtSign size={15} />
-          </IconButton>
-
           <IconButton
             size="small"
             onClick={(e) => setModelMenuAnchor(e.currentTarget)}

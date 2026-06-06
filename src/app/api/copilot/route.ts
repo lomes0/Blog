@@ -1,13 +1,24 @@
 import { convertToModelMessages, stepCountIs, streamText, tool } from "ai";
 import type { UIMessage } from "ai";
+import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { type AIProviderType, createProvider, getModelById } from "@/lib/ai";
 import { ApiError, withApiHandler } from "@/lib/api-utils";
+import { authOptions } from "@/lib/auth";
 import { COPILOT_SYSTEM_PROMPT } from "@/lib/ai/prompts";
 
-export const runtime = "edge";
+// Node runtime (not edge): auth uses the Prisma adapter, which cannot run on edge.
 
 const editorTools = {
+  insert_paragraph: tool({
+    description: "Insert a paragraph of plain prose. Use this to add body " +
+      "text or a new section's content (pair with insert_heading for the " +
+      "section title).",
+    inputSchema: z.object({
+      text: z.string(),
+      afterNodeKey: z.string().optional(),
+    }),
+  }),
   remove_node: tool({
     description: "Remove a node (image, table, paragraph, heading, etc.)",
     inputSchema: z.object({ nodeKey: z.string() }),
@@ -76,6 +87,11 @@ const editorTools = {
 };
 
 export const POST = withApiHandler(async (req: Request) => {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    throw new ApiError(401, "Unauthorized", "Please sign in to use Copilot");
+  }
+
   const body = await req.json();
   const {
     messages,

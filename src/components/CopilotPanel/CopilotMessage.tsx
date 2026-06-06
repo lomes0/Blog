@@ -7,6 +7,7 @@ import { Check } from "lucide-react";
 import { ActiveEditorContext } from "@/contexts/ActiveEditorContext";
 import { applyActions } from "@/editor/utils/copilotToolExecutors";
 import type { CopilotAction } from "@/types";
+import ActionPreview from "./ActionPreview";
 
 type AddToolOutput = (
   args: { tool: string; toolCallId: string; output: unknown },
@@ -15,10 +16,6 @@ type AddToolOutput = (
 interface CopilotMessageProps {
   message: UIMessage;
   addToolOutput: AddToolOutput;
-}
-
-function formatToolName(name: string): string {
-  return name.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 }
 
 const CopilotMessage: React.FC<CopilotMessageProps> = (
@@ -108,16 +105,26 @@ const CopilotMessage: React.FC<CopilotMessageProps> = (
               bgcolor: isUser ? "primary.dark" : "background.paper",
             }}
           >
-            <Typography
-              variant="caption"
-              color={isUser ? "primary.contrastText" : "text.secondary"}
-              display="block"
-              sx={{ mb: 0.75 }}
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 1,
+                mb: 1,
+              }}
             >
-              {pendingParts.map((p) => formatToolName(getToolName(p))).join(
-                ", ",
-              )}
-            </Typography>
+              {pendingParts.map((p) => (
+                <ActionPreview
+                  key={p.toolCallId}
+                  type={getToolName(p)}
+                  input={((p as { input?: unknown }).input ?? {}) as Record<
+                    string,
+                    unknown
+                  >}
+                  onColoredBg={isUser}
+                />
+              ))}
+            </Box>
             <Box sx={{ display: "flex", gap: 1 }}>
               <Button
                 size="small"

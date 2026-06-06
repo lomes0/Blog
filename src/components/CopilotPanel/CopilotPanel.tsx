@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
-import { Box, Button, IconButton, Typography } from "@mui/material";
-import { History, Maximize2, Plus, X } from "lucide-react";
+import { Box, Button, IconButton, Tooltip, Typography } from "@mui/material";
+import { History, Plus, X } from "lucide-react";
 import { actions, documentsSelectors, useDispatch, useSelector } from "@/store";
 import { AI_MODELS } from "@/lib/ai/models";
 import { useAIModel } from "@/contexts/AIModelContext";
@@ -98,12 +98,13 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
           </Button>
         )}
 
-        <IconButton size="small" aria-label="Conversation history">
-          <History size={16} />
-        </IconButton>
-        <IconButton size="small" aria-label="Expand">
-          <Maximize2 size={16} />
-        </IconButton>
+        <Tooltip title="Conversation history (coming soon)">
+          <span>
+            <IconButton size="small" disabled aria-label="Conversation history">
+              <History size={16} />
+            </IconButton>
+          </span>
+        </Tooltip>
         <IconButton
           size="small"
           onClick={() => dispatch(actions.setCopilotOpen(false))}
