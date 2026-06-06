@@ -179,21 +179,30 @@ function serializeNode(
   return "";
 }
 
-export function serializeForCopilot(editor: LexicalEditor): string {
+export interface CopilotContext {
+  /** Serialized document structure (XML-ish), bounded by CHAR_BUDGET. */
+  content: string;
+  /** True when the document exceeded the budget and was cut short. */
+  truncated: boolean;
+}
+
+export function serializeForCopilot(editor: LexicalEditor): CopilotContext {
   return editor.getEditorState().read(() => {
     const root = $getRoot();
     const budget = { remaining: CHAR_BUDGET };
     const parts: string[] = [];
+    let truncated = false;
 
     for (const child of root.getChildren()) {
       if (budget.remaining <= 0) {
         parts.push("<!-- document truncated -->");
+        truncated = true;
         break;
       }
       const xml = serializeNode(child, budget);
       if (xml) parts.push(xml);
     }
 
-    return parts.join("\n");
+    return { content: parts.join("\n"), truncated };
   });
 }

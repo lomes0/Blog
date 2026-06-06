@@ -10,10 +10,17 @@ import {
   LinearProgress,
   Menu,
   MenuItem,
+  Paper,
   TextField,
   Typography,
 } from "@mui/material";
-import { ChevronDown, Send, Sparkles, Square } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronDown,
+  Send,
+  Sparkles,
+  Square,
+} from "lucide-react";
 import { ActiveEditorContext } from "@/contexts/ActiveEditorContext";
 import { serializeForCopilot } from "@/editor/utils/serializeForCopilot";
 import { applyActions } from "@/editor/utils/copilotToolExecutors";
@@ -30,6 +37,41 @@ const PROVIDER_COLOR: Record<string, string> = {
   azure: "#0078D4",
   ollama: "#888888",
 };
+
+interface SlashCommand {
+  command: string;
+  description: string;
+  prompt: string;
+}
+
+const SLASH_COMMANDS: SlashCommand[] = [
+  {
+    command: "/summarize",
+    description: "Summarize the document",
+    prompt: "Summarize this document in 3 bullet points.",
+  },
+  {
+    command: "/fix",
+    description: "Fix grammar and spelling",
+    prompt: "Fix any grammar and spelling mistakes.",
+  },
+  {
+    command: "/improve",
+    description: "Improve clarity and flow",
+    prompt: "Improve the clarity and flow of this document while preserving " +
+      "its meaning.",
+  },
+  {
+    command: "/section",
+    description: "Add a new section",
+    prompt: "Suggest and add a new section to this document.",
+  },
+  {
+    command: "/table",
+    description: "Insert a summary table",
+    prompt: "Insert a table summarizing the key points of this document.",
+  },
+];
 
 interface CopilotChatProps {
   documentId: string;
@@ -66,6 +108,10 @@ const CopilotChat: React.FC<CopilotChatProps> = (
   const llmConfigRef = useRef(llmConfig);
   llmConfigRef.current = llmConfig;
   const selectedTextRef = useRef<string | undefined>(undefined);
+  // Document context is serialized once per send (in sendPrompt) and read here
+  // so the banner reflects exactly what was sent.
+  const documentContextRef = useRef<string>("");
+  const [contextTruncated, setContextTruncated] = useState(false);
 
   const [transport] = useState(
     () =>
@@ -76,9 +122,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
             messages,
             ...(body as object | undefined),
             documentTitle: documentTitleRef.current,
-            documentContext: editorRefRef.current.current
-              ? serializeForCopilot(editorRefRef.current.current)
-              : "",
+            documentContext: documentContextRef.current,
             selectedText: selectedTextRef.current,
             provider: llmConfigRef.current.provider,
             model: llmConfigRef.current.model,
@@ -159,11 +203,16 @@ const CopilotChat: React.FC<CopilotChatProps> = (
 
   const sendPrompt = useCallback((text: string) => {
     if (!text.trim() || isLoading) return;
-    selectedTextRef.current = editorRefRef.current.current?.getEditorState()
-      .read(() => {
-        const sel = $getSelection();
-        return $isRangeSelection(sel) ? sel.getTextContent() : undefined;
-      });
+    const editor = editorRefRef.current.current;
+    selectedTextRef.current = editor?.getEditorState().read(() => {
+      const sel = $getSelection();
+      return $isRangeSelection(sel) ? sel.getTextContent() : undefined;
+    });
+    const ctx = editor
+      ? serializeForCopilot(editor)
+      : { content: "", truncated: false };
+    documentContextRef.current = ctx.content;
+    setContextTruncated(ctx.truncated);
     sendMessage({ text });
   }, [isLoading, sendMessage]);
 
@@ -173,10 +222,30 @@ const CopilotChat: React.FC<CopilotChatProps> = (
     setInput("");
   }, [input, isLoading, sendPrompt]);
 
+  // Slash-command autocomplete: active while the input is a single "/token".
+  const slashQuery = /^\/\S*$/.test(input) ? input.toLowerCase() : null;
+  const slashMatches = slashQuery === null
+    ? []
+    : SLASH_COMMANDS.filter((c) => c.command.startsWith(slashQuery));
+  const slashOpen = slashMatches.length > 0 && !isLoading;
+
+  const pickSlashCommand = (cmd: SlashCommand) => {
+    setInput("");
+    sendPrompt(cmd.prompt);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape" && slashOpen) {
+      setInput("");
+      return;
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      if (slashOpen) {
+        pickSlashCommand(slashMatches[0]);
+      } else {
+        handleSend();
+      }
     }
   };
 
@@ -297,6 +366,26 @@ const CopilotChat: React.FC<CopilotChatProps> = (
         </Box>
       )}
 
+      {contextTruncated && (
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 0.75,
+            px: 1.5,
+            py: 0.75,
+            flexShrink: 0,
+            color: "warning.main",
+          }}
+        >
+          <AlertTriangle size={14} style={{ flexShrink: 0 }} />
+          <Typography variant="caption" color="text.secondary">
+            This document is long — Copilot only sees the first part, so edits
+            beyond that point may be missed.
+          </Typography>
+        </Box>
+      )}
+
       {/* Input area */}
       <Box
         sx={{
@@ -306,12 +395,51 @@ const CopilotChat: React.FC<CopilotChatProps> = (
           borderTop: 1,
           borderColor: "divider",
           flexShrink: 0,
+          position: "relative",
         }}
       >
+        {slashOpen && (
+          <Paper
+            elevation={3}
+            sx={{
+              position: "absolute",
+              bottom: "100%",
+              left: 12,
+              right: 12,
+              mb: 0.5,
+              py: 0.5,
+              maxHeight: 220,
+              overflowY: "auto",
+              zIndex: 1,
+            }}
+          >
+            {slashMatches.map((cmd, idx) => (
+              <Box
+                key={cmd.command}
+                onClick={() => pickSlashCommand(cmd)}
+                sx={{
+                  px: 1.5,
+                  py: 0.75,
+                  cursor: "pointer",
+                  bgcolor: idx === 0 ? "action.hover" : "transparent",
+                  "&:hover": { bgcolor: "action.hover" },
+                }}
+              >
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {cmd.command}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {cmd.description}
+                </Typography>
+              </Box>
+            ))}
+          </Paper>
+        )}
+
         <TextField
           fullWidth
           size="small"
-          placeholder={`Ask Copilot to edit "${documentTitle}"…`}
+          placeholder={`Ask Copilot to edit "${documentTitle}", or / for commands…`}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}

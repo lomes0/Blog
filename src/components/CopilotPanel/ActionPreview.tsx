@@ -158,7 +158,7 @@ const ActionPreview: React.FC<ActionPreviewProps> = (
     case "replace_text":
       return (
         <Box>
-          {label("Replace text (clears inline formatting)", true)}
+          {label("Reword this block")}
           {snippet(asString(input.newText))}
         </Box>
       );

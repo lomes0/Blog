@@ -75,9 +75,10 @@ const editorTools = {
     inputSchema: z.object({ afterNodeKey: z.string().optional() }),
   }),
   replace_text: tool({
-    description: "Replace the text content of a paragraph or heading node. " +
-      "WARNING: This destroys inline formatting (bold, italic, links). " +
-      "Only use on plain-text nodes.",
+    description: "Replace the text content of a paragraph, heading, or quote " +
+      "node. The block type is preserved. Inline formatting (bold, italic, " +
+      "links) within the replaced text is not retained, so prefer this for " +
+      "rewording plain-text blocks.",
     inputSchema: z.object({ nodeKey: z.string(), newText: z.string() }),
   }),
   replace_selection: tool({

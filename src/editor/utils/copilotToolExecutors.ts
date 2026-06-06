@@ -4,7 +4,9 @@ import {
   $getNodeByKey,
   $getRoot,
   $getSelection,
+  $isElementNode,
   $isRangeSelection,
+  $isTextNode,
   LexicalEditor,
   LexicalNode,
 } from "lexical";
@@ -38,8 +40,29 @@ function replaceText(editor: LexicalEditor, params: Record<string, unknown>) {
   editor.update(() => {
     const node = $getNodeByKey(params.nodeKey as string);
     if (!node) return;
+    const newText = params.newText as string;
+
+    // Edit the block in place so its type (heading/paragraph/quote) survives.
+    if ($isElementNode(node)) {
+      const children = node.getChildren();
+      const firstText = children.find($isTextNode);
+      if (firstText) {
+        // Reuse the leading text node to carry over its inline format/style,
+        // then drop any remaining children that made up the old content.
+        firstText.setTextContent(newText);
+        for (const child of children) {
+          if (child !== firstText) child.remove();
+        }
+      } else {
+        node.clear();
+        node.append($createTextNode(newText));
+      }
+      return;
+    }
+
+    // Fallback for non-element nodes: replace with a paragraph.
     const para = $createParagraphNode();
-    para.append($createTextNode(params.newText as string));
+    para.append($createTextNode(newText));
     node.replace(para);
   });
 }
