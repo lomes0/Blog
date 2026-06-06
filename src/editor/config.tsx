@@ -46,11 +46,23 @@ export const editorConfig = {
     ListNode,
     ListItemNode,
     QuoteNode,
+    // Register our CodeNode subclass as THE handler for the "code" type, with a
+    // replacement that upgrades any plain @lexical/code CodeNode to ours.
+    //
+    // Lexical keys its registry by node type string, one entry per type. Import
+    // (parseSerializedNode) uses entry.klass.importJSON — so klass MUST be our
+    // CodeNode to restore width/wrap. Runtime creation (markdown ```, paste) goes
+    // through @lexical/code's $createCodeNode -> $applyNodeReplacement, keyed on
+    // the shared "code" type — so the entry MUST also carry a `replace` fn to
+    // upgrade those base nodes. The only entry shape giving both klass=CodeNode
+    // and a replace fn is `replace: CodeNode`. (A separate `CodeNode` list item
+    // would overwrite this entry's replace, leaving runtime-created blocks as
+    // base LexicalCodeNode — undetectable by the toolbar/chrome, which is the
+    // bug this fixes.)
     {
-      replace: LexicalCodeNode,
+      replace: CodeNode,
       with: (node: LexicalCodeNode) => new CodeNode(node.getLanguage()),
     },
-    CodeNode,
     CodeHighlightNode,
     TableNode,
     TableCellNode,
