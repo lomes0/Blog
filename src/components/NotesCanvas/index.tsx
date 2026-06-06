@@ -13,6 +13,7 @@ import {
   useEffect,
   useImperativeHandle,
   useRef,
+  useState,
 } from "react";
 
 export interface NotesCanvasHandle {
@@ -59,6 +60,35 @@ const NotesCanvas = forwardRef<NotesCanvasHandle, NotesCanvasProps>(
 
     const scale = scaleProp ?? NOTES_ZOOM_DEFAULT;
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+    // Track the scroll container's pixel size so the note area (and the
+    // bounds="parent" region) can grow to fill the visible grid. Without this,
+    // notes are clamped to the fixed virtual canvas while the grid extends to
+    // fill the viewport, making part of the visible grid unusable.
+    const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+
+    useEffect(() => {
+      const el = scrollContainerRef.current;
+      if (!el) return;
+      const update = () =>
+        setContainerSize({ width: el.clientWidth, height: el.clientHeight });
+      update();
+      const observer = new ResizeObserver(update);
+      observer.observe(el);
+      return () => observer.disconnect();
+    }, [preview]);
+
+    // Virtual canvas dimensions, expanded so the note area always covers at
+    // least the visible viewport. Keeping these in virtual units lets the
+    // transform scale map them back to the grid the user actually sees.
+    const canvasWidth = Math.max(
+      VIRTUAL_CANVAS_WIDTH,
+      Math.ceil(containerSize.width / scale),
+    );
+    const canvasHeight = Math.max(
+      VIRTUAL_CANVAS_HEIGHT,
+      Math.ceil(containerSize.height / scale),
+    );
 
     useCanvasZoomShortcuts({
       enabled: !preview,
@@ -187,8 +217,8 @@ const NotesCanvas = forwardRef<NotesCanvasHandle, NotesCanvasProps>(
             {/* Sizing div ensures scrollbars reflect scaled canvas size */}
             <Box
               sx={{
-                width: `${VIRTUAL_CANVAS_WIDTH * scale}px`,
-                height: `${VIRTUAL_CANVAS_HEIGHT * scale}px`,
+                width: `${canvasWidth * scale}px`,
+                height: `${canvasHeight * scale}px`,
                 minWidth: "100%",
                 minHeight: "100%",
                 position: "relative",
@@ -199,8 +229,8 @@ const NotesCanvas = forwardRef<NotesCanvasHandle, NotesCanvasProps>(
                   position: "absolute",
                   top: 0,
                   left: 0,
-                  width: `${VIRTUAL_CANVAS_WIDTH}px`,
-                  height: `${VIRTUAL_CANVAS_HEIGHT}px`,
+                  width: `${canvasWidth}px`,
+                  height: `${canvasHeight}px`,
                   transform: `scale(${scale})`,
                   transformOrigin: "top left",
                 }}
