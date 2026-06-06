@@ -234,7 +234,11 @@ const MarkdownText: React.FC<MarkdownTextProps> = ({ children }) => {
       i++;
     }
     blocks.push(
-      <Typography key={k++} variant="body2" sx={{ "&:not(:first-of-type)": { mt: 0.5 } }}>
+      <Typography
+        key={k++}
+        variant="body2"
+        sx={{ "&:not(:first-of-type)": { mt: 0.5 } }}
+      >
         {para.map((p, idx) => (
           <Fragment key={idx}>
             {idx > 0 && <br />}

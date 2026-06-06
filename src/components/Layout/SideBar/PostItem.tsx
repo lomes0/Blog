@@ -86,12 +86,10 @@ export const PostItem = memo(
       );
     }, [dispatch, post.id, post.local]);
 
-    const linkProps = isRenaming
-      ? {}
-      : {
-        component: SafeNavigationLink,
-        href: isEditing ? `/edit/${post.id}` : `/view/${post.id}`,
-      };
+    const linkProps = isRenaming ? {} : {
+      component: SafeNavigationLink,
+      href: isEditing ? `/edit/${post.id}` : `/view/${post.id}`,
+    };
 
     // When the sub-tab list is shown, the active visible content is one of the
     // sub-tabs (highlighted in SubTabList), so don't also highlight the parent.

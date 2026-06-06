@@ -70,7 +70,12 @@
 .LexicalTheme__textCode {
   padding: 0.12em 0.35em;
   font-family:
-    "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, Monaco,
+    "Fira Code",
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Consolas,
+    Monaco,
     monospace;
   font-size: 0.875em;
   border-radius: 5px;
@@ -93,30 +98,42 @@
 }
 
 .LexicalTheme__code {
-  /* Light palette (VS Code-inspired); overridden per theme below. */
-  --code-bg: #f6f8fa;
-  --code-fg: #24292f;
-  --code-border: #d8dee4;
-  --code-gutter-bg: #eceff2;
-  --code-gutter-fg: #9098a1;
+  /* Light palette (Claude Design); overridden per theme below. */
+  --code-bg: #ffffff;
+  --code-fg: #2c333d;
+  --code-border: #e4e7ec;
+  --code-gutter-bg: var(--code-bg);
+  --code-gutter-fg: #b9bfc9;
+  --code-gutter-active: #2b313b;
   --code-gutter-width: 3.25rem;
-  --tok-comment: #6e7781;
-  --tok-punctuation: #57606a;
-  --tok-property: #0550ae;
-  --tok-selector: #0a3069;
-  --tok-operator: #24292f;
-  --tok-keyword: #cf222e;
-  --tok-variable: #953800;
-  --tok-function: #8250df;
+  --code-active-line: rgba(45, 107, 230, 0.05);
+  --code-emph-line: rgba(45, 107, 230, 0.07);
+  --code-emph-bar: #2d6be6;
+  --code-accent: #2d6be6;
+  --code-radius: 14px;
+  --code-line-height: 1.62;
+  --tok-comment: #98a0ab;
+  --tok-punctuation: #6b7280;
+  --tok-property: #9a6700;
+  --tok-selector: #2c7a4d;
+  --tok-operator: #2c333d;
+  --tok-keyword: #c0392b;
+  --tok-variable: #7a4bc2;
+  --tok-function: #2d6be6;
 
   font-family:
-    "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, Monaco,
+    "Fira Code",
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Consolas,
+    Monaco,
     monospace;
   display: block;
   position: relative;
-  padding: 14px 16px 14px calc(var(--code-gutter-width) + 12px);
-  margin: 16px 0;
-  line-height: 1.6;
+  padding: 16px 18px 16px calc(var(--code-gutter-width) + 12px);
+  margin: 18px 0;
+  line-height: var(--code-line-height);
   font-size: 13.5px;
   tab-size: 2;
   white-space: pre;
@@ -125,7 +142,15 @@
   color: var(--code-fg);
   background: var(--code-bg);
   border: 1px solid var(--code-border);
-  border-radius: 8px;
+  border-radius: var(--code-radius);
+  box-shadow: 0 18px 44px -26px rgba(31, 41, 61, 0.3);
+}
+
+/* Word-wrap mode (toggled by the code action menu / CodeNode __wrap). */
+.LexicalTheme__code.code-wrap {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: hidden;
 }
 
 /* Line-number gutter: a single ::before reads the `data-gutter` attribute
@@ -139,87 +164,390 @@
   left: 0;
   bottom: 0;
   width: var(--code-gutter-width);
-  padding: 14px 10px 14px 0;
+  padding: 16px 12px 16px 0;
   box-sizing: border-box;
-  line-height: 1.6;
+  line-height: var(--code-line-height);
   text-align: right;
   white-space: pre;
   color: var(--code-gutter-fg);
   background: var(--code-gutter-bg);
-  border-right: 1px solid var(--code-border);
-  border-radius: 8px 0 0 8px;
+  border-radius: var(--code-radius) 0 0 var(--code-radius);
   user-select: none;
   pointer-events: none;
 }
 
-/* View-mode chrome injected by ViewCodeEnhancer: a header bar (language label
-   + copy button) wrapping the <code> element. */
+/* View-mode chrome injected by ViewCodeEnhancer: a head bar (language pill +
+   icon actions) wrapping the <code> element, with collapse support. */
 .code-block-wrapper {
-  --code-border: #d8dee4;
-  --code-fg: #24292f;
-  --code-chrome-bg: #eceff2;
-  --code-chrome-fg: #6a737d;
-  margin: 16px 0;
+  --code-border: #e4e7ec;
+  --code-fg: #2c333d;
+  --code-chrome-bg: #f7f8fa;
+  --code-chrome-fg: #3b434f;
+  --code-chrome-border: #edeff2;
+  --code-chrome-muted: #7a828f;
+  --code-accent: #2d6be6;
+  --code-radius: 14px;
+  position: relative;
+  margin: 18px 0;
   border: 1px solid var(--code-border);
-  border-radius: 8px;
+  border-radius: var(--code-radius);
   overflow: hidden;
+  background: var(--code-bg, #fff);
+  box-shadow: 0 18px 44px -26px rgba(31, 41, 61, 0.3);
 }
 
 .code-block-wrapper .LexicalTheme__code {
   margin: 0;
   border: none;
   border-radius: 0;
+  box-shadow: none;
 }
 
 .code-block-wrapper .LexicalTheme__code:before {
   border-radius: 0;
 }
 
+/* The scroll region wrapping <code>, used to clip the collapse animation. */
+.code-block-body {
+  position: relative;
+  max-height: 2000px;
+  transition: max-height 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.code-block-wrapper.collapsed .code-block-body {
+  max-height: 150px;
+  overflow: hidden;
+}
+
+.code-block-wrapper.collapsed .code-block-body::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 64px;
+  pointer-events: none;
+  background: linear-gradient(transparent, var(--code-bg, #fff) 88%);
+}
+
 .code-block-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 5px 8px 5px 14px;
-  font-family: "Roboto", "Helvetica", "Arial", sans-serif;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  gap: 10px;
+  height: 46px;
+  padding: 0 10px 0 14px;
+  font-family: "IBM Plex Sans", "Roboto", "Helvetica", "Arial", sans-serif;
   color: var(--code-chrome-fg);
   background: var(--code-chrome-bg);
-  border-bottom: 1px solid var(--code-border);
+  border-bottom: 1px solid var(--code-chrome-border);
   user-select: none;
 }
 
-.code-block-copy {
+.code-block-lang {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 3px 9px;
-  font-family: inherit;
-  font-size: 0.66rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: inherit;
-  background: transparent;
-  border: 1px solid var(--code-border);
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--code-chrome-fg);
+}
+
+.code-lang-glyph {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
   border-radius: 5px;
+  font-family: "Fira Code", ui-monospace, monospace;
+  font-size: 9.5px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--code-glyph-fg, #fff);
+  background: var(--code-glyph-bg, #1d222a);
+}
+
+.code-block-header .code-head-spacer {
+  flex: 1;
+}
+
+.code-block-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.code-block-iconbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 30px;
+  min-width: 30px;
+  padding: 0 8px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--code-chrome-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
   cursor: pointer;
-  transition:
-    background 0.15s ease,
-    color 0.15s ease,
-    border-color 0.15s ease;
+  transition: color 0.16s ease, background 0.16s ease;
 }
 
-.code-block-copy:hover {
-  background: rgba(127, 127, 127, 0.14);
+.code-block-iconbtn:hover {
   color: var(--code-fg);
+  background: rgba(127, 127, 127, 0.12);
 }
 
-.code-block-copy.copied {
+.code-block-iconbtn svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+
+.code-block-iconbtn.copied {
   color: #2da44e;
-  border-color: #2da44e;
+}
+
+.code-block-iconbtn .code-chevron {
+  transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.code-block-wrapper:not(.collapsed) .code-block-iconbtn .code-chevron {
+  transform: rotate(180deg);
+}
+
+.code-head-divider {
+  width: 1px;
+  height: 18px;
+  margin: 0 5px;
+  background: var(--code-border);
+}
+
+/* ============================================================
+   EDIT-MODE CODE CHROME (floating header + footer + active line)
+   Rendered by CodeActionMenuPlugin and portaled to <body>, so dark mode
+   is keyed off `html.dark` (matching toolbar.css) rather than [theme].
+   ============================================================ */
+
+/* Reserve room inside editor code blocks for the floating header/footer and
+   keep the gutter numbers aligned with the code lines. */
+.editor-input .LexicalTheme__code {
+  padding-top: 46px;
+  padding-bottom: 34px;
+}
+.editor-input .LexicalTheme__code:before {
+  padding-top: 46px;
+  padding-bottom: 34px;
+}
+/* Layout-column code blocks keep their compact, chrome-less treatment. */
+.editor-input .LexicalTheme__layoutItem .LexicalTheme__code,
+.editor-input .LexicalTheme__layoutItem .LexicalTheme__code:before {
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.code-edit-chrome {
+  --cb-head: #f7f8fa;
+  --cb-foot: #f7f8fa;
+  --cb-border: #e4e7ec;
+  --cb-border-soft: #edeff2;
+  --cb-fg: #2c333d;
+  --cb-muted: #7a828f;
+  --cb-accent: #2d6be6;
+  --cb-menu-bg: #ffffff;
+  --cb-menu-border: #e4e7ec;
+  --cb-menu-hover: #f3f5f7;
+  --cb-chip-bg: #eef0f3;
+  --cb-chip-border: #e2e5ea;
+  --cb-active-line: rgba(45, 107, 230, 0.05);
+  font-family: "IBM Plex Sans", "Roboto", "Helvetica", "Arial", sans-serif;
+}
+
+html.dark .code-edit-chrome,
+.code-edit-chrome.is-dark {
+  --cb-head: #141920;
+  --cb-foot: #141920;
+  --cb-border: #232b35;
+  --cb-border-soft: #1c232c;
+  --cb-fg: #c3ccd8;
+  --cb-muted: #8893a2;
+  --cb-accent: #6aa6ff;
+  --cb-menu-bg: #161c24;
+  --cb-menu-border: #2a323d;
+  --cb-menu-hover: rgba(255, 255, 255, 0.05);
+  --cb-chip-bg: rgba(255, 255, 255, 0.04);
+  --cb-chip-border: rgba(255, 255, 255, 0.07);
+  --cb-active-line: rgba(123, 162, 217, 0.08);
+}
+
+/* ---- header ---- */
+.code-edit-header {
+  position: absolute;
+  z-index: 24;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  padding: 0 10px 0 14px;
+  background: var(--cb-head);
+  border-bottom: 1px solid var(--cb-border-soft);
+  border-radius: 14px 14px 0 0;
+  box-sizing: border-box;
+}
+.code-edit-header .code-head-spacer {
+  flex: 1;
+}
+.code-edit-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.code-edit-iconbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 30px;
+  min-width: 30px;
+  padding: 0 8px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--cb-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 0.16s ease, background 0.16s ease;
+}
+.code-edit-iconbtn:hover {
+  color: var(--cb-fg);
+  background: rgba(127, 127, 127, 0.12);
+}
+.code-edit-iconbtn svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+.code-edit-iconbtn.is-on {
+  color: var(--cb-accent);
+}
+.code-edit-iconbtn.copied {
+  color: #2da44e;
+}
+
+/* ---- language dropdown ---- */
+.code-lang-select {
+  position: relative;
+}
+.code-lang-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 8px 0 10px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--cb-fg);
+  background: var(--cb-chip-bg);
+  border: 1px solid var(--cb-chip-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+.code-lang-trigger:hover {
+  background: rgba(127, 127, 127, 0.1);
+}
+.code-lang-trigger .code-chevron {
+  width: 13px;
+  height: 13px;
+  color: var(--cb-muted);
+  transition: transform 0.2s ease;
+}
+.code-lang-select.open .code-lang-trigger .code-chevron {
+  transform: rotate(180deg);
+}
+.code-lang-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 180px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 5px;
+  background: var(--cb-menu-bg);
+  border: 1px solid var(--cb-menu-border);
+  border-radius: 11px;
+  box-shadow: 0 16px 40px -16px rgba(0, 0, 0, 0.55);
+  z-index: 30;
+}
+.code-lang-menu button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 9px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 450;
+  text-align: left;
+  color: var(--cb-fg);
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.code-lang-menu button:hover {
+  background: var(--cb-menu-hover);
+}
+.code-lang-menu button .code-tick {
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+  color: var(--cb-accent);
+  opacity: 0;
+}
+.code-lang-menu button[aria-selected="true"] .code-tick {
+  opacity: 1;
+}
+
+/* ---- footer / status bar ---- */
+.code-edit-footer {
+  position: absolute;
+  z-index: 24;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 32px;
+  padding: 0 14px;
+  background: var(--cb-foot);
+  border-top: 1px solid var(--cb-border-soft);
+  border-radius: 0 0 14px 14px;
+  box-sizing: border-box;
+  font-family: "Fira Code", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.01em;
+  color: var(--cb-muted);
+}
+.code-edit-footer .code-foot-sep {
+  width: 1px;
+  height: 12px;
+  background: var(--cb-border);
+}
+.code-edit-footer .code-foot-grow {
+  flex: 1;
+}
+
+/* ---- active line strip ---- */
+.code-edit-active-line {
+  position: absolute;
+  z-index: 1;
+  background: var(--cb-active-line);
+  pointer-events: none;
 }
 
 .LexicalTheme__tableScrollableWrapper {
@@ -847,26 +1175,35 @@ iframe {
 }
 
 [theme="light"] .LexicalTheme__code {
-  --code-bg: #f6f8fa;
-  --code-fg: #24292f;
-  --code-border: #d8dee4;
-  --code-gutter-bg: #eceff2;
-  --code-gutter-fg: #9098a1;
-  --tok-comment: #6e7781;
-  --tok-punctuation: #57606a;
-  --tok-property: #0550ae;
-  --tok-selector: #0a3069;
-  --tok-operator: #24292f;
-  --tok-keyword: #cf222e;
-  --tok-variable: #953800;
-  --tok-function: #8250df;
+  --code-bg: #ffffff;
+  --code-fg: #2c333d;
+  --code-border: #e4e7ec;
+  --code-gutter-bg: var(--code-bg);
+  --code-gutter-fg: #b9bfc9;
+  --code-gutter-active: #2b313b;
+  --code-active-line: rgba(45, 107, 230, 0.05);
+  --code-emph-line: rgba(45, 107, 230, 0.07);
+  --code-emph-bar: #2d6be6;
+  --code-accent: #2d6be6;
+  --tok-comment: #98a0ab;
+  --tok-punctuation: #6b7280;
+  --tok-property: #9a6700;
+  --tok-selector: #2c7a4d;
+  --tok-operator: #2c333d;
+  --tok-keyword: #c0392b;
+  --tok-variable: #7a4bc2;
+  --tok-function: #2d6be6;
 }
 
 [theme="light"] .code-block-wrapper {
-  --code-border: #d8dee4;
-  --code-fg: #24292f;
-  --code-chrome-bg: #eceff2;
-  --code-chrome-fg: #6a737d;
+  --code-border: #e4e7ec;
+  --code-fg: #2c333d;
+  --code-bg: #ffffff;
+  --code-chrome-bg: #f7f8fa;
+  --code-chrome-fg: #3b434f;
+  --code-chrome-border: #edeff2;
+  --code-chrome-muted: #7a828f;
+  --code-accent: #2d6be6;
 }
 
 .LexicalTheme__tableCell,
@@ -908,26 +1245,35 @@ iframe {
 }
 
 [theme="dark"] .LexicalTheme__code {
-  --code-bg: #1e1e1e;
-  --code-fg: #d4d4d4;
-  --code-border: #2c2c2c;
-  --code-gutter-bg: #1a1a1a;
-  --code-gutter-fg: #6e7681;
-  --tok-comment: #6a9955;
-  --tok-punctuation: #9a9a9a;
-  --tok-property: #569cd6;
-  --tok-selector: #ce9178;
-  --tok-operator: #d4d4d4;
-  --tok-keyword: #c586c0;
-  --tok-variable: #9cdcfe;
-  --tok-function: #dcdcaa;
+  --code-bg: #0f1318;
+  --code-fg: #c3ccd8;
+  --code-border: #232b35;
+  --code-gutter-bg: var(--code-bg);
+  --code-gutter-fg: #4a5563;
+  --code-gutter-active: #c5cdd8;
+  --code-active-line: rgba(123, 162, 217, 0.08);
+  --code-emph-line: rgba(106, 166, 255, 0.1);
+  --code-emph-bar: #6aa6ff;
+  --code-accent: #6aa6ff;
+  --tok-comment: #5d6875;
+  --tok-punctuation: #8b96a4;
+  --tok-property: #e2b878;
+  --tok-selector: #93cf8a;
+  --tok-operator: #c3ccd8;
+  --tok-keyword: #e58373;
+  --tok-variable: #c6a2e8;
+  --tok-function: #82b4f2;
 }
 
 [theme="dark"] .code-block-wrapper {
-  --code-border: #2c2c2c;
-  --code-fg: #d4d4d4;
-  --code-chrome-bg: #1a1a1a;
-  --code-chrome-fg: #8b949e;
+  --code-border: #232b35;
+  --code-fg: #c3ccd8;
+  --code-bg: #0f1318;
+  --code-chrome-bg: #141920;
+  --code-chrome-fg: #aeb9c7;
+  --code-chrome-border: #1c232c;
+  --code-chrome-muted: #8893a2;
+  --code-accent: #6aa6ff;
 }
 
 [theme="dark"] .LexicalTheme__tableCell {
@@ -987,26 +1333,35 @@ iframe {
   }
 
   .LexicalTheme__code {
-    --code-bg: #1e1e1e;
-    --code-fg: #d4d4d4;
-    --code-border: #2c2c2c;
-    --code-gutter-bg: #1a1a1a;
-    --code-gutter-fg: #6e7681;
-    --tok-comment: #6a9955;
-    --tok-punctuation: #9a9a9a;
-    --tok-property: #569cd6;
-    --tok-selector: #ce9178;
-    --tok-operator: #d4d4d4;
-    --tok-keyword: #c586c0;
-    --tok-variable: #9cdcfe;
-    --tok-function: #dcdcaa;
+    --code-bg: #0f1318;
+    --code-fg: #c3ccd8;
+    --code-border: #232b35;
+    --code-gutter-bg: var(--code-bg);
+    --code-gutter-fg: #4a5563;
+    --code-gutter-active: #c5cdd8;
+    --code-active-line: rgba(123, 162, 217, 0.08);
+    --code-emph-line: rgba(106, 166, 255, 0.1);
+    --code-emph-bar: #6aa6ff;
+    --code-accent: #6aa6ff;
+    --tok-comment: #5d6875;
+    --tok-punctuation: #8b96a4;
+    --tok-property: #e2b878;
+    --tok-selector: #93cf8a;
+    --tok-operator: #c3ccd8;
+    --tok-keyword: #e58373;
+    --tok-variable: #c6a2e8;
+    --tok-function: #82b4f2;
   }
 
   .code-block-wrapper {
-    --code-border: #2c2c2c;
-    --code-fg: #d4d4d4;
-    --code-chrome-bg: #1a1a1a;
-    --code-chrome-fg: #8b949e;
+    --code-border: #232b35;
+    --code-fg: #c3ccd8;
+    --code-bg: #0f1318;
+    --code-chrome-bg: #141920;
+    --code-chrome-fg: #aeb9c7;
+    --code-chrome-border: #1c232c;
+    --code-chrome-muted: #8893a2;
+    --code-accent: #6aa6ff;
   }
 
   .LexicalTheme__tableCell {

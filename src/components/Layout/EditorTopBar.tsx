@@ -402,7 +402,7 @@ const EditorTopBar: React.FC = () => {
                     cursor: "pointer",
                     userSelect: "none",
                     flexShrink: 0,
-                    width: 105,
+                    width: 95,
                     bgcolor: "transparent",
                     borderBottom: 2,
                     borderColor: isActive ? "primary.main" : "transparent",

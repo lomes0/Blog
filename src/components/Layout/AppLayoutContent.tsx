@@ -148,7 +148,14 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
                 </Container>
               </HydrationManager>
             </Box>
-            {showCopilot && <CopilotPanel documentId={copilotDocumentId} />}
+            {
+              /* Always keep a grid item in the copilot slot so the rail stays
+                pinned in the last column. When the panel is closed the slot is
+                an empty placeholder; the column itself animates to 0px. */
+            }
+            {showCopilot
+              ? <CopilotPanel documentId={copilotDocumentId} />
+              : <Box />}
             <RightRail railMode={isFocus ? "hidden" : railMode} />
           </Box>
         </ActiveEditorContext.Provider>

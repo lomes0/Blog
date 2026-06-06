@@ -13,6 +13,7 @@ import type {
  */
 export interface SerializedCodeNodeWithWidth extends SerializedCodeNode {
   width?: string; // e.g., "80%", "600px", "100%"
+  wrap?: boolean; // word-wrap (soft wrap) toggle
 }
 
 /**
@@ -31,6 +32,7 @@ export interface SerializedCodeNodeWithWidth extends SerializedCodeNode {
  */
 export class CodeNode extends LexicalCodeNode {
   __width?: string;
+  __wrap?: boolean;
   static getType(): string {
     return "code";
   }
@@ -38,6 +40,7 @@ export class CodeNode extends LexicalCodeNode {
   static clone(node: CodeNode): CodeNode {
     const clonedNode = new CodeNode(node.__language, node.__key);
     clonedNode.__width = node.__width;
+    clonedNode.__wrap = node.__wrap;
     return clonedNode;
   }
 
@@ -63,12 +66,31 @@ export class CodeNode extends LexicalCodeNode {
   }
 
   /**
+   * Get whether the code block uses word-wrap (soft wrap).
+   */
+  getWrap(): boolean {
+    const self = this.getLatest();
+    return self.__wrap ?? false;
+  }
+
+  /**
+   * Set whether the code block uses word-wrap (soft wrap).
+   */
+  setWrap(wrap: boolean): void {
+    const self = this.getWritable();
+    self.__wrap = wrap;
+  }
+
+  /**
    * Override createDOM to apply width styling in the editor.
    */
   createDOM(config: EditorConfig): HTMLElement {
     const element = super.createDOM(config);
     if (this.__width) {
       element.style.width = this.__width;
+    }
+    if (this.__wrap) {
+      element.classList.add("code-wrap");
     }
     return element;
   }
@@ -90,6 +112,11 @@ export class CodeNode extends LexicalCodeNode {
       } else {
         dom.style.width = "";
       }
+    }
+
+    // Update word-wrap class if it changed
+    if (prevNode.__wrap !== this.__wrap) {
+      dom.classList.toggle("code-wrap", !!this.__wrap);
     }
 
     return isUpdated;
@@ -130,6 +157,11 @@ export class CodeNode extends LexicalCodeNode {
             element.style.width = this.__width;
           }
 
+          // Persist word-wrap into the published article.
+          if (this.__wrap) {
+            element.classList.add("code-wrap");
+          }
+
           return element;
         }
         // Call parent's after callback if it exists
@@ -155,6 +187,11 @@ export class CodeNode extends LexicalCodeNode {
       node.setWidth(serializedNode.width);
     }
 
+    // Restore word-wrap if present
+    if (serializedNode.wrap) {
+      node.setWrap(serializedNode.wrap);
+    }
+
     return node;
   }
 
@@ -165,6 +202,7 @@ export class CodeNode extends LexicalCodeNode {
     return {
       ...super.exportJSON(),
       width: this.__width,
+      wrap: this.__wrap,
     };
   }
 

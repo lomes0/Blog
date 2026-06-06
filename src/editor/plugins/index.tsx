@@ -15,6 +15,7 @@ import { TabIndentationPlugin } from "@lexical/react/LexicalTabIndentationPlugin
 import MarkdownShortcutPlugin from "./MarkdownPlugin/MarkdownShortcutPlugin";
 import MarkdownShortcutEnhancementPlugin from "./MarkdownPlugin/MarkdownShortcutEnhancementPlugin";
 import CodeHighlightPlugin from "./CodePlugin/CodeHighlightPlugin";
+import CodeActionMenuPlugin from "./CodePlugin/CodeActionMenuPlugin";
 import AutoLinkPlugin from "./LinkPlugin/AutoLinkPlugin";
 import TableCellResizer from "./TablePlugin/TableCellResizer";
 import FloatingToolbarPlugin from "./FloatingToolbar";
@@ -102,6 +103,7 @@ export const EditorPlugins: React.FC<{
       <MathPlugin />
       <DragDropPaste />
       <CodeHighlightPlugin />
+      <CodeActionMenuPlugin />
       <AutoLinkPlugin />
       {editor.hasNode(TableNode) && <TablePlugin />}
       {editor.hasNode(TableNode) && <TableCellResizer />}

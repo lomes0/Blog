@@ -1,7 +1,11 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Box, Button, CircularProgress } from "@mui/material";
-import { CLEAR_HISTORY_COMMAND, type LexicalEditor, type SerializedEditorState } from "lexical";
+import {
+  CLEAR_HISTORY_COMMAND,
+  type LexicalEditor,
+  type SerializedEditorState,
+} from "lexical";
 import dynamic from "next/dynamic";
 import { useSelector as useReduxSelector } from "react-redux";
 import ConnectedEditor from "@/components/ConnectedEditor";

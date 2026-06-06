@@ -52,7 +52,7 @@ import {
 } from "./Dialogs";
 import { $isStickyNode, StickyNode } from "@/editor/nodes/StickyNode";
 import { Box, Divider, IconButton, Tooltip } from "@mui/material";
-import { History, Link, Redo, Undo } from "lucide-react";
+import { Link, Redo, RotateCcw, Undo } from "lucide-react";
 import { $isIFrameNode } from "@/editor/nodes/IFrameNode";
 import { $findMatchingParent, IS_APPLE } from "@lexical/utils";
 import { $isTableNode, TableNode } from "@/editor/nodes/TableNode";
@@ -335,7 +335,7 @@ function ToolbarPlugin({ isActive = true, onReset }: ToolbarPluginProps) {
                 disabled={!isDirty}
                 onClick={onReset}
               >
-                <History size={18} style={{ transform: "translateY(1px)" }} />
+                <RotateCcw size={18} style={{ transform: "translateY(1px)" }} />
               </IconButton>
             </span>
           </Tooltip>

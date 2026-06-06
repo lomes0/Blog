@@ -70,7 +70,9 @@ function deriveTitle(messages: UIMessage[]): string {
       .join(" ")
       .trim();
     if (text) {
-      return text.length > TITLE_MAX ? `${text.slice(0, TITLE_MAX - 1)}…` : text;
+      return text.length > TITLE_MAX
+        ? `${text.slice(0, TITLE_MAX - 1)}…`
+        : text;
     }
   }
   return "Conversation";

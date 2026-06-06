@@ -2,7 +2,14 @@
 import { useContext, useState } from "react";
 import type { UIMessage } from "ai";
 import { getToolName, isTextUIPart, isToolUIPart } from "ai";
-import { Box, Button, Chip, IconButton, Tooltip, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  Chip,
+  IconButton,
+  Tooltip,
+  Typography,
+} from "@mui/material";
 import { Check, Copy, RefreshCw } from "lucide-react";
 import { ActiveEditorContext } from "@/contexts/ActiveEditorContext";
 import { applyActions } from "@/editor/utils/copilotToolExecutors";

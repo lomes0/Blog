@@ -131,7 +131,9 @@ const ActionPreview: React.FC<ActionPreviewProps> = (
     case "insert_code_block":
       return (
         <Box>
-          {label(`Code${input.language ? ` · ${asString(input.language)}` : ""}`)}
+          {label(
+            `Code${input.language ? ` · ${asString(input.language)}` : ""}`,
+          )}
           {snippet(asString(input.code), true)}
         </Box>
       );

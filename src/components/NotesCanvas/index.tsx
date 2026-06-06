@@ -93,15 +93,15 @@ const NotesCanvas = forwardRef<NotesCanvasHandle, NotesCanvasProps>(
     // though the grid still appears beyond it.
     const noteExtentX = canvas
       ? canvas.notes.reduce(
-          (max, n) => Math.max(max, n.position.x + n.size.width),
-          0,
-        )
+        (max, n) => Math.max(max, n.position.x + n.size.width),
+        0,
+      )
       : 0;
     const noteExtentY = canvas
       ? canvas.notes.reduce(
-          (max, n) => Math.max(max, n.position.y + n.size.height),
-          0,
-        )
+        (max, n) => Math.max(max, n.position.y + n.size.height),
+        0,
+      )
       : 0;
 
     const canvasWidth = Math.max(
