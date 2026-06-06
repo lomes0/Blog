@@ -411,63 +411,91 @@ const EditorTopBar: React.FC = () => {
                       bgcolor: isActive ? "transparent" : "action.hover",
                     },
                     "&:hover .tab-close-btn": { opacity: 1 },
+                    "&:hover .tab-dirty-dot": { opacity: 0 },
                     transition: "background-color 0.15s, border-color 0.15s",
                   }}
                 >
                   <FileText
                     size={13}
                     style={{
-                      color: isActive
-                        ? "var(--mui-palette-primary-main)"
-                        : "var(--mui-palette-text-secondary)",
+                      color: "var(--mui-palette-text-secondary)",
                       flexShrink: 0,
                     }}
                   />
-                  {isDirty && (
-                    <Box
-                      sx={{
-                        width: 5,
-                        height: 5,
-                        borderRadius: "50%",
-                        bgcolor: "warning.main",
-                        flexShrink: 0,
-                      }}
-                    />
-                  )}
                   <Typography
                     noWrap
                     sx={{
                       fontSize: "0.8rem",
                       fontWeight: isActive ? 600 : 400,
-                      color: isActive ? "primary.main" : "text.secondary",
+                      color: "text.secondary",
                       flex: 1,
                       minWidth: 0,
                     }}
                   >
                     {tab.name}
                   </Typography>
-                  {!isRoot && tabBar.onClose && (
-                    <IconButton
-                      className="tab-close-btn"
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        tabBar.onClose!(tab.id);
-                      }}
-                      sx={{
-                        opacity: isActive ? 0.7 : 0,
-                        p: 0.125,
-                        transition: "opacity 0.15s",
-                        color: isActive ? "primary.main" : "text.secondary",
-                        "&:hover": {
-                          color: "error.main",
-                          opacity: 1,
-                        },
-                      }}
-                    >
-                      <X size={11} />
-                    </IconButton>
-                  )}
+                  {!isRoot && tabBar.onClose
+                    ? (
+                      <Box
+                        sx={{
+                          position: "relative",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          width: 16,
+                          height: 16,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {isDirty && (
+                          <Box
+                            className="tab-dirty-dot"
+                            sx={{
+                              position: "absolute",
+                              width: 5,
+                              height: 5,
+                              borderRadius: "50%",
+                              bgcolor: "warning.main",
+                              transition: "opacity 0.15s",
+                            }}
+                          />
+                        )}
+                        <IconButton
+                          className="tab-close-btn"
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            tabBar.onClose!(tab.id);
+                          }}
+                          sx={{
+                            position: "absolute",
+                            opacity: isActive && !isDirty ? 0.7 : 0,
+                            p: 0.125,
+                            transition: "opacity 0.15s",
+                            color: isActive ? "primary.main" : "text.secondary",
+                            "&:hover": {
+                              color: "error.main",
+                              opacity: 1,
+                            },
+                          }}
+                        >
+                          <X size={11} />
+                        </IconButton>
+                      </Box>
+                    )
+                    : isDirty
+                    ? (
+                      <Box
+                        sx={{
+                          width: 5,
+                          height: 5,
+                          borderRadius: "50%",
+                          bgcolor: "warning.main",
+                          flexShrink: 0,
+                        }}
+                      />
+                    )
+                    : null}
                 </Box>
               );
             })}

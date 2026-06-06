@@ -90,6 +90,11 @@ export const PostItem = memo(
       ? {}
       : { component: SafeNavigationLink, href: `/view/${post.id}` };
 
+    // When the sub-tab list is shown, the active visible content is one of the
+    // sub-tabs (highlighted in SubTabList), so don't also highlight the parent.
+    const showSubTabs = sidebarOpen && isSelected && subTabs.length > 1;
+    const highlightParent = isSelected && !showSubTabs;
+
     return (
       <ListItem
         disablePadding
@@ -102,7 +107,7 @@ export const PostItem = memo(
         <Tooltip title={sidebarOpen ? "" : docName} placement="right">
           <ListItemButton
             {...linkProps}
-            selected={isSelected}
+            selected={highlightParent}
             onContextMenu={(e) => handleContextMenu(e, post.id)}
             onDoubleClick={(e) => {
               if (sidebarOpen) handleDoubleClick(e, post.id, docName);
@@ -208,7 +213,7 @@ export const PostItem = memo(
             )}
           </ListItemButton>
         </Tooltip>
-        {sidebarOpen && isSelected && subTabs.length > 1 && (
+        {showSubTabs && (
           <SubTabList tabs={subTabs} activeTabId={tabsState.activeTabId} />
         )}
       </ListItem>
