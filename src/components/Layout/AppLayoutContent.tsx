@@ -22,14 +22,19 @@ import FloatingOutlinePill from "./FloatingOutlinePill";
 import { TopBarTabsProvider } from "@/contexts/TopBarTabsContext";
 import { useToolbarSlot } from "@/contexts/ToolbarSlotContext";
 
-const COPILOT_W = 380;
-
 const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
   const { setSlotEl } = useToolbarSlot();
   const dispatch = useDispatch();
   const initialized = useSelector((state: RootState) => state.ui.initialized);
   const { isResizing, getEffectiveWidth } = useSidebarWidth();
-  const { railMode, railWidth, isRailResizing, viewMode } = useLayoutMode();
+  const {
+    railMode,
+    railWidth,
+    isRailResizing,
+    viewMode,
+    copilotWidth,
+    isCopilotResizing,
+  } = useLayoutMode();
   const copilotOpen = useSelector((state: RootState) => state.ui.copilot.open);
   const activeTabId = useSelector(
     (state: RootState) => state.ui.tabs.activeTabId,
@@ -61,7 +66,7 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
     ? railWidth + RAIL_COMPACT_W
     : RAIL_COMPACT_W;
 
-  const copilotCol = copilotOpen ? `${COPILOT_W}px ` : "";
+  const copilotCol = copilotOpen ? `${copilotWidth}px ` : "";
 
   return (
     <TopBarTabsProvider>
@@ -73,7 +78,7 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
               gridTemplateColumns: `${sidebarW}px 1fr ${copilotCol}${railW}px`,
               height: "100vh",
               overflow: "hidden",
-              transition: isResizing || isRailResizing
+              transition: isResizing || isRailResizing || isCopilotResizing
                 ? "none"
                 : "grid-template-columns 225ms cubic-bezier(0.4, 0, 0.6, 1)",
             }}
