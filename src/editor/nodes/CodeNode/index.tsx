@@ -16,13 +16,16 @@ export interface SerializedCodeNodeWithWidth extends SerializedCodeNode {
 }
 
 /**
- * Custom CodeNode that fixes line numbering for empty lines.
+ * Custom CodeNode that renders robust line numbers for exported (view-mode)
+ * HTML.
  *
- * The issue: Empty lines in code blocks render as consecutive <br> tags,
- * and CSS ::before pseudo-elements don't work on <br> elements (void elements).
- *
- * The fix: Inject <span>&nbsp;</span> elements for empty lines so they have
- * a proper element that can display line numbers via ::before.
+ * In the editor, `@lexical/code`'s `registerCodeHighlighting` keeps a
+ * `data-gutter` attribute (e.g. "1\n2\n3") in sync on the <code> element, and a
+ * single absolutely-positioned `::before` renders all line numbers from it.
+ * That attribute is a runtime-only concern, so exported static HTML never has
+ * it. Here we compute and inject the same `data-gutter` attribute during
+ * export so view mode gets identical, gap-free line numbers that also handle
+ * empty lines and auto-size with the digit count.
  *
  * Also supports dynamic width adjustment via the __width property.
  */
@@ -93,30 +96,18 @@ export class CodeNode extends LexicalCodeNode {
   }
 
   /**
-   * Process code block DOM to inject spans for empty lines.
-   * Transforms: <br><br> → <br><span>&nbsp;</span><br>
+   * Build the line-number gutter string (e.g. "1\n2\n3") for an exported code
+   * element by counting its direct line-break children. Mirrors the attribute
+   * maintained by `registerCodeHighlighting` in the editor.
    */
-  private processCodeBlockDOM(element: HTMLElement): void {
-    const children = Array.from(element.childNodes);
-
-    for (let i = 0; i < children.length - 1; i++) {
-      const current = children[i];
-      const next = children[i + 1];
-
-      // Look for consecutive <br> tags (empty line pattern)
-      if (
-        current.nodeName === "BR" &&
-        next.nodeName === "BR"
-      ) {
-        // Insert a span with non-breaking space between them
-        const span = document.createElement("span");
-        span.innerHTML = "&nbsp;";
-        element.insertBefore(span, next);
-
-        // Skip the next element since we just processed it
-        i++;
-      }
+  private buildGutterAttr(element: HTMLElement): string {
+    const lineBreaks = element.querySelectorAll(":scope > br").length;
+    const lineCount = lineBreaks + 1;
+    let gutter = "1";
+    for (let i = 2; i <= lineCount; i++) {
+      gutter += "\n" + i;
     }
+    return gutter;
   }
 
   /**
@@ -131,7 +122,8 @@ export class CodeNode extends LexicalCodeNode {
       ...output,
       after: (element) => {
         if (element instanceof HTMLElement) {
-          this.processCodeBlockDOM(element);
+          // Inject line numbers for static (view-mode) rendering.
+          element.setAttribute("data-gutter", this.buildGutterAttr(element));
 
           // Apply width if set
           if (this.__width) {

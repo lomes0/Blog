@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import ViewAttachmentEnhancer from "./ViewAttachmentEnhancer";
+import ViewCodeEnhancer from "./ViewCodeEnhancer";
 import SyncToCloudFab from "../shared/SyncToCloudFab";
 import LocalDocumentView from "./LocalDocumentView";
 import ChildDocumentView from "./ChildDocumentView";
@@ -236,6 +237,7 @@ const ViewDocument: React.FC<
           )}
 
           <ViewAttachmentEnhancer containerRef={containerRef} />
+          <ViewCodeEnhancer containerRef={containerRef} />
         </div>
 
         <ViewDocumentInfo cloudDocument={cloudDocument} />

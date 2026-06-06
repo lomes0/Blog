@@ -68,9 +68,13 @@
 }
 
 .LexicalTheme__textCode {
-  padding: 1px 0.25rem;
-  font-family: Menlo, Consolas, Monaco, monospace;
-  font-size: 94%;
+  padding: 0.12em 0.35em;
+  font-family:
+    "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, Monaco,
+    monospace;
+  font-size: 0.875em;
+  border-radius: 5px;
+  border: 1px solid rgba(128, 128, 128, 0.22);
 }
 
 .LexicalTheme__hashtag {
@@ -89,64 +93,133 @@
 }
 
 .LexicalTheme__code {
-  font-family: Menlo, Consolas, Monaco, monospace;
+  /* Light palette (VS Code-inspired); overridden per theme below. */
+  --code-bg: #f6f8fa;
+  --code-fg: #24292f;
+  --code-border: #d8dee4;
+  --code-gutter-bg: #eceff2;
+  --code-gutter-fg: #9098a1;
+  --code-gutter-width: 3.25rem;
+  --tok-comment: #6e7781;
+  --tok-punctuation: #57606a;
+  --tok-property: #0550ae;
+  --tok-selector: #0a3069;
+  --tok-operator: #24292f;
+  --tok-keyword: #cf222e;
+  --tok-variable: #953800;
+  --tok-function: #8250df;
+
+  font-family:
+    "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, Monaco,
+    monospace;
   display: block;
-  padding: 8px 8px 8px 52px;
-  line-height: 1.53;
-  font-size: 13px;
-  margin: 0;
-  margin-top: 8px;
-  margin-bottom: 8px;
-  overflow-x: auto;
   position: relative;
+  padding: 14px 16px 14px calc(var(--code-gutter-width) + 12px);
+  margin: 16px 0;
+  line-height: 1.6;
+  font-size: 13.5px;
   tab-size: 2;
   white-space: pre;
+  overflow-x: auto;
   width: 100%;
-  --code-gutter-width: 32px;
+  color: var(--code-fg);
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  border-radius: 8px;
 }
 
+/* Line-number gutter: a single ::before reads the `data-gutter` attribute
+   ("1\n2\n3"…) kept in sync by registerCodeHighlighting (editor) and by the
+   custom CodeNode.exportDOM (view mode). Robust for empty lines and scales
+   with the digit count. */
 .LexicalTheme__code:before {
-  content: "";
+  content: attr(data-gutter);
   position: absolute;
-  left: 0;
   top: 0;
-  bottom: 0;
-  border-right: 1px solid #ccc;
-  white-space: pre-wrap;
-  min-width: 32px;
-  counter-reset: line-number;
-}
-
-.LexicalTheme__code > span:first-child,
-.LexicalTheme__code > br:first-child,
-.LexicalTheme__code > br + span,
-.LexicalTheme__code > br + br {
-  counter-increment: line-number;
-}
-
-.LexicalTheme__code > span:first-child:before,
-.LexicalTheme__code > br:first-child:before,
-.LexicalTheme__code > br + span:before,
-.LexicalTheme__code > br + br:before {
-  color: #777;
-  content: counter(line-number);
-  user-select: none;
-  position: absolute;
   left: 0;
-  min-width: 25px;
-  text-align: end;
+  bottom: 0;
+  width: var(--code-gutter-width);
+  padding: 14px 10px 14px 0;
+  box-sizing: border-box;
+  line-height: 1.6;
+  text-align: right;
+  white-space: pre;
+  color: var(--code-gutter-fg);
+  background: var(--code-gutter-bg);
+  border-right: 1px solid var(--code-border);
+  border-radius: 8px 0 0 8px;
+  user-select: none;
+  pointer-events: none;
 }
 
-.LexicalTheme__code > br {
-  display: block;
-  content: "";
-  height: 20px;
+/* View-mode chrome injected by ViewCodeEnhancer: a header bar (language label
+   + copy button) wrapping the <code> element. */
+.code-block-wrapper {
+  --code-border: #d8dee4;
+  --code-fg: #24292f;
+  --code-chrome-bg: #eceff2;
+  --code-chrome-fg: #6a737d;
+  margin: 16px 0;
+  border: 1px solid var(--code-border);
+  border-radius: 8px;
+  overflow: hidden;
 }
 
-.LexicalTheme__code > br + br {
-  display: block;
-  content: counter(line-number);
-  height: 20px;
+.code-block-wrapper .LexicalTheme__code {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+}
+
+.code-block-wrapper .LexicalTheme__code:before {
+  border-radius: 0;
+}
+
+.code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 8px 5px 14px;
+  font-family: "Roboto", "Helvetica", "Arial", sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--code-chrome-fg);
+  background: var(--code-chrome-bg);
+  border-bottom: 1px solid var(--code-border);
+  user-select: none;
+}
+
+.code-block-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  font-family: inherit;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--code-border);
+  border-radius: 5px;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.code-block-copy:hover {
+  background: rgba(127, 127, 127, 0.14);
+  color: var(--code-fg);
+}
+
+.code-block-copy.copied {
+  color: #2da44e;
+  border-color: #2da44e;
 }
 
 .LexicalTheme__tableScrollableWrapper {
@@ -381,35 +454,36 @@
 }
 
 .LexicalTheme__tokenComment {
-  color: slategray;
+  color: var(--tok-comment, slategray);
+  font-style: italic;
 }
 
 .LexicalTheme__tokenPunctuation {
-  color: #999;
+  color: var(--tok-punctuation, #999);
 }
 
 .LexicalTheme__tokenProperty {
-  color: #905;
+  color: var(--tok-property, #905);
 }
 
 .LexicalTheme__tokenSelector {
-  color: #690;
+  color: var(--tok-selector, #690);
 }
 
 .LexicalTheme__tokenOperator {
-  color: #9a6e3a;
+  color: var(--tok-operator, #9a6e3a);
 }
 
 .LexicalTheme__tokenAttr {
-  color: #07a;
+  color: var(--tok-keyword, #07a);
 }
 
 .LexicalTheme__tokenVariable {
-  color: #e90;
+  color: var(--tok-variable, #e90);
 }
 
 .LexicalTheme__tokenFunction {
-  color: #dd4a68;
+  color: var(--tok-function, #dd4a68);
 }
 
 .LexicalTheme__mark {
@@ -623,16 +697,12 @@ iframe {
 
 /* Equalize code block padding in layout columns */
 .LexicalTheme__layoutItem .LexicalTheme__code {
-  padding-left: 8px;
-  padding-right: 8px;
+  padding-left: 14px;
+  padding-right: 14px;
 }
 
 /* Hide line numbers in layout columns for symmetry */
-.LexicalTheme__layoutItem .LexicalTheme__code:before,
-.LexicalTheme__layoutItem .LexicalTheme__code > span:first-child:before,
-.LexicalTheme__layoutItem .LexicalTheme__code > br:first-child:before,
-.LexicalTheme__layoutItem .LexicalTheme__code > br + span:before,
-.LexicalTheme__layoutItem .LexicalTheme__code > br + br:before {
+.LexicalTheme__layoutItem .LexicalTheme__code:before {
   display: none;
 }
 
@@ -776,23 +846,27 @@ iframe {
   color: rgb(33, 111, 219);
 }
 
-.LexicalTheme__code,
 [theme="light"] .LexicalTheme__code {
-  background-color: rgb(240, 242, 245);
-  color: inherit;
-  white-space: pre;
+  --code-bg: #f6f8fa;
+  --code-fg: #24292f;
+  --code-border: #d8dee4;
+  --code-gutter-bg: #eceff2;
+  --code-gutter-fg: #9098a1;
+  --tok-comment: #6e7781;
+  --tok-punctuation: #57606a;
+  --tok-property: #0550ae;
+  --tok-selector: #0a3069;
+  --tok-operator: #24292f;
+  --tok-keyword: #cf222e;
+  --tok-variable: #953800;
+  --tok-function: #8250df;
 }
 
-.LexicalTheme__code:before,
-[theme="light"] .LexicalTheme__code:before {
-  background-color: #eee;
-  border-right-color: #ccc;
-  color: #777;
-}
-
-.LexicalTheme__code:after,
-[theme="light"] .LexicalTheme__code:after {
-  color: rgba(0, 0, 0, 0.5);
+[theme="light"] .code-block-wrapper {
+  --code-border: #d8dee4;
+  --code-fg: #24292f;
+  --code-chrome-bg: #eceff2;
+  --code-chrome-fg: #6a737d;
 }
 
 .LexicalTheme__tableCell,
@@ -834,19 +908,26 @@ iframe {
 }
 
 [theme="dark"] .LexicalTheme__code {
-  background-color: rgb(30, 30, 30);
-  color: #9cdcfe;
-  white-space: pre;
+  --code-bg: #1e1e1e;
+  --code-fg: #d4d4d4;
+  --code-border: #2c2c2c;
+  --code-gutter-bg: #1a1a1a;
+  --code-gutter-fg: #6e7681;
+  --tok-comment: #6a9955;
+  --tok-punctuation: #9a9a9a;
+  --tok-property: #569cd6;
+  --tok-selector: #ce9178;
+  --tok-operator: #d4d4d4;
+  --tok-keyword: #c586c0;
+  --tok-variable: #9cdcfe;
+  --tok-function: #dcdcaa;
 }
 
-[theme="dark"] .LexicalTheme__code:before {
-  background-color: #333;
-  color: #858585;
-  border-right-color: #1e1e1e;
-}
-
-[theme="dark"] .LexicalTheme__code:after {
-  color: #858585;
+[theme="dark"] .code-block-wrapper {
+  --code-border: #2c2c2c;
+  --code-fg: #d4d4d4;
+  --code-chrome-bg: #1a1a1a;
+  --code-chrome-fg: #8b949e;
 }
 
 [theme="dark"] .LexicalTheme__tableCell {
@@ -906,19 +987,26 @@ iframe {
   }
 
   .LexicalTheme__code {
-    background-color: rgb(30, 30, 30);
-    color: #9cdcfe;
-    white-space: pre;
+    --code-bg: #1e1e1e;
+    --code-fg: #d4d4d4;
+    --code-border: #2c2c2c;
+    --code-gutter-bg: #1a1a1a;
+    --code-gutter-fg: #6e7681;
+    --tok-comment: #6a9955;
+    --tok-punctuation: #9a9a9a;
+    --tok-property: #569cd6;
+    --tok-selector: #ce9178;
+    --tok-operator: #d4d4d4;
+    --tok-keyword: #c586c0;
+    --tok-variable: #9cdcfe;
+    --tok-function: #dcdcaa;
   }
 
-  .LexicalTheme__code:before {
-    background-color: #333;
-    color: #858585;
-    border-right-color: #1e1e1e;
-  }
-
-  .LexicalTheme__code:after {
-    color: #858585;
+  .code-block-wrapper {
+    --code-border: #2c2c2c;
+    --code-fg: #d4d4d4;
+    --code-chrome-bg: #1a1a1a;
+    --code-chrome-fg: #8b949e;
   }
 
   .LexicalTheme__tableCell {
