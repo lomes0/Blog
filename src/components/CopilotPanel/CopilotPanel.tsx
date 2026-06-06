@@ -1,14 +1,41 @@
 "use client";
 import { useRef, useState } from "react";
-import { Box, Button, IconButton, Tooltip, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  IconButton,
+  Menu,
+  MenuItem,
+  Tooltip,
+  Typography,
+} from "@mui/material";
 import { History, Plus, X } from "lucide-react";
 import { actions, documentsSelectors, useDispatch, useSelector } from "@/store";
 import { AI_MODELS } from "@/lib/ai/models";
 import { useAIModel } from "@/contexts/AIModelContext";
 import CopilotChat from "./CopilotChat";
+import {
+  archiveThread,
+  clearCurrentThread,
+  type CopilotThread,
+  loadCurrentThread,
+  loadHistory,
+  removeFromHistory,
+  saveCurrentThread,
+} from "./copilotStorage";
 
 interface CopilotPanelProps {
   documentId: string;
+}
+
+function formatRelativeTime(ts: number): string {
+  const diff = Date.now() - ts;
+  const mins = Math.round(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.round(hrs / 24)}d ago`;
 }
 
 const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
@@ -18,6 +45,8 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
 
   const [chatKey, setChatKey] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
+  const [historyAnchor, setHistoryAnchor] = useState<null | HTMLElement>(null);
+  const [history, setHistory] = useState<CopilotThread[]>([]);
   const acceptAllRef = useRef<(() => void) | null>(null);
 
   const doc = useSelector((state) =>
@@ -28,6 +57,28 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
 
   const handleAcceptAll = () => {
     acceptAllRef.current?.();
+  };
+
+  // Archive the active thread and start fresh.
+  const handleNewConversation = () => {
+    archiveThread(documentId, loadCurrentThread(documentId));
+    clearCurrentThread(documentId);
+    setChatKey((k) => k + 1);
+  };
+
+  const openHistory = (e: React.MouseEvent<HTMLElement>) => {
+    setHistory(loadHistory(documentId));
+    setHistoryAnchor(e.currentTarget);
+  };
+
+  // Restore a past thread: archive the current one, then make the chosen
+  // thread current and remount the chat to load it.
+  const handleSelectThread = (thread: CopilotThread) => {
+    archiveThread(documentId, loadCurrentThread(documentId));
+    removeFromHistory(documentId, thread.id);
+    saveCurrentThread(documentId, thread.messages);
+    setHistoryAnchor(null);
+    setChatKey((k) => k + 1);
   };
 
   return (
@@ -58,13 +109,15 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
           flexShrink: 0,
         }}
       >
-        <IconButton
-          size="small"
-          onClick={() => setChatKey((k) => k + 1)}
-          aria-label="New conversation"
-        >
-          <Plus size={16} />
-        </IconButton>
+        <Tooltip title="New conversation">
+          <IconButton
+            size="small"
+            onClick={handleNewConversation}
+            aria-label="New conversation"
+          >
+            <Plus size={16} />
+          </IconButton>
+        </Tooltip>
 
         <Box sx={{ flex: 1, minWidth: 0, ml: 0.5 }}>
           <Typography variant="subtitle2" sx={{ lineHeight: 1.2 }}>
@@ -98,12 +151,14 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
           </Button>
         )}
 
-        <Tooltip title="Conversation history (coming soon)">
-          <span>
-            <IconButton size="small" disabled aria-label="Conversation history">
-              <History size={16} />
-            </IconButton>
-          </span>
+        <Tooltip title="Conversation history">
+          <IconButton
+            size="small"
+            onClick={openHistory}
+            aria-label="Conversation history"
+          >
+            <History size={16} />
+          </IconButton>
         </Tooltip>
         <IconButton
           size="small"
@@ -112,10 +167,38 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
         >
           <X size={16} />
         </IconButton>
+
+        <Menu
+          anchorEl={historyAnchor}
+          open={Boolean(historyAnchor)}
+          onClose={() => setHistoryAnchor(null)}
+          slotProps={{ paper: { sx: { minWidth: 240, maxWidth: 320 } } }}
+        >
+          {history.length === 0
+            ? (
+              <MenuItem disabled sx={{ fontSize: "0.8rem" }}>
+                No past conversations
+              </MenuItem>
+            )
+            : history.map((thread) => (
+              <MenuItem
+                key={thread.id}
+                onClick={() => handleSelectThread(thread)}
+                sx={{ display: "block", py: 0.75 }}
+              >
+                <Typography variant="body2" noWrap>
+                  {thread.title}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {formatRelativeTime(thread.updatedAt)}
+                </Typography>
+              </MenuItem>
+            ))}
+        </Menu>
       </Box>
 
       <CopilotChat
-        key={chatKey}
+        key={`${documentId}:${chatKey}`}
         documentId={documentId}
         llmConfig={llmConfig}
         setLlmConfig={setLlmConfig}

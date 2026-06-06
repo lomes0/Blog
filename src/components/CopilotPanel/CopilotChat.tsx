@@ -22,6 +22,7 @@ import { AI_MODELS } from "@/lib/ai/models";
 import type { CopilotAction } from "@/types";
 import CopilotMessage from "./CopilotMessage";
 import QuickActions from "./QuickActions";
+import { loadCurrentThread, saveCurrentThread } from "./copilotStorage";
 
 const PROVIDER_COLOR: Record<string, string> = {
   anthropic: "#D97757",
@@ -86,11 +87,34 @@ const CopilotChat: React.FC<CopilotChatProps> = (
       }),
   );
 
-  const { messages, sendMessage, stop, status, error, addToolOutput } = useChat(
-    { transport },
-  );
+  // Seed from the persisted thread for this document. The component is
+  // remounted (keyed on documentId) when the document changes, so reading
+  // once here is correct.
+  const [initialMessages] = useState(() => loadCurrentThread(documentId));
+
+  const {
+    messages,
+    sendMessage,
+    stop,
+    status,
+    error,
+    addToolOutput,
+    regenerate,
+  } = useChat({ transport, messages: initialMessages });
 
   const isLoading = status === "submitted" || status === "streaming";
+
+  // Persist the thread once it settles (avoid thrashing during streaming).
+  useEffect(() => {
+    if (status === "ready" || status === "error") {
+      saveCurrentThread(documentId, messages);
+    }
+  }, [messages, status, documentId]);
+
+  // The most recent assistant message is the one offered for regeneration.
+  const lastAssistantId = [...messages].reverse().find((m) =>
+    m.role === "assistant"
+  )?.id;
 
   const addToolOutputRef = useRef(addToolOutput);
   addToolOutputRef.current = addToolOutput;
@@ -133,16 +157,21 @@ const CopilotChat: React.FC<CopilotChatProps> = (
     onPendingCountChange(count);
   }, [acceptAll, messages, onRegisterAcceptAll, onPendingCountChange]);
 
-  const handleSend = useCallback(() => {
-    if (!input.trim() || isLoading) return;
+  const sendPrompt = useCallback((text: string) => {
+    if (!text.trim() || isLoading) return;
     selectedTextRef.current = editorRefRef.current.current?.getEditorState()
       .read(() => {
         const sel = $getSelection();
         return $isRangeSelection(sel) ? sel.getTextContent() : undefined;
       });
-    sendMessage({ text: input });
+    sendMessage({ text });
+  }, [isLoading, sendMessage]);
+
+  const handleSend = useCallback(() => {
+    if (!input.trim() || isLoading) return;
+    sendPrompt(input);
     setInput("");
-  }, [input, isLoading, sendMessage]);
+  }, [input, isLoading, sendPrompt]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -235,6 +264,9 @@ const CopilotChat: React.FC<CopilotChatProps> = (
                 key={msg.id}
                 message={msg}
                 addToolOutput={genericAddToolOutput}
+                onRegenerate={!isLoading && msg.id === lastAssistantId
+                  ? () => regenerate({ messageId: msg.id })
+                  : undefined}
               />
             ))}
           </Box>
@@ -261,7 +293,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
       {/* Quick actions — visible only in empty state */}
       {messages.length === 0 && (
         <Box sx={{ px: 1.5, pb: 1, flexShrink: 0 }}>
-          <QuickActions onSelect={(prompt) => setInput(prompt)} />
+          <QuickActions onSelect={sendPrompt} />
         </Box>
       )}
 

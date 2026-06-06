@@ -1,13 +1,14 @@
 "use client";
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import type { UIMessage } from "ai";
 import { getToolName, isTextUIPart, isToolUIPart } from "ai";
-import { Box, Button, Chip, Typography } from "@mui/material";
-import { Check } from "lucide-react";
+import { Box, Button, Chip, IconButton, Tooltip, Typography } from "@mui/material";
+import { Check, Copy, RefreshCw } from "lucide-react";
 import { ActiveEditorContext } from "@/contexts/ActiveEditorContext";
 import { applyActions } from "@/editor/utils/copilotToolExecutors";
 import type { CopilotAction } from "@/types";
 import ActionPreview from "./ActionPreview";
+import MarkdownText from "./MarkdownText";
 
 type AddToolOutput = (
   args: { tool: string; toolCallId: string; output: unknown },
@@ -16,13 +17,16 @@ type AddToolOutput = (
 interface CopilotMessageProps {
   message: UIMessage;
   addToolOutput: AddToolOutput;
+  /** Provided only for the latest assistant message; enables regenerate. */
+  onRegenerate?: () => void;
 }
 
 const CopilotMessage: React.FC<CopilotMessageProps> = (
-  { message, addToolOutput },
+  { message, addToolOutput, onRegenerate },
 ) => {
   const editorRef = useContext(ActiveEditorContext);
   const isUser = message.role === "user";
+  const [copied, setCopied] = useState(false);
 
   const textParts = message.parts.filter(isTextUIPart);
   const toolParts = message.parts.filter(isToolUIPart);
@@ -48,6 +52,16 @@ const CopilotMessage: React.FC<CopilotMessageProps> = (
         toolCallId: part.toolCallId,
         output: { success: true },
       });
+    }
+  };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(textContent);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -89,9 +103,13 @@ const CopilotMessage: React.FC<CopilotMessageProps> = (
         }}
       >
         {textContent && (
-          <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-            {textContent}
-          </Typography>
+          isUser
+            ? (
+              <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+                {textContent}
+              </Typography>
+            )
+            : <MarkdownText>{textContent}</MarkdownText>
         )}
 
         {pendingParts.length > 0 && (
@@ -159,6 +177,35 @@ const CopilotMessage: React.FC<CopilotMessageProps> = (
           />
         )}
       </Box>
+
+      {!isUser && (textContent || onRegenerate) && (
+        <Box sx={{ display: "flex", gap: 0.25, mt: 0.25, ml: 0.5 }}>
+          {textContent && (
+            <Tooltip title={copied ? "Copied" : "Copy"}>
+              <IconButton
+                size="small"
+                onClick={handleCopy}
+                aria-label="Copy message"
+                sx={{ color: "text.secondary", p: 0.5 }}
+              >
+                {copied ? <Check size={13} /> : <Copy size={13} />}
+              </IconButton>
+            </Tooltip>
+          )}
+          {onRegenerate && (
+            <Tooltip title="Regenerate">
+              <IconButton
+                size="small"
+                onClick={onRegenerate}
+                aria-label="Regenerate response"
+                sx={{ color: "text.secondary", p: 0.5 }}
+              >
+                <RefreshCw size={13} />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
+      )}
     </Box>
   );
 };
