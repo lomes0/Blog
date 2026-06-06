@@ -201,6 +201,8 @@
   border: none;
   border-radius: 0;
   box-shadow: none;
+  /* Extra breathing room so the block doesn't end flush with the last line. */
+  padding-bottom: 30px;
 }
 
 .code-block-wrapper .LexicalTheme__code:before {
