@@ -22,6 +22,9 @@ import FloatingOutlinePill from "./FloatingOutlinePill";
 import { TopBarTabsProvider } from "@/contexts/TopBarTabsContext";
 import { useToolbarSlot } from "@/contexts/ToolbarSlotContext";
 
+// Must match the grid-template-columns transition duration below.
+const COPILOT_TRANSITION_MS = 225;
+
 const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
   const { setSlotEl } = useToolbarSlot();
   const dispatch = useDispatch();
@@ -54,6 +57,18 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
     RefObject<LexicalEditor | null>
   >(() => ({ current: null }));
 
+  // Keep the panel mounted through the close animation so it clips gradually as
+  // the grid column shrinks, instead of vanishing instantly (mirrors RightRail).
+  const [showCopilot, setShowCopilot] = useState(copilotOpen);
+  useEffect(() => {
+    if (copilotOpen) {
+      setShowCopilot(true);
+    } else {
+      const t = setTimeout(() => setShowCopilot(false), COPILOT_TRANSITION_MS);
+      return () => clearTimeout(t);
+    }
+  }, [copilotOpen]);
+
   useEffect(() => {
     if (!initialized) dispatch(actions.load());
   }, [dispatch, initialized]);
@@ -66,7 +81,9 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
     ? railWidth + RAIL_COMPACT_W
     : RAIL_COMPACT_W;
 
-  const copilotCol = copilotOpen ? `${copilotWidth}px ` : "";
+  // Always keep the column present (0px when closed) so its width can animate
+  // open/closed instead of the track appearing/disappearing.
+  const copilotCol = `${copilotOpen ? copilotWidth : 0}px `;
 
   return (
     <TopBarTabsProvider>
@@ -131,7 +148,7 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
                 </Container>
               </HydrationManager>
             </Box>
-            {copilotOpen && <CopilotPanel documentId={copilotDocumentId} />}
+            {showCopilot && <CopilotPanel documentId={copilotDocumentId} />}
             <RightRail railMode={isFocus ? "hidden" : railMode} />
           </Box>
         </ActiveEditorContext.Provider>
