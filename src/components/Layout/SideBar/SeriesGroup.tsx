@@ -56,12 +56,7 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
               justifyContent: sidebarOpen ? "initial" : "center",
               px: 2,
               py: 0.25,
-              "&:hover": {
-                bgcolor: (theme) =>
-                  theme.palette.mode === "dark"
-                    ? "rgba(255, 255, 255, 0.05)"
-                    : "rgba(0, 0, 0, 0.04)",
-              },
+              "&:hover": { bgcolor: "action.hover" },
             }}
           >
             <ListItemIcon

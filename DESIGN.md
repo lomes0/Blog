@@ -21,8 +21,12 @@ library.
 
 Theme provider: `src/components/Layout/ThemeProvider.tsx`\
 MUI CSS variables are enabled with
-`cssVariables: { colorSchemeSelector: "media" }` — dark mode is driven by
-`prefers-color-scheme`.
+`cssVariables: { colorSchemeSelector: "class" }` — dark mode is applied via an
+`html.dark` class injected by `InitColorSchemeScript`.
+
+> **CSS rule:** use `html.dark .selector { … }` for dark overrides. Do **not**
+> use `@media (prefers-color-scheme: dark)` — that signal is independent of the
+> in-app theme toggle.
 
 ---
 
@@ -31,38 +35,82 @@ MUI CSS variables are enabled with
 All palette values are defined in `src/components/Layout/ThemeProvider.tsx` and
 exposed as MUI CSS variables (`var(--mui-palette-*)`).
 
+> **Source spec:** the "Slate + Indigo" palette
+> (`claude_design/blog-editor-tokens.css`) is the design reference. It is
+> **not** imported — its `--accent`/`--bg-*` names and `data-theme="dark"`
+> selector are mapped onto this project's MUI tokens and `html.dark` scheme
+> instead. The spec's green "Active" badge intentionally diverges from this
+> project, where Active = `info` blue (see Status Gradients).
+
 ### Light Mode
 
 | Semantic Role                              | Token                           | Hex       |
 | ------------------------------------------ | ------------------------------- | --------- |
-| Primary (interactive, links, progress bar) | `--mui-palette-primary-main`    | `#1976d2` |
-| Primary light                              | `--mui-palette-primary-light`   | `#42a5f5` |
-| Primary dark                               | `--mui-palette-primary-dark`    | `#1565c0` |
+| Primary (interactive, links, progress bar) | `--mui-palette-primary-main`    | `#4f46e5` |
+| Primary light                              | `--mui-palette-primary-light`   | `#6366f1` |
+| Primary dark                               | `--mui-palette-primary-dark`    | `#463eca` |
 | Secondary / Series indicators              | `--mui-palette-secondary-main`  | `#9333ea` |
 | Secondary light                            | `--mui-palette-secondary-light` | `#c084fc` |
 | Secondary dark                             | `--mui-palette-secondary-dark`  | `#7e22ce` |
-| Success / Published posts                  | `--mui-palette-success-main`    | `#22c55e` |
+| Success / Published posts                  | `--mui-palette-success-main`    | `#059669` |
 | Warning / Draft posts                      | `--mui-palette-warning-main`    | `#f97316` |
 | Info / Active / In-progress                | `--mui-palette-info-main`       | `#3b82f6` |
+
+### Neutrals (Slate)
+
+| Role            | Token                              | Light     | Dark      |
+| --------------- | ---------------------------------- | --------- | --------- |
+| Canvas / page   | `--mui-palette-background-default` | `#ffffff` | `#0f121a` |
+| Surface / paper | `--mui-palette-background-paper`   | `#f8fafc` | `#161c29` |
+| Sidebar / nav   | `--mui-palette-background-sidebar` | `#f8fafc` | `#0c0f18` |
+| Panel / rail    | `--mui-palette-background-panel`   | `#fbfcfe` | `#0d1018` |
+| Input field     | `--mui-palette-background-input`   | `#ffffff` | `#131621` |
+| Divider         | `--mui-palette-divider`            | `#e2e8f0` | `#242b3c` |
+
+> **Chrome surfaces** (`sidebar`/`panel`/`input`) are recessed/lifted variants
+> of `paper`, added by augmenting MUI's `TypeBackground` in `ThemeProvider.tsx`.
+> Use them for the left nav (`AppDrawer`/`SideBar`), the right Copilot panel /
+> `RightRail`, and prompt/search fields — **not** raw hexes. There is **no**
+> `chip` or `accent-weak` token: selected rows, count pills, and hover fills use
+> MUI's built-in `action.selected` / `action.hover`. | Text primary |
+> `--mui-palette-text-primary` | `#0f172a` | `#eef2f6` | | Text secondary |
+> `--mui-palette-text-secondary` | `#475569` | `#9aa6b2` | | Text disabled |
+> `--mui-palette-text-disabled` | `#94a3b8` | `#5f6b78` |
 
 ### Dark Mode (system palette — do not hard-code)
 
 | Role      | `main` value |
 | --------- | ------------ |
-| Primary   | `#90caf9`    |
+| Primary   | `#7b74ec`    |
 | Secondary | `#ce93d8`    |
-| Success   | `#66bb6a`    |
+| Success   | `#34d399`    |
 | Warning   | `#ffa726`    |
 | Info      | `#29b6f6`    |
+
+### Applying alpha to tokens (CSS variables)
+
+Because `cssVariables` is enabled, `theme.palette.primary.main` resolves to a
+**fixed hex for the default color scheme** — so
+`alpha(theme.palette.primary.main, n)` is _not_ scheme-aware (it bakes the light
+value into both modes). For a translucent accent that tracks the active scheme,
+use the auto-generated channel variable instead:
+
+```css
+rgba(var(--mui-palette-primary-mainChannel) / 0.5)
+```
+
+For scheme-specific branches inside `sx`, use `theme.applyStyles("dark", { … })`
+— **not** `theme.palette.mode === "dark"`, which reflects the SSR/default mode
+under CSS variables and will not react to the in-app theme toggle.
 
 ### Selection / Highlight
 
 ```css
 ::selection {
-  background-color: rgb(95 183 255 / 50%);
+  background-color: rgb(79 70 229 / 22%);
 }
 .selection-highlight {
-  background-color: rgb(95 183 255 / 50%);
+  background-color: rgb(79 70 229 / 22%);
 }
 ```
 
@@ -80,8 +128,8 @@ exposed as MUI CSS variables (`var(--mui-palette-*)`).
 
 ## 3. Typography Scale
 
-Font family: **`"Roboto", "Helvetica", "Arial", sans-serif`**\
-Weights loaded: 300, 400, 500, 700 (via `@fontsource/roboto`).
+Font family: **`"Public Sans", "Roboto", "Helvetica", "Arial", sans-serif`**\
+Weights loaded: 300, 400, 500, 600, 700 (via `@fontsource/public-sans`).
 
 | Variant     | Size     | Weight | Line Height | Notes                                          |
 | ----------- | -------- | ------ | ----------- | ---------------------------------------------- |
@@ -158,8 +206,7 @@ shadow.hover = "0 12px 32px rgba(0,0,0,0.15), 0 6px 16px rgba(0,0,0,0.1)";
 shadow.focus = `0 0 0 3px ${alpha(primary.main, 0.25)}`;
 ```
 
-These are defined in `src/components/DocumentCardNew/theme.ts`
-(`createCardTheme`).
+These are defined in `src/components/DocumentCard/theme.ts` (`createCardTheme`).
 
 ---
 
@@ -209,7 +256,7 @@ src/components/
 
 | Concept                | Canonical component name                |
 | ---------------------- | --------------------------------------- |
-| Blog post card         | `DocumentCardNew`                       |
+| Blog post card         | `DocumentCard`                          |
 | Post list view         | `PostsList`                             |
 | Series display (grid)  | `SeriesGrid`                            |
 | Series display (card)  | `SeriesCard`                            |
@@ -319,7 +366,7 @@ New components that should survive printing must be placed inside
 
 ## 14. Fonts
 
-Body / UI: **Roboto** (loaded via `@fontsource/roboto`).\
+Body / UI: **Public Sans** (loaded via `@fontsource/public-sans`).\
 Editor code blocks: `Menlo, Consolas, Monaco, monospace`.\
 Excalidraw sketches: `Virgil` (loaded from
 `/fonts/Virgil/Virgil-Regular.woff2`).\
@@ -374,17 +421,19 @@ has been removed; `@mui/material` stays.
 ## 15. Quick-Reference Cheat Sheet
 
 ```
-Primary blue:     #1976d2  (light #42a5f5 / dark #1565c0)
+Primary indigo:   #4f46e5  (light #6366f1 / dark #463eca)
 Secondary purple: #9333ea  (light #c084fc / dark #7e22ce)
-Success green:    #22c55e  → Published
+Success green:    #059669  → Published
 Warning orange:   #f97316  → Draft
 Info blue:        #3b82f6  → Active/In-progress
+Canvas/Surface:   #ffffff / #f8fafc  (dark #0f121a / #161c29)
+Text/Divider:     #0f172a text, #e2e8f0 divider (slate)
 Border radius:    8px cards/buttons, 6px chips, 4px images
 Spacing unit:     8px (use MUI units 1–4 for 8–32px)
-Font:             Roboto 300/400/500/700
+Font:             Public Sans 300/400/500/600/700
 Min touch target: 48px
 Focus ring:       0 0 0 3px alpha(primary, 0.25)
-Selection:        rgb(95 183 255 / 50%)
-Progress bar:     #1976d2 (NProgress, 3px, fixed top)
+Selection:        rgb(79 70 229 / 22%)
+Progress bar:     #4f46e5 (NProgress, 3px, fixed top)
 Component lib:    MUI v6 only — no Tailwind, no shadcn
 ```

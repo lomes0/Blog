@@ -1,0 +1,91 @@
+/* ============================================================
+   Blog Editor — Color Tokens
+   Frozen from the Color Lab · "Slate + Indigo"
+   Accent #4f46e5 · Status #059669 · Radius 9px · Public Sans
+
+   Drop-in: import this file, then reference var(--*) anywhere.
+   Light is the default; add `data-theme="dark"` to <html> (or any
+   ancestor) to switch the whole subtree to the dark scheme.
+   ============================================================ */
+
+:root {
+  /* ---- Surfaces ---- */
+  --bg-canvas:      #ffffff;  /* main document background          */
+  --bg-sidebar:     #f8fafc;  /* left nav / file tree              */
+  --bg-panel:       #fbfcfe;  /* right Copilot panel               */
+  --bg-input:       #ffffff;  /* search / prompt fields            */
+  --card-bg:        #f8fafc;  /* file card, inset blocks           */
+  --chip-bg:        #f1f5f9;  /* count pills, chips, hover fill    */
+  --code-bg:        #fbfcfe;  /* code block body                   */
+  --code-head-bg:   #f4f6fb;  /* code block header                 */
+
+  /* ---- Borders ---- */
+  --border:         #e2e8f0;  /* standard hairline                 */
+  --border-subtle:  #eef2f6;  /* quieter dividers (tab bar, etc.)  */
+
+  /* ---- Text ---- */
+  --text-primary:   #0f172a;  /* headings, doc title               */
+  --text-body:      #334155;  /* paragraph / list copy             */
+  --text-secondary: #475569;  /* nav labels, secondary UI text     */
+  --text-tertiary:  #94a3b8;  /* meta, placeholders, gutters       */
+  --code-ink:       #334155;  /* code block foreground             */
+
+  /* ---- Accent (brand) ---- */
+  --accent:         #4f46e5;  /* logo, primary, focus              */
+  --accent-on:      #ffffff;  /* text/icon on top of --accent      */
+  --accent-ink:     #463eca;  /* accent text on light (links, etc) */
+  --accent-weak:    #ededfc;  /* selected row, inline-code fill    */
+  --accent-shadow:  rgba(79, 70, 229, 0.28);
+
+  /* inline code reuses the accent tint */
+  --inline-bg:      #ededfc;
+  --inline-ink:     #463eca;
+
+  /* ---- Status / "Active" badge (kept honest, not the accent) ---- */
+  --badge-bg:       #e1f2ed;
+  --badge-ink:      #05875f;
+  --badge-border:   #8fd0bc;
+
+  /* ---- Type & shape ---- */
+  --ui-font:   'Public Sans', system-ui, -apple-system, sans-serif;
+  --head-font: 'Public Sans', system-ui, -apple-system, sans-serif;
+  --r:         9px;   /* global corner radius */
+}
+
+/* ============================================================
+   Dark scheme — neutrals are subtly tinted toward the accent hue
+   so the palette stays coherent rather than flat gray.
+   ============================================================ */
+:root[data-theme="dark"],
+[data-theme="dark"] {
+  --bg-canvas:      #0f121a;
+  --bg-sidebar:     #0c0f18;
+  --bg-panel:       #0d1018;
+  --bg-input:       #131621;
+  --card-bg:        #161c29;
+  --chip-bg:        #1d2333;
+  --code-bg:        #0e121b;
+  --code-head-bg:   #161c29;
+
+  --border:         #242b3c;
+  --border-subtle:  #1c2231;
+
+  --text-primary:   #eef2f6;
+  --text-body:      #c2cbd4;
+  --text-secondary: #9aa6b2;
+  --text-tertiary:  #5f6b78;
+  --code-ink:       #c2cbd4;
+
+  --accent:         #4f46e5;
+  --accent-on:      #ffffff;
+  --accent-ink:     #7b74ec;
+  --accent-weak:    #21224e;
+  --accent-shadow:  rgba(79, 70, 229, 0.45);
+
+  --inline-bg:      #21224e;
+  --inline-ink:     #7b74ec;
+
+  --badge-bg:       #123034;
+  --badge-ink:      #50b696;
+  --badge-border:   #0f4b42;
+}

@@ -191,7 +191,7 @@ const NotesCanvas = forwardRef<NotesCanvasHandle, NotesCanvasProps>(
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            bgcolor: "#fafafa",
+            bgcolor: "background.default",
           }}
         >
           <Typography color="text.secondary">Loading notes...</Typography>
@@ -224,20 +224,22 @@ const NotesCanvas = forwardRef<NotesCanvasHandle, NotesCanvasProps>(
 
           <Box
             ref={scrollContainerRef}
-            sx={{
+            sx={(theme) => ({
               flex: 1,
               minHeight: 0,
               overflow: "auto",
               position: "relative",
-              backgroundImage: (theme) =>
-                theme.palette.mode === "dark"
-                  ? `linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-                 linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px)`
-                  : `linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+              backgroundImage:
+                `linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
                  linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px)`,
+              ...theme.applyStyles("dark", {
+                backgroundImage:
+                  `linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                 linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px)`,
+              }),
               backgroundSize: `${20 * scale}px ${20 * scale}px`,
               backgroundPosition: "0 0",
-            }}
+            })}
           >
             {/* Sizing div ensures scrollbars reflect scaled canvas size */}
             <Box

@@ -94,7 +94,7 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
         position: "sticky",
         top: 0,
         overflow: "hidden",
-        bgcolor: "background.paper",
+        bgcolor: "background.panel",
         flexShrink: 0,
       }}
     >

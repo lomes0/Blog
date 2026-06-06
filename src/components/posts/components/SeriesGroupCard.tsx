@@ -249,10 +249,7 @@ function ExpandedView({
           transition: "background-color 0.2s ease",
           ...(collapsible && {
             "&:hover": {
-              bgcolor: (t) =>
-                t.palette.mode === "dark"
-                  ? "rgba(144, 202, 249, 0.08)"
-                  : "rgba(25, 118, 210, 0.05)",
+              bgcolor: "rgba(var(--mui-palette-primary-mainChannel) / 0.06)",
             },
           }),
         }}
@@ -398,7 +395,8 @@ const SeriesGroupCard: React.FC<SeriesGroupCardProps> = memo(({
           borderColor: "primary.light",
         },
         "&:focus-within": {
-          boxShadow: "0 0 0 2px rgba(25, 118, 210, 0.2)",
+          boxShadow:
+            "0 0 0 2px rgba(var(--mui-palette-primary-mainChannel) / 0.2)",
           borderColor: "primary.main",
         },
         ...sx,

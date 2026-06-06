@@ -24,13 +24,13 @@ export default function KanbanPreviewCard({
     {
       title: "Draft",
       count: draftDocs.length,
-      color: "#fb8c00",
+      color: "warning.main",
       docs: draftDocs.slice(0, 2),
     },
     {
       title: "Published",
       count: publishedDocs.length,
-      color: "#43a047",
+      color: "success.main",
       docs: publishedDocs.slice(0, 2),
     },
   ];

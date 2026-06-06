@@ -88,7 +88,7 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
             sx={{
               borderLeft: "1px solid",
               borderColor: "divider",
-              bgcolor: "background.default",
+              bgcolor: "background.panel",
               display: "flex",
               flexDirection: "column",
               height: "100vh",
@@ -143,7 +143,7 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
           gap: 0.5,
           borderLeft: "1px solid",
           borderColor: "divider",
-          bgcolor: "background.paper",
+          bgcolor: "background.panel",
           height: "100vh",
           width: 54,
           flexShrink: 0,

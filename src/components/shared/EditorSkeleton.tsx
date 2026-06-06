@@ -63,7 +63,7 @@ export const EditorSkeleton: React.FC<PropsWithChildren> = ({ children }) => {
     if (lightThemeMeta && darkThemeMeta) {
       lightThemeMeta.setAttribute(
         "content",
-        toolbarTrigger ? "#ffffff" : "#1976d2",
+        toolbarTrigger ? "#ffffff" : "#4f46e5",
       );
       darkThemeMeta.setAttribute(
         "content",

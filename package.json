@@ -23,6 +23,7 @@
     "@emotion/styled": "^11.14.1",
     "@excalidraw/excalidraw": "^0.18.0",
     "@fontsource/hanken-grotesk": "^5.2.8",
+    "@fontsource/public-sans": "^5.2.7",
     "@fontsource/roboto": "^5.2.5",
     "@hello-pangea/dnd": "^18.0.1",
     "@lexical/headless": "^0.28.0",

@@ -40,16 +40,18 @@ function extractTextFromLexicalState(content: string): string {
 export default function StaticNoteCard({ note, index }: StaticNoteCardProps) {
   return (
     <Box
-      sx={{
+      sx={(theme) => ({
         width: "100%",
         height: "100%",
         background: NOTE_COLORS[note.color as NoteColorKey] ||
           NOTE_COLORS.yellow,
         borderRadius: 1.5,
-        boxShadow: (theme) =>
-          theme.palette.mode === "dark"
-            ? "0 2px 8px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1)"
-            : "0 2px 8px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.5)",
+        boxShadow:
+          "0 2px 8px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.5)",
+        ...theme.applyStyles("dark", {
+          boxShadow:
+            "0 2px 8px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1)",
+        }),
         p: 1.5,
         overflow: "hidden",
         position: "relative",
@@ -67,10 +69,10 @@ export default function StaticNoteCard({ note, index }: StaticNoteCardProps) {
         },
         "&:hover": {
           transform: "translateY(-2px)",
-          boxShadow: (theme) =>
-            theme.palette.mode === "dark"
-              ? "0 4px 12px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.3)"
-              : "0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1)",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1)",
+          ...theme.applyStyles("dark", {
+            boxShadow: "0 4px 12px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.3)",
+          }),
         },
         "&::before": {
           content: '""',
@@ -79,11 +81,11 @@ export default function StaticNoteCard({ note, index }: StaticNoteCardProps) {
           left: 0,
           right: 0,
           height: "2px",
-          bgcolor: (theme) => alpha(theme.palette.common.black, 0.08),
+          bgcolor: alpha(theme.palette.common.black, 0.08),
           borderTopLeftRadius: 1.5,
           borderTopRightRadius: 1.5,
         },
-      }}
+      })}
     >
       <Typography
         sx={{

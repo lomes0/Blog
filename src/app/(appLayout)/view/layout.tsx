@@ -4,7 +4,7 @@ import ViewContainerWrapper from "./ViewContainerWrapper";
 export const viewport: Viewport = {
   themeColor: [{
     media: "(prefers-color-scheme: light)",
-    color: "#1976d2",
+    color: "#4f46e5",
   }, {
     media: "(prefers-color-scheme: dark)",
     color: "#272727",

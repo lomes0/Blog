@@ -5,40 +5,96 @@ import {
   ThemeProvider as MuiThemeProvider,
 } from "@mui/material/styles";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v13-appRouter";
-import "@fontsource/roboto/300.css";
-import "@fontsource/roboto/400.css";
-import "@fontsource/roboto/500.css";
-import "@fontsource/roboto/700.css";
+import "@fontsource/public-sans/300.css";
+import "@fontsource/public-sans/400.css";
+import "@fontsource/public-sans/500.css";
+import "@fontsource/public-sans/600.css";
+import "@fontsource/public-sans/700.css";
+
+// Extend MUI's background palette with the recessed chrome surfaces from the
+// "Slate + Indigo" design spec (claude_design/blog-editor-tokens.css). These
+// emit as --mui-palette-background-{sidebar,panel,input} and switch with the
+// active color scheme automatically — no hand-maintained html.dark overrides.
+declare module "@mui/material/styles" {
+  interface TypeBackground {
+    /** Left nav / file tree — recessed below `default` */
+    sidebar: string;
+    /** Right Copilot panel / rail — distinct from `paper` */
+    panel: string;
+    /** Search / prompt fields — lifted above the panel */
+    input: string;
+  }
+}
 
 // Create a stable theme with deterministic class names
 const theme = createTheme({
   colorSchemes: {
     light: {
       palette: {
-        primary: { main: "#1976d2", light: "#42a5f5", dark: "#1565c0" },
+        // Indigo — brand accent (links, primary actions, focus)
+        primary: {
+          main: "#4f46e5",
+          light: "#6366f1",
+          dark: "#463eca",
+          contrastText: "#ffffff",
+        },
         // Purple — used for series indicators
         secondary: { main: "#9333ea", light: "#c084fc", dark: "#7e22ce" },
         // Green — published posts
-        success: { main: "#22c55e", light: "#86efac", dark: "#16a34a" },
+        success: { main: "#059669", light: "#34d399", dark: "#047857" },
         // Orange — draft posts
         warning: { main: "#f97316", light: "#fdba74", dark: "#ea580c" },
         // Blue — active/in-progress posts
         info: { main: "#3b82f6", light: "#93c5fd", dark: "#2563eb" },
+        // Slate-tinted neutrals
+        divider: "#e2e8f0",
+        background: {
+          default: "#ffffff",
+          paper: "#f8fafc",
+          sidebar: "#f8fafc",
+          panel: "#fbfcfe",
+          input: "#ffffff",
+        },
+        text: {
+          primary: "#0f172a",
+          secondary: "#475569",
+          disabled: "#94a3b8",
+        },
       },
     },
     dark: {
       palette: {
-        primary: { main: "#90caf9" },
+        // Indigo — brand accent, lifted for dark surfaces
+        primary: {
+          main: "#7b74ec",
+          light: "#9a94f0",
+          dark: "#4f46e5",
+          contrastText: "#ffffff",
+        },
         secondary: { main: "#ce93d8" },
-        success: { main: "#66bb6a" },
+        success: { main: "#34d399" },
         warning: { main: "#ffa726" },
         info: { main: "#29b6f6" },
+        // Slate neutrals tinted toward the accent hue
+        divider: "#242b3c",
+        background: {
+          default: "#0f121a",
+          paper: "#161c29",
+          sidebar: "#0c0f18",
+          panel: "#0d1018",
+          input: "#131621",
+        },
+        text: {
+          primary: "#eef2f6",
+          secondary: "#9aa6b2",
+          disabled: "#5f6b78",
+        },
       },
     },
   },
   cssVariables: { colorSchemeSelector: "class" },
   typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+    fontFamily: '"Public Sans", "Roboto", "Helvetica", "Arial", sans-serif',
     h1: {
       fontSize: "2.5rem",
       fontWeight: 700,

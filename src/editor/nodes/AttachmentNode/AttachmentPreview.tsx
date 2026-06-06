@@ -365,33 +365,6 @@ export default function AttachmentPreview({
                   fontSize: "0.85rem",
                   fontFamily: "monospace",
                   lineHeight: 1.5,
-                  "& .token.comment, & .token.prolog, & .token.doctype, & .token.cdata":
-                    {
-                      color: "#6a737d",
-                    },
-                  "& .token.punctuation": {
-                    color: "#24292e",
-                  },
-                  "& .token.property, & .token.tag, & .token.boolean, & .token.number, & .token.constant, & .token.symbol, & .token.deleted":
-                    {
-                      color: "#005cc5",
-                    },
-                  "& .token.selector, & .token.attr-name, & .token.string, & .token.char, & .token.builtin, & .token.inserted":
-                    {
-                      color: "#22863a",
-                    },
-                  "& .token.operator, & .token.entity, & .token.url": {
-                    color: "#d73a49",
-                  },
-                  "& .token.atrule, & .token.attr-value, & .token.keyword": {
-                    color: "#d73a49",
-                  },
-                  "& .token.function, & .token.class-name": {
-                    color: "#6f42c1",
-                  },
-                  "& .token.regex, & .token.important, & .token.variable": {
-                    color: "#e36209",
-                  },
                 }}
               >
                 {highlightedContent

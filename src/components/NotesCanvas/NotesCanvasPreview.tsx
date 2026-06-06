@@ -64,7 +64,7 @@ export default function NotesCanvasPreview(
       </Box>
 
       <Box
-        sx={{
+        sx={(theme) => ({
           height: 260,
           position: "relative",
           overflow: "hidden",
@@ -79,17 +79,19 @@ export default function NotesCanvasPreview(
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundImage: (theme) =>
-              theme.palette.mode === "dark"
-                ? `linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-                   linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px)`
-                : `linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
-                   linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px)`,
+            backgroundImage:
+              `linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+                 linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px)`,
+            ...theme.applyStyles("dark", {
+              backgroundImage:
+                `linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                   linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px)`,
+            }),
             backgroundSize: "20px 20px",
             pointerEvents: "none",
             opacity: 0.5,
           },
-        }}
+        })}
       >
         {previewNotes.length === 0
           ? (
@@ -152,15 +154,14 @@ export default function NotesCanvasPreview(
           )}
         {previewNotes.length > 0 && remainingCount > 0 && (
           <Box
-            sx={{
+            sx={(theme) => ({
               position: "absolute",
               bottom: 16,
               right: 16,
-              bgcolor: (theme) =>
-                alpha(
-                  theme.palette.background.paper,
-                  theme.palette.mode === "dark" ? 0.9 : 0.95,
-                ),
+              bgcolor: alpha(theme.palette.background.paper, 0.95),
+              ...theme.applyStyles("dark", {
+                bgcolor: alpha(theme.palette.background.paper, 0.9),
+              }),
               backdropFilter: "blur(8px)",
               px: 1.5,
               py: 0.75,
@@ -168,7 +169,7 @@ export default function NotesCanvasPreview(
               border: "1px solid",
               borderColor: "divider",
               boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-            }}
+            })}
           >
             <Typography
               variant="caption"

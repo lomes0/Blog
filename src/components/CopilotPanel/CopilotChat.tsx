@@ -447,7 +447,11 @@ const CopilotChat: React.FC<CopilotChatProps> = (
           maxRows={4}
           disabled={isLoading}
           sx={{
-            "& .MuiOutlinedInput-root": { borderRadius: 2, fontSize: "0.8rem" },
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 2,
+              fontSize: "0.8rem",
+              bgcolor: "background.input",
+            },
             "& .MuiOutlinedInput-input::placeholder": { fontSize: "0.8rem" },
           }}
         />

@@ -25,12 +25,12 @@ const menuItemSx = {
   "&:hover": { backgroundColor: "action.hover" },
 };
 
-const borderBottomSx = {
-  borderBottom: (theme: Theme) =>
-    theme.palette.mode === "dark"
-      ? "1px solid rgba(255, 255, 255, 0.06)"
-      : "1px solid rgba(0, 0, 0, 0.04)",
-};
+const borderBottomSx = (theme: Theme) => ({
+  borderBottom: "1px solid rgba(0, 0, 0, 0.04)",
+  ...theme.applyStyles("dark", {
+    borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
+  }),
+});
 
 export const PostContextMenu: React.FC<PostContextMenuProps> = ({
   contextMenu,
@@ -50,22 +50,22 @@ export const PostContextMenu: React.FC<PostContextMenuProps> = ({
       slotProps={{
         paper: {
           elevation: 2,
-          sx: {
+          sx: (theme) => ({
             minWidth: 130,
             borderRadius: 1,
             mt: 0.5,
-            bgcolor: (theme) =>
-              theme.palette.mode === "dark"
-                ? "rgba(30, 30, 30, 0.95)"
-                : "rgba(250, 250, 250, 0.95)",
+            bgcolor: "rgba(250, 250, 250, 0.95)",
+            ...theme.applyStyles("dark", {
+              bgcolor: "rgba(30, 30, 30, 0.95)",
+            }),
             backdropFilter: "blur(8px)",
-          },
+          }),
         },
       }}
     >
       <MenuItem
         onClick={() => contextMenu && onEdit(contextMenu.postId)}
-        sx={{ ...menuItemSx, ...borderBottomSx }}
+        sx={(theme) => ({ ...menuItemSx, ...borderBottomSx(theme) })}
       >
         <ListItemIcon sx={{ minWidth: "auto !important" }}>
           <Pencil size={18} />
@@ -76,7 +76,7 @@ export const PostContextMenu: React.FC<PostContextMenuProps> = ({
       </MenuItem>
       <MenuItem
         onClick={() => contextMenu && onRename(contextMenu.postId)}
-        sx={{ ...menuItemSx, ...borderBottomSx }}
+        sx={(theme) => ({ ...menuItemSx, ...borderBottomSx(theme) })}
       >
         <ListItemIcon sx={{ minWidth: "auto !important" }}>
           <FilePen size={18} />

@@ -948,7 +948,7 @@ iframe {
   content: "";
   display: block;
   height: 2px;
-  background-color: #ccc;
+  background-color: var(--mui-palette-divider);
   line-height: 2px;
 }
 
@@ -989,7 +989,7 @@ iframe {
   content: "";
   display: block;
   height: 2px;
-  background-color: #ccc;
+  background-color: var(--mui-palette-divider);
   line-height: 2px;
 }
 
@@ -1000,11 +1000,11 @@ iframe {
   transform: translate(-50%, -50%);
   display: block;
   padding: 2px 6px;
-  border: 1px solid #ccc;
-  background-color: #fff;
+  border: 1px solid var(--mui-palette-divider);
+  background-color: var(--mui-palette-background-paper);
   content: "PAGE BREAK";
   font-size: 12px;
-  color: #000;
+  color: var(--mui-palette-text-primary);
   font-weight: 600;
 }
 
@@ -1052,10 +1052,8 @@ iframe {
 }
 
 /* For dark mode, adjust divider color */
-@media screen and (prefers-color-scheme: dark) {
-  .LexicalTheme__layoutItem:not(:last-child)::after {
-    background-color: #444; /* Darker gray for dark mode */
-  }
+html.dark .LexicalTheme__layoutItem:not(:last-child)::after {
+  background-color: #444; /* Darker gray for dark mode */
 }
 
 /* Don't show divider in print */
@@ -1318,80 +1316,10 @@ iframe {
   outline-color: #90caf9;
 }
 
-@media screen and (prefers-color-scheme: light) {
-  .details__container .details__container li img {
-    filter: invert(1);
-  }
-}
-
-@media screen and (prefers-color-scheme: dark) {
-  .LexicalTheme__quote {
-    color: #a6a6a6;
-    border-left-color: #4d4d4d;
-    border-right-color: #4d4d4d;
-  }
-
-  .LexicalTheme__link {
-    color: #90caf9;
-  }
-
-  .LexicalTheme__code {
-    --code-bg: #0f1318;
-    --code-fg: #c3ccd8;
-    --code-border: #232b35;
-    --code-gutter-bg: var(--code-bg);
-    --code-gutter-fg: #4a5563;
-    --code-gutter-active: #c5cdd8;
-    --code-active-line: rgba(123, 162, 217, 0.08);
-    --code-emph-line: rgba(106, 166, 255, 0.1);
-    --code-emph-bar: #6aa6ff;
-    --code-accent: #6aa6ff;
-    --tok-comment: #5d6875;
-    --tok-punctuation: #8b96a4;
-    --tok-property: #e2b878;
-    --tok-selector: #93cf8a;
-    --tok-operator: #c3ccd8;
-    --tok-keyword: #e58373;
-    --tok-variable: #c6a2e8;
-    --tok-function: #82b4f2;
-  }
-
-  .code-block-wrapper {
-    --code-border: #232b35;
-    --code-fg: #c3ccd8;
-    --code-bg: #0f1318;
-    --code-chrome-bg: #141920;
-    --code-chrome-fg: #aeb9c7;
-    --code-chrome-border: #1c232c;
-    --code-chrome-muted: #8893a2;
-    --code-accent: #6aa6ff;
-  }
-
-  .LexicalTheme__tableCell {
-    border-color: rgba(255, 255, 255, 0.2);
-  }
-
-  .LexicalTheme__tableCellHeader {
-    background-color: rgba(255, 255, 255, 0.03);
-  }
-
-  .details__container {
-    border-color: rgba(255, 255, 255, 0.12);
-  }
-
-  .details__summary:hover,
-  .details__container[open] > .details__summary {
-    background-color: rgba(255, 255, 255, 0.08);
-  }
-
-  .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
-    filter: invert(93%) hue-rotate(180deg);
-  }
-
-  .details__container .details__container li img {
-    filter: none;
-  }
-}
+/* The [theme="light"] / [theme="dark"] attribute selectors above already
+   handle all per-instance Lexical theming. The duplicate @media blocks
+   that used to live here have been removed — html.dark overrides from
+   the app shell cover global (non-editor) contexts instead. */
 
 @media print {
   .details__container .details__container li img {
@@ -1720,58 +1648,56 @@ iframe {
 }
 
 /* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .attachment-link {
-    background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
-    border-color: #4a5568;
-    color: #e2e8f0;
-  }
+html.dark .attachment-link {
+  background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
 
-  .attachment-link:hover {
-    background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
-    border-color: #718096;
-  }
+html.dark .attachment-link:hover {
+  background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+  border-color: #718096;
+}
 
-  .attachment-info {
-    color: #a0aec0;
-  }
+html.dark .attachment-info {
+  color: #a0aec0;
+}
 
-  .attachment-toggle {
-    border-color: #4a5568;
-    color: #a0aec0;
-  }
+html.dark .attachment-toggle {
+  border-color: #4a5568;
+  color: #a0aec0;
+}
 
-  .attachment-toggle:hover {
-    background: #2d3748;
-    border-color: #718096;
-    color: #e2e8f0;
-  }
+html.dark .attachment-toggle:hover {
+  background: #2d3748;
+  border-color: #718096;
+  color: #e2e8f0;
+}
 
-  .attachment-preview {
-    background: #1a202c;
-    border-color: #4a5568;
-  }
+html.dark .attachment-preview {
+  background: #1a202c;
+  border-color: #4a5568;
+}
 
-  .attachment-preview pre {
-    background: #2d3748;
-  }
+html.dark .attachment-preview pre {
+  background: #2d3748;
+}
 
-  .attachment-preview-header {
-    background: #2d3748;
-    border-color: #4a5568;
-    color: #a0aec0;
-  }
+html.dark .attachment-preview-header {
+  background: #2d3748;
+  border-color: #4a5568;
+  color: #a0aec0;
+}
 
-  .attachment-preview-btn {
-    border-color: #4a5568;
-    color: #a0aec0;
-  }
+html.dark .attachment-preview-btn {
+  border-color: #4a5568;
+  color: #a0aec0;
+}
 
-  .attachment-preview-btn:hover {
-    background: #1a202c;
-    border-color: #718096;
-    color: #e2e8f0;
-  }
+html.dark .attachment-preview-btn:hover {
+  background: #1a202c;
+  border-color: #718096;
+  color: #e2e8f0;
 }
 
 /* Print styles */

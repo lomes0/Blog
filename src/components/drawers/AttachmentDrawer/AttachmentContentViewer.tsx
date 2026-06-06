@@ -1,5 +1,6 @@
 "use client";
 import { Alert, Box, CircularProgress, IconButton } from "@mui/material";
+import type { SxProps, Theme } from "@mui/material/styles";
 import { RefreshCw } from "lucide-react";
 import AttachmentEditor from "@/editor/nodes/AttachmentNode/AttachmentEditor";
 
@@ -18,10 +19,13 @@ interface AttachmentContentViewerProps {
   onRefresh: () => void;
 }
 
-const codeBoxSx = {
+// Syntax token palette mirrors the editor's --tok-* scheme (see
+// src/editor/theme.css) so attachment previews match in-editor code blocks
+// and stay readable in dark mode.
+const codeBoxSx: SxProps<Theme> = (theme) => ({
   m: 0,
   p: 2,
-  bgcolor: "grey.50",
+  bgcolor: "background.paper",
   minHeight: "100%",
   fontSize: "0.85rem",
   fontFamily: "monospace",
@@ -29,20 +33,38 @@ const codeBoxSx = {
   whiteSpace: "pre-wrap",
   wordBreak: "break-word",
   "& .token.comment, & .token.prolog, & .token.doctype, & .token.cdata": {
-    color: "#6a737d",
+    color: "#98a0ab",
   },
-  "& .token.punctuation": { color: "#24292e" },
+  "& .token.punctuation": { color: "#6b7280" },
   "& .token.property, & .token.tag, & .token.boolean, & .token.number, & .token.constant, & .token.symbol, & .token.deleted":
-    { color: "#005cc5" },
+    { color: "#9a6700" },
   "& .token.selector, & .token.attr-name, & .token.string, & .token.char, & .token.builtin, & .token.inserted":
-    { color: "#22863a" },
-  "& .token.operator, & .token.entity, & .token.url": { color: "#d73a49" },
+    { color: "#2c7a4d" },
+  "& .token.operator, & .token.entity, & .token.url": { color: "#2c333d" },
   "& .token.atrule, & .token.attr-value, & .token.keyword": {
-    color: "#d73a49",
+    color: "#c0392b",
   },
-  "& .token.function, & .token.class-name": { color: "#6f42c1" },
-  "& .token.regex, & .token.important, & .token.variable": { color: "#e36209" },
-} as const;
+  "& .token.function, & .token.class-name": { color: "#2d6be6" },
+  "& .token.regex, & .token.important, & .token.variable": { color: "#7a4bc2" },
+  ...theme.applyStyles("dark", {
+    "& .token.comment, & .token.prolog, & .token.doctype, & .token.cdata": {
+      color: "#5d6875",
+    },
+    "& .token.punctuation": { color: "#8b96a4" },
+    "& .token.property, & .token.tag, & .token.boolean, & .token.number, & .token.constant, & .token.symbol, & .token.deleted":
+      { color: "#e2b878" },
+    "& .token.selector, & .token.attr-name, & .token.string, & .token.char, & .token.builtin, & .token.inserted":
+      { color: "#93cf8a" },
+    "& .token.operator, & .token.entity, & .token.url": { color: "#c3ccd8" },
+    "& .token.atrule, & .token.attr-value, & .token.keyword": {
+      color: "#e58373",
+    },
+    "& .token.function, & .token.class-name": { color: "#82b4f2" },
+    "& .token.regex, & .token.important, & .token.variable": {
+      color: "#c6a2e8",
+    },
+  }),
+});
 
 export default function AttachmentContentViewer({
   loading,

@@ -107,7 +107,7 @@ const SideBar: React.FC = () => {
           flexDirection: "column",
           height: "100vh",
           fontSize: `${sidebarFontSize}px`,
-          bgcolor: "rgb(244, 245, 248)",
+          bgcolor: "background.sidebar",
         },
       }}
     >
@@ -135,7 +135,11 @@ const SideBar: React.FC = () => {
                     px: 2.5,
                     "&.Mui-selected": {
                       bgcolor: "action.selected",
-                      "&:hover": { bgcolor: "rgba(0, 0, 0, 0.15)" },
+                      // scheme-aware overlay (was a light-only rgba(0,0,0,.15))
+                      "&:hover": {
+                        bgcolor:
+                          "rgba(var(--mui-palette-text-primaryChannel) / 0.15)",
+                      },
                     },
                   }}
                 >

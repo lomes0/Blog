@@ -344,7 +344,7 @@ export default function DraggableNote({
                   borderRadius: "50%",
                   background: NOTE_SWATCH_COLORS[value],
                   border: note.color === value
-                    ? "2px solid rgba(25, 118, 210, 0.85)"
+                    ? "2px solid rgba(var(--mui-palette-primary-mainChannel) / 0.85)"
                     : "2px solid rgba(0,0,0,0.12)",
                   cursor: "pointer",
                   transition: "transform 0.1s ease",

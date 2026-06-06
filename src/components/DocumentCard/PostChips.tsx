@@ -84,20 +84,18 @@ export const createAuthorChip = (author?: User | null, showAuthor = true) => {
         </Avatar>
       }
       label={author.name ?? "User"}
-      sx={{
+      sx={(theme) => ({
         height: 32,
         borderRadius: "9999px",
         border: "1px solid transparent",
         overflow: "hidden",
         position: "relative",
-        background: (theme) =>
-          theme.palette.mode === "dark"
-            ? "rgba(255, 255, 255, 0.06)"
-            : "rgba(0, 0, 0, 0.03)",
-        boxShadow: (theme) =>
-          theme.palette.mode === "dark"
-            ? "0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2)"
-            : "0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)",
+        background: "rgba(0, 0, 0, 0.03)",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)",
+        ...theme.applyStyles("dark", {
+          background: "rgba(255, 255, 255, 0.06)",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2)",
+        }),
         color: "text.secondary",
         fontWeight: 500,
         fontSize: "0.8125rem",
@@ -137,10 +135,10 @@ export const createAuthorChip = (author?: User | null, showAuthor = true) => {
         // Override MUI's clickable chip hover background
         "&.MuiChip-clickable": {
           "&:hover": {
-            background: (theme) =>
-              theme.palette.mode === "dark"
-                ? "rgba(255, 255, 255, 0.1)"
-                : "rgba(0, 0, 0, 0.05)",
+            background: "rgba(0, 0, 0, 0.05)",
+            ...theme.applyStyles("dark", {
+              background: "rgba(255, 255, 255, 0.1)",
+            }),
           },
         },
         // Override any ButtonBase focus styling
@@ -151,16 +149,16 @@ export const createAuthorChip = (author?: User | null, showAuthor = true) => {
         },
 
         "&:hover": {
-          background: (theme) =>
-            theme.palette.mode === "dark"
-              ? "rgba(255, 255, 255, 0.1)"
-              : "rgba(0, 0, 0, 0.05)",
-          borderColor: "rgba(25, 118, 210, 0.5)", // Unified hover blue border
+          background: "rgba(0, 0, 0, 0.05)",
+          ...theme.applyStyles("dark", {
+            background: "rgba(255, 255, 255, 0.1)",
+          }),
+          borderColor: "rgba(var(--mui-palette-primary-mainChannel) / 0.5)", // Unified hover border (primary)
           color: "text.primary",
         },
 
         "&:active": {
-          borderColor: "rgba(25, 118, 210, 0.7)", // Unified hover blue border (active)
+          borderColor: "rgba(var(--mui-palette-primary-mainChannel) / 0.7)", // Unified hover border (primary, active)
         },
 
         "&:focus-visible": {
@@ -171,12 +169,12 @@ export const createAuthorChip = (author?: User | null, showAuthor = true) => {
 
         "&:focus:not(:focus-visible)": {
           outline: "none",
-          boxShadow: (theme) =>
-            theme.palette.mode === "dark"
-              ? "0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2)"
-              : "0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)",
+          ...theme.applyStyles("dark", {
+            boxShadow: "0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2)",
+          }),
         },
-      }}
+      })}
     />
   );
 };

@@ -38,7 +38,7 @@ body {
   flex-direction: column;
   width: 100%;
   min-height: 100vh;
-  font-family: "Roboto", "Helvetica", "Arial", sans-serif;
+  font-family: "Public Sans", "Roboto", "Helvetica", "Arial", sans-serif;
 }
 
 header {
@@ -47,12 +47,12 @@ header {
 }
 
 ::selection {
-  background-color: rgb(95 183 255 / 50%);
+  background-color: rgb(79 70 229 / 22%);
 }
 
 @media screen {
   .selection-highlight {
-    background-color: rgb(95 183 255 / 50%);
+    background-color: rgb(79 70 229 / 22%);
   }
 }
 
@@ -61,7 +61,7 @@ header {
 }
 
 #nprogress .bar {
-  background: #1976d2;
+  background: var(--mui-palette-primary-main);
   position: fixed;
   z-index: 99999;
   top: 0;
@@ -76,7 +76,9 @@ header {
   right: 0px;
   width: 100px;
   height: 100%;
-  box-shadow: 0 0 10px #1976d2, 0 0 5px #1976d2;
+  box-shadow:
+    0 0 10px var(--mui-palette-primary-main),
+    0 0 5px var(--mui-palette-primary-main);
   opacity: 1.0;
   -webkit-transform: rotate(3deg) translate(0px, -4px);
   -ms-transform: rotate(3deg) translate(0px, -4px);
@@ -127,10 +129,8 @@ header {
   z-index: 15000;
 }
 
-@media screen and (prefers-color-scheme: dark) {
-  .MuiFab-root.MuiFab-extended {
-    color: var(--mui-palette-primary-contrastText);
-  }
+html.dark .MuiFab-root.MuiFab-extended {
+  color: var(--mui-palette-primary-contrastText);
 }
 
 .editor-container :is([id], [target="_self"]) {
@@ -144,7 +144,7 @@ body:has(#app-toolbar) .editor-container :is([id], [target="_self"]) {
 .editor-input {
   flex: 1;
   resize: none;
-  caret-color: #444;
+  caret-color: var(--mui-palette-text-primary);
   position: relative;
   tab-size: 1;
   outline: 0;
@@ -214,15 +214,21 @@ body.fullscreen {
   background-color: rgb(255 200 200 / 50%);
 }
 
+html.dark .diff-container ins {
+  background-color: rgb(46 160 67 / 35%);
+}
+
+html.dark .diff-container del {
+  background-color: rgb(248 81 73 / 35%);
+}
+
 .diff-container ~ .editor-input,
 .diff-container ~ .MuiAppBar-root {
   display: none;
 }
 
-@media screen and (prefers-color-scheme: dark) {
-  .editor-input {
-    caret-color: #eee;
-  }
+html.dark .editor-input {
+  caret-color: #eee;
 }
 
 .editor-input .LexicalTheme__link:hover {
