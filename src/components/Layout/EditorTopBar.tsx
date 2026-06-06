@@ -11,6 +11,7 @@ import {
   Typography,
 } from "@mui/material";
 import {
+  ArrowLeft,
   BookOpen,
   ChevronDown,
   FileText,
@@ -264,6 +265,21 @@ const EditorTopBar: React.FC = () => {
           <MenuIcon size={16} strokeWidth={2} />
         </IconButton>
       </Tooltip>
+
+      {/* Edit pages: back-to-view button (view pages have their own Edit btn) */}
+      {isEditPage && docId && (
+        <Tooltip title="Back to view">
+          <IconButton
+            size="small"
+            component={RouterLink}
+            href={`/view/${docId}`}
+            aria-label="Back to view"
+            sx={{ flexShrink: 0, color: "text.secondary", mr: 0.25 }}
+          >
+            <ArrowLeft size={16} strokeWidth={2} />
+          </IconButton>
+        </Tooltip>
+      )}
 
       {/* Edit/view pages: compact document name */}
       {isDocPage
