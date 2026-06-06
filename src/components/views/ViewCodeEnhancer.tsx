@@ -55,6 +55,15 @@ const ViewCodeEnhancer: React.FC<
       const wrapper = document.createElement("div");
       wrapper.className = "code-block-wrapper";
 
+      // The exported <pre> carries the author-set width (e.g. "50%"). Move it
+      // onto the wrapper so the header and body shrink together; otherwise the
+      // chrome would stay full-width while only the inner scroll column shrank.
+      const width = code.style.width;
+      if (width) {
+        wrapper.style.width = width;
+        code.style.width = "";
+      }
+
       const header = document.createElement("div");
       header.className = "code-block-header";
 
