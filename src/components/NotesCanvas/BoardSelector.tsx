@@ -16,6 +16,7 @@ import { FilePen, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { CanvasSummary } from "@/types/notes";
 import { useRenameBoardState } from "./hooks/useRenameBoardState";
 import { useAddBoardState } from "./hooks/useAddBoardState";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface BoardSelectorProps {
   boards: CanvasSummary[];
@@ -155,7 +156,7 @@ function AddBoardSection({
   return (
     <Tooltip title="New board">
       <IconButton size="small" onClick={onAddClick} sx={{ flexShrink: 0 }}>
-        <Plus size={18} />
+        <Plus size={ICON_SIZE.dense} />
       </IconButton>
     </Tooltip>
   );
@@ -299,7 +300,7 @@ export default function BoardSelector({
                         "&:hover": { opacity: 1 },
                       }}
                     >
-                      <MoreHorizontal size={14} />
+                      <MoreHorizontal size={ICON_SIZE.inline} />
                     </IconButton>
                   )}
                 </Box>

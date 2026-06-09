@@ -31,6 +31,7 @@ import { $isImageNode } from "@/editor/nodes/ImageNode";
 import { $isMathNode } from "@/editor/nodes/MathNode";
 import { $isTableNode } from "@/editor/nodes/TableNode";
 import { getEditorNodes } from "@/editor/utils/getEditorNodes";
+import { ICON_SIZE } from "@/theme/icons";
 
 function LinkDialog(
   { editor, node }: { editor: LexicalEditor; node: LinkNode | null },
@@ -291,7 +292,7 @@ function LinkDialog(
         {node && (
           <Button
             onClick={handleDelete}
-            startIcon={<Unlink size={18} />}
+            startIcon={<Unlink size={ICON_SIZE.dense} />}
             color="error"
             sx={{ mr: "auto" }}
           >

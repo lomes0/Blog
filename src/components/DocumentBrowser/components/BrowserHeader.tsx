@@ -3,6 +3,7 @@ import React from "react";
 import { Box, Button, Tooltip } from "@mui/material";
 import { FilePlus, ListFilter } from "lucide-react";
 import DocumentSortControl from "../../DocumentControls/SortControl";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface BrowserHeaderProps {
   onCreateDocument: () => void;
@@ -68,7 +69,7 @@ const BrowserHeader: React.FC<BrowserHeaderProps> = ({
             }}
           >
             <ListFilter
-              size={18}
+              size={ICON_SIZE.dense}
               style={{
                 marginRight: 4,
                 color: "var(--mui-palette-text-secondary)",

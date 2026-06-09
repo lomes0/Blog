@@ -22,6 +22,7 @@ import { AlignLeft, Computer, Moon, Settings, Sun, X } from "lucide-react";
 import { AI_MODELS } from "@/lib/ai/models";
 import { useAIModel } from "@/contexts/AIModelContext";
 import { useSidebarFontSize } from "@/components/Layout/SideBar/hooks/useSidebarFontSize";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface SettingsPanelProps {
   open: boolean;
@@ -54,7 +55,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ open, onClose }) => {
         id="settings-dialog-title"
         sx={{ display: "flex", alignItems: "center", gap: 1, pb: 1 }}
       >
-        <Settings size={18} />
+        <Settings size={ICON_SIZE.dense} />
         Settings
         <IconButton
           size="small"
@@ -62,7 +63,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ open, onClose }) => {
           aria-label="Close settings"
           sx={{ ml: "auto" }}
         >
-          <X size={18} />
+          <X size={ICON_SIZE.dense} />
         </IconButton>
       </DialogTitle>
 

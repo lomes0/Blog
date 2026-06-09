@@ -82,6 +82,7 @@ import { LayoutContainerNode } from "@/editor/nodes/LayoutNode";
 import { DetailsContainerNode } from "@/editor/nodes/DetailsNode";
 import { AttachmentNode } from "@/editor/nodes/AttachmentNode";
 import { INSERT_DETAILS_COMMAND } from "../DetailsPlugin";
+import { ICON_SIZE } from "@/theme/icons";
 
 const H1 = () => (
   <SvgIcon viewBox="0 96 960 960" fontSize="small">
@@ -496,7 +497,7 @@ export default function ComponentPickerMenuPlugin() {
     if (editor.hasNode(SketchNode)) {
       baseOptions.push(
         new ComponentPickerOption("Sketch", {
-          icon: <Brush size={18} />,
+          icon: <Brush size={ICON_SIZE.dense} />,
           keywords: ["excalidraw", "sketch", "drawing", "diagram"],
           keyboardShortcut: "/sketch",
           onSelect: openSketchDialog,

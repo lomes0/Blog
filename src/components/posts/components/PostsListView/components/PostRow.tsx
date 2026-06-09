@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { formatRelativeDate } from "@/utils/dateFormat";
 import { ListDensity, TagStyle } from "../types";
 import { PostRowContextMenu } from "./PostRowContextMenu";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface PostRowProps {
   post: UserDocument;
@@ -155,7 +156,7 @@ export const PostRow = React.memo(function PostRow({
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          <GripVertical size={14} />
+          <GripVertical size={ICON_SIZE.inline} />
         </Box>
         <Checkbox
           size="small"

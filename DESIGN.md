@@ -403,11 +403,25 @@ import { IconName } from "lucide-react";
 
 ### Size
 
-| Context                                | Prop                    |
-| -------------------------------------- | ----------------------- |
-| Default UI (buttons, menus, dialogs)   | omit — defaults to `24` |
-| Dense UI (toolbars, chips, table rows) | `size={18}`             |
-| Large decorative                       | `size={32}`             |
+lucide bypasses the MUI theme, so icon sizes come from the `ICON_SIZE` token map
+in `src/theme/icons.ts` — the single source of truth. Pass a token, never a raw
+number:
+
+```tsx
+import { ICON_SIZE } from "@/theme/icons";
+<Save size={ICON_SIZE.inline} />;
+```
+
+| Token              | px | Context                                      |
+| ------------------ | -- | -------------------------------------------- |
+| `ICON_SIZE.inline` | 14 | Inline with dense text, button start/end icons |
+| `ICON_SIZE.dense`  | 18 | Dense UI: toolbars, chips, table rows        |
+| `ICON_SIZE.default`| 24 | Default UI: buttons, menus, dialogs          |
+| `ICON_SIZE.large`  | 32 | Large decorative                             |
+| `ICON_SIZE.display`| 64 | Empty-state / hero glyphs                    |
+
+Do **not** apply these to MUI `CircularProgress`/`Skeleton` `size=` — that's an
+element diameter, not an icon glyph, and stays a raw number.
 
 ### Color
 

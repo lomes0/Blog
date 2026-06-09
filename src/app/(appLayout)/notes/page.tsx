@@ -13,6 +13,7 @@ import { Box, Divider, Popover, Tooltip } from "@mui/material";
 import { SquarePen, StickyNote } from "lucide-react";
 import { useRef, useState } from "react";
 import { NotesClipboardProvider } from "@/contexts/NotesClipboardContext";
+import { ICON_SIZE } from "@/theme/icons";
 
 export default function NotesPage() {
   const {
@@ -93,7 +94,7 @@ export default function NotesPage() {
                 transition: "all 0.15s ease",
               }}
             >
-              <SquarePen size={14} />
+              <SquarePen size={ICON_SIZE.inline} />
               Add note
             </Box>
           </Tooltip>

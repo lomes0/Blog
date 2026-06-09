@@ -28,6 +28,7 @@ import {
   NOTE_SWATCH_COLORS,
 } from "../NotesCanvas/noteColors";
 import { Divider, Popover, Tooltip } from "@mui/material";
+import { ICON_SIZE } from "@/theme/icons";
 
 type ViewType = "notes" | "kanban" | "readme" | "posts" | null;
 
@@ -120,7 +121,7 @@ const Home: React.FC<{
                     }}
                   >
                     <StickyNote
-                      size={18}
+                      size={ICON_SIZE.dense}
                       style={{
                         color: "var(--mui-palette-text-secondary)",
                         flexShrink: 0,
@@ -164,7 +165,7 @@ const Home: React.FC<{
                           transition: "all 0.15s ease",
                         }}
                       >
-                        <SquarePen size={14} />
+                        <SquarePen size={ICON_SIZE.inline} />
                         Add note
                       </Box>
                     </Tooltip>

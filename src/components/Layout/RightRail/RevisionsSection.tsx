@@ -8,6 +8,7 @@ import type { RootState } from "@/store";
 import { DateDisplay } from "@/components/shared/DateDisplay";
 import type { DocumentRevision, EditorDocumentRevision } from "@/types";
 import RailSection from "./RailSection";
+import { ICON_SIZE } from "@/theme/icons";
 
 const COLLAPSE_AT = 3;
 
@@ -89,7 +90,7 @@ export default function RevisionsSection({
     <RailSection
       title="Revisions"
       count={revisions.length || undefined}
-      icon={<History size={18} />}
+      icon={<History size={ICON_SIZE.dense} />}
       iconLabel="Revisions"
       defaultOpen={true}
     >

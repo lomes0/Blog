@@ -27,6 +27,7 @@ import "prismjs/components/prism-json";
 import "prismjs/components/prism-yaml";
 import "prismjs/components/prism-markdown";
 import "prismjs/components/prism-sql";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface AttachmentPreviewProps {
   url: string;
@@ -304,7 +305,7 @@ export default function AttachmentPreview({
             onClick={onOpenInSidebar}
             title="Open in sidebar"
           >
-            <ExternalLink size={18} />
+            <ExternalLink size={ICON_SIZE.dense} />
           </IconButton>
         )}
       </Box>
@@ -340,7 +341,7 @@ export default function AttachmentPreview({
               sx={{ mb: 1 }}
               action={
                 <IconButton size="small" onClick={handleRefresh}>
-                  <RefreshCw size={18} />
+                  <RefreshCw size={ICON_SIZE.dense} />
                 </IconButton>
               }
             >

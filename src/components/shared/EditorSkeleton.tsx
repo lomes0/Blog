@@ -37,6 +37,7 @@ import {
   useScrollTrigger,
 } from "@mui/material";
 import { PropsWithChildren, useEffect } from "react";
+import { ICON_SIZE } from "@/theme/icons";
 
 const Highlight = () => (
   <SvgIcon viewBox="0 -960 960 960" fontSize="small">
@@ -108,10 +109,10 @@ export const EditorSkeleton: React.FC<PropsWithChildren> = ({ children }) => {
               }}
             >
               <IconButton aria-label="Undo" disabled>
-                <Undo size={18} />
+                <Undo size={ICON_SIZE.dense} />
               </IconButton>
               <IconButton aria-label="Redo" disabled>
-                <Redo size={18} />
+                <Redo size={ICON_SIZE.dense} />
               </IconButton>
             </Box>
             <Box
@@ -153,7 +154,7 @@ export const EditorSkeleton: React.FC<PropsWithChildren> = ({ children }) => {
               >
                 <MenuItem value="paragraph">
                   <ListItemIcon>
-                    <AlignLeft size={18} />
+                    <AlignLeft size={ICON_SIZE.dense} />
                   </ListItemIcon>
                   <ListItemText>Normal</ListItemText>
                 </MenuItem>
@@ -232,7 +233,7 @@ export const EditorSkeleton: React.FC<PropsWithChildren> = ({ children }) => {
                     }}
                     aria-label="increase font size"
                   >
-                    <AArrowDown size={18} />
+                    <AArrowDown size={ICON_SIZE.dense} />
                   </IconButton>
                   <TextField
                     hiddenLabel
@@ -282,7 +283,7 @@ export const EditorSkeleton: React.FC<PropsWithChildren> = ({ children }) => {
                     }}
                     aria-label="decrease font size"
                   >
-                    <AArrowUp size={18} />
+                    <AArrowUp size={ICON_SIZE.dense} />
                   </IconButton>
                 </Box>
               </Box>
@@ -293,13 +294,13 @@ export const EditorSkeleton: React.FC<PropsWithChildren> = ({ children }) => {
                 variant="outlined"
                 startIcon={
                   <Sparkles
-                    size={18}
+                    size={ICON_SIZE.dense}
                     style={{ color: "var(--mui-palette-action-active)" }}
                   />
                 }
                 endIcon={
                   <ChevronDown
-                    size={18}
+                    size={ICON_SIZE.dense}
                     style={{ color: "var(--mui-palette-action-active)" }}
                   />
                 }
@@ -333,34 +334,34 @@ export const EditorSkeleton: React.FC<PropsWithChildren> = ({ children }) => {
                 sx={{ display: { xs: "none", lg: "flex" } }}
               >
                 <ToggleButton value="bold">
-                  <Bold size={18} />
+                  <Bold size={ICON_SIZE.dense} />
                 </ToggleButton>
                 <ToggleButton value="italic">
-                  <Italic size={18} />
+                  <Italic size={ICON_SIZE.dense} />
                 </ToggleButton>
                 <ToggleButton value="underline">
-                  <Underline size={18} />
+                  <Underline size={ICON_SIZE.dense} />
                 </ToggleButton>
                 <ToggleButton value="highlight">
                   <Highlight />
                 </ToggleButton>
                 <ToggleButton value="code">
-                  <Code size={18} />
+                  <Code size={ICON_SIZE.dense} />
                 </ToggleButton>
                 <ToggleButton value="strikethrough">
-                  <Strikethrough size={18} />
+                  <Strikethrough size={ICON_SIZE.dense} />
                 </ToggleButton>
                 <ToggleButton value="subscript">
-                  <Subscript size={18} />
+                  <Subscript size={ICON_SIZE.dense} />
                 </ToggleButton>
                 <ToggleButton value="superscript">
-                  <Superscript size={18} />
+                  <Superscript size={ICON_SIZE.dense} />
                 </ToggleButton>
                 <ToggleButton value="link">
-                  <Link size={18} />
+                  <Link size={ICON_SIZE.dense} />
                 </ToggleButton>
                 <ToggleButton value="color">
-                  <PaintBucket size={18} />
+                  <PaintBucket size={ICON_SIZE.dense} />
                 </ToggleButton>
               </ToggleButtonGroup>
             </Box>
@@ -372,10 +373,10 @@ export const EditorSkeleton: React.FC<PropsWithChildren> = ({ children }) => {
               }}
             >
               <IconButton aria-label="Insert">
-                <Plus size={18} />
+                <Plus size={ICON_SIZE.dense} />
               </IconButton>
               <IconButton aria-label="Align Text">
-                <AlignLeft size={18} />
+                <AlignLeft size={ICON_SIZE.dense} />
               </IconButton>
             </Box>
           </Container>

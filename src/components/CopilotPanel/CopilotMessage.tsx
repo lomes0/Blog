@@ -16,6 +16,7 @@ import { applyActions } from "@/editor/utils/copilotToolExecutors";
 import type { CopilotAction } from "@/types";
 import ActionPreview from "./ActionPreview";
 import MarkdownText from "./MarkdownText";
+import { ICON_SIZE } from "@/theme/icons";
 
 type AddToolOutput = (
   args: { tool: string; toolCallId: string; output: unknown },
@@ -154,7 +155,7 @@ const CopilotMessage: React.FC<CopilotMessageProps> = (
               <Button
                 size="small"
                 variant="contained"
-                startIcon={<Check size={14} />}
+                startIcon={<Check size={ICON_SIZE.inline} />}
                 onClick={handleAccept}
                 sx={{ py: 0.25 }}
               >

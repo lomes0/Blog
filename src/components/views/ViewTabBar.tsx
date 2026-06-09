@@ -2,6 +2,7 @@
 import { Box, Typography } from "@mui/material";
 import { FileText } from "lucide-react";
 import type { TabMeta } from "@/components/EditDocument/EditorTabBar";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface ViewTabBarProps {
   tabs: TabMeta[];
@@ -60,7 +61,7 @@ const ViewTabBar: React.FC<ViewTabBarProps> = (
             }}
           >
             <FileText
-              size={14}
+              size={ICON_SIZE.inline}
               style={{
                 color: "var(--mui-palette-text-secondary)",
                 flexShrink: 0,

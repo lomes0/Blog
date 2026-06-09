@@ -2,6 +2,7 @@ import React from "react";
 import { ListItemIcon, ListItemText, Menu, MenuItem } from "@mui/material";
 import { Theme } from "@mui/material/styles";
 import { FilePen, Pencil, Trash2 } from "lucide-react";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface ContextMenuState {
   mouseX: number;
@@ -68,7 +69,7 @@ export const PostContextMenu: React.FC<PostContextMenuProps> = ({
         sx={(theme) => ({ ...menuItemSx, ...borderBottomSx(theme) })}
       >
         <ListItemIcon sx={{ minWidth: "auto !important" }}>
-          <Pencil size={18} />
+          <Pencil size={ICON_SIZE.dense} />
         </ListItemIcon>
         <ListItemText primaryTypographyProps={{ fontSize: "0.875rem" }}>
           Edit
@@ -79,7 +80,7 @@ export const PostContextMenu: React.FC<PostContextMenuProps> = ({
         sx={(theme) => ({ ...menuItemSx, ...borderBottomSx(theme) })}
       >
         <ListItemIcon sx={{ minWidth: "auto !important" }}>
-          <FilePen size={18} />
+          <FilePen size={ICON_SIZE.dense} />
         </ListItemIcon>
         <ListItemText primaryTypographyProps={{ fontSize: "0.875rem" }}>
           Rename
@@ -90,7 +91,7 @@ export const PostContextMenu: React.FC<PostContextMenuProps> = ({
         sx={menuItemSx}
       >
         <ListItemIcon sx={{ minWidth: "auto !important" }}>
-          <Trash2 size={18} />
+          <Trash2 size={ICON_SIZE.dense} />
         </ListItemIcon>
         <ListItemText primaryTypographyProps={{ fontSize: "0.875rem" }}>
           Delete

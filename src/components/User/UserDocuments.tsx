@@ -6,6 +6,7 @@ import Grid from "@mui/material/Grid2";
 import { Box, Pagination, Typography } from "@mui/material";
 import { FileSearch } from "lucide-react";
 import DocumentSortControl from "../DocumentControls/SortControl";
+import { ICON_SIZE } from "@/theme/icons";
 
 const UserDocuments: React.FC<{ documents?: UserDocument[]; pages?: number }> =
   ({ documents, pages = 0 }) => {
@@ -121,7 +122,7 @@ const UserDocuments: React.FC<{ documents?: UserDocument[]; pages?: number }> =
               gap: 2,
             }}
           >
-            <FileSearch size={64} />
+            <FileSearch size={ICON_SIZE.display} />
             <Typography variant="overline" component="p">
               No documents found
             </Typography>

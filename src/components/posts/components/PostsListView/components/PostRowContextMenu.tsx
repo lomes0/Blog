@@ -17,6 +17,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Series } from "@/types";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface PostRowContextMenuProps {
   /** Pass "series" to show series-specific items (no move-to-series). */
@@ -105,7 +106,7 @@ export function PostRowContextMenu({
               <FolderOpen size={15} />
             </ListItemIcon>
             <ListItemText>Move to series</ListItemText>
-            <ChevronRight size={14} style={{ marginLeft: 8, flexShrink: 0 }} />
+            <ChevronRight size={ICON_SIZE.inline} style={{ marginLeft: 8, flexShrink: 0 }} />
           </MenuItem>
         )}
 

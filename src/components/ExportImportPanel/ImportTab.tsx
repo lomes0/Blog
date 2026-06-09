@@ -14,6 +14,7 @@ import { useExportImportActions } from "@/hooks/useExportImportActions";
 import { useAsyncOp } from "@/hooks/useAsyncOp";
 import type { ImportSummary } from "@/lib/export/manifest";
 import { ImportSummaryDisplay } from "./ImportSummaryDisplay";
+import { ICON_SIZE } from "@/theme/icons";
 
 type ImportTarget = "cloud" | "local";
 
@@ -53,8 +54,8 @@ export const ImportTab: React.FC = () => {
             key={t}
             label={t === "cloud" ? "Cloud (database)" : "Local (this browser)"}
             icon={t === "cloud"
-              ? <CloudUpload size={18} />
-              : <Download size={18} />}
+              ? <CloudUpload size={ICON_SIZE.dense} />
+              : <Download size={ICON_SIZE.dense} />}
             variant={target === t ? "filled" : "outlined"}
             color={target === t ? "primary" : "default"}
             onClick={() => setTarget(t)}

@@ -33,6 +33,7 @@ import { downloadFile } from "@/utils/downloadFile";
 import { formatSize } from "@/utils/formatSize";
 import AttachmentPreview from "./AttachmentPreview";
 import { actions, useDispatch } from "@/store";
+import { ICON_SIZE } from "@/theme/icons";
 
 function getFileIcon(mimetype: string) {
   if (mimetype.startsWith("application/pdf")) return <FileText />;
@@ -358,7 +359,7 @@ export default function AttachmentComponent({
               title={copied ? "Copied!" : "Copy to clipboard"}
               sx={{ p: 0.5 }}
             >
-              <Copy size={18} />
+              <Copy size={ICON_SIZE.dense} />
             </IconButton>
           )}
           <IconButton
@@ -370,7 +371,7 @@ export default function AttachmentComponent({
           >
             {isDownloading
               ? <CircularProgress size={16} />
-              : <Download size={18} />}
+              : <Download size={ICON_SIZE.dense} />}
           </IconButton>
           <IconButton
             size="small"
@@ -381,7 +382,7 @@ export default function AttachmentComponent({
             title="Open in sidebar"
             sx={{ p: 0.5 }}
           >
-            <ExternalLink size={18} />
+            <ExternalLink size={ICON_SIZE.dense} />
           </IconButton>
           {!editing && isTextFile(mimetype, filename) && (
             <IconButton
@@ -397,7 +398,7 @@ export default function AttachmentComponent({
                 "&:hover": { bgcolor: "action.hover" },
               }}
             >
-              <Pencil size={18} />
+              <Pencil size={ICON_SIZE.dense} />
             </IconButton>
           )}
           {isSelected && (
@@ -411,7 +412,7 @@ export default function AttachmentComponent({
               title="Delete attachment"
               sx={{ p: 0.5 }}
             >
-              <Trash2 size={18} />
+              <Trash2 size={ICON_SIZE.dense} />
             </IconButton>
           )}
           <IconButton
@@ -420,7 +421,7 @@ export default function AttachmentComponent({
             title={expanded ? "Collapse preview" : "Expand preview"}
             sx={{ p: 0.5 }}
           >
-            {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            {expanded ? <ChevronUp size={ICON_SIZE.dense} /> : <ChevronDown size={ICON_SIZE.dense} />}
           </IconButton>
         </Box>
       </Box>

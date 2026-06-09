@@ -1,6 +1,7 @@
 "use client";
 import { Box, CircularProgress, IconButton } from "@mui/material";
 import { Copy, Download, Pencil, RefreshCw } from "lucide-react";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface AttachmentToolbarProps {
   canEdit: boolean;
@@ -43,7 +44,7 @@ export default function AttachmentToolbar({
         disabled={!hasContent || isEditing}
         title={copied ? "Copied!" : "Copy to clipboard"}
       >
-        <Copy size={18} />
+        <Copy size={ICON_SIZE.dense} />
       </IconButton>
       <IconButton
         size="small"
@@ -53,7 +54,7 @@ export default function AttachmentToolbar({
       >
         {isDownloading
           ? <CircularProgress size={18} />
-          : <Download size={18} />}
+          : <Download size={ICON_SIZE.dense} />}
       </IconButton>
       <IconButton
         size="small"
@@ -61,7 +62,7 @@ export default function AttachmentToolbar({
         disabled={isLoading || isEditing}
         title="Refresh content"
       >
-        <RefreshCw size={18} />
+        <RefreshCw size={ICON_SIZE.dense} />
       </IconButton>
       {canEdit && (
         <IconButton
@@ -71,7 +72,7 @@ export default function AttachmentToolbar({
           title="Edit file"
           color={isEditing ? "primary" : "default"}
         >
-          <Pencil size={18} />
+          <Pencil size={ICON_SIZE.dense} />
         </IconButton>
       )}
     </Box>

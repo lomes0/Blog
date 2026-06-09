@@ -24,6 +24,7 @@ import { Document } from "@/types";
 import { DateDisplay } from "@/components/shared/DateDisplay";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { useAvailablePostsSelector } from "./hooks/useAvailablePostsSelector";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface AddPostsDialogProps {
   open: boolean;
@@ -259,7 +260,7 @@ const AddPostsDialog: React.FC<AddPostsDialogProps> = ({
           disabled={submitting}
           startIcon={submitting
             ? <CircularProgress size={16} />
-            : <Plus size={18} />}
+            : <Plus size={ICON_SIZE.dense} />}
         >
           {submitting ? "Saving..." : "Save Changes"}
         </Button>

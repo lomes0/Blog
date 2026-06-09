@@ -25,6 +25,7 @@ import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import { actions, useDispatch } from "@/store";
 import { useErrorAnnounce } from "@/hooks/useErrorAnnounce";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface ViewAttachmentProps {
   url: string;
@@ -174,20 +175,20 @@ const ViewAttachment: React.FC<ViewAttachmentProps> = ({
         </span>
         <Tooltip title="Download">
           <IconButton size="small" onClick={handleDownload}>
-            <Download size={18} />
+            <Download size={ICON_SIZE.dense} />
           </IconButton>
         </Tooltip>
         {canPreview && (
           <Tooltip title="Open in sidebar">
             <IconButton size="small" onClick={handleOpenInSidebar}>
-              <ExternalLink size={18} />
+              <ExternalLink size={ICON_SIZE.dense} />
             </IconButton>
           </Tooltip>
         )}
         {canPreview && (
           <Tooltip title={expanded ? "Collapse" : "Expand"}>
             <IconButton size="small">
-              {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              {expanded ? <ChevronUp size={ICON_SIZE.dense} /> : <ChevronDown size={ICON_SIZE.dense} />}
             </IconButton>
           </Tooltip>
         )}

@@ -31,6 +31,7 @@ import {
   buildSeriesMap,
   groupPostsBySeriesWithEmpty,
 } from "@/utils/posts/seriesGrouping";
+import { ICON_SIZE } from "@/theme/icons";
 
 const NAV_ITEM_MIN_HEIGHT = 36;
 const USER_ITEM_MIN_HEIGHT = 40;
@@ -250,7 +251,7 @@ const SideBar: React.FC = () => {
               aria-label={isFocus ? "Exit focus mode" : "Enter focus mode"}
               sx={{ color: isFocus ? "primary.main" : "text.secondary" }}
             >
-              {isFocus ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+              {isFocus ? <Minimize2 size={ICON_SIZE.inline} /> : <Maximize2 size={ICON_SIZE.inline} />}
             </IconButton>
           </Tooltip>
         </Box>

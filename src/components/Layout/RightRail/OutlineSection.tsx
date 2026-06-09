@@ -9,6 +9,7 @@ import {
   type OutlineHeading,
 } from "@/utils/editorContent";
 import RailSection from "./RailSection";
+import { ICON_SIZE } from "@/theme/icons";
 
 const WORDS_PER_MIN = 200;
 
@@ -100,7 +101,7 @@ export default function OutlineSection({ activeDocId }: OutlineSectionProps) {
     <RailSection
       title="Outline"
       count={headings.length || undefined}
-      icon={<Table size={18} />}
+      icon={<Table size={ICON_SIZE.dense} />}
       iconLabel="Outline"
       defaultOpen={true}
     >

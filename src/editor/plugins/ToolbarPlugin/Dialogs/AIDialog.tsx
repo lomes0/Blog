@@ -19,6 +19,7 @@ import {
 import { useAIModel } from "@/contexts/AIModelContext";
 import { AlignLeft } from "lucide-react";
 import { AI_MODELS } from "@/lib/ai";
+import { ICON_SIZE } from "@/theme/icons";
 
 function AIDialog({ editor }: { editor: LexicalEditor }) {
   const { llm, setLlm } = useAIModel();
@@ -112,7 +113,7 @@ function AIDialog({ editor }: { editor: LexicalEditor }) {
                   setFormData({ provider: model.provider, model: model.id })}
               >
                 <ListItemIcon>
-                  <AlignLeft size={18} />
+                  <AlignLeft size={ICON_SIZE.dense} />
                 </ListItemIcon>
                 <ListItemText>{model.name}</ListItemText>
                 {model.metadata?.fast && (

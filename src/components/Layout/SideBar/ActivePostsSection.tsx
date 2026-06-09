@@ -8,6 +8,7 @@ import { PostItem } from "./PostItem";
 import { SeriesGroup } from "./SeriesGroup";
 import { styles } from "../styles";
 import { useExpandedState } from "@/hooks/useExpandedState";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface ActivePostsSectionProps {
   groupedActivePosts: SeriesGroupItem[];
@@ -89,7 +90,7 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
           }}
         >
           <Search
-            size={14}
+            size={ICON_SIZE.inline}
             style={{ color: "var(--mui-palette-text-disabled)", flexShrink: 0 }}
           />
           <Box
@@ -116,7 +117,7 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
               onClick={() => setActivePostsSearch("")}
               sx={{ p: 0.25, opacity: 0.6, "&:hover": { opacity: 1 } }}
             >
-              <X size={14} />
+              <X size={ICON_SIZE.inline} />
             </IconButton>
           )}
         </Box>

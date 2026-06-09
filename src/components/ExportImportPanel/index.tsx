@@ -14,6 +14,7 @@ import { Box, Paper, Tab, Tabs, Typography } from "@mui/material";
 import { Download, FileUp } from "lucide-react";
 import { ExportTab } from "./ExportTab";
 import { ImportTab } from "./ImportTab";
+import { ICON_SIZE } from "@/theme/icons";
 
 function TabPanel({
   children,
@@ -59,14 +60,14 @@ export const ExportImportPanel: React.FC = () => {
         sx={{ borderBottom: 1, borderColor: "divider" }}
       >
         <Tab
-          icon={<Download size={18} />}
+          icon={<Download size={ICON_SIZE.dense} />}
           iconPosition="start"
           label="Export"
           id="export-import-tab-0"
           aria-controls="export-import-tabpanel-0"
         />
         <Tab
-          icon={<FileUp size={18} />}
+          icon={<FileUp size={ICON_SIZE.dense} />}
           iconPosition="start"
           label="Import"
           id="export-import-tab-1"

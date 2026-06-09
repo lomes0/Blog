@@ -4,6 +4,7 @@ import { Avatar, Chip, Skeleton } from "@mui/material";
 import { BookOpen, Pencil, User as UserIcon } from "lucide-react";
 import { DocumentStatus, Series, User } from "@/types";
 import { createCardTheme } from "./theme";
+import { ICON_SIZE } from "@/theme/icons";
 
 /**
  * Simplified post state for blog
@@ -28,7 +29,7 @@ export const createStatusChip = (postState: PostState) => {
         key="draft-chip"
         size="small"
         variant="filled"
-        icon={<Pencil size={14} />}
+        icon={<Pencil size={ICON_SIZE.inline} />}
         label="Draft"
         sx={(theme) => {
           const ct = createCardTheme(theme);
@@ -80,7 +81,7 @@ export const createAuthorChip = (author?: User | null, showAuthor = true) => {
             boxShadow: "0 1px 2px rgba(0,0,0,0.08)",
           }}
         >
-          {!author.image && <UserIcon size={14} />}
+          {!author.image && <UserIcon size={ICON_SIZE.inline} />}
         </Avatar>
       }
       label={author.name ?? "User"}
@@ -201,7 +202,7 @@ export const createSeriesChip = (
       size="small"
       variant="filled"
       clickable
-      icon={<BookOpen size={14} />}
+      icon={<BookOpen size={ICON_SIZE.inline} />}
       label={label}
       sx={(theme) => {
         const ct = createCardTheme(theme);

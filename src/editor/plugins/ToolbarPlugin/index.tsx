@@ -69,6 +69,7 @@ import FontSelect from "./Menus/FontSelect";
 import CodeTools from "./Tools/CodeTools";
 import NoteTools from "./Tools/NoteTools";
 import { $isCodeNode } from "@/editor/nodes/CodeNode";
+import { ICON_SIZE } from "@/theme/icons";
 
 const blockTypeToBlockName = {
   bullet: "Bulleted List",
@@ -335,7 +336,7 @@ function ToolbarPlugin({ isActive = true, onReset }: ToolbarPluginProps) {
                 disabled={!isDirty}
                 onClick={onReset}
               >
-                <RotateCcw size={18} style={{ transform: "translateY(1px)" }} />
+                <RotateCcw size={ICON_SIZE.dense} style={{ transform: "translateY(1px)" }} />
               </IconButton>
             </span>
           </Tooltip>
@@ -346,7 +347,7 @@ function ToolbarPlugin({ isActive = true, onReset }: ToolbarPluginProps) {
           disabled={!canUndo}
           onClick={() => activeEditor.dispatchCommand(UNDO_COMMAND, undefined)}
         >
-          <Undo size={18} />
+          <Undo size={ICON_SIZE.dense} />
         </IconButton>
         <IconButton
           title={IS_APPLE ? "Redo (⌘Y)" : "Redo (Ctrl+Y)"}
@@ -354,7 +355,7 @@ function ToolbarPlugin({ isActive = true, onReset }: ToolbarPluginProps) {
           disabled={!canRedo}
           onClick={() => activeEditor.dispatchCommand(REDO_COMMAND, undefined)}
         >
-          <Redo size={18} />
+          <Redo size={ICON_SIZE.dense} />
         </IconButton>
       </Box>
 
@@ -426,7 +427,7 @@ function ToolbarPlugin({ isActive = true, onReset }: ToolbarPluginProps) {
                     link: { open: true },
                   })}
               >
-                <Link size={18} />
+                <Link size={ICON_SIZE.dense} />
               </IconButton>
             </Tooltip>
           </Box>

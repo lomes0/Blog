@@ -15,9 +15,10 @@ import {
   ListItemText,
 } from "@mui/material";
 import { SxProps, Theme } from "@mui/material/styles";
+import { ICON_SIZE } from "@/theme/icons";
 
-const icon = <Square size={18} />;
-const checkedIcon = <SquareCheck size={18} />;
+const icon = <Square size={ICON_SIZE.dense} />;
+const checkedIcon = <SquareCheck size={ICON_SIZE.dense} />;
 
 export default function UsersAutocomplete({
   label,

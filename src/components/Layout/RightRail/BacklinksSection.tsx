@@ -4,6 +4,7 @@ import { Box, Link, Typography } from "@mui/material";
 import { FileText, Link as LinkIcon } from "lucide-react";
 import RouterLink from "next/link";
 import RailSection from "./RailSection";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface BacklinkDoc {
   id: string;
@@ -41,7 +42,7 @@ export default function BacklinksSection({ rootId }: BacklinksSectionProps) {
     <RailSection
       title="Backlinks"
       count={backlinks.length || undefined}
-      icon={<LinkIcon size={18} />}
+      icon={<LinkIcon size={ICON_SIZE.dense} />}
       iconLabel="Backlinks"
       defaultOpen={false}
     >
@@ -83,7 +84,7 @@ export default function BacklinksSection({ rootId }: BacklinksSectionProps) {
                   },
                 }}
               >
-                <FileText size={14} style={{ flexShrink: 0 }} />
+                <FileText size={ICON_SIZE.inline} style={{ flexShrink: 0 }} />
                 <Box
                   component="span"
                   sx={{

@@ -20,6 +20,7 @@ import { SET_DIALOGS_COMMAND } from "./commands";
 import { Announcement } from "@/types";
 import { ANNOUNCE_COMMAND } from "@/editor/commands";
 import { isMimeType } from "@lexical/utils";
+import { ICON_SIZE } from "@/theme/icons";
 
 const FASTAPI_URL = process.env.NEXT_PUBLIC_FASTAPI_URL;
 const ACCEPTABLE_IMAGE_TYPES = [
@@ -152,7 +153,7 @@ const OCRDialog: React.FC<{ editor: LexicalEditor }> = ({ editor }) => {
         <Button
           variant="outlined"
           sx={{ my: 1, mr: 1 }}
-          startIcon={<FileUp size={18} />}
+          startIcon={<FileUp size={ICON_SIZE.dense} />}
           component="label"
           disabled={loading}
         >
@@ -169,7 +170,7 @@ const OCRDialog: React.FC<{ editor: LexicalEditor }> = ({ editor }) => {
         <Button
           variant="outlined"
           sx={{ my: 1 }}
-          startIcon={<ClipboardPaste size={18} />}
+          startIcon={<ClipboardPaste size={ICON_SIZE.dense} />}
           onClick={readFromClipboard}
           disabled={loading}
         >

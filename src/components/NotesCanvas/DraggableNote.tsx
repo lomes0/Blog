@@ -27,6 +27,7 @@ import {
   NOTE_SWATCH_COLORS,
   NoteColorKey,
 } from "./noteColors";
+import { ICON_SIZE } from "@/theme/icons";
 
 const MIN_NOTE_WIDTH = 160; // px
 const MIN_NOTE_HEIGHT = 120; // px
@@ -264,7 +265,7 @@ export default function DraggableNote({
               "&:hover": { opacity: 1 },
             }}
           >
-            <Palette size={14} />
+            <Palette size={ICON_SIZE.inline} />
           </IconButton>
           <IconButton
             size="small"
@@ -278,7 +279,7 @@ export default function DraggableNote({
               "&:hover": { opacity: 1 },
             }}
           >
-            <MoreHorizontal size={14} />
+            <MoreHorizontal size={ICON_SIZE.inline} />
           </IconButton>
         </Box>
 

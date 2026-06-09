@@ -8,6 +8,7 @@ import {
   Droppable,
   type DropResult,
 } from "@hello-pangea/dnd";
+import { ICON_SIZE } from "@/theme/icons";
 
 export interface TabMeta {
   id: string;
@@ -116,7 +117,7 @@ const TabItem: React.FC<TabItemProps> = ({
         >
           {/* Tab icon */}
           <FileText
-            size={14}
+            size={ICON_SIZE.inline}
             style={{
               color: "var(--mui-palette-text-secondary)",
               flexShrink: 0,
@@ -206,7 +207,7 @@ const TabItem: React.FC<TabItemProps> = ({
                   color: "text.secondary",
                 }}
               >
-                <MoreHorizontal size={14} />
+                <MoreHorizontal size={ICON_SIZE.inline} />
               </IconButton>
             </Tooltip>
           )}
@@ -229,7 +230,7 @@ const TabItem: React.FC<TabItemProps> = ({
                   "&:hover": { color: "error.main" },
                 }}
               >
-                <X size={14} />
+                <X size={ICON_SIZE.inline} />
               </IconButton>
             </Tooltip>
           )}
@@ -331,7 +332,7 @@ const EditorTabBar: React.FC<EditorTabBarProps> = ({
                     borderColor: "divider",
                   }}
                 >
-                  <Plus size={18} />
+                  <Plus size={ICON_SIZE.dense} />
                 </IconButton>
               </Tooltip>
             </Box>

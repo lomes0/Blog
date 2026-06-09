@@ -1,6 +1,7 @@
 import { FileSearch } from "lucide-react";
 import { Box, Typography } from "@mui/material";
 import UserCard from "./UserCard";
+import { ICON_SIZE } from "@/theme/icons";
 
 const UserNotFound: React.FC = () => {
   return (
@@ -15,7 +16,7 @@ const UserNotFound: React.FC = () => {
           gap: 2,
         }}
       >
-        <FileSearch size={64} />
+        <FileSearch size={ICON_SIZE.display} />
         <Typography variant="overline" component="p">
           User not found
         </Typography>

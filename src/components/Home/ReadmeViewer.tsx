@@ -9,6 +9,7 @@ import { Document, UserDocument } from "@/types";
 import { useErrorAnnounce } from "@/hooks/useErrorAnnounce";
 import { apiClient } from "@/api";
 import { isReadmeDocument, README_DOCUMENT_NAME } from "@/constants";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface ReadmeViewerProps {
   documents: UserDocument[];
@@ -180,7 +181,7 @@ export default function ReadmeViewer({ documents }: ReadmeViewerProps) {
         }}
       >
         <FileText
-          size={64}
+          size={ICON_SIZE.display}
           style={{ color: "var(--mui-palette-text-disabled)" }}
         />
         <Typography variant="h6" color="text.secondary">

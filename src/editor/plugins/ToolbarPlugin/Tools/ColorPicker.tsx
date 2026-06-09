@@ -8,6 +8,7 @@ import {
   ToggleButton,
 } from "@mui/material";
 import { Circle, Eraser, Palette, X } from "lucide-react";
+import { ICON_SIZE } from "@/theme/icons";
 
 export const textPalette = [
   "#d7170b",
@@ -95,7 +96,7 @@ export default function ColorPicker(
           className="MuiToggleButtonGroup-grouped MuiToggleButtonGroup-groupedHorizontal"
           selected={open}
         >
-          <Palette size={18} />
+          <Palette size={ICON_SIZE.dense} />
         </ToggleButton>
       )}
       <Menu

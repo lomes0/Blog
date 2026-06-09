@@ -14,6 +14,7 @@ import type { SeriesGroupItem } from "@/utils/posts/seriesGrouping";
 import type { PostItemActions } from "./hooks/useSidebarActions";
 import { PostItem } from "./PostItem";
 import { SafeNavigationLink } from "./SafeNavigationLink";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface SeriesGroupProps {
   group: SeriesGroupItem & { series: Series };
@@ -73,8 +74,8 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
               }}
             >
               {isExpanded
-                ? <ChevronDown size={14} strokeWidth={2} />
-                : <ChevronRight size={14} strokeWidth={2} />}
+                ? <ChevronDown size={ICON_SIZE.inline} strokeWidth={2} />
+                : <ChevronRight size={ICON_SIZE.inline} strokeWidth={2} />}
             </ListItemIcon>
             {sidebarOpen && (
               <ListItemText

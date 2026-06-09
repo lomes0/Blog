@@ -31,6 +31,7 @@ import { useLayoutMode } from "@/contexts/LayoutModeContext";
 import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
 import { useTopBarActions } from "@/contexts/TopBarActionsContext";
 import { useTopBarTabs } from "@/contexts/TopBarTabsContext";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface BreadcrumbItem {
   label: string;
@@ -299,7 +300,7 @@ const EditorTopBar: React.FC = () => {
             }}
           >
             <FileText
-              size={14}
+              size={ICON_SIZE.inline}
               style={{
                 color: "var(--mui-palette-text-secondary)",
                 flexShrink: 0,

@@ -3,6 +3,7 @@ import { Box, Button } from "@mui/material";
 import { ClipboardPaste } from "lucide-react";
 import { useNotesClipboard } from "@/contexts/NotesClipboardContext";
 import type { Note, NotesCanvas as CanvasData } from "@/types/notes";
+import { ICON_SIZE } from "@/theme/icons";
 
 const VIRTUAL_CANVAS_WIDTH = 1920;
 const VIRTUAL_CANVAS_HEIGHT = 1080;
@@ -59,7 +60,7 @@ export default function PasteButton({ addNote, canvas }: PasteButtonProps) {
         size="small"
         disableElevation
         onClick={handlePaste}
-        startIcon={<ClipboardPaste size={14} />}
+        startIcon={<ClipboardPaste size={ICON_SIZE.inline} />}
         sx={{ fontSize: "0.75rem", py: 0.5, px: 1.5, textTransform: "none" }}
       >
         Paste

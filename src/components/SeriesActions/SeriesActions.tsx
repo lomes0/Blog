@@ -9,6 +9,7 @@ import {
 import { MoreVertical, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useMenuState } from "@/hooks/useMenuState";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface SeriesActionsProps {
   seriesId: string;
@@ -58,13 +59,13 @@ export default function SeriesActions(
           onClick={handleClose}
         >
           <ListItemIcon>
-            <Pencil size={18} />
+            <Pencil size={ICON_SIZE.dense} />
           </ListItemIcon>
           <ListItemText>Edit</ListItemText>
         </MenuItem>
         <MenuItem onClick={handleDelete}>
           <ListItemIcon>
-            <Trash2 size={18} />
+            <Trash2 size={ICON_SIZE.dense} />
           </ListItemIcon>
           <ListItemText>Delete</ListItemText>
         </MenuItem>

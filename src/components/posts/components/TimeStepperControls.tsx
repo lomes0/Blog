@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, IconButton, Tooltip, Typography } from "@mui/material";
 import { Minus, Plus, Undo } from "lucide-react";
+import { ICON_SIZE } from "@/theme/icons";
 
 const TimeAdjustColumn: React.FC<{
   label: string;
@@ -48,7 +49,7 @@ const TimeAdjustColumn: React.FC<{
             },
           }}
         >
-          <Plus size={14} />
+          <Plus size={ICON_SIZE.inline} />
         </IconButton>
       </Tooltip>
       <Tooltip title={tooltipMinus} arrow placement="left">
@@ -66,7 +67,7 @@ const TimeAdjustColumn: React.FC<{
             "&:hover": { bgcolor: "error.light", color: "error.contrastText" },
           }}
         >
-          <Minus size={14} />
+          <Minus size={ICON_SIZE.inline} />
         </IconButton>
       </Tooltip>
     </Box>

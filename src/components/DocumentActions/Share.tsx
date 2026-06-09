@@ -29,6 +29,7 @@ import {
   SharePdfPanel,
   ShareViewPanel,
 } from "./ShareTabPanels";
+import { ICON_SIZE } from "@/theme/icons";
 
 const ShareDocument: React.FC<{
   userDocument: UserDocument;
@@ -131,7 +132,7 @@ const ShareDocument: React.FC<{
                   gap: 2,
                 }}
               >
-                <CloudOff size={64} />
+                <CloudOff size={ICON_SIZE.display} />
                 <Typography variant="overline" component="p">
                   Please save document to the cloud first
                 </Typography>

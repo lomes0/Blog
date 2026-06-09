@@ -45,6 +45,7 @@ import { LayoutContainerNode } from "@/editor/nodes/LayoutNode";
 import { DetailsContainerNode } from "@/editor/nodes/DetailsNode";
 import { INSERT_DETAILS_COMMAND } from "@/editor/plugins/DetailsPlugin";
 import { AttachmentNode } from "@/editor/nodes/AttachmentNode";
+import { ICON_SIZE } from "@/theme/icons";
 
 const Graph = () => (
   <SvgIcon viewBox="0 0 512 512" fontSize="small">
@@ -85,7 +86,7 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
         aria-label="Insert"
         onClick={handleClick}
         startIcon={<Plus size={16} />}
-        endIcon={<ChevronDown size={14} />}
+        endIcon={<ChevronDown size={ICON_SIZE.inline} />}
         sx={{
           color: "text.secondary",
           textTransform: "none",
@@ -129,7 +130,7 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
             }}
           >
             <ListItemIcon>
-              <Minus size={18} />
+              <Minus size={ICON_SIZE.dense} />
             </ListItemIcon>
             <ListItemText>Divider</ListItemText>
             <Typography variant="body2" color="text.secondary">
@@ -148,7 +149,7 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
             }}
           >
             <ListItemIcon>
-              <Scissors size={18} />
+              <Scissors size={ICON_SIZE.dense} />
             </ListItemIcon>
             <ListItemText>Page</ListItemText>
             <Typography variant="body2" color="text.secondary">
@@ -166,7 +167,7 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
             }}
           >
             <ListItemIcon>
-              <Sigma size={18} />
+              <Sigma size={ICON_SIZE.dense} />
             </ListItemIcon>
             <ListItemText>Math</ListItemText>
             <Typography variant="body2" color="text.secondary">
@@ -198,7 +199,7 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
             }}
           >
             <ListItemIcon>
-              <Brush size={18} />
+              <Brush size={ICON_SIZE.dense} />
             </ListItemIcon>
             <ListItemText>Sketch</ListItemText>
             <Typography
@@ -218,7 +219,7 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
             }}
           >
             <ListItemIcon>
-              <Image size={18} />
+              <Image size={ICON_SIZE.dense} />
             </ListItemIcon>
             <ListItemText>Image</ListItemText>
             <Typography variant="body2" color="text.secondary">
@@ -234,7 +235,7 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
             }}
           >
             <ListItemIcon>
-              <Paperclip size={18} />
+              <Paperclip size={ICON_SIZE.dense} />
             </ListItemIcon>
             <ListItemText>Attachment</ListItemText>
             <Typography variant="body2" color="text.secondary">
@@ -250,7 +251,7 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
             }}
           >
             <ListItemIcon>
-              <Table size={18} />
+              <Table size={ICON_SIZE.dense} />
             </ListItemIcon>
             <ListItemText>Table</ListItemText>
             <Typography variant="body2" color="text.secondary">
@@ -266,7 +267,7 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
             }}
           >
             <ListItemIcon>
-              <Columns2 size={18} />
+              <Columns2 size={ICON_SIZE.dense} />
             </ListItemIcon>
             <ListItemText>Columns</ListItemText>
             <Typography variant="body2" color="text.secondary">
@@ -285,7 +286,7 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
             }}
           >
             <ListItemIcon>
-              <StickyNote size={18} />
+              <StickyNote size={ICON_SIZE.dense} />
             </ListItemIcon>
             <ListItemText>Note</ListItemText>
             <Typography variant="body2" color="text.secondary">
@@ -301,7 +302,7 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
             }}
           >
             <ListItemIcon>
-              <Globe size={18} />
+              <Globe size={ICON_SIZE.dense} />
             </ListItemIcon>
             <ListItemText>IFrame</ListItemText>
             <Typography variant="body2" color="text.secondary">
@@ -320,7 +321,7 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
             }}
           >
             <ListItemIcon>
-              <ChevronDown size={18} />
+              <ChevronDown size={ICON_SIZE.dense} />
             </ListItemIcon>
             <ListItemText>Details</ListItemText>
             <Typography variant="body2" color="text.secondary">

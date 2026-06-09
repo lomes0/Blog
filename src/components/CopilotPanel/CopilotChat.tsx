@@ -30,6 +30,7 @@ import type { CopilotAction } from "@/types";
 import CopilotMessage from "./CopilotMessage";
 import QuickActions from "./QuickActions";
 import { loadCurrentThread, saveCurrentThread } from "./copilotStorage";
+import { ICON_SIZE } from "@/theme/icons";
 
 const PROVIDER_COLOR: Record<string, string> = {
   anthropic: "#D97757",
@@ -378,7 +379,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
             color: "warning.main",
           }}
         >
-          <AlertTriangle size={14} style={{ flexShrink: 0 }} />
+          <AlertTriangle size={ICON_SIZE.inline} style={{ flexShrink: 0 }} />
           <Typography variant="caption" color="text.secondary">
             This document is long — Copilot only sees the first part, so edits
             beyond that point may be missed.

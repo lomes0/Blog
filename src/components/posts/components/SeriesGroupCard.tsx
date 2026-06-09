@@ -21,6 +21,7 @@ import { v4 as uuid } from "uuid";
 import { useMenuState } from "@/hooks/useMenuState";
 import DocItem from "./DocItem";
 import { useSeriesGroupState } from "../hooks/useSeriesGroupState";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface SeriesGroupCardProps {
   series: Series;
@@ -317,14 +318,14 @@ function SeriesContextMenu({
     >
       <MenuItem onClick={onEdit}>
         <ListItemIcon>
-          <Pencil size={18} />
+          <Pencil size={ICON_SIZE.dense} />
         </ListItemIcon>
         <ListItemText>Edit</ListItemText>
       </MenuItem>
       <MenuItem onClick={onDelete} sx={{ color: "error.main" }}>
         <ListItemIcon>
           <Trash2
-            size={18}
+            size={ICON_SIZE.dense}
             style={{ color: "var(--mui-palette-error-main)" }}
           />
         </ListItemIcon>

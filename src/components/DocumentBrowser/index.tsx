@@ -17,6 +17,7 @@ import BrowserBreadcrumbs from "./components/BrowserBreadcrumbs";
 import BrowserHeader from "./components/BrowserHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import DocumentBrowserSkeleton from "./components/DocumentBrowserSkeleton";
+import { ICON_SIZE } from "@/theme/icons";
 
 type DocumentBrowserProps = Record<string, never>;
 
@@ -128,7 +129,7 @@ const DocumentBrowser: React.FC<DocumentBrowserProps> = () => {
                   <EmptyState
                     icon={
                       <FilePlus
-                        size={64}
+                        size={ICON_SIZE.display}
                         style={{
                           color: "var(--mui-palette-text-secondary)",
                           opacity: 0.6,

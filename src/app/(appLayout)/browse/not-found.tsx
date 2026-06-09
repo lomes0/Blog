@@ -3,6 +3,7 @@ import React from "react";
 import { Box, Button, Container, Typography } from "@mui/material";
 import { ArrowLeft, Folder } from "lucide-react";
 import Link from "next/link";
+import { ICON_SIZE } from "@/theme/icons";
 
 /**
  * Shown by Next.js when notFound() is called inside any browse/* segment,
@@ -30,7 +31,7 @@ export default function BrowseNotFound() {
         }}
       >
         <Folder
-          size={64}
+          size={ICON_SIZE.display}
           style={{ color: "var(--mui-palette-text-secondary)", opacity: 0.6 }}
         />
         <Typography variant="h6">Post not found</Typography>

@@ -33,6 +33,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useMenuState } from "@/hooks/useMenuState";
 import { getSelectedNode } from "@/editor/utils/getSelectedNode";
 import { $findMatchingParent, mergeRegister } from "@lexical/utils";
+import { ICON_SIZE } from "@/theme/icons";
 
 export default function AlignTextMenu(
   { editor, isRTL }: { editor: LexicalEditor; isRTL: boolean },
@@ -100,10 +101,10 @@ export default function AlignTextMenu(
         aria-label="Align Text"
         onClick={handleClick}
       >
-        {formatType === "left" && <AlignLeft size={18} />}
-        {formatType === "center" && <AlignCenter size={18} />}
-        {formatType === "right" && <AlignRight size={18} />}
-        {formatType === "justify" && <AlignJustify size={18} />}
+        {formatType === "left" && <AlignLeft size={ICON_SIZE.dense} />}
+        {formatType === "center" && <AlignCenter size={ICON_SIZE.dense} />}
+        {formatType === "right" && <AlignRight size={ICON_SIZE.dense} />}
+        {formatType === "justify" && <AlignJustify size={ICON_SIZE.dense} />}
       </IconButton>
       <Menu
         id="align-menu"
@@ -131,7 +132,7 @@ export default function AlignTextMenu(
           }}
         >
           <ListItemIcon>
-            <AlignLeft size={18} />
+            <AlignLeft size={ICON_SIZE.dense} />
           </ListItemIcon>
           <ListItemText>Left Align</ListItemText>
         </MenuItem>
@@ -145,7 +146,7 @@ export default function AlignTextMenu(
           }}
         >
           <ListItemIcon>
-            <AlignCenter size={18} />
+            <AlignCenter size={ICON_SIZE.dense} />
           </ListItemIcon>
           <ListItemText>Center Align</ListItemText>
         </MenuItem>
@@ -156,7 +157,7 @@ export default function AlignTextMenu(
           }}
         >
           <ListItemIcon>
-            <AlignRight size={18} />
+            <AlignRight size={ICON_SIZE.dense} />
           </ListItemIcon>
           <ListItemText>Right Align</ListItemText>
         </MenuItem>
@@ -170,7 +171,7 @@ export default function AlignTextMenu(
           }}
         >
           <ListItemIcon>
-            <AlignJustify size={18} />
+            <AlignJustify size={ICON_SIZE.dense} />
           </ListItemIcon>
           <ListItemText>Justify Align</ListItemText>
         </MenuItem>
@@ -187,8 +188,8 @@ export default function AlignTextMenu(
         >
           <ListItemIcon>
             {isRTL
-              ? <IndentDecrease size={18} />
-              : <IndentIncrease size={18} />}
+              ? <IndentDecrease size={ICON_SIZE.dense} />
+              : <IndentIncrease size={ICON_SIZE.dense} />}
           </ListItemIcon>
           <ListItemText>Indent</ListItemText>
         </MenuItem>
@@ -203,8 +204,8 @@ export default function AlignTextMenu(
         >
           <ListItemIcon>
             {isRTL
-              ? <IndentIncrease size={18} />
-              : <IndentDecrease size={18} />}
+              ? <IndentIncrease size={ICON_SIZE.dense} />
+              : <IndentDecrease size={ICON_SIZE.dense} />}
           </ListItemIcon>
           <ListItemText>Outdent</ListItemText>
         </MenuItem>

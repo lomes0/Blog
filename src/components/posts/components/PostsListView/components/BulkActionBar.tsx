@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Button, Fade, Paper, Tooltip, Typography } from "@mui/material";
 import { Trash2, X } from "lucide-react";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface BulkActionBarProps {
   count: number;
@@ -76,7 +77,7 @@ export function BulkActionBar(
           size="small"
           variant="text"
           color="error"
-          startIcon={<Trash2 size={14} />}
+          startIcon={<Trash2 size={ICON_SIZE.inline} />}
           onClick={onDelete}
           sx={{ textTransform: "none", typography: "dense" }}
         >

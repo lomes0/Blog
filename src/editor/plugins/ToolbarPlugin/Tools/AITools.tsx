@@ -58,6 +58,7 @@ import { createHeadlessEditor } from "@lexical/headless";
 import { $generateNodesFromSerializedNodes } from "@lexical/clipboard";
 import { AI_MODELS, getModelById } from "@/lib/ai";
 import useLocalStorage from "@/hooks/useLocalStorage";
+import { ICON_SIZE } from "@/theme/icons";
 
 const serializedParagraph: SerializedParagraphNode = {
   children: [],
@@ -412,9 +413,9 @@ export default function AITools(
           />
         );
       case "ollama":
-        return <Monitor size={18} />;
+        return <Monitor size={ICON_SIZE.dense} />;
       default:
-        return <Sparkles size={18} />;
+        return <Sparkles size={ICON_SIZE.dense} />;
     }
   };
 
@@ -500,7 +501,7 @@ export default function AITools(
               Change
             </Typography>
             <ChevronDown
-              size={14}
+              size={ICON_SIZE.inline}
               style={{ color: "var(--mui-palette-text-secondary)" }}
             />
           </Box>
@@ -613,7 +614,7 @@ export default function AITools(
             <Mic />
           </ListItemIcon>
           <ListItemText>Change Tone</ListItemText>
-          <ChevronRight size={18} style={{ marginLeft: "auto" }} />
+          <ChevronRight size={ICON_SIZE.dense} style={{ marginLeft: "auto" }} />
         </MenuItem>
         <MenuItem
           disabled={isLoading || !isCollapsed}

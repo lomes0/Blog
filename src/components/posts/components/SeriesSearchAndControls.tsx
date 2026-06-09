@@ -3,6 +3,7 @@ import { Box, Button, Chip } from "@mui/material";
 import { Check, Clock, X } from "lucide-react";
 import { type ViewType } from "@/components/shared/ViewToggle";
 import { PendingTimeChange } from "@/types/posts";
+import { ICON_SIZE } from "@/theme/icons";
 
 const timeEditBtnSx = {
   textTransform: "none",
@@ -43,7 +44,7 @@ const SeriesSearchAndControls: React.FC<SeriesSearchAndControlsProps> = ({
       <Button
         size="small"
         variant={isTimeEditMode ? "contained" : "outlined"}
-        startIcon={<Clock size={18} />}
+        startIcon={<Clock size={ICON_SIZE.dense} />}
         onClick={onToggleTimeEdit}
         sx={timeEditBtnSx}
       >
@@ -64,7 +65,7 @@ const SeriesSearchAndControls: React.FC<SeriesSearchAndControlsProps> = ({
             size="small"
             variant="contained"
             color="success"
-            startIcon={<Check size={18} />}
+            startIcon={<Check size={ICON_SIZE.dense} />}
             onClick={onSaveTimeChanges}
             disabled={pendingTimeChanges.size === 0 || isSavingTimeChanges}
             sx={{ ...timeEditBtnSx, minWidth: 80 }}
@@ -75,7 +76,7 @@ const SeriesSearchAndControls: React.FC<SeriesSearchAndControlsProps> = ({
             size="small"
             variant="outlined"
             color="error"
-            startIcon={<X size={18} />}
+            startIcon={<X size={ICON_SIZE.dense} />}
             onClick={onDiscardTimeChanges}
             disabled={isSavingTimeChanges}
             sx={timeEditBtnSx}

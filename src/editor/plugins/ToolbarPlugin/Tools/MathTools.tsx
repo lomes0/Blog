@@ -39,6 +39,7 @@ import type {
 } from "@excalidraw/excalidraw/types";
 import useOnlineStatus from "@/hooks/useOnlineStatus";
 import { FontSizePicker } from "./FontSizePicker";
+import { ICON_SIZE } from "@/theme/icons";
 
 const Excalidraw = dynamic<ExcalidrawProps>(
   () =>
@@ -354,7 +355,7 @@ export default function MathTools(
         exclusive
       >
         <ToggleButton value="edit" onClick={openEditDialog}>
-          <Pencil size={18} />
+          <Pencil size={ICON_SIZE.dense} />
         </ToggleButton>
         <Dialog
           open={open}
@@ -418,7 +419,7 @@ export default function MathTools(
             });
           }}
         >
-          <Trash2 size={18} />
+          <Trash2 size={ICON_SIZE.dense} />
         </ToggleButton>
       </ToggleButtonGroup>
       <Box
@@ -452,7 +453,7 @@ export default function MathTools(
             value="draw"
             disabled={!isOnline}
           >
-            <PenLine size={18} />
+            <PenLine size={ICON_SIZE.dense} />
           </ToggleButton>
           {value === "draw" && (
             <Collapse in={value === "draw"}>
@@ -501,7 +502,7 @@ export default function MathTools(
                   }}
                   disabled={loading}
                 >
-                  <Save size={18} />
+                  <Save size={ICON_SIZE.dense} />
                 </IconButton>
                 <LinearProgress
                   sx={{
@@ -562,7 +563,7 @@ export default function MathTools(
               }, 0);
             }}
           >
-            <Menu size={18} />
+            <Menu size={ICON_SIZE.dense} />
           </ToggleButton>
         </ToggleButtonGroup>
       </Box>

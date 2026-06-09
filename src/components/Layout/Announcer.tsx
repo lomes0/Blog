@@ -5,6 +5,7 @@ import React from "react";
 import { Button, IconButton, Snackbar, Typography } from "@mui/material";
 import { X } from "lucide-react";
 import { signIn } from "next-auth/react";
+import { ICON_SIZE } from "@/theme/icons";
 
 function Announcer() {
   const announcement = useSelector((state) => state.ui.announcements[0]);
@@ -63,7 +64,7 @@ function Announcer() {
               color="inherit"
               onClick={handleClose}
             >
-              <X size={18} />
+              <X size={ICON_SIZE.dense} />
             </IconButton>
           </>
         )

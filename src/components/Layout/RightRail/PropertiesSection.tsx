@@ -9,6 +9,7 @@ import { DateDisplay } from "@/components/shared/DateDisplay";
 import { DocumentStatus } from "@/types";
 import { countWords } from "@/utils/editorContent";
 import RailSection from "./RailSection";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface PropertiesSectionProps {
   rootId: string;
@@ -83,7 +84,7 @@ export default function PropertiesSection({
   return (
     <RailSection
       title="Properties"
-      icon={<Info size={18} />}
+      icon={<Info size={ICON_SIZE.dense} />}
       iconLabel="Properties"
       defaultOpen={true}
     >

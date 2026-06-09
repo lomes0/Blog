@@ -19,6 +19,7 @@ import OutlineSection from "./OutlineSection";
 import PropertiesSection from "./PropertiesSection";
 import RevisionsSection from "./RevisionsSection";
 import BacklinksSection from "./BacklinksSection";
+import { ICON_SIZE } from "@/theme/icons";
 
 // Must match the grid-template-columns transition duration in AppLayoutContent.
 const TRANSITION_MS = 225;
@@ -163,8 +164,8 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
             aria-label={railMode === "full" ? "Collapse rail" : "Expand rail"}
           >
             {railMode === "full"
-              ? <PanelRightClose size={18} />
-              : <PanelRightOpen size={18} />}
+              ? <PanelRightClose size={ICON_SIZE.dense} />
+              : <PanelRightOpen size={ICON_SIZE.dense} />}
           </IconButton>
         </Tooltip>
         <Tooltip title="Copilot" placement="left">
@@ -174,7 +175,7 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
             onClick={() => dispatch(actions.setCopilotOpen(!copilotOpen))}
             aria-label="Toggle Copilot"
           >
-            <Sparkles size={18} />
+            <Sparkles size={ICON_SIZE.dense} />
           </IconButton>
         </Tooltip>
         <Tooltip title="Outline" placement="left">
@@ -183,7 +184,7 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
             onClick={railMode === "compact" ? toggleRail : undefined}
             aria-label={railMode === "compact" ? "Expand rail" : "Outline"}
           >
-            <Table size={18} />
+            <Table size={ICON_SIZE.dense} />
           </IconButton>
         </Tooltip>
         <Tooltip title="Properties" placement="left">
@@ -192,7 +193,7 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
             onClick={railMode === "compact" ? toggleRail : undefined}
             aria-label={railMode === "compact" ? "Expand rail" : "Properties"}
           >
-            <Info size={18} />
+            <Info size={ICON_SIZE.dense} />
           </IconButton>
         </Tooltip>
         <Tooltip title="Revisions" placement="left">
@@ -201,7 +202,7 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
             onClick={railMode === "compact" ? toggleRail : undefined}
             aria-label={railMode === "compact" ? "Expand rail" : "Revisions"}
           >
-            <History size={18} />
+            <History size={ICON_SIZE.dense} />
           </IconButton>
         </Tooltip>
         <Tooltip title="Backlinks" placement="left">
@@ -210,7 +211,7 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
             onClick={railMode === "compact" ? toggleRail : undefined}
             aria-label={railMode === "compact" ? "Expand rail" : "Backlinks"}
           >
-            <LinkIcon size={18} />
+            <LinkIcon size={ICON_SIZE.dense} />
           </IconButton>
         </Tooltip>
         <Tooltip title="Settings" placement="left">
@@ -221,7 +222,7 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
             aria-label="Settings"
             sx={{ mt: "auto", mb: 1 }}
           >
-            <Settings size={18} />
+            <Settings size={ICON_SIZE.dense} />
           </IconButton>
         </Tooltip>
       </Box>

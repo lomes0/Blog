@@ -3,6 +3,7 @@ import { Alert, Box, CircularProgress, IconButton } from "@mui/material";
 import type { SxProps, Theme } from "@mui/material/styles";
 import { RefreshCw } from "lucide-react";
 import AttachmentEditor from "@/editor/nodes/AttachmentNode/AttachmentEditor";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface AttachmentContentViewerProps {
   loading: boolean;
@@ -102,7 +103,7 @@ export default function AttachmentContentViewer({
             severity="error"
             action={
               <IconButton size="small" onClick={onRefresh}>
-                <RefreshCw size={18} />
+                <RefreshCw size={ICON_SIZE.dense} />
               </IconButton>
             }
           >

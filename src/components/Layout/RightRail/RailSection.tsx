@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Box, Chip, Collapse, IconButton, Typography } from "@mui/material";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface RailSectionProps {
   title: string;
@@ -79,7 +80,7 @@ const RailSection: React.FC<RailSectionProps> = ({
           aria-hidden="true"
           sx={{ p: 0, pointerEvents: "none" }}
         >
-          {open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+          {open ? <ChevronUp size={ICON_SIZE.dense} /> : <ChevronDown size={ICON_SIZE.dense} />}
         </IconButton>
       </Box>
       <Collapse in={open}>

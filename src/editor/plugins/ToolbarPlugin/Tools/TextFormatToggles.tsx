@@ -47,6 +47,7 @@ import {
 } from "lucide-react";
 import { getSelectedNode } from "@/editor/utils/getSelectedNode";
 import { SET_DIALOGS_COMMAND } from "../Dialogs/commands";
+import { ICON_SIZE } from "@/theme/icons";
 
 const Highlight = () => (
   <SvgIcon viewBox="0 -960 960 960" fontSize="small">
@@ -231,7 +232,7 @@ export default function TextFormatToggles(
             IS_APPLE ? "⌘B" : "Ctrl+B"
           }`}
         >
-          <Bold size={18} />
+          <Bold size={ICON_SIZE.dense} />
         </ToggleButton>
         <ToggleButton
           value="italic"
@@ -240,7 +241,7 @@ export default function TextFormatToggles(
             IS_APPLE ? "⌘I" : "Ctrl+I"
           }`}
         >
-          <Italic size={18} />
+          <Italic size={ICON_SIZE.dense} />
         </ToggleButton>
         <ToggleButton
           value="underline"
@@ -249,7 +250,7 @@ export default function TextFormatToggles(
             IS_APPLE ? "⌘U" : "Ctrl+U"
           }`}
         >
-          <Underline size={18} />
+          <Underline size={ICON_SIZE.dense} />
         </ToggleButton>
         <ToggleButton
           value="link"
@@ -257,7 +258,7 @@ export default function TextFormatToggles(
           aria-label={`Insert a link. Shortcut: ${IS_APPLE ? "⌘K" : "Ctrl+K"}`}
           onClick={openLinkDialog}
         >
-          <Link size={18} />
+          <Link size={ICON_SIZE.dense} />
         </ToggleButton>
         <ColorPicker
           onColorChange={onColorChange}
@@ -275,7 +276,7 @@ export default function TextFormatToggles(
         onClick={(e) => setOverflowAnchor(e.currentTarget)}
         sx={{ ml: 0.25 }}
       >
-        <MoreHorizontal size={18} />
+        <MoreHorizontal size={ICON_SIZE.dense} />
       </IconButton>
       <Menu
         anchorEl={overflowAnchor}
@@ -302,7 +303,7 @@ export default function TextFormatToggles(
           onClick={() => handleOverflowFormat("code")}
         >
           <ListItemIcon>
-            <Code size={18} />
+            <Code size={ICON_SIZE.dense} />
           </ListItemIcon>
           <ListItemText>Inline Code</ListItemText>
           <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
@@ -314,7 +315,7 @@ export default function TextFormatToggles(
           onClick={() => handleOverflowFormat("strikethrough")}
         >
           <ListItemIcon>
-            <Strikethrough size={18} />
+            <Strikethrough size={ICON_SIZE.dense} />
           </ListItemIcon>
           <ListItemText>Strikethrough</ListItemText>
           <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
@@ -326,7 +327,7 @@ export default function TextFormatToggles(
           onClick={() => handleOverflowFormat("subscript")}
         >
           <ListItemIcon>
-            <Subscript size={18} />
+            <Subscript size={ICON_SIZE.dense} />
           </ListItemIcon>
           <ListItemText>Subscript</ListItemText>
         </MenuItem>
@@ -335,7 +336,7 @@ export default function TextFormatToggles(
           onClick={() => handleOverflowFormat("superscript")}
         >
           <ListItemIcon>
-            <Superscript size={18} />
+            <Superscript size={ICON_SIZE.dense} />
           </ListItemIcon>
           <ListItemText>Superscript</ListItemText>
         </MenuItem>

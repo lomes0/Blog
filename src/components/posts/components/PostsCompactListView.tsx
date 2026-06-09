@@ -19,6 +19,7 @@ import PostCompactListItem from "./PostCompactListItem";
 import { SeriesGroupItem } from "@/utils/posts/seriesGrouping";
 import { useExpandedState } from "@/hooks/useExpandedState";
 import { PendingTimeChange } from "@/types/posts";
+import { ICON_SIZE } from "@/theme/icons";
 
 const deleteIconSx = {
   color: "text.disabled",
@@ -143,7 +144,7 @@ export const PostsCompactListView: React.FC<PostsCompactListViewProps> = ({
               onClick={() => handleDeleteSeries(series.id, series.title)}
               sx={deleteIconSx}
             >
-              <Trash2 size={18} />
+              <Trash2 size={ICON_SIZE.dense} />
             </IconButton>
           </Tooltip>
         )}
@@ -167,7 +168,7 @@ export const PostsCompactListView: React.FC<PostsCompactListViewProps> = ({
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
               <ChevronRight
-                size={18}
+                size={ICON_SIZE.dense}
                 style={{
                   color: "var(--mui-palette-text-secondary)",
                   flexShrink: 0,

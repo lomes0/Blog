@@ -23,6 +23,7 @@ import type { UserDocument } from "@/types";
 import { SafeNavigationLink } from "./SafeNavigationLink";
 import type { PostItemActions } from "./hooks/useSidebarActions";
 import { SubTabList } from "./SubTabList";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface PostItemProps {
   post: UserDocument;
@@ -140,7 +141,7 @@ export const PostItem = memo(
               }}
             >
               <FileText
-                size={14}
+                size={ICON_SIZE.inline}
                 style={{ color: "var(--mui-palette-text-secondary)" }}
               />
               {isDirty && (
@@ -208,7 +209,7 @@ export const PostItem = memo(
                     "&:hover": { bgcolor: "action.hover" },
                   }}
                 >
-                  <CloudUpload size={14} />
+                  <CloudUpload size={ICON_SIZE.inline} />
                 </IconButton>
               </Tooltip>
             )}

@@ -17,6 +17,7 @@ import {
   TextField,
 } from "@mui/material";
 import { Minus, Plus } from "lucide-react";
+import { ICON_SIZE } from "@/theme/icons";
 
 const initialFormData = { rows: "3", columns: "3", includeHeaders: true };
 
@@ -83,7 +84,7 @@ function TableDialog({ editor }: { editor: LexicalEditor }) {
             }}
           >
             <IconButton onClick={() => setRows(+formData.rows - 1)}>
-              <Minus size={18} />
+              <Minus size={ICON_SIZE.dense} />
             </IconButton>
             <TextField
               type="number"
@@ -97,7 +98,7 @@ function TableDialog({ editor }: { editor: LexicalEditor }) {
               autoFocus
             />
             <IconButton onClick={() => setRows(+formData.rows + 1)}>
-              <Plus size={18} />
+              <Plus size={ICON_SIZE.dense} />
             </IconButton>
           </FormControl>
           <FormControl
@@ -111,7 +112,7 @@ function TableDialog({ editor }: { editor: LexicalEditor }) {
             <IconButton
               onClick={() => setColumns(+formData.columns - 1)}
             >
-              <Minus size={18} />
+              <Minus size={ICON_SIZE.dense} />
             </IconButton>
             <TextField
               type="number"
@@ -127,7 +128,7 @@ function TableDialog({ editor }: { editor: LexicalEditor }) {
             <IconButton
               onClick={() => setColumns(+formData.columns + 1)}
             >
-              <Plus size={18} />
+              <Plus size={ICON_SIZE.dense} />
             </IconButton>
           </FormControl>
           <FormControlLabel

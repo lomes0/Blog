@@ -9,6 +9,7 @@ import {
   MenuItem,
 } from "@mui/material";
 import { ChevronDown, FolderPlus, Plus } from "lucide-react";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface NewPostSplitButtonProps {
   /** In series mode the split shows "New post in series" + "Add/remove posts". */
@@ -55,7 +56,7 @@ export function NewPostSplitButton({
           },
         }}
       >
-        <Button startIcon={<Plus size={14} />} onClick={onNewPost}>
+        <Button startIcon={<Plus size={ICON_SIZE.inline} />} onClick={onNewPost}>
           New
         </Button>
         <Button
@@ -64,7 +65,7 @@ export function NewPostSplitButton({
           aria-label="More creation options"
           sx={{ px: 0.75, minWidth: "auto" }}
         >
-          <ChevronDown size={14} />
+          <ChevronDown size={ICON_SIZE.inline} />
         </Button>
       </ButtonGroup>
 

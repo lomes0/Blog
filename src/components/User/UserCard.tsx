@@ -19,6 +19,7 @@ import {
 } from "@mui/material";
 import { Share2 } from "lucide-react";
 import GoogleIcon from "./GoogleIcon";
+import { ICON_SIZE } from "@/theme/icons";
 
 const UserCard: React.FC<{ user?: User; showActions?: boolean }> = memo(
   ({ user, showActions }) => {
@@ -133,7 +134,7 @@ const UserCard: React.FC<{ user?: User; showActions?: boolean }> = memo(
                   aria-label="Share"
                   onClick={handleShare}
                 >
-                  <Share2 size={18} />
+                  <Share2 size={ICON_SIZE.dense} />
                 </IconButton>
               )}
             </Box>

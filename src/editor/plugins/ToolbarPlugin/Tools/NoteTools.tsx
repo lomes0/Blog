@@ -21,6 +21,7 @@ import {
 } from "@/editor/nodes/utils";
 import ColorPicker from "./ColorPicker";
 import { StickyNode } from "@/editor/nodes/StickyNode";
+import { ICON_SIZE } from "@/theme/icons";
 
 const FormatImageRight = () => (
   <SvgIcon viewBox="0 -960 960 960" fontSize="small">
@@ -118,8 +119,8 @@ export default function NoteTools(
         aria-expanded={open ? "true" : undefined}
         variant="outlined"
         onClick={handleClick}
-        startIcon={<StickyNote size={18} />}
-        endIcon={<ChevronDown size={18} />}
+        startIcon={<StickyNote size={ICON_SIZE.dense} />}
+        endIcon={<ChevronDown size={ICON_SIZE.dense} />}
         sx={{
           color: "text.primary",
           borderColor: "divider",
@@ -194,7 +195,7 @@ export default function NoteTools(
         />
         <MenuItem onClick={deleteNode}>
           <ListItemIcon>
-            <Trash2 size={18} />
+            <Trash2 size={ICON_SIZE.dense} />
           </ListItemIcon>
           <ListItemText>Delete Note</ListItemText>
         </MenuItem>

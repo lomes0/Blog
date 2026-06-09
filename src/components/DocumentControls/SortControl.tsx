@@ -8,6 +8,7 @@ import {
   ToggleButton,
 } from "@mui/material";
 import type {} from "@mui/material/themeCssVarsAugmentation";
+import { ICON_SIZE } from "@/theme/icons";
 
 const DocumentSortControl: React.FC<{
   value: { key: string; direction: string };
@@ -54,8 +55,8 @@ const DocumentSortControl: React.FC<{
         aria-label="sort direction"
       >
         {sortDirection === "asc"
-          ? <ArrowUp size={18} />
-          : <ArrowDown size={18} />}
+          ? <ArrowUp size={ICON_SIZE.dense} />
+          : <ArrowDown size={ICON_SIZE.dense} />}
       </ToggleButton>
       <Select
         value={sortKey}

@@ -24,6 +24,7 @@ import type { TabMeta } from "@/components/EditDocument/EditorTabBar";
 import ShareDocument from "@/components/DocumentActions/Share";
 import DownloadDocument from "@/components/DocumentActions/Download";
 import ForkDocument from "@/components/DocumentActions/Fork";
+import { ICON_SIZE } from "@/theme/icons";
 
 const ViewDocumentInfo = dynamic(
   () => import("./ViewDocumentInfo"),
@@ -182,7 +183,7 @@ const ViewDocument: React.FC<
                 aria-label="Edit document"
                 sx={{ color: "text.secondary", ml: 0.5 }}
               >
-                <Pencil size={14} />
+                <Pencil size={ICON_SIZE.inline} />
               </IconButton>
             </Tooltip>
             <Tooltip title="More options">
@@ -192,7 +193,7 @@ const ViewDocument: React.FC<
                 aria-label="More options"
                 sx={{ color: "text.secondary" }}
               >
-                <MoreHorizontal size={14} />
+                <MoreHorizontal size={ICON_SIZE.inline} />
               </IconButton>
             </Tooltip>
             <Menu

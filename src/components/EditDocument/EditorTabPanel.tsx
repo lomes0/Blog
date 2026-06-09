@@ -23,6 +23,7 @@ import DocumentHeader from "./DocumentHeader";
 import { triggerSave } from "./saveRegistry";
 import { useTopBarActions } from "@/contexts/TopBarActionsContext";
 import { Save } from "lucide-react";
+import { ICON_SIZE } from "@/theme/icons";
 
 const EditDocumentInfo = dynamic(
   () => import("@/components/EditDocument/EditDocumentInfo"),
@@ -49,7 +50,7 @@ function SaveButton() {
       disabled={isSaving || !isDirty}
       startIcon={isSaving
         ? <CircularProgress size={14} color="inherit" />
-        : <Save size={14} />}
+        : <Save size={ICON_SIZE.inline} />}
       sx={{
         color: "text.secondary",
         textTransform: "none",

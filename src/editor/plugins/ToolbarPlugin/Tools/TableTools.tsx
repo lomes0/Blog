@@ -61,6 +61,7 @@ import {
   Table,
   Trash2,
 } from "lucide-react";
+import { ICON_SIZE } from "@/theme/icons";
 
 function computeSelectionCount(selection: TableSelection): {
   columns: number;
@@ -685,8 +686,8 @@ export default function TableTools(
         aria-expanded={open ? "true" : undefined}
         variant="outlined"
         onClick={handleClick}
-        startIcon={<Table size={18} />}
-        endIcon={<ChevronDown size={18} />}
+        startIcon={<Table size={ICON_SIZE.dense} />}
+        endIcon={<ChevronDown size={ICON_SIZE.dense} />}
         sx={{
           color: "text.primary",
           borderColor: "divider",
@@ -738,7 +739,7 @@ export default function TableTools(
                 updateFormat("left");
               }}
             >
-              <AlignLeft size={18} />
+              <AlignLeft size={ICON_SIZE.dense} />
             </ToggleButton>
             <ToggleButton
               value="align-center"
@@ -748,7 +749,7 @@ export default function TableTools(
                 updateFormat("center");
               }}
             >
-              <AlignCenter size={18} />
+              <AlignCenter size={ICON_SIZE.dense} />
             </ToggleButton>,
             <ToggleButton
               value="align-right"
@@ -758,7 +759,7 @@ export default function TableTools(
                 updateFormat("right");
               }}
             >
-              <AlignRight size={18} />
+              <AlignRight size={ICON_SIZE.dense} />
             </ToggleButton>
           </ToggleButtonGroup>
         </MenuItem>
@@ -786,7 +787,7 @@ export default function TableTools(
                 updateFormat("justify");
               }}
             >
-              <AlignLeft size={18} />
+              <AlignLeft size={ICON_SIZE.dense} />
             </ToggleButton>,
             <ToggleButton
               value="float-right"
@@ -865,7 +866,7 @@ export default function TableTools(
         <MenuItem onClick={toggleRowStriping}>
           <ListItemIcon>
             <Grid3x3
-              size={18}
+              size={ICON_SIZE.dense}
               style={{ transform: "rotate(45deg)" }}
             />
           </ListItemIcon>
@@ -931,7 +932,7 @@ export default function TableTools(
         </MenuItem>
         <MenuItem onClick={deleteTableAtSelection}>
           <ListItemIcon>
-            <Trash2 size={18} />
+            <Trash2 size={ICON_SIZE.dense} />
           </ListItemIcon>
           <ListItemText>Delete Table</ListItemText>
         </MenuItem>

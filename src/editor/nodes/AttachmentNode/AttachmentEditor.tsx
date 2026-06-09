@@ -13,6 +13,7 @@ import {
   Typography,
 } from "@mui/material";
 import { Save, X } from "lucide-react";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface AttachmentEditorProps {
   initialContent: string;
@@ -200,7 +201,7 @@ export default function AttachmentEditor({
           color="inherit"
           onClick={handleCancel}
           disabled={isSaving}
-          startIcon={<X size={18} />}
+          startIcon={<X size={ICON_SIZE.dense} />}
           size="small"
         >
           Cancel
@@ -212,7 +213,7 @@ export default function AttachmentEditor({
           disabled={isSaving || !isDirty}
           startIcon={isSaving
             ? <CircularProgress size={16} />
-            : <Save size={18} />}
+            : <Save size={ICON_SIZE.dense} />}
           size="small"
         >
           {isSaving ? "Saving..." : "Save"}

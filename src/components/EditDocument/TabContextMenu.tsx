@@ -16,6 +16,7 @@ import {
   Split,
   Trash2,
 } from "lucide-react";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface TabContextMenuProps {
   anchorEl: HTMLElement | null;
@@ -56,7 +57,7 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
     >
       <MenuItem onClick={wrap(() => onRename(tabId))}>
         <ListItemIcon>
-          <FilePen size={18} />
+          <FilePen size={ICON_SIZE.dense} />
         </ListItemIcon>
         <ListItemText>Rename</ListItemText>
         <Typography variant="caption" color="text.disabled" sx={{ ml: 2 }}>
@@ -66,7 +67,7 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
 
       <MenuItem onClick={wrap(() => onDuplicate(tabId))}>
         <ListItemIcon>
-          <Copy size={18} />
+          <Copy size={ICON_SIZE.dense} />
         </ListItemIcon>
         <ListItemText>Duplicate tab</ListItemText>
         <Typography variant="caption" color="text.disabled" sx={{ ml: 2 }}>
@@ -77,7 +78,7 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
       {!isRoot && (
         <MenuItem onClick={wrap(() => onMove(tabId))}>
           <ListItemIcon>
-            <FolderInput size={18} />
+            <FolderInput size={ICON_SIZE.dense} />
           </ListItemIcon>
           <ListItemText>Move to other post…</ListItemText>
         </MenuItem>
@@ -86,7 +87,7 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
       {!isRoot && (
         <MenuItem onClick={wrap(() => onSplitOff(tabId))}>
           <ListItemIcon>
-            <Split size={18} />
+            <Split size={ICON_SIZE.dense} />
           </ListItemIcon>
           <ListItemText>Split off as new post</ListItemText>
         </MenuItem>
@@ -96,14 +97,14 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
 
       <MenuItem disabled>
         <ListItemIcon>
-          <Pin size={18} />
+          <Pin size={ICON_SIZE.dense} />
         </ListItemIcon>
         <ListItemText>Pin tab</ListItemText>
       </MenuItem>
 
       <MenuItem disabled>
         <ListItemIcon>
-          <ArrowUpDown size={18} />
+          <ArrowUpDown size={ICON_SIZE.dense} />
         </ListItemIcon>
         <ListItemText>Reorder…</ListItemText>
       </MenuItem>
@@ -117,7 +118,7 @@ const TabContextMenu: React.FC<TabContextMenuProps> = ({
       >
         <ListItemIcon>
           <Trash2
-            size={18}
+            size={ICON_SIZE.dense}
             style={{
               color: isRoot
                 ? "var(--mui-palette-action-disabled)"

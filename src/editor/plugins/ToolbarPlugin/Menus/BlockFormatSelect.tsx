@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import { $isTableSelection } from "@/editor/nodes/TableNode";
 import { useCallback } from "react";
+import { ICON_SIZE } from "@/theme/icons";
 
 const H1 = () => (
   <SvgIcon viewBox="0 96 960 960" fontSize="small">
@@ -239,7 +240,7 @@ export function BlockFormatSelect({ editor, blockType }: {
     >
       <MenuItem value="paragraph" onClick={formatParagraph}>
         <ListItemIcon>
-          <AlignLeft size={18} />
+          <AlignLeft size={ICON_SIZE.dense} />
         </ListItemIcon>
         <ListItemText>Normal</ListItemText>
       </MenuItem>
@@ -269,31 +270,31 @@ export function BlockFormatSelect({ editor, blockType }: {
       </MenuItem>
       <MenuItem value="bullet" onClick={formatBulletList}>
         <ListItemIcon>
-          <List size={18} />
+          <List size={ICON_SIZE.dense} />
         </ListItemIcon>
         <ListItemText>Bullet List</ListItemText>
       </MenuItem>
       <MenuItem value="number" onClick={formatNumberedList}>
         <ListItemIcon>
-          <ListOrdered size={18} />
+          <ListOrdered size={ICON_SIZE.dense} />
         </ListItemIcon>
         <ListItemText>Numbered List</ListItemText>
       </MenuItem>
       <MenuItem value="check" onClick={formatCheckList}>
         <ListItemIcon>
-          <ListChecks size={18} />
+          <ListChecks size={ICON_SIZE.dense} />
         </ListItemIcon>
         <ListItemText>Check List</ListItemText>
       </MenuItem>
       <MenuItem value="quote" onClick={formatQuote}>
         <ListItemIcon>
-          <Quote size={18} />
+          <Quote size={ICON_SIZE.dense} />
         </ListItemIcon>
         <ListItemText>Quote</ListItemText>
       </MenuItem>
       <MenuItem value="code" onClick={formatCode}>
         <ListItemIcon>
-          <Code size={18} />
+          <Code size={ICON_SIZE.dense} />
         </ListItemIcon>
         <ListItemText>CodeBlock</ListItemText>
       </MenuItem>

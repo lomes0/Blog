@@ -26,6 +26,7 @@ import {
 } from "@mui/material";
 import { FileUp } from "lucide-react";
 import { ANNOUNCE_COMMAND } from "@/editor/commands";
+import { ICON_SIZE } from "@/theme/icons";
 
 const ACCEPTABLE_IMAGE_TYPES = [
   "image/",
@@ -184,7 +185,7 @@ function ImageDialog(
           <Button
             variant="outlined"
             sx={{ my: 2 }}
-            startIcon={<FileUp size={18} />}
+            startIcon={<FileUp size={ICON_SIZE.dense} />}
             component="label"
           >
             Upload File

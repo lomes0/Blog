@@ -18,6 +18,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { $isIFrameNode, IFrameNode } from "@/editor/nodes/IFrameNode";
+import { ICON_SIZE } from "@/theme/icons";
 
 const FormatImageRight = () => (
   <SvgIcon viewBox="0 -960 960 960" fontSize="small">
@@ -107,7 +108,7 @@ export default function ImageTools(
         }}
       >
         <ToggleButton value="edit" key="edit" onClick={openDialog}>
-          <Pencil size={18} />
+          <Pencil size={ICON_SIZE.dense} />
         </ToggleButton>
         {isImageNode && (
           <ToggleButton
@@ -115,7 +116,7 @@ export default function ImageTools(
             key="sketch"
             onClick={openSketchDialog}
           >
-            <PenLine size={18} />
+            <PenLine size={ICON_SIZE.dense} />
           </ToggleButton>
         )}
         <ToggleButton
@@ -127,7 +128,7 @@ export default function ImageTools(
             });
           }}
         >
-          <Trash2 size={18} />
+          <Trash2 size={ICON_SIZE.dense} />
         </ToggleButton>
       </ToggleButtonGroup>
       <Box
@@ -151,8 +152,8 @@ export default function ImageTools(
             onClick={toggleShowCaption}
           >
             {node.getShowCaption()
-              ? <Captions size={18} />
-              : <CaptionsOff size={18} />}
+              ? <Captions size={ICON_SIZE.dense} />
+              : <CaptionsOff size={ICON_SIZE.dense} />}
           </ToggleButton>
           <ToggleButton
             value="filter-toggle"
@@ -164,7 +165,7 @@ export default function ImageTools(
               });
             }}
           >
-            <Contrast size={18} />
+            <Contrast size={ICON_SIZE.dense} />
           </ToggleButton>
         </ToggleButtonGroup>
         <ToggleButtonGroup
@@ -189,7 +190,7 @@ export default function ImageTools(
               updateStyle({ "float": "none" });
             }}
           >
-            <AlignLeft size={18} />
+            <AlignLeft size={ICON_SIZE.dense} />
           </ToggleButton>
           <ToggleButton
             value="float-right"

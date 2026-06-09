@@ -9,6 +9,7 @@ import { DragContext } from "@/contexts/DragContext";
 import { UserDocument } from "@/types";
 import { FloatingActionButton } from "../Layout/FloatingActionsContainer";
 import { useErrorAnnounce } from "@/hooks/useErrorAnnounce";
+import { ICON_SIZE } from "@/theme/icons";
 
 const TrashBin: React.FC = () => {
   const theme = useTheme();
@@ -116,7 +117,7 @@ const TrashBin: React.FC = () => {
                 }}
               >
                 <Trash2
-                  size={32}
+                  size={ICON_SIZE.large}
                   style={{
                     color: isDropTarget
                       ? theme.palette.error.dark
