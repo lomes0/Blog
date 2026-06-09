@@ -37,7 +37,7 @@ export function TagChip({ label, color = "#999", tagStyle }: TagChipProps) {
       variant={tagStyle === "outline" ? "outlined" : "filled"}
       sx={{
         height: 20,
-        fontSize: "0.6875rem",
+        typography: "micro",
         "& .MuiChip-label": { px: 1 },
       }}
     />

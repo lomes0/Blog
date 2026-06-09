@@ -227,7 +227,7 @@ export const PostRow = React.memo(function PostRow({
           textAlign: "right",
           flexShrink: 0,
           mr: 0.5,
-          fontSize: "0.6875rem",
+          typography: "micro",
           transition: "opacity 0.15s",
           fontVariantNumeric: "tabular-nums",
           whiteSpace: "nowrap",

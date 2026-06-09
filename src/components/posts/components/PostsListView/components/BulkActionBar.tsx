@@ -52,7 +52,7 @@ export function BulkActionBar(
               size="small"
               variant="text"
               disabled
-              sx={{ textTransform: "none", fontSize: "0.8125rem" }}
+              sx={{ textTransform: "none", typography: "dense" }}
             >
               Move
             </Button>
@@ -65,7 +65,7 @@ export function BulkActionBar(
               size="small"
               variant="text"
               disabled
-              sx={{ textTransform: "none", fontSize: "0.8125rem" }}
+              sx={{ textTransform: "none", typography: "dense" }}
             >
               Tag
             </Button>
@@ -78,7 +78,7 @@ export function BulkActionBar(
           color="error"
           startIcon={<Trash2 size={14} />}
           onClick={onDelete}
-          sx={{ textTransform: "none", fontSize: "0.8125rem" }}
+          sx={{ textTransform: "none", typography: "dense" }}
         >
           Delete
         </Button>
@@ -91,7 +91,7 @@ export function BulkActionBar(
           onClick={onClear}
           sx={{
             textTransform: "none",
-            fontSize: "0.8125rem",
+            typography: "dense",
             color: "text.secondary",
             minWidth: "auto",
             p: 0.5,

@@ -154,7 +154,7 @@ const Home: React.FC<{
                           bgcolor: "action.hover",
                           cursor: "pointer",
                           flexShrink: 0,
-                          fontSize: "0.8125rem",
+                          typography: "dense",
                           fontWeight: 500,
                           color: "text.secondary",
                           "&:hover": {

@@ -54,7 +54,7 @@ function SaveButton() {
         color: "text.secondary",
         textTransform: "none",
         fontWeight: 600,
-        fontSize: "0.8125rem",
+        typography: "dense",
         px: 1.25,
       }}
     >

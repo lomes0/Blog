@@ -118,7 +118,7 @@ function AddBoardSection({
           }}
           sx={{
             width: 140,
-            "& .MuiInputBase-input": { py: 0.5, fontSize: "0.8125rem" },
+            "& .MuiInputBase-input": { py: 0.5, typography: "dense" },
           }}
         />
         <Button
@@ -250,7 +250,7 @@ export default function BoardSelector({
             minHeight: 32,
             px: 1.5,
             py: 0,
-            fontSize: "0.8125rem",
+            typography: "dense",
             fontWeight: 500,
             textTransform: "none",
             letterSpacing: 0,
@@ -281,7 +281,7 @@ export default function BoardSelector({
                   onBlur={handleRenameSubmit}
                   InputProps={{
                     disableUnderline: false,
-                    sx: { fontSize: "0.8125rem", fontWeight: 500, width: 100 },
+                    sx: { typography: "dense", fontWeight: 500, width: 100 },
                   }}
                 />
               )

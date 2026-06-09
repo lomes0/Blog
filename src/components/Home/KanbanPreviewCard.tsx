@@ -130,10 +130,9 @@ export default function KanbanPreviewCard({
                     }}
                   />
                   <Typography
-                    variant="caption"
+                    variant="micro"
                     sx={{
                       fontWeight: 600,
-                      fontSize: "11px",
                       color: "text.secondary",
                       flex: 1,
                     }}
@@ -141,8 +140,8 @@ export default function KanbanPreviewCard({
                     {column.title}
                   </Typography>
                   <Typography
+                    variant="micro"
                     sx={{
-                      fontSize: "11px",
                       color: "text.secondary",
                       fontWeight: 500,
                     }}
@@ -172,8 +171,8 @@ export default function KanbanPreviewCard({
                         }}
                       >
                         <Typography
+                          variant="micro"
                           sx={{
-                            fontSize: "11px",
                             lineHeight: 1.4,
                             fontWeight: 500,
                             overflow: "hidden",

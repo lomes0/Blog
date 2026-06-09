@@ -298,7 +298,7 @@ export const SeriesRow = React.memo(function SeriesRow({
             textAlign: "right",
             flexShrink: 0,
             mr: 0.5,
-            fontSize: "0.6875rem",
+            typography: "micro",
             transition: "opacity 80ms",
             fontVariantNumeric: "tabular-nums",
             whiteSpace: "nowrap",

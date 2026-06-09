@@ -439,7 +439,7 @@ export default function AITools(
           borderColor: "primary.200",
           textTransform: "none",
           fontWeight: 600,
-          fontSize: "0.8125rem",
+          typography: "dense",
           px: 1.5,
           height: 34,
           minWidth: 0,

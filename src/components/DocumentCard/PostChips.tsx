@@ -98,7 +98,7 @@ export const createAuthorChip = (author?: User | null, showAuthor = true) => {
         }),
         color: "text.secondary",
         fontWeight: 500,
-        fontSize: "0.8125rem",
+        typography: "dense",
         letterSpacing: "0.01em",
         textDecoration: "none",
         cursor: "pointer",

@@ -307,8 +307,8 @@ const EditorTopBar: React.FC = () => {
             />
             <Typography
               noWrap
+              variant="dense"
               sx={{
-                fontSize: "0.8125rem",
                 fontWeight: 500,
                 color: "text.primary",
               }}

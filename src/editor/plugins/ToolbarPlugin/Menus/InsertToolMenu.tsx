@@ -90,7 +90,7 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
           color: "text.secondary",
           textTransform: "none",
           fontWeight: 500,
-          fontSize: "0.8125rem",
+          typography: "dense",
           px: 1.25,
           height: 34,
           minWidth: 0,

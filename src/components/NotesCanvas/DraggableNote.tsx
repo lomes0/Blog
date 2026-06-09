@@ -238,7 +238,7 @@ export default function DraggableNote({
             InputProps={{
               disableUnderline: true,
               sx: {
-                fontSize: "13px",
+                typography: "dense",
                 fontWeight: 500,
                 color: "rgba(0, 0, 0, 0.75)",
                 "& input": {

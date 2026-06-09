@@ -21,8 +21,8 @@ export function SectionBand({ label, count, color }: SectionBandProps) {
     >
       <Typography
         component="span"
+        variant="micro"
         sx={{
-          fontSize: "0.6875rem",
           fontWeight: 700,
           letterSpacing: "0.075em",
           textTransform: "uppercase",

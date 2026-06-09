@@ -172,9 +172,8 @@ export default function NotesCanvasPreview(
             })}
           >
             <Typography
-              variant="caption"
+              variant="micro"
               sx={{
-                fontSize: "11px",
                 fontWeight: 600,
                 color: "text.secondary",
                 letterSpacing: "0.02em",

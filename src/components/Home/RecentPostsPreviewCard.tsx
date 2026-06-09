@@ -108,8 +108,8 @@ export default function RecentPostsPreviewCard({
                       }}
                     >
                       <Typography
+                        variant="dense"
                         sx={{
-                          fontSize: "13px",
                           fontWeight: 500,
                           overflow: "hidden",
                           textOverflow: "ellipsis",

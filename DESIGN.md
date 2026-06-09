@@ -144,11 +144,27 @@ Weights loaded: 300, 400, 500, 600, 700 (via `@fontsource/public-sans`).
 | `subtitle1` | 1rem     | 500    | 1.5         |                                                |
 | `subtitle2` | 0.875rem | 500    | 1.5         |                                                |
 | `caption`   | 0.75rem  | 400    | 1.5         | Letter-spacing 0.02em                          |
+| `dense`     | 0.8125rem| 400    | 1.5         | **Custom.** 13px — toolbars, table rows, dense labels |
+| `micro`     | 0.6875rem| 400    | 1.5         | **Custom.** 11px — timestamps, counters, meta chips; letter-spacing 0.02em |
 | `overline`  | 0.75rem  | 600    | 1.5         | Uppercase, letter-spacing 0.08em               |
 | `button`    | —        | 600    | —           | `textTransform: "none"`, letter-spacing 0.02em |
 
-**Rule**: Use MUI `<Typography variant="…">` — never hard-code `font-size` or
-`font-weight` in `sx` when a variant matches.
+`dense` and `micro` are project-specific variants (declared via module
+augmentation in `src/components/Layout/ThemeProvider.tsx`) that fill the gap
+below `body2`. They render inline (`<span>`) by default — pass `component="p"`
+for a block.
+
+**Rules**:
+
+1. Use MUI `<Typography variant="…">` — never hard-code `font-size` in `sx` when
+   a variant matches. If a needed size is missing, **add a theme variant**, do
+   not inline a literal.
+2. On non-`Typography` elements (Button, Chip, Box, MenuItem, `sx:` props,
+   nested selectors), reach the same scale via the **`typography` sx shortcut**:
+   `sx={{ typography: "dense" }}`. It pulls size + line-height + letter-spacing
+   from the theme, so the theme stays the single source of truth.
+3. Raw inline `style={{}}` (e.g. `<pre>` code viewers) can't use the shortcut —
+   those are an exception, not a precedent for new UI.
 
 ---
 

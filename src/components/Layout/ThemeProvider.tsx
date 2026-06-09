@@ -24,6 +24,26 @@ declare module "@mui/material/styles" {
     /** Search / prompt fields — lifted above the panel */
     input: string;
   }
+
+  // Custom typography variants filling the gap below `body2`/`caption`, so dense
+  // UI never hard-codes `fontSize` in `sx`. The theme stays the single source of
+  // truth — see DESIGN.md §3. `dense` (13px) sits between caption and body2;
+  // `micro` (11px) is the smallest label size (timestamps, badges, meta chips).
+  interface TypographyVariants {
+    dense: React.CSSProperties;
+    micro: React.CSSProperties;
+  }
+  interface TypographyVariantsOptions {
+    dense?: React.CSSProperties;
+    micro?: React.CSSProperties;
+  }
+}
+
+declare module "@mui/material/Typography" {
+  interface TypographyPropsVariantOverrides {
+    dense: true;
+    micro: true;
+  }
 }
 
 // Create a stable theme with deterministic class names
@@ -116,6 +136,10 @@ const theme = createTheme({
     subtitle1: { fontSize: "1rem", fontWeight: 500, lineHeight: 1.5 },
     subtitle2: { fontSize: "0.875rem", fontWeight: 500, lineHeight: 1.5 },
     caption: { fontSize: "0.75rem", lineHeight: 1.5, letterSpacing: "0.02em" },
+    // 13px — dense UI: toolbars, table rows, secondary inline labels
+    dense: { fontSize: "0.8125rem", lineHeight: 1.5 },
+    // 11px — smallest label: timestamps, counters, meta chips
+    micro: { fontSize: "0.6875rem", lineHeight: 1.5, letterSpacing: "0.02em" },
     overline: {
       fontSize: "0.75rem",
       fontWeight: 600,
@@ -126,6 +150,13 @@ const theme = createTheme({
     button: { fontWeight: 600, textTransform: "none", letterSpacing: "0.02em" },
   },
   components: {
+    MuiTypography: {
+      defaultProps: {
+        // Custom variants render inline by default — they're labels, not blocks.
+        // Pass `component="p"/"div"` at the call site when a block is needed.
+        variantMapping: { dense: "span", micro: "span" },
+      },
+    },
     // Override default container sizes
     MuiContainer: {
       styleOverrides: {

@@ -48,7 +48,7 @@ export function NewPostSplitButton({
         sx={{
           "& .MuiButton-root": {
             textTransform: "none",
-            fontSize: "0.8125rem",
+            typography: "dense",
             color: "text.secondary",
             borderColor: "divider",
             "&:hover": { borderColor: "text.secondary" },

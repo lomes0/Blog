@@ -46,7 +46,7 @@ export default function ZoomControls({ zoom }: ZoomControlsProps) {
               minWidth: 32,
               textAlign: "center",
               fontWeight: 600,
-              fontSize: "11px",
+              typography: "micro",
               color: "text.secondary",
               cursor: "pointer",
               userSelect: "none",
