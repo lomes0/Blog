@@ -251,7 +251,9 @@ const SideBar: React.FC = () => {
               aria-label={isFocus ? "Exit focus mode" : "Enter focus mode"}
               sx={{ color: isFocus ? "primary.main" : "text.secondary" }}
             >
-              {isFocus ? <Minimize2 size={ICON_SIZE.inline} /> : <Maximize2 size={ICON_SIZE.inline} />}
+              {isFocus
+                ? <Minimize2 size={ICON_SIZE.inline} />
+                : <Maximize2 size={ICON_SIZE.inline} />}
             </IconButton>
           </Tooltip>
         </Box>

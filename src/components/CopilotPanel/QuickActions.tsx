@@ -34,7 +34,7 @@ const QuickActions: React.FC<QuickActionsProps> = ({ onSelect }) => (
         variant="outlined"
         icon={action.icon}
         onClick={() => onSelect(action.prompt)}
-        sx={{ cursor: "pointer", fontSize: "0.75rem" }}
+        sx={{ cursor: "pointer", typography: "caption" }}
       />
     ))}
   </Box>

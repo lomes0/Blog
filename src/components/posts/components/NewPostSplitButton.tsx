@@ -56,7 +56,10 @@ export function NewPostSplitButton({
           },
         }}
       >
-        <Button startIcon={<Plus size={ICON_SIZE.inline} />} onClick={onNewPost}>
+        <Button
+          startIcon={<Plus size={ICON_SIZE.inline} />}
+          onClick={onNewPost}
+        >
           New
         </Button>
         <Button

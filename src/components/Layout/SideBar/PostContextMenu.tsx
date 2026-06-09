@@ -22,7 +22,7 @@ const menuItemSx = {
   py: 0.75,
   px: 1.75,
   gap: 1.25,
-  fontSize: "0.875rem",
+  typography: "body2",
   "&:hover": { backgroundColor: "action.hover" },
 };
 
@@ -71,7 +71,7 @@ export const PostContextMenu: React.FC<PostContextMenuProps> = ({
         <ListItemIcon sx={{ minWidth: "auto !important" }}>
           <Pencil size={ICON_SIZE.dense} />
         </ListItemIcon>
-        <ListItemText primaryTypographyProps={{ fontSize: "0.875rem" }}>
+        <ListItemText primaryTypographyProps={{ variant: "body2" }}>
           Edit
         </ListItemText>
       </MenuItem>
@@ -82,7 +82,7 @@ export const PostContextMenu: React.FC<PostContextMenuProps> = ({
         <ListItemIcon sx={{ minWidth: "auto !important" }}>
           <FilePen size={ICON_SIZE.dense} />
         </ListItemIcon>
-        <ListItemText primaryTypographyProps={{ fontSize: "0.875rem" }}>
+        <ListItemText primaryTypographyProps={{ variant: "body2" }}>
           Rename
         </ListItemText>
       </MenuItem>
@@ -93,7 +93,7 @@ export const PostContextMenu: React.FC<PostContextMenuProps> = ({
         <ListItemIcon sx={{ minWidth: "auto !important" }}>
           <Trash2 size={ICON_SIZE.dense} />
         </ListItemIcon>
-        <ListItemText primaryTypographyProps={{ fontSize: "0.875rem" }}>
+        <ListItemText primaryTypographyProps={{ variant: "body2" }}>
           Delete
         </ListItemText>
       </MenuItem>

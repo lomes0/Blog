@@ -61,7 +61,7 @@ export default function PasteButton({ addNote, canvas }: PasteButtonProps) {
         disableElevation
         onClick={handlePaste}
         startIcon={<ClipboardPaste size={ICON_SIZE.inline} />}
-        sx={{ fontSize: "0.75rem", py: 0.5, px: 1.5, textTransform: "none" }}
+        sx={{ typography: "caption", py: 0.5, px: 1.5, textTransform: "none" }}
       >
         Paste
       </Button>
@@ -69,7 +69,7 @@ export default function PasteButton({ addNote, canvas }: PasteButtonProps) {
         size="small"
         onClick={clearClip}
         sx={{
-          fontSize: "0.75rem",
+          typography: "caption",
           py: 0.5,
           px: 1,
           textTransform: "none",

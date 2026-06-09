@@ -79,7 +79,6 @@ export const PostContent: React.FC<PostContentProps> = ({
             variant="body2"
             color="text.secondary"
             sx={{
-              fontSize: "0.875rem",
               fontWeight: 500,
             }}
           >
@@ -122,7 +121,6 @@ export const PostContent: React.FC<PostContentProps> = ({
             variant="body2"
             color="text.secondary"
             sx={{
-              fontSize: "0.875rem",
               fontWeight: 500,
             }}
           >
@@ -142,7 +140,6 @@ export const PostContent: React.FC<PostContentProps> = ({
           WebkitBoxOrient: "vertical",
           overflow: "hidden",
           textOverflow: "ellipsis",
-          fontSize: "1rem",
           flex: 1,
           minHeight: 0,
         }}

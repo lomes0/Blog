@@ -58,7 +58,6 @@ export const PostMeta: React.FC<PostMetaProps> = ({
         color="primary.secondary"
         sx={{
           fontWeight: 600,
-          fontSize: "0.875rem",
           cursor: "pointer",
           "&:hover": {
             fontWeight: 700,

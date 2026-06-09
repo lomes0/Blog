@@ -80,8 +80,7 @@ const DocumentSortControl: React.FC<{
           "& .MuiSelect-icon": { color: "text.secondary" },
           "& .MuiListItemText-primary": {
             color: "text.primary",
-            fontWeight: 500,
-            fontSize: "0.875rem",
+            typography: "subtitle2",
           },
           "& .MuiOutlinedInput-notchedOutline": {
             borderWidth: 1,

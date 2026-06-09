@@ -103,7 +103,9 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
           >
             {!rootId
               ? (
-                <Box sx={{ p: 2, color: "text.disabled", fontSize: "0.75rem" }}>
+                <Box
+                  sx={{ p: 2, color: "text.disabled", typography: "caption" }}
+                >
                   Open a document to see its info here.
                 </Box>
               )

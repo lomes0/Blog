@@ -194,7 +194,6 @@ export const PostsCompactListView: React.FC<PostsCompactListViewProps> = ({
               variant="caption"
               sx={{
                 color: "text.disabled",
-                fontSize: "0.75rem",
                 pl: "26px",
               }}
             >

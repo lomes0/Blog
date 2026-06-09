@@ -131,8 +131,7 @@ function AddBoardSection({
             minWidth: "auto",
             px: 1.5,
             py: 0.5,
-            fontSize: "0.75rem",
-            lineHeight: 1.5,
+            typography: "caption",
           }}
         >
           Add
@@ -144,8 +143,7 @@ function AddBoardSection({
             minWidth: "auto",
             px: 1,
             py: 0.5,
-            fontSize: "0.75rem",
-            lineHeight: 1.5,
+            typography: "caption",
           }}
         >
           Cancel

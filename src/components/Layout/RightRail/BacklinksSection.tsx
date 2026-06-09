@@ -70,7 +70,7 @@ export default function BacklinksSection({ rootId }: BacklinksSectionProps) {
                   display: "flex",
                   alignItems: "center",
                   gap: 0.75,
-                  fontSize: "0.75rem",
+                  typography: "caption",
                   color: "text.secondary",
                   border: "1px solid",
                   borderColor: "divider",

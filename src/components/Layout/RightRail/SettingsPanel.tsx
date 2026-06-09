@@ -153,7 +153,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ open, onClose }) => {
                   aria-label="Reset sidebar font size"
                   sx={{
                     minWidth: 32,
-                    fontSize: "0.75rem",
+                    typography: "caption",
                     fontWeight: sidebarFontSize !== 16 ? 700 : 400,
                     color: sidebarFontSize !== 16
                       ? "primary.main"

@@ -324,7 +324,6 @@ export default function AttachmentComponent({
             noWrap
             sx={{
               fontWeight: 500,
-              fontSize: "0.875rem",
               lineHeight: 1.3,
             }}
           >
@@ -334,7 +333,6 @@ export default function AttachmentComponent({
             variant="caption"
             sx={{
               color: "text.secondary",
-              fontSize: "0.75rem",
               lineHeight: 1.2,
             }}
           >
@@ -421,7 +419,9 @@ export default function AttachmentComponent({
             title={expanded ? "Collapse preview" : "Expand preview"}
             sx={{ p: 0.5 }}
           >
-            {expanded ? <ChevronUp size={ICON_SIZE.dense} /> : <ChevronDown size={ICON_SIZE.dense} />}
+            {expanded
+              ? <ChevronUp size={ICON_SIZE.dense} />
+              : <ChevronDown size={ICON_SIZE.dense} />}
           </IconButton>
         </Box>
       </Box>

@@ -131,23 +131,23 @@ under CSS variables and will not react to the in-app theme toggle.
 Font family: **`"Public Sans", "Roboto", "Helvetica", "Arial", sans-serif`**\
 Weights loaded: 300, 400, 500, 600, 700 (via `@fontsource/public-sans`).
 
-| Variant     | Size     | Weight | Line Height | Notes                                          |
-| ----------- | -------- | ------ | ----------- | ---------------------------------------------- |
-| `h1`        | 2.5rem   | 700    | 1.2         | Letter-spacing -0.02em                         |
-| `h2`        | 2rem     | 700    | 1.25        | Letter-spacing -0.01em                         |
-| `h3`        | 1.75rem  | 600    | 1.3         |                                                |
-| `h4`        | 1.5rem   | 600    | 1.35        |                                                |
-| `h5`        | 1.25rem  | 600    | 1.4         | Default card title size                        |
-| `h6`        | 1.125rem | 600    | 1.45        |                                                |
-| `body1`     | 1rem     | 400    | 1.6         | Editor paragraph baseline                      |
-| `body2`     | 0.875rem | 400    | 1.6         | Card excerpts, secondary text                  |
-| `subtitle1` | 1rem     | 500    | 1.5         |                                                |
-| `subtitle2` | 0.875rem | 500    | 1.5         |                                                |
-| `caption`   | 0.75rem  | 400    | 1.5         | Letter-spacing 0.02em                          |
-| `dense`     | 0.8125rem| 400    | 1.5         | **Custom.** 13px — toolbars, table rows, dense labels |
-| `micro`     | 0.6875rem| 400    | 1.5         | **Custom.** 11px — timestamps, counters, meta chips; letter-spacing 0.02em |
-| `overline`  | 0.75rem  | 600    | 1.5         | Uppercase, letter-spacing 0.08em               |
-| `button`    | —        | 600    | —           | `textTransform: "none"`, letter-spacing 0.02em |
+| Variant     | Size      | Weight | Line Height | Notes                                                                      |
+| ----------- | --------- | ------ | ----------- | -------------------------------------------------------------------------- |
+| `h1`        | 2.5rem    | 700    | 1.2         | Letter-spacing -0.02em                                                     |
+| `h2`        | 2rem      | 700    | 1.25        | Letter-spacing -0.01em                                                     |
+| `h3`        | 1.75rem   | 600    | 1.3         |                                                                            |
+| `h4`        | 1.5rem    | 600    | 1.35        |                                                                            |
+| `h5`        | 1.25rem   | 600    | 1.4         | Default card title size                                                    |
+| `h6`        | 1.125rem  | 600    | 1.45        |                                                                            |
+| `body1`     | 1rem      | 400    | 1.6         | Editor paragraph baseline                                                  |
+| `body2`     | 0.875rem  | 400    | 1.6         | Card excerpts, secondary text                                              |
+| `subtitle1` | 1rem      | 500    | 1.5         |                                                                            |
+| `subtitle2` | 0.875rem  | 500    | 1.5         |                                                                            |
+| `caption`   | 0.75rem   | 400    | 1.5         | Letter-spacing 0.02em                                                      |
+| `dense`     | 0.8125rem | 400    | 1.5         | **Custom.** 13px — toolbars, table rows, dense labels                      |
+| `micro`     | 0.6875rem | 400    | 1.5         | **Custom.** 11px — timestamps, counters, meta chips; letter-spacing 0.02em |
+| `overline`  | 0.75rem   | 600    | 1.5         | Uppercase, letter-spacing 0.08em                                           |
+| `button`    | —         | 600    | —           | `textTransform: "none"`, letter-spacing 0.02em                             |
 
 `dense` and `micro` are project-specific variants (declared via module
 augmentation in `src/components/Layout/ThemeProvider.tsx`) that fill the gap
@@ -412,13 +412,13 @@ import { ICON_SIZE } from "@/theme/icons";
 <Save size={ICON_SIZE.inline} />;
 ```
 
-| Token              | px | Context                                      |
-| ------------------ | -- | -------------------------------------------- |
-| `ICON_SIZE.inline` | 14 | Inline with dense text, button start/end icons |
-| `ICON_SIZE.dense`  | 18 | Dense UI: toolbars, chips, table rows        |
-| `ICON_SIZE.default`| 24 | Default UI: buttons, menus, dialogs          |
-| `ICON_SIZE.large`  | 32 | Large decorative                             |
-| `ICON_SIZE.display`| 64 | Empty-state / hero glyphs                    |
+| Token               | px | Context                                        |
+| ------------------- | -- | ---------------------------------------------- |
+| `ICON_SIZE.inline`  | 14 | Inline with dense text, button start/end icons |
+| `ICON_SIZE.dense`   | 18 | Dense UI: toolbars, chips, table rows          |
+| `ICON_SIZE.default` | 24 | Default UI: buttons, menus, dialogs            |
+| `ICON_SIZE.large`   | 32 | Large decorative                               |
+| `ICON_SIZE.display` | 64 | Empty-state / hero glyphs                      |
 
 Do **not** apply these to MUI `CircularProgress`/`Skeleton` `size=` — that's an
 element diameter, not an icon glyph, and stays a raw number.

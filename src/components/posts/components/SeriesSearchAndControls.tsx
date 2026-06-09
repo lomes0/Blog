@@ -58,7 +58,7 @@ const SeriesSearchAndControls: React.FC<SeriesSearchAndControlsProps> = ({
               size="small"
               label={`${pendingTimeChanges.size} modified`}
               color="warning"
-              sx={{ fontSize: "0.75rem", height: 24 }}
+              sx={{ typography: "caption", height: 24 }}
             />
           )}
           <Button

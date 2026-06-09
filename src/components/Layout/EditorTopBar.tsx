@@ -346,7 +346,7 @@ const EditorTopBar: React.FC = () => {
                     sx={{
                       display: "flex",
                       alignItems: "center",
-                      fontSize: "0.875rem",
+                      typography: "body2",
                       fontWeight: isLast ? 600 : 400,
                       "&:hover": { color: "primary.main" },
                     }}
@@ -364,7 +364,7 @@ const EditorTopBar: React.FC = () => {
                   sx={{
                     display: "flex",
                     alignItems: "center",
-                    fontSize: "0.875rem",
+                    typography: "body2",
                     fontWeight: isLast ? 600 : 400,
                   }}
                 >

@@ -142,7 +142,7 @@ function CollapsedView({
             <Typography
               variant="body2"
               color="text.secondary"
-              sx={{ fontSize: "0.875rem", fontWeight: 600 }}
+              sx={{ fontWeight: 600 }}
             >
               {formatFullDate(series.createdAt)}
             </Typography>

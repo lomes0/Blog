@@ -106,7 +106,10 @@ export function PostRowContextMenu({
               <FolderOpen size={15} />
             </ListItemIcon>
             <ListItemText>Move to series</ListItemText>
-            <ChevronRight size={ICON_SIZE.inline} style={{ marginLeft: 8, flexShrink: 0 }} />
+            <ChevronRight
+              size={ICON_SIZE.inline}
+              style={{ marginLeft: 8, flexShrink: 0 }}
+            />
           </MenuItem>
         )}
 

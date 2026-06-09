@@ -336,7 +336,10 @@ function ToolbarPlugin({ isActive = true, onReset }: ToolbarPluginProps) {
                 disabled={!isDirty}
                 onClick={onReset}
               >
-                <RotateCcw size={ICON_SIZE.dense} style={{ transform: "translateY(1px)" }} />
+                <RotateCcw
+                  size={ICON_SIZE.dense}
+                  style={{ transform: "translateY(1px)" }}
+                />
               </IconButton>
             </span>
           </Tooltip>

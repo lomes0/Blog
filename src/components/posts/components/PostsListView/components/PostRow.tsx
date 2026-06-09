@@ -180,7 +180,7 @@ export const PostRow = React.memo(function PostRow({
               fullWidth
               sx={{
                 fontWeight: 600,
-                fontSize: "0.875rem",
+                typography: "body2",
                 color: "text.primary",
                 borderBottom: "1px solid",
                 borderColor: "primary.main",
@@ -195,7 +195,7 @@ export const PostRow = React.memo(function PostRow({
               noWrap
               sx={{
                 fontWeight: 600,
-                fontSize: "0.875rem",
+                typography: "body2",
                 color: "text.primary",
                 display: "block",
                 cursor: "pointer",

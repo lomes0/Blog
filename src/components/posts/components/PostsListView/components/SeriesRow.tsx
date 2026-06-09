@@ -252,7 +252,7 @@ export const SeriesRow = React.memo(function SeriesRow({
                 onClick={(e) => e.stopPropagation()}
                 sx={{
                   fontWeight: 600,
-                  fontSize: "0.875rem",
+                  typography: "body2",
                   flex: 1,
                   minWidth: 0,
                   borderBottom: "1px solid",
@@ -266,7 +266,7 @@ export const SeriesRow = React.memo(function SeriesRow({
                 noWrap
                 sx={{
                   fontWeight: 600,
-                  fontSize: "0.875rem",
+                  typography: "body2",
                   color: "text.primary",
                 }}
               >
@@ -364,7 +364,7 @@ export const SeriesRow = React.memo(function SeriesRow({
                 size="small"
                 href={`/posts/${series.id}`}
                 sx={{
-                  fontSize: "0.75rem",
+                  typography: "caption",
                   color: "text.secondary",
                   textTransform: "none",
                   p: 0.5,

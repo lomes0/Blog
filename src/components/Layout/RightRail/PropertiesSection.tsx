@@ -32,7 +32,7 @@ const KVRow = ({
     >
       {k}
     </Typography>
-    <Box sx={{ fontSize: "0.75rem", lineHeight: 1.6 }}>{v}</Box>
+    <Box sx={{ typography: "caption", lineHeight: 1.6 }}>{v}</Box>
   </>
 );
 

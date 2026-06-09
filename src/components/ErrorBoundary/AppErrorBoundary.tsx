@@ -120,7 +120,6 @@ class AppErrorBoundary extends Component<Props, State> {
                   variant="caption"
                   component="pre"
                   sx={{
-                    fontSize: "0.75rem",
                     fontFamily: "monospace",
                     whiteSpace: "pre-wrap",
                     wordBreak: "break-word",

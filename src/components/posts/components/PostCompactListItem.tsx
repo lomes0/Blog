@@ -234,7 +234,6 @@ const PostCompactListItem: React.FC<PostCompactListItemProps> = ({
                 variant="caption"
                 sx={{
                   color: "text.disabled",
-                  fontSize: "0.75rem",
                   display: "flex",
                   alignItems: "center",
                   gap: 1,
