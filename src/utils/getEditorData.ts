@@ -3,36 +3,22 @@ import type {
   SerializedRootNode,
   SerializedTextNode,
 } from "lexical";
-import type { SerializedHeadingNode } from "@lexical/rich-text";
 
 /**
  * Build an initial Lexical editor state for a new document.
- * The root contains:
- *  - an h1 heading with the given title
- *  - an empty paragraph
+ * The root contains a single empty paragraph – the title is not injected
+ * into the content, so the document starts blank.
  */
-export function getEditorData(title: string) {
-  const headingText: SerializedTextNode = {
+export function getEditorData() {
+  const paragraphText: SerializedTextNode = {
     detail: 0,
     format: 0,
     mode: "normal",
     style: "",
-    text: title,
+    text: "",
     type: "text",
     version: 1,
   };
-
-  const heading: SerializedHeadingNode = {
-    children: [headingText],
-    direction: "ltr",
-    format: "center",
-    indent: 0,
-    tag: "h1",
-    type: "heading",
-    version: 1,
-  };
-
-  const paragraphText: SerializedTextNode = { ...headingText, text: "" };
 
   const paragraph: SerializedParagraphNode = {
     children: [paragraphText],
@@ -46,7 +32,7 @@ export function getEditorData(title: string) {
   };
 
   const root: SerializedRootNode = {
-    children: [heading, paragraph],
+    children: [paragraph],
     direction: "ltr",
     format: "",
     indent: 0,

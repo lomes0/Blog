@@ -111,7 +111,7 @@ const CreatePostDrawer: React.FC<CreatePostDrawerProps> = ({
         head: uuidv4(),
         name,
         data: input.data ??
-          (getEditorData(name) as DocumentCreateInput["data"]),
+          (getEditorData() as DocumentCreateInput["data"]),
         type: "DOCUMENT",
         parentId: null,
         seriesId,

@@ -107,7 +107,7 @@ const NewDocument: React.FC<{ cloudDocument?: Document }> = (
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const name = input.name || "Untitled Document";
-    const data = input.data || getEditorData(name);
+    const data = input.data || getEditorData();
     const createdAt = new Date().toISOString();
     const payload: DocumentCreateInput = {
       ...input,
