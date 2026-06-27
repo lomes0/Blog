@@ -160,6 +160,9 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     setTabMetas((prev) => [...prev, newMeta]);
     setMountedTabIds((prev) => new Set([...prev, id]));
     dispatch(actions.addTab(id));
+    // Switch to the new tab (addTab does this) and open inline rename so the
+    // user can name it right away.
+    setRenamingTabId(id);
   }, [user, rootId, tabMetas.length, dispatch]);
 
   const handleCloseRequest = useCallback((tabId: string) => {

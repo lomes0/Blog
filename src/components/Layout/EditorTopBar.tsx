@@ -592,6 +592,33 @@ const EditorTopBar: React.FC = () => {
         </>
       )}
 
+      {/* Single-tab edit pages don't render the strip above, so surface a lone
+          "New tab" button to create the first extra tab. */}
+      {isEditPage && tabBar && !hasTabs && tabBar.onAdd && (
+        <>
+          <Divider
+            orientation="vertical"
+            flexItem
+            sx={{ mx: 1, my: 0.75 }}
+          />
+          <Tooltip title="New tab">
+            <IconButton
+              size="small"
+              onClick={tabBar.onAdd}
+              aria-label="New tab"
+              sx={{
+                flexShrink: 0,
+                color: "text.secondary",
+                p: 0.5,
+                "&:hover": { color: "primary.main" },
+              }}
+            >
+              <Plus size={15} />
+            </IconButton>
+          </Tooltip>
+        </>
+      )}
+
       {/* Page-level actions slot — right after the sub-doc tabs (or title) */}
       {actions}
 
