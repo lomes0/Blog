@@ -1,6 +1,7 @@
 "use client";
 import React, { memo, useCallback } from "react";
 import {
+  Box,
   IconButton,
   ListItem,
   ListItemButton,
@@ -46,7 +47,7 @@ export const PostItem = memo(
       handleRenameKeyDown,
     } = itemActions;
 
-    const { tabsState, subTabs } = useSelector((state: RootState) => {
+    const { tabsState, subTabs, isDirty } = useSelector((state: RootState) => {
       const tabs = state.ui.tabs;
       const isRoot = tabs.rootId === post.id;
       const count = isRoot ? tabs.tabIds.length : 0;
@@ -60,7 +61,13 @@ export const PostItem = memo(
           };
         })
         : [];
-      return { tabsState: tabs, subTabs: entries };
+      // The post has unsaved changes if it's the open document and any of its
+      // tabs is dirty. Driven by the same Redux `dirtyTabIds` the Save button
+      // uses, so the sidebar updates live as the user types (and clears when
+      // the content resets to its saved state).
+      const dirty = isRoot &&
+        tabs.tabIds.some((id) => tabs.dirtyTabIds.includes(id));
+      return { tabsState: tabs, subTabs: entries, isDirty: dirty };
     });
 
     const doc = post.cloud || post.local;
@@ -79,8 +86,8 @@ export const PostItem = memo(
     const isNew = Boolean(post.local) && !post.cloud;
 
     // Sync state is carried by filename color only (no weight bump):
-    //   modified -> amber, new -> green, clean -> default.
-    const nameColor = isModified
+    //   unsaved/modified -> amber, new -> green, clean -> default.
+    const nameColor = isDirty || isModified
       ? "warning.main"
       : isNew
       ? "success.main"
@@ -197,6 +204,20 @@ export const PostItem = memo(
                     }}
                   />
                 ))}
+            {sidebarOpen && isDirty && !showSubTabs && (
+              <Box
+                component="span"
+                aria-label="Unsaved changes"
+                sx={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  bgcolor: "warning.main",
+                  flexShrink: 0,
+                  ml: "auto",
+                }}
+              />
+            )}
             {sidebarOpen && isModified && (
               <Tooltip title="Save to cloud" placement="right">
                 <IconButton
@@ -205,7 +226,7 @@ export const PostItem = memo(
                   onClick={handleSyncToCloud}
                   sx={{
                     p: 0.25,
-                    ml: "auto",
+                    ml: isDirty && !showSubTabs ? 0.5 : "auto",
                     color: "warning.main",
                     "&:hover": { bgcolor: "action.hover" },
                   }}
@@ -226,7 +247,7 @@ export const PostItem = memo(
                     p: 0.25,
                     // Align the glyph's right edge with the series doc-count
                     // badge above by cancelling the button's own right padding.
-                    ml: isModified ? 0.5 : "auto",
+                    ml: isModified || (isDirty && !showSubTabs) ? 0.5 : "auto",
                     mr: -0.25,
                     color: "text.secondary",
                     "&:hover": { bgcolor: "action.hover" },
