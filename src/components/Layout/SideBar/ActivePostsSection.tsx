@@ -29,6 +29,12 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
     expandedSeries,
     toggleSeries: toggleSeriesExpanded,
   } = useExpandedState("sidebarSeriesCollapsedState");
+  // Independent persisted expansion state for each post's tab list.
+  const {
+    expandedSeries: expandedTabs,
+    toggleSeries: toggleTabs,
+    expand: expandTabs,
+  } = useExpandedState("sidebarPostTabsExpandedState");
 
   const filteredGroups = useMemo((): SeriesGroupItem[] => {
     if (!activePostsSearch.trim()) return groupedActivePosts;
@@ -146,6 +152,9 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
                   sidebarOpen={sidebarOpen}
                   pathname={pathname}
                   itemActions={itemActions}
+                  expandedTabs={expandedTabs}
+                  onToggleTabs={toggleTabs}
+                  onExpandTabs={expandTabs}
                 />
               );
             }
@@ -157,6 +166,9 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
                 sidebarOpen={sidebarOpen}
                 pathname={pathname}
                 itemActions={itemActions}
+                expandedTabs={expandedTabs}
+                onToggleTabs={toggleTabs}
+                onExpandTabs={expandTabs}
               />
             );
           })}

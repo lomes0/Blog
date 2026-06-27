@@ -25,6 +25,9 @@ interface SeriesGroupProps {
   sidebarOpen: boolean;
   pathname: string;
   itemActions: PostItemActions;
+  expandedTabs: Set<string>;
+  onToggleTabs: (id: string) => void;
+  onExpandTabs: (id: string) => void;
 }
 
 export const SeriesGroup: React.FC<SeriesGroupProps> = ({
@@ -35,6 +38,9 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
   sidebarOpen,
   pathname,
   itemActions,
+  expandedTabs,
+  onToggleTabs,
+  onExpandTabs,
 }) => {
   const hasAnyDirtyChild = group.posts.some(
     (post) =>
@@ -151,6 +157,9 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
               sidebarOpen={sidebarOpen}
               pathname={pathname}
               itemActions={itemActions}
+              expandedTabs={expandedTabs}
+              onToggleTabs={onToggleTabs}
+              onExpandTabs={onExpandTabs}
             />
           ))}
         </Box>

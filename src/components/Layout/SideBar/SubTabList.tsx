@@ -2,6 +2,7 @@
 import React from "react";
 import { Box } from "@mui/material";
 import { actions, useDispatch } from "@/store";
+import { SafeNavigationLink } from "./SafeNavigationLink";
 
 export interface SubTabEntry {
   id: string;
@@ -12,10 +13,17 @@ export interface SubTabEntry {
 interface SubTabListProps {
   tabs: SubTabEntry[];
   activeTabId: string | null;
+  /**
+   * Whether the parent post is the document currently open in the editor/viewer.
+   * When true, clicking a tab switches the active tab in place (driven by the
+   * shared `ui.tabs` store). When false the post isn't open, so a click
+   * navigates to that tab's document instead.
+   */
+  isOpenRoot: boolean;
 }
 
 export const SubTabList: React.FC<SubTabListProps> = (
-  { tabs, activeTabId },
+  { tabs, activeTabId, isOpenRoot },
 ) => {
   const dispatch = useDispatch();
 
@@ -33,20 +41,28 @@ export const SubTabList: React.FC<SubTabListProps> = (
       }}
     >
       {tabs.map((tab) => {
-        const isActive = tab.id === activeTabId;
-        return (
-          <Box
-            key={tab.id}
-            component="li"
-            role="button"
-            tabIndex={0}
-            onClick={() => dispatch(actions.setActiveTab(tab.id))}
-            onKeyDown={(e) => {
+        const isActive = isOpenRoot && tab.id === activeTabId;
+        const interactionProps = isOpenRoot
+          ? {
+            role: "button",
+            tabIndex: 0,
+            onClick: () => dispatch(actions.setActiveTab(tab.id)),
+            onKeyDown: (e: React.KeyboardEvent) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
                 dispatch(actions.setActiveTab(tab.id));
               }
-            }}
+            },
+          }
+          : {
+            component: SafeNavigationLink,
+            href: `/view/${tab.id}`,
+          };
+        return (
+          <Box
+            key={tab.id}
+            component="li"
+            {...interactionProps}
             sx={{
               display: "flex",
               alignItems: "center",
@@ -57,6 +73,7 @@ export const SubTabList: React.FC<SubTabListProps> = (
               fontSize: "0.72em",
               cursor: "pointer",
               color: "text.secondary",
+              textDecoration: "none",
               fontWeight: 400,
               bgcolor: isActive ? "action.selected" : "transparent",
               "&:hover": {
