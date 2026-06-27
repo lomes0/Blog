@@ -134,19 +134,18 @@ export function useSidebarActions(): SidebarActionsResult {
     if (renamingPostId && renameValue.trim()) {
       const doc = documents?.find((d) => d.id === renamingPostId);
       if (doc) {
+        const partial = { name: renameValue.trim() };
+        // Update both stores when present so the document title above the editor
+        // (which reads the local copy) and the cloud stay in sync. Works for
+        // child tab documents too, since they're keyed the same way.
+        if (doc.local) {
+          dispatch(
+            actions.updateLocalDocument({ id: renamingPostId, partial }),
+          );
+        }
         if (doc.cloud) {
           dispatch(
-            actions.updateCloudDocument({
-              id: renamingPostId,
-              partial: { name: renameValue.trim() },
-            }),
-          );
-        } else if (doc.local) {
-          dispatch(
-            actions.updateLocalDocument({
-              id: renamingPostId,
-              partial: { name: renameValue.trim() },
-            }),
+            actions.updateCloudDocument({ id: renamingPostId, partial }),
           );
         }
       }

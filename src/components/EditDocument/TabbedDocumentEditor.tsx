@@ -188,11 +188,26 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
   }, [deleteTarget, dispatch]);
 
   const handleRename = useCallback(async (tabId: string, newName: string) => {
+    const trimmed = newName.trim();
+    if (!trimmed) return;
     setTabMetas((prev) =>
-      prev.map((t) => (t.id === tabId ? { ...t, name: newName } : t))
+      prev.map((t) => (t.id === tabId ? { ...t, name: trimmed } : t))
     );
-    await apiClient.documents.update(tabId, { name: newName });
-  }, []);
+    // Persist through the store (IndexedDB + cloud) rather than hitting the API
+    // directly, so the document title rendered above the editor and the tab
+    // name in the sidebar update immediately to match the renamed tab.
+    const userDoc = allDocuments.find((d) => d.id === tabId);
+    const partial = { name: trimmed };
+    if (userDoc?.local) {
+      await dispatch(actions.updateLocalDocument({ id: tabId, partial }));
+    }
+    if (userDoc?.cloud) {
+      await dispatch(actions.updateCloudDocument({ id: tabId, partial }));
+    }
+    if (!userDoc?.local && !userDoc?.cloud) {
+      await apiClient.documents.update(tabId, partial);
+    }
+  }, [dispatch, allDocuments]);
 
   const handleReorder = useCallback(async (orderedIds: string[]) => {
     dispatch(actions.reorderTabs(orderedIds));

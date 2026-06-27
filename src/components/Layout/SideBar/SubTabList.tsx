@@ -1,8 +1,18 @@
 "use client";
-import React from "react";
-import { Box } from "@mui/material";
+import React, { useState } from "react";
+import {
+  Box,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
+  TextField,
+} from "@mui/material";
+import { FilePen } from "lucide-react";
 import { actions, useDispatch } from "@/store";
+import { ICON_SIZE } from "@/theme/icons";
 import { SafeNavigationLink } from "./SafeNavigationLink";
+import type { PostItemActions } from "./hooks/useSidebarActions";
 
 export interface SubTabEntry {
   id: string;
@@ -20,105 +30,231 @@ interface SubTabListProps {
    * navigates to that tab's document instead.
    */
   isOpenRoot: boolean;
+  /**
+   * Shared rename machinery from `useSidebarActions`. Sub-tabs are regular
+   * documents, so the same id-keyed rename flow used for posts renames them too
+   * (double-click or right-click → Rename to start; Enter/blur commits, Escape
+   * cancels).
+   */
+  itemActions: PostItemActions;
 }
 
+const dotSx = {
+  width: 6,
+  height: 6,
+  borderRadius: "2px",
+  flexShrink: 0,
+  bgcolor: "text.disabled",
+} as const;
+
 export const SubTabList: React.FC<SubTabListProps> = (
-  { tabs, activeTabId, isOpenRoot },
+  { tabs, activeTabId, isOpenRoot, itemActions },
 ) => {
   const dispatch = useDispatch();
+  const {
+    renamingPostId,
+    renameValue,
+    setRenameValue,
+    renameInputRef,
+    handleDoubleClick,
+    handleRenameBlur,
+    handleRenameKeyDown,
+  } = itemActions;
+
+  // Right-click menu, anchored at the cursor and keyed to the target tab.
+  const [menu, setMenu] = useState<
+    { mouseX: number; mouseY: number; tab: SubTabEntry } | null
+  >(null);
+
+  const handleContextMenu = (e: React.MouseEvent, tab: SubTabEntry) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setMenu((prev) =>
+      prev === null
+        ? { mouseX: e.clientX + 2, mouseY: e.clientY - 6, tab }
+        : null
+    );
+  };
+
+  const handleCloseMenu = () => setMenu(null);
+
+  const handleRenameFromMenu = (e: React.MouseEvent) => {
+    if (!menu) return;
+    const { tab } = menu;
+    setMenu(null);
+    // Reuse the double-click rename starter (it only reads the event to
+    // suppress default behavior), so the inline TextField opens on this tab.
+    handleDoubleClick(e, tab.id, tab.name);
+  };
 
   return (
-    <Box
-      component="ul"
-      aria-label="Sub-document tabs"
-      sx={{
-        listStyle: "none",
-        p: 0,
-        m: 0,
-        pl: "14px",
-        ml: "12px",
-        mb: 0.5,
-      }}
-    >
-      {tabs.map((tab) => {
-        const isActive = isOpenRoot && tab.id === activeTabId;
-        const interactionProps = isOpenRoot
-          ? {
-            role: "button",
-            tabIndex: 0,
-            onClick: () => dispatch(actions.setActiveTab(tab.id)),
-            onKeyDown: (e: React.KeyboardEvent) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                dispatch(actions.setActiveTab(tab.id));
-              }
-            },
+    <>
+      <Box
+        component="ul"
+        aria-label="Sub-document tabs"
+        sx={{
+          listStyle: "none",
+          p: 0,
+          m: 0,
+          pl: "14px",
+          ml: "12px",
+          mb: 0.5,
+        }}
+      >
+        {tabs.map((tab) => {
+          const isActive = isOpenRoot && tab.id === activeTabId;
+          const isRenaming = renamingPostId === tab.id;
+
+          if (isRenaming) {
+            return (
+              <Box
+                key={tab.id}
+                component="li"
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  py: "3px",
+                  px: "7px",
+                  borderRadius: "5px",
+                  fontSize: "0.72em",
+                }}
+              >
+                <Box component="span" aria-hidden sx={dotSx} />
+                <TextField
+                  inputRef={renameInputRef}
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  onBlur={handleRenameBlur}
+                  onKeyDown={handleRenameKeyDown}
+                  size="small"
+                  variant="standard"
+                  fullWidth
+                  sx={{
+                    "& .MuiInput-input": { fontSize: "inherit", py: 0 },
+                  }}
+                />
+              </Box>
+            );
           }
-          : {
-            component: SafeNavigationLink,
-            href: `/view/${tab.id}`,
-          };
-        return (
-          <Box
-            key={tab.id}
-            component="li"
-            {...interactionProps}
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              py: "3px",
-              px: "7px",
-              borderRadius: "5px",
-              fontSize: "0.72em",
-              cursor: "pointer",
-              color: "text.secondary",
-              textDecoration: "none",
-              fontWeight: 400,
-              bgcolor: isActive ? "action.selected" : "transparent",
-              "&:hover": {
-                bgcolor: "action.hover",
+
+          const interactionProps = isOpenRoot
+            ? {
+              role: "button",
+              tabIndex: 0,
+              onClick: () => dispatch(actions.setActiveTab(tab.id)),
+              onKeyDown: (e: React.KeyboardEvent) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  dispatch(actions.setActiveTab(tab.id));
+                }
               },
-            }}
-          >
+            }
+            : {
+              component: SafeNavigationLink,
+              href: `/view/${tab.id}`,
+            };
+          return (
             <Box
-              component="span"
-              aria-hidden
+              key={tab.id}
+              component="li"
+              {...interactionProps}
+              onDoubleClick={(e: React.MouseEvent) =>
+                handleDoubleClick(e, tab.id, tab.name)}
+              onContextMenu={(e: React.MouseEvent) => handleContextMenu(e, tab)}
               sx={{
-                width: 6,
-                height: 6,
-                borderRadius: "2px",
-                flexShrink: 0,
-                bgcolor: "text.disabled",
-              }}
-            />
-            <Box
-              component="span"
-              sx={{
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                flex: 1,
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                py: "3px",
+                px: "7px",
+                borderRadius: "5px",
+                fontSize: "0.72em",
+                cursor: "pointer",
+                color: "text.secondary",
+                textDecoration: "none",
+                fontWeight: 400,
+                bgcolor: isActive ? "action.selected" : "transparent",
+                "&:hover": {
+                  bgcolor: "action.hover",
+                },
               }}
             >
-              {tab.name}
-            </Box>
-            {tab.dirty && (
               <Box
                 component="span"
-                aria-label="Unsaved"
-                sx={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: "50%",
-                  bgcolor: "warning.main",
-                  flexShrink: 0,
-                }}
+                aria-hidden
+                sx={dotSx}
               />
-            )}
-          </Box>
-        );
-      })}
-    </Box>
+              <Box
+                component="span"
+                sx={{
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  flex: 1,
+                }}
+              >
+                {tab.name}
+              </Box>
+              {tab.dirty && (
+                <Box
+                  component="span"
+                  aria-label="Unsaved"
+                  sx={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    bgcolor: "warning.main",
+                    flexShrink: 0,
+                  }}
+                />
+              )}
+            </Box>
+          );
+        })}
+      </Box>
+
+      <Menu
+        open={menu !== null}
+        onClose={handleCloseMenu}
+        anchorReference="anchorPosition"
+        anchorPosition={menu !== null
+          ? { top: menu.mouseY, left: menu.mouseX }
+          : undefined}
+        slotProps={{
+          paper: {
+            elevation: 2,
+            sx: (theme) => ({
+              minWidth: 130,
+              borderRadius: 1,
+              mt: 0.5,
+              bgcolor: "rgba(250, 250, 250, 0.95)",
+              ...theme.applyStyles("dark", {
+                bgcolor: "rgba(30, 30, 30, 0.95)",
+              }),
+              backdropFilter: "blur(8px)",
+            }),
+          },
+        }}
+      >
+        <MenuItem
+          onClick={handleRenameFromMenu}
+          sx={{
+            py: 0.75,
+            px: 1.75,
+            gap: 1.25,
+            typography: "body2",
+            "&:hover": { backgroundColor: "action.hover" },
+          }}
+        >
+          <ListItemIcon sx={{ minWidth: "auto !important" }}>
+            <FilePen size={ICON_SIZE.dense} />
+          </ListItemIcon>
+          <ListItemText primaryTypographyProps={{ variant: "body2" }}>
+            Rename
+          </ListItemText>
+        </MenuItem>
+      </Menu>
+    </>
   );
 };

@@ -360,6 +360,7 @@ export const PostItem = memo(
             tabs={tabEntries}
             activeTabId={activeTabId}
             isOpenRoot={isOpenRoot}
+            itemActions={itemActions}
           />
         )}
       </ListItem>
