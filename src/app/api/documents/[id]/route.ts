@@ -6,6 +6,7 @@ import {
   findEditorDocument,
   updateDocument,
 } from "@/repositories/document";
+import { findSeriesById } from "@/repositories/series";
 import { DocumentUpdateInput } from "@/types";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
@@ -116,6 +117,28 @@ export const PATCH = withApiHandler(
       status: body.status,
       ...(body.description !== undefined && { description: body.description }),
     };
+
+    // Series membership. Setting seriesId to null moves the post back to
+    // standalone; assigning a series requires the caller to own that series.
+    if (body.seriesId !== undefined) {
+      if (body.seriesId !== null) {
+        const targetSeries = await findSeriesById(body.seriesId);
+        if (!targetSeries) {
+          throw new ApiError(404, "Series not found");
+        }
+        if (targetSeries.authorId !== user.id) {
+          throw new ApiError(
+            403,
+            "Unauthorized",
+            "You can only move posts into your own series",
+          );
+        }
+      }
+      input.seriesId = body.seriesId;
+      input.seriesOrder = body.seriesId === null
+        ? null
+        : (body.seriesOrder ?? 0);
+    }
 
     if (body.handle && body.handle !== userPost.handle) {
       input.handle = body.handle.toLowerCase();

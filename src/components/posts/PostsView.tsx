@@ -281,6 +281,9 @@ const PostsView: React.FC<PostsViewProps> = ({ series, user: serverUser }) => {
                   <PostsListView
                     posts={seriesUserDocs}
                     series={[]}
+                    moveTargetSeries={seriesList.filter((s) =>
+                      s.id !== series!.id
+                    )}
                     user={user}
                     density={density}
                     tagStyle={tagStyle}

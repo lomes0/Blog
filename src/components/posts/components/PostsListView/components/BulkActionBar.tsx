@@ -1,6 +1,19 @@
-import React from "react";
-import { Box, Button, Fade, Paper, Tooltip, Typography } from "@mui/material";
-import { Combine, Trash2, X } from "lucide-react";
+import React, { useState } from "react";
+import {
+  Box,
+  Button,
+  Divider,
+  Fade,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
+  Paper,
+  Tooltip,
+  Typography,
+} from "@mui/material";
+import { Combine, FolderMinus, FolderOpen, Trash2, X } from "lucide-react";
+import { Series } from "@/types";
 import { ICON_SIZE } from "@/theme/icons";
 
 interface BulkActionBarProps {
@@ -11,11 +24,33 @@ interface BulkActionBarProps {
   onMerge: () => void;
   /** Whether merge is currently allowed (needs 2+ cloud posts). */
   canMerge: boolean;
+  /** Series the selected posts can be moved into. */
+  availableSeries: Series[];
+  /** Move the selected posts to a series (id) or standalone (null). */
+  onMove: (seriesId: string | null) => void;
+  /** Whether move is allowed (cloud-only posts selected). */
+  canMove: boolean;
 }
 
 export function BulkActionBar(
-  { count, onDelete, onClear, onMerge, canMerge }: BulkActionBarProps,
+  {
+    count,
+    onDelete,
+    onClear,
+    onMerge,
+    canMerge,
+    availableSeries,
+    onMove,
+    canMove,
+  }: BulkActionBarProps,
 ) {
+  const [moveAnchor, setMoveAnchor] = useState<null | HTMLElement>(null);
+
+  const handleMove = (seriesId: string | null) => {
+    setMoveAnchor(null);
+    onMove(seriesId);
+  };
+
   return (
     <Fade in={count > 0} unmountOnExit>
       <Paper
@@ -70,18 +105,49 @@ export function BulkActionBar(
           </span>
         </Tooltip>
 
-        <Tooltip title="Coming soon">
+        <Tooltip
+          title={canMove
+            ? "Move to a series"
+            : "Only cloud posts can be moved to a series"}
+        >
           <span>
             <Button
               size="small"
               variant="text"
-              disabled
+              disabled={!canMove}
+              startIcon={<FolderOpen size={ICON_SIZE.inline} />}
+              onClick={(e) => setMoveAnchor(e.currentTarget)}
               sx={{ textTransform: "none", typography: "dense" }}
             >
               Move
             </Button>
           </span>
         </Tooltip>
+
+        <Menu
+          anchorEl={moveAnchor}
+          open={Boolean(moveAnchor)}
+          onClose={() => setMoveAnchor(null)}
+          transformOrigin={{ horizontal: "left", vertical: "bottom" }}
+          anchorOrigin={{ horizontal: "left", vertical: "top" }}
+          PaperProps={{ sx: { minWidth: 200, maxHeight: 320 } }}
+        >
+          <MenuItem dense onClick={() => handleMove(null)}>
+            <ListItemIcon>
+              <FolderMinus size={15} />
+            </ListItemIcon>
+            <ListItemText>No series (standalone)</ListItemText>
+          </MenuItem>
+          {availableSeries.length > 0 && <Divider sx={{ my: 0.5 }} />}
+          {availableSeries.map((s) => (
+            <MenuItem key={s.id} dense onClick={() => handleMove(s.id)}>
+              <ListItemIcon>
+                <FolderOpen size={15} />
+              </ListItemIcon>
+              <ListItemText>{s.title}</ListItemText>
+            </MenuItem>
+          ))}
+        </Menu>
 
         <Tooltip title="Coming soon">
           <span>

@@ -19,6 +19,12 @@ interface PostsListViewProps {
   posts: UserDocument[];
   /** All series with their posts. */
   series: Series[];
+  /**
+   * Series offered as bulk-move destinations. Defaults to `series`. In series
+   * mode `series` is empty (no Series section), so this supplies the *other*
+   * series to move posts into.
+   */
+  moveTargetSeries?: Series[];
   user?: User;
   density: ListDensity;
   tagStyle: TagStyle;
@@ -27,6 +33,7 @@ interface PostsListViewProps {
 export function PostsListView({
   posts,
   series,
+  moveTargetSeries,
   user: _user,
   density,
   tagStyle,
@@ -237,6 +244,33 @@ export function PostsListView({
     router.refresh();
   }, [canMerge, selectedMergeablePosts, dispatch, selection, router]);
 
+  // ── Bulk move to series ───────────────────────────────────────────────────
+  // Non-series selected posts. Series membership is cloud-only, so move is
+  // disabled when any local-only post is in the selection (same rule as merge).
+  const selectedMovablePosts = useMemo(() => {
+    return Array.from(selection.selectedIds)
+      .filter((id) => !seriesIdSet.has(id) && allPostsMap.has(id))
+      .map((id) => allPostsMap.get(id)!);
+  }, [selection.selectedIds, seriesIdSet, allPostsMap]);
+
+  const canMove = selectedMovablePosts.length > 0 &&
+    selectedMovablePosts.every((p) => !!p.cloud);
+
+  const handleBulkMove = useCallback(
+    async (seriesId: string | null) => {
+      if (selectedMovablePosts.length === 0) return;
+      for (const post of selectedMovablePosts) {
+        if (!post.cloud) continue;
+        await dispatch(
+          actions.updateCloudDocument({ id: post.id, partial: { seriesId } }),
+        );
+      }
+      selection.clearAll();
+      router.refresh();
+    },
+    [selectedMovablePosts, dispatch, selection, router],
+  );
+
   // ── Drag and drop ─────────────────────────────────────────────────────────
   const handleDragStart = useCallback((e: React.DragEvent, postId: string) => {
     const post = allPostsMap.get(postId);
@@ -406,6 +440,9 @@ export function PostsListView({
         onClear={selection.clearAll}
         onMerge={handleBulkMerge}
         canMerge={canMerge}
+        availableSeries={moveTargetSeries ?? series}
+        onMove={handleBulkMove}
+        canMove={canMove}
       />
     </Box>
   );
