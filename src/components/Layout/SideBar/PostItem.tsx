@@ -23,6 +23,7 @@ import type { UserDocument } from "@/types";
 import { SafeNavigationLink } from "./SafeNavigationLink";
 import type { PostItemActions } from "./hooks/useSidebarActions";
 import { SubTabList } from "./SubTabList";
+import { triggerSave } from "../../EditDocument/saveRegistry";
 import { ICON_SIZE } from "@/theme/icons";
 
 interface PostItemProps {
@@ -94,9 +95,16 @@ export const PostItem = memo(
       : "text.secondary";
     const nameWeight = isSelected ? 600 : 500;
 
-    const handleSyncToCloud = useCallback((e: React.MouseEvent) => {
+    const handleSaveToCloud = useCallback(async (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
+      // Unsaved live edits: persist the open editor's current state (and any
+      // sibling tabs) via the editor's registered save callbacks.
+      if (isDirty) {
+        await triggerSave();
+        return;
+      }
+      // Committed local edits diverging from cloud: push the local head.
       dispatch(
         actions.syncLocalToCloud({
           id: post.id,
@@ -105,7 +113,7 @@ export const PostItem = memo(
           parentId: post.local!.parentId,
         }),
       );
-    }, [dispatch, post.id, post.local]);
+    }, [dispatch, isDirty, post.id, post.local]);
 
     const linkProps = isRenaming ? {} : {
       component: SafeNavigationLink,
@@ -218,12 +226,12 @@ export const PostItem = memo(
                 }}
               />
             )}
-            {sidebarOpen && isModified && (
+            {sidebarOpen && (isDirty || isModified) && (
               <Tooltip title="Save to cloud" placement="right">
                 <IconButton
                   className="sync-btn"
                   size="small"
-                  onClick={handleSyncToCloud}
+                  onClick={handleSaveToCloud}
                   sx={{
                     p: 0.25,
                     ml: isDirty && !showSubTabs ? 0.5 : "auto",
