@@ -4,7 +4,6 @@ import { FileText, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import ViewDocument from "@/components/views/ViewDocument";
-import htmr from "htmr";
 import { Document, UserDocument } from "@/types";
 import { useErrorAnnounce } from "@/hooks/useErrorAnnounce";
 import { apiClient } from "@/api";
@@ -203,9 +202,10 @@ export default function ReadmeViewer({ documents }: ReadmeViewerProps) {
 
   return (
     <Box sx={{ maxWidth: 900, mx: "auto", py: 4, px: 3 }}>
-      <ViewDocument cloudDocument={readme.cloudDocument}>
-        {htmr(readme.html)}
-      </ViewDocument>
+      <ViewDocument
+        cloudDocument={readme.cloudDocument}
+        cloudHtml={readme.html}
+      />
     </Box>
   );
 }

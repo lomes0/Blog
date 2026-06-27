@@ -70,9 +70,26 @@ export const PostItem = memo(
     const isEditing = pathname === `/edit/${post.id}`;
     const isSelected = isViewing || isEditing;
     const isRenaming = renamingPostId === post.id;
-    const isDirty = Boolean(post.local) &&
+    // IDE git-decoration style sync state, encoded on the filename:
+    //   modified (local edits diverge from cloud) -> amber + bold
+    //   new      (exists only locally, never synced) -> green
+    //   clean    (in sync, or cloud-only) -> default
+    const isModified = Boolean(post.local) &&
       Boolean(post.cloud) &&
       post.local!.head !== post.cloud!.head;
+    const isNew = Boolean(post.local) && !post.cloud;
+    // Publish-state indicator (trailing status dot): published -> success,
+    // draft / not-yet-published -> warning.
+    const isPublished = Boolean(post.cloud?.published);
+
+    // Sync state is carried by filename color only (no weight bump):
+    //   modified -> amber, new -> green, clean -> default.
+    const nameColor = isModified
+      ? "warning.main"
+      : isNew
+      ? "success.main"
+      : "text.secondary";
+    const nameWeight = isSelected ? 600 : 500;
 
     const handleSyncToCloud = useCallback((e: React.MouseEvent) => {
       e.preventDefault();
@@ -118,7 +135,7 @@ export const PostItem = memo(
               minHeight: inSeries ? 26 : 30,
               justifyContent: sidebarOpen ? "initial" : "center",
               overflow: "hidden",
-              ...(inSeries ? { pl: 1.5, pr: 5 } : { pl: 2.5, pr: 5 }),
+              ...(inSeries ? { pl: 1.5, pr: 2 } : { pl: 2.5, pr: 2 }),
               py: inSeries ? 0.25 : 0.375,
               "&.Mui-selected": {
                 bgcolor: "action.selected",
@@ -137,27 +154,12 @@ export const PostItem = memo(
                 minWidth: 0,
                 mr: sidebarOpen ? 1 : "auto",
                 justifyContent: "center",
-                position: "relative",
               }}
             >
               <FileText
                 size={ICON_SIZE.inline}
                 style={{ color: "var(--mui-palette-text-secondary)" }}
               />
-              {isDirty && (
-                <Box
-                  component="span"
-                  sx={{
-                    position: "absolute",
-                    top: -1,
-                    right: -3,
-                    width: 5,
-                    height: 5,
-                    borderRadius: "50%",
-                    bgcolor: "primary.main",
-                  }}
-                />
-              )}
             </ListItemIcon>
             {sidebarOpen &&
               (isRenaming
@@ -174,7 +176,7 @@ export const PostItem = memo(
                     sx={{
                       "& .MuiInput-input": {
                         fontSize: "0.7em",
-                        fontWeight: isSelected ? 600 : 500,
+                        fontWeight: nameWeight,
                         py: 0,
                       },
                     }}
@@ -190,13 +192,13 @@ export const PostItem = memo(
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
-                        fontWeight: isSelected ? 600 : 500,
-                        color: "text.secondary",
+                        fontWeight: nameWeight,
+                        color: nameColor,
                       },
                     }}
                   />
                 ))}
-            {sidebarOpen && isDirty && (
+            {sidebarOpen && isModified && (
               <Tooltip title="Save to cloud" placement="right">
                 <IconButton
                   className="sync-btn"
@@ -204,13 +206,33 @@ export const PostItem = memo(
                   onClick={handleSyncToCloud}
                   sx={{
                     p: 0.25,
-                    ml: 0.5,
-                    color: "primary.main",
+                    ml: "auto",
+                    color: "warning.main",
                     "&:hover": { bgcolor: "action.hover" },
                   }}
                 >
                   <CloudUpload size={ICON_SIZE.inline} />
                 </IconButton>
+              </Tooltip>
+            )}
+            {sidebarOpen && isPublished && (
+              <Tooltip title="Published" placement="right">
+                <Box
+                  component="span"
+                  aria-label="Published"
+                  sx={{
+                    flexShrink: 0,
+                    // Push to the right edge so dots form a single column
+                    // aligned with the series item-count badge. When the sync
+                    // button is present it already claimed the auto margin, so
+                    // the dot just sits to its right.
+                    ml: isModified ? 0.5 : "auto",
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    bgcolor: "success.main",
+                  }}
+                />
               </Tooltip>
             )}
           </ListItemButton>

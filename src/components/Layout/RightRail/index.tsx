@@ -5,6 +5,8 @@ import {
   History,
   Info,
   Link as LinkIcon,
+  Maximize2,
+  Minimize2,
   PanelRightClose,
   PanelRightOpen,
   Settings,
@@ -29,7 +31,15 @@ interface RightRailProps {
 }
 
 const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
-  const { toggleRail, isRailResizing, startRailResize } = useLayoutMode();
+  const {
+    toggleRail,
+    isRailResizing,
+    startRailResize,
+    viewMode,
+    setFocus,
+    setRead,
+  } = useLayoutMode();
+  const isFocus = viewMode === "focus";
   const dispatch = useDispatch();
   const copilotOpen = useSelector((state) => state.ui.copilot.open);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -216,13 +226,29 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
             <LinkIcon size={ICON_SIZE.dense} />
           </IconButton>
         </Tooltip>
+        <Tooltip
+          title={isFocus ? "Exit focus mode (F)" : "Focus mode (F)"}
+          placement="left"
+        >
+          <IconButton
+            size="small"
+            color={isFocus ? "primary" : "default"}
+            onClick={isFocus ? setRead : setFocus}
+            aria-label={isFocus ? "Exit focus mode" : "Enter focus mode"}
+            sx={{ mt: "auto" }}
+          >
+            {isFocus
+              ? <Minimize2 size={ICON_SIZE.dense} />
+              : <Maximize2 size={ICON_SIZE.dense} />}
+          </IconButton>
+        </Tooltip>
         <Tooltip title="Settings" placement="left">
           <IconButton
             size="small"
             color={settingsOpen ? "primary" : "default"}
             onClick={() => setSettingsOpen((prev) => !prev)}
             aria-label="Settings"
-            sx={{ mt: "auto", mb: 1 }}
+            sx={{ mb: 1 }}
           >
             <Settings size={ICON_SIZE.dense} />
           </IconButton>

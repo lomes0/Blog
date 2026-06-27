@@ -4,22 +4,29 @@ import { documentsSelectors, useSelector } from "@/store";
 import documentDB from "@/indexeddb";
 import { EMPTY_EDITOR_STATE } from "@/types";
 import type { SerializedEditorState } from "lexical";
-import htmr from "htmr";
 
 interface LocalDocumentViewProps {
   documentId: string;
   cloudHead: string;
-  children: React.ReactNode;
+  cloudHtml: string;
 }
 
 /**
  * Renders local (IndexedDB) content when the local head is ahead of the
  * cloud head — i.e. the user has saved locally but not yet synced to cloud.
- * Falls back to `children` (the server-rendered cloud HTML) when local is
+ * Falls back to `cloudHtml` (the server-rendered cloud HTML) when local is
  * absent or in sync with cloud.
+ *
+ * Both variants are injected via `dangerouslySetInnerHTML` rather than parsed
+ * into React elements (htmr). The view-mode DOM enhancers (code/attachment)
+ * progressively restructure this markup in place; if React owned those nodes,
+ * swapping cloud→local content would make React try to remove nodes the
+ * enhancers had reparented, throwing "removeChild ... not a child of this
+ * node". Injecting raw HTML keeps the content outside React's reconciler, so
+ * the swap is a safe wholesale innerHTML replacement.
  */
 export default function LocalDocumentView(
-  { documentId, cloudHead, children }: LocalDocumentViewProps,
+  { documentId, cloudHead, cloudHtml }: LocalDocumentViewProps,
 ) {
   const localDocument = useSelector((state) => {
     const doc = documentsSelectors.selectById(state, documentId);
@@ -75,9 +82,12 @@ export default function LocalDocumentView(
     return () => controller.abort();
   }, [isLocalNewer, localHead, localData, documentId]);
 
-  if (isLocalNewer && localHtml !== null) {
-    return <>{htmr(localHtml)}</>;
-  }
+  const html = isLocalNewer && localHtml !== null ? localHtml : cloudHtml;
 
-  return <>{children}</>;
+  return (
+    <div
+      style={{ display: "contents" }}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
 }

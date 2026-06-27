@@ -8,12 +8,13 @@ import {
   ListItemText,
   Tooltip,
 } from "@mui/material";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import type { Series } from "@/types";
 import type { SeriesGroupItem } from "@/utils/posts/seriesGrouping";
 import type { PostItemActions } from "./hooks/useSidebarActions";
 import { PostItem } from "./PostItem";
 import { SafeNavigationLink } from "./SafeNavigationLink";
+import { CHEVRON_TRANSITION } from "./constants";
 import { ICON_SIZE } from "@/theme/icons";
 
 interface SeriesGroupProps {
@@ -71,11 +72,15 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
                 mr: 0.5,
                 justifyContent: "center",
                 cursor: "pointer",
+                // Single chevron rotated 0deg -> 90deg on expand (design spec),
+                // rather than swapping two glyphs.
+                "& > svg": {
+                  transition: CHEVRON_TRANSITION,
+                  transform: isExpanded ? "rotate(90deg)" : "none",
+                },
               }}
             >
-              {isExpanded
-                ? <ChevronDown size={ICON_SIZE.inline} strokeWidth={2} />
-                : <ChevronRight size={ICON_SIZE.inline} strokeWidth={2} />}
+              <ChevronRight size={ICON_SIZE.inline} strokeWidth={2} />
             </ListItemIcon>
             {sidebarOpen && (
               <ListItemText
@@ -89,19 +94,6 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
                       minWidth: 0,
                     }}
                   >
-                    {hasAnyDirtyChild && (
-                      <Box
-                        component="span"
-                        sx={{
-                          flexShrink: 0,
-                          width: 5,
-                          height: 5,
-                          borderRadius: "50%",
-                          bgcolor: "primary.main",
-                          mr: 0.5,
-                        }}
-                      />
-                    )}
                     <Box
                       component="span"
                       sx={{
@@ -121,17 +113,20 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
                         flexShrink: 0,
                         fontSize: "0.9em",
                         color: "text.disabled",
+                        fontVariantNumeric: "tabular-nums",
                       }}
                     >
-                      {group.posts.length}
+                      {group.posts.length > 99 ? "99+" : group.posts.length}
                     </Box>
                   </Box>
                 }
                 primaryTypographyProps={{
                   component: "span",
                   fontSize: "0.7em",
+                  // Mirror the doc-row sync decoration (color only, no weight
+                  // bump): a series with modified children reads amber.
                   fontWeight: 500,
-                  color: "text.secondary",
+                  color: hasAnyDirtyChild ? "warning.main" : "text.secondary",
                   sx: { display: "block", minWidth: 0, width: "100%" },
                 }}
               />

@@ -3,49 +3,34 @@ import { useMemo } from "react";
 import { usePathname } from "next/navigation";
 import { type RootState, useSelector } from "@/store";
 import { selectUserFilteredDocuments } from "@/store/selectors/layoutSelectors";
-import {
-  Avatar,
-  Box,
-  Drawer,
-  IconButton,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Tooltip,
-} from "@mui/material";
-import { useTheme } from "@mui/material/styles";
-import { FileText, Maximize2, MessageSquare, Minimize2 } from "lucide-react";
-import { styles } from "../styles";
+import { Box, Drawer, useMediaQuery } from "@mui/material";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
 import { useLayoutMode } from "@/contexts/LayoutModeContext";
 import { useSidebarFontSize } from "./hooks/useSidebarFontSize";
 import { useSidebarActions } from "./hooks/useSidebarActions";
 import { SidebarHeader } from "./SidebarHeader";
+import { SidebarNav } from "./SidebarNav";
+import { SidebarFooter } from "./SidebarFooter";
 import { ActivePostsSection } from "./ActivePostsSection";
+import { CollapsedRail } from "./CollapsedRail";
 import { PostContextMenu } from "./PostContextMenu";
-import { SafeNavigationLink } from "./SafeNavigationLink";
 import {
   buildSeriesMap,
   groupPostsBySeriesWithEmpty,
 } from "@/utils/posts/seriesGrouping";
-import { ICON_SIZE } from "@/theme/icons";
-
-const NAV_ITEM_MIN_HEIGHT = 36;
-const USER_ITEM_MIN_HEIGHT = 40;
-
-const navigationItems = [
-  { text: "Posts", icon: <FileText size={20} />, path: "/posts" },
-  { text: "Notes", icon: <MessageSquare size={20} />, path: "/notes" },
-];
+import {
+  COMPACT_WIDTH,
+  LAYER_FADE_DURATION,
+  SIDEBAR_EASING,
+  SIDEBAR_WIDTH_TRANSITION,
+} from "./constants";
 
 const SideBar: React.FC = () => {
   const pathname = usePathname();
-  const theme = useTheme();
 
   const {
+    width,
     sidebarMode,
     sidebarOpen: open,
     toggleSidebar,
@@ -55,7 +40,7 @@ const SideBar: React.FC = () => {
     getEffectiveWidth,
   } = useSidebarWidth();
 
-  const { viewMode, setFocus, setRead } = useLayoutMode();
+  const { viewMode } = useLayoutMode();
   const isFocus = viewMode === "focus";
   const isExpanded = sidebarMode === "full" && !isFocus;
   const { sidebarFontSize } = useSidebarFontSize();
@@ -67,6 +52,9 @@ const SideBar: React.FC = () => {
     handleDeletePost,
     ...postItemActions
   } = useSidebarActions();
+
+  // Honor the OS "reduce motion" setting: drop the width slide and cross-fade.
+  const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 
   useKeyboardShortcuts({ onToggleSidebar: toggleSidebar, enabled: true });
 
@@ -84,6 +72,28 @@ const SideBar: React.FC = () => {
     [filteredDocuments, seriesMap],
   );
 
+  const hasContent = Boolean(user) &&
+    (filteredDocuments.length > 0 || seriesMap.size > 0);
+
+  const fade = reducedMotion ? 0 : LAYER_FADE_DURATION;
+
+  // Open and rail contents are stacked as two absolutely-positioned, fixed-width
+  // layers that cross-fade. The outgoing layer keeps its own width so nothing
+  // reflows/squishes while the container width animates; the hidden layer is
+  // inert (opacity 0 + pointer-events none) and the narrower container clips it.
+  const layerSx = (layerWidth: number, visible: boolean) => ({
+    position: "absolute" as const,
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: layerWidth,
+    display: "flex",
+    flexDirection: "column" as const,
+    opacity: visible ? 1 : 0,
+    pointerEvents: visible ? ("auto" as const) : ("none" as const),
+    transition: `opacity ${fade}s ${SIDEBAR_EASING}`,
+  });
+
   return (
     <Drawer
       variant={isMobile ? "temporary" : "permanent"}
@@ -96,12 +106,9 @@ const SideBar: React.FC = () => {
         "& .MuiDrawer-paper": {
           width: getEffectiveWidth(),
           boxSizing: "border-box",
-          transition: isResizing
+          transition: isResizing || reducedMotion
             ? "none"
-            : theme.transitions.create(["width"], {
-              easing: theme.transitions.easing.sharp,
-              duration: theme.transitions.duration.enteringScreen,
-            }),
+            : SIDEBAR_WIDTH_TRANSITION,
           overflowX: "hidden",
           overscrollBehavior: "contain",
           display: "flex",
@@ -112,150 +119,33 @@ const SideBar: React.FC = () => {
         },
       }}
     >
-      <SidebarHeader open={isExpanded} />
+      <Box sx={{ position: "relative", flex: 1, minHeight: 0, overflow: "hidden" }}>
+        {/* Open (expanded) layer — pinned to the user's preferred width. */}
+        <Box className="sb-layer-open" sx={layerSx(width, isExpanded)}>
+          <SidebarHeader open />
+          <SidebarNav expanded pathname={pathname} />
+          {hasContent
+            ? (
+              <ActivePostsSection
+                groupedActivePosts={groupedActivePosts}
+                sidebarOpen
+                pathname={pathname}
+                itemActions={postItemActions}
+              />
+            )
+            : <Box sx={{ flex: "1 1 auto", minHeight: 0 }} />}
+          <SidebarFooter expanded />
+        </Box>
 
-      <Box
-        role="navigation"
-        aria-label="Main navigation"
-        sx={{ ...styles.sectionBox, flexShrink: 0, pb: 0, pt: 0.5 }}
-      >
-        <List>
-          {navigationItems.map((item) => (
-            <ListItem key={item.text} disablePadding sx={{ display: "block" }}>
-              <Tooltip title={isExpanded ? "" : item.text} placement="right">
-                <ListItemButton
-                  component={SafeNavigationLink}
-                  href={item.path}
-                  selected={Boolean(
-                    pathname === item.path ||
-                      pathname.startsWith(`${item.path}/`),
-                  )}
-                  sx={{
-                    minHeight: NAV_ITEM_MIN_HEIGHT,
-                    justifyContent: isExpanded ? "initial" : "center",
-                    px: 2.5,
-                    "&.Mui-selected": {
-                      bgcolor: "action.selected",
-                      // scheme-aware overlay (was a light-only rgba(0,0,0,.15))
-                      "&:hover": {
-                        bgcolor:
-                          "rgba(var(--mui-palette-text-primaryChannel) / 0.15)",
-                      },
-                    },
-                  }}
-                >
-                  <ListItemIcon
-                    sx={{
-                      minWidth: 0,
-                      mr: isExpanded ? 2 : "auto",
-                      justifyContent: "center",
-                      "& .MuiSvgIcon-root": { fontSize: "1.2em" },
-                    }}
-                  >
-                    {item.icon}
-                  </ListItemIcon>
-                  {isExpanded && (
-                    <ListItemText
-                      primary={item.text}
-                      primaryTypographyProps={{ fontSize: "0.9em" }}
-                    />
-                  )}
-                </ListItemButton>
-              </Tooltip>
-            </ListItem>
-          ))}
-        </List>
-      </Box>
-
-      {user && (filteredDocuments.length > 0 || seriesMap.size > 0)
-        ? (
-          <ActivePostsSection
+        {/* Collapsed rail layer — fixed at the compact width. */}
+        <Box className="sb-layer-rail" sx={layerSx(COMPACT_WIDTH, !isExpanded)}>
+          <SidebarHeader open={false} />
+          <SidebarNav expanded={false} pathname={pathname} />
+          <CollapsedRail
             groupedActivePosts={groupedActivePosts}
-            sidebarOpen={isExpanded}
             pathname={pathname}
-            itemActions={postItemActions}
           />
-        )
-        : <Box sx={{ flex: "1 1 auto", minHeight: 0 }} />}
-
-      <Box
-        sx={{
-          ...styles.userBox,
-          flexShrink: 0,
-          display: "flex",
-          flexDirection: "row",
-          borderTop: "1px solid",
-          borderColor: "divider",
-          alignItems: "center",
-          justifyContent: isExpanded ? "space-between" : "center",
-          minHeight: USER_ITEM_MIN_HEIGHT,
-          px: 1,
-        }}
-      >
-        <Tooltip
-          title={isExpanded ? "" : (user ? user.name : "Sign In")}
-          placement="right"
-        >
-          <Box
-            component={SafeNavigationLink}
-            href={user ? "/dashboard" : "/api/auth/signin"}
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1.5,
-              textDecoration: "none",
-              color: "inherit",
-              borderRadius: 1,
-              px: 1.5,
-              py: 0.75,
-              flex: isExpanded ? "1 1 0" : "0 0 auto",
-              minWidth: 0,
-              "&:hover": { bgcolor: "action.hover" },
-            }}
-          >
-            <Avatar
-              alt={user?.name}
-              src={user?.image ?? undefined}
-              sx={{ width: 32, height: 32, flexShrink: 0 }}
-            />
-            {isExpanded && (
-              <Box
-                sx={{
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  fontSize: "0.9em",
-                }}
-              >
-                {user ? user.name : "Sign In"}
-              </Box>
-            )}
-          </Box>
-        </Tooltip>
-
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 0.25,
-            flexShrink: 0,
-          }}
-        >
-          <Tooltip
-            title={isFocus ? "Exit focus mode (F)" : "Focus mode (F)"}
-            placement="right"
-          >
-            <IconButton
-              size="small"
-              onClick={isFocus ? setRead : setFocus}
-              aria-label={isFocus ? "Exit focus mode" : "Enter focus mode"}
-              sx={{ color: isFocus ? "primary.main" : "text.secondary" }}
-            >
-              {isFocus
-                ? <Minimize2 size={ICON_SIZE.inline} />
-                : <Maximize2 size={ICON_SIZE.inline} />}
-            </IconButton>
-          </Tooltip>
+          <SidebarFooter expanded={false} />
         </Box>
       </Box>
 

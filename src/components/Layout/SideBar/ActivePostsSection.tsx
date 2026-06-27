@@ -1,6 +1,7 @@
 "use client";
 import React, { useMemo, useState } from "react";
 import { Box, IconButton, List } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { Search, X } from "lucide-react";
 import type { SeriesGroupItem } from "@/utils/posts/seriesGrouping";
 import type { PostItemActions } from "./hooks/useSidebarActions";
@@ -28,12 +29,6 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
     expandedSeries,
     toggleSeries: toggleSeriesExpanded,
   } = useExpandedState("sidebarSeriesCollapsedState");
-
-  const totalPosts = groupedActivePosts.reduce(
-    (sum, g) => sum + g.posts.length,
-    0,
-  );
-  const showSearch = totalPosts >= 5;
 
   const filteredGroups = useMemo((): SeriesGroupItem[] => {
     if (!activePostsSearch.trim()) return groupedActivePosts;
@@ -71,7 +66,7 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
         flexDirection: "column",
       }}
     >
-      {sidebarOpen && showSearch && (
+      {sidebarOpen && (
         <Box
           sx={{
             mx: 1,
@@ -82,11 +77,17 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
             gap: 1,
             px: "10px",
             py: "6px",
-            border: "1px solid",
-            borderColor: "divider",
-            borderRadius: "8px",
+            border: "1px solid transparent",
+            borderRadius: "12px",
             bgcolor: "action.hover",
             fontSize: "0.75em",
+            transition: "background-color .15s, border-color .15s, box-shadow .15s",
+            "&:focus-within": {
+              bgcolor: "background.input",
+              borderColor: "primary.main",
+              boxShadow: (theme) =>
+                `0 0 0 3px ${alpha(theme.palette.primary.main, 0.14)}`,
+            },
           }}
         >
           <Search

@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Box, CircularProgress } from "@mui/material";
-import htmr from "htmr";
 import { apiClient } from "@/api";
 
 interface ChildDocumentViewProps {
@@ -55,7 +54,15 @@ const ChildDocumentView: React.FC<ChildDocumentViewProps> = ({ docId }) => {
 
   if (!html) return null;
 
-  return <>{htmr(html)}</>;
+  // Inject as raw HTML (not htmr/React) so the view-mode DOM enhancers can
+  // safely restructure code/attachment nodes without React later failing to
+  // remove nodes they reparented. See LocalDocumentView for the full rationale.
+  return (
+    <div
+      style={{ display: "contents" }}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
 };
 
 export default ChildDocumentView;

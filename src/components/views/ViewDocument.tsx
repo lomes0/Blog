@@ -32,8 +32,8 @@ const ViewDocumentInfo = dynamic(
 );
 
 const ViewDocument: React.FC<
-  React.PropsWithChildren & { cloudDocument: Document }
-> = ({ cloudDocument, children }) => {
+  { cloudDocument: Document; cloudHtml: string }
+> = ({ cloudDocument, cloudHtml }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const dispatch = useDispatch();
 
@@ -222,14 +222,13 @@ const ViewDocument: React.FC<
         </Box>
 
         <div className="document-container document-view" ref={containerRef}>
-          {/* Root tab: use SSR-rendered children + local-override logic */}
+          {/* Root tab: use SSR-rendered HTML + local-override logic */}
           {activeTabId === cloudDocument.id && (
             <LocalDocumentView
               documentId={cloudDocument.id}
               cloudHead={cloudDocument.head}
-            >
-              {children}
-            </LocalDocumentView>
+              cloudHtml={cloudHtml}
+            />
           )}
 
           {/* Child tabs: fetch content client-side */}

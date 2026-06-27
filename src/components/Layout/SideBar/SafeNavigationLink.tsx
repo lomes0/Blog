@@ -1,13 +1,14 @@
 "use client";
-import { useCallback } from "react";
 import RouterLink from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { triggerSave } from "@/components/EditDocument/saveRegistry";
 
-// SafeNavigationLink is a Next.js Link that triggers autosave when the editor
-// is active before navigating away. It must be a stable top-level component
-// (not defined inside render or useCallback) so MUI's `component` prop does not
-// remount the element on every render.
+// SafeNavigationLink is a plain Next.js Link used by the sidebar. It must be a
+// stable top-level component (not defined inside render or useCallback) so MUI's
+// `component` prop does not remount the element on every render.
+//
+// Navigating away from edit mode does NOT push to the cloud. Unsaved edits are
+// preserved as a LOCAL draft by `useLocalDraft` on editor unmount, so the doc
+// surfaces as "modified" in the sidebar and can be synced explicitly (the sync
+// button / Save button / Ctrl+S).
 type SafeNavigationLinkProps = React.ComponentPropsWithoutRef<"a"> & {
   href: string;
 };
@@ -18,26 +19,8 @@ export const SafeNavigationLink = ({
   children,
   ...props
 }: SafeNavigationLinkProps) => {
-  const pathname = usePathname();
-  const router = useRouter();
-
-  const inEditMode = pathname.startsWith("/edit/");
-
-  const handleClick = useCallback(
-    (e: React.MouseEvent<HTMLAnchorElement>) => {
-      if (inEditMode) {
-        e.preventDefault();
-        triggerSave().then(() => {
-          router.push(href);
-        });
-      }
-      onClick?.(e);
-    },
-    [inEditMode, href, router, onClick],
-  );
-
   return (
-    <RouterLink href={href} onClick={handleClick} {...props}>
+    <RouterLink href={href} onClick={onClick} {...props}>
       {children}
     </RouterLink>
   );

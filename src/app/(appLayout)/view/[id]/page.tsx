@@ -1,7 +1,6 @@
 import type { OgMetadata } from "@/app/api/og/route";
 import { findDocument } from "@/repositories/document";
 import ViewDocument from "@/components/views/ViewDocument";
-import htmr from "htmr";
 import { Metadata } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -163,11 +162,7 @@ export default async function Page(
         />
       );
     }
-    return (
-      <ViewDocument cloudDocument={document}>
-        {htmr(html)}
-      </ViewDocument>
-    );
+    return <ViewDocument cloudDocument={document} cloudHtml={html} />;
   } catch (error) {
     console.error(error);
     return (
