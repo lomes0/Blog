@@ -1,13 +1,17 @@
 "use client";
 import React, { useCallback, useRef } from "react";
-import { Box, Checkbox, InputBase, Typography } from "@mui/material";
-import { GripVertical } from "lucide-react";
+import { Box, Checkbox, Collapse, InputBase, Typography } from "@mui/material";
+import { FileStack, GripVertical } from "lucide-react";
 import { Series, User, UserDocument } from "@/types";
 import { useRouter } from "next/navigation";
+import { useSelector } from "@/store";
+import { selectChildDocumentsByParent } from "@/store/selectors/layoutSelectors";
 import { formatRelativeDate } from "@/utils/dateFormat";
 import { ListDensity, TagStyle } from "../types";
 import { PostRowContextMenu } from "./PostRowContextMenu";
 import { ICON_SIZE } from "@/theme/icons";
+
+const EMPTY_CHILDREN: UserDocument[] = [];
 
 interface PostRowProps {
   post: UserDocument;
@@ -16,6 +20,9 @@ interface PostRowProps {
   tagStyle: TagStyle;
   isSelected: boolean;
   editingName?: string;
+  /** Ids of posts whose tab list is expanded. */
+  expandedTabs: Set<string>;
+  onToggleTabs: (id: string) => void;
   onToggleSelect: (id: string, event: React.MouseEvent) => void;
   onRenameStart: (postId: string, currentName: string) => void;
   onRenameChange: (postId: string, value: string) => void;
@@ -42,6 +49,8 @@ export const PostRow = React.memo(function PostRow({
   tagStyle: _tagStyle,
   isSelected,
   editingName,
+  expandedTabs,
+  onToggleTabs,
   onToggleSelect,
   onRenameStart,
   onRenameChange,
@@ -60,6 +69,23 @@ export const PostRow = React.memo(function PostRow({
   const date = document?.updatedAt || document?.createdAt;
   const isEditing = editingName !== undefined;
   const rowHeight = density === "compact" ? 36 : 44;
+
+  // A tabbed post is a root document with one child per extra tab. Show those
+  // tabs in an inline, collapsible list so they're not hidden behind the row.
+  const childMap = useSelector(selectChildDocumentsByParent);
+  const children = childMap.get(post.id) ?? EMPTY_CHILDREN;
+  const hasTabs = children.length > 0;
+  const isExpanded = expandedTabs.has(post.id);
+
+  const handleToggleTabs = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onToggleTabs(post.id);
+  }, [post.id, onToggleTabs]);
+
+  const handleTabClick = useCallback((e: React.MouseEvent, tabId: string) => {
+    e.stopPropagation();
+    router.push(`/view/${tabId}`);
+  }, [router]);
 
   // Single-click vs double-click: 200ms delay to distinguish
   const singleClickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -107,6 +133,7 @@ export const PostRow = React.memo(function PostRow({
   }, [post.id, document?.id, document?.name, onRenameCommit, onRenameCancel]);
 
   return (
+    <Box>
     <Box
       className="post-list-row"
       onClick={handleRowClick}
@@ -164,6 +191,39 @@ export const PostRow = React.memo(function PostRow({
           onClick={handleCheckboxClick}
           sx={{ p: 0, width: 18, height: 18 }}
         />
+      </Box>
+
+      {/* Tabs disclosure — a reserved slot keeps post titles aligned whether or
+          not the post has tabs. A stacked-pages glyph (not the series chevron)
+          marks a post that contains tabs and toggles the inline tab list. */}
+      <Box
+        sx={{
+          width: 20,
+          flexShrink: 0,
+          mr: 0.5,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {hasTabs && (
+          <Box
+            role="button"
+            aria-label={isExpanded ? "Collapse tabs" : "Expand tabs"}
+            aria-expanded={isExpanded}
+            onClick={handleToggleTabs}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              cursor: "pointer",
+              color: isExpanded ? "text.primary" : "text.secondary",
+              "& > svg": { transition: "color 0.15s" },
+              "&:hover": { color: "text.primary" },
+            }}
+          >
+            <FileStack size={ICON_SIZE.inline} strokeWidth={2} />
+          </Box>
+        )}
       </Box>
 
       {/* Title */}
@@ -254,6 +314,65 @@ export const PostRow = React.memo(function PostRow({
           onMoveToSeries={onMoveToSeries}
         />
       </Box>
+    </Box>
+
+      {/* Inline tab list — the post's child tabs, revealed on disclosure. */}
+      {hasTabs && (
+        <Collapse in={isExpanded} unmountOnExit>
+          <Box
+            sx={{
+              borderLeft: "2px solid",
+              borderColor: "divider",
+              ml: `${(indent || 0) + 47}px`,
+              mb: 0.5,
+            }}
+          >
+            {children.map((child) => {
+              const cd = child.cloud || child.local;
+              const tabName = cd?.name || "Untitled";
+              return (
+                <Box
+                  key={child.id}
+                  onClick={(e) => handleTabClick(e, child.id)}
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    minHeight: rowHeight - 10,
+                    pl: 1.25,
+                    pr: 1,
+                    borderRadius: 0.5,
+                    cursor: "pointer",
+                    "&:hover": { bgcolor: "action.hover" },
+                  }}
+                >
+                  <Box
+                    component="span"
+                    aria-hidden
+                    sx={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "2px",
+                      bgcolor: "text.disabled",
+                      flexShrink: 0,
+                    }}
+                  />
+                  <Typography
+                    noWrap
+                    sx={{
+                      typography: "body2",
+                      color: "text.secondary",
+                      fontWeight: 500,
+                    }}
+                  >
+                    {tabName}
+                  </Typography>
+                </Box>
+              );
+            })}
+          </Box>
+        </Collapse>
+      )}
     </Box>
   );
 });

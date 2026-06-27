@@ -38,6 +38,11 @@ export function PostsListView({
   const { expandedSeries, toggleSeries } = useExpandedState(
     "postsListExpansion",
   );
+  // Independent persisted expansion state for each post's tab list.
+  const {
+    expandedSeries: expandedTabs,
+    toggleSeries: toggleTabs,
+  } = useExpandedState("postsListTabsExpansion");
 
   // Flat ordered list of all visible IDs for range selection
   const allVisibleIds = useMemo(() => {
@@ -323,6 +328,8 @@ export function PostsListView({
               tagStyle={tagStyle}
               isSelected={selection.isSelected(post.id)}
               editingName={postRename.editingNames.get(post.id)}
+              expandedTabs={expandedTabs}
+              onToggleTabs={toggleTabs}
               onToggleSelect={selection.toggle}
               onRenameStart={postRename.startRename}
               onRenameChange={postRename.handleChange}
@@ -364,6 +371,8 @@ export function PostsListView({
                 isSelected={selection.isSelected(s.id)}
                 isExpanded={expandedSeries.has(s.id)}
                 onToggleExpand={toggleSeries}
+                expandedTabs={expandedTabs}
+                onToggleTabs={toggleTabs}
                 onToggleSelect={selection.toggle}
                 editingSeriesName={editingSeriesNames.get(s.id)}
                 onSeriesRenameStart={handleSeriesRenameStart}
