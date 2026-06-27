@@ -1,7 +1,7 @@
 "use client";
 import { Box, Typography } from "@mui/material";
 import { FileText } from "lucide-react";
-import type { TabMeta } from "@/components/EditDocument/EditorTabBar";
+import type { TabMeta } from "@/contexts/TopBarTabsContext";
 import { ICON_SIZE } from "@/theme/icons";
 
 interface ViewTabBarProps {

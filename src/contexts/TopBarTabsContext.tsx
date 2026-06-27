@@ -1,6 +1,10 @@
 "use client";
 import React, { createContext, useCallback, useContext, useState } from "react";
-import type { TabMeta } from "@/components/EditDocument/EditorTabBar";
+
+export interface TabMeta {
+  id: string;
+  name: string;
+}
 
 export interface TabBarState {
   tabs: TabMeta[];
@@ -16,6 +20,8 @@ export interface TabBarState {
   onAdd?: () => void;
   /** Present only in edit mode */
   onRename?: (tabId: string, newName: string) => void;
+  /** Called once the tab bar has entered rename mode, to clear renamingTabId. */
+  onRenameStarted?: () => void;
   /** Present only in edit mode */
   onReorder?: (orderedIds: string[]) => void;
   /** Present only in edit mode */

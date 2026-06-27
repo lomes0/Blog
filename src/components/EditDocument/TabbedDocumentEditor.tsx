@@ -18,7 +18,7 @@ import { v4 as uuidv4 } from "uuid";
 import { actions, documentsSelectors, useDispatch, useSelector } from "@/store";
 import { SetActiveEditorContext } from "@/contexts/ActiveEditorContext";
 import { apiClient } from "@/api";
-import { type TabMeta } from "./EditorTabBar";
+import { type TabMeta } from "@/contexts/TopBarTabsContext";
 import { useTopBarTabs } from "@/contexts/TopBarTabsContext";
 import EditorTabPanel from "./EditorTabPanel";
 import TabContextMenu from "./TabContextMenu";
@@ -226,6 +226,12 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     setRenamingTabId(tabId);
   }, []);
 
+  // Cleared once the tab bar enters rename mode so the same tab can be renamed
+  // again (otherwise renamingTabId stays stale and the next set is a no-op).
+  const handleRenameStarted = useCallback(() => {
+    setRenamingTabId(null);
+  }, []);
+
   const handleDuplicate = useCallback(async (tabId: string) => {
     if (!user) return;
     const source = await apiClient.documents.get(tabId);
@@ -327,6 +333,7 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
       onClose: handleCloseRequest,
       onAdd: handleAdd,
       onRename: handleRename,
+      onRenameStarted: handleRenameStarted,
       onReorder: handleReorder,
       onContextMenu: handleOpenContextMenu,
     });
@@ -341,6 +348,7 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     handleCloseRequest,
     handleAdd,
     handleRename,
+    handleRenameStarted,
     handleReorder,
     handleOpenContextMenu,
   ]);

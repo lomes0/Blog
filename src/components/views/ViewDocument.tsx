@@ -19,7 +19,7 @@ import { MoreHorizontal, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { apiClient } from "@/api";
 import { actions, useDispatch, useSelector } from "@/store";
-import type { TabMeta } from "@/components/EditDocument/EditorTabBar";
+import type { TabMeta } from "@/contexts/TopBarTabsContext";
 import ShareDocument from "@/components/DocumentActions/Share";
 import DownloadDocument from "@/components/DocumentActions/Download";
 import ForkDocument from "@/components/DocumentActions/Fork";

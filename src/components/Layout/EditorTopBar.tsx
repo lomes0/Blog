@@ -43,6 +43,48 @@ const EditorTopBar: React.FC = () => {
   const { actions } = useTopBarActions();
   const { tabBar } = useTopBarTabs();
 
+  // Inline tab rename. Triggered either by double-clicking a tab label or by the
+  // tab context menu, which sets `tabBar.renamingTabId`.
+  const [editingTabId, setEditingTabId] = React.useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = React.useState("");
+  const renameInputRef = React.useRef<HTMLInputElement>(null);
+
+  const startTabRename = React.useCallback((tabId: string, name: string) => {
+    setEditingTabId(tabId);
+    setRenameDraft(name);
+  }, []);
+
+  const cancelTabRename = React.useCallback(() => {
+    setEditingTabId(null);
+  }, []);
+
+  const commitTabRename = React.useCallback(() => {
+    if (!editingTabId) return;
+    const tab = tabBar?.tabs.find((t) => t.id === editingTabId);
+    const trimmed = renameDraft.trim();
+    if (tab && trimmed && trimmed !== tab.name) {
+      tabBar?.onRename?.(editingTabId, trimmed);
+    }
+    setEditingTabId(null);
+  }, [editingTabId, renameDraft, tabBar]);
+
+  // Enter rename mode when the context menu requests it.
+  const renamingTabId = tabBar?.renamingTabId;
+  const onRenameStarted = tabBar?.onRenameStarted;
+  React.useEffect(() => {
+    if (!renamingTabId) return;
+    const tab = tabBar?.tabs.find((t) => t.id === renamingTabId);
+    if (!tab) return;
+    setEditingTabId(renamingTabId);
+    setRenameDraft(tab.name);
+    onRenameStarted?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [renamingTabId, onRenameStarted]);
+
+  React.useEffect(() => {
+    if (editingTabId) renameInputRef.current?.select();
+  }, [editingTabId]);
+
   const segments = React.useMemo(
     () => pathname.split("/").filter(Boolean),
     [pathname],
@@ -412,18 +454,53 @@ const EditorTopBar: React.FC = () => {
                       flexShrink: 0,
                     }}
                   />
-                  <Typography
-                    noWrap
-                    sx={{
-                      fontSize: "0.8rem",
-                      fontWeight: isActive ? 600 : 400,
-                      color: "text.secondary",
-                      flex: 1,
-                      minWidth: 0,
-                    }}
-                  >
-                    {tab.name}
-                  </Typography>
+                  {editingTabId === tab.id
+                    ? (
+                      <Box
+                        component="input"
+                        ref={renameInputRef}
+                        value={renameDraft}
+                        onChange={(e) => setRenameDraft(e.target.value)}
+                        onBlur={commitTabRename}
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") commitTabRename();
+                          if (e.key === "Escape") cancelTabRename();
+                        }}
+                        sx={{
+                          flex: 1,
+                          minWidth: 0,
+                          border: "none",
+                          outline: "1px solid",
+                          outlineColor: "primary.main",
+                          borderRadius: 0.5,
+                          bgcolor: "background.paper",
+                          color: "text.primary",
+                          fontSize: "0.8rem",
+                          fontFamily: "inherit",
+                          px: 0.5,
+                          py: 0,
+                        }}
+                      />
+                    )
+                    : (
+                      <Typography
+                        noWrap
+                        onDoubleClick={(e) => {
+                          e.stopPropagation();
+                          startTabRename(tab.id, tab.name);
+                        }}
+                        sx={{
+                          fontSize: "0.8rem",
+                          fontWeight: isActive ? 600 : 400,
+                          color: "text.secondary",
+                          flex: 1,
+                          minWidth: 0,
+                        }}
+                      >
+                        {tab.name}
+                      </Typography>
+                    )}
                   {!isRoot && tabBar.onClose
                     ? (
                       <Box
