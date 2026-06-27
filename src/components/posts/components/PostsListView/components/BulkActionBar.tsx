@@ -1,16 +1,20 @@
 import React from "react";
 import { Box, Button, Fade, Paper, Tooltip, Typography } from "@mui/material";
-import { Trash2, X } from "lucide-react";
+import { Combine, Trash2, X } from "lucide-react";
 import { ICON_SIZE } from "@/theme/icons";
 
 interface BulkActionBarProps {
   count: number;
   onDelete: () => void;
   onClear: () => void;
+  /** Merge the selected posts into one tabbed post. */
+  onMerge: () => void;
+  /** Whether merge is currently allowed (needs 2+ cloud posts). */
+  canMerge: boolean;
 }
 
 export function BulkActionBar(
-  { count, onDelete, onClear }: BulkActionBarProps,
+  { count, onDelete, onClear, onMerge, canMerge }: BulkActionBarProps,
 ) {
   return (
     <Fade in={count > 0} unmountOnExit>
@@ -46,6 +50,25 @@ export function BulkActionBar(
         >
           {count} selected
         </Typography>
+
+        <Tooltip
+          title={canMerge
+            ? "Merge into one tabbed post"
+            : "Select 2 or more cloud posts to merge"}
+        >
+          <span>
+            <Button
+              size="small"
+              variant="text"
+              disabled={!canMerge}
+              startIcon={<Combine size={ICON_SIZE.inline} />}
+              onClick={onMerge}
+              sx={{ textTransform: "none", typography: "dense" }}
+            >
+              Merge
+            </Button>
+          </span>
+        </Tooltip>
 
         <Tooltip title="Coming soon">
           <span>

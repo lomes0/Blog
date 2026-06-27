@@ -31,6 +31,7 @@ import {
   load,
   loadCloudDocuments,
   loadLocalDocuments,
+  mergeCloudDocumentsIntoTabs,
   // New post and series actions
   loadSeries,
   syncLocalToCloud,
@@ -62,6 +63,7 @@ export const actions = {
   updateCloudDocument,
   deleteCloudDocument,
   forkCloudDocument,
+  mergeCloudDocumentsIntoTabs,
 
   getLocalDocumentRevisions,
   getLocalRevision,

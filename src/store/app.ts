@@ -634,6 +634,7 @@ export {
   getLocalDocument,
   loadCloudDocuments,
   loadLocalDocuments,
+  mergeCloudDocumentsIntoTabs,
   syncLocalToCloud,
   updateCloudDocument,
   updateLocalDocument,

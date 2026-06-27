@@ -185,6 +185,53 @@ export function PostsListView({
     }
   }, [dispatch, router, selection, seriesIdSet, allPostsMap]);
 
+  // ── Merge into tabbed post ────────────────────────────────────────────────
+  // Selected posts (excluding series headers) in list order. The first becomes
+  // the container; the rest are merged in as tabs.
+  const selectedMergeablePosts = useMemo(() => {
+    return allVisibleIds
+      .filter((id) =>
+        selection.selectedIds.has(id) && !seriesIdSet.has(id) &&
+        allPostsMap.has(id)
+      )
+      .map((id) => allPostsMap.get(id)!)
+      .filter((p): p is UserDocument => !!p);
+  }, [allVisibleIds, selection.selectedIds, seriesIdSet, allPostsMap]);
+
+  // Merge is cloud-only and needs at least two posts, none of them a series.
+  const canMerge = selectedMergeablePosts.length >= 2 &&
+    selectedMergeablePosts.length === selection.selectedIds.size &&
+    selectedMergeablePosts.every((p) => !!p.cloud);
+
+  const handleBulkMerge = useCallback(async () => {
+    if (!canMerge) return;
+    const [target, ...sources] = selectedMergeablePosts;
+    const targetName = target.cloud?.name || target.local?.name || "this post";
+    const alertPayload = {
+      title: "Merge into tabs",
+      content: `Merge ${
+        sources.length + 1
+      } posts into "${targetName}"? The other ${sources.length} post${
+        sources.length !== 1 ? "s" : ""
+      } will be moved into tabs and permanently deleted. This cannot be undone.`,
+      actions: [
+        { label: "Cancel", id: uuid() },
+        { label: "Merge", id: uuid() },
+      ],
+    };
+    const response = await dispatch(actions.alert(alertPayload));
+    if (response.payload !== alertPayload.actions[1].id) return;
+
+    await dispatch(
+      actions.mergeCloudDocumentsIntoTabs({
+        targetId: target.id,
+        sourceIds: sources.map((p) => p.id),
+      }),
+    );
+    selection.clearAll();
+    router.refresh();
+  }, [canMerge, selectedMergeablePosts, dispatch, selection, router]);
+
   // ── Drag and drop ─────────────────────────────────────────────────────────
   const handleDragStart = useCallback((e: React.DragEvent, postId: string) => {
     const post = allPostsMap.get(postId);
@@ -348,6 +395,8 @@ export function PostsListView({
         count={selection.selectedIds.size}
         onDelete={handleBulkDelete}
         onClear={selection.clearAll}
+        onMerge={handleBulkMerge}
+        canMerge={canMerge}
       />
     </Box>
   );

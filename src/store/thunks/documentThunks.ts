@@ -10,8 +10,9 @@ import {
   EMPTY_EDITOR_STATE,
 } from "@/types";
 import { apiClient } from "@/api";
-import { validate } from "uuid";
+import { v4 as uuidv4, validate } from "uuid";
 import { createCloudRevision } from "./revisionThunks";
+import type { SerializedEditorState } from "lexical";
 
 const toErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : "Unknown error";
@@ -372,6 +373,105 @@ export const deleteCloudDocument = createAsyncThunk(
         });
       }
       return thunkAPI.fulfillWithValue(data);
+    } catch (error: unknown) {
+      console.error(error);
+      return thunkAPI.rejectWithValue({
+        title: "Something went wrong",
+        subtitle: toErrorMessage(error),
+      });
+    }
+  },
+);
+
+/**
+ * Merge several standalone cloud posts into one tabbed post.
+ *
+ * The first post (`targetId`) is kept as the container — its own content becomes
+ * the root tab. Each source post in `sourceIds` is copied into a new child tab
+ * under the target (its content carried over verbatim). If a source post itself
+ * already has child tabs, those are *flattened* in as sibling tabs rather than
+ * nested. Once the copies are safely created, each source post (and its former
+ * children) is hard-deleted.
+ *
+ * Cloud-only: callers must ensure every involved post has a cloud record and the
+ * user is authenticated. Tabs are appended in the order `sourceIds` is given.
+ */
+export const mergeCloudDocumentsIntoTabs = createAsyncThunk(
+  "app/mergeCloudDocumentsIntoTabs",
+  async (
+    arg: { targetId: string; sourceIds: string[] },
+    thunkAPI,
+  ) => {
+    try {
+      const { targetId, sourceIds } = arg;
+
+      // Continue numbering after any tabs the target already has.
+      const existingChildren = await apiClient.documents.children(targetId) ??
+        [];
+      let nextOrder = existingChildren.length;
+
+      // Create a new child tab under the target, copying name + content.
+      const createTab = async (
+        name: string,
+        data: SerializedEditorState,
+      ) => {
+        const now = new Date().toISOString();
+        const id = uuidv4();
+        const revisionId = uuidv4();
+        const newDoc: DocumentCreateInput = {
+          id,
+          name,
+          head: revisionId,
+          createdAt: now,
+          updatedAt: now,
+          type: "DOCUMENT",
+          parentId: targetId,
+          sort_order: nextOrder++,
+          data,
+          revisions: [{ id: revisionId, documentId: id, createdAt: now, data }],
+        };
+        const created = await thunkAPI.dispatch(createCloudDocument(newDoc));
+        if (createCloudDocument.rejected.match(created)) {
+          throw new Error(`Failed to create tab "${name}"`);
+        }
+      };
+
+      for (const sourceId of sourceIds) {
+        const source = await apiClient.documents.get(sourceId);
+        if (!source) continue;
+
+        // Flatten: the source's own child tabs (ordered) become siblings too.
+        const childStubs = (await apiClient.documents.children(sourceId)) ?? [];
+        const orderedChildStubs = [...childStubs].sort(
+          (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
+        );
+
+        // 1. The source post itself → a tab.
+        await createTab(
+          source.name ?? "Untitled",
+          source.data ?? EMPTY_EDITOR_STATE,
+        );
+
+        // 2. Its existing child tabs → flattened-in sibling tabs.
+        for (const stub of orderedChildStubs) {
+          const child = await apiClient.documents.get(stub.id);
+          if (!child) continue;
+          await createTab(
+            child.name ?? stub.name ?? "Untitled",
+            child.data ?? EMPTY_EDITOR_STATE,
+          );
+        }
+
+        // 3. Hard-delete the originals (children first, then the source).
+        for (const stub of orderedChildStubs) {
+          await thunkAPI.dispatch(deleteCloudDocument(stub.id));
+          await thunkAPI.dispatch(deleteLocalDocument(stub.id));
+        }
+        await thunkAPI.dispatch(deleteCloudDocument(sourceId));
+        await thunkAPI.dispatch(deleteLocalDocument(sourceId));
+      }
+
+      return thunkAPI.fulfillWithValue({ targetId });
     } catch (error: unknown) {
       console.error(error);
       return thunkAPI.rejectWithValue({
