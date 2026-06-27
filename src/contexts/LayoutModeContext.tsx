@@ -9,7 +9,6 @@ import React, {
 } from "react";
 
 export type RailMode = "full" | "compact" | "hidden";
-export type ViewMode = "read" | "focus" | "edit";
 
 const RAIL_CYCLE: RailMode[] = ["full", "compact"];
 const RAIL_MODE_KEY = "ui.railMode";
@@ -27,9 +26,6 @@ export const COPILOT_MAX_W = 640;
 interface LayoutModeContextType {
   railMode: RailMode;
   toggleRail: () => void;
-  viewMode: ViewMode;
-  setFocus: () => void;
-  setRead: () => void;
   /** User's preferred rail width (full mode only) */
   railWidth: number;
   /** Whether the user is currently dragging the rail resize handle */
@@ -60,8 +56,6 @@ export const LayoutModeProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [railMode, setRailMode] = useState<RailMode>("full");
-  // viewMode is intentionally not persisted — resets to "read" on mount/navigation
-  const [viewMode, setViewMode] = useState<ViewMode>("read");
   const [railWidth, setRailWidth] = useState(RAIL_DEFAULT_W);
   const [isRailResizing, setIsRailResizing] = useState(false);
   const [copilotWidth, setCopilotWidth] = useState(COPILOT_DEFAULT_W);
@@ -193,17 +187,11 @@ export const LayoutModeProvider: React.FC<{ children: React.ReactNode }> = ({
     startWidthRef.current = currentCopilotWidthRef.current;
   }, []);
 
-  const setFocus = useCallback(() => setViewMode("focus"), []);
-  const setRead = useCallback(() => setViewMode("read"), []);
-
   return (
     <LayoutModeContext.Provider
       value={{
         railMode,
         toggleRail,
-        viewMode,
-        setFocus,
-        setRead,
         railWidth,
         isRailResizing,
         startRailResize,

@@ -6,7 +6,6 @@ import { selectUserFilteredDocuments } from "@/store/selectors/layoutSelectors";
 import { Box, Drawer, useMediaQuery } from "@mui/material";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
-import { useLayoutMode } from "@/contexts/LayoutModeContext";
 import { useSidebarFontSize } from "./hooks/useSidebarFontSize";
 import { useSidebarActions } from "./hooks/useSidebarActions";
 import { SidebarHeader } from "./SidebarHeader";
@@ -40,9 +39,7 @@ const SideBar: React.FC = () => {
     getEffectiveWidth,
   } = useSidebarWidth();
 
-  const { viewMode } = useLayoutMode();
-  const isFocus = viewMode === "focus";
-  const isExpanded = sidebarMode === "full" && !isFocus;
+  const isExpanded = sidebarMode === "full";
   const { sidebarFontSize } = useSidebarFontSize();
   const {
     contextMenu,

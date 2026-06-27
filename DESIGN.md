@@ -414,6 +414,7 @@ import { ICON_SIZE } from "@/theme/icons";
 
 | Token               | px | Context                                        |
 | ------------------- | -- | ---------------------------------------------- |
+| `ICON_SIZE.micro`   | 12 | Micro affordances: meta counters, hover icons  |
 | `ICON_SIZE.inline`  | 14 | Inline with dense text, button start/end icons |
 | `ICON_SIZE.dense`   | 18 | Dense UI: toolbars, chips, table rows          |
 | `ICON_SIZE.default` | 24 | Default UI: buttons, menus, dialogs            |

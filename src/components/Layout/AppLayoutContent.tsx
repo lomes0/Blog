@@ -12,13 +12,11 @@ import { actions, type RootState, useDispatch, useSelector } from "@/store";
 import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
 import { useLayoutMode } from "@/contexts/LayoutModeContext";
 import { usePathname } from "next/navigation";
-import { COMPACT_WIDTH } from "@/components/Layout/SideBar/constants";
 import { RAIL_COMPACT_W } from "@/contexts/LayoutModeContext";
 import {
   ActiveEditorContext,
   SetActiveEditorContext,
 } from "@/contexts/ActiveEditorContext";
-import FloatingOutlinePill from "./FloatingOutlinePill";
 import { TopBarTabsProvider } from "@/contexts/TopBarTabsContext";
 import { useToolbarSlot } from "@/contexts/ToolbarSlotContext";
 
@@ -34,7 +32,6 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
     railMode,
     railWidth,
     isRailResizing,
-    viewMode,
     copilotWidth,
     isCopilotResizing,
   } = useLayoutMode();
@@ -73,11 +70,8 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
     if (!initialized) dispatch(actions.load());
   }, [dispatch, initialized]);
 
-  const isFocus = viewMode === "focus";
-  const sidebarW = isFocus ? COMPACT_WIDTH : getEffectiveWidth();
-  const railW = isFocus
-    ? 0
-    : railMode === "full"
+  const sidebarW = getEffectiveWidth();
+  const railW = railMode === "full"
     ? railWidth + RAIL_COMPACT_W
     : RAIL_COMPACT_W;
 
@@ -115,7 +109,6 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
               <Box id="back-to-top-anchor" />
               <EditorTopBar />
               <Box ref={setSlotEl} sx={{ flexShrink: 0 }} />
-              <FloatingOutlinePill />
               <HydrationManager>
                 <Container
                   className="editor-container"
@@ -124,14 +117,13 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
                   sx={{
                     display: "flex",
                     flexDirection: "column",
-                    mx: isFocus ? "auto" : 0,
+                    mx: 0,
                     my: 2,
                     flex: 1,
                     minHeight: 0,
                     position: "relative",
                     overflow: "auto",
                     width: "100%",
-                    maxWidth: isFocus ? 720 : undefined,
                     pl: {
                       xs: 5,
                       sm: 10,
@@ -156,7 +148,7 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
             {showCopilot
               ? <CopilotPanel documentId={copilotDocumentId} />
               : <Box />}
-            <RightRail railMode={isFocus ? "hidden" : railMode} />
+            <RightRail railMode={railMode} />
           </Box>
         </ActiveEditorContext.Provider>
       </SetActiveEditorContext.Provider>

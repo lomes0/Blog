@@ -13,7 +13,6 @@ import {
 import {
   ArrowLeft,
   BookOpen,
-  ChevronDown,
   FileText,
   LayoutDashboard,
   Library,
@@ -27,7 +26,6 @@ import RouterLink from "next/link";
 import { shallowEqual } from "react-redux";
 import { documentsSelectors, useSelector } from "@/store";
 import type { RootState } from "@/store";
-import { useLayoutMode } from "@/contexts/LayoutModeContext";
 import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
 import { useTopBarActions } from "@/contexts/TopBarActionsContext";
 import { useTopBarTabs } from "@/contexts/TopBarTabsContext";
@@ -41,27 +39,9 @@ interface BreadcrumbItem {
 
 const EditorTopBar: React.FC = () => {
   const pathname = usePathname();
-  const { viewMode, setFocus, setRead } = useLayoutMode();
   const { toggleSidebarCompact, sidebarMode } = useSidebarWidth();
   const { actions } = useTopBarActions();
   const { tabBar } = useTopBarTabs();
-  const isFocus = viewMode === "focus";
-
-  React.useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      if (
-        target.tagName === "INPUT" || target.tagName === "TEXTAREA" ||
-        target.isContentEditable
-      ) return;
-      if (e.key === "f" || e.key === "F") {
-        if (isFocus) setRead();
-        else setFocus();
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [isFocus, setFocus, setRead]);
 
   const segments = React.useMemo(
     () => pathname.split("/").filter(Boolean),
@@ -316,13 +296,6 @@ const EditorTopBar: React.FC = () => {
             >
               {docName || "Untitled"}
             </Typography>
-            <ChevronDown
-              size={13}
-              style={{
-                color: "var(--mui-palette-text-disabled)",
-                flexShrink: 0,
-              }}
-            />
           </Box>
         )
         : (

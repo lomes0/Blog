@@ -6,6 +6,8 @@
  * reach for a token, never a raw number.
  */
 export const ICON_SIZE = {
+  /** 12px — micro affordances: meta-row counters, inline hover actions */
+  micro: 12,
   /** 14px — inline with dense text, button start/end icons */
   inline: 14,
   /** 18px — dense UI: toolbars, chips, table rows */

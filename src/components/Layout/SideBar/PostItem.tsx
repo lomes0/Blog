@@ -1,7 +1,6 @@
 "use client";
 import React, { memo, useCallback } from "react";
 import {
-  Box,
   IconButton,
   ListItem,
   ListItemButton,
@@ -11,7 +10,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import { CloudUpload, FileText } from "lucide-react";
+import { CloudUpload, FileText, Pencil } from "lucide-react";
 import {
   actions,
   documentsSelectors,
@@ -78,9 +77,6 @@ export const PostItem = memo(
       Boolean(post.cloud) &&
       post.local!.head !== post.cloud!.head;
     const isNew = Boolean(post.local) && !post.cloud;
-    // Publish-state indicator (trailing status dot): published -> success,
-    // draft / not-yet-published -> warning.
-    const isPublished = Boolean(post.cloud?.published);
 
     // Sync state is carried by filename color only (no weight bump):
     //   modified -> amber, new -> green, clean -> default.
@@ -119,8 +115,11 @@ export const PostItem = memo(
         disablePadding
         sx={{
           display: "block",
-          "& .sync-btn": { opacity: 0, transition: "opacity 0.15s" },
-          "&:hover .sync-btn": { opacity: 1 },
+          "& .sync-btn, & .edit-btn": {
+            opacity: 0,
+            transition: "opacity 0.15s",
+          },
+          "&:hover .sync-btn, &:hover .edit-btn": { opacity: 1 },
         }}
       >
         <Tooltip title={sidebarOpen ? "" : docName} placement="right">
@@ -215,24 +214,26 @@ export const PostItem = memo(
                 </IconButton>
               </Tooltip>
             )}
-            {sidebarOpen && isPublished && (
-              <Tooltip title="Published" placement="right">
-                <Box
-                  component="span"
-                  aria-label="Published"
+            {sidebarOpen && !isRenaming && !isEditing && (
+              <Tooltip title="Edit" placement="right">
+                <IconButton
+                  className="edit-btn"
+                  component={SafeNavigationLink}
+                  href={`/edit/${post.id}`}
+                  size="small"
+                  onClick={(e) => e.stopPropagation()}
                   sx={{
-                    flexShrink: 0,
-                    // Push to the right edge so dots form a single column
-                    // aligned with the series item-count badge. When the sync
-                    // button is present it already claimed the auto margin, so
-                    // the dot just sits to its right.
+                    p: 0.25,
+                    // Align the glyph's right edge with the series doc-count
+                    // badge above by cancelling the button's own right padding.
                     ml: isModified ? 0.5 : "auto",
-                    width: 6,
-                    height: 6,
-                    borderRadius: "50%",
-                    bgcolor: "success.main",
+                    mr: -0.25,
+                    color: "text.secondary",
+                    "&:hover": { bgcolor: "action.hover" },
                   }}
-                />
+                >
+                  <Pencil size={ICON_SIZE.micro} />
+                </IconButton>
               </Tooltip>
             )}
           </ListItemButton>
