@@ -1,5 +1,5 @@
 "use client";
-import { Document, DocumentStatus } from "@/types";
+import { Document } from "@/types";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -10,7 +10,6 @@ import LocalDocumentView from "./LocalDocumentView";
 import ChildDocumentView from "./ChildDocumentView";
 import { useTopBarTabs } from "@/contexts/TopBarTabsContext";
 import Box from "@mui/material/Box";
-import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import Menu from "@mui/material/Menu";
@@ -135,19 +134,6 @@ const ViewDocument: React.FC<
               mb: 1.5,
             }}
           >
-            {cloudDocument.status && (
-              <Chip
-                label={cloudDocument.status === DocumentStatus.ACTIVE
-                  ? "Active"
-                  : "Done"}
-                size="small"
-                color={cloudDocument.status === DocumentStatus.ACTIVE
-                  ? "success"
-                  : "default"}
-                variant="outlined"
-                sx={{ height: 22, fontSize: "0.72rem" }}
-              />
-            )}
             {authorLabel && (
               <Typography variant="body2" color="text.secondary">
                 By {authorLabel}
