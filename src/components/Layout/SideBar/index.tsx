@@ -116,7 +116,9 @@ const SideBar: React.FC = () => {
         },
       }}
     >
-      <Box sx={{ position: "relative", flex: 1, minHeight: 0, overflow: "hidden" }}>
+      <Box
+        sx={{ position: "relative", flex: 1, minHeight: 0, overflow: "hidden" }}
+      >
         {/* Open (expanded) layer — pinned to the user's preferred width. */}
         <Box className="sb-layer-open" sx={layerSx(width, isExpanded)}>
           <SidebarHeader open />

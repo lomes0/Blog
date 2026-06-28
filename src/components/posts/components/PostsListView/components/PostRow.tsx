@@ -134,187 +134,189 @@ export const PostRow = React.memo(function PostRow({
 
   return (
     <Box>
-    <Box
-      className="post-list-row"
-      onClick={handleRowClick}
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        minHeight: rowHeight,
-        pl: indent ? `${indent}px` : 1,
-        pr: 1,
-        borderRadius: 0.5,
-        position: "relative",
-        cursor: "default",
-        bgcolor: isSelected ? "action.selected" : "transparent",
-        transition: "background-color 0.15s",
-        "&:hover": {
-          bgcolor: isSelected ? "action.selected" : "action.hover",
-        },
-        // Hover-reveal selectors for child elements
-        "&:hover .row-checkbox-grip": { visibility: "visible" },
-        "&:hover .row-actions-btn": { opacity: 1 },
-        "&:hover .row-date": { opacity: 0.45 },
-      }}
-    >
-      {/* Gutter: Checkbox + Drag Handle */}
       <Box
-        className="row-checkbox-grip"
+        className="post-list-row"
+        onClick={handleRowClick}
         sx={{
-          visibility: isSelected ? "visible" : "hidden",
           display: "flex",
           alignItems: "center",
-          gap: 0.25,
-          flexShrink: 0,
-          mr: 0.5,
-          width: 36,
+          minHeight: rowHeight,
+          pl: indent ? `${indent}px` : 1,
+          pr: 1,
+          borderRadius: 0.5,
+          position: "relative",
+          cursor: "default",
+          bgcolor: isSelected ? "action.selected" : "transparent",
+          transition: "background-color 0.15s",
+          "&:hover": {
+            bgcolor: isSelected ? "action.selected" : "action.hover",
+          },
+          // Hover-reveal selectors for child elements
+          "&:hover .row-checkbox-grip": { visibility: "visible" },
+          "&:hover .row-actions-btn": { opacity: 1 },
+          "&:hover .row-date": { opacity: 0.45 },
         }}
       >
+        {/* Gutter: Checkbox + Drag Handle */}
         <Box
-          draggable
-          onDragStart={(e) => onDragStart(e, post.id)}
-          onDragEnd={onDragEnd}
+          className="row-checkbox-grip"
           sx={{
-            cursor: "grab",
-            color: "text.disabled",
+            visibility: isSelected ? "visible" : "hidden",
             display: "flex",
             alignItems: "center",
-            "&:active": { cursor: "grabbing" },
+            gap: 0.25,
+            flexShrink: 0,
+            mr: 0.5,
+            width: 36,
           }}
-          onClick={(e) => e.stopPropagation()}
         >
-          <GripVertical size={ICON_SIZE.inline} />
-        </Box>
-        <Checkbox
-          size="small"
-          checked={isSelected}
-          onClick={handleCheckboxClick}
-          sx={{ p: 0, width: 18, height: 18 }}
-        />
-      </Box>
-
-      {/* Tabs disclosure — a reserved slot keeps post titles aligned whether or
-          not the post has tabs. A stacked-pages glyph (not the series chevron)
-          marks a post that contains tabs and toggles the inline tab list. */}
-      <Box
-        sx={{
-          width: 20,
-          flexShrink: 0,
-          mr: 0.5,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        {hasTabs && (
           <Box
-            role="button"
-            aria-label={isExpanded ? "Collapse tabs" : "Expand tabs"}
-            aria-expanded={isExpanded}
-            onClick={handleToggleTabs}
+            draggable
+            onDragStart={(e) => onDragStart(e, post.id)}
+            onDragEnd={onDragEnd}
             sx={{
+              cursor: "grab",
+              color: "text.disabled",
               display: "flex",
               alignItems: "center",
-              cursor: "pointer",
-              color: isExpanded ? "text.primary" : "text.secondary",
-              "& > svg": { transition: "color 0.15s" },
-              "&:hover": { color: "text.primary" },
+              "&:active": { cursor: "grabbing" },
             }}
+            onClick={(e) => e.stopPropagation()}
           >
-            <FileStack size={ICON_SIZE.inline} strokeWidth={2} />
+            <GripVertical size={ICON_SIZE.inline} />
           </Box>
-        )}
-      </Box>
+          <Checkbox
+            size="small"
+            checked={isSelected}
+            onClick={handleCheckboxClick}
+            sx={{ p: 0, width: 18, height: 18 }}
+          />
+        </Box>
 
-      {/* Title */}
-      <Box sx={{ flex: 1, minWidth: 0, mr: 2 }}>
-        {isEditing
-          ? (
-            <InputBase
-              autoFocus
-              value={editingName}
-              onChange={(e) => onRenameChange(post.id, e.target.value)}
-              onBlur={handleRenameBlur}
-              onKeyDown={handleRenameKeyDown}
-              onClick={(e) => e.stopPropagation()}
-              fullWidth
+        {
+          /* Tabs disclosure — a reserved slot keeps post titles aligned whether or
+          not the post has tabs. A stacked-pages glyph (not the series chevron)
+          marks a post that contains tabs and toggles the inline tab list. */
+        }
+        <Box
+          sx={{
+            width: 20,
+            flexShrink: 0,
+            mr: 0.5,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {hasTabs && (
+            <Box
+              role="button"
+              aria-label={isExpanded ? "Collapse tabs" : "Expand tabs"}
+              aria-expanded={isExpanded}
+              onClick={handleToggleTabs}
               sx={{
-                fontWeight: 600,
-                typography: "body2",
-                color: "text.primary",
-                borderBottom: "1px solid",
-                borderColor: "primary.main",
-                "& input": { p: 0 },
-              }}
-            />
-          )
-          : (
-            <Typography
-              onClick={handleTitleClick}
-              component="span"
-              noWrap
-              sx={{
-                fontWeight: 600,
-                typography: "body2",
-                color: "text.primary",
-                display: "block",
+                display: "flex",
+                alignItems: "center",
                 cursor: "pointer",
+                color: isExpanded ? "text.primary" : "text.secondary",
+                "& > svg": { transition: "color 0.15s" },
+                "&:hover": { color: "text.primary" },
               }}
             >
-              {name}
-            </Typography>
+              <FileStack size={ICON_SIZE.inline} strokeWidth={2} />
+            </Box>
           )}
-      </Box>
+        </Box>
 
-      {/* Tags placeholder — renders when tags exist */}
-      <Box
-        sx={{
-          display: "flex",
-          gap: 0.5,
-          flexShrink: 0,
-          mr: 1.5,
-          minWidth: 0,
-          maxWidth: 160,
-        }}
-      />
+        {/* Title */}
+        <Box sx={{ flex: 1, minWidth: 0, mr: 2 }}>
+          {isEditing
+            ? (
+              <InputBase
+                autoFocus
+                value={editingName}
+                onChange={(e) => onRenameChange(post.id, e.target.value)}
+                onBlur={handleRenameBlur}
+                onKeyDown={handleRenameKeyDown}
+                onClick={(e) => e.stopPropagation()}
+                fullWidth
+                sx={{
+                  fontWeight: 600,
+                  typography: "body2",
+                  color: "text.primary",
+                  borderBottom: "1px solid",
+                  borderColor: "primary.main",
+                  "& input": { p: 0 },
+                }}
+              />
+            )
+            : (
+              <Typography
+                onClick={handleTitleClick}
+                component="span"
+                noWrap
+                sx={{
+                  fontWeight: 600,
+                  typography: "body2",
+                  color: "text.primary",
+                  display: "block",
+                  cursor: "pointer",
+                }}
+              >
+                {name}
+              </Typography>
+            )}
+        </Box>
 
-      {/* Date */}
-      <Typography
-        variant="caption"
-        className="row-date"
-        sx={{
-          color: "text.secondary",
-          width: 70,
-          textAlign: "right",
-          flexShrink: 0,
-          mr: 0.5,
-          typography: "micro",
-          transition: "opacity 0.15s",
-          fontVariantNumeric: "tabular-nums",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {date ? formatRelativeDate(date) : ""}
-      </Typography>
-
-      {/* ⋯ Actions */}
-      <Box
-        sx={{
-          flexShrink: 0,
-          width: 28,
-          display: "flex",
-          justifyContent: "center",
-        }}
-      >
-        <PostRowContextMenu
-          mode="post"
-          onRename={() => onRenameStart(post.id, name)}
-          onDelete={() => onDelete(post)}
-          availableSeries={availableSeries}
-          onMoveToSeries={onMoveToSeries}
+        {/* Tags placeholder — renders when tags exist */}
+        <Box
+          sx={{
+            display: "flex",
+            gap: 0.5,
+            flexShrink: 0,
+            mr: 1.5,
+            minWidth: 0,
+            maxWidth: 160,
+          }}
         />
+
+        {/* Date */}
+        <Typography
+          variant="caption"
+          className="row-date"
+          sx={{
+            color: "text.secondary",
+            width: 70,
+            textAlign: "right",
+            flexShrink: 0,
+            mr: 0.5,
+            typography: "micro",
+            transition: "opacity 0.15s",
+            fontVariantNumeric: "tabular-nums",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {date ? formatRelativeDate(date) : ""}
+        </Typography>
+
+        {/* ⋯ Actions */}
+        <Box
+          sx={{
+            flexShrink: 0,
+            width: 28,
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <PostRowContextMenu
+            mode="post"
+            onRename={() => onRenameStart(post.id, name)}
+            onDelete={() => onDelete(post)}
+            availableSeries={availableSeries}
+            onMoveToSeries={onMoveToSeries}
+          />
+        </Box>
       </Box>
-    </Box>
 
       {/* Inline tab list — the post's child tabs, revealed on disclosure. */}
       {hasTabs && (

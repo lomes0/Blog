@@ -140,7 +140,11 @@ export function BulkActionBar(
           </MenuItem>
           {availableSeries.length > 0 && <Divider sx={{ my: 0.5 }} />}
           {availableSeries.map((s) => (
-            <MenuItem key={s.id} dense onClick={() => handleMove(s.id)}>
+            <MenuItem
+              key={s.id}
+              dense
+              onClick={() => handleMove(s.id)}
+            >
               <ListItemIcon>
                 <FolderOpen size={15} />
               </ListItemIcon>

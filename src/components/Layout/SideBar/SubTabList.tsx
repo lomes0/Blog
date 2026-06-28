@@ -69,8 +69,7 @@ export const SubTabList: React.FC<SubTabListProps> = (
   } = itemActions;
 
   // The first (root) tab renames its own `tabLabel`; the rest rename `name`.
-  const fieldFor = (tabId: string) =>
-    tabId === rootTabId ? "tabLabel" : "name";
+  const fieldFor = (tabId: string) => tabId === rootTabId ? "tabLabel" : "name";
 
   // Right-click menu, anchored at the cursor and keyed to the target tab.
   const [menu, setMenu] = useState<

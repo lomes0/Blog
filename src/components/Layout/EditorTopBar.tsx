@@ -592,8 +592,10 @@ const EditorTopBar: React.FC = () => {
         </>
       )}
 
-      {/* Single-tab edit pages don't render the strip above, so surface a lone
-          "New tab" button to create the first extra tab. */}
+      {
+        /* Single-tab edit pages don't render the strip above, so surface a lone
+          "New tab" button to create the first extra tab. */
+      }
       {isEditPage && tabBar && !hasTabs && tabBar.onAdd && (
         <>
           <Divider

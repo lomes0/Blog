@@ -22,8 +22,11 @@ export const CollapsedRail: React.FC<CollapsedRailProps> = ({
   pathname,
 }) => {
   const seriesGroups = groupedActivePosts.filter(
-    (g): g is SeriesGroupItem & { series: NonNullable<SeriesGroupItem["series"]> } =>
-      g.type === "series" && Boolean(g.series),
+    (
+      g,
+    ): g is SeriesGroupItem & {
+      series: NonNullable<SeriesGroupItem["series"]>;
+    } => g.type === "series" && Boolean(g.series),
   );
 
   if (seriesGroups.length === 0) {

@@ -31,9 +31,9 @@ import {
   load,
   loadCloudDocuments,
   loadLocalDocuments,
-  mergeCloudDocumentsIntoTabs,
   // New post and series actions
   loadSeries,
+  mergeCloudDocumentsIntoTabs,
   syncLocalToCloud,
   updateCloudDocument,
   updateLocalDocument,

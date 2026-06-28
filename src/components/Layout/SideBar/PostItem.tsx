@@ -12,17 +12,12 @@ import {
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { ChevronRight, CloudUpload, FileText, Pencil } from "lucide-react";
-import {
-  actions,
-  type RootState,
-  useDispatch,
-  useSelector,
-} from "@/store";
+import { actions, type RootState, useDispatch, useSelector } from "@/store";
 import { selectChildDocumentsByParent } from "@/store/selectors/layoutSelectors";
 import type { UserDocument } from "@/types";
 import { SafeNavigationLink } from "./SafeNavigationLink";
 import type { PostItemActions } from "./hooks/useSidebarActions";
-import { SubTabList, type SubTabEntry } from "./SubTabList";
+import { type SubTabEntry, SubTabList } from "./SubTabList";
 import { triggerSave } from "../../EditDocument/saveRegistry";
 import { ICON_SIZE } from "@/theme/icons";
 
@@ -136,7 +131,15 @@ export const PostItem = memo(
         });
       }
       return entries;
-    }, [hasTabs, children, isOpenRoot, openDirtyIds, isModified, post.id, rootTabLabel]);
+    }, [
+      hasTabs,
+      children,
+      isOpenRoot,
+      openDirtyIds,
+      isModified,
+      post.id,
+      rootTabLabel,
+    ]);
 
     const anyTabDirty = tabEntries.some((tab) => tab.dirty);
 
@@ -243,10 +246,12 @@ export const PostItem = memo(
               },
             }}
           >
-            {/* Caret gutter: a tiny toggle sits ahead of the icon for tabbed
+            {
+              /* Caret gutter: a tiny toggle sits ahead of the icon for tabbed
                 posts, reading as hierarchy without shouting. The slot is always
                 reserved (in the open sidebar) so the icon column stays aligned
-                whether or not a post has tabs. */}
+                whether or not a post has tabs. */
+            }
             {sidebarOpen && (
               <Box
                 component="span"
@@ -290,8 +295,10 @@ export const PostItem = memo(
                 justifyContent: "center",
               }}
             >
-              {/* Same glyph for every post, tabbed or not — the caret above is
-                  what signals (and toggles) the tab list. */}
+              {
+                /* Same glyph for every post, tabbed or not — the caret above is
+                  what signals (and toggles) the tab list. */
+              }
               <FileText
                 size={ICON_SIZE.inline}
                 style={{ color: "var(--mui-palette-text-secondary)" }}
@@ -372,7 +379,8 @@ export const PostItem = memo(
                   component={SafeNavigationLink}
                   href={`/edit/${post.id}`}
                   size="small"
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e) =>
+                    e.stopPropagation()}
                   sx={{
                     p: 0.25,
                     // Align the glyph's right edge with the series doc-count

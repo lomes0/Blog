@@ -87,7 +87,8 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
             borderRadius: "12px",
             bgcolor: "action.hover",
             fontSize: "0.75em",
-            transition: "background-color .15s, border-color .15s, box-shadow .15s",
+            transition:
+              "background-color .15s, border-color .15s, box-shadow .15s",
             "&:focus-within": {
               bgcolor: "background.input",
               borderColor: "primary.main",
