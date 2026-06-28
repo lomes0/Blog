@@ -218,9 +218,10 @@ export const PostItem = memo(
               justifyContent: sidebarOpen ? "initial" : "center",
               overflow: "hidden",
               // A tabbed post carries an extra caret in the gutter ahead of the
-              // icon, so trim the left padding to keep the icon column aligned
-              // with non-tabbed rows.
-              ...(inSeries ? { pl: 0.75, pr: 2 } : { pl: 1.5, pr: 2 }),
+              // icon. Top-level rows use the same left padding as a SeriesGroup
+              // row (px: 2) so the post caret lines up under the series chevron;
+              // in-series rows trim it since they're already nested.
+              ...(inSeries ? { pl: 0.75, pr: 2 } : { pl: 2, pr: 2 }),
               py: inSeries ? 0.25 : 0.375,
               "&.Mui-selected": {
                 bgcolor: "action.selected",
@@ -248,7 +249,9 @@ export const PostItem = memo(
                   "aria-expanded": isExpanded,
                 })}
                 sx={{
-                  width: 12,
+                  // Match the SeriesGroup ListItemIcon footprint (14px glyph)
+                  // so the caret's center aligns with the series chevron above.
+                  width: 14,
                   flexShrink: 0,
                   display: "flex",
                   alignItems: "center",
