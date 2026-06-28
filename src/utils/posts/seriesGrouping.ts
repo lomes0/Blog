@@ -124,8 +124,21 @@ export const groupPostsBySeries = (
 };
 
 /**
+ * Order groups so all standalone posts come before any series, with each
+ * section sorted by creation time (newest first).
+ */
+const compareGroupsPostsBeforeSeries = (
+  a: SeriesGroupItem,
+  b: SeriesGroupItem,
+): number => {
+  if (a.type !== b.type) return a.type === "standalone" ? -1 : 1;
+  return b.sortKey - a.sortKey;
+};
+
+/**
  * Like groupPostsBySeries but also includes series that have no posts in the
- * current partition, appending them as empty groups sorted by creation time.
+ * current partition. All standalone posts are listed first (newest first),
+ * followed by all series groups (newest first).
  */
 export const groupPostsBySeriesWithEmpty = (
   posts: UserDocument[],
@@ -148,8 +161,7 @@ export const groupPostsBySeriesWithEmpty = (
       });
     }
   });
-  if (!emptyGroups.length) return baseGroups;
-  return [...baseGroups, ...emptyGroups].sort((a, b) => b.sortKey - a.sortKey);
+  return [...baseGroups, ...emptyGroups].sort(compareGroupsPostsBeforeSeries);
 };
 
 /**
