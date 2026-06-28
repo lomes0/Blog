@@ -31,6 +31,12 @@ interface SubTabListProps {
    */
   isOpenRoot: boolean;
   /**
+   * The root document's id. The root doubles as the post and its first tab, so
+   * renaming that first tab edits its `tabLabel` (keeping the post title in
+   * `name` independent); every other tab is a plain doc renamed via `name`.
+   */
+  rootTabId: string;
+  /**
    * Shared rename machinery from `useSidebarActions`. Sub-tabs are regular
    * documents, so the same id-keyed rename flow used for posts renames them too
    * (double-click or right-click → Rename to start; Enter/blur commits, Escape
@@ -48,11 +54,12 @@ const dotSx = {
 } as const;
 
 export const SubTabList: React.FC<SubTabListProps> = (
-  { tabs, activeTabId, isOpenRoot, itemActions },
+  { tabs, activeTabId, isOpenRoot, rootTabId, itemActions },
 ) => {
   const dispatch = useDispatch();
   const {
     renamingPostId,
+    renameField,
     renameValue,
     setRenameValue,
     renameInputRef,
@@ -60,6 +67,10 @@ export const SubTabList: React.FC<SubTabListProps> = (
     handleRenameBlur,
     handleRenameKeyDown,
   } = itemActions;
+
+  // The first (root) tab renames its own `tabLabel`; the rest rename `name`.
+  const fieldFor = (tabId: string) =>
+    tabId === rootTabId ? "tabLabel" : "name";
 
   // Right-click menu, anchored at the cursor and keyed to the target tab.
   const [menu, setMenu] = useState<
@@ -84,7 +95,7 @@ export const SubTabList: React.FC<SubTabListProps> = (
     setMenu(null);
     // Reuse the double-click rename starter (it only reads the event to
     // suppress default behavior), so the inline TextField opens on this tab.
-    handleDoubleClick(e, tab.id, tab.name);
+    handleDoubleClick(e, tab.id, tab.name, fieldFor(tab.id));
   };
 
   return (
@@ -103,7 +114,8 @@ export const SubTabList: React.FC<SubTabListProps> = (
       >
         {tabs.map((tab) => {
           const isActive = isOpenRoot && tab.id === activeTabId;
-          const isRenaming = renamingPostId === tab.id;
+          const isRenaming = renamingPostId === tab.id &&
+            renameField === fieldFor(tab.id);
 
           if (isRenaming) {
             return (
@@ -160,7 +172,7 @@ export const SubTabList: React.FC<SubTabListProps> = (
               component="li"
               {...interactionProps}
               onDoubleClick={(e: React.MouseEvent) =>
-                handleDoubleClick(e, tab.id, tab.name)}
+                handleDoubleClick(e, tab.id, tab.name, fieldFor(tab.id))}
               onContextMenu={(e: React.MouseEvent) => handleContextMenu(e, tab)}
               sx={{
                 display: "flex",

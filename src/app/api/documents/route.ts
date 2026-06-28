@@ -80,6 +80,7 @@ export const POST = withApiHandler(async (request) => {
     parentId: body.parentId,
     type: body.type || "DOCUMENT",
     ...(body.description !== undefined && { description: body.description }),
+    ...(body.tabLabel !== undefined && { tabLabel: body.tabLabel }),
     ...(body.seriesId !== undefined && { seriesId: body.seriesId }),
     ...(body.seriesOrder !== undefined && { seriesOrder: body.seriesOrder }),
     revisions: {

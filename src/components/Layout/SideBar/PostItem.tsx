@@ -59,6 +59,7 @@ export const PostItem = memo(
     const dispatch = useDispatch();
     const {
       renamingPostId,
+      renameField,
       renameValue,
       setRenameValue,
       renameInputRef,
@@ -89,10 +90,14 @@ export const PostItem = memo(
 
     const doc = post.cloud || post.local;
     const docName = doc?.name || "Untitled";
+    // The first tab's label can differ from the post title; fall back to it.
+    const rootTabLabel = doc?.tabLabel ?? docName;
     const isViewing = pathname === `/view/${post.id}`;
     const isEditing = pathname === `/edit/${post.id}`;
     const isSelected = isViewing || isEditing;
-    const isRenaming = renamingPostId === post.id;
+    // The post row renames the post title (`name`); the first sub-tab (same id)
+    // renames `tabLabel`. Disambiguate by field so only one input shows.
+    const isRenaming = renamingPostId === post.id && renameField === "name";
 
     // The post has unsaved live edits if it's the open document and any tab is
     // dirty. Driven by the same Redux `dirtyTabIds` the Save button uses, so the
@@ -115,7 +120,7 @@ export const PostItem = memo(
         ? Boolean(openDirtyIds?.includes(post.id))
         : isModified;
       const entries: SubTabEntry[] = [
-        { id: post.id, name: docName, dirty: rootDirty },
+        { id: post.id, name: rootTabLabel, dirty: rootDirty },
       ];
       for (const child of children) {
         const cd = child.cloud || child.local;
@@ -131,7 +136,7 @@ export const PostItem = memo(
         });
       }
       return entries;
-    }, [hasTabs, children, isOpenRoot, openDirtyIds, isModified, post.id, docName]);
+    }, [hasTabs, children, isOpenRoot, openDirtyIds, isModified, post.id, rootTabLabel]);
 
     const anyTabDirty = tabEntries.some((tab) => tab.dirty);
 
@@ -360,6 +365,7 @@ export const PostItem = memo(
             tabs={tabEntries}
             activeTabId={activeTabId}
             isOpenRoot={isOpenRoot}
+            rootTabId={post.id}
             itemActions={itemActions}
           />
         )}

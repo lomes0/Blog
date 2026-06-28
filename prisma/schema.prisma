@@ -51,6 +51,10 @@ model Document {
   // Background image for posts (optional)
   background_image String?
 
+  // For tabbed posts: the label shown on this document's own tab. Lets the
+  // first (root) tab carry a name distinct from the post title in `name`.
+  tabLabel String?
+
   // Sort order for documents (legacy, may be removed)
   sort_order Int?
 

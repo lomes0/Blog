@@ -115,7 +115,10 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     dispatch(actions.initTabs({ rootId, childIds }));
 
     const metas: TabMeta[] = [
-      { id: rootId, name: rootDoc?.name ?? "Document" },
+      // The root tab's label is its own `tabLabel` when set, falling back to the
+      // post title (`name`). This lets the first tab be named independently of
+      // the post.
+      { id: rootId, name: rootDoc?.tabLabel ?? rootDoc?.name ?? "Document" },
       ...(children ?? []).map((c) => ({ id: c.id, name: c.name })),
     ];
     setTabMetas(metas);
@@ -196,8 +199,12 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     // Persist through the store (IndexedDB + cloud) rather than hitting the API
     // directly, so the document title rendered above the editor and the tab
     // name in the sidebar update immediately to match the renamed tab.
+    // Renaming the root tab edits its own `tabLabel` so the post title (`name`)
+    // stays independent; child tabs are plain docs, so their `name` is the label.
     const userDoc = allDocuments.find((d) => d.id === tabId);
-    const partial = { name: trimmed };
+    const partial = tabId === rootId
+      ? { tabLabel: trimmed }
+      : { name: trimmed };
     if (userDoc?.local) {
       await dispatch(actions.updateLocalDocument({ id: tabId, partial }));
     }
@@ -207,7 +214,7 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     if (!userDoc?.local && !userDoc?.cloud) {
       await apiClient.documents.update(tabId, partial);
     }
-  }, [dispatch, allDocuments]);
+  }, [dispatch, allDocuments, rootId]);
 
   const handleReorder = useCallback(async (orderedIds: string[]) => {
     dispatch(actions.reorderTabs(orderedIds));

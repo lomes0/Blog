@@ -66,7 +66,9 @@ const ViewDocument: React.FC<
       if (cancelled) return;
       const childIds = (childDocs ?? []).map((c) => c.id);
       const metas: TabMeta[] = [
-        { id: rootId, name: rootDoc?.name ?? "Document" },
+        // The root tab can carry its own label (`tabLabel`) distinct from the
+        // post title; fall back to the post name when it isn't set.
+        { id: rootId, name: rootDoc?.tabLabel ?? rootDoc?.name ?? "Document" },
         ...(childDocs ?? []).map((c) => ({ id: c.id, name: c.name })),
       ];
       setTabs(metas);

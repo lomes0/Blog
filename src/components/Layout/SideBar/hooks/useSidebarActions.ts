@@ -9,8 +9,17 @@ import {
   useSelector,
 } from "@/store";
 
+/**
+ * Which field an inline rename writes to. The root document doubles as the post
+ * and its first tab, so the post row renames `name` (the post title) while the
+ * first sub-tab renames `tabLabel` (the tab's own label) — both keyed by the
+ * same id, so the field disambiguates which is being edited.
+ */
+export type RenameField = "name" | "tabLabel";
+
 export interface PostItemActions {
   renamingPostId: string | null;
+  renameField: RenameField;
   renameValue: string;
   setRenameValue: (v: string) => void;
   renameInputRef: React.RefObject<HTMLInputElement | null>;
@@ -19,6 +28,7 @@ export interface PostItemActions {
     event: React.MouseEvent,
     postId: string,
     currentName: string,
+    field?: RenameField,
   ) => void;
   handleRenameBlur: () => void;
   handleRenameKeyDown: (event: React.KeyboardEvent) => void;
@@ -48,6 +58,7 @@ export function useSidebarActions(): SidebarActionsResult {
   >(null);
 
   const [renamingPostId, setRenamingPostId] = useState<string | null>(null);
+  const [renameField, setRenameField] = useState<RenameField>("name");
   const [renameValue, setRenameValue] = useState("");
   const renameInputRef = useRef<HTMLInputElement>(null);
 
@@ -82,6 +93,7 @@ export function useSidebarActions(): SidebarActionsResult {
       if (doc) {
         const docName = (doc.cloud || doc.local)?.name || "Untitled";
         setRenamingPostId(postId);
+        setRenameField("name");
         setRenameValue(docName);
       }
     },
@@ -122,9 +134,15 @@ export function useSidebarActions(): SidebarActionsResult {
   );
 
   const handleDoubleClick = useCallback(
-    (event: React.MouseEvent, postId: string, currentName: string) => {
+    (
+      event: React.MouseEvent,
+      postId: string,
+      currentName: string,
+      field: RenameField = "name",
+    ) => {
       event.preventDefault();
       setRenamingPostId(postId);
+      setRenameField(field);
       setRenameValue(currentName);
     },
     [],
@@ -134,7 +152,7 @@ export function useSidebarActions(): SidebarActionsResult {
     if (renamingPostId && renameValue.trim()) {
       const doc = documents?.find((d) => d.id === renamingPostId);
       if (doc) {
-        const partial = { name: renameValue.trim() };
+        const partial = { [renameField]: renameValue.trim() };
         // Update both stores when present so the document title above the editor
         // (which reads the local copy) and the cloud stay in sync. Works for
         // child tab documents too, since they're keyed the same way.
@@ -152,7 +170,7 @@ export function useSidebarActions(): SidebarActionsResult {
     }
     setRenamingPostId(null);
     setRenameValue("");
-  }, [dispatch, renamingPostId, renameValue, documents]);
+  }, [dispatch, renamingPostId, renameField, renameValue, documents]);
 
   const handleRenameKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
@@ -178,6 +196,7 @@ export function useSidebarActions(): SidebarActionsResult {
   return {
     contextMenu,
     renamingPostId,
+    renameField,
     renameValue,
     setRenameValue,
     renameInputRef,

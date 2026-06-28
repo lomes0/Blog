@@ -18,7 +18,9 @@ export default function DocumentHeader({
       const localDoc = activeUserDoc?.local;
       const effectiveDoc = localDoc ?? activeUserDoc?.cloud;
       return {
-        name: effectiveDoc?.name ?? "Untitled",
+        // Show this tab's own label when set (root tab can differ from the post
+        // title); otherwise fall back to the post/document name.
+        name: effectiveDoc?.tabLabel ?? effectiveDoc?.name ?? "Untitled",
       };
     },
     shallowEqual,

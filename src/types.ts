@@ -76,6 +76,7 @@ export type EditorDocument = {
   revisions?: EditorDocumentRevision[];
   sort_order?: number | null;
   background_image?: string | null;
+  tabLabel?: string | null; // Label for this doc's own tab in a tabbed post
   seriesId?: string | null; // For blog series functionality
   seriesOrder?: number | null; // For ordering posts within series
 };

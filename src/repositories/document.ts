@@ -56,6 +56,7 @@ const documentCoreSelect = {
   type: true,
   status: true,
   background_image: true,
+  tabLabel: true,
   seriesId: true,
   seriesOrder: true,
 } as const;

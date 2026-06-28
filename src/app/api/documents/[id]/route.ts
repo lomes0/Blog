@@ -116,6 +116,7 @@ export const PATCH = withApiHandler(
       sort_order: body.sort_order,
       status: body.status,
       ...(body.description !== undefined && { description: body.description }),
+      ...(body.tabLabel !== undefined && { tabLabel: body.tabLabel }),
     };
 
     // Series membership. Setting seriesId to null moves the post back to
