@@ -11,7 +11,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import { ChevronRight, CloudUpload, FileText, Pencil } from "lucide-react";
+import { CloudUpload, FileText, Pencil } from "lucide-react";
 import { actions, type RootState, useDispatch, useSelector } from "@/store";
 import { selectChildDocumentsByParent } from "@/store/selectors/layoutSelectors";
 import type { UserDocument } from "@/types";
@@ -200,6 +200,9 @@ export const PostItem = memo(
     };
 
     const showSubTabs = sidebarOpen && hasTabs && isExpanded;
+    // Tabbed posts toggle their tab list from the file icon itself (it doubles
+    // as the "stacked" indicator), so the toggle is only live when open + tabbed.
+    const canToggleTabs = sidebarOpen && hasTabs;
     // When the sub-tab list is shown, the active visible content is one of the
     // sub-tabs (highlighted in SubTabList), so don't also highlight the parent.
     const highlightParent = isSelected && !showSubTabs;
@@ -228,9 +231,8 @@ export const PostItem = memo(
               minHeight: inSeries ? 26 : 30,
               justifyContent: sidebarOpen ? "initial" : "center",
               overflow: "hidden",
-              // A tabbed post carries an extra caret in the gutter ahead of the
-              // icon. Top-level rows use the same left padding as a SeriesGroup
-              // row (px: 2) so the post caret lines up under the series chevron;
+              // Top-level rows use the same left padding as a SeriesGroup row
+              // (px: 2) so the post icon lines up under the series chevron;
               // in-series rows trim it since they're already nested.
               ...(inSeries ? { pl: 0.75, pr: 2 } : { pl: 2, pr: 2 }),
               py: inSeries ? 0.25 : 0.375,
@@ -246,62 +248,33 @@ export const PostItem = memo(
               },
             }}
           >
-            {
-              /* Caret gutter: a tiny toggle sits ahead of the icon for tabbed
-                posts, reading as hierarchy without shouting. The slot is always
-                reserved (in the open sidebar) so the icon column stays aligned
-                whether or not a post has tabs. */
-            }
-            {sidebarOpen && (
-              <Box
-                component="span"
-                onClick={hasTabs ? handleToggleTabs : undefined}
-                {...(hasTabs && {
-                  role: "button",
-                  "aria-label": isExpanded ? "Collapse tabs" : "Expand tabs",
-                  "aria-expanded": isExpanded,
-                })}
-                sx={{
-                  // Match the SeriesGroup ListItemIcon footprint (14px glyph)
-                  // so the caret's center aligns with the series chevron above.
-                  width: 14,
-                  flexShrink: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "text.disabled",
-                  ...(hasTabs && {
-                    cursor: "pointer",
-                    "&:hover": { color: "text.secondary" },
-                  }),
-                  "& > svg": { transition: "transform .18s, color .15s" },
-                }}
-              >
-                {hasTabs && (
-                  <ChevronRight
-                    size={ICON_SIZE.micro}
-                    strokeWidth={2}
-                    style={{
-                      transform: isExpanded ? "rotate(90deg)" : "none",
-                    }}
-                  />
-                )}
-              </Box>
-            )}
             <ListItemIcon
+              onClick={canToggleTabs ? handleToggleTabs : undefined}
+              {...(canToggleTabs && {
+                role: "button",
+                "aria-label": isExpanded ? "Collapse tabs" : "Expand tabs",
+                "aria-expanded": isExpanded,
+              })}
               sx={{
                 minWidth: 0,
                 mr: sidebarOpen ? 1 : "auto",
                 justifyContent: "center",
+                ...(canToggleTabs && { cursor: "pointer" }),
+                "& > svg": { transition: "color .15s" },
               }}
             >
               {
-                /* Same glyph for every post, tabbed or not — the caret above is
-                  what signals (and toggles) the tab list. */
+                /* A tabbed ("stacked") post reads with a bolder icon color in
+                  place of a caret; the icon also toggles its tab list. */
               }
               <FileText
                 size={ICON_SIZE.inline}
-                style={{ color: "var(--mui-palette-text-secondary)" }}
+                strokeWidth={hasTabs ? 2.75 : 2}
+                style={{
+                  color: hasTabs
+                    ? "var(--mui-palette-text-primary)"
+                    : "var(--mui-palette-text-secondary)",
+                }}
               />
             </ListItemIcon>
             {sidebarOpen &&
