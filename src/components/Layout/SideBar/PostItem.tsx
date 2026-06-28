@@ -11,7 +11,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import { CloudUpload, FileStack, FileText, Pencil } from "lucide-react";
+import { ChevronRight, CloudUpload, FileText, Pencil } from "lucide-react";
 import {
   actions,
   type RootState,
@@ -217,7 +217,10 @@ export const PostItem = memo(
               minHeight: inSeries ? 26 : 30,
               justifyContent: sidebarOpen ? "initial" : "center",
               overflow: "hidden",
-              ...(inSeries ? { pl: 1.5, pr: 2 } : { pl: 2.5, pr: 2 }),
+              // A tabbed post carries an extra caret in the gutter ahead of the
+              // icon, so trim the left padding to keep the icon column aligned
+              // with non-tabbed rows.
+              ...(inSeries ? { pl: 0.75, pr: 2 } : { pl: 1.5, pr: 2 }),
               py: inSeries ? 0.25 : 0.375,
               "&.Mui-selected": {
                 bgcolor: "action.selected",
@@ -231,42 +234,57 @@ export const PostItem = memo(
               },
             }}
           >
+            {/* Caret gutter: a tiny toggle sits ahead of the icon for tabbed
+                posts, reading as hierarchy without shouting. The slot is always
+                reserved (in the open sidebar) so the icon column stays aligned
+                whether or not a post has tabs. */}
+            {sidebarOpen && (
+              <Box
+                component="span"
+                onClick={hasTabs ? handleToggleTabs : undefined}
+                {...(hasTabs && {
+                  role: "button",
+                  "aria-label": isExpanded ? "Collapse tabs" : "Expand tabs",
+                  "aria-expanded": isExpanded,
+                })}
+                sx={{
+                  width: 12,
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "text.disabled",
+                  ...(hasTabs && {
+                    cursor: "pointer",
+                    "&:hover": { color: "text.secondary" },
+                  }),
+                  "& > svg": { transition: "transform .18s, color .15s" },
+                }}
+              >
+                {hasTabs && (
+                  <ChevronRight
+                    size={ICON_SIZE.micro}
+                    strokeWidth={2}
+                    style={{
+                      transform: isExpanded ? "rotate(90deg)" : "none",
+                    }}
+                  />
+                )}
+              </Box>
+            )}
             <ListItemIcon
-              onClick={hasTabs ? handleToggleTabs : undefined}
-              {...(hasTabs && {
-                role: "button",
-                "aria-label": isExpanded ? "Collapse tabs" : "Expand tabs",
-                "aria-expanded": isExpanded,
-              })}
               sx={{
                 minWidth: 0,
                 mr: sidebarOpen ? 1 : "auto",
                 justifyContent: "center",
-                ...(hasTabs && { cursor: "pointer" }),
-                "& > svg": { transition: "color .15s" },
               }}
             >
-              {hasTabs
-                ? (
-                  // A tabbed post reads as a stack of pages rather than a folder,
-                  // distinguishing it from the series chevron. The glyph darkens
-                  // when its tab list is expanded.
-                  <FileStack
-                    size={ICON_SIZE.inline}
-                    strokeWidth={2}
-                    style={{
-                      color: isExpanded
-                        ? "var(--mui-palette-text-primary)"
-                        : "var(--mui-palette-text-secondary)",
-                    }}
-                  />
-                )
-                : (
-                  <FileText
-                    size={ICON_SIZE.inline}
-                    style={{ color: "var(--mui-palette-text-secondary)" }}
-                  />
-                )}
+              {/* Same glyph for every post, tabbed or not — the caret above is
+                  what signals (and toggles) the tab list. */}
+              <FileText
+                size={ICON_SIZE.inline}
+                style={{ color: "var(--mui-palette-text-secondary)" }}
+              />
             </ListItemIcon>
             {sidebarOpen &&
               (isRenaming
