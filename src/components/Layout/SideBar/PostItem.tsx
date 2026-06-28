@@ -1,5 +1,5 @@
 "use client";
-import React, { memo, useCallback, useEffect, useMemo } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Box,
   IconButton,
@@ -153,9 +153,17 @@ export const PostItem = memo(
     // tabbed post still surfaces its tabs. The user can then collapse them via
     // the chevron, and the choice persists until they open it again.
     const isExpanded = expandedTabs.has(post.id);
+    // Only reveal on the rising edge of "open" — not on every render where the
+    // post happens to be open. Navigating away briefly leaves `isSelected`
+    // false while `ui.tabs.rootId` still points here (clearTabs runs in the
+    // view's unmount cleanup a render later); firing on every open render would
+    // re-expand the list and undo a manual collapse.
+    const isOpen = isSelected || isOpenRoot;
+    const wasOpenRef = useRef(false);
     useEffect(() => {
-      if (hasTabs && (isSelected || isOpenRoot)) onExpandTabs(post.id);
-    }, [hasTabs, isSelected, isOpenRoot, post.id, onExpandTabs]);
+      if (hasTabs && isOpen && !wasOpenRef.current) onExpandTabs(post.id);
+      wasOpenRef.current = isOpen;
+    }, [hasTabs, isOpen, post.id, onExpandTabs]);
 
     const handleSaveToCloud = useCallback(async (e: React.MouseEvent) => {
       e.preventDefault();
