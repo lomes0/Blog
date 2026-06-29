@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { compareDocumentsByRank } from "@/lib/documentOrder";
 import { UserDocument } from "@/types";
 
 export function useSeriesGroupState(
@@ -14,14 +15,7 @@ export function useSeriesGroupState(
   const [isCollapsed, setIsCollapsed] = useState(!defaultExpanded);
 
   const sortedPosts = useMemo(
-    () =>
-      [...posts].sort((a, b) => {
-        const dateA = new Date(a.cloud?.createdAt || a.local?.createdAt || 0)
-          .getTime();
-        const dateB = new Date(b.cloud?.createdAt || b.local?.createdAt || 0)
-          .getTime();
-        return dateB - dateA; // Newest first
-      }),
+    () => [...posts].sort(compareDocumentsByRank),
     [posts],
   );
 

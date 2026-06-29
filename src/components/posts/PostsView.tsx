@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react";
 import { Series, User, UserDocument } from "@/types";
 import { useSelector } from "@/store";
 import { selectStandalonePosts } from "@/store/selectors/postsSelectors";
+import { compareDocumentsByRank } from "@/lib/documentOrder";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { useTimeEditing } from "@/hooks/useTimeEditing";
 import { ViewToggle, type ViewType } from "@/components/shared/ViewToggle";
@@ -67,16 +68,6 @@ function SectionDivider({ label, color }: { label: string; color: string }) {
       <Box sx={{ flex: 1, height: "1px", bgcolor: "divider" }} />
     </Box>
   );
-}
-
-function sortByDate(posts: UserDocument[]): UserDocument[] {
-  return [...posts].sort((a, b) => {
-    const dateA = new Date(a.cloud?.createdAt || a.local?.createdAt || 0)
-      .getTime();
-    const dateB = new Date(b.cloud?.createdAt || b.local?.createdAt || 0)
-      .getTime();
-    return dateB - dateA;
-  });
 }
 
 const PostsGrid: React.FC<{ posts: UserDocument[]; user?: User }> = (
@@ -143,22 +134,24 @@ const PostsView: React.FC<PostsViewProps> = ({ series, user: serverUser }) => {
     handleDiscardTimeChanges,
   } = useTimeEditing(series?.posts ?? []);
 
-  // Wrap series Document[] → UserDocument[], sorted by date.
+  // Wrap series Document[] → UserDocument[]. Manual rank order is the default
+  // (series.posts arrives rank-ordered from the server); time-edit mode swaps in
+  // the date-sorted-with-pending list while the user adjusts post dates.
   const seriesUserDocs: UserDocument[] = useMemo(
     () =>
       isSeries
-        ? sortedWithPending.map((post) => ({
+        ? (isTimeEditMode ? sortedWithPending : series!.posts).map((post) => ({
           id: post.id,
           cloud: post,
           local: undefined,
         }))
         : [],
-    [isSeries, sortedWithPending],
+    [isSeries, isTimeEditMode, sortedWithPending, series],
   );
 
-  // Standalone posts sorted newest-first (all-posts mode).
+  // Standalone posts in manual (rank) order.
   const sortedStandalonePosts = useMemo(
-    () => sortByDate(standalonePosts),
+    () => [...standalonePosts].sort(compareDocumentsByRank),
     [standalonePosts],
   );
 

@@ -90,7 +90,7 @@ export async function findAllSeries(): Promise<Series[]> {
           type: PrismaDocumentType.DOCUMENT,
         },
         orderBy: {
-          seriesOrder: "asc",
+          rank: "asc",
         },
       },
     },
@@ -180,7 +180,7 @@ export async function findSeriesById(id: string): Promise<Series | null> {
           type: PrismaDocumentType.DOCUMENT,
         },
         orderBy: {
-          seriesOrder: "asc",
+          rank: "asc",
         },
       },
     },
@@ -271,7 +271,7 @@ export async function findSeriesByAuthorId(
           type: PrismaDocumentType.DOCUMENT,
         },
         orderBy: {
-          seriesOrder: "asc",
+          rank: "asc",
         },
       },
     },
