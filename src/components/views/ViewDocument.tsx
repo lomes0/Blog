@@ -53,6 +53,13 @@ const ViewDocument: React.FC<
       : cloudDocument.id;
   });
 
+  // Heading reflects the active tab, not the post. The post's unique `name`
+  // stays reserved for the URL/series/SEO (see generateMetadata); the visible
+  // <h1> shows whichever tab is open. For a single-tab post the only tab's
+  // label falls back to the post name, so this naturally shows the post name.
+  const activeTabName = tabs.find((t) => t.id === activeTabId)?.name ??
+    cloudDocument.name;
+
   const { setTabBar } = useTopBarTabs();
 
   // Fetch root metadata + all children to populate the tab strip.
@@ -125,7 +132,7 @@ const ViewDocument: React.FC<
         {/* Document header */}
         <Box sx={{ pt: 2, pb: 0 }}>
           <Typography variant="h4" component="h1" fontWeight={700} gutterBottom>
-            {cloudDocument.name}
+            {activeTabName}
           </Typography>
           <Box
             sx={{
