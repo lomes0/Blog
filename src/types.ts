@@ -75,6 +75,7 @@ export type EditorDocument = {
   status?: DocumentStatus;
   revisions?: EditorDocumentRevision[];
   sort_order?: number | null;
+  rank?: string | null; // Manual position within container (fractional index)
   background_image?: string | null;
   tabLabel?: string | null; // Label for this doc's own tab in a tabbed post
   seriesId?: string | null; // For blog series functionality
@@ -109,6 +110,9 @@ export interface Series {
   createdAt: string | Date;
   updatedAt: string | Date;
   authorId: string;
+  // Manual position in the author's root list (shared rank space with root
+  // Documents, so posts and series interleave).
+  rank?: string | null;
   author: User;
   posts: Document[]; // Use Document[] since these are documents from the database
 }

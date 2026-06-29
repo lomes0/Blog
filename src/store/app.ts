@@ -10,8 +10,10 @@ import {
   Announcement,
   AppState,
   CloudDocumentRevision,
+  Document,
   EditorDocumentRevision,
   EMPTY_EDITOR_STATE,
+  Series,
   UserDocument,
 } from "../types";
 
@@ -29,6 +31,8 @@ import {
   getLocalDocument,
   loadCloudDocuments,
   loadLocalDocuments,
+  moveCloudDocument,
+  moveLocalDocument,
   updateCloudDocument,
   updateLocalDocument,
 } from "./thunks/documentThunks";
@@ -60,6 +64,41 @@ function prependOneDoc(
   if (idx > 0) {
     adapterState.ids.splice(idx, 1);
     adapterState.ids.unshift(entity.id);
+  }
+}
+
+/**
+ * Apply an authoritative cloud Document to the store: upsert its entity and keep
+ * `series.posts` in sync with any series-membership change. Shared by the
+ * update and move thunks.
+ */
+function applyCloudDocument(
+  documents: EntityState<UserDocument, string>,
+  series: Series[],
+  document: Document,
+) {
+  const existing = documents.entities[document.id];
+  const previousSeriesId = existing?.cloud?.seriesId;
+  if (!existing) {
+    prependOneDoc(documents, { id: document.id, cloud: document });
+  } else {
+    existing.cloud = document;
+  }
+  // Remove from its previous series when membership changed.
+  if (previousSeriesId && previousSeriesId !== document.seriesId) {
+    const oldSeries = series.find((s) => s.id === previousSeriesId);
+    if (oldSeries) {
+      oldSeries.posts = oldSeries.posts.filter((p) => p.id !== document.id);
+    }
+  }
+  // Add/refresh it in its current series.
+  if (document.seriesId) {
+    const target = series.find((s) => s.id === document.seriesId);
+    if (target) {
+      const idx = target.posts.findIndex((p) => p.id === document.id);
+      if (idx === -1) target.posts.push(document);
+      else target.posts[idx] = document;
+    }
   }
 }
 
@@ -405,37 +444,7 @@ export const appSlice = createSlice({
         Object.assign(localDocument, partial);
       })
       .addCase(updateCloudDocument.fulfilled, (state, action) => {
-        const document = action.payload;
-        const existing = state.documents.entities[document.id];
-        const previousSeriesId = existing?.cloud?.seriesId;
-        if (!existing) {
-          prependOneDoc(state.documents, {
-            id: document.id,
-            cloud: document,
-          });
-        } else {
-          existing.cloud = document;
-        }
-        // Sync series.posts so the sidebar reflects series membership changes immediately
-        if (previousSeriesId && previousSeriesId !== document.seriesId) {
-          const oldSeries = state.series.find((s) => s.id === previousSeriesId);
-          if (oldSeries) {
-            oldSeries.posts = oldSeries.posts.filter((p) =>
-              p.id !== document.id
-            );
-          }
-        }
-        if (document.seriesId) {
-          const series = state.series.find((s) => s.id === document.seriesId);
-          if (series) {
-            const idx = series.posts.findIndex((p) => p.id === document.id);
-            if (idx === -1) {
-              series.posts.push(document);
-            } else {
-              series.posts[idx] = document;
-            }
-          }
-        }
+        applyCloudDocument(state.documents, state.series, action.payload);
       })
       .addCase(updateCloudDocument.rejected, (state, action) => {
         const message = action.payload as {
@@ -443,6 +452,18 @@ export const appSlice = createSlice({
           subtitle: string;
         };
         state.ui.announcements.push({ message });
+      })
+      .addCase(moveCloudDocument.fulfilled, (state, action) => {
+        applyCloudDocument(state.documents, state.series, action.payload);
+      })
+      .addCase(moveCloudDocument.rejected, (state, action) => {
+        const message = action.payload as { title: string; subtitle: string };
+        state.ui.announcements.push({ message });
+      })
+      .addCase(moveLocalDocument.fulfilled, (state, action) => {
+        const { id, partial } = action.payload;
+        const local = state.documents.entities[id]?.local;
+        if (local) Object.assign(local, partial);
       })
       .addCase(deleteLocalDocument.fulfilled, (state, action) => {
         const id = action.payload;
@@ -635,6 +656,9 @@ export {
   loadCloudDocuments,
   loadLocalDocuments,
   mergeCloudDocumentsIntoTabs,
+  moveCloudDocument,
+  moveDocument,
+  moveLocalDocument,
   syncLocalToCloud,
   updateCloudDocument,
   updateLocalDocument,

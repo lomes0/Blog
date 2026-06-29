@@ -12,6 +12,7 @@ import {
 import { apiClient } from "@/api";
 import { v4 as uuidv4, validate } from "uuid";
 import { createCloudRevision } from "./revisionThunks";
+import { rankAtEnd, rankBetween, type Ranked } from "@/lib/ordering";
 import type { SerializedEditorState } from "lexical";
 
 const toErrorMessage = (error: unknown): string =>
@@ -341,6 +342,135 @@ export const updateCloudDocument = createAsyncThunk(
         subtitle: toErrorMessage(error),
       });
     }
+  },
+);
+
+// ─── Move / reorder ──────────────────────────────────────────────────────────
+
+export type MoveDocumentArg = {
+  id: string;
+  // Fully specifies the destination container (not a partial patch).
+  destination: { seriesId?: string | null; parentId?: string | null };
+  // Neighbour ranks to drop between; omit to append to the end.
+  between?: { afterRank?: string | null; beforeRank?: string | null };
+};
+
+export const moveCloudDocument = createAsyncThunk(
+  "app/moveCloudDocument",
+  async (arg: MoveDocumentArg, thunkAPI) => {
+    try {
+      const data = await apiClient.documents.move(arg.id, {
+        destination: arg.destination,
+        between: arg.between,
+      });
+      if (!data) {
+        return thunkAPI.rejectWithValue({
+          title: "Something went wrong",
+          subtitle: "failed to move document",
+        });
+      }
+      return thunkAPI.fulfillWithValue(data);
+    } catch (error: unknown) {
+      console.error(error);
+      return thunkAPI.rejectWithValue({
+        title: "Something went wrong",
+        subtitle: toErrorMessage(error),
+      });
+    }
+  },
+);
+
+export const moveLocalDocument = createAsyncThunk(
+  "app/moveLocalDocument",
+  async (
+    arg: { id: string; partial: Pick<EditorDocument, "rank" | "parentId"> },
+    thunkAPI,
+  ) => {
+    try {
+      const result = await documentDB.patch(arg.id, arg.partial);
+      if (!result) {
+        return thunkAPI.rejectWithValue({
+          title: "Something went wrong",
+          subtitle: "failed to move document",
+        });
+      }
+      return thunkAPI.fulfillWithValue({ id: arg.id, partial: arg.partial });
+    } catch (error: unknown) {
+      console.error(error);
+      return thunkAPI.rejectWithValue({
+        title: "Something went wrong",
+        subtitle: toErrorMessage(error),
+      });
+    }
+  },
+);
+
+// Ranks of a container's current members, read from Redux. Root mixes
+// standalone documents and series (one shared rank space), mirroring the server.
+function containerSiblings(
+  state: AppState,
+  destination: MoveDocumentArg["destination"],
+  excludeId: string,
+): Ranked[] {
+  const seriesId = destination.seriesId ?? null;
+  const parentId = seriesId ? null : (destination.parentId ?? null);
+  const out: Ranked[] = [];
+  for (const entity of Object.values(state.documents.entities)) {
+    if (!entity || entity.id === excludeId) continue;
+    const doc = entity.cloud ?? entity.local;
+    if (!doc || doc.rank == null) continue;
+    const docSeries = doc.seriesId ?? null;
+    const docParent = doc.parentId ?? null;
+    const inContainer = seriesId
+      ? docSeries === seriesId
+      : parentId
+      ? docParent === parentId
+      : !docSeries && !docParent;
+    if (inContainer) out.push({ id: entity.id, rank: doc.rank });
+  }
+  if (!seriesId && !parentId) {
+    for (const s of state.series) {
+      if (s.rank != null) out.push({ id: s.id, rank: s.rank });
+    }
+  }
+  return out;
+}
+
+// The rank a moved document should take, computed client-side. Deterministic,
+// so it matches the server for `between` moves and lets local copies (which have
+// no server) reorder offline.
+function moveRank(state: AppState, arg: MoveDocumentArg): string {
+  const { afterRank, beforeRank } = arg.between ?? {};
+  if (afterRank != null || beforeRank != null) {
+    return rankBetween(afterRank ?? null, beforeRank ?? null);
+  }
+  return rankAtEnd(containerSiblings(state, arg.destination, arg.id));
+}
+
+// Re-home / reorder a document across both stores. The cloud copy is moved by
+// the server (authoritative rank); the local copy is moved with a client-computed
+// rank so offline reordering works. Visible reordering arrives once selectors
+// sort by rank (a later phase).
+export const moveDocument = createAsyncThunk(
+  "app/moveDocument",
+  async (arg: MoveDocumentArg, thunkAPI) => {
+    const state = thunkAPI.getState() as AppState;
+    const entity = state.documents.entities[arg.id];
+    if (entity?.cloud) {
+      await thunkAPI.dispatch(moveCloudDocument(arg)).unwrap();
+    }
+    if (entity?.local) {
+      const parentId = arg.destination.seriesId
+        ? null
+        : (arg.destination.parentId ?? null);
+      await thunkAPI.dispatch(
+        moveLocalDocument({
+          id: arg.id,
+          partial: { rank: moveRank(state, arg), parentId },
+        }),
+      ).unwrap();
+    }
+    return arg.id;
   },
 );
 

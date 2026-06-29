@@ -53,6 +53,7 @@ const documentCoreSelect = {
   baseId: true,
   parentId: true,
   sort_order: true,
+  rank: true,
   head: true,
   type: true,
   status: true,
