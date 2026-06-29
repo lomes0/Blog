@@ -16,6 +16,10 @@ model Series {
   updatedAt   DateTime @updatedAt @db.Timestamptz
   authorId    String   @db.Uuid
 
+  // Position in the author's root list. Shares a comparable fractional-index
+  // space with root Documents' `rank`, so posts and series freely interleave.
+  rank String
+
   // Relations
   author User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
   posts  Document[] @relation("SeriesPosts")
@@ -23,6 +27,7 @@ model Series {
   @@index([authorId])
   @@index([title])
   @@index([authorId, createdAt])
+  @@index([authorId, rank]) // Root-list ordering (shared space with Documents)
 }
 
 // Main content model with hierarchical structure (used for both posts and directories)
@@ -55,17 +60,23 @@ model Document {
   // first (root) tab carry a name distinct from the post title in `name`.
   tabLabel String?
 
-  // Sort order for documents (legacy, may be removed)
+  // Sort order for documents (legacy — superseded by `rank`, dropped after the
+  // ordering migration completes)
   sort_order Int?
+
+  // Manual position among siblings in this document's container (its series,
+  // its parent tab-group, or the author's root list). Fractional-index key —
+  // see src/lib/ordering.
+  rank String
 
   // Fork relationship
   baseId String?    @db.Uuid
-  base   Document?  @relation("BaseForks", fields: [baseId], references: [id])
+  base   Document?  @relation("BaseForks", fields: [baseId], references: [id], onDelete: SetNull)
   forks  Document[] @relation("BaseForks")
 
   // Hierarchical relationships (for future features if needed)
   parentId String?    @db.Uuid
-  parent   Document?  @relation("DocumentHierarchy", fields: [parentId], references: [id])
+  parent   Document?  @relation("DocumentHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
   children Document[] @relation("DocumentHierarchy")
 
   // Type discrimination
@@ -81,6 +92,9 @@ model Document {
   @@index([authorId, published]) // Index for finding user's published posts
   @@index([published, type]) // Index for finding published posts/documents
   @@index([seriesId, seriesOrder]) // Index for ordering posts within series
+  @@index([seriesId, rank]) // Order of posts within a series
+  @@index([parentId, rank]) // Order of child tabs within a tabbed post
+  @@index([authorId, rank]) // Order of the author's root list
 }
 
 enum DocumentType {

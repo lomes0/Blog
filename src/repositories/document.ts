@@ -10,6 +10,7 @@ import {
 import { validate } from "uuid";
 import { README_DOCUMENT_NAME } from "@/constants";
 import { getCachedRevision } from "./revision";
+import { rankForAppend, reRankIntoRoot } from "./ordering";
 
 // ─── Shared select fragments ─────────────────────────────────────────────────
 
@@ -249,16 +250,27 @@ const findPublishedDocumentsByAuthorId = async (authorId: string) => {
   return docs.map(toCloudDocument);
 };
 
-const createDocument = async (data: Prisma.DocumentUncheckedCreateInput) => {
+// `rank` is computed here (appended to the document's container), so callers
+// need not supply it — though they may to pin an explicit position.
+type CreateDocumentInput =
+  & Omit<Prisma.DocumentUncheckedCreateInput, "rank">
+  & { rank?: string | null };
+
+const createDocument = async (data: CreateDocumentInput) => {
   if (!data.id) return null;
 
-  // Ensure it's always a DOCUMENT type, not DIRECTORY
-  const docData = {
-    ...data,
-    type: PrismaDocumentType.DOCUMENT,
-  };
+  // Position new documents at the end of their container (series / tab-group /
+  // root) unless the caller already supplied a rank.
+  const rank = data.rank ?? await rankForAppend(prisma, {
+    authorId: data.authorId,
+    seriesId: (data.seriesId as string | null | undefined) ?? null,
+    parentId: (data.parentId as string | null | undefined) ?? null,
+  });
 
-  await prisma.document.create({ data: docData });
+  // Ensure it's always a DOCUMENT type, not DIRECTORY
+  await prisma.document.create({
+    data: { ...data, type: PrismaDocumentType.DOCUMENT, rank },
+  });
   return findDocument(data.id);
 };
 
@@ -290,17 +302,27 @@ const deleteDocument = async (handle: string) => {
           { type: PrismaDocumentType.DOCUMENT },
         ],
       },
-      select: { id: true },
+      select: { id: true, authorId: true },
     });
 
     if (!doc) {
       throw new Error("Document not found");
     }
 
-    // Delete the document
-    return await tx.document.delete({
+    // Child tabs are promoted to root via onDelete: SetNull — capture them
+    // (in order) so we can re-home them with fresh root ranks below.
+    const children = await tx.document.findMany({
+      where: { parentId: doc.id },
+      orderBy: { rank: "asc" },
+      select: { id: true },
+    });
+
+    const deleted = await tx.document.delete({
       where: { id: doc.id },
     });
+
+    await reRankIntoRoot(tx, doc.authorId, children.map((c) => c.id));
+    return deleted;
   });
 };
 

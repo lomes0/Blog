@@ -75,7 +75,7 @@ export const POST = withApiHandler(
     }
 
     const body = await request.json();
-    const { postId, order } = body;
+    const { postId } = body;
 
     if (!postId) {
       throw new ApiError(400, "Bad Request", "Post ID is required");
@@ -99,8 +99,8 @@ export const POST = withApiHandler(
       );
     }
 
-    // Add post to series with order
-    await addPostToSeries(params.id, postId, order || 0);
+    // Add post to the series (appended; manual order is set via rank)
+    await addPostToSeries(params.id, postId);
 
     // Revalidate all relevant paths
     revalidatePath("/series");
@@ -108,7 +108,7 @@ export const POST = withApiHandler(
     revalidatePath("/");
 
     return NextResponse.json({
-      data: { seriesId: params.id, postId, order: order || 0 },
+      data: { seriesId: params.id, postId },
     });
   },
 );
@@ -154,16 +154,13 @@ export const PATCH = withApiHandler(
     }
 
     const body = await request.json();
-    const postsToAdd: { postId: string; order: number }[] = body.postsToAdd ??
-      [];
+    // Accept either bare ids or legacy { postId, order } objects for add.
+    const postsToAdd: string[] = (body.postsToAdd ?? []).map(
+      (p: string | { postId: string }) => typeof p === "string" ? p : p.postId,
+    );
     const postsToRemove: string[] = body.postsToRemove ?? [];
 
-    for (const { postId } of postsToAdd) {
-      if (!validate(postId)) {
-        throw new ApiError(400, "Bad Request", `Invalid post id: ${postId}`);
-      }
-    }
-    for (const postId of postsToRemove) {
+    for (const postId of [...postsToAdd, ...postsToRemove]) {
       if (!validate(postId)) {
         throw new ApiError(400, "Bad Request", `Invalid post id: ${postId}`);
       }

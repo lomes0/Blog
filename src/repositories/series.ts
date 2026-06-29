@@ -1,6 +1,11 @@
 import { DocumentType as PrismaDocumentType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
+  moveDocument,
+  rankForAppend,
+  reRankIntoRoot,
+} from "./ordering";
+import {
   Document,
   DocumentRevision,
   Series,
@@ -283,12 +288,18 @@ export async function findSeriesByAuthorId(
 
 // Create series and return full entity with relations
 export async function createSeries(data: SeriesCreateInput): Promise<Series> {
+  const rank = await rankForAppend(prisma, {
+    authorId: data.authorId,
+    seriesId: null,
+    parentId: null,
+  });
   await prisma.series.create({
     data: {
       id: data.id,
       title: data.title,
       description: data.description,
       authorId: data.authorId,
+      rank,
     },
   });
 
@@ -320,74 +331,60 @@ export async function updateSeries(
   return series;
 }
 
-// Delete series (documents will have seriesId set to null via CASCADE)
+// Delete a series; its posts are re-homed to the end of the author's root list
+// (in their prior order) in the same transaction, so they don't keep ranks that
+// belonged to the now-deleted series' space.
 export async function deleteSeries(id: string): Promise<void> {
-  await prisma.series.delete({
-    where: { id },
+  await prisma.$transaction(async (tx) => {
+    const series = await tx.series.findUnique({
+      where: { id },
+      select: { authorId: true },
+    });
+    if (!series) throw new Error("Series not found");
+
+    const members = await tx.document.findMany({
+      where: { seriesId: id },
+      orderBy: { rank: "asc" },
+      select: { id: true },
+    });
+
+    await tx.series.delete({ where: { id } });
+    await reRankIntoRoot(tx, series.authorId, members.map((m) => m.id));
   });
 }
 
-// Add post to series by updating document's seriesId and seriesOrder
+// Add a post to a series, appended to the end of the series.
 export async function addPostToSeries(
   seriesId: string,
   postId: string,
-  order: number,
 ): Promise<void> {
-  await prisma.document.update({
-    where: { id: postId },
-    data: {
-      seriesId,
-      seriesOrder: order,
-    },
-  });
+  await prisma.$transaction((tx) =>
+    moveDocument(tx, { id: postId, destination: { seriesId } })
+  );
 }
 
-// Remove post from series by setting seriesId and seriesOrder to null
+// Remove a post from its series, re-homing it to the author's root list.
 export async function removePostFromSeries(postId: string): Promise<void> {
-  await prisma.document.update({
-    where: { id: postId },
-    data: {
-      seriesId: null,
-      seriesOrder: null,
-    },
-  });
+  await prisma.$transaction((tx) =>
+    moveDocument(tx, { id: postId, destination: {} })
+  );
 }
 
-// Batch add/remove posts from a series in a single transaction
+// Batch add/remove posts from a series in a single transaction. Removed posts
+// are re-homed to root; added posts are appended to the series.
 export async function batchUpdateSeriesPosts(
   seriesId: string,
-  postsToAdd: { postId: string; order: number }[],
-  postsToRemove: string[],
+  postIdsToAdd: string[],
+  postIdsToRemove: string[],
 ): Promise<void> {
-  await prisma.$transaction([
-    ...postsToRemove.map((postId) =>
-      prisma.document.update({
-        where: { id: postId },
-        data: { seriesId: null, seriesOrder: null },
-      })
-    ),
-    ...postsToAdd.map(({ postId, order }) =>
-      prisma.document.update({
-        where: { id: postId },
-        data: { seriesId, seriesOrder: order },
-      })
-    ),
-  ]);
-}
-
-// Update the order of posts within a series
-export async function updateSeriesPostOrder(
-  seriesId: string,
-  postOrders: { postId: string; order: number }[],
-): Promise<void> {
-  await prisma.$transaction(
-    postOrders.map(({ postId, order }) =>
-      prisma.document.update({
-        where: { id: postId },
-        data: { seriesOrder: order },
-      })
-    ),
-  );
+  await prisma.$transaction(async (tx) => {
+    for (const postId of postIdsToRemove) {
+      await moveDocument(tx, { id: postId, destination: {} });
+    }
+    for (const postId of postIdsToAdd) {
+      await moveDocument(tx, { id: postId, destination: { seriesId } });
+    }
+  });
 }
 
 // Get posts available to add to a series (user's posts not in any series)

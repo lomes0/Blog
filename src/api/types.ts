@@ -19,13 +19,10 @@ export interface GetOneSeriesResponse {
 // -----------------------------------------------------------------------
 // Series posts (PATCH /api/series/:id/posts)
 // -----------------------------------------------------------------------
-export interface SeriesPostUpdate {
-  postId: string;
-  order: number;
-}
-
+// Posts are appended to the series; manual position is controlled via `rank`,
+// so add/remove take bare post ids.
 export interface UpdateSeriesPostsInput {
-  postsToAdd: SeriesPostUpdate[];
+  postsToAdd: string[];
   postsToRemove: string[];
 }
 

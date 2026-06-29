@@ -68,7 +68,8 @@ export const POST = withApiHandler(async (request) => {
     );
   }
 
-  const input: Prisma.DocumentUncheckedCreateInput = {
+  // rank is assigned by createDocument (appended to the document's container).
+  const input: Omit<Prisma.DocumentUncheckedCreateInput, "rank"> = {
     id: body.id,
     authorId: user.id,
     name: body.name,

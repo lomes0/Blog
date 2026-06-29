@@ -69,8 +69,7 @@ export function useAvailablePostsSelector(
       const currentlySelected = Array.from(selectedPosts);
 
       const postsToAdd = currentlySelected
-        .filter((id) => !existingPostIds.has(id))
-        .map((postId, i) => ({ postId, order: i + 1000 }));
+        .filter((id) => !existingPostIds.has(id));
 
       const postsToRemove = existingPosts
         .map((p) => p.id)

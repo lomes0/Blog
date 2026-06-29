@@ -28,6 +28,7 @@ import {
   type SeriesExport,
   validateManifest,
 } from "@/lib/export/manifest";
+import { rankForAppend } from "@/repositories/ordering";
 
 export const dynamic = "force-dynamic";
 
@@ -109,6 +110,11 @@ export const POST = withApiHandler(async (request: Request) => {
             title: s.title,
             description: s.description ?? null,
             authorId: user.id, // import under the authenticated user
+            rank: await rankForAppend(prisma, {
+              authorId: user.id,
+              seriesId: null,
+              parentId: null,
+            }),
             createdAt: new Date(s.createdAt),
             updatedAt: new Date(s.updatedAt),
           },
@@ -203,7 +209,7 @@ export const POST = withApiHandler(async (request: Request) => {
       const headRevisionId = docExport.head ??
         docExport.revisions[docExport.revisions.length - 1]?.id;
 
-      // Create the document
+      // Create the document, appended to the end of its container.
       await prisma.document.create({
         data: {
           id: docExport.id,
@@ -221,6 +227,11 @@ export const POST = withApiHandler(async (request: Request) => {
           status: (docExport.status as "ACTIVE" | "DONE") ?? "ACTIVE",
           background_image: docExport.background_image ?? null,
           sort_order: docExport.sort_order ?? null,
+          rank: await rankForAppend(prisma, {
+            authorId: user.id,
+            seriesId,
+            parentId: docExport.parentId ?? null,
+          }),
           seriesId,
           seriesOrder: docExport.seriesOrder ?? null,
           createdAt: new Date(docExport.createdAt),
