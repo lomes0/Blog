@@ -246,6 +246,20 @@ export const PostItem = memo(
                     ),
                 },
               },
+              // Keyboard focus must stay visible for a11y, but MUI's default
+              // `.Mui-focusVisible` fills the row with `action.focus` — a gray
+              // nearly identical to `action.selected`. Left on a row that is no
+              // longer the open document (focus lingers after navigating away by
+              // another route), it reads as a second "selected" item. Replace the
+              // fill with a focus ring so only the viewed row carries a bg fill.
+              "&.Mui-focusVisible:not(.Mui-selected)": {
+                bgcolor: "transparent",
+              },
+              "&.Mui-focusVisible": {
+                outline: "2px solid",
+                outlineColor: "primary.main",
+                outlineOffset: "-2px",
+              },
             }}
           >
             <ListItemIcon

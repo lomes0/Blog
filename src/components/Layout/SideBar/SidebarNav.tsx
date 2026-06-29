@@ -69,6 +69,17 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
                       "rgba(var(--mui-palette-text-primaryChannel) / 0.15)",
                   },
                 },
+                // Keep keyboard focus visible as a ring, not a fill — MUI's
+                // default `.Mui-focusVisible` bg mimics the selected state and
+                // lingers on a row after focus moves away by another route.
+                "&.Mui-focusVisible:not(.Mui-selected)": {
+                  bgcolor: "transparent",
+                },
+                "&.Mui-focusVisible": {
+                  outline: "2px solid",
+                  outlineColor: "primary.main",
+                  outlineOffset: "-2px",
+                },
               }}
             >
               <ListItemIcon
