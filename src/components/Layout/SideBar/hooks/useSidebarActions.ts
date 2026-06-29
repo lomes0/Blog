@@ -152,7 +152,24 @@ export function useSidebarActions(): SidebarActionsResult {
     if (renamingPostId && renameValue.trim()) {
       const doc = documents?.find((d) => d.id === renamingPostId);
       if (doc) {
-        const partial = { [renameField]: renameValue.trim() };
+        const partial: { name?: string; tabLabel?: string } = {
+          [renameField]: renameValue.trim(),
+        };
+        // Renaming the post title must not drag the first tab's label with it.
+        // The first tab falls back to the post `name` until `tabLabel` is set,
+        // so when renaming a tabbed post's title we pin the first tab to its
+        // current label by seeding `tabLabel` with the old name. Single-tab
+        // posts have no separate first-tab item, so their heading keeps
+        // following the post name.
+        if (renameField === "name") {
+          const effective = doc.cloud ?? doc.local;
+          const hasTabs = documents.some(
+            (d) => (d.cloud ?? d.local)?.parentId === renamingPostId,
+          );
+          if (hasTabs && effective && !effective.tabLabel && effective.name) {
+            partial.tabLabel = effective.name;
+          }
+        }
         // Update both stores when present so the document title above the editor
         // (which reads the local copy) and the cloud stay in sync. Works for
         // child tab documents too, since they're keyed the same way.
