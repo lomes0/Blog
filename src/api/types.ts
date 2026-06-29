@@ -26,6 +26,17 @@ export interface UpdateSeriesPostsInput {
   postsToRemove: string[];
 }
 
+// -----------------------------------------------------------------------
+// Move / reorder a document (PATCH /api/documents/:id/move)
+// -----------------------------------------------------------------------
+// `destination` fully specifies the new container (series / tab-group / root) —
+// it is not a partial patch. Omitting `between` appends to the end; otherwise
+// the document is placed between the given neighbour ranks.
+export interface MoveDocumentInput {
+  destination: { seriesId?: string | null; parentId?: string | null };
+  between?: { afterRank?: string | null; beforeRank?: string | null };
+}
+
 export interface UpdateSeriesPostsResponse {
   error?: ApiError;
 }

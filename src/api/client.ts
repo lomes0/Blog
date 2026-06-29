@@ -41,6 +41,7 @@ import type {
   AttachmentData,
   CreateNoteInput,
   DeleteSeriesResponse,
+  MoveDocumentInput,
   NotesCanvas,
   UpdateDocumentTimesInput,
   UpdateSeriesPostsInput,
@@ -193,6 +194,16 @@ export const apiClient = {
       request<Document>(`/api/documents/${id}`, {
         method: "PATCH",
         ...json(partial),
+      }),
+
+    /** PATCH /api/documents/:id/move — reorder / re-home a document */
+    move: (
+      id: string,
+      payload: MoveDocumentInput,
+    ): Promise<Document | undefined> =>
+      request<Document>(`/api/documents/${id}/move`, {
+        method: "PATCH",
+        ...json(payload),
       }),
 
     /** DELETE /api/documents/:id */
@@ -397,6 +408,7 @@ export type {
   GetRevisionResponse,
   GetSeriesResponse,
   GetSessionResponse,
+  MoveDocumentInput,
   PatchDocumentResponse,
   PatchUserResponse,
   PostDocumentsResponse,
