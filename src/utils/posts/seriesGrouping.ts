@@ -1,5 +1,6 @@
 import { Series, UserDocument } from "@/types";
 import { PartitionGranularity } from "@/types/partitioning";
+import { compareDocumentsByRank, rankOf } from "@/lib/documentOrder";
 import { formatTimeHeader, getTimeKey } from "./dateHelpers";
 
 /**
@@ -51,6 +52,36 @@ const getPostCreatedAtTime = (doc: UserDocument): number => {
 
 const sortPostsByCreatedAtDesc = (posts: UserDocument[]): UserDocument[] =>
   [...posts].sort((a, b) => getPostCreatedAtTime(b) - getPostCreatedAtTime(a));
+
+/** The rank governing a group's position in the interleaved root list. */
+const groupRank = (item: SeriesGroupItem): string | null =>
+  item.type === "series"
+    ? (item.series?.rank ?? null)
+    : (item.posts[0] ? rankOf(item.posts[0]) : null);
+
+/** Stable tie-breaker id for a group when ranks are equal or absent. */
+const groupId = (item: SeriesGroupItem): string =>
+  item.type === "series" ? (item.series?.id ?? "") : (item.posts[0]?.id ?? "");
+
+/**
+ * Order standalone posts and series in one shared rank space (ascending),
+ * matching the interleaved root list on /posts (see PostsListView). Unranked
+ * groups sort last; ties break by id so the result is total and stable.
+ */
+const compareGroupsByRank = (
+  a: SeriesGroupItem,
+  b: SeriesGroupItem,
+): number => {
+  const ar = groupRank(a);
+  const br = groupRank(b);
+  if (ar != null && br != null) {
+    if (ar !== br) return ar < br ? -1 : 1;
+  } else if (ar != null) return -1;
+  else if (br != null) return 1;
+  const ai = groupId(a);
+  const bi = groupId(b);
+  return ai < bi ? -1 : ai > bi ? 1 : 0;
+};
 
 /**
  * Get the creation date timestamp from a Series
@@ -107,7 +138,7 @@ export const groupPostsBySeries = (
         postsByIdMap.get(post.id) ?? { id: post.id, cloud: post }
       );
 
-      const sortedPosts = sortPostsByCreatedAtDesc(seriesPosts);
+      const sortedPosts = [...seriesPosts].sort(compareDocumentsByRank);
 
       result.push({
         type: "series",
@@ -129,28 +160,17 @@ export const groupPostsBySeries = (
     }
   });
 
-  // Sort all items by sortKey (newest first)
-  result.sort((a, b) => b.sortKey - a.sortKey);
+  // Interleave standalone posts and series by their manual rank.
+  result.sort(compareGroupsByRank);
 
   return result;
 };
 
 /**
- * Order groups so all standalone posts come before any series, with each
- * section sorted by creation time (newest first).
- */
-const compareGroupsPostsBeforeSeries = (
-  a: SeriesGroupItem,
-  b: SeriesGroupItem,
-): number => {
-  if (a.type !== b.type) return a.type === "standalone" ? -1 : 1;
-  return b.sortKey - a.sortKey;
-};
-
-/**
  * Like groupPostsBySeries but also includes series that have no posts in the
- * current partition. All standalone posts are listed first (newest first),
- * followed by all series groups (newest first).
+ * current partition. Standalone posts and series are interleaved in one shared
+ * rank space (matching the /posts root list), so manual reordering on /posts is
+ * reflected here.
  */
 export const groupPostsBySeriesWithEmpty = (
   posts: UserDocument[],
@@ -173,7 +193,7 @@ export const groupPostsBySeriesWithEmpty = (
       });
     }
   });
-  return [...baseGroups, ...emptyGroups].sort(compareGroupsPostsBeforeSeries);
+  return [...baseGroups, ...emptyGroups].sort(compareGroupsByRank);
 };
 
 /**
