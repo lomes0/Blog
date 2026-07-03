@@ -42,6 +42,7 @@ import type {
   CreateNoteInput,
   DeleteSeriesResponse,
   MoveDocumentInput,
+  MoveSeriesInput,
   NotesCanvas,
   UpdateDocumentTimesInput,
   UpdateSeriesPostsInput,
@@ -313,6 +314,13 @@ export const apiClient = {
     }): Promise<Series | undefined> =>
       request<Series>("/api/series", { method: "POST", ...json(input) }),
 
+    /** PATCH /api/series/:id/move — reorder a series within the root list */
+    move: (id: string, payload: MoveSeriesInput): Promise<Series | undefined> =>
+      request<Series>(`/api/series/${id}/move`, {
+        method: "PATCH",
+        ...json(payload),
+      }),
+
     /** PATCH /api/series/:id */
     update: (
       id: string,
@@ -409,6 +417,7 @@ export type {
   GetSeriesResponse,
   GetSessionResponse,
   MoveDocumentInput,
+  MoveSeriesInput,
   PatchDocumentResponse,
   PatchUserResponse,
   PostDocumentsResponse,

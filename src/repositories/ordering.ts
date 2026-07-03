@@ -175,6 +175,36 @@ async function assertNoParentCycle(
   }
 }
 
+/**
+ * Reorder a series within its author's root list. A series always lives at the
+ * root — it has no container to change — so this only re-ranks it, in the same
+ * shared rank space as root documents (letting posts and series interleave).
+ */
+export async function moveSeries(
+  db: Db,
+  args: {
+    id: string;
+    between?: { afterRank?: string | null; beforeRank?: string | null };
+  },
+): Promise<void> {
+  const series = await db.series.findUnique({
+    where: { id: args.id },
+    select: { authorId: true },
+  });
+  if (!series) throw new Error(`moveSeries: series ${args.id} not found`);
+
+  const { afterRank, beforeRank } = args.between ?? {};
+  const rank = afterRank != null || beforeRank != null
+    ? rankBetween(afterRank ?? null, beforeRank ?? null)
+    : await rankForAppend(db, {
+      authorId: series.authorId,
+      seriesId: null,
+      parentId: null,
+    });
+
+  await db.series.update({ where: { id: args.id }, data: { rank } });
+}
+
 const maxStr = (a: string | null, b: string | null): string | null =>
   a == null ? b : b == null ? a : a > b ? a : b;
 
@@ -182,3 +212,7 @@ const maxStr = (a: string | null, b: string | null): string | null =>
 export const moveDocumentTx = (
   args: Parameters<typeof moveDocument>[1],
 ): Promise<void> => prisma.$transaction((tx) => moveDocument(tx, args));
+
+export const moveSeriesTx = (
+  args: Parameters<typeof moveSeries>[1],
+): Promise<void> => prisma.$transaction((tx) => moveSeries(tx, args));

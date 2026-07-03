@@ -37,6 +37,11 @@ export interface MoveDocumentInput {
   between?: { afterRank?: string | null; beforeRank?: string | null };
 }
 
+// Reorder a series within the root list (PATCH /api/series/:id/move).
+export interface MoveSeriesInput {
+  between?: { afterRank?: string | null; beforeRank?: string | null };
+}
+
 export interface UpdateSeriesPostsResponse {
   error?: ApiError;
 }

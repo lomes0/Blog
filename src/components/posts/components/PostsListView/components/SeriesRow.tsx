@@ -59,6 +59,10 @@ interface SeriesRowProps {
     postId: string,
     direction: "up" | "down" | "top" | "bottom",
   ) => void;
+  /** Reposition this series within the root list (menu / keyboard). */
+  onReorder?: (direction: "up" | "down" | "top" | "bottom") => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
   /** Other series a child post can be moved to (current series excluded). */
   availableSeries?: Series[];
   onMovePost?: (postId: string, seriesId: string) => void;
@@ -87,6 +91,9 @@ export const SeriesRow = React.memo(function SeriesRow({
   onPostRenameCommit,
   onPostRenameCancel,
   onDeleteSeries,
+  onReorder,
+  canMoveUp,
+  canMoveDown,
   onDeletePost,
   onDragStart,
   onDragEnd,
@@ -332,6 +339,9 @@ export const SeriesRow = React.memo(function SeriesRow({
             mode="series"
             onRename={() => onSeriesRenameStart(series.id, series.title)}
             onDelete={() => onDeleteSeries(series.id, series.title)}
+            onReorder={onReorder}
+            canMoveUp={canMoveUp}
+            canMoveDown={canMoveDown}
           />
         </Box>
       </Box>

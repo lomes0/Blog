@@ -35,6 +35,7 @@ import {
   loadSeries,
   mergeCloudDocumentsIntoTabs,
   moveDocument,
+  moveSeries,
   syncLocalToCloud,
   updateCloudDocument,
   updateLocalDocument,
@@ -90,6 +91,7 @@ export const actions = {
   createSeries,
   updateSeries,
   deleteSeries,
+  moveSeries,
 };
 
 export const store = configureStore({

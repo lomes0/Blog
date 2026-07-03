@@ -48,6 +48,7 @@ import {
   createSeries,
   deleteSeries,
   loadSeries,
+  moveSeries,
   updateSeries,
 } from "./thunks/seriesThunks";
 import { alert, updateUser } from "./thunks/userThunks";
@@ -624,6 +625,16 @@ export const appSlice = createSlice({
         };
         state.ui.announcements.push({ message });
       })
+      .addCase(moveSeries.fulfilled, (state, action) => {
+        const updated = action.payload;
+        if (!updated) return;
+        const s = state.series.find((x) => x.id === updated.id);
+        if (s) s.rank = updated.rank;
+      })
+      .addCase(moveSeries.rejected, (state, action) => {
+        const message = action.payload as { title: string; subtitle: string };
+        state.ui.announcements.push({ message });
+      })
       .addCase(deleteSeries.fulfilled, (state, action) => {
         const deletedSeriesId = action.payload;
         if (deletedSeriesId) {
@@ -687,6 +698,7 @@ export {
   createSeries,
   deleteSeries,
   loadSeries,
+  moveSeries,
   updateSeries,
 } from "./thunks/seriesThunks";
 export { alert, updateUser } from "./thunks/userThunks";

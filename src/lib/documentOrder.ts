@@ -4,6 +4,37 @@ import type { UserDocument } from "@/types";
 export const rankOf = (doc: UserDocument): string | null =>
   doc.cloud?.rank ?? doc.local?.rank ?? null;
 
+export type ReorderDirection = "up" | "down" | "top" | "bottom";
+
+/**
+ * Given a rank-ordered list and the index of the item being moved, return the
+ * ranks that should bracket its new slot for the requested direction — the
+ * input to `moveDocument`/`moveSeries`'s `between`. Returns null when the move
+ * is a no-op (already at the relevant edge).
+ */
+export function ranksBracketing(
+  ranks: (string | null)[],
+  index: number,
+  direction: ReorderDirection,
+): { afterRank: string | null; beforeRank: string | null } | null {
+  const last = ranks.length - 1;
+  const at = (i: number) => (i >= 0 && i <= last ? ranks[i] : null);
+  switch (direction) {
+    case "up":
+      return index === 0
+        ? null
+        : { afterRank: at(index - 2), beforeRank: at(index - 1) };
+    case "down":
+      return index === last
+        ? null
+        : { afterRank: at(index + 1), beforeRank: at(index + 2) };
+    case "top":
+      return index === 0 ? null : { afterRank: null, beforeRank: at(0) };
+    case "bottom":
+      return index === last ? null : { afterRank: at(last), beforeRank: null };
+  }
+}
+
 const createdAtOf = (doc: UserDocument): number =>
   new Date(doc.cloud?.createdAt ?? doc.local?.createdAt ?? 0).getTime();
 

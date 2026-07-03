@@ -6,9 +6,13 @@ import { Series, User, UserDocument } from "@/types";
 import { actions, useDispatch } from "@/store";
 import { useRouter } from "next/navigation";
 import { useExpandedState } from "@/hooks/useExpandedState";
-import { compareDocumentsByRank, rankOf } from "@/lib/documentOrder";
+import {
+  compareDocumentsByRank,
+  rankOf,
+  ranksBracketing,
+  type ReorderDirection,
+} from "@/lib/documentOrder";
 import { ListDensity, TagStyle } from "./types";
-import { SectionBand } from "./components/SectionBand";
 import { PostRow } from "./components/PostRow";
 import { SeriesRow } from "./components/SeriesRow";
 import { BulkActionBar } from "./components/BulkActionBar";
@@ -29,6 +33,20 @@ interface PostsListViewProps {
   user?: User;
   density: ListDensity;
   tagStyle: TagStyle;
+}
+
+// A single entry in the interleaved root list: a standalone post or a series.
+type RootItem =
+  | { kind: "post"; id: string; rank: string | null; post: UserDocument }
+  | { kind: "series"; id: string; rank: string | null; series: Series };
+
+// Rank ascending; unranked entries sort last; ties broken by id (total/stable).
+function compareByRank(a: RootItem, b: RootItem): number {
+  if (a.rank != null && b.rank != null) {
+    if (a.rank !== b.rank) return a.rank < b.rank ? -1 : 1;
+  } else if (a.rank != null) return -1;
+  else if (b.rank != null) return 1;
+  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
 
 export function PostsListView({
@@ -52,17 +70,51 @@ export function PostsListView({
     toggleSeries: toggleTabs,
   } = useExpandedState("postsListTabsExpansion");
 
-  // Flat ordered list of all visible IDs for range selection
+  // Each series' posts, wrapped and rank-sorted (so reorder is reflected).
+  const seriesPostsById = useMemo(() => {
+    const map = new Map<string, UserDocument[]>();
+    for (const s of series) {
+      map.set(
+        s.id,
+        s.posts
+          .map((p) => ({ id: p.id, cloud: p, local: undefined }))
+          .sort(compareDocumentsByRank),
+      );
+    }
+    return map;
+  }, [series]);
+
+  // The root list: standalone posts and series interleaved in one shared rank
+  // space (the user's chosen free-interleave model).
+  const rootItems = useMemo((): RootItem[] => {
+    const items: RootItem[] = [
+      ...posts.map((p) => ({
+        kind: "post" as const,
+        id: p.id,
+        rank: rankOf(p),
+        post: p,
+      })),
+      ...series.map((s) => ({
+        kind: "series" as const,
+        id: s.id,
+        rank: s.rank ?? null,
+        series: s,
+      })),
+    ];
+    return items.sort(compareByRank);
+  }, [posts, series]);
+
+  // Flat ordered list of all visible IDs for range selection (render order).
   const allVisibleIds = useMemo(() => {
-    const ids: string[] = posts.map((p) => p.id);
-    series.forEach((s) => {
-      ids.push(s.id);
-      if (expandedSeries.has(s.id)) {
-        s.posts.forEach((p) => ids.push(p.id));
+    const ids: string[] = [];
+    for (const item of rootItems) {
+      ids.push(item.id);
+      if (item.kind === "series" && expandedSeries.has(item.id)) {
+        (seriesPostsById.get(item.id) ?? []).forEach((p) => ids.push(p.id));
       }
-    });
+    }
     return ids;
-  }, [posts, series, expandedSeries]);
+  }, [rootItems, expandedSeries, seriesPostsById]);
 
   const selection = useListSelection({ allIds: allVisibleIds });
   const postRename = useInlineRename();
@@ -311,43 +363,18 @@ export function PostsListView({
   );
 
   // ── Manual reorder (menu / keyboard) ──────────────────────────────────────
-  // Reposition a post among its siblings by computing the ranks of the
-  // neighbours that should bracket its new slot, then re-ranking it there.
-  // `siblings` is the rendered, rank-ordered list the post belongs to.
+  // Reposition a post among its siblings within its own container (a series or
+  // a tab-group). `siblings` is the rendered, rank-ordered list.
   const handleReorderPost = useCallback(
     async (
       siblings: UserDocument[],
       postId: string,
-      direction: "up" | "down" | "top" | "bottom",
+      direction: ReorderDirection,
     ) => {
       const i = siblings.findIndex((p) => p.id === postId);
       if (i === -1) return;
-      const last = siblings.length - 1;
-      const rankAt = (idx: number) =>
-        idx >= 0 && idx <= last ? rankOf(siblings[idx]) : null;
-
-      let afterRank: string | null = null;
-      let beforeRank: string | null = null;
-      switch (direction) {
-        case "up":
-          if (i === 0) return;
-          afterRank = rankAt(i - 2);
-          beforeRank = rankAt(i - 1);
-          break;
-        case "down":
-          if (i === last) return;
-          afterRank = rankAt(i + 1);
-          beforeRank = rankAt(i + 2);
-          break;
-        case "top":
-          if (i === 0) return;
-          beforeRank = rankAt(0);
-          break;
-        case "bottom":
-          if (i === last) return;
-          afterRank = rankAt(last);
-          break;
-      }
+      const between = ranksBracketing(siblings.map(rankOf), i, direction);
+      if (!between) return;
 
       // Keep the post in its current container; only its position changes.
       const doc = siblings[i].cloud ?? siblings[i].local;
@@ -358,15 +385,35 @@ export function PostsListView({
         : {};
 
       await dispatch(
-        actions.moveDocument({
-          id: postId,
-          destination,
-          between: { afterRank, beforeRank },
-        }),
+        actions.moveDocument({ id: postId, destination, between }),
       );
       router.refresh();
     },
     [dispatch, router],
+  );
+
+  // Reposition a root-level item (a standalone post or a whole series) within
+  // the interleaved root list. Posts move via moveDocument, series via
+  // moveSeries — both re-rank in the shared root space.
+  const handleReorderRoot = useCallback(
+    async (index: number, direction: ReorderDirection) => {
+      const between = ranksBracketing(
+        rootItems.map((r) => r.rank),
+        index,
+        direction,
+      );
+      if (!between) return;
+      const item = rootItems[index];
+      if (item.kind === "post") {
+        await dispatch(
+          actions.moveDocument({ id: item.id, destination: {}, between }),
+        );
+      } else {
+        await dispatch(actions.moveSeries({ id: item.id, between }));
+      }
+      router.refresh();
+    },
+    [rootItems, dispatch, router],
   );
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
@@ -404,79 +451,59 @@ export function PostsListView({
     handleBulkDelete,
   ]);
 
-  const hasPosts = posts.length > 0;
   const hasSeries = series.length > 0;
 
   return (
     <Box sx={{ width: "100%", position: "relative" }}>
-      {/* Posts section */}
-      {hasPosts && (
-        <Box sx={{ mb: 1 }}>
-          <SectionBand
-            label="Posts"
-            count={posts.length}
-            color="primary.main"
-          />
-          {posts.map((post, i) => (
-            <PostRow
-              key={post.id}
-              post={post}
-              density={density}
-              tagStyle={tagStyle}
-              isSelected={selection.isSelected(post.id)}
-              editingName={postRename.editingNames.get(post.id)}
-              expandedTabs={expandedTabs}
-              onToggleTabs={toggleTabs}
-              onToggleSelect={selection.toggle}
-              onRenameStart={postRename.startRename}
-              onRenameChange={postRename.handleChange}
-              onRenameCommit={postRename.handleCommit}
-              onRenameCancel={postRename.handleCancel}
-              onDelete={handleDeletePost}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-              onReorder={(direction) =>
-                handleReorderPost(posts, post.id, direction)}
-              canMoveUp={i > 0}
-              canMoveDown={i < posts.length - 1}
-              availableSeries={hasSeries ? series : undefined}
-              onMoveToSeries={hasSeries
-                ? (seriesId) => handleMoveToSeries(post.id, seriesId)
-                : undefined}
-            />
-          ))}
-        </Box>
-      )}
-
-      {/* Series section */}
-      {hasSeries && (
-        <Box sx={{ mb: 1 }}>
-          <SectionBand
-            label="Series"
-            count={series.length}
-            color="primary.main"
-          />
-          {series.map((s) => {
-            // Sort by rank so manual reordering is reflected reactively (the
-            // server returns rank order, but in-place updates don't re-sort).
-            const seriesPosts: UserDocument[] = s.posts
-              .map((p) => ({ id: p.id, cloud: p, local: undefined }))
-              .sort(compareDocumentsByRank);
-            return (
-              <SeriesRow
-                key={s.id}
-                series={s}
-                posts={seriesPosts}
-                onReorderPost={handleReorderPost}
+      {/* Unified root list: standalone posts and series interleaved by rank. */}
+      <Box sx={{ mb: 1 }}>
+        {rootItems.map((item, i) =>
+          item.kind === "post"
+            ? (
+              <PostRow
+                key={item.id}
+                post={item.post}
                 density={density}
                 tagStyle={tagStyle}
-                isSelected={selection.isSelected(s.id)}
-                isExpanded={expandedSeries.has(s.id)}
+                isSelected={selection.isSelected(item.id)}
+                editingName={postRename.editingNames.get(item.id)}
+                expandedTabs={expandedTabs}
+                onToggleTabs={toggleTabs}
+                onToggleSelect={selection.toggle}
+                onRenameStart={postRename.startRename}
+                onRenameChange={postRename.handleChange}
+                onRenameCommit={postRename.handleCommit}
+                onRenameCancel={postRename.handleCancel}
+                onDelete={handleDeletePost}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                onReorder={(direction) => handleReorderRoot(i, direction)}
+                canMoveUp={i > 0}
+                canMoveDown={i < rootItems.length - 1}
+                availableSeries={hasSeries ? series : undefined}
+                onMoveToSeries={hasSeries
+                  ? (seriesId) => handleMoveToSeries(item.id, seriesId)
+                  : undefined}
+              />
+            )
+            : (
+              <SeriesRow
+                key={item.id}
+                series={item.series}
+                posts={seriesPostsById.get(item.id) ?? []}
+                onReorderPost={handleReorderPost}
+                onReorder={(direction) => handleReorderRoot(i, direction)}
+                canMoveUp={i > 0}
+                canMoveDown={i < rootItems.length - 1}
+                density={density}
+                tagStyle={tagStyle}
+                isSelected={selection.isSelected(item.id)}
+                isExpanded={expandedSeries.has(item.id)}
                 onToggleExpand={toggleSeries}
                 expandedTabs={expandedTabs}
                 onToggleTabs={toggleTabs}
                 onToggleSelect={selection.toggle}
-                editingSeriesName={editingSeriesNames.get(s.id)}
+                editingSeriesName={editingSeriesNames.get(item.id)}
                 onSeriesRenameStart={handleSeriesRenameStart}
                 onSeriesRenameChange={handleSeriesRenameChange}
                 onSeriesRenameCommit={handleSeriesRenameCommit}
@@ -493,13 +520,12 @@ export function PostsListView({
                 onDropPost={handleDropPost}
                 dragOverSeriesId={dragOverSeriesId}
                 onDragOverSeries={setDragOverSeriesId}
-                availableSeries={series.filter((other) => other.id !== s.id)}
+                availableSeries={series.filter((other) => other.id !== item.id)}
                 onMovePost={handleMoveToSeries}
               />
-            );
-          })}
-        </Box>
-      )}
+            )
+        )}
+      </Box>
 
       {/* Bulk action bar */}
       <BulkActionBar
