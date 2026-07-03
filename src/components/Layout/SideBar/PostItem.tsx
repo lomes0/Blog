@@ -21,6 +21,7 @@ import type { PostItemActions } from "./hooks/useSidebarActions";
 import { type SubTabEntry, SubTabList } from "./SubTabList";
 import { triggerSave } from "../../EditDocument/saveRegistry";
 import { ICON_SIZE } from "@/theme/icons";
+import { MONO_FONT } from "./constants";
 
 const EMPTY_CHILDREN: UserDocument[] = [];
 const EMPTY_TAB_ENTRIES: SubTabEntry[] = [];
@@ -239,6 +240,7 @@ export const PostItem = memo(
               if (sidebarOpen) handleDoubleClick(e, post.id, docName);
             }}
             sx={{
+              position: "relative",
               minHeight: inSeries ? 26 : 30,
               justifyContent: sidebarOpen ? "initial" : "center",
               overflow: "hidden",
@@ -247,6 +249,17 @@ export const PostItem = memo(
               // in-series rows trim it since they're already nested.
               ...(inSeries ? { pl: 0.75, pr: 2 } : { pl: 2, pr: 2 }),
               py: inSeries ? 0.25 : 0.375,
+              // IDE active-file cue: an inset accent bar on the row's left edge.
+              "&.Mui-selected::before": {
+                content: '""',
+                position: "absolute",
+                left: 0,
+                top: 4,
+                bottom: 4,
+                width: 2,
+                borderRadius: 2,
+                bgcolor: "primary.main",
+              },
               "&.Mui-selected": {
                 bgcolor: "action.selected",
                 "&:hover": {
@@ -325,14 +338,35 @@ export const PostItem = memo(
                 )
                 : (
                   <ListItemText
-                    primary={docName}
                     sx={{ minWidth: 0, overflow: "hidden" }}
+                    primary={
+                      <>
+                        <Box
+                          component="span"
+                          sx={{
+                            minWidth: 0,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {docName}
+                        </Box>
+                        <Box
+                          component="span"
+                          sx={{ flexShrink: 0, color: "text.disabled" }}
+                        >
+                          .md
+                        </Box>
+                      </>
+                    }
                     primaryTypographyProps={{
+                      component: "div",
                       fontSize: "0.7em",
                       sx: {
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
+                        display: "flex",
+                        minWidth: 0,
+                        fontFamily: MONO_FONT,
                         fontWeight: nameWeight,
                         color: nameColor,
                       },

@@ -9,7 +9,7 @@ import {
   TextField,
   Tooltip,
 } from "@mui/material";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Folder, FolderOpen } from "lucide-react";
 import type { Series } from "@/types";
 import type { SeriesGroupItem } from "@/utils/posts/seriesGrouping";
 import type {
@@ -125,6 +125,22 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
             >
               <ChevronRight size={ICON_SIZE.inline} strokeWidth={2} />
             </ListItemIcon>
+            {sidebarOpen && (
+              <Box
+                component="span"
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  flexShrink: 0,
+                  mr: 0.75,
+                  color: hasAnyDirtyChild ? "warning.main" : "text.secondary",
+                }}
+              >
+                {isExpanded
+                  ? <FolderOpen size={ICON_SIZE.inline} strokeWidth={2} />
+                  : <Folder size={ICON_SIZE.inline} strokeWidth={2} />}
+              </Box>
+            )}
             {sidebarOpen && isRenaming && (
               <TextField
                 inputRef={seriesRenameInputRef}

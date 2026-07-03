@@ -40,3 +40,10 @@ export const SIDEBAR_WIDTH_TRANSITION = `width .34s ${SIDEBAR_EASING}`;
 export const LAYER_FADE_DURATION = 0.2;
 /** Folder chevron rotate (0deg -> 90deg) on expand/collapse */
 export const CHEVRON_TRANSITION = `transform .22s ${SIDEBAR_EASING}`;
+
+/**
+ * Monospace stack for IDE file-tree filenames (the design's ".md" naming). No
+ * mono webfont is bundled, so use the platform monospace stack — dependency-free.
+ */
+export const MONO_FONT =
+  "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";

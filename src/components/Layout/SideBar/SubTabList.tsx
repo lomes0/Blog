@@ -12,6 +12,7 @@ import { FilePen } from "lucide-react";
 import { actions, useDispatch } from "@/store";
 import { ICON_SIZE } from "@/theme/icons";
 import { SafeNavigationLink } from "./SafeNavigationLink";
+import { MONO_FONT } from "./constants";
 import type { PostItemActions } from "./hooks/useSidebarActions";
 
 export interface SubTabEntry {
@@ -203,6 +204,7 @@ export const SubTabList: React.FC<SubTabListProps> = (
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
                   flex: 1,
+                  fontFamily: MONO_FONT,
                 }}
               >
                 {tab.name}
