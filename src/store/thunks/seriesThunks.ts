@@ -1,8 +1,14 @@
-import { createAsyncThunk } from "@reduxjs/toolkit";
+import { createAction, createAsyncThunk } from "@reduxjs/toolkit";
 import { apiClient } from "@/api";
+import { rankBetween } from "@/lib/ordering";
 
 const toErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : "Unknown error";
+
+// Optimistically set a series' rank so a reorder is reflected immediately.
+export const applySeriesRank = createAction<{ id: string; rank: string }>(
+  "app/applySeriesRank",
+);
 
 interface SeriesCreateInput {
   title: string;
@@ -73,6 +79,17 @@ export const moveSeries = createAsyncThunk(
     thunkAPI,
   ) => {
     try {
+      // Optimistic: for a positioned move the client computes the same rank the
+      // server will, so reflect it immediately. No rollback by design.
+      const { afterRank, beforeRank } = arg.between ?? {};
+      if (afterRank != null || beforeRank != null) {
+        thunkAPI.dispatch(
+          applySeriesRank({
+            id: arg.id,
+            rank: rankBetween(afterRank ?? null, beforeRank ?? null),
+          }),
+        );
+      }
       const data = await apiClient.series.move(arg.id, { between: arg.between });
       if (!data) {
         return thunkAPI.rejectWithValue({

@@ -22,6 +22,7 @@ import { duplicateDocument } from "./app/duplicateDocument";
 // ── Domain thunks (split into separate files for maintainability) ────────────
 import { loadSession } from "./thunks/sessionThunks";
 import {
+  applyDocumentRank,
   createCloudDocument,
   createLocalDocument,
   deleteCloudDocument,
@@ -45,6 +46,7 @@ import {
   updateLocalRevision,
 } from "./thunks/revisionThunks";
 import {
+  applySeriesRank,
   createSeries,
   deleteSeries,
   loadSeries,
@@ -454,6 +456,17 @@ export const appSlice = createSlice({
         };
         state.ui.announcements.push({ message });
       })
+      .addCase(applyDocumentRank, (state, action) => {
+        const { id, rank } = action.payload;
+        const entity = state.documents.entities[id];
+        if (entity?.cloud) entity.cloud.rank = rank;
+        if (entity?.local) entity.local.rank = rank;
+        // Reflect on the post inside its series (for series-internal reorder).
+        for (const s of state.series) {
+          const p = s.posts.find((post) => post.id === id);
+          if (p) p.rank = rank;
+        }
+      })
       .addCase(moveCloudDocument.fulfilled, (state, action) => {
         applyCloudDocument(state.documents, state.series, action.payload);
       })
@@ -624,6 +637,10 @@ export const appSlice = createSlice({
           subtitle: string;
         };
         state.ui.announcements.push({ message });
+      })
+      .addCase(applySeriesRank, (state, action) => {
+        const s = state.series.find((x) => x.id === action.payload.id);
+        if (s) s.rank = action.payload.rank;
       })
       .addCase(moveSeries.fulfilled, (state, action) => {
         const updated = action.payload;

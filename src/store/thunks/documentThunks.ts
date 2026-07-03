@@ -1,4 +1,4 @@
-import { createAsyncThunk } from "@reduxjs/toolkit";
+import { createAction, createAsyncThunk } from "@reduxjs/toolkit";
 import documentDB, { revisionDB } from "@/indexeddb";
 import {
   AppState,
@@ -447,15 +447,26 @@ function moveRank(state: AppState, arg: MoveDocumentArg): string {
   return rankAtEnd(containerSiblings(state, arg.destination, arg.id));
 }
 
+// Optimistically set a document's rank in the store, so a reorder is reflected
+// immediately without waiting for the round-trip. Handled in the app slice.
+export const applyDocumentRank = createAction<{ id: string; rank: string }>(
+  "app/applyDocumentRank",
+);
+
 // Re-home / reorder a document across both stores. The cloud copy is moved by
 // the server (authoritative rank); the local copy is moved with a client-computed
-// rank so offline reordering works. Visible reordering arrives once selectors
-// sort by rank (a later phase).
+// rank so offline reordering works. The rank is applied optimistically first so
+// same-container reorders feel instant; the server's rank (identical for
+// positioned moves) confirms on fulfilment. No rollback by design.
 export const moveDocument = createAsyncThunk(
   "app/moveDocument",
   async (arg: MoveDocumentArg, thunkAPI) => {
     const state = thunkAPI.getState() as AppState;
     const entity = state.documents.entities[arg.id];
+    const rank = moveRank(state, arg);
+
+    thunkAPI.dispatch(applyDocumentRank({ id: arg.id, rank }));
+
     if (entity?.cloud) {
       await thunkAPI.dispatch(moveCloudDocument(arg)).unwrap();
     }
@@ -464,10 +475,7 @@ export const moveDocument = createAsyncThunk(
         ? null
         : (arg.destination.parentId ?? null);
       await thunkAPI.dispatch(
-        moveLocalDocument({
-          id: arg.id,
-          partial: { rank: moveRank(state, arg), parentId },
-        }),
+        moveLocalDocument({ id: arg.id, partial: { rank, parentId } }),
       ).unwrap();
     }
     return arg.id;

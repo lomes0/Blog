@@ -217,18 +217,42 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
   }, [dispatch, allDocuments, rootId]);
 
   const handleReorder = useCallback(async (orderedIds: string[]) => {
+    const prevOrder = tabMetas.map((t) => t.id);
+    if (orderedIds.join() === prevOrder.join()) return;
     dispatch(actions.reorderTabs(orderedIds));
     setTabMetas((prev) => {
       const map = new Map(prev.map((t) => [t.id, t]));
       return orderedIds.map((id) => map.get(id)!).filter(Boolean);
     });
 
-    // Persist new sort_order for child tabs (skip root at index 0).
-    const updates = orderedIds
-      .slice(1)
-      .map((id, i) => apiClient.documents.update(id, { sort_order: i }));
-    await Promise.all(updates);
-  }, [dispatch]);
+    // Persist the moved tab's new position as a rank. Child tabs live in the
+    // root tab's container; the root tab itself has no rank among children.
+    // The moved tab is the one whose removal makes both orders identical.
+    const movedId = orderedIds.find((id) =>
+      orderedIds.filter((x) => x !== id).join() ===
+        prevOrder.filter((x) => x !== id).join()
+    );
+    if (!movedId || movedId === rootId) return;
+
+    const children = orderedIds.filter((id) => id !== rootId);
+    const idx = children.indexOf(movedId);
+    const rankOfId = (id: string) => {
+      const d = allDocuments.find((x) => x.id === id);
+      return d?.cloud?.rank ?? d?.local?.rank ?? null;
+    };
+    await dispatch(
+      actions.moveDocument({
+        id: movedId,
+        destination: { parentId: rootId },
+        between: {
+          afterRank: idx > 0 ? rankOfId(children[idx - 1]) : null,
+          beforeRank: idx < children.length - 1
+            ? rankOfId(children[idx + 1])
+            : null,
+        },
+      }),
+    );
+  }, [dispatch, tabMetas, allDocuments, rootId]);
 
   // ---- Context menu ----
 
