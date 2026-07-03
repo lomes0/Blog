@@ -91,6 +91,17 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
               px: 2,
               py: 0.25,
               "&:hover": { bgcolor: "action.hover" },
+              // The series row has no "selected" state of its own, so MUI's
+              // default `.Mui-focusVisible` grey fill — left behind when focus
+              // returns to the row after closing the context menu / committing a
+              // rename — reads as a stuck "selected" mark. Drop the fill and show
+              // a focus ring instead (mirrors PostItem's row treatment).
+              "&.Mui-focusVisible": {
+                bgcolor: "transparent",
+                outline: "2px solid",
+                outlineColor: "primary.main",
+                outlineOffset: "-2px",
+              },
             }}
           >
             <ListItemIcon
