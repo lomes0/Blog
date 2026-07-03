@@ -35,13 +35,19 @@ export const selectStandalonePosts = createSelector(
 export const selectAllPosts = createSelector(
   [selectDocuments, selectSeries],
   (documents, series): UserDocument[] => {
+    // Look up the merged document entity (local + cloud) by id so series posts
+    // carry their local copy too. Without this, a series post's UserDocument
+    // would be cloud-only, and deleting it would leave the local copy behind
+    // (requiring a second delete).
+    const docsById = new Map(documents.map((doc) => [doc.id, doc]));
     const seriesPostIds = new Set<string>();
     const seriesPosts: UserDocument[] = [];
 
     series.forEach((s) => {
       s.posts?.forEach((post) => {
         seriesPostIds.add(post.id);
-        seriesPosts.push({ id: post.id, cloud: post });
+        const existing = docsById.get(post.id);
+        seriesPosts.push({ id: post.id, cloud: post, local: existing?.local });
       });
     });
 
