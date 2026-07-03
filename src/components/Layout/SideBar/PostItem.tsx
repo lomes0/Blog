@@ -1,5 +1,6 @@
 "use client";
 import React, { memo, useCallback, useEffect, useMemo, useRef } from "react";
+import { useRouter } from "next/navigation";
 import {
   Box,
   IconButton,
@@ -52,6 +53,7 @@ export const PostItem = memo(
     }: PostItemProps,
   ) => {
     const dispatch = useDispatch();
+    const router = useRouter();
     const {
       renamingPostId,
       renameField,
@@ -193,6 +195,15 @@ export const PostItem = memo(
       e.stopPropagation();
       onToggleTabs(post.id);
     }, [onToggleTabs, post.id]);
+
+    // Navigate to edit programmatically rather than rendering a nested <a>.
+    // The row itself is already an anchor (to /view), and an <a> inside an <a>
+    // is invalid HTML that trips React's hydration validation.
+    const handleEdit = useCallback((e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      router.push(`/edit/${post.id}`);
+    }, [router, post.id]);
 
     const linkProps = isRenaming ? {} : {
       component: SafeNavigationLink,
@@ -363,11 +374,9 @@ export const PostItem = memo(
               <Tooltip title="Edit" placement="right">
                 <IconButton
                   className="edit-btn"
-                  component={SafeNavigationLink}
-                  href={`/edit/${post.id}`}
+                  aria-label="Edit"
                   size="small"
-                  onClick={(e) =>
-                    e.stopPropagation()}
+                  onClick={handleEdit}
                   sx={{
                     p: 0.25,
                     // Align the glyph's right edge with the series doc-count
