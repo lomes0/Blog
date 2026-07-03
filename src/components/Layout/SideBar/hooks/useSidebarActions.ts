@@ -89,6 +89,8 @@ export function useSidebarActions(): SidebarActionsResult {
   const [renameField, setRenameField] = useState<RenameField>("name");
   const [renameValue, setRenameValue] = useState("");
   const renameInputRef = useRef<HTMLInputElement>(null);
+  // Set on Escape so the ensuing blur cancels instead of committing the rename.
+  const cancelRenameRef = useRef(false);
 
   const [seriesContextMenu, setSeriesContextMenu] = useState<
     { mouseX: number; mouseY: number; seriesId: string } | null
@@ -96,6 +98,8 @@ export function useSidebarActions(): SidebarActionsResult {
   const [renamingSeriesId, setRenamingSeriesId] = useState<string | null>(null);
   const [seriesRenameValue, setSeriesRenameValue] = useState("");
   const seriesRenameInputRef = useRef<HTMLInputElement>(null);
+  // Set on Escape so the ensuing blur cancels instead of committing the rename.
+  const cancelSeriesRenameRef = useRef(false);
 
   const handleContextMenu = useCallback(
     (event: React.MouseEvent, postId: string) => {
@@ -237,7 +241,9 @@ export function useSidebarActions(): SidebarActionsResult {
   );
 
   const handleSeriesRenameBlur = useCallback(() => {
-    if (renamingSeriesId && seriesRenameValue.trim()) {
+    const cancelled = cancelSeriesRenameRef.current;
+    cancelSeriesRenameRef.current = false;
+    if (!cancelled && renamingSeriesId && seriesRenameValue.trim()) {
       const target = series?.find((s) => s.id === renamingSeriesId);
       if (target && target.title !== seriesRenameValue.trim()) {
         dispatch(
@@ -254,16 +260,20 @@ export function useSidebarActions(): SidebarActionsResult {
 
   const handleSeriesRenameKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
+      // Both keys commit/cancel by blurring the input: focus lands on <body>
+      // before the field unmounts, so it never falls back to the row's
+      // focusable ListItemButton ancestor (which would leave a stuck focus
+      // ring). The blur handler does the actual commit/cancel.
       if (event.key === "Enter") {
         event.preventDefault();
-        handleSeriesRenameBlur();
+        seriesRenameInputRef.current?.blur();
       } else if (event.key === "Escape") {
         event.preventDefault();
-        setRenamingSeriesId(null);
-        setSeriesRenameValue("");
+        cancelSeriesRenameRef.current = true;
+        seriesRenameInputRef.current?.blur();
       }
     },
-    [handleSeriesRenameBlur],
+    [],
   );
 
   const handleDoubleClick = useCallback(
@@ -282,7 +292,9 @@ export function useSidebarActions(): SidebarActionsResult {
   );
 
   const handleRenameBlur = useCallback(() => {
-    if (renamingPostId && renameValue.trim()) {
+    const cancelled = cancelRenameRef.current;
+    cancelRenameRef.current = false;
+    if (!cancelled && renamingPostId && renameValue.trim()) {
       const doc = documents?.find((d) => d.id === renamingPostId);
       if (doc) {
         const partial: { name?: string; tabLabel?: string } = {
@@ -324,16 +336,19 @@ export function useSidebarActions(): SidebarActionsResult {
 
   const handleRenameKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
+      // Commit/cancel by blurring the input so focus lands on <body> before the
+      // field unmounts, rather than falling back to the row and leaving a stuck
+      // focus ring. The blur handler performs the commit (or cancel).
       if (event.key === "Enter") {
         event.preventDefault();
-        handleRenameBlur();
+        renameInputRef.current?.blur();
       } else if (event.key === "Escape") {
         event.preventDefault();
-        setRenamingPostId(null);
-        setRenameValue("");
+        cancelRenameRef.current = true;
+        renameInputRef.current?.blur();
       }
     },
-    [handleRenameBlur],
+    [],
   );
 
   useEffect(() => {
