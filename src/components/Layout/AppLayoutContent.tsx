@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import type { RefObject } from "react";
 import type { LexicalEditor } from "lexical";
 import SideBar from "./SideBar";
+import ActivityRail from "./ActivityRail";
+import { ACTIVITY_RAIL_W } from "./SideBar/constants";
 import HydrationManager from "./HydrationManager";
 import EditorTopBar from "./EditorTopBar";
 import RightRail from "./RightRail";
@@ -87,7 +89,8 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
           <Box
             sx={{
               display: "grid",
-              gridTemplateColumns: `${sidebarW}px 1fr ${copilotCol}${railW}px`,
+              gridTemplateColumns:
+                `${ACTIVITY_RAIL_W}px ${sidebarW}px 1fr ${copilotCol}${railW}px`,
               height: "100vh",
               overflow: "hidden",
               transition: isResizing || isRailResizing || isCopilotResizing
@@ -95,6 +98,7 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
                 : "grid-template-columns 225ms cubic-bezier(0.4, 0, 0.6, 1)",
             }}
           >
+            <ActivityRail />
             <SideBar />
             <Box
               id="app-main"

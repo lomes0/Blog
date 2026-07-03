@@ -6,6 +6,13 @@
 /** Width when sidebar is collapsed (icons only) — legacy value kept for reference */
 export const SIDEBAR_COLLAPSED_WIDTH = 72;
 
+/**
+ * Width of the far-left activity rail (icon strip that switches sidebar views).
+ * The sidebar Drawer's fixed paper and its resize handle are offset by this so
+ * the sidebar docks to the right of the rail rather than the viewport edge.
+ */
+export const ACTIVITY_RAIL_W = 54;
+
 /** Width of the new compact (icon-strip) sidebar mode */
 export const COMPACT_WIDTH = 62;
 

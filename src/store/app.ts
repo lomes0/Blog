@@ -14,6 +14,7 @@ import {
   EditorDocumentRevision,
   EMPTY_EDITOR_STATE,
   Series,
+  SidebarView,
   UserDocument,
 } from "../types";
 
@@ -129,6 +130,7 @@ const initialState: AppState = {
     copilot: {
       open: false,
     },
+    sidebarView: "explorer",
   },
 };
 
@@ -266,6 +268,9 @@ export const appSlice = createSlice({
     },
     setCopilotOpen: (state, action: PayloadAction<boolean>) => {
       state.ui.copilot.open = action.payload;
+    },
+    setSidebarView: (state, action: PayloadAction<SidebarView>) => {
+      state.ui.sidebarView = action.payload;
     },
   },
   extraReducers: (builder) => {

@@ -30,6 +30,9 @@ export interface TabsState {
   dirtyTabIds: string[];
 }
 
+/** Which view the left sidebar renders, switched from the activity rail. */
+export type SidebarView = "explorer" | "search" | "notes";
+
 export interface AppState {
   user?: User;
   documents: EntityState<UserDocument, string>;
@@ -46,6 +49,7 @@ export interface AppState {
     attachmentModified: { url: string; timestamp: number } | null;
     tabs: TabsState;
     copilot: { open: boolean };
+    sidebarView: SidebarView;
   };
 }
 

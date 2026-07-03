@@ -12,6 +12,7 @@ import { SidebarHeader } from "./SidebarHeader";
 import { SidebarNav } from "./SidebarNav";
 import { SidebarFooter } from "./SidebarFooter";
 import { ActivePostsSection } from "./ActivePostsSection";
+import { SidebarSearchView } from "./SidebarSearchView";
 import { CollapsedRail } from "./CollapsedRail";
 import { PostContextMenu } from "./PostContextMenu";
 import { SeriesContextMenu } from "./SeriesContextMenu";
@@ -20,6 +21,7 @@ import {
   groupPostsBySeriesWithEmpty,
 } from "@/utils/posts/seriesGrouping";
 import {
+  ACTIVITY_RAIL_W,
   COMPACT_WIDTH,
   LAYER_FADE_DURATION,
   SIDEBAR_EASING,
@@ -64,6 +66,7 @@ const SideBar: React.FC = () => {
   const user = useSelector((state: RootState) => state.user);
   const filteredDocuments = useSelector(selectUserFilteredDocuments);
   const seriesList = useSelector((state: RootState) => state.series);
+  const sidebarView = useSelector((state: RootState) => state.ui.sidebarView);
 
   const seriesMap = useMemo(
     () => buildSeriesMap(seriesList || []),
@@ -107,6 +110,9 @@ const SideBar: React.FC = () => {
         flexShrink: 0,
         displayPrint: "none",
         "& .MuiDrawer-paper": {
+          // Dock the fixed paper to the right of the activity rail, not the
+          // viewport edge (mobile temporary drawer slides in past the rail too).
+          left: `${ACTIVITY_RAIL_W}px`,
           width: getEffectiveWidth(),
           boxSizing: "border-box",
           transition: isResizing || reducedMotion
@@ -129,7 +135,9 @@ const SideBar: React.FC = () => {
         <Box className="sb-layer-open" sx={layerSx(width, isExpanded)}>
           <SidebarHeader open />
           <SidebarNav expanded pathname={pathname} />
-          {hasContent
+          {sidebarView === "search"
+            ? <SidebarSearchView pathname={pathname} />
+            : hasContent
             ? (
               <ActivePostsSection
                 groupedActivePosts={groupedActivePosts}
@@ -161,7 +169,7 @@ const SideBar: React.FC = () => {
           sx={{
             position: "fixed",
             top: 0,
-            left: getEffectiveWidth() - 4,
+            left: ACTIVITY_RAIL_W + getEffectiveWidth() - 4,
             bottom: 0,
             width: 4,
             cursor: "col-resize",
