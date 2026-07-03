@@ -14,6 +14,7 @@ import { SidebarFooter } from "./SidebarFooter";
 import { ActivePostsSection } from "./ActivePostsSection";
 import { CollapsedRail } from "./CollapsedRail";
 import { PostContextMenu } from "./PostContextMenu";
+import { SeriesContextMenu } from "./SeriesContextMenu";
 import {
   buildSeriesMap,
   groupPostsBySeriesWithEmpty,
@@ -41,14 +42,19 @@ const SideBar: React.FC = () => {
 
   const isExpanded = sidebarMode === "full";
   const { sidebarFontSize } = useSidebarFontSize();
+  const sidebarActions = useSidebarActions();
   const {
     contextMenu,
     handleCloseContextMenu,
     handleEditPost,
     handleRenameFromMenu,
     handleDeletePost,
-    ...postItemActions
-  } = useSidebarActions();
+    seriesContextMenu,
+    handleCloseSeriesContextMenu,
+    handleEditSeries,
+    handleRenameSeriesFromMenu,
+    handleDeleteSeries,
+  } = sidebarActions;
 
   // Honor the OS "reduce motion" setting: drop the width slide and cross-fade.
   const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
@@ -129,7 +135,8 @@ const SideBar: React.FC = () => {
                 groupedActivePosts={groupedActivePosts}
                 sidebarOpen
                 pathname={pathname}
-                itemActions={postItemActions}
+                itemActions={sidebarActions}
+                seriesActions={sidebarActions}
               />
             )
             : <Box sx={{ flex: "1 1 auto", minHeight: 0 }} />}
@@ -173,6 +180,14 @@ const SideBar: React.FC = () => {
         onEdit={handleEditPost}
         onRename={handleRenameFromMenu}
         onDelete={handleDeletePost}
+      />
+
+      <SeriesContextMenu
+        contextMenu={seriesContextMenu}
+        onClose={handleCloseSeriesContextMenu}
+        onEdit={handleEditSeries}
+        onRename={handleRenameSeriesFromMenu}
+        onDelete={handleDeleteSeries}
       />
     </Drawer>
   );

@@ -4,7 +4,10 @@ import { Box, IconButton, List } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { Search, X } from "lucide-react";
 import type { SeriesGroupItem } from "@/utils/posts/seriesGrouping";
-import type { PostItemActions } from "./hooks/useSidebarActions";
+import type {
+  PostItemActions,
+  SeriesItemActions,
+} from "./hooks/useSidebarActions";
 import { PostItem } from "./PostItem";
 import { SeriesGroup } from "./SeriesGroup";
 import { styles } from "../styles";
@@ -16,6 +19,7 @@ interface ActivePostsSectionProps {
   sidebarOpen: boolean;
   pathname: string;
   itemActions: PostItemActions;
+  seriesActions: SeriesItemActions;
 }
 
 export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
@@ -23,6 +27,7 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
   sidebarOpen,
   pathname,
   itemActions,
+  seriesActions,
 }) => {
   const [activePostsSearch, setActivePostsSearch] = useState("");
   const {
@@ -153,6 +158,7 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
                   sidebarOpen={sidebarOpen}
                   pathname={pathname}
                   itemActions={itemActions}
+                  seriesActions={seriesActions}
                   expandedTabs={expandedTabs}
                   onToggleTabs={toggleTabs}
                   onExpandTabs={expandTabs}

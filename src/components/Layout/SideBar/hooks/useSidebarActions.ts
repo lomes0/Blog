@@ -34,12 +34,39 @@ export interface PostItemActions {
   handleRenameKeyDown: (event: React.KeyboardEvent) => void;
 }
 
-export interface SidebarActionsResult extends PostItemActions {
+/**
+ * Series-row equivalents of {@link PostItemActions}. A series has no editor
+ * document, so "Edit" opens the series edit form and "Rename" inline-edits the
+ * series title (persisted via `updateSeries`).
+ */
+export interface SeriesItemActions {
+  renamingSeriesId: string | null;
+  seriesRenameValue: string;
+  setSeriesRenameValue: (v: string) => void;
+  seriesRenameInputRef: React.RefObject<HTMLInputElement | null>;
+  handleSeriesContextMenu: (event: React.MouseEvent, seriesId: string) => void;
+  handleSeriesDoubleClick: (
+    event: React.MouseEvent,
+    seriesId: string,
+    currentTitle: string,
+  ) => void;
+  handleSeriesRenameBlur: () => void;
+  handleSeriesRenameKeyDown: (event: React.KeyboardEvent) => void;
+}
+
+export interface SidebarActionsResult extends PostItemActions, SeriesItemActions {
   contextMenu: { mouseX: number; mouseY: number; postId: string } | null;
   handleCloseContextMenu: () => void;
   handleEditPost: (postId: string) => void;
   handleRenameFromMenu: (postId: string) => void;
   handleDeletePost: (postId: string) => Promise<void>;
+  seriesContextMenu:
+    | { mouseX: number; mouseY: number; seriesId: string }
+    | null;
+  handleCloseSeriesContextMenu: () => void;
+  handleEditSeries: (seriesId: string) => void;
+  handleRenameSeriesFromMenu: (seriesId: string) => void;
+  handleDeleteSeries: (seriesId: string) => Promise<void>;
 }
 
 export function useSidebarActions(): SidebarActionsResult {
@@ -48,6 +75,7 @@ export function useSidebarActions(): SidebarActionsResult {
   const documents = useSelector((state: RootState) =>
     documentsSelectors.selectAll(state)
   );
+  const series = useSelector((state: RootState) => state.series);
 
   const [contextMenu, setContextMenu] = useState<
     {
@@ -61,6 +89,13 @@ export function useSidebarActions(): SidebarActionsResult {
   const [renameField, setRenameField] = useState<RenameField>("name");
   const [renameValue, setRenameValue] = useState("");
   const renameInputRef = useRef<HTMLInputElement>(null);
+
+  const [seriesContextMenu, setSeriesContextMenu] = useState<
+    { mouseX: number; mouseY: number; seriesId: string } | null
+  >(null);
+  const [renamingSeriesId, setRenamingSeriesId] = useState<string | null>(null);
+  const [seriesRenameValue, setSeriesRenameValue] = useState("");
+  const seriesRenameInputRef = useRef<HTMLInputElement>(null);
 
   const handleContextMenu = useCallback(
     (event: React.MouseEvent, postId: string) => {
@@ -131,6 +166,104 @@ export function useSidebarActions(): SidebarActionsResult {
       }
     },
     [dispatch, handleCloseContextMenu, documents, router],
+  );
+
+  const handleSeriesContextMenu = useCallback(
+    (event: React.MouseEvent, seriesId: string) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setSeriesContextMenu((prev) =>
+        prev === null
+          ? { mouseX: event.clientX + 2, mouseY: event.clientY - 6, seriesId }
+          : null
+      );
+    },
+    [],
+  );
+
+  const handleCloseSeriesContextMenu = useCallback(() => {
+    setSeriesContextMenu(null);
+  }, []);
+
+  const handleEditSeries = useCallback(
+    (seriesId: string) => {
+      handleCloseSeriesContextMenu();
+      router.push(`/series/${seriesId}/edit`);
+    },
+    [router, handleCloseSeriesContextMenu],
+  );
+
+  const handleRenameSeriesFromMenu = useCallback(
+    (seriesId: string) => {
+      handleCloseSeriesContextMenu();
+      const target = series?.find((s) => s.id === seriesId);
+      if (target) {
+        setRenamingSeriesId(seriesId);
+        setSeriesRenameValue(target.title || "");
+      }
+    },
+    [handleCloseSeriesContextMenu, series],
+  );
+
+  const handleDeleteSeries = useCallback(
+    async (seriesId: string) => {
+      handleCloseSeriesContextMenu();
+      const cancelId = uuid();
+      const confirmId = uuid();
+      const response = await dispatch(
+        actions.alert({
+          title: "Delete Series",
+          content: "Delete this series? Posts will not be deleted.",
+          actions: [
+            { label: "Cancel", id: cancelId },
+            { label: "Delete", id: confirmId },
+          ],
+        }),
+      );
+      if (response.payload !== confirmId) return;
+      await dispatch(actions.deleteSeries(seriesId));
+      router.refresh();
+    },
+    [dispatch, handleCloseSeriesContextMenu, router],
+  );
+
+  const handleSeriesDoubleClick = useCallback(
+    (event: React.MouseEvent, seriesId: string, currentTitle: string) => {
+      event.preventDefault();
+      setRenamingSeriesId(seriesId);
+      setSeriesRenameValue(currentTitle);
+    },
+    [],
+  );
+
+  const handleSeriesRenameBlur = useCallback(() => {
+    if (renamingSeriesId && seriesRenameValue.trim()) {
+      const target = series?.find((s) => s.id === renamingSeriesId);
+      if (target && target.title !== seriesRenameValue.trim()) {
+        dispatch(
+          actions.updateSeries({
+            id: renamingSeriesId,
+            data: { title: seriesRenameValue.trim() },
+          }),
+        );
+      }
+    }
+    setRenamingSeriesId(null);
+    setSeriesRenameValue("");
+  }, [dispatch, renamingSeriesId, seriesRenameValue, series]);
+
+  const handleSeriesRenameKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        handleSeriesRenameBlur();
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        setRenamingSeriesId(null);
+        setSeriesRenameValue("");
+      }
+    },
+    [handleSeriesRenameBlur],
   );
 
   const handleDoubleClick = useCallback(
@@ -210,6 +343,13 @@ export function useSidebarActions(): SidebarActionsResult {
     }
   }, [renamingPostId]);
 
+  useEffect(() => {
+    if (renamingSeriesId && seriesRenameInputRef.current) {
+      seriesRenameInputRef.current.focus();
+      seriesRenameInputRef.current.select();
+    }
+  }, [renamingSeriesId]);
+
   return {
     contextMenu,
     renamingPostId,
@@ -225,5 +365,18 @@ export function useSidebarActions(): SidebarActionsResult {
     handleDoubleClick,
     handleRenameBlur,
     handleRenameKeyDown,
+    seriesContextMenu,
+    handleCloseSeriesContextMenu,
+    handleEditSeries,
+    handleRenameSeriesFromMenu,
+    handleDeleteSeries,
+    renamingSeriesId,
+    seriesRenameValue,
+    setSeriesRenameValue,
+    seriesRenameInputRef,
+    handleSeriesContextMenu,
+    handleSeriesDoubleClick,
+    handleSeriesRenameBlur,
+    handleSeriesRenameKeyDown,
   };
 }

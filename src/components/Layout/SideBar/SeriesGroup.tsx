@@ -6,12 +6,16 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  TextField,
   Tooltip,
 } from "@mui/material";
 import { ChevronRight } from "lucide-react";
 import type { Series } from "@/types";
 import type { SeriesGroupItem } from "@/utils/posts/seriesGrouping";
-import type { PostItemActions } from "./hooks/useSidebarActions";
+import type {
+  PostItemActions,
+  SeriesItemActions,
+} from "./hooks/useSidebarActions";
 import { PostItem } from "./PostItem";
 import { SafeNavigationLink } from "./SafeNavigationLink";
 import { CHEVRON_TRANSITION } from "./constants";
@@ -25,6 +29,7 @@ interface SeriesGroupProps {
   sidebarOpen: boolean;
   pathname: string;
   itemActions: PostItemActions;
+  seriesActions: SeriesItemActions;
   expandedTabs: Set<string>;
   onToggleTabs: (id: string) => void;
   onExpandTabs: (id: string) => void;
@@ -38,10 +43,22 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
   sidebarOpen,
   pathname,
   itemActions,
+  seriesActions,
   expandedTabs,
   onToggleTabs,
   onExpandTabs,
 }) => {
+  const {
+    renamingSeriesId,
+    seriesRenameValue,
+    setSeriesRenameValue,
+    seriesRenameInputRef,
+    handleSeriesContextMenu,
+    handleSeriesDoubleClick,
+    handleSeriesRenameBlur,
+    handleSeriesRenameKeyDown,
+  } = seriesActions;
+  const isRenaming = renamingSeriesId === group.series.id;
   const hasAnyDirtyChild = group.posts.some(
     (post) =>
       Boolean(post.local) &&
@@ -57,8 +74,17 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
           placement="right"
         >
           <ListItemButton
-            component={SafeNavigationLink}
-            href={`/posts/${group.series.id}`}
+            {...(isRenaming ? {} : {
+              component: SafeNavigationLink,
+              href: `/posts/${group.series.id}`,
+            })}
+            onContextMenu={(e) =>
+              handleSeriesContextMenu(e, group.series.id)}
+            onDoubleClick={(e) => {
+              if (sidebarOpen) {
+                handleSeriesDoubleClick(e, group.series.id, group.series.title);
+              }
+            }}
             sx={{
               minHeight: 26,
               justifyContent: sidebarOpen ? "initial" : "center",
@@ -88,7 +114,27 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
             >
               <ChevronRight size={ICON_SIZE.inline} strokeWidth={2} />
             </ListItemIcon>
-            {sidebarOpen && (
+            {sidebarOpen && isRenaming && (
+              <TextField
+                inputRef={seriesRenameInputRef}
+                value={seriesRenameValue}
+                onChange={(e) => setSeriesRenameValue(e.target.value)}
+                onBlur={handleSeriesRenameBlur}
+                onKeyDown={handleSeriesRenameKeyDown}
+                onClick={(e) => e.preventDefault()}
+                size="small"
+                variant="standard"
+                fullWidth
+                sx={{
+                  "& .MuiInput-input": {
+                    fontSize: "0.7em",
+                    fontWeight: 500,
+                    py: 0,
+                  },
+                }}
+              />
+            )}
+            {sidebarOpen && !isRenaming && (
               <ListItemText
                 primary={
                   <Box
