@@ -1,24 +1,29 @@
 "use client";
 import * as React from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Box,
   Breadcrumbs as MuiBreadcrumbs,
   Divider,
   IconButton,
   Link,
+  ToggleButton,
+  ToggleButtonGroup,
   Tooltip,
   Typography,
 } from "@mui/material";
 import {
   ArrowLeft,
   BookOpen,
+  Eye,
   FileText,
   LayoutDashboard,
   Library,
   Menu as MenuIcon,
+  Pencil,
   PenLine,
   Plus,
+  Search,
   StickyNote,
   X,
 } from "lucide-react";
@@ -30,6 +35,7 @@ import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
 import { useTopBarActions } from "@/contexts/TopBarActionsContext";
 import { useTopBarTabs } from "@/contexts/TopBarTabsContext";
 import { ICON_SIZE } from "@/theme/icons";
+import { openCommandPalette } from "@/components/CommandPalette/CommandPalette";
 
 interface BreadcrumbItem {
   label: string;
@@ -39,9 +45,17 @@ interface BreadcrumbItem {
 
 const EditorTopBar: React.FC = () => {
   const pathname = usePathname();
+  const router = useRouter();
   const { toggleSidebarCompact, sidebarMode } = useSidebarWidth();
   const { actions } = useTopBarActions();
   const { tabBar } = useTopBarTabs();
+
+  // Platform-aware shortcut label. Starts false (matches SSR) and resolves on
+  // the client to avoid a hydration mismatch.
+  const [isMac, setIsMac] = React.useState(false);
+  React.useEffect(() => {
+    setIsMac(/mac|iphone|ipad|ipod/i.test(navigator.userAgent));
+  }, []);
 
   // Inline tab rename. Triggered either by double-clicking a tab label or by the
   // tab context menu, which sets `tabBar.renamingTabId`.
@@ -624,8 +638,116 @@ const EditorTopBar: React.FC = () => {
       {/* Page-level actions slot — right after the sub-doc tabs (or title) */}
       {actions}
 
-      {/* Trailing spacer — keeps actions left-aligned, fills the rest */}
-      <Box sx={{ flex: 1 }} />
+      {/* Centering spacer (left of search) */}
+      <Box sx={{ flex: 1, minWidth: 8 }} />
+
+      {/* Command palette entry — opens the ⌘K palette (mouse path) */}
+      <Box
+        role="button"
+        tabIndex={0}
+        aria-label="Search posts or run a command"
+        onClick={openCommandPalette}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openCommandPalette();
+          }
+        }}
+        sx={{
+          display: { xs: "none", sm: "flex" },
+          alignItems: "center",
+          gap: 1,
+          flexShrink: 1,
+          minWidth: 0,
+          width: "100%",
+          maxWidth: 440,
+          px: 1,
+          py: 0.375,
+          cursor: "pointer",
+          color: "text.secondary",
+          bgcolor: "background.input",
+          border: "1px solid",
+          borderColor: "divider",
+          borderRadius: 1,
+          transition: "border-color 0.15s, background-color 0.15s",
+          "&:hover": { borderColor: "primary.main" },
+          "&:focus-visible": {
+            outline: "none",
+            boxShadow:
+              "0 0 0 3px rgba(var(--mui-palette-primary-mainChannel) / 0.25)",
+          },
+        }}
+      >
+        <Search size={ICON_SIZE.inline} style={{ flexShrink: 0 }} />
+        <Typography
+          noWrap
+          variant="dense"
+          sx={{ flex: 1, minWidth: 0, color: "text.secondary" }}
+        >
+          Search posts or run a command…
+        </Typography>
+        <Box
+          component="kbd"
+          sx={{
+            typography: "micro",
+            flexShrink: 0,
+            px: 0.5,
+            py: 0.125,
+            borderRadius: "6px",
+            border: "1px solid",
+            borderColor: "divider",
+            bgcolor: "background.paper",
+            color: "text.secondary",
+          }}
+        >
+          {isMac ? "⌘K" : "Ctrl K"}
+        </Box>
+      </Box>
+
+      {/* Centering spacer (right of search) */}
+      <Box sx={{ flex: 1, minWidth: 8 }} />
+
+      {/* Read/Edit mode switch — doc pages only; navigates between routes */}
+      {isDocPage && docId && (
+        <ToggleButtonGroup
+          exclusive
+          size="small"
+          value={isEditPage ? "edit" : "view"}
+          onChange={(_e, value) => {
+            if (value && value !== (isEditPage ? "edit" : "view")) {
+              router.push(`/${value}/${docId}`);
+            }
+          }}
+          aria-label="Read or edit mode"
+          sx={{
+            flexShrink: 0,
+            ml: 0.5,
+            "& .MuiToggleButton-root": {
+              px: 1,
+              py: 0.375,
+              gap: 0.5,
+              color: "text.secondary",
+              textTransform: "none",
+              border: "1px solid",
+              borderColor: "divider",
+              "&.Mui-selected": {
+                bgcolor: "primary.main",
+                color: "primary.contrastText",
+                "&:hover": { bgcolor: "primary.dark" },
+              },
+            },
+          }}
+        >
+          <ToggleButton value="view" aria-label="Read mode">
+            <Eye size={ICON_SIZE.inline} />
+            <Typography variant="dense">Read</Typography>
+          </ToggleButton>
+          <ToggleButton value="edit" aria-label="Edit mode">
+            <Pencil size={ICON_SIZE.inline} />
+            <Typography variant="dense">Edit</Typography>
+          </ToggleButton>
+        </ToggleButtonGroup>
+      )}
     </Box>
   );
 };

@@ -77,6 +77,11 @@ const CommandPalette = () => {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        // Defer to the Lexical editor when focus is inside it — ⌘K is its
+        // "insert link" shortcut. The title-bar search pill (openCommandPalette)
+        // remains an always-available, mouse-driven entry point.
+        const el = document.activeElement as HTMLElement | null;
+        if (el?.isContentEditable) return;
         e.preventDefault();
         setOpen((prev) => !prev);
       }
