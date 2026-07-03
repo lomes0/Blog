@@ -6,6 +6,7 @@ import { Series, User, UserDocument } from "@/types";
 import { actions, useDispatch } from "@/store";
 import { useRouter } from "next/navigation";
 import { useExpandedState } from "@/hooks/useExpandedState";
+import { compareDocumentsByRank, rankOf } from "@/lib/documentOrder";
 import { ListDensity, TagStyle } from "./types";
 import { SectionBand } from "./components/SectionBand";
 import { PostRow } from "./components/PostRow";
@@ -288,8 +289,10 @@ export function PostsListView({
 
   const handleDropPost = useCallback(
     async (seriesId: string, postId: string) => {
+      // moveDocument sets seriesId *and* a fresh rank in the destination series,
+      // so the post no longer keeps a rank from its previous container.
       await dispatch(
-        actions.updateCloudDocument({ id: postId, partial: { seriesId } }),
+        actions.moveDocument({ id: postId, destination: { seriesId } }),
       );
       router.refresh();
     },
@@ -298,8 +301,68 @@ export function PostsListView({
 
   const handleMoveToSeries = useCallback(
     async (postId: string, seriesId: string) => {
+      // moveDocument sets seriesId *and* a fresh rank in the destination.
       await dispatch(
-        actions.updateCloudDocument({ id: postId, partial: { seriesId } }),
+        actions.moveDocument({ id: postId, destination: { seriesId } }),
+      );
+      router.refresh();
+    },
+    [dispatch, router],
+  );
+
+  // ── Manual reorder (menu / keyboard) ──────────────────────────────────────
+  // Reposition a post among its siblings by computing the ranks of the
+  // neighbours that should bracket its new slot, then re-ranking it there.
+  // `siblings` is the rendered, rank-ordered list the post belongs to.
+  const handleReorderPost = useCallback(
+    async (
+      siblings: UserDocument[],
+      postId: string,
+      direction: "up" | "down" | "top" | "bottom",
+    ) => {
+      const i = siblings.findIndex((p) => p.id === postId);
+      if (i === -1) return;
+      const last = siblings.length - 1;
+      const rankAt = (idx: number) =>
+        idx >= 0 && idx <= last ? rankOf(siblings[idx]) : null;
+
+      let afterRank: string | null = null;
+      let beforeRank: string | null = null;
+      switch (direction) {
+        case "up":
+          if (i === 0) return;
+          afterRank = rankAt(i - 2);
+          beforeRank = rankAt(i - 1);
+          break;
+        case "down":
+          if (i === last) return;
+          afterRank = rankAt(i + 1);
+          beforeRank = rankAt(i + 2);
+          break;
+        case "top":
+          if (i === 0) return;
+          beforeRank = rankAt(0);
+          break;
+        case "bottom":
+          if (i === last) return;
+          afterRank = rankAt(last);
+          break;
+      }
+
+      // Keep the post in its current container; only its position changes.
+      const doc = siblings[i].cloud ?? siblings[i].local;
+      const destination = doc?.seriesId
+        ? { seriesId: doc.seriesId }
+        : doc?.parentId
+        ? { parentId: doc.parentId }
+        : {};
+
+      await dispatch(
+        actions.moveDocument({
+          id: postId,
+          destination,
+          between: { afterRank, beforeRank },
+        }),
       );
       router.refresh();
     },
@@ -354,7 +417,7 @@ export function PostsListView({
             count={posts.length}
             color="primary.main"
           />
-          {posts.map((post) => (
+          {posts.map((post, i) => (
             <PostRow
               key={post.id}
               post={post}
@@ -372,6 +435,10 @@ export function PostsListView({
               onDelete={handleDeletePost}
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
+              onReorder={(direction) =>
+                handleReorderPost(posts, post.id, direction)}
+              canMoveUp={i > 0}
+              canMoveDown={i < posts.length - 1}
               availableSeries={hasSeries ? series : undefined}
               onMoveToSeries={hasSeries
                 ? (seriesId) => handleMoveToSeries(post.id, seriesId)
@@ -390,16 +457,17 @@ export function PostsListView({
             color="primary.main"
           />
           {series.map((s) => {
-            const seriesPosts: UserDocument[] = s.posts.map((p) => ({
-              id: p.id,
-              cloud: p,
-              local: undefined,
-            }));
+            // Sort by rank so manual reordering is reflected reactively (the
+            // server returns rank order, but in-place updates don't re-sort).
+            const seriesPosts: UserDocument[] = s.posts
+              .map((p) => ({ id: p.id, cloud: p, local: undefined }))
+              .sort(compareDocumentsByRank);
             return (
               <SeriesRow
                 key={s.id}
                 series={s}
                 posts={seriesPosts}
+                onReorderPost={handleReorderPost}
                 density={density}
                 tagStyle={tagStyle}
                 isSelected={selection.isSelected(s.id)}

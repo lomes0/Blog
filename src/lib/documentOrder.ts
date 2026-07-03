@@ -1,7 +1,7 @@
 import { byRank } from "@/lib/ordering";
 import type { UserDocument } from "@/types";
 
-const rankOf = (doc: UserDocument): string | null =>
+export const rankOf = (doc: UserDocument): string | null =>
   doc.cloud?.rank ?? doc.local?.rank ?? null;
 
 const createdAtOf = (doc: UserDocument): number =>

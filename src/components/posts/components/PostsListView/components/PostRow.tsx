@@ -35,6 +35,10 @@ interface PostRowProps {
   onDelete: (post: UserDocument) => void;
   onDragStart: (e: React.DragEvent, postId: string) => void;
   onDragEnd: () => void;
+  /** Reposition this post among its siblings (menu / keyboard). */
+  onReorder?: (direction: "up" | "down" | "top" | "bottom") => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
   /** Left indent in px (for series children). */
   indent?: number;
   /** Series the post can be moved to. Hidden when empty. */
@@ -59,6 +63,9 @@ export const PostRow = React.memo(function PostRow({
   onDelete,
   onDragStart,
   onDragEnd,
+  onReorder,
+  canMoveUp,
+  canMoveDown,
   indent = 0,
   availableSeries,
   onMoveToSeries,
@@ -312,6 +319,9 @@ export const PostRow = React.memo(function PostRow({
             mode="post"
             onRename={() => onRenameStart(post.id, name)}
             onDelete={() => onDelete(post)}
+            onReorder={onReorder}
+            canMoveUp={canMoveUp}
+            canMoveDown={canMoveDown}
             availableSeries={availableSeries}
             onMoveToSeries={onMoveToSeries}
           />

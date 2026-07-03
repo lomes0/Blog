@@ -53,6 +53,12 @@ interface SeriesRowProps {
   onDropPost: (seriesId: string, postId: string) => void;
   dragOverSeriesId: string | null;
   onDragOverSeries: (seriesId: string | null) => void;
+  /** Reposition a post within this series (menu / keyboard). */
+  onReorderPost?: (
+    siblings: UserDocument[],
+    postId: string,
+    direction: "up" | "down" | "top" | "bottom",
+  ) => void;
   /** Other series a child post can be moved to (current series excluded). */
   availableSeries?: Series[];
   onMovePost?: (postId: string, seriesId: string) => void;
@@ -87,6 +93,7 @@ export const SeriesRow = React.memo(function SeriesRow({
   onDropPost,
   dragOverSeriesId,
   onDragOverSeries,
+  onReorderPost,
   availableSeries,
   onMovePost,
 }: SeriesRowProps) {
@@ -339,31 +346,41 @@ export const SeriesRow = React.memo(function SeriesRow({
             mb: 0.5,
           }}
         >
-          {visiblePosts.map((p) => (
-            <PostRow
-              key={p.id}
-              post={p}
-              density={density}
-              tagStyle={tagStyle}
-              isSelected={false}
-              editingName={editingPostNames.get(p.id)}
-              expandedTabs={expandedTabs}
-              onToggleTabs={onToggleTabs}
-              onToggleSelect={onToggleSelect}
-              onRenameStart={onPostRenameStart}
-              onRenameChange={onPostRenameChange}
-              onRenameCommit={onPostRenameCommit}
-              onRenameCancel={onPostRenameCancel}
-              onDelete={onDeletePost}
-              onDragStart={onDragStart}
-              onDragEnd={onDragEnd}
-              indent={8}
-              availableSeries={availableSeries}
-              onMoveToSeries={onMovePost
-                ? (seriesId) => onMovePost(p.id, seriesId)
-                : undefined}
-            />
-          ))}
+          {visiblePosts.map((p) => {
+            // Reorder against the full rank-ordered list, not the (possibly
+            // date-sorted, truncated) preview slice.
+            const fullIdx = posts.findIndex((x) => x.id === p.id);
+            return (
+              <PostRow
+                key={p.id}
+                post={p}
+                density={density}
+                tagStyle={tagStyle}
+                isSelected={false}
+                editingName={editingPostNames.get(p.id)}
+                expandedTabs={expandedTabs}
+                onToggleTabs={onToggleTabs}
+                onToggleSelect={onToggleSelect}
+                onRenameStart={onPostRenameStart}
+                onRenameChange={onPostRenameChange}
+                onRenameCommit={onPostRenameCommit}
+                onRenameCancel={onPostRenameCancel}
+                onDelete={onDeletePost}
+                onDragStart={onDragStart}
+                onDragEnd={onDragEnd}
+                onReorder={onReorderPost && inlineAll
+                  ? (direction) => onReorderPost(posts, p.id, direction)
+                  : undefined}
+                canMoveUp={fullIdx > 0}
+                canMoveDown={fullIdx < posts.length - 1}
+                indent={8}
+                availableSeries={availableSeries}
+                onMoveToSeries={onMovePost
+                  ? (seriesId) => onMovePost(p.id, seriesId)
+                  : undefined}
+              />
+            );
+          })}
           {!inlineAll && (
             <Box sx={{ px: 1, py: 0.5 }}>
               <Button

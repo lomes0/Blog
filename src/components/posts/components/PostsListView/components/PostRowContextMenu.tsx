@@ -9,7 +9,11 @@ import {
   Tooltip,
 } from "@mui/material";
 import {
+  ArrowDownToLine,
+  ArrowUpToLine,
+  ChevronDown,
   ChevronRight,
+  ChevronUp,
   FolderOpen,
   MoreHorizontal,
   Pencil,
@@ -19,11 +23,17 @@ import {
 import { Series } from "@/types";
 import { ICON_SIZE } from "@/theme/icons";
 
+type ReorderDirection = "up" | "down" | "top" | "bottom";
+
 interface PostRowContextMenuProps {
   /** Pass "series" to show series-specific items (no move-to-series). */
   mode?: "post" | "series";
   onRename: () => void;
   onDelete: () => void;
+  /** Reposition this row among its siblings. */
+  onReorder?: (direction: ReorderDirection) => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
   /** Series the post can be moved to. Hidden when empty. */
   availableSeries?: Series[];
   onMoveToSeries?: (seriesId: string) => void;
@@ -33,6 +43,9 @@ export function PostRowContextMenu({
   mode = "post",
   onRename,
   onDelete,
+  onReorder,
+  canMoveUp,
+  canMoveDown,
   availableSeries,
   onMoveToSeries,
 }: PostRowContextMenuProps) {
@@ -91,6 +104,54 @@ export function PostRowContextMenu({
           </ListItemIcon>
           <ListItemText>Rename</ListItemText>
         </MenuItem>
+
+        {onReorder && [
+          <Divider key="reorder-divider" sx={{ my: 0.5 }} />,
+          <MenuItem
+            key="move-up"
+            dense
+            disabled={!canMoveUp}
+            onClick={wrap(() => onReorder("up"))}
+          >
+            <ListItemIcon>
+              <ChevronUp size={15} />
+            </ListItemIcon>
+            <ListItemText>Move up</ListItemText>
+          </MenuItem>,
+          <MenuItem
+            key="move-down"
+            dense
+            disabled={!canMoveDown}
+            onClick={wrap(() => onReorder("down"))}
+          >
+            <ListItemIcon>
+              <ChevronDown size={15} />
+            </ListItemIcon>
+            <ListItemText>Move down</ListItemText>
+          </MenuItem>,
+          <MenuItem
+            key="move-top"
+            dense
+            disabled={!canMoveUp}
+            onClick={wrap(() => onReorder("top"))}
+          >
+            <ListItemIcon>
+              <ArrowUpToLine size={15} />
+            </ListItemIcon>
+            <ListItemText>Move to top</ListItemText>
+          </MenuItem>,
+          <MenuItem
+            key="move-bottom"
+            dense
+            disabled={!canMoveDown}
+            onClick={wrap(() => onReorder("bottom"))}
+          >
+            <ListItemIcon>
+              <ArrowDownToLine size={15} />
+            </ListItemIcon>
+            <ListItemText>Move to bottom</ListItemText>
+          </MenuItem>,
+        ]}
 
         {mode === "post" && onMoveToSeries && availableSeries &&
           availableSeries.length > 0 && (
