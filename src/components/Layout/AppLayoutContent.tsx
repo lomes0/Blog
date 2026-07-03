@@ -7,6 +7,7 @@ import HydrationManager from "./HydrationManager";
 import EditorTopBar from "./EditorTopBar";
 import RightRail from "./RightRail";
 import CopilotPanel from "@/components/CopilotPanel/CopilotPanel";
+import CommandPalette from "@/components/CommandPalette/CommandPalette";
 import { Box, Container } from "@mui/material";
 import { actions, type RootState, useDispatch, useSelector } from "@/store";
 import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
@@ -150,6 +151,7 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
               : <Box />}
             <RightRail railMode={railMode} />
           </Box>
+          <CommandPalette />
         </ActiveEditorContext.Provider>
       </SetActiveEditorContext.Provider>
     </TopBarTabsProvider>
