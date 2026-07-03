@@ -87,9 +87,10 @@ const PostsGrid: React.FC<{ posts: UserDocument[]; user?: User }> = (
  *
  * Series mode    – `series` prop provided. Posts come from the series object,
  *                 supports time-edit mode (compact view) for re-ordering by date.
- * All-posts mode – no `series` prop. Posts are split into two sections:
- *                 standalone posts first, then series, both sorted by date.
- *                 Compact view uses the new PostsListView with POSTS+SERIES bands.
+ * All-posts mode – no `series` prop. Grid view splits into two sections:
+ *                 series first, then standalone posts (matches the sidebar's
+ *                 series-first ordering). Compact view uses PostsListView, which
+ *                 interleaves series and posts in one shared rank space.
  */
 const PostsView: React.FC<PostsViewProps> = ({ series, user: serverUser }) => {
   const isSeries = !!series;
@@ -320,23 +321,24 @@ const PostsView: React.FC<PostsViewProps> = ({ series, user: serverUser }) => {
           );
         }
 
-        // Grid view: separate sections
+        // Grid view: separate sections — series before standalone posts
+        // (matches the series-first ordering used in the sidebar).
         return (
           <>
-            {hasPosts && (
-              <Box component="section" sx={{ mb: { xs: 4, md: 6 } }}>
-                <SectionDivider label="Posts" color="primary.main" />
-                <PostsGrid posts={sortedStandalonePosts} user={user} />
-              </Box>
-            )}
             {hasSeries && (
-              <Box component="section">
+              <Box component="section" sx={{ mb: { xs: 4, md: 6 } }}>
                 <SectionDivider label="Series" color="secondary.main" />
                 <SeriesSection
                   series={seriesList}
                   user={user}
                   viewType={viewType}
                 />
+              </Box>
+            )}
+            {hasPosts && (
+              <Box component="section">
+                <SectionDivider label="Posts" color="primary.main" />
+                <PostsGrid posts={sortedStandalonePosts} user={user} />
               </Box>
             )}
           </>
