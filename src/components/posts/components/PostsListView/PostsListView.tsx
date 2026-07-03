@@ -70,11 +70,6 @@ export function PostsListView({
   const { expandedSeries, toggleSeries } = useExpandedState(
     "postsListExpansion",
   );
-  // Independent persisted expansion state for each post's tab list.
-  const {
-    expandedSeries: expandedTabs,
-    toggleSeries: toggleTabs,
-  } = useExpandedState("postsListTabsExpansion");
 
   // Each series' posts, wrapped and rank-sorted (so reorder is reflected).
   const seriesPostsById = useMemo(() => {
@@ -523,8 +518,6 @@ export function PostsListView({
                 tagStyle={tagStyle}
                 isSelected={selection.isSelected(item.id)}
                 editingName={postRename.editingNames.get(item.id)}
-                expandedTabs={expandedTabs}
-                onToggleTabs={toggleTabs}
                 onToggleSelect={selection.toggle}
                 onRenameStart={postRename.startRename}
                 onRenameChange={postRename.handleChange}
@@ -561,8 +554,6 @@ export function PostsListView({
                 isSelected={selection.isSelected(item.id)}
                 isExpanded={expandedSeries.has(item.id)}
                 onToggleExpand={toggleSeries}
-                expandedTabs={expandedTabs}
-                onToggleTabs={toggleTabs}
                 onToggleSelect={selection.toggle}
                 editingSeriesName={editingSeriesNames.get(item.id)}
                 onSeriesRenameStart={handleSeriesRenameStart}

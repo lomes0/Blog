@@ -27,9 +27,6 @@ interface SeriesRowProps {
   isSelected: boolean;
   isExpanded: boolean;
   onToggleExpand: (seriesId: string) => void;
-  /** Ids of posts whose tab list is expanded. Forwarded to child rows. */
-  expandedTabs: Set<string>;
-  onToggleTabs: (id: string) => void;
   onToggleSelect: (id: string, event: React.MouseEvent) => void;
   /** Current rename value if the series title is being edited. */
   editingSeriesName?: string;
@@ -77,8 +74,6 @@ export const SeriesRow = React.memo(function SeriesRow({
   isSelected,
   isExpanded,
   onToggleExpand,
-  expandedTabs,
-  onToggleTabs,
   onToggleSelect,
   editingSeriesName,
   onSeriesRenameStart,
@@ -368,8 +363,6 @@ export const SeriesRow = React.memo(function SeriesRow({
                 tagStyle={tagStyle}
                 isSelected={false}
                 editingName={editingPostNames.get(p.id)}
-                expandedTabs={expandedTabs}
-                onToggleTabs={onToggleTabs}
                 onToggleSelect={onToggleSelect}
                 onRenameStart={onPostRenameStart}
                 onRenameChange={onPostRenameChange}
