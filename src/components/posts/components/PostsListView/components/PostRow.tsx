@@ -39,6 +39,15 @@ interface PostRowProps {
   onReorder?: (direction: "up" | "down" | "top" | "bottom") => void;
   canMoveUp?: boolean;
   canMoveDown?: boolean;
+  /**
+   * Drop-to-reorder: when set, this row is a drop target that reports where a
+   * dragged item would land relative to it. Only wired for root-level rows.
+   */
+  onReorderDragOver?: (postId: string, position: "before" | "after") => void;
+  onReorderDrop?: (postId: string, position: "before" | "after") => void;
+  onReorderDragLeave?: () => void;
+  /** Insertion indicator to render for this row, if any. */
+  dropIndicator?: "before" | "after" | null;
   /** Left indent in px (for series children). */
   indent?: number;
   /** Series the post can be moved to. Hidden when empty. */
@@ -66,11 +75,16 @@ export const PostRow = React.memo(function PostRow({
   onReorder,
   canMoveUp,
   canMoveDown,
+  onReorderDragOver,
+  onReorderDrop,
+  onReorderDragLeave,
+  dropIndicator,
   indent = 0,
   availableSeries,
   onMoveToSeries,
 }: PostRowProps) {
   const router = useRouter();
+  const rowRef = useRef<HTMLDivElement>(null);
   const document = post.cloud || post.local;
   const name = document?.name || "Untitled";
   const date = document?.updatedAt || document?.createdAt;
@@ -139,11 +153,31 @@ export const PostRow = React.memo(function PostRow({
     if (e.key === "Escape") onRenameCancel(post.id);
   }, [post.id, document?.id, document?.name, onRenameCommit, onRenameCancel]);
 
+  const dropPosition = (e: React.DragEvent): "before" | "after" => {
+    const rect = rowRef.current?.getBoundingClientRect();
+    if (!rect) return "after";
+    return e.clientY < rect.top + rect.height / 2 ? "before" : "after";
+  };
+  const handleReorderDragOver = useCallback((e: React.DragEvent) => {
+    if (!onReorderDragOver) return;
+    e.preventDefault();
+    onReorderDragOver(post.id, dropPosition(e));
+  }, [onReorderDragOver, post.id]);
+  const handleReorderDrop = useCallback((e: React.DragEvent) => {
+    if (!onReorderDrop) return;
+    e.preventDefault();
+    onReorderDrop(post.id, dropPosition(e));
+  }, [onReorderDrop, post.id]);
+
   return (
     <Box>
       <Box
+        ref={rowRef}
         className="post-list-row"
         onClick={handleRowClick}
+        onDragOver={onReorderDragOver ? handleReorderDragOver : undefined}
+        onDrop={onReorderDrop ? handleReorderDrop : undefined}
+        onDragLeave={onReorderDragLeave}
         sx={{
           display: "flex",
           alignItems: "center",
@@ -153,6 +187,18 @@ export const PostRow = React.memo(function PostRow({
           borderRadius: 0.5,
           position: "relative",
           cursor: "default",
+          ...(dropIndicator && {
+            "&::after": {
+              content: '""',
+              position: "absolute",
+              left: 0,
+              right: 0,
+              [dropIndicator === "before" ? "top" : "bottom"]: -1,
+              height: 2,
+              bgcolor: "primary.main",
+              zIndex: 2,
+            },
+          }),
           bgcolor: isSelected ? "action.selected" : "transparent",
           transition: "background-color 0.15s",
           "&:hover": {

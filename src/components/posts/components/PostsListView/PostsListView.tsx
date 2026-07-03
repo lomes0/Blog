@@ -1,5 +1,11 @@
 "use client";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Box } from "@mui/material";
 import { v4 as uuid } from "uuid";
 import { Series, User, UserDocument } from "@/types";
@@ -325,9 +331,17 @@ export function PostsListView({
   );
 
   // ── Drag and drop ─────────────────────────────────────────────────────────
+  // Drag-to-reorder: the id of the row currently being dragged, and the drop
+  // target (a root row + which side) used to draw the insertion indicator.
+  const draggedIdRef = useRef<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<
+    { id: string; position: "before" | "after" } | null
+  >(null);
+
   const handleDragStart = useCallback((e: React.DragEvent, postId: string) => {
     const post = allPostsMap.get(postId);
     const name = post?.cloud?.name || post?.local?.name || "";
+    draggedIdRef.current = postId;
     e.dataTransfer.setData(
       "application/matheditor-document",
       JSON.stringify({ id: postId, name, type: "post" }),
@@ -337,7 +351,46 @@ export function PostsListView({
 
   const handleDragEnd = useCallback(() => {
     setDragOverSeriesId(null);
+    setDropTarget(null);
+    draggedIdRef.current = null;
   }, []);
+
+  const handleReorderDragOver = useCallback(
+    (targetId: string, position: "before" | "after") => {
+      if (draggedIdRef.current && draggedIdRef.current !== targetId) {
+        setDropTarget({ id: targetId, position });
+      }
+    },
+    [],
+  );
+
+  // Drop a dragged post at a root position (before/after the target row).
+  // Reorders within, or moves out of a series into, the interleaved root list.
+  const handleReorderDrop = useCallback(
+    async (targetId: string, position: "before" | "after") => {
+      const draggedId = draggedIdRef.current;
+      setDropTarget(null);
+      if (!draggedId || draggedId === targetId) return;
+
+      const list = rootItems.filter((it) => it.id !== draggedId);
+      const ti = list.findIndex((it) => it.id === targetId);
+      if (ti === -1) return;
+      const rankAt = (i: number) =>
+        i >= 0 && i < list.length ? list[i].rank : null;
+      const afterRank = position === "before" ? rankAt(ti - 1) : rankAt(ti);
+      const beforeRank = position === "before" ? rankAt(ti) : rankAt(ti + 1);
+
+      await dispatch(
+        actions.moveDocument({
+          id: draggedId,
+          destination: {},
+          between: { afterRank, beforeRank },
+        }),
+      );
+      router.refresh();
+    },
+    [rootItems, dispatch, router],
+  );
 
   const handleDropPost = useCallback(
     async (seriesId: string, postId: string) => {
@@ -480,6 +533,11 @@ export function PostsListView({
                 onReorder={(direction) => handleReorderRoot(i, direction)}
                 canMoveUp={i > 0}
                 canMoveDown={i < rootItems.length - 1}
+                onReorderDragOver={handleReorderDragOver}
+                onReorderDrop={handleReorderDrop}
+                dropIndicator={dropTarget?.id === item.id
+                  ? dropTarget.position
+                  : null}
                 availableSeries={hasSeries ? series : undefined}
                 onMoveToSeries={hasSeries
                   ? (seriesId) => handleMoveToSeries(item.id, seriesId)
