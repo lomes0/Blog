@@ -20,8 +20,7 @@ export const metadata: Metadata = {
 const page = async () => {
   const session = await getServerSession(authOptions);
 
-  // Server-side: fetch public posts (excludes README)
-  // README will be fetched client-side by ReadmePreviewCard
+  // Server-side: fetch public posts
   const allPosts = await findAllDocuments(12);
   const allSeries = await findAllSeries();
 

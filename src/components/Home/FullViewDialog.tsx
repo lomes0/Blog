@@ -11,7 +11,7 @@ import {
 } from "@mui/material";
 import { X } from "lucide-react";
 
-type ViewType = "notes" | "kanban" | "readme" | "posts";
+type ViewType = "notes" | "kanban" | "posts";
 
 interface FullViewDialogProps {
   open: boolean;
@@ -32,7 +32,6 @@ export default function FullViewDialog({
   const titles: Record<ViewType, string> = {
     notes: "Notes Canvas",
     kanban: "Kanban Board",
-    readme: "README",
     posts: "All Posts",
   };
 

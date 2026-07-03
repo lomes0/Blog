@@ -1,6 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { documentsSelectors, type RootState } from "@/store";
-import { isReadmeDocument } from "@/constants";
 import { compareDocumentsByRank } from "@/lib/documentOrder";
 import type { UserDocument } from "@/types";
 
@@ -14,10 +13,10 @@ const selectAllDocuments = (state: RootState) =>
 const selectUser = (state: RootState) => state.user;
 
 /**
- * Memoized selector: documents owned by the current user, excluding README
- * docs.  Re-computes only when the full document list or user reference
- * changes — prevents the sidebar from re-rendering on every unrelated
- * document mutation that doesn't affect the filtered result set.
+ * Memoized selector: root documents owned by the current user.  Re-computes
+ * only when the full document list or user reference changes — prevents the
+ * sidebar from re-rendering on every unrelated document mutation that doesn't
+ * affect the filtered result set.
  */
 export const selectUserFilteredDocuments = createSelector(
   [selectAllDocuments, selectUser],
@@ -29,12 +28,11 @@ export const selectUserFilteredDocuments = createSelector(
       if (cloudDocument) {
         return (
           cloudDocument.author.id === user.id &&
-          !isReadmeDocument(cloudDocument.name) &&
           !cloudDocument.parentId
         );
       }
       if (localDocument) {
-        return !isReadmeDocument(localDocument.name) && !localDocument.parentId;
+        return !localDocument.parentId;
       }
       return false;
     });

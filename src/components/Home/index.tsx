@@ -9,12 +9,10 @@ import { useCallback, useRef, useState } from "react";
 import { useDocuments } from "@/hooks/useDocuments";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import KanbanPreviewCard from "./KanbanPreviewCard";
-import ReadmePreviewCard from "./ReadmePreviewCard";
 import RecentPostsPreviewCard from "./RecentPostsPreviewCard";
 import FullViewDialog from "./FullViewDialog";
 import NotesCanvas, { NotesCanvasHandle } from "../NotesCanvas";
 import KanbanBoard from "./KanbanBoard";
-import ReadmeViewer from "./ReadmeViewer";
 import { CardErrorBoundary } from "@/components/ErrorBoundary";
 import { SquarePen, StickyNote } from "lucide-react";
 import { useNotesBoards } from "@/hooks/useNotesBoards";
@@ -30,7 +28,7 @@ import {
 import { Divider, Popover, Tooltip } from "@mui/material";
 import { ICON_SIZE } from "@/theme/icons";
 
-type ViewType = "notes" | "kanban" | "readme" | "posts" | null;
+type ViewType = "notes" | "kanban" | "posts" | null;
 
 const Home: React.FC<{
   staticDocuments: UserDocument[];
@@ -264,7 +262,7 @@ const Home: React.FC<{
               </CardErrorBoundary>
             </NotesClipboardProvider>
           </Grid>
-          <Grid size={{ xs: 12, md: 6, lg: 4 }}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <CardErrorBoundary title="Board">
               <KanbanPreviewCard
                 documents={documents}
@@ -273,16 +271,7 @@ const Home: React.FC<{
             </CardErrorBoundary>
           </Grid>
 
-          <Grid size={{ xs: 12, md: 6, lg: 4 }}>
-            <CardErrorBoundary title="README">
-              <ReadmePreviewCard
-                documents={documents}
-                onViewFull={() => handleOpenView("readme")}
-              />
-            </CardErrorBoundary>
-          </Grid>
-
-          <Grid size={{ xs: 12, md: 12, lg: 4 }}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <CardErrorBoundary title="Recent Posts">
               <RecentPostsPreviewCard
                 documents={recentPosts}
@@ -312,7 +301,6 @@ const Home: React.FC<{
           {activeView === "kanban" && (
             <KanbanBoard documents={documents} onRefresh={refresh} />
           )}
-          {activeView === "readme" && <ReadmeViewer documents={documents} />}
         </FullViewDialog>
       </Box>
     </DragProvider>

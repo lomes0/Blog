@@ -8,7 +8,6 @@ import {
   EditorDocumentRevision,
 } from "@/types";
 import { validate } from "uuid";
-import { README_DOCUMENT_NAME } from "@/constants";
 import { getCachedRevision } from "./revision";
 import { rankForAppend, reRankIntoRoot } from "./ordering";
 
@@ -101,7 +100,6 @@ const findPublishedDocuments = async (limit?: number) => {
     where: {
       published: true,
       type: PrismaDocumentType.DOCUMENT,
-      NOT: { name: { equals: README_DOCUMENT_NAME, mode: "insensitive" } },
     },
     select: {
       ...documentCoreSelect,
@@ -120,7 +118,6 @@ const findAllDocuments = async (limit?: number) => {
   const docs = await prisma.document.findMany({
     where: {
       type: PrismaDocumentType.DOCUMENT,
-      NOT: { name: { equals: README_DOCUMENT_NAME, mode: "insensitive" } },
     },
     select: {
       ...documentCoreSelect,
@@ -236,7 +233,6 @@ const findPublishedDocumentsByAuthorId = async (authorId: string) => {
       authorId,
       published: true,
       type: PrismaDocumentType.DOCUMENT,
-      NOT: { name: { equals: README_DOCUMENT_NAME, mode: "insensitive" } },
     },
     select: {
       ...documentCoreSelect,
