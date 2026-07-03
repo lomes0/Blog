@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { User, UserDocument } from "@/types";
 import { PostState } from "../PostChips";
+import { seriesPositionOf } from "@/utils/posts/seriesGrouping";
 import { useDocumentURL } from "@/contexts/DocumentURLContext";
 
 /**
@@ -52,7 +53,7 @@ export const usePostState = (userDocument?: UserDocument, user?: User) => {
       const cloudDoc = userDocument?.cloud;
       return {
         series: cloudDoc?.series || null,
-        seriesOrder: cloudDoc?.seriesOrder || null,
+        seriesOrder: seriesPositionOf(cloudDoc?.series, cloudDoc?.id ?? ""),
       };
     })();
 

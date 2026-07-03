@@ -5,7 +5,6 @@ import * as React from "react";
 import { DocumentCreateInput, User, UserDocument } from "@/types";
 import { useCallback, useEffect, useState } from "react";
 import { useSelector } from "@/store";
-import { useErrorAnnounce } from "@/hooks/useErrorAnnounce";
 import DocumentCard from "./DocumentCard";
 import {
   Avatar,
@@ -31,15 +30,13 @@ const NewDocument: React.FC<{ cloudDocument?: Document }> = (
   { cloudDocument },
 ) => {
   const initialized = useSelector((state) => state.ui.initialized);
-  const { user, fetchNextSeriesOrder, forkDocument, createDocument } =
-    useCreateDocumentActions();
+  const { user, forkDocument, createDocument } = useCreateDocumentActions();
   const unauthenticated = initialized && !user;
   const isOnline = useOnlineStatus();
   const [input, setInput] = useState<Partial<DocumentCreateInput>>({
     published: true,
   });
   const [saveToCloud, setSaveToCloud] = useState(true);
-  const errorAnnounce = useErrorAnnounce();
   const pathname = usePathname();
   const baseId = pathname.split("/")[2]?.toLowerCase();
   const searchParams = useSearchParams();
@@ -49,7 +46,6 @@ const NewDocument: React.FC<{ cloudDocument?: Document }> = (
   const [base, setBase] = useState<UserDocument | undefined>(
     cloudDocument ? { id: cloudDocument.id, cloud: cloudDocument } : undefined,
   );
-  const [nextSeriesOrder, setNextSeriesOrder] = useState<number | null>(null);
 
   const updateInput = useCallback((partial: Partial<DocumentCreateInput>) => {
     setInput((prev) => ({ ...prev, ...partial }));
@@ -57,20 +53,6 @@ const NewDocument: React.FC<{ cloudDocument?: Document }> = (
 
   const { validating, validationErrors, hasErrors, updateHandle } =
     useHandleValidation({ updateInput });
-
-  useEffect(() => {
-    const fetchSeriesOrder = async () => {
-      if (!seriesId) return;
-      try {
-        const order = await fetchNextSeriesOrder(seriesId);
-        setNextSeriesOrder(order);
-      } catch (error) {
-        errorAnnounce("Failed to fetch series", error);
-        setNextSeriesOrder(1);
-      }
-    };
-    fetchSeriesOrder();
-  }, [seriesId, errorAnnounce, fetchNextSeriesOrder]);
 
   useEffect(() => {
     if (!isOnline || !user) setSaveToCloud(false);
@@ -118,9 +100,6 @@ const NewDocument: React.FC<{ cloudDocument?: Document }> = (
       type: "DOCUMENT",
       parentId: parentId || null,
       seriesId: seriesId || null,
-      seriesOrder: seriesId && nextSeriesOrder !== null
-        ? nextSeriesOrder
-        : null,
       createdAt,
       updatedAt: createdAt,
     };

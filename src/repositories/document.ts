@@ -52,7 +52,6 @@ const documentCoreSelect = {
   private: true,
   baseId: true,
   parentId: true,
-  sort_order: true,
   rank: true,
   head: true,
   type: true,
@@ -60,7 +59,6 @@ const documentCoreSelect = {
   background_image: true,
   tabLabel: true,
   seriesId: true,
-  seriesOrder: true,
 } as const;
 
 // Helper: map a raw prisma document row to a CloudDocument
@@ -406,8 +404,8 @@ const findCloudStorageUsageByAuthorId = async (authorId: string) => {
 const findDocumentChildren = async (parentId: string) => {
   return prisma.document.findMany({
     where: { parentId },
-    select: { id: true, name: true, sort_order: true },
-    orderBy: [{ sort_order: "asc" }, { createdAt: "asc" }],
+    select: { id: true, name: true, rank: true },
+    orderBy: [{ rank: "asc" }, { createdAt: "asc" }],
   });
 };
 

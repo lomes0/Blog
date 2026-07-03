@@ -144,7 +144,6 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
       updatedAt: now,
       type: "DOCUMENT",
       parentId: rootId,
-      sort_order: tabMetas.length,
       data: EMPTY_EDITOR_STATE as DocumentCreateInput["data"],
       revisions: [{
         id: revisionId,
@@ -166,7 +165,7 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     // Switch to the new tab (addTab does this) and open inline rename so the
     // user can name it right away.
     setRenamingTabId(id);
-  }, [user, rootId, tabMetas.length, dispatch]);
+  }, [user, rootId, dispatch]);
 
   const handleCloseRequest = useCallback((tabId: string) => {
     const meta = tabMetas.find((t) => t.id === tabId);
@@ -300,7 +299,6 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
       updatedAt: now,
       type: "DOCUMENT",
       parentId: rootId,
-      sort_order: tabMetas.length,
       data: source.data ?? (EMPTY_EDITOR_STATE as DocumentCreateInput["data"]),
       revisions: [
         {
@@ -322,7 +320,7 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     setTabMetas((prev) => [...prev, newMeta]);
     setMountedTabIds((prev) => new Set([...prev, id]));
     dispatch(actions.addTab(id));
-  }, [user, rootId, tabMetas.length, dispatch]);
+  }, [user, rootId, dispatch]);
 
   const handleMoveRequest = useCallback((tabId: string) => {
     setMoveDialogTabId(tabId);

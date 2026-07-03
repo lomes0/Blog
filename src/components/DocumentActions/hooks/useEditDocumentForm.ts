@@ -36,7 +36,6 @@ export function useEditDocumentForm(userDocument: UserDocument) {
     published: isPublished,
     collab: isCollab,
     background_image: document?.background_image || null,
-    sort_order: document?.sort_order || null,
     createdAt: document?.createdAt || new Date().toISOString(),
     status: currentStatus,
   });
@@ -71,7 +70,6 @@ export function useEditDocumentForm(userDocument: UserDocument) {
       published: isPublished,
       collab: isCollab,
       background_image: document?.background_image || null,
-      sort_order: document?.sort_order || null,
       createdAt: document?.createdAt || new Date().toISOString(),
       status: currentStatus,
     });
@@ -84,7 +82,6 @@ export function useEditDocumentForm(userDocument: UserDocument) {
     document?.background_image,
     document?.createdAt,
     document?.description,
-    document?.sort_order,
     handle,
     isCollab,
     isPrivate,

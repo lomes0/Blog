@@ -543,12 +543,9 @@ export const mergeCloudDocumentsIntoTabs = createAsyncThunk(
     try {
       const { targetId, sourceIds } = arg;
 
-      // Continue numbering after any tabs the target already has.
-      const existingChildren = await apiClient.documents.children(targetId) ??
-        [];
-      let nextOrder = existingChildren.length;
-
-      // Create a new child tab under the target, copying name + content.
+      // Create a new child tab under the target, copying name + content. Each
+      // is appended to the target's container by createDocument (via rank), so
+      // they keep insertion order without an explicit sort key.
       const createTab = async (
         name: string,
         data: SerializedEditorState,
@@ -564,7 +561,6 @@ export const mergeCloudDocumentsIntoTabs = createAsyncThunk(
           updatedAt: now,
           type: "DOCUMENT",
           parentId: targetId,
-          sort_order: nextOrder++,
           data,
           revisions: [{ id: revisionId, documentId: id, createdAt: now, data }],
         };
@@ -580,9 +576,11 @@ export const mergeCloudDocumentsIntoTabs = createAsyncThunk(
 
         // Flatten: the source's own child tabs (ordered) become siblings too.
         const childStubs = (await apiClient.documents.children(sourceId)) ?? [];
-        const orderedChildStubs = [...childStubs].sort(
-          (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
-        );
+        const orderedChildStubs = [...childStubs].sort((a, b) => {
+          const ar = a.rank ?? "";
+          const br = b.rank ?? "";
+          return ar < br ? -1 : ar > br ? 1 : 0;
+        });
 
         // 1. The source post itself → a tab.
         await createTab(

@@ -49,9 +49,6 @@ export function useDocumentSubmit(
     if (input.background_image !== document?.background_image) {
       partial.background_image = input.background_image;
     }
-    if (input.sort_order !== document?.sort_order) {
-      partial.sort_order = input.sort_order;
-    }
     if (input.createdAt && input.createdAt !== document?.createdAt) {
       partial.createdAt = input.createdAt;
     }

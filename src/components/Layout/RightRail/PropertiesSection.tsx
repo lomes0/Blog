@@ -8,6 +8,7 @@ import { shallowEqual } from "react-redux";
 import { DateDisplay } from "@/components/shared/DateDisplay";
 import { DocumentStatus } from "@/types";
 import { countWords } from "@/utils/editorContent";
+import { seriesPositionOf } from "@/utils/posts/seriesGrouping";
 import RailSection from "./RailSection";
 import { ICON_SIZE } from "@/theme/icons";
 
@@ -155,16 +156,19 @@ export default function PropertiesSection({
           />
         )}
 
-        {series && (
-          <KVRow
-            k="Series"
-            v={`${series.title}${
-              cloudDoc?.seriesOrder != null
-                ? ` · ${cloudDoc.seriesOrder}/${series.posts?.length ?? "?"}`
-                : ""
-            }`}
-          />
-        )}
+        {series && (() => {
+          const position = seriesPositionOf(series, cloudDoc?.id ?? "");
+          return (
+            <KVRow
+              k="Series"
+              v={`${series.title}${
+                position != null
+                  ? ` · ${position}/${series.posts?.length ?? "?"}`
+                  : ""
+              }`}
+            />
+          );
+        })()}
 
         {(cloudDoc?.handle || localDoc?.handle) && (
           <KVRow

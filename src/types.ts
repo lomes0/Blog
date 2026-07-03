@@ -74,12 +74,10 @@ export type EditorDocument = {
   type: "DOCUMENT";
   status?: DocumentStatus;
   revisions?: EditorDocumentRevision[];
-  sort_order?: number | null;
   rank?: string | null; // Manual position within container (fractional index)
   background_image?: string | null;
   tabLabel?: string | null; // Label for this doc's own tab in a tabbed post
   seriesId?: string | null; // For blog series functionality
-  seriesOrder?: number | null; // For ordering posts within series
 };
 
 export enum DocumentStatus {
@@ -98,7 +96,6 @@ export type Document = Omit<EditorDocument, "data" | "revisions"> & {
   parentId?: string | null;
   // Series support for blog posts
   seriesId?: string | null;
-  seriesOrder?: number | null;
   series?: Series | null;
 };
 
@@ -159,9 +156,7 @@ export type DocumentUpdateInput = Partial<EditorDocument> & {
   parentId?: string | null; // Explicitly include parentId for updates
   revisions?: EditorDocumentRevision[];
   background_image?: string | null;
-  sort_order?: number | null;
   seriesId?: string | null; // For blog series functionality
-  seriesOrder?: number | null; // For ordering posts within series
 };
 
 export interface EditorDocumentRevision {

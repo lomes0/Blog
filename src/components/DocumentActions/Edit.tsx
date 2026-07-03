@@ -9,13 +9,11 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   FormHelperText,
   IconButton,
   ListItemIcon,
   ListItemText,
   MenuItem,
-  Typography,
   useMediaQuery,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
@@ -29,7 +27,6 @@ import {
   EditDateFields,
   EditDescriptionField,
   EditHandleField,
-  EditSortOrderField,
   EditStatusField,
   EditTitleField,
 } from "./EditFields";
@@ -136,23 +133,6 @@ const EditDocumentDialog: React.FC<{
               onChange={(status) => updateInput({ status })}
               disabled={!isAuthor}
             />
-
-            {isAuthor && (
-              <>
-                <Divider sx={{ my: 2 }} />
-                <Typography
-                  variant="subtitle2"
-                  color="text.secondary"
-                  gutterBottom
-                >
-                  Sort Options
-                </Typography>
-                <EditSortOrderField
-                  value={input.sort_order}
-                  onChange={(sort_order) => updateInput({ sort_order })}
-                />
-              </>
-            )}
 
             {!cloudDocument && (
               <Box

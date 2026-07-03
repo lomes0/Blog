@@ -135,9 +135,7 @@ export async function importLocalBackupZip(
           ? (docExport.status as DocumentStatus)
           : undefined,
         background_image: docExport.background_image,
-        sort_order: docExport.sort_order,
         seriesId: docExport.seriesId,
-        seriesOrder: docExport.seriesOrder,
       };
 
       await documentDB.update(docRecord);

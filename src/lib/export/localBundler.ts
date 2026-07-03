@@ -120,9 +120,7 @@ export async function buildLocalBackupZip(): Promise<LocalBundleResult> {
       type: "DOCUMENT",
       status: doc.status ?? "ACTIVE",
       background_image: doc.background_image,
-      sort_order: doc.sort_order,
       seriesId: doc.seriesId,
-      seriesOrder: doc.seriesOrder,
       baseId: doc.baseId,
       parentId: doc.parentId,
       revisions: docRevisions.map((r) => ({

@@ -1,7 +1,6 @@
 "use client";
 import { useCallback } from "react";
 import { actions, useDispatch, useSelector } from "@/store";
-import { apiClient } from "@/api";
 import type { DocumentCreateInput } from "@/types";
 
 /**
@@ -11,22 +10,6 @@ import type { DocumentCreateInput } from "@/types";
 export function useCreateDocumentActions() {
   const dispatch = useDispatch();
   const user = useSelector((s) => s.user);
-
-  const fetchNextSeriesOrder = useCallback(
-    async (seriesId: string): Promise<number> => {
-      try {
-        const series = await apiClient.series.get(seriesId);
-        const maxOrder = (series?.posts ?? []).reduce(
-          (max, post) => Math.max(max, post.seriesOrder ?? 0),
-          0,
-        );
-        return maxOrder + 1;
-      } catch {
-        return 1;
-      }
-    },
-    [],
-  );
 
   const forkDocument = useCallback(
     async (
@@ -72,5 +55,5 @@ export function useCreateDocumentActions() {
     [dispatch, user],
   );
 
-  return { user, fetchNextSeriesOrder, forkDocument, createDocument };
+  return { user, forkDocument, createDocument };
 }

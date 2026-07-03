@@ -120,9 +120,7 @@ export const GET = withApiHandler(async (_request: Request) => {
       type: "DOCUMENT",
       status: (doc.status as "ACTIVE" | "DONE") ?? "ACTIVE",
       background_image: doc.background_image,
-      sort_order: doc.sort_order,
       seriesId: doc.seriesId,
-      seriesOrder: doc.seriesOrder,
       revisions,
       referencedAssets,
     };

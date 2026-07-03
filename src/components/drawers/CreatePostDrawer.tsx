@@ -36,7 +36,7 @@ const CreatePostDrawer: React.FC<CreatePostDrawerProps> = ({
   seriesTitle,
   onSuccess,
 }) => {
-  const { user, fetchNextSeriesOrder, createPost } = useCreatePostActions();
+  const { user, createPost } = useCreatePostActions();
   const router = useRouter();
   const isOnline = useOnlineStatus();
 
@@ -46,7 +46,6 @@ const CreatePostDrawer: React.FC<CreatePostDrawerProps> = ({
     collab: false,
   });
   const [saveToCloud, setSaveToCloud] = useState(true);
-  const [nextSeriesOrder, setNextSeriesOrder] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -70,12 +69,6 @@ const CreatePostDrawer: React.FC<CreatePostDrawerProps> = ({
     null,
     (value) => updateInput({ handle: value }),
   );
-
-  // Fetch next series order when drawer opens
-  React.useEffect(() => {
-    if (!open || !seriesId) return;
-    fetchNextSeriesOrder(seriesId).then(setNextSeriesOrder);
-  }, [open, seriesId, fetchNextSeriesOrder]);
 
   // Reset form when drawer closes
   React.useEffect(() => {
@@ -115,7 +108,6 @@ const CreatePostDrawer: React.FC<CreatePostDrawerProps> = ({
         type: "DOCUMENT",
         parentId: null,
         seriesId,
-        seriesOrder: nextSeriesOrder,
         createdAt,
         updatedAt: createdAt,
       };

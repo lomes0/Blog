@@ -321,7 +321,10 @@ export function PostsListView({
       for (const post of selectedMovablePosts) {
         if (!post.cloud) continue;
         await dispatch(
-          actions.updateCloudDocument({ id: post.id, partial: { seriesId } }),
+          actions.moveDocument({
+            id: post.id,
+            destination: seriesId ? { seriesId } : {},
+          }),
         );
       }
       selection.clearAll();

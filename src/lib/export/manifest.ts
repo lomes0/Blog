@@ -55,9 +55,7 @@ export interface DocumentExport {
   type: "DOCUMENT";
   status?: "ACTIVE" | "DONE";
   background_image?: string | null;
-  sort_order?: number | null;
   seriesId?: string | null;
-  seriesOrder?: number | null;
   revisions: EditorDocumentRevision[];
   /** Filenames of any attachment assets referenced in this document's Lexical state */
   referencedAssets: string[];

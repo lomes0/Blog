@@ -1,5 +1,6 @@
 "use client";
 import { Document } from "@/types";
+import { seriesPositionOf } from "@/utils/posts/seriesGrouping";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -123,7 +124,7 @@ const ViewDocument: React.FC<
     ? format(new Date(cloudDocument.updatedAt), "MMM d, yyyy")
     : null;
   const seriesTitle = cloudDocument.series?.title;
-  const seriesOrder = cloudDocument.seriesOrder;
+  const seriesOrder = seriesPositionOf(cloudDocument.series, cloudDocument.id);
   const seriesTotal = cloudDocument.series?.posts?.length;
 
   return (

@@ -23,10 +23,22 @@ export const getPostSeriesId = (doc: UserDocument): string | null => {
 };
 
 /**
- * Get the series order from a UserDocument
+ * A post's 1-based position within its series, derived from the manual `rank`
+ * ordering of the series' posts (replaces the former stored `seriesOrder`).
+ * Returns null if the doc isn't found in the series.
  */
-export const getPostSeriesOrder = (doc: UserDocument): number | null => {
-  return doc.cloud?.seriesOrder ?? doc.local?.seriesOrder ?? null;
+export const seriesPositionOf = (
+  series: Series | null | undefined,
+  docId: string,
+): number | null => {
+  if (!series?.posts?.length) return null;
+  const ordered = [...series.posts].sort((a, b) => {
+    const ar = a.rank ?? "";
+    const br = b.rank ?? "";
+    return ar < br ? -1 : ar > br ? 1 : a.id < b.id ? -1 : 1;
+  });
+  const idx = ordered.findIndex((p) => p.id === docId);
+  return idx === -1 ? null : idx + 1;
 };
 
 /**
@@ -288,7 +300,7 @@ export const deduplicateSeriesAcrossPartitions = <
     }
   });
 
-  // Sort posts within each series by seriesOrder and deduplicate by ID
+  // Sort posts within each series by rank and deduplicate by ID
   seriesAllPostsMap.forEach((posts, seriesId) => {
     // Remove duplicates by post ID
     const uniquePosts = Array.from(

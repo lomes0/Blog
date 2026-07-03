@@ -14,7 +14,7 @@ import { validate } from "uuid";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/series/[id]/posts → get posts in series (ordered by seriesOrder)
+// GET /api/series/[id]/posts → get posts in series (ordered by rank)
 export const GET = withApiHandler(
   async (request, props: { params: Promise<{ id: string }> }) => {
     const params = await props.params;
@@ -28,7 +28,7 @@ export const GET = withApiHandler(
       throw new ApiError(404, "Series not found");
     }
 
-    // Return posts in series ordered by seriesOrder
+    // Return posts in series ordered by rank
     return NextResponse.json({ data: series.posts });
   },
 );

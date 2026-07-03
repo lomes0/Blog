@@ -50,8 +50,7 @@ model Document {
   status DocumentStatus @default(ACTIVE)
 
   // Series support for blog posts
-  seriesId    String? @db.Uuid
-  seriesOrder Int? // Order of post within series
+  seriesId String? @db.Uuid
 
   // Background image for posts (optional)
   background_image String?
@@ -59,10 +58,6 @@ model Document {
   // For tabbed posts: the label shown on this document's own tab. Lets the
   // first (root) tab carry a name distinct from the post title in `name`.
   tabLabel String?
-
-  // Sort order for documents (legacy — superseded by `rank`, dropped after the
-  // ordering migration completes)
-  sort_order Int?
 
   // Manual position among siblings in this document's container (its series,
   // its parent tab-group, or the author's root list). Fractional-index key —
@@ -91,7 +86,6 @@ model Document {
   @@index([seriesId])
   @@index([authorId, published]) // Index for finding user's published posts
   @@index([published, type]) // Index for finding published posts/documents
-  @@index([seriesId, seriesOrder]) // Index for ordering posts within series
   @@index([seriesId, rank]) // Order of posts within a series
   @@index([parentId, rank]) // Order of child tabs within a tabbed post
   @@index([authorId, rank]) // Order of the author's root list
