@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import { Box, InputBase, Modal, Typography } from "@mui/material";
-import { alpha, useColorScheme } from "@mui/material/styles";
+import { useColorScheme } from "@mui/material/styles";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Eye,
@@ -237,7 +237,7 @@ const CommandPalette = () => {
       slotProps={{
         backdrop: {
           sx: {
-            backgroundColor: alpha("#0f172a", 0.5),
+            backgroundColor: "rgba(var(--mui-palette-common-blackChannel) / 0.5)",
             backdropFilter: "blur(2px)",
           },
         },
@@ -261,7 +261,7 @@ const CommandPalette = () => {
           bgcolor: "background.panel",
           border: 1,
           borderColor: "divider",
-          borderRadius: "14px",
+          borderRadius: 3,
           boxShadow: "0 18px 50px rgba(0,0,0,0.35)",
           overflow: "hidden",
           outline: "none",
@@ -292,7 +292,7 @@ const CommandPalette = () => {
               setActiveIndex(0);
             }}
             placeholder="Search posts or run a command…"
-            sx={{ fontSize: "0.95rem", color: "text.primary" }}
+            sx={{ typography: "body1", color: "text.primary" }}
           />
           <Box
             component="kbd"
@@ -300,7 +300,7 @@ const CommandPalette = () => {
               typography: "micro",
               px: 0.75,
               py: 0.25,
-              borderRadius: "6px",
+              borderRadius: 1.5,
               border: 1,
               borderColor: "divider",
               color: "text.secondary",
@@ -345,11 +345,11 @@ const CommandPalette = () => {
                       mx: 0.5,
                       px: 1.5,
                       py: 1,
-                      borderRadius: "8px",
+                      borderRadius: 2,
                       cursor: "pointer",
                       color: "text.primary",
                       bgcolor: selected
-                        ? (theme) => alpha(theme.palette.primary.main, 0.14)
+                        ? "rgba(var(--mui-palette-primary-mainChannel) / 0.14)"
                         : "transparent",
                     }}
                   >
