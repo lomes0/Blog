@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { Box, IconButton, Tooltip } from "@mui/material";
 import {
+  Command,
   History,
   Info,
   Link as LinkIcon,
@@ -12,6 +13,7 @@ import {
   Table,
 } from "lucide-react";
 import SettingsPanel from "./SettingsPanel";
+import { openCommandPalette } from "@/components/CommandPalette/CommandPalette";
 import { usePathname } from "next/navigation";
 import { actions, useDispatch, useSelector } from "@/store";
 import { type RailMode, useLayoutMode } from "@/contexts/LayoutModeContext";
@@ -220,13 +222,23 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
             <LinkIcon size={ICON_SIZE.dense} />
           </IconButton>
         </Tooltip>
+        <Tooltip title="Command palette" placement="left">
+          <IconButton
+            size="small"
+            onClick={openCommandPalette}
+            aria-label="Command palette"
+            sx={{ mt: "auto" }}
+          >
+            <Command size={ICON_SIZE.dense} />
+          </IconButton>
+        </Tooltip>
         <Tooltip title="Settings" placement="left">
           <IconButton
             size="small"
             color={settingsOpen ? "primary" : "default"}
             onClick={() => setSettingsOpen((prev) => !prev)}
             aria-label="Settings"
-            sx={{ mt: "auto", mb: 1 }}
+            sx={{ mb: 1 }}
           >
             <Settings size={ICON_SIZE.dense} />
           </IconButton>

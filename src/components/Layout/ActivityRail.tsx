@@ -5,13 +5,12 @@ import RouterLink from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { Avatar, Box, Tooltip } from "@mui/material";
-import { Command, Files, Search, Sparkles, StickyNote } from "lucide-react";
+import { Files, Search, Sparkles, StickyNote } from "lucide-react";
 import { actions, type RootState, useDispatch, useSelector } from "@/store";
 import type { SidebarView } from "@/types";
 import { ICON_SIZE } from "@/theme/icons";
 import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
 import { ACTIVITY_RAIL_W } from "./SideBar/constants";
-import { openCommandPalette } from "@/components/CommandPalette/CommandPalette";
 
 interface RailButtonProps {
   label: string;
@@ -70,8 +69,8 @@ const RailButton: React.FC<RailButtonProps> = (
 
 /**
  * Far-left activity rail. Switches the sidebar view (Explorer / Search),
- * navigates to the Notes workspace, toggles the AI panel, and opens the command
- * palette. Renders as the first grid column in AppLayoutContent.
+ * navigates to the Notes workspace, and toggles the AI panel. Renders as the
+ * first grid column in AppLayoutContent.
  */
 const ActivityRail: React.FC = () => {
   const dispatch = useDispatch();
@@ -173,16 +172,8 @@ const ActivityRail: React.FC = () => {
         <Sparkles size={ICON_SIZE.default} strokeWidth={1.8} />
       </RailButton>
 
-      {/* Spacer pushes the palette button to the bottom */}
+      {/* Spacer pushes the account button to the bottom */}
       <Box sx={{ flex: 1 }} />
-
-      <RailButton
-        label="Command palette"
-        active={false}
-        onClick={openCommandPalette}
-      >
-        <Command size={ICON_SIZE.default} strokeWidth={1.8} />
-      </RailButton>
 
       {/* Account — pinned to the very bottom of the rail. */}
       <Tooltip title={user ? user.name : "Sign In"} placement="right">
