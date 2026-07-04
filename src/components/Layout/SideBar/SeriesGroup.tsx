@@ -217,7 +217,10 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
       <Collapse in={isExpanded} timeout="auto">
         <Box
           sx={{
-            ml: sidebarOpen ? 3.25 : 0,
+            // Center the 2px guide line under the series chevron: the row's
+            // px:2 (16px) + half the 14px chevron = 23px, and the line's center
+            // is ml + 1, so ml = 22px (2.75).
+            ml: sidebarOpen ? 2.75 : 0,
             borderLeft: sidebarOpen ? "2px solid" : "none",
             borderLeftColor: "divider",
           }}
