@@ -9,11 +9,9 @@ import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
 import { useSidebarFontSize } from "./hooks/useSidebarFontSize";
 import { useSidebarActions } from "./hooks/useSidebarActions";
 import { SidebarHeader } from "./SidebarHeader";
-import { SidebarNav } from "./SidebarNav";
 import { SidebarFooter } from "./SidebarFooter";
 import { ActivePostsSection } from "./ActivePostsSection";
 import { SidebarSearchView } from "./SidebarSearchView";
-import { CollapsedRail } from "./CollapsedRail";
 import { PostContextMenu } from "./PostContextMenu";
 import { SeriesContextMenu } from "./SeriesContextMenu";
 import {
@@ -22,9 +20,6 @@ import {
 } from "@/utils/posts/seriesGrouping";
 import {
   ACTIVITY_RAIL_W,
-  COMPACT_WIDTH,
-  LAYER_FADE_DURATION,
-  SIDEBAR_EASING,
   SIDEBAR_WIDTH_TRANSITION,
 } from "./constants";
 
@@ -33,7 +28,6 @@ const SideBar: React.FC = () => {
 
   const {
     width,
-    sidebarMode,
     sidebarOpen: open,
     toggleSidebar,
     isMobile,
@@ -42,7 +36,6 @@ const SideBar: React.FC = () => {
     getEffectiveWidth,
   } = useSidebarWidth();
 
-  const isExpanded = sidebarMode === "full";
   const { sidebarFontSize } = useSidebarFontSize();
   const sidebarActions = useSidebarActions();
   const {
@@ -58,7 +51,7 @@ const SideBar: React.FC = () => {
     handleDeleteSeries,
   } = sidebarActions;
 
-  // Honor the OS "reduce motion" setting: drop the width slide and cross-fade.
+  // Honor the OS "reduce motion" setting: drop the width slide.
   const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 
   useKeyboardShortcuts({ onToggleSidebar: toggleSidebar, enabled: true });
@@ -80,25 +73,6 @@ const SideBar: React.FC = () => {
 
   const hasContent = Boolean(user) &&
     (filteredDocuments.length > 0 || seriesMap.size > 0);
-
-  const fade = reducedMotion ? 0 : LAYER_FADE_DURATION;
-
-  // Open and rail contents are stacked as two absolutely-positioned, fixed-width
-  // layers that cross-fade. The outgoing layer keeps its own width so nothing
-  // reflows/squishes while the container width animates; the hidden layer is
-  // inert (opacity 0 + pointer-events none) and the narrower container clips it.
-  const layerSx = (layerWidth: number, visible: boolean) => ({
-    position: "absolute" as const,
-    top: 0,
-    left: 0,
-    bottom: 0,
-    width: layerWidth,
-    display: "flex",
-    flexDirection: "column" as const,
-    opacity: visible ? 1 : 0,
-    pointerEvents: visible ? ("auto" as const) : ("none" as const),
-    transition: `opacity ${fade}s ${SIDEBAR_EASING}`,
-  });
 
   return (
     <Drawer
@@ -131,10 +105,18 @@ const SideBar: React.FC = () => {
       <Box
         sx={{ position: "relative", flex: 1, minHeight: 0, overflow: "hidden" }}
       >
-        {/* Open (expanded) layer — pinned to the user's preferred width. */}
-        <Box className="sb-layer-open" sx={layerSx(width, isExpanded)}>
-          <SidebarHeader open />
-          <SidebarNav expanded pathname={pathname} />
+        {/* Content is pinned to the user's preferred width so it clips cleanly
+            (rather than reflowing) while the paper animates open/closed. */}
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            width,
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <SidebarHeader view={sidebarView} />
           {sidebarView === "search"
             ? <SidebarSearchView pathname={pathname} />
             : hasContent
@@ -150,20 +132,9 @@ const SideBar: React.FC = () => {
             : <Box sx={{ flex: "1 1 auto", minHeight: 0 }} />}
           <SidebarFooter expanded />
         </Box>
-
-        {/* Collapsed rail layer — fixed at the compact width. */}
-        <Box className="sb-layer-rail" sx={layerSx(COMPACT_WIDTH, !isExpanded)}>
-          <SidebarHeader open={false} />
-          <SidebarNav expanded={false} pathname={pathname} />
-          <CollapsedRail
-            groupedActivePosts={groupedActivePosts}
-            pathname={pathname}
-          />
-          <SidebarFooter expanded={false} />
-        </Box>
       </Box>
 
-      {isExpanded && !isMobile && (
+      {open && !isMobile && (
         <Box
           onMouseDown={startResize}
           sx={{

@@ -1,12 +1,15 @@
 "use client";
 
 import React from "react";
+import RouterLink from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { Box, Tooltip } from "@mui/material";
 import { Command, Files, Search, Sparkles, StickyNote } from "lucide-react";
 import { actions, type RootState, useDispatch, useSelector } from "@/store";
 import type { SidebarView } from "@/types";
 import { ICON_SIZE } from "@/theme/icons";
+import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
 import { ACTIVITY_RAIL_W } from "./SideBar/constants";
 import { openCommandPalette } from "@/components/CommandPalette/CommandPalette";
 
@@ -76,9 +79,19 @@ const ActivityRail: React.FC = () => {
   const pathname = usePathname();
   const sidebarView = useSelector((state: RootState) => state.ui.sidebarView);
   const copilotOpen = useSelector((state: RootState) => state.ui.copilot.open);
+  const { sidebarOpen, setSidebarMode } = useSidebarWidth();
 
-  const selectView = (view: SidebarView) =>
-    dispatch(actions.setSidebarView(view));
+  // A view button both selects its view and toggles the sidebar: clicking the
+  // already-active view (while open) collapses the sidebar; clicking any other
+  // view — or any view while collapsed — opens the sidebar to that view.
+  const handleViewClick = (view: SidebarView) => {
+    if (sidebarOpen && sidebarView === view) {
+      setSidebarMode("hidden");
+    } else {
+      dispatch(actions.setSidebarView(view));
+      setSidebarMode("full");
+    }
+  };
 
   const notesActive = pathname.startsWith("/notes");
 
@@ -101,17 +114,45 @@ const ActivityRail: React.FC = () => {
         zIndex: (theme) => theme.zIndex.drawer + 1,
       }}
     >
+      {/* Wordmark logo, pinned above the view switchers. Links home. */}
+      <Tooltip title="Blog · Home" placement="right">
+        <Box
+          component={RouterLink}
+          href="/"
+          aria-label="Blog home"
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            height: 44,
+            flexShrink: 0,
+          }}
+        >
+          <Image src="/logo.svg" alt="Blog" width={28} height={28} />
+        </Box>
+      </Tooltip>
+      <Box
+        sx={{
+          width: 24,
+          height: "1px",
+          bgcolor: "divider",
+          alignSelf: "center",
+          my: 0.5,
+          flexShrink: 0,
+        }}
+      />
+
       <RailButton
         label="Explorer"
-        active={sidebarView === "explorer"}
-        onClick={() => selectView("explorer")}
+        active={sidebarOpen && sidebarView === "explorer"}
+        onClick={() => handleViewClick("explorer")}
       >
         <Files size={ICON_SIZE.default} strokeWidth={1.8} />
       </RailButton>
       <RailButton
         label="Search"
-        active={sidebarView === "search"}
-        onClick={() => selectView("search")}
+        active={sidebarOpen && sidebarView === "search"}
+        onClick={() => handleViewClick("search")}
       >
         <Search size={ICON_SIZE.default} strokeWidth={1.8} />
       </RailButton>

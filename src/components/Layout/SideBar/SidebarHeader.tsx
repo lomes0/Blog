@@ -1,56 +1,48 @@
+"use client";
 import React from "react";
-import RouterLink from "next/link";
-import Image from "next/image";
-import { Box, Tooltip } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
+import { Box, Typography } from "@mui/material";
+import type { SidebarView } from "@/types";
 import { SB_FONT } from "./constants";
 
+const VIEW_TITLES: Record<SidebarView, string> = {
+  explorer: "Explorer",
+  search: "Search",
+  notes: "Notes",
+};
+
 interface SidebarHeaderProps {
-  open: boolean;
+  view: SidebarView;
 }
 
-export const SidebarHeader: React.FC<SidebarHeaderProps> = ({ open }) => {
-  const theme = useTheme();
-
-  return (
-    <Box
+/**
+ * IDE-style view-title header (e.g. "EXPLORER") shown at the top of the sidebar.
+ * Uppercase, tracked, muted — the `overline` look from DESIGN.md §17.2, but
+ * sized via the `SB_FONT` ladder to honor the sidebar's user font-scale
+ * carve-out rather than the fixed `overline` variant.
+ */
+export const SidebarHeader: React.FC<SidebarHeaderProps> = ({ view }) => (
+  <Box
+    sx={{
+      display: "flex",
+      alignItems: "center",
+      minHeight: 36,
+      px: 2,
+      flexShrink: 0,
+    }}
+  >
+    <Typography
+      component="h2"
+      noWrap
       sx={{
-        display: "flex",
-        alignItems: "center",
-        padding: theme.spacing(1, 1),
-        justifyContent: open ? "space-between" : "center",
-        flexShrink: 0,
-        minHeight: 64,
+        fontSize: SB_FONT.meta,
+        fontWeight: 600,
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+        color: "text.disabled",
+        lineHeight: 1,
       }}
     >
-      {open && (
-        <Box
-          component={RouterLink}
-          href="/"
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            textDecoration: "none",
-            color: "inherit",
-          }}
-        >
-          <Image src="/logo.svg" alt="Editor Logo" width={32} height={32} />
-          <Box sx={{ ml: 1, fontWeight: "bold", fontSize: SB_FONT.emphasis }}>
-            Blog
-          </Box>
-        </Box>
-      )}
-      {!open && (
-        <Tooltip title="Blog">
-          <Box
-            component={RouterLink}
-            href="/"
-            sx={{ display: "flex", justifyContent: "center" }}
-          >
-            <Image src="/logo.svg" alt="Blog Logo" width={32} height={32} />
-          </Box>
-        </Tooltip>
-      )}
-    </Box>
-  );
-};
+      {VIEW_TITLES[view]}
+    </Typography>
+  </Box>
+);

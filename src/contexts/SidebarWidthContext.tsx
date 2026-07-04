@@ -11,7 +11,6 @@ import { useTheme } from "@mui/material/styles";
 import { useMediaQuery } from "@mui/material";
 import { usePathname } from "next/navigation";
 import {
-  COMPACT_WIDTH,
   SIDEBAR_DEFAULT_WIDTH,
   SIDEBAR_MAX_WIDTH,
   SIDEBAR_MIN_WIDTH,
@@ -19,7 +18,7 @@ import {
   SIDEBAR_STORAGE_KEY,
 } from "@/components/Layout/SideBar/constants";
 
-export type SidebarMode = "full" | "compact" | "hidden";
+export type SidebarMode = "full" | "hidden";
 
 interface SidebarWidthContextType {
   /** The user's preferred expanded width (persisted to localStorage) */
@@ -36,9 +35,7 @@ interface SidebarWidthContextType {
   sidebarMode: SidebarMode;
   /** Set sidebar mode directly */
   setSidebarMode: (mode: SidebarMode) => void;
-  /** Cycle full ↔ compact (desktop); used by chevron + hamburger */
-  toggleSidebarCompact: () => void;
-  /** Toggle hidden ↔ full (mobile open/close) */
+  /** Toggle hidden ↔ full (open/close) */
   toggleSidebar: () => void;
   /** True when sidebar is not hidden (Drawer open prop) */
   sidebarOpen: boolean;
@@ -77,22 +74,17 @@ export const SidebarWidthProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     if (isMobile) return;
     const saved = localStorage.getItem(SIDEBAR_MODE_KEY) as SidebarMode | null;
-    if (saved === "full" || saved === "compact") setSidebarModeState(saved);
+    if (saved === "full" || saved === "hidden") setSidebarModeState(saved);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setSidebarMode = useCallback((mode: SidebarMode) => {
     setSidebarModeState(mode);
-    if (mode === "full" || mode === "compact") {
+    if (mode === "full" || mode === "hidden") {
       localStorage.setItem(SIDEBAR_MODE_KEY, mode);
     }
   }, []);
 
-  // Cycle full ↔ compact (desktop).
-  const toggleSidebarCompact = useCallback(() => {
-    setSidebarMode(sidebarMode === "compact" ? "full" : "compact");
-  }, [sidebarMode, setSidebarMode]);
-
-  // Toggle hidden ↔ full (mobile).
+  // Toggle hidden ↔ full (open/close).
   const toggleSidebar = useCallback(() => {
     setSidebarModeState((prev) => (prev === "hidden" ? "full" : "hidden"));
   }, []);
@@ -110,7 +102,7 @@ export const SidebarWidthProvider: React.FC<{ children: React.ReactNode }> = ({
       const saved = localStorage.getItem(SIDEBAR_MODE_KEY) as
         | SidebarMode
         | null;
-      setSidebarModeState(saved === "compact" ? "compact" : "full");
+      setSidebarModeState(saved === "hidden" ? "hidden" : "full");
     }
   }, [isMobile]);
 
@@ -182,7 +174,6 @@ export const SidebarWidthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const getEffectiveWidth = useCallback((): number => {
     if (sidebarMode === "hidden") return 0;
-    if (sidebarMode === "compact") return COMPACT_WIDTH;
     return width;
   }, [width, sidebarMode]);
 
@@ -196,7 +187,6 @@ export const SidebarWidthProvider: React.FC<{ children: React.ReactNode }> = ({
         getEffectiveWidth,
         sidebarMode,
         setSidebarMode,
-        toggleSidebarCompact,
         toggleSidebar,
         sidebarOpen: sidebarMode !== "hidden",
         isMobile,

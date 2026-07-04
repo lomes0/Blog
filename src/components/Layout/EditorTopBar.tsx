@@ -19,7 +19,6 @@ import {
   FileText,
   LayoutDashboard,
   Library,
-  Menu as MenuIcon,
   Pencil,
   PenLine,
   Plus,
@@ -31,7 +30,6 @@ import RouterLink from "next/link";
 import { shallowEqual } from "react-redux";
 import { documentsSelectors, useSelector } from "@/store";
 import type { RootState } from "@/store";
-import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
 import { useTopBarActions } from "@/contexts/TopBarActionsContext";
 import { useTopBarTabs } from "@/contexts/TopBarTabsContext";
 import { ICON_SIZE } from "@/theme/icons";
@@ -46,7 +44,6 @@ interface BreadcrumbItem {
 const EditorTopBar: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
-  const { toggleSidebarCompact, sidebarMode } = useSidebarWidth();
   const { actions } = useTopBarActions();
   const { tabBar } = useTopBarTabs();
 
@@ -287,22 +284,6 @@ const EditorTopBar: React.FC = () => {
         bgcolor: "background.paper",
       }}
     >
-      {/* Hamburger */}
-      <Tooltip
-        title={sidebarMode === "full" ? "Collapse sidebar" : "Expand sidebar"}
-      >
-        <IconButton
-          size="small"
-          onClick={toggleSidebarCompact}
-          aria-label={sidebarMode === "full"
-            ? "Collapse sidebar"
-            : "Expand sidebar"}
-          sx={{ flexShrink: 0, color: "text.secondary", mr: 0.5 }}
-        >
-          <MenuIcon size={16} strokeWidth={2} />
-        </IconButton>
-      </Tooltip>
-
       {/* Edit pages: back-to-view button (view pages have their own Edit btn) */}
       {isEditPage && docId && (
         <Tooltip title="Back to view">
