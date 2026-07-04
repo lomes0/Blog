@@ -9,7 +9,6 @@ import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
 import { useSidebarFontSize } from "./hooks/useSidebarFontSize";
 import { useSidebarActions } from "./hooks/useSidebarActions";
 import { SidebarHeader } from "./SidebarHeader";
-import { SidebarFooter } from "./SidebarFooter";
 import { ActivePostsSection } from "./ActivePostsSection";
 import { SidebarSearchView } from "./SidebarSearchView";
 import { PostContextMenu } from "./PostContextMenu";
@@ -20,6 +19,7 @@ import {
 } from "@/utils/posts/seriesGrouping";
 import {
   ACTIVITY_RAIL_W,
+  SIDEBAR_MIN_WIDTH,
   SIDEBAR_WIDTH_TRANSITION,
 } from "./constants";
 
@@ -105,13 +105,13 @@ const SideBar: React.FC = () => {
       <Box
         sx={{ position: "relative", flex: 1, minHeight: 0, overflow: "hidden" }}
       >
-        {/* Content is pinned to the user's preferred width so it clips cleanly
-            (rather than reflowing) while the paper animates open/closed. */}
+        {/* Content is pinned to at least the resting width so it clips cleanly
+            (rather than squishing) while the paper animates/drags to 0. */}
         <Box
           sx={{
             position: "absolute",
             inset: 0,
-            width,
+            width: Math.max(width, SIDEBAR_MIN_WIDTH),
             display: "flex",
             flexDirection: "column",
           }}
@@ -130,7 +130,6 @@ const SideBar: React.FC = () => {
               />
             )
             : <Box sx={{ flex: "1 1 auto", minHeight: 0 }} />}
-          <SidebarFooter expanded />
         </Box>
       </Box>
 

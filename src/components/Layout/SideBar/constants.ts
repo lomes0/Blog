@@ -19,8 +19,14 @@ export const SIDEBAR_MODE_KEY = "ui.sidebarMode";
 /** Default width when sidebar is expanded; also the minimum resizable width */
 export const SIDEBAR_DEFAULT_WIDTH = 130;
 
-/** Minimum width when resizing — equal to the default so the user cannot shrink below it */
+/** Minimum resting width — the sidebar snaps back up to this when released above the collapse threshold */
 export const SIDEBAR_MIN_WIDTH = SIDEBAR_DEFAULT_WIDTH;
+
+/** Lowest width the handle can be dragged to (below MIN, into the "collapse zone") for visual feedback */
+export const SIDEBAR_DRAG_FLOOR = 44;
+
+/** Releasing the resize handle below this width collapses the sidebar to hidden */
+export const SIDEBAR_COLLAPSE_THRESHOLD = 90;
 
 /** Maximum width when resizing */
 export const SIDEBAR_MAX_WIDTH = 450;

@@ -19,10 +19,4 @@ export const styles = {
     pb: 0.5, // Reduced from 1 to 0.5
     position: "relative", // Added for proper positioning
   },
-  userBox: {
-    display: "flex",
-    flexDirection: "column",
-    pt: 0.25, // Reduced from 0.5 to 0.25
-    pb: 0.5, // Reduced from 1 to 0.5
-  },
 };

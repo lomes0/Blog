@@ -11,7 +11,9 @@ import { useTheme } from "@mui/material/styles";
 import { useMediaQuery } from "@mui/material";
 import { usePathname } from "next/navigation";
 import {
+  SIDEBAR_COLLAPSE_THRESHOLD,
   SIDEBAR_DEFAULT_WIDTH,
+  SIDEBAR_DRAG_FLOOR,
   SIDEBAR_MAX_WIDTH,
   SIDEBAR_MIN_WIDTH,
   SIDEBAR_MODE_KEY,
@@ -125,10 +127,12 @@ export const SidebarWidthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [width]);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
+    // Allow dragging below MIN into the "collapse zone" (down to the drag floor)
+    // so the panel can be dragged shut with live feedback; MAX still caps growth.
     const newWidth = Math.min(
       Math.max(
         startWidthRef.current + (e.clientX - startXRef.current),
-        SIDEBAR_MIN_WIDTH,
+        SIDEBAR_DRAG_FLOOR,
       ),
       SIDEBAR_MAX_WIDTH,
     );
@@ -137,11 +141,18 @@ export const SidebarWidthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const handleMouseUp = useCallback(() => {
     setIsResizing(false);
-    localStorage.setItem(
-      SIDEBAR_STORAGE_KEY,
-      currentWidthRef.current.toString(),
-    );
-  }, []);
+    if (currentWidthRef.current < SIDEBAR_COLLAPSE_THRESHOLD) {
+      // Dragged shut: collapse to hidden and restore the pre-drag width so the
+      // sidebar reopens at its previous size.
+      setWidth(startWidthRef.current);
+      setSidebarMode("hidden");
+    } else {
+      // Otherwise snap back up to at least MIN and persist the resting width.
+      const resting = Math.max(currentWidthRef.current, SIDEBAR_MIN_WIDTH);
+      setWidth(resting);
+      localStorage.setItem(SIDEBAR_STORAGE_KEY, resting.toString());
+    }
+  }, [setSidebarMode]);
 
   useEffect(() => {
     if (!isResizing) return;

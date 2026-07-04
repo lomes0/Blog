@@ -4,7 +4,7 @@ import React from "react";
 import RouterLink from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { Box, Tooltip } from "@mui/material";
+import { Avatar, Box, Tooltip } from "@mui/material";
 import { Command, Files, Search, Sparkles, StickyNote } from "lucide-react";
 import { actions, type RootState, useDispatch, useSelector } from "@/store";
 import type { SidebarView } from "@/types";
@@ -79,6 +79,7 @@ const ActivityRail: React.FC = () => {
   const pathname = usePathname();
   const sidebarView = useSelector((state: RootState) => state.ui.sidebarView);
   const copilotOpen = useSelector((state: RootState) => state.ui.copilot.open);
+  const user = useSelector((state: RootState) => state.user);
   const { sidebarOpen, setSidebarMode } = useSidebarWidth();
 
   // A view button both selects its view and toggles the sidebar: clicking the
@@ -181,6 +182,28 @@ const ActivityRail: React.FC = () => {
       >
         <Command size={ICON_SIZE.default} strokeWidth={1.8} />
       </RailButton>
+
+      {/* Account — pinned to the very bottom of the rail. */}
+      <Tooltip title={user ? user.name : "Sign In"} placement="right">
+        <Box
+          component={RouterLink}
+          href={user ? "/dashboard" : "/api/auth/signin"}
+          aria-label={user ? user.name : "Sign In"}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            height: 44,
+            flexShrink: 0,
+          }}
+        >
+          <Avatar
+            alt={user?.name}
+            src={user?.image ?? undefined}
+            sx={{ width: 28, height: 28 }}
+          />
+        </Box>
+      </Tooltip>
     </Box>
   );
 };
