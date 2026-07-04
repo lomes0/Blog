@@ -17,6 +17,8 @@ import "@fontsource/public-sans/700.css";
 // active color scheme automatically — no hand-maintained html.dark overrides.
 declare module "@mui/material/styles" {
   interface TypeBackground {
+    /** Far-left activity rail — recessed below `sidebar` (VS Code depth) */
+    rail: string;
     /** Left nav / file tree — recessed below `default` */
     sidebar: string;
     /** Right Copilot panel / rail — distinct from `paper` */
@@ -71,6 +73,7 @@ const theme = createTheme({
         background: {
           default: "#ffffff",
           paper: "#f8fafc",
+          rail: "#eceef2",
           sidebar: "#f8fafc",
           panel: "#fbfcfe",
           input: "#ffffff",
@@ -100,6 +103,7 @@ const theme = createTheme({
         background: {
           default: "#0f121a",
           paper: "#161c29",
+          rail: "#080a11",
           sidebar: "#0c0f18",
           panel: "#0d1018",
           input: "#131621",

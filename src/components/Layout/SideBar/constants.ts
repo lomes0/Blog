@@ -49,8 +49,10 @@ export const LAYER_FADE_DURATION = 0.2;
 export const CHEVRON_TRANSITION = `transform .22s ${SIDEBAR_EASING}`;
 
 /**
- * Monospace stack for IDE file-tree filenames (the design's ".md" naming). No
- * mono webfont is bundled, so use the platform monospace stack — dependency-free.
+ * Monospace stack for IDE file-system cues (`.md` filenames, folder paths,
+ * palette shortcuts, front-matter). Leads with **Cascadia** — already bundled
+ * for editor code blocks (`@font-face` in globals.css) — then the platform
+ * stack as fallback. See DESIGN.md §17.2. Reserved for file cues, never prose.
  */
 export const MONO_FONT =
-  "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+  '"Cascadia", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
