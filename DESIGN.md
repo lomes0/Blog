@@ -62,8 +62,9 @@ exposed as MUI CSS variables (`var(--mui-palette-*)`).
 | --------------- | ---------------------------------- | --------- | --------- |
 | Canvas / page   | `--mui-palette-background-default` | `#ffffff` | `#0f121a` |
 | Surface / paper | `--mui-palette-background-paper`   | `#f8fafc` | `#161c29` |
+| Activity rail   | `--mui-palette-background-rail`    | `#eceef2` | `#080a11` |
 | Sidebar / nav   | `--mui-palette-background-sidebar` | `#f8fafc` | `#0c0f18` |
-| Panel / rail    | `--mui-palette-background-panel`   | `#fbfcfe` | `#0d1018` |
+| Panel (Copilot) | `--mui-palette-background-panel`   | `#fbfcfe` | `#0d1018` |
 | Input field     | `--mui-palette-background-input`   | `#ffffff` | `#131621` |
 | Divider         | `--mui-palette-divider`            | `#e2e8f0` | `#242b3c` |
 
@@ -206,6 +207,13 @@ Do **not** introduce arbitrary pixel values when an MUI spacing unit exists.
 | Circular / avatar           | `"50%"`                                            | avatar-like elements                         |
 | Image within cards          | `4px` (`borderRadius: 4` as a raw px value)        | `cardTheme.image.borderRadius`               |
 | Fine-grained card border    | `6` (MUI units)                                    | `createCardTheme`                            |
+
+> **`sx` multiples are ×4, not ×8.** There is **no `shape.borderRadius`
+> override**, so MUI's default `4px` base applies: `borderRadius: 1` → **4px**,
+> `1.5` → 6px, `2` → 8px, `2.5` → 10px, `3` → 12px. (Component overrides set
+> Card/Button/Paper `root` to a raw `8px` and Chip to `6px`.) **Canonical inline
+> radii:** controls/chips `1.5` (6px), cards/buttons/panels `2` (8px), floating
+> overlays `2.5`–`3` (10–12px), images `1` (4px), pills/circular `"50%"`.
 
 **Never use values outside this set** without a strong reason.
 
@@ -446,6 +454,88 @@ empty-state illustrations). Never change stroke width in dense UI.
 `src/editor/plugins/ToolbarPlugin/Tools/TableTools.tsx` for 31 custom Google
 Material Symbols paths. This is intentional. The `@mui/icons-material` package
 has been removed; `@mui/material` stays.
+
+---
+
+## 17. IDE Surface Spec (chrome conformance map)
+
+The app shell is an IDE: **activity rail · sidebar · editor top bar · tabs ·
+command palette · status bar · Copilot panel**. These surfaces must read as **one
+system**. This section pins the exact token for every chrome element so the
+whole-app consistency sweep has a single, unambiguous target. Sections 2–6 define
+the tokens; this section says **which token goes where**. Conform code to this —
+no ad-hoc `fontSize`, `rgba()`, or radius literals in chrome.
+
+### 17.1 Region surfaces & borders
+
+| Region                        | Background token                   | Border                          |
+| ----------------------------- | ---------------------------------- | ------------------------------- |
+| Activity rail (far left, 54px)| `background.rail` (recessed/darker)| `1px solid divider` (right)     |
+| Sidebar / Explorer / Search   | `background.sidebar`               | `1px solid divider` (right)     |
+| Editor top bar                | `background.default`               | `1px solid divider` (bottom)    |
+| Editor body / canvas          | `background.default`               | none                            |
+| Command palette overlay       | `background.paper`                 | `1px solid divider`, elev. shadow |
+| Copilot / AI panel + RightRail| `background.panel`                 | `1px solid divider` (left)      |
+| Status bar (bottom, 26px)     | `background.sidebar`               | `1px solid divider` (top)       |
+| Inputs (search, palette field)| `background.input`                 | `1px solid divider`             |
+
+### 17.2 Typography per element (no hard-coded sizes)
+
+Reach the scale via `<Typography variant>` or `sx={{ typography: "…" }}` — never
+a literal `fontSize`.
+
+| Element                                   | Variant     | Notes                              |
+| ----------------------------------------- | ----------- | ---------------------------------- |
+| Section headers ("EXPLORER", "AI ASSISTANT")| `overline`| uppercase, tracked, `text.disabled`|
+| File/tree rows, tab labels, search results| `dense`     | mono stack for `*.md` names        |
+| Breadcrumb, top-bar controls              | `dense`     |                                    |
+| Status-bar items, counts, meta chips, dirty-dot labels | `micro` | 11px                     |
+| Palette command labels                    | `body2`     |                                    |
+| Palette shortcut hints / `esc` chip       | `micro`     | mono                               |
+| Post title (front-matter / doc)           | `h4`/`h5`   | per existing scale                 |
+
+Monospace uses **Cascadia** (already bundled for code blocks; `@font-face` in
+`globals.css`) via `MONO_FONT` (`SideBar/constants.ts` =
+`"Cascadia", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`). It is
+reserved for **file-system cues only**: `*.md` filenames, folder/path strings,
+palette shortcuts, front-matter. Never for prose or generic labels.
+
+### 17.3 Interaction state tints (one vocabulary everywhere)
+
+No hand-mixed `rgba()`. Every rail button, tree row, tab, menu item, and list
+result uses the same states:
+
+| State          | Token / pattern                                              |
+| -------------- | ------------------------------------------------------------ |
+| Rest           | `transparent`                                                |
+| Hover          | `action.hover`                                               |
+| Selected / active row | `action.selected`                                     |
+| Active accent bar (rail item, active tab, active file) | 2px `primary.main` inset bar via `::before` |
+| Scheme-aware accent tint (when a literal is unavoidable) | `rgba(var(--mui-palette-primary-mainChannel) / <a>)` |
+| Focus ring     | `box-shadow: 0 0 0 2px rgba(var(--mui-palette-primary-mainChannel) / 0.6)` inset for dense chrome; `3px` at `0.25` for cards (§10) |
+
+### 17.4 Radius & density
+
+| Element                        | Radius                | Height / metric        |
+| ------------------------------ | --------------------- | ---------------------- |
+| Rail icon button               | `1.5` (6px)           | 44px tall, full width  |
+| Tree / list / result row       | `1.5` (6px)           | ~28–32px               |
+| Tab                            | `1.5` (6px) top only  | matches top-bar height |
+| Top-bar search pill, inputs    | `1.5` (6px)           | ~32px                  |
+| Palette overlay                | `3` (12px)            | —                      |
+| Floating menus (block/align)   | `2.5` (10px)          | —                      |
+| Buttons / cards / panels       | `2` (8px)             | —                      |
+
+Icon sizes come from `ICON_SIZE` (§16): rail = `default` (24), dense chrome
+(tree/tabs/toolbar) = `dense` (18), inline-with-text = `inline` (14),
+meta/counters = `micro` (12). Never raw numbers.
+
+### 17.5 Sweep rule
+
+When touching any chrome file: replace every hard-coded `fontSize` with a variant
+(17.2), every `rgba()` state fill with a token (17.3), and every off-scale
+`borderRadius` with the canonical value (17.4 / §5). If a needed size is missing,
+**add a theme variant** — do not inline a literal (§3.1).
 
 ---
 
