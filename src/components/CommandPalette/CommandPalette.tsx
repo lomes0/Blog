@@ -24,6 +24,9 @@ import {
 import { actions, type RootState, useDispatch, useSelector } from "@/store";
 import { selectAllPosts } from "@/store/selectors/postsSelectors";
 import { ICON_SIZE } from "@/theme/icons";
+import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
+import { RAIL_COMPACT_W, useLayoutMode } from "@/contexts/LayoutModeContext";
+import { ACTIVITY_RAIL_W } from "@/components/Layout/SideBar/constants";
 
 /**
  * Custom window event other entry points (title-bar search, activity rail,
@@ -60,6 +63,11 @@ const CommandPalette = () => {
   const posts = useSelector(selectAllPosts);
   const series = useSelector((state: RootState) => state.series);
   const copilotOpen = useSelector((state: RootState) => state.ui.copilot.open);
+
+  // Layout column widths (same source the grid in AppLayoutContent uses), so the
+  // palette can center over the main content column instead of the viewport.
+  const { getEffectiveWidth } = useSidebarWidth();
+  const { railMode, railWidth, copilotWidth } = useLayoutMode();
 
   // Current document id from the URL (edit/view routes), used by the mode switch.
   const segments = pathname.split("/").filter(Boolean);
@@ -229,6 +237,18 @@ const CommandPalette = () => {
     el?.scrollIntoView({ block: "nearest" });
   }, [activeIndex]);
 
+  // The Modal portals to <body>, so it centers on the whole viewport. The app's
+  // left chrome (activity rail + sidebar) and right chrome (copilot panel +
+  // right rail) are asymmetric, which pushes that viewport-center off the actual
+  // editing area. Shift the dialog right by half the (left − right) chrome
+  // difference so it sits centered over the main content column.
+  const railW = railMode === "full"
+    ? railWidth + RAIL_COMPACT_W
+    : RAIL_COMPACT_W;
+  const copilotW = copilotOpen ? copilotWidth : 0;
+  const contentOffsetX =
+    (ACTIVITY_RAIL_W + getEffectiveWidth() - copilotW - railW) / 2;
+
   return (
     <Modal
       open={open}
@@ -256,6 +276,8 @@ const CommandPalette = () => {
         sx={{
           width: "min(560px, calc(100vw - 32px))",
           maxHeight: "60vh",
+          // Center over the main content column rather than the viewport.
+          transform: `translateX(${contentOffsetX}px)`,
           display: "flex",
           flexDirection: "column",
           bgcolor: "background.panel",
