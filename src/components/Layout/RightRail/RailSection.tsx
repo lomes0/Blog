@@ -68,7 +68,7 @@ const RailSection: React.FC<RailSectionProps> = ({
             size="small"
             sx={{
               height: 16,
-              fontSize: "0.65rem",
+              typography: "micro",
               "& .MuiChip-label": { px: 0.75 },
             }}
           />

@@ -101,14 +101,14 @@ export default function RevisionsSection({
             size="small"
             variant={tabFilter === "this" ? "filled" : "outlined"}
             onClick={() => setTabFilter("this")}
-            sx={{ height: 20, fontSize: "0.68rem", cursor: "pointer" }}
+            sx={{ height: 20, typography: "micro", cursor: "pointer" }}
           />
           <Chip
             label="All tabs"
             size="small"
             variant={tabFilter === "all" ? "filled" : "outlined"}
             onClick={() => setTabFilter("all")}
-            sx={{ height: 20, fontSize: "0.68rem", cursor: "pointer" }}
+            sx={{ height: 20, typography: "micro", cursor: "pointer" }}
           />
         </Box>
       )}
@@ -157,7 +157,7 @@ export default function RevisionsSection({
                     <Typography
                       variant="caption"
                       color="text.secondary"
-                      sx={{ fontSize: "0.65rem" }}
+                      sx={{ typography: "micro" }}
                     >
                       <DateDisplay date={rev.createdAt} variant="full" />
                     </Typography>
@@ -170,7 +170,7 @@ export default function RevisionsSection({
                     label={isCloud ? "Cloud" : "Local"}
                     sx={{
                       height: 16,
-                      fontSize: "0.62rem",
+                      typography: "micro",
                       "& .MuiChip-label": { px: 0.5 },
                     }}
                   />

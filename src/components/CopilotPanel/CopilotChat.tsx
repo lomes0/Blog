@@ -513,7 +513,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
                 key={m.id}
                 selected={m.id === llmConfig.model}
                 onClick={() => handleModelSelect(m.id, m.provider)}
-                sx={{ fontSize: "0.8rem" }}
+                sx={{ typography: "dense" }}
               >
                 <Box
                   component="span"

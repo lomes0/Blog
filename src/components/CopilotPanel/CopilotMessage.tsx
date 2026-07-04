@@ -181,7 +181,7 @@ const CopilotMessage: React.FC<CopilotMessageProps> = (
             label="Applied"
             color="success"
             variant="outlined"
-            sx={{ mt: 0.5, height: 20, fontSize: "0.7rem" }}
+            sx={{ mt: 0.5, height: 20, typography: "micro" }}
           />
         )}
       </Box>

@@ -149,7 +149,7 @@ export default function OutlineSection({ activeDocId }: OutlineSectionProps) {
                 sx={{
                   display: "block",
                   textAlign: "left",
-                  fontSize: h.level === 2 ? "0.78rem" : "0.72rem",
+                  typography: h.level === 2 ? "dense" : "micro",
                   pl: h.level === 3 ? 2 : 0.75,
                   py: 0.25,
                   color: "text.secondary",

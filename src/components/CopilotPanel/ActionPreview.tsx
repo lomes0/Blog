@@ -59,7 +59,7 @@ const ActionPreview: React.FC<ActionPreviewProps> = (
         overflowWrap: "anywhere",
         ...(mono && {
           fontFamily: "monospace",
-          fontSize: "0.75rem",
+          typography: "dense",
           maxHeight: 96,
           overflow: "hidden",
         }),

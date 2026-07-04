@@ -161,7 +161,7 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
             onClick={handleAcceptAll}
             sx={{
               textTransform: "none",
-              fontSize: "0.7rem",
+              typography: "micro",
               py: 0.25,
               px: 1,
               flexShrink: 0,
@@ -196,7 +196,7 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
         >
           {history.length === 0
             ? (
-              <MenuItem disabled sx={{ fontSize: "0.8rem" }}>
+              <MenuItem disabled sx={{ typography: "dense" }}>
                 No past conversations
               </MenuItem>
             )

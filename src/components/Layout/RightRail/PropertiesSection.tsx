@@ -103,7 +103,7 @@ export default function PropertiesSection({
           sx={{
             gridColumn: "1 / -1",
             color: "text.disabled",
-            fontSize: "0.62rem",
+            typography: "micro",
             letterSpacing: "0.06em",
             textTransform: "uppercase",
             mb: 0.25,
@@ -123,7 +123,7 @@ export default function PropertiesSection({
                 color={(statusColors[status] as "info" | "success") ??
                   "default"}
                 variant="outlined"
-                sx={{ height: 18, fontSize: "0.65rem" }}
+                sx={{ height: 18, typography: "micro" }}
               />
             }
           />
@@ -206,7 +206,7 @@ export default function PropertiesSection({
             variant="caption"
             sx={{
               color: "info.main",
-              fontSize: "0.62rem",
+              typography: "micro",
               letterSpacing: "0.06em",
               textTransform: "uppercase",
               display: "block",
