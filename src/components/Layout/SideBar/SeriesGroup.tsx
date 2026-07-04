@@ -2,6 +2,7 @@ import React from "react";
 import {
   Box,
   Collapse,
+  IconButton,
   ListItem,
   ListItemButton,
   ListItemIcon,
@@ -9,7 +10,7 @@ import {
   TextField,
   Tooltip,
 } from "@mui/material";
-import { ChevronRight, Folder, FolderOpen } from "lucide-react";
+import { ArrowUpRight, ChevronRight, Folder, FolderOpen } from "lucide-react";
 import type { Series } from "@/types";
 import type { SeriesGroupItem } from "@/utils/posts/seriesGrouping";
 import type {
@@ -71,16 +72,28 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
 
   return (
     <Box sx={{ mt: groupIndex > 0 ? 0.5 : 0, mb: 0.5 }}>
-      <ListItem disablePadding sx={{ display: "block" }}>
+      <ListItem
+        disablePadding
+        sx={{
+          display: "block",
+          "& .open-btn": { opacity: 0, transition: "opacity 0.15s" },
+          "&:hover .open-btn": { opacity: 1 },
+        }}
+      >
         <Tooltip
           title={sidebarOpen ? "" : group.series.title}
           placement="right"
         >
           <ListItemButton
-            {...(isRenaming ? {} : {
-              component: SafeNavigationLink,
-              href: `/posts/${group.series.id}`,
-            })}
+            // The row no longer navigates: single-click toggles the folder
+            // open/closed (VS Code tree behavior). The series page opens from
+            // the hover "open" button on the right. Double-click still renames,
+            // so a double-click fires two toggles (net no change) before the
+            // rename input mounts — an accepted one-frame flicker.
+            aria-expanded={isExpanded}
+            onClick={() => {
+              if (!isRenaming) onToggle();
+            }}
             onContextMenu={(e) =>
               handleSeriesContextMenu(e, group.series.id)}
             onDoubleClick={(e) => {
@@ -110,18 +123,13 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
             }}
           >
             <ListItemIcon
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onToggle();
-              }}
               sx={{
                 minWidth: 0,
                 mr: 0.5,
                 justifyContent: "center",
-                cursor: "pointer",
                 // Single chevron rotated 0deg -> 90deg on expand (design spec),
-                // rather than swapping two glyphs.
+                // rather than swapping two glyphs. The whole row toggles, so the
+                // chevron is a persistent visual indicator, not its own target.
                 "& > svg": {
                   transition: CHEVRON_TRANSITION,
                   transform: isExpanded ? "rotate(90deg)" : "none",
@@ -153,7 +161,7 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
                 onChange={(e) => setSeriesRenameValue(e.target.value)}
                 onBlur={handleSeriesRenameBlur}
                 onKeyDown={handleSeriesRenameKeyDown}
-                onClick={(e) => e.preventDefault()}
+                onClick={(e) => e.stopPropagation()}
                 size="small"
                 variant="standard"
                 fullWidth
@@ -214,6 +222,29 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
                   sx: { display: "block", minWidth: 0, width: "100%" },
                 }}
               />
+            )}
+            {sidebarOpen && !isRenaming && (
+              <Tooltip title="Open series" placement="right">
+                <IconButton
+                  className="open-btn"
+                  aria-label="Open series"
+                  size="small"
+                  // A real link (not the row): supports Cmd/Ctrl-click and keeps
+                  // navigation off the row, which now only toggles.
+                  component={SafeNavigationLink}
+                  href={`/posts/${group.series.id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  sx={{
+                    p: 0.25,
+                    ml: 0.5,
+                    mr: -0.25,
+                    color: "text.secondary",
+                    "&:hover": { bgcolor: "action.hover" },
+                  }}
+                >
+                  <ArrowUpRight size={ICON_SIZE.micro} />
+                </IconButton>
+              </Tooltip>
             )}
           </ListItemButton>
         </Tooltip>
