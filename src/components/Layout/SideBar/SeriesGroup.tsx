@@ -184,10 +184,12 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
               // The item count doubles as the "open series" link: clicking it
               // navigates to /posts/{id} (a real anchor, so Cmd/Ctrl-click works)
               // while stopPropagation keeps the click off the row, which toggles.
-              // Underlines on hover to read as a link. The wrapper span holds the
-              // Tooltip ref; the link preserves the original two-level em cascade
-              // (SB_FONT.body nested under SB_FONT.meta, weight 500) so the number
-              // renders at the same size as before.
+              // On hover it reads as a bordered pill (6px chip radius): a
+              // transparent border + padding are always present so the row never
+              // reflows, and only the border color/text brighten on hover. The
+              // wrapper span holds the Tooltip ref; the link preserves the
+              // original two-level em cascade (SB_FONT.body nested under
+              // SB_FONT.meta, weight 500) so the number renders at the same size.
               <Tooltip title="Open series" placement="right">
                 <Box
                   component="span"
@@ -204,7 +206,24 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
                       fontVariantNumeric: "tabular-nums",
                       textDecoration: "none",
                       cursor: "pointer",
-                      "&:hover": { textDecoration: "underline" },
+                      display: "inline-flex",
+                      alignItems: "center",
+                      px: 0.5,
+                      py: 0.125,
+                      border: "1px solid transparent",
+                      borderRadius: 1.5,
+                      transition: (t) =>
+                        t.transitions.create(
+                          ["border-color", "background-color", "color"],
+                          {
+                            duration: t.transitions.duration.shortest,
+                          },
+                        ),
+                      "&:hover": {
+                        borderColor: "primary.main",
+                        backgroundColor: "action.hover",
+                        color: "text.primary",
+                      },
                     }}
                   >
                     <Box component="span" sx={{ fontSize: SB_FONT.body }}>
