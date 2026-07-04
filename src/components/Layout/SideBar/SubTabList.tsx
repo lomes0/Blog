@@ -12,7 +12,7 @@ import { FilePen } from "lucide-react";
 import { actions, useDispatch } from "@/store";
 import { ICON_SIZE } from "@/theme/icons";
 import { SafeNavigationLink } from "./SafeNavigationLink";
-import { MONO_FONT, SB_FONT } from "./constants";
+import { MONO_FONT, SB_FONT, SB_ITEM_RADIUS } from "./constants";
 import type { PostItemActions } from "./hooks/useSidebarActions";
 
 export interface SubTabEntry {
@@ -128,7 +128,7 @@ export const SubTabList: React.FC<SubTabListProps> = (
                   gap: "6px",
                   py: "3px",
                   px: "7px",
-                  borderRadius: 1.5,
+                  borderRadius: SB_ITEM_RADIUS,
                   fontSize: SB_FONT.meta,
                 }}
               >

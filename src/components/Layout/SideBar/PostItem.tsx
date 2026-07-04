@@ -11,7 +11,6 @@ import {
   TextField,
   Tooltip,
 } from "@mui/material";
-import { alpha } from "@mui/material/styles";
 import { CloudUpload, FileText, Pencil } from "lucide-react";
 import { actions, type RootState, useDispatch, useSelector } from "@/store";
 import { selectChildDocumentsByParent } from "@/store/selectors/layoutSelectors";
@@ -21,7 +20,7 @@ import type { PostItemActions } from "./hooks/useSidebarActions";
 import { type SubTabEntry, SubTabList } from "./SubTabList";
 import { triggerSave } from "../../EditDocument/saveRegistry";
 import { ICON_SIZE } from "@/theme/icons";
-import { MONO_FONT, SB_FONT } from "./constants";
+import { MONO_FONT, SB_FONT, SB_ITEM_RADIUS } from "./constants";
 
 const EMPTY_CHILDREN: UserDocument[] = [];
 const EMPTY_TAB_ENTRIES: SubTabEntry[] = [];
@@ -153,7 +152,9 @@ export const PostItem = memo(
       : isNew
       ? "success.main"
       : "text.secondary";
-    const nameWeight = isSelected ? 600 : 500;
+    // Select is carried by the filled pill alone — no weight bump (matches the
+    // sub-tab treatment), so the resting weight holds whether selected or not.
+    const nameWeight = 500;
 
     // Auto-reveal a post's tabs when it becomes the open document, so opening a
     // tabbed post still surfaces its tabs. The user can then collapse them via
@@ -240,35 +241,22 @@ export const PostItem = memo(
               if (sidebarOpen) handleDoubleClick(e, post.id, docName);
             }}
             sx={{
-              position: "relative",
               minHeight: inSeries ? 26 : 30,
               justifyContent: sidebarOpen ? "initial" : "center",
               overflow: "hidden",
+              // Rounded "pill" select shared with sub-tabs and series rows.
+              borderRadius: SB_ITEM_RADIUS,
               // Top-level rows use the same left padding as a SeriesGroup row
               // (px: 2) so the post icon lines up under the series chevron;
               // in-series rows trim it since they're already nested.
               ...(inSeries ? { pl: 0.75, pr: 2 } : { pl: 2, pr: 2 }),
               py: inSeries ? 0.25 : 0.375,
-              // IDE active-file cue: an inset accent bar on the row's left edge.
-              "&.Mui-selected::before": {
-                content: '""',
-                position: "absolute",
-                left: 0,
-                top: 4,
-                bottom: 4,
-                width: 2,
-                borderRadius: 2,
-                bgcolor: "primary.main",
-              },
+              "&:hover": { bgcolor: "action.hover" },
+              // Selected = soft filled pill only: no accent bar, no weight bump —
+              // the same low-chrome treatment the sub-tabs use.
               "&.Mui-selected": {
                 bgcolor: "action.selected",
-                "&:hover": {
-                  bgcolor: (theme) =>
-                    alpha(
-                      theme.palette.action.active,
-                      inSeries ? 0.12 : 0.15,
-                    ),
-                },
+                "&:hover": { bgcolor: "action.hover" },
               },
               // Keyboard focus must stay visible for a11y, but MUI's default
               // `.Mui-focusVisible` fills the row with `action.focus` — a gray

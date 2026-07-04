@@ -18,7 +18,7 @@ import type {
 } from "./hooks/useSidebarActions";
 import { PostItem } from "./PostItem";
 import { SafeNavigationLink } from "./SafeNavigationLink";
-import { CHEVRON_TRANSITION, SB_FONT } from "./constants";
+import { CHEVRON_TRANSITION, SB_FONT, SB_ITEM_RADIUS } from "./constants";
 import { ICON_SIZE } from "@/theme/icons";
 
 interface SeriesGroupProps {
@@ -59,6 +59,9 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
     handleSeriesRenameKeyDown,
   } = seriesActions;
   const isRenaming = renamingSeriesId === group.series.id;
+  // A series row is "selected" when its posts page is the current route, so it
+  // carries the same soft filled pill as post rows and sub-tabs.
+  const isSeriesActive = pathname === `/posts/${group.series.id}`;
   const hasAnyDirtyChild = group.posts.some(
     (post) =>
       Boolean(post.local) &&
@@ -90,6 +93,8 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
               justifyContent: sidebarOpen ? "initial" : "center",
               px: 2,
               py: 0.25,
+              borderRadius: SB_ITEM_RADIUS,
+              ...(isSeriesActive && { bgcolor: "action.selected" }),
               "&:hover": { bgcolor: "action.hover" },
               // The series row has no "selected" state of its own, so MUI's
               // default `.Mui-focusVisible` grey fill — left behind when focus

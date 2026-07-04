@@ -58,6 +58,13 @@ export const LAYER_FADE_DURATION = 0.2;
 export const CHEVRON_TRANSITION = `transform .22s ${SIDEBAR_EASING}`;
 
 /**
+ * Corner radius (MUI borderRadius units) shared by every selectable sidebar row
+ * — post/document rows, series rows, and sub-tabs — so the "soft filled pill"
+ * select treatment stays identical across all three. Single source of truth.
+ */
+export const SB_ITEM_RADIUS = 1.5;
+
+/**
  * Monospace stack for IDE file-system cues (`.md` filenames, folder paths,
  * palette shortcuts, front-matter). Leads with **Cascadia** — already bundled
  * for editor code blocks (`@font-face` in globals.css) — then the platform
