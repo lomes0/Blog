@@ -223,6 +223,10 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
             ml: sidebarOpen ? 2.75 : 0,
             borderLeft: sidebarOpen ? "2px solid" : "none",
             borderLeftColor: "divider",
+            // Inset the children (inside the border, so the line stays put) so a
+            // child's file icon lands under the parent folder icon (center 41px):
+            // ml(22) + border(2) + pl + post pl(6) + half icon(7) = 41 -> pl 4px.
+            pl: sidebarOpen ? "4px" : 0,
           }}
         >
           {group.posts.map((post) => (
