@@ -107,8 +107,8 @@ export const SubTabList: React.FC<SubTabListProps> = (
           listStyle: "none",
           p: 0,
           m: 0,
-          pl: "14px",
-          ml: "22px",
+          pl: "12px",
+          ml: "16px",
           mb: 0.5,
         }}
       >

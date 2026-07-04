@@ -217,7 +217,7 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
       <Collapse in={isExpanded} timeout="auto">
         <Box
           sx={{
-            ml: sidebarOpen ? 2.5 : 0,
+            ml: sidebarOpen ? 3.25 : 0,
             borderLeft: sidebarOpen ? "2px solid" : "none",
             borderLeftColor: "divider",
           }}
