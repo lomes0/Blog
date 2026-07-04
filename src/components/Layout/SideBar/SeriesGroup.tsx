@@ -33,7 +33,6 @@ interface SeriesGroupProps {
   seriesActions: SeriesItemActions;
   expandedTabs: Set<string>;
   onToggleTabs: (id: string) => void;
-  onExpandTabs: (id: string) => void;
 }
 
 export const SeriesGroup: React.FC<SeriesGroupProps> = ({
@@ -47,7 +46,6 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
   seriesActions,
   expandedTabs,
   onToggleTabs,
-  onExpandTabs,
 }) => {
   const {
     renamingSeriesId,
@@ -176,51 +174,18 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
             )}
             {sidebarOpen && !isRenaming && (
               <ListItemText
-                primary={
-                  <Box
-                    component="span"
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      width: "100%",
-                      minWidth: 0,
-                    }}
-                  >
-                    <Box
-                      component="span"
-                      sx={{
-                        flex: 1,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {group.series.title}
-                    </Box>
-                    <Box
-                      component="span"
-                      sx={{
-                        ml: "auto",
-                        pl: 1,
-                        flexShrink: 0,
-                        fontSize: SB_FONT.body,
-                        color: "text.disabled",
-                        fontVariantNumeric: "tabular-nums",
-                      }}
-                    >
-                      {group.posts.length > 99 ? "99+" : group.posts.length}
-                    </Box>
-                  </Box>
-                }
+                primary={group.series.title}
                 primaryTypographyProps={{
                   component: "span",
                   fontSize: SB_FONT.meta,
+                  noWrap: true,
                   // Mirror the doc-row sync decoration (color only, no weight
                   // bump): a series with modified children reads amber.
                   fontWeight: 500,
                   color: hasAnyDirtyChild ? "warning.main" : "text.secondary",
-                  sx: { display: "block", minWidth: 0, width: "100%" },
+                  sx: { display: "block", minWidth: 0 },
                 }}
+                sx={{ minWidth: 0, my: 0 }}
               />
             )}
             {sidebarOpen && !isRenaming && (
@@ -237,7 +202,6 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
                   sx={{
                     p: 0.25,
                     ml: 0.5,
-                    mr: -0.25,
                     color: "text.secondary",
                     "&:hover": { bgcolor: "action.hover" },
                   }}
@@ -245,6 +209,22 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
                   <ArrowUpRight size={ICON_SIZE.micro} />
                 </IconButton>
               </Tooltip>
+            )}
+            {sidebarOpen && !isRenaming && (
+              // Item count stays pinned at the far right; the open button sits
+              // just to its left (revealed on hover).
+              <Box
+                component="span"
+                sx={{
+                  pl: 0.5,
+                  flexShrink: 0,
+                  fontSize: SB_FONT.body,
+                  color: "text.disabled",
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                {group.posts.length > 99 ? "99+" : group.posts.length}
+              </Box>
             )}
           </ListItemButton>
         </Tooltip>
@@ -275,7 +255,6 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
               itemActions={itemActions}
               expandedTabs={expandedTabs}
               onToggleTabs={onToggleTabs}
-              onExpandTabs={onExpandTabs}
             />
           ))}
         </Box>

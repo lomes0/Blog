@@ -39,7 +39,6 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
   const {
     expandedSeries: expandedTabs,
     toggleSeries: toggleTabs,
-    expand: expandTabs,
   } = useExpandedState("sidebarPostTabsExpandedState");
 
   const filteredGroups = useMemo((): SeriesGroupItem[] => {
@@ -162,7 +161,6 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
                   seriesActions={seriesActions}
                   expandedTabs={expandedTabs}
                   onToggleTabs={toggleTabs}
-                  onExpandTabs={expandTabs}
                 />
               );
             }
@@ -176,7 +174,6 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
                 itemActions={itemActions}
                 expandedTabs={expandedTabs}
                 onToggleTabs={toggleTabs}
-                onExpandTabs={expandTabs}
               />
             );
           })}

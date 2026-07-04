@@ -1,5 +1,5 @@
 "use client";
-import React, { memo, useCallback, useEffect, useMemo, useRef } from "react";
+import React, { memo, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Box,
@@ -35,8 +35,6 @@ interface PostItemProps {
   expandedTabs: Set<string>;
   /** Toggle a post's tab list open/closed (persisted). */
   onToggleTabs: (id: string) => void;
-  /** Idempotently reveal a post's tab list (used when it becomes the open doc). */
-  onExpandTabs: (id: string) => void;
 }
 
 export const PostItem = memo(
@@ -49,7 +47,6 @@ export const PostItem = memo(
       itemActions,
       expandedTabs,
       onToggleTabs,
-      onExpandTabs,
     }: PostItemProps,
   ) => {
     const dispatch = useDispatch();
@@ -156,21 +153,10 @@ export const PostItem = memo(
     // sub-tab treatment), so the resting weight holds whether selected or not.
     const nameWeight = 500;
 
-    // Auto-reveal a post's tabs when it becomes the open document, so opening a
-    // tabbed post still surfaces its tabs. The user can then collapse them via
-    // the chevron, and the choice persists until they open it again.
+    // Tab lists stay collapsed until the user opens them via the file icon
+    // (handleToggleTabs). Opening/viewing a tabbed post does NOT auto-reveal
+    // its tabs — the expand state is entirely user-driven and persisted.
     const isExpanded = expandedTabs.has(post.id);
-    // Only reveal on the rising edge of "open" — not on every render where the
-    // post happens to be open. Navigating away briefly leaves `isSelected`
-    // false while `ui.tabs.rootId` still points here (clearTabs runs in the
-    // view's unmount cleanup a render later); firing on every open render would
-    // re-expand the list and undo a manual collapse.
-    const isOpen = isSelected || isOpenRoot;
-    const wasOpenRef = useRef(false);
-    useEffect(() => {
-      if (hasTabs && isOpen && !wasOpenRef.current) onExpandTabs(post.id);
-      wasOpenRef.current = isOpen;
-    }, [hasTabs, isOpen, post.id, onExpandTabs]);
 
     const handleSaveToCloud = useCallback(async (e: React.MouseEvent) => {
       e.preventDefault();
