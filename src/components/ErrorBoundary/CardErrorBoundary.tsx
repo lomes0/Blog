@@ -98,9 +98,8 @@ class CardErrorBoundary extends Component<Props, State> {
             {process.env.NODE_ENV === "development" && this.state.error && (
               <Alert severity="error" sx={{ mb: 2, maxWidth: "100%" }}>
                 <Typography
-                  variant="caption"
                   component="pre"
-                  sx={{ fontSize: "0.7rem" }}
+                  sx={{ typography: "micro" }}
                 >
                   {this.state.error.message}
                 </Typography>

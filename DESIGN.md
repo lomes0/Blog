@@ -545,6 +545,17 @@ When touching any chrome file: replace every hard-coded `fontSize` with a varian
 `borderRadius` with the canonical value (17.4 / §5). If a needed size is missing,
 **add a theme variant** — do not inline a literal (§3.1).
 
+### 17.6 Scope — chrome only
+
+§17 governs the **IDE chrome** (17.1's regions). Application **content** is not
+chrome and keeps its own typographic intent — do **not** force-conform it. The
+following are deliberate, not drift: sticky-note styling (`NotesCanvas`, colored
+paper + fixed dark ink), home **preview miniatures** (`*PreviewCard`, `KanbanBoard`
+intentional 10–14px), raw `<pre>` **code viewers** (§3.3 exception, syntax-theme
+colors), **avatar** initial sizing, bespoke card/list labels that pair a base
+variant with custom weight/tracking (e.g. `-0.01em`/`0.08em`), and idiomatic
+`boxShadow: … rgba(0,0,0,x)` (§6). Tune these per-component on their own merits.
+
 ---
 
 ## 15. Quick-Reference Cheat Sheet
