@@ -2,7 +2,6 @@ import React from "react";
 import {
   Box,
   Collapse,
-  IconButton,
   ListItem,
   ListItemButton,
   ListItemIcon,
@@ -10,7 +9,7 @@ import {
   TextField,
   Tooltip,
 } from "@mui/material";
-import { ArrowUpRight, ChevronRight, Folder, FolderOpen } from "lucide-react";
+import { ChevronRight, Folder, FolderOpen } from "lucide-react";
 import type { Series } from "@/types";
 import type { SeriesGroupItem } from "@/utils/posts/seriesGrouping";
 import type {
@@ -70,14 +69,7 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
 
   return (
     <Box sx={{ mt: groupIndex > 0 ? 0.5 : 0, mb: 0.5 }}>
-      <ListItem
-        disablePadding
-        sx={{
-          display: "block",
-          "& .open-btn": { opacity: 0, transition: "opacity 0.15s" },
-          "&:hover .open-btn": { opacity: 1 },
-        }}
-      >
+      <ListItem disablePadding sx={{ display: "block" }}>
         <Tooltip
           title={sidebarOpen ? "" : group.series.title}
           placement="right"
@@ -189,50 +181,38 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
               />
             )}
             {sidebarOpen && !isRenaming && (
+              // The item count doubles as the "open series" link: clicking it
+              // navigates to /posts/{id} (a real anchor, so Cmd/Ctrl-click works)
+              // while stopPropagation keeps the click off the row, which toggles.
+              // Underlines on hover to read as a link. The wrapper span holds the
+              // Tooltip ref; the link preserves the original two-level em cascade
+              // (SB_FONT.body nested under SB_FONT.meta, weight 500) so the number
+              // renders at the same size as before.
               <Tooltip title="Open series" placement="right">
-                <IconButton
-                  className="open-btn"
-                  aria-label="Open series"
-                  size="small"
-                  // A real link (not the row): supports Cmd/Ctrl-click and keeps
-                  // navigation off the row, which now only toggles.
-                  component={SafeNavigationLink}
-                  href={`/posts/${group.series.id}`}
-                  onClick={(e) => e.stopPropagation()}
-                  sx={{
-                    p: 0.25,
-                    ml: 0.5,
-                    color: "text.secondary",
-                    "&:hover": { bgcolor: "action.hover" },
-                  }}
+                <Box
+                  component="span"
+                  sx={{ pl: 0.5, flexShrink: 0, display: "inline-flex" }}
                 >
-                  <ArrowUpRight size={ICON_SIZE.micro} />
-                </IconButton>
-              </Tooltip>
-            )}
-            {sidebarOpen && !isRenaming && (
-              // Item count stays pinned at the far right; the open button sits
-              // just to its left (revealed on hover). The count used to live
-              // inside the title ListItemText, so its size came from a two-level
-              // em cascade: SB_FONT.body nested under the row's SB_FONT.meta
-              // Typography (plus its inherited weight 500). Reproduce that exact
-              // context here — an outer meta wrapper with the body size nested —
-              // so the count renders identically now that it sits outside.
-              <Box
-                component="span"
-                sx={{
-                  pl: 0.5,
-                  flexShrink: 0,
-                  fontSize: SB_FONT.meta,
-                  fontWeight: 500,
-                  color: "text.disabled",
-                  fontVariantNumeric: "tabular-nums",
-                }}
-              >
-                <Box component="span" sx={{ fontSize: SB_FONT.body }}>
-                  {group.posts.length > 99 ? "99+" : group.posts.length}
+                  <Box
+                    component={SafeNavigationLink}
+                    href={`/posts/${group.series.id}`}
+                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                    sx={{
+                      fontSize: SB_FONT.meta,
+                      fontWeight: 500,
+                      color: "text.disabled",
+                      fontVariantNumeric: "tabular-nums",
+                      textDecoration: "none",
+                      cursor: "pointer",
+                      "&:hover": { textDecoration: "underline" },
+                    }}
+                  >
+                    <Box component="span" sx={{ fontSize: SB_FONT.body }}>
+                      {group.posts.length > 99 ? "99+" : group.posts.length}
+                    </Box>
+                  </Box>
                 </Box>
-              </Box>
+              </Tooltip>
             )}
           </ListItemButton>
         </Tooltip>
