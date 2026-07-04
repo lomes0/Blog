@@ -80,13 +80,14 @@ const ActivityRail: React.FC = () => {
   const sidebarView = useSelector((state: RootState) => state.ui.sidebarView);
   const copilotOpen = useSelector((state: RootState) => state.ui.copilot.open);
   const user = useSelector((state: RootState) => state.user);
-  const { sidebarOpen, setSidebarMode } = useSidebarWidth();
+  const { sidebarOpen, sidebarMode, setSidebarMode } = useSidebarWidth();
 
   // A view button both selects its view and toggles the sidebar: clicking the
-  // already-active view (while open) collapses the sidebar; clicking any other
-  // view — or any view while collapsed — opens the sidebar to that view.
+  // already-active view while fully open collapses the sidebar; clicking any
+  // other view — or any view while collapsed/compact — opens it to full on that
+  // view (so the compact drag-shut strip expands back with one click).
   const handleViewClick = (view: SidebarView) => {
-    if (sidebarOpen && sidebarView === view) {
+    if (sidebarMode === "full" && sidebarView === view) {
       setSidebarMode("hidden");
     } else {
       dispatch(actions.setSidebarView(view));

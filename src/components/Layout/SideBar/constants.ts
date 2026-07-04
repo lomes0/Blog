@@ -13,7 +13,13 @@ export const SIDEBAR_COLLAPSED_WIDTH = 72;
  */
 export const ACTIVITY_RAIL_W = 54;
 
-/** LocalStorage key for persisting sidebar mode (full/hidden) */
+/**
+ * Width of the compact (icon-strip) sidebar mode. Dragging the resize handle
+ * shut lands here — a narrow collections rail — rather than fully hidden.
+ */
+export const COMPACT_WIDTH = 62;
+
+/** LocalStorage key for persisting sidebar mode (full/compact/hidden) */
 export const SIDEBAR_MODE_KEY = "ui.sidebarMode";
 
 /** Default width when sidebar is expanded; also the minimum resizable width */
@@ -46,6 +52,8 @@ export const SIDEBAR_STORAGE_KEY = "sidebar-width";
 export const SIDEBAR_EASING = "cubic-bezier(.4,0,.2,1)";
 /** Container width slide between open and hidden states */
 export const SIDEBAR_WIDTH_TRANSITION = `width .34s ${SIDEBAR_EASING}`;
+/** Full/compact layer cross-fade duration (s) */
+export const LAYER_FADE_DURATION = 0.2;
 /** Folder chevron rotate (0deg -> 90deg) on expand/collapse */
 export const CHEVRON_TRANSITION = `transform .22s ${SIDEBAR_EASING}`;
 

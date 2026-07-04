@@ -11,6 +11,7 @@ import { useSidebarActions } from "./hooks/useSidebarActions";
 import { SidebarHeader } from "./SidebarHeader";
 import { ActivePostsSection } from "./ActivePostsSection";
 import { SidebarSearchView } from "./SidebarSearchView";
+import { CollapsedRail } from "./CollapsedRail";
 import { PostContextMenu } from "./PostContextMenu";
 import { SeriesContextMenu } from "./SeriesContextMenu";
 import {
@@ -19,6 +20,9 @@ import {
 } from "@/utils/posts/seriesGrouping";
 import {
   ACTIVITY_RAIL_W,
+  COMPACT_WIDTH,
+  LAYER_FADE_DURATION,
+  SIDEBAR_EASING,
   SIDEBAR_MIN_WIDTH,
   SIDEBAR_WIDTH_TRANSITION,
 } from "./constants";
@@ -28,6 +32,7 @@ const SideBar: React.FC = () => {
 
   const {
     width,
+    sidebarMode,
     sidebarOpen: open,
     toggleSidebar,
     isMobile,
@@ -36,6 +41,7 @@ const SideBar: React.FC = () => {
     getEffectiveWidth,
   } = useSidebarWidth();
 
+  const isExpanded = sidebarMode === "full";
   const { sidebarFontSize } = useSidebarFontSize();
   const sidebarActions = useSidebarActions();
   const {
@@ -51,8 +57,25 @@ const SideBar: React.FC = () => {
     handleDeleteSeries,
   } = sidebarActions;
 
-  // Honor the OS "reduce motion" setting: drop the width slide.
+  // Honor the OS "reduce motion" setting: drop the width slide and cross-fade.
   const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+  const fade = reducedMotion ? 0 : LAYER_FADE_DURATION;
+
+  // Full and compact contents are stacked as two absolutely-positioned,
+  // fixed-width layers that cross-fade. The outgoing layer keeps its own width
+  // so nothing reflows/squishes while the container width animates; the hidden
+  // layer is inert (opacity 0 + pointer-events none) and clipped by the
+  // narrower container.
+  const layerSx = (layerWidth: number, visible: boolean) => ({
+    position: "absolute" as const,
+    inset: 0,
+    width: layerWidth,
+    display: "flex",
+    flexDirection: "column" as const,
+    opacity: visible ? 1 : 0,
+    pointerEvents: visible ? ("auto" as const) : ("none" as const),
+    transition: `opacity ${fade}s ${SIDEBAR_EASING}`,
+  });
 
   useKeyboardShortcuts({ onToggleSidebar: toggleSidebar, enabled: true });
 
@@ -105,17 +128,9 @@ const SideBar: React.FC = () => {
       <Box
         sx={{ position: "relative", flex: 1, minHeight: 0, overflow: "hidden" }}
       >
-        {/* Content is pinned to at least the resting width so it clips cleanly
-            (rather than squishing) while the paper animates/drags to 0. */}
-        <Box
-          sx={{
-            position: "absolute",
-            inset: 0,
-            width: Math.max(width, SIDEBAR_MIN_WIDTH),
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
+        {/* Full layer — pinned to at least the resting width so it clips
+            cleanly (rather than squishing) while the paper animates/drags. */}
+        <Box sx={layerSx(Math.max(width, SIDEBAR_MIN_WIDTH), isExpanded)}>
           <SidebarHeader view={sidebarView} />
           {sidebarView === "search"
             ? <SidebarSearchView pathname={pathname} />
@@ -131,9 +146,17 @@ const SideBar: React.FC = () => {
             )
             : <Box sx={{ flex: "1 1 auto", minHeight: 0 }} />}
         </Box>
+
+        {/* Compact layer — fixed icon strip shown when dragged shut. */}
+        <Box sx={layerSx(COMPACT_WIDTH, sidebarMode === "compact")}>
+          <CollapsedRail
+            groupedActivePosts={groupedActivePosts}
+            pathname={pathname}
+          />
+        </Box>
       </Box>
 
-      {open && !isMobile && (
+      {isExpanded && !isMobile && (
         <Box
           onMouseDown={startResize}
           sx={{

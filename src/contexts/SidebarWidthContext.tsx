@@ -11,6 +11,7 @@ import { useTheme } from "@mui/material/styles";
 import { useMediaQuery } from "@mui/material";
 import { usePathname } from "next/navigation";
 import {
+  COMPACT_WIDTH,
   SIDEBAR_COLLAPSE_THRESHOLD,
   SIDEBAR_DEFAULT_WIDTH,
   SIDEBAR_DRAG_FLOOR,
@@ -20,7 +21,7 @@ import {
   SIDEBAR_STORAGE_KEY,
 } from "@/components/Layout/SideBar/constants";
 
-export type SidebarMode = "full" | "hidden";
+export type SidebarMode = "full" | "compact" | "hidden";
 
 interface SidebarWidthContextType {
   /** The user's preferred expanded width (persisted to localStorage) */
@@ -72,18 +73,18 @@ export const SidebarWidthProvider: React.FC<{ children: React.ReactNode }> = ({
     isMobile ? "hidden" : "full",
   );
 
-  // Restore persisted mode (full/compact) on desktop after mount.
+  // Restore persisted mode (full/compact/hidden) on desktop after mount.
   useEffect(() => {
     if (isMobile) return;
     const saved = localStorage.getItem(SIDEBAR_MODE_KEY) as SidebarMode | null;
-    if (saved === "full" || saved === "hidden") setSidebarModeState(saved);
+    if (saved === "full" || saved === "compact" || saved === "hidden") {
+      setSidebarModeState(saved);
+    }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setSidebarMode = useCallback((mode: SidebarMode) => {
     setSidebarModeState(mode);
-    if (mode === "full" || mode === "hidden") {
-      localStorage.setItem(SIDEBAR_MODE_KEY, mode);
-    }
+    localStorage.setItem(SIDEBAR_MODE_KEY, mode);
   }, []);
 
   // Toggle hidden ↔ full (open/close).
@@ -104,7 +105,9 @@ export const SidebarWidthProvider: React.FC<{ children: React.ReactNode }> = ({
       const saved = localStorage.getItem(SIDEBAR_MODE_KEY) as
         | SidebarMode
         | null;
-      setSidebarModeState(saved === "hidden" ? "hidden" : "full");
+      setSidebarModeState(
+        saved === "hidden" || saved === "compact" ? saved : "full",
+      );
     }
   }, [isMobile]);
 
@@ -142,10 +145,11 @@ export const SidebarWidthProvider: React.FC<{ children: React.ReactNode }> = ({
   const handleMouseUp = useCallback(() => {
     setIsResizing(false);
     if (currentWidthRef.current < SIDEBAR_COLLAPSE_THRESHOLD) {
-      // Dragged shut: collapse to hidden and restore the pre-drag width so the
-      // sidebar reopens at its previous size.
+      // Dragged shut: collapse to the compact (icon-strip) mode and restore the
+      // pre-drag width so the sidebar reopens at its previous size. Fully
+      // hiding is reserved for the activity-rail toggle.
       setWidth(startWidthRef.current);
-      setSidebarMode("hidden");
+      setSidebarMode("compact");
     } else {
       // Otherwise snap back up to at least MIN and persist the resting width.
       const resting = Math.max(currentWidthRef.current, SIDEBAR_MIN_WIDTH);
@@ -185,6 +189,7 @@ export const SidebarWidthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const getEffectiveWidth = useCallback((): number => {
     if (sidebarMode === "hidden") return 0;
+    if (sidebarMode === "compact") return COMPACT_WIDTH;
     return width;
   }, [width, sidebarMode]);
 
