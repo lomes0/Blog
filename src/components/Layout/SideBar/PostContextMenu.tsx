@@ -1,6 +1,5 @@
 import React from "react";
 import { ListItemIcon, ListItemText, Menu, MenuItem } from "@mui/material";
-import { Theme } from "@mui/material/styles";
 import { FilePen, Pencil, Trash2 } from "lucide-react";
 import { ICON_SIZE } from "@/theme/icons";
 
@@ -26,12 +25,10 @@ const menuItemSx = {
   "&:hover": { backgroundColor: "action.hover" },
 };
 
-const borderBottomSx = (theme: Theme) => ({
-  borderBottom: "1px solid rgba(0, 0, 0, 0.04)",
-  ...theme.applyStyles("dark", {
-    borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
-  }),
-});
+const borderBottomSx = {
+  borderBottom: "1px solid",
+  borderColor: "divider",
+};
 
 export const PostContextMenu: React.FC<PostContextMenuProps> = ({
   contextMenu,
@@ -51,22 +48,19 @@ export const PostContextMenu: React.FC<PostContextMenuProps> = ({
       slotProps={{
         paper: {
           elevation: 2,
-          sx: (theme) => ({
+          sx: {
             minWidth: 130,
-            borderRadius: 1,
+            borderRadius: 2,
             mt: 0.5,
-            bgcolor: "rgba(250, 250, 250, 0.95)",
-            ...theme.applyStyles("dark", {
-              bgcolor: "rgba(30, 30, 30, 0.95)",
-            }),
+            bgcolor: "rgba(var(--mui-palette-background-paperChannel) / 0.95)",
             backdropFilter: "blur(8px)",
-          }),
+          },
         },
       }}
     >
       <MenuItem
         onClick={() => contextMenu && onEdit(contextMenu.postId)}
-        sx={(theme) => ({ ...menuItemSx, ...borderBottomSx(theme) })}
+        sx={{ ...menuItemSx, ...borderBottomSx }}
       >
         <ListItemIcon sx={{ minWidth: "auto !important" }}>
           <Pencil size={ICON_SIZE.dense} />
@@ -77,7 +71,7 @@ export const PostContextMenu: React.FC<PostContextMenuProps> = ({
       </MenuItem>
       <MenuItem
         onClick={() => contextMenu && onRename(contextMenu.postId)}
-        sx={(theme) => ({ ...menuItemSx, ...borderBottomSx(theme) })}
+        sx={{ ...menuItemSx, ...borderBottomSx }}
       >
         <ListItemIcon sx={{ minWidth: "auto !important" }}>
           <FilePen size={ICON_SIZE.dense} />

@@ -12,6 +12,7 @@ import {
 import { FileText, MessageSquare } from "lucide-react";
 import { styles } from "../styles";
 import { SafeNavigationLink } from "./SafeNavigationLink";
+import { SB_FONT } from "./constants";
 
 const NAV_ITEM_MIN_HEIGHT = 40;
 
@@ -95,7 +96,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
               {expanded && (
                 <ListItemText
                   primary={item.text}
-                  primaryTypographyProps={{ fontSize: "0.9em" }}
+                  primaryTypographyProps={{ fontSize: SB_FONT.body }}
                 />
               )}
             </ListItemButton>

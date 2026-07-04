@@ -21,7 +21,7 @@ import type { PostItemActions } from "./hooks/useSidebarActions";
 import { type SubTabEntry, SubTabList } from "./SubTabList";
 import { triggerSave } from "../../EditDocument/saveRegistry";
 import { ICON_SIZE } from "@/theme/icons";
-import { MONO_FONT } from "./constants";
+import { MONO_FONT, SB_FONT } from "./constants";
 
 const EMPTY_CHILDREN: UserDocument[] = [];
 const EMPTY_TAB_ENTRIES: SubTabEntry[] = [];
@@ -329,7 +329,7 @@ export const PostItem = memo(
                     fullWidth
                     sx={{
                       "& .MuiInput-input": {
-                        fontSize: "0.7em",
+                        fontSize: SB_FONT.meta,
                         fontWeight: nameWeight,
                         py: 0,
                       },
@@ -362,7 +362,7 @@ export const PostItem = memo(
                     }
                     primaryTypographyProps={{
                       component: "div",
-                      fontSize: "0.7em",
+                      fontSize: SB_FONT.meta,
                       sx: {
                         display: "flex",
                         minWidth: 0,

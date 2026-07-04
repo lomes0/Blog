@@ -4,6 +4,7 @@ import { Avatar, Box, Tooltip } from "@mui/material";
 import { type RootState, useSelector } from "@/store";
 import { styles } from "../styles";
 import { SafeNavigationLink } from "./SafeNavigationLink";
+import { SB_FONT } from "./constants";
 
 const USER_ITEM_MIN_HEIGHT = 40;
 
@@ -62,7 +63,7 @@ export const SidebarFooter: React.FC<SidebarFooterProps> = ({ expanded }) => {
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
-                fontSize: "0.9em",
+                fontSize: SB_FONT.body,
               }}
             >
               {user ? user.name : "Sign In"}

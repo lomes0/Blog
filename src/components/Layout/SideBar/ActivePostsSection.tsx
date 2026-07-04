@@ -13,6 +13,7 @@ import { SeriesGroup } from "./SeriesGroup";
 import { styles } from "../styles";
 import { useExpandedState } from "@/hooks/useExpandedState";
 import { ICON_SIZE } from "@/theme/icons";
+import { SB_FONT } from "./constants";
 
 interface ActivePostsSectionProps {
   groupedActivePosts: SeriesGroupItem[];
@@ -91,7 +92,7 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
             border: "1px solid transparent",
             borderRadius: "12px",
             bgcolor: "action.hover",
-            fontSize: "0.75em",
+            fontSize: SB_FONT.meta,
             transition:
               "background-color .15s, border-color .15s, box-shadow .15s",
             "&:focus-within": {

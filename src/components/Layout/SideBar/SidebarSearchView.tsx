@@ -6,7 +6,7 @@ import { FileText, Search } from "lucide-react";
 import { type RootState, useSelector } from "@/store";
 import { selectAllPosts } from "@/store/selectors/postsSelectors";
 import { ICON_SIZE } from "@/theme/icons";
-import { MONO_FONT } from "./constants";
+import { MONO_FONT, SB_FONT } from "./constants";
 import { SafeNavigationLink } from "./SafeNavigationLink";
 
 interface SidebarSearchViewProps {
@@ -73,7 +73,7 @@ export const SidebarSearchView: React.FC<SidebarSearchViewProps> = (
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search across posts…"
-            sx={{ fontSize: "0.8rem", color: "text.primary" }}
+            sx={{ fontSize: SB_FONT.body, color: "text.primary" }}
           />
         </Box>
         <Typography

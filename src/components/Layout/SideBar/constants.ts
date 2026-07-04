@@ -56,3 +56,20 @@ export const CHEVRON_TRANSITION = `transform .22s ${SIDEBAR_EASING}`;
  */
 export const MONO_FONT =
   '"Cascadia", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+
+/**
+ * Sidebar relative-scale ladder (DESIGN.md §17.2 carve-out). The sidebar has a
+ * user-adjustable base font size (`useSidebarFontSize`, Settings +/-), set as
+ * `px` on the drawer paper; children size in **em** so they track the user's
+ * scale. This is the single source of truth for those ratios — do not inline
+ * `em`/`px`/`rem` font sizes in sidebar rows. Fixed theme variants (dense/micro)
+ * would break user resize, so the sidebar is exempt from the fixed-variant rule.
+ */
+export const SB_FONT = {
+  /** counts, badges, sub-tab labels, dirty/meta text */
+  meta: "0.72em",
+  /** filenames, series names, nav/footer labels, search results */
+  body: "0.9em",
+  /** sidebar wordmark / emphasis */
+  emphasis: "1.2em",
+} as const;

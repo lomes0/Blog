@@ -18,7 +18,7 @@ import type {
 } from "./hooks/useSidebarActions";
 import { PostItem } from "./PostItem";
 import { SafeNavigationLink } from "./SafeNavigationLink";
-import { CHEVRON_TRANSITION } from "./constants";
+import { CHEVRON_TRANSITION, SB_FONT } from "./constants";
 import { ICON_SIZE } from "@/theme/icons";
 
 interface SeriesGroupProps {
@@ -154,7 +154,7 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
                 fullWidth
                 sx={{
                   "& .MuiInput-input": {
-                    fontSize: "0.7em",
+                    fontSize: SB_FONT.meta,
                     fontWeight: 500,
                     py: 0,
                   },
@@ -190,7 +190,7 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
                         ml: "auto",
                         pl: 1,
                         flexShrink: 0,
-                        fontSize: "0.9em",
+                        fontSize: SB_FONT.body,
                         color: "text.disabled",
                         fontVariantNumeric: "tabular-nums",
                       }}
@@ -201,7 +201,7 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
                 }
                 primaryTypographyProps={{
                   component: "span",
-                  fontSize: "0.7em",
+                  fontSize: SB_FONT.meta,
                   // Mirror the doc-row sync decoration (color only, no weight
                   // bump): a series with modified children reads amber.
                   fontWeight: 500,

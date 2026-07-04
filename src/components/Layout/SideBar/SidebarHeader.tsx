@@ -3,6 +3,7 @@ import RouterLink from "next/link";
 import Image from "next/image";
 import { Box, Tooltip } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
+import { SB_FONT } from "./constants";
 
 interface SidebarHeaderProps {
   open: boolean;
@@ -34,7 +35,9 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({ open }) => {
           }}
         >
           <Image src="/logo.svg" alt="Editor Logo" width={32} height={32} />
-          <Box sx={{ ml: 1, fontWeight: "bold", fontSize: "1.2em" }}>Blog</Box>
+          <Box sx={{ ml: 1, fontWeight: "bold", fontSize: SB_FONT.emphasis }}>
+            Blog
+          </Box>
         </Box>
       )}
       {!open && (

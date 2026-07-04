@@ -494,6 +494,14 @@ a literal `fontSize`.
 | Palette shortcut hints / `esc` chip       | `micro`     | mono                               |
 | Post title (front-matter / doc)           | `h4`/`h5`   | per existing scale                 |
 
+> **Sidebar carve-out.** The left sidebar has a **user-adjustable text size**
+> (`useSidebarFontSize`, Settings +/- controls): the drawer paper sets a `px`
+> base and rows size in **`em`** so they track the user's scale. Fixed
+> `dense`/`micro` variants would break that, so sidebar rows are **exempt** from
+> the "no hard-coded fontSize" rule. Instead they use the single `SB_FONT` ratio
+> ladder (`SideBar/constants.ts`: `meta` 0.72em · `body` 0.9em · `emphasis`
+> 1.2em) — do not inline other `em`/`rem`/`px` sizes in the sidebar.
+
 Monospace uses **Cascadia** (already bundled for code blocks; `@font-face` in
 `globals.css`) via `MONO_FONT` (`SideBar/constants.ts` =
 `"Cascadia", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`). It is

@@ -12,7 +12,7 @@ import { FilePen } from "lucide-react";
 import { actions, useDispatch } from "@/store";
 import { ICON_SIZE } from "@/theme/icons";
 import { SafeNavigationLink } from "./SafeNavigationLink";
-import { MONO_FONT } from "./constants";
+import { MONO_FONT, SB_FONT } from "./constants";
 import type { PostItemActions } from "./hooks/useSidebarActions";
 
 export interface SubTabEntry {
@@ -128,8 +128,8 @@ export const SubTabList: React.FC<SubTabListProps> = (
                   gap: "6px",
                   py: "3px",
                   px: "7px",
-                  borderRadius: "5px",
-                  fontSize: "0.72em",
+                  borderRadius: 1.5,
+                  fontSize: SB_FONT.meta,
                 }}
               >
                 <Box component="span" aria-hidden sx={dotSx} />
@@ -180,8 +180,8 @@ export const SubTabList: React.FC<SubTabListProps> = (
                 gap: "6px",
                 py: "3px",
                 px: "7px",
-                borderRadius: "5px",
-                fontSize: "0.72em",
+                borderRadius: 1.5,
+                fontSize: SB_FONT.meta,
                 cursor: "pointer",
                 color: "text.secondary",
                 textDecoration: "none",
@@ -237,16 +237,13 @@ export const SubTabList: React.FC<SubTabListProps> = (
         slotProps={{
           paper: {
             elevation: 2,
-            sx: (theme) => ({
+            sx: {
               minWidth: 130,
-              borderRadius: 1,
+              borderRadius: 2,
               mt: 0.5,
-              bgcolor: "rgba(250, 250, 250, 0.95)",
-              ...theme.applyStyles("dark", {
-                bgcolor: "rgba(30, 30, 30, 0.95)",
-              }),
+              bgcolor: "rgba(var(--mui-palette-background-paperChannel) / 0.95)",
               backdropFilter: "blur(8px)",
-            }),
+            },
           },
         }}
       >
