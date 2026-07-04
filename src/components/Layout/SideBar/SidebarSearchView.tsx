@@ -15,7 +15,7 @@ interface SidebarSearchViewProps {
 
 /**
  * Sidebar "Search" view — a flat, title-filtered list of every post across all
- * folders. Each result shows the post title and a monospace `folder/name.md`
+ * folders. Each result shows the post title and a monospace `folder/name`
  * path; clicking opens it in the editor.
  */
 export const SidebarSearchView: React.FC<SidebarSearchViewProps> = (
@@ -37,7 +37,7 @@ export const SidebarSearchView: React.FC<SidebarSearchViewProps> = (
       const doc = post.cloud || post.local;
       const name = doc?.name || "Untitled";
       const folder = seriesByPostId.get(post.id) ?? "posts";
-      return { id: post.id, name, path: `${folder}/${name}.md` };
+      return { id: post.id, name, path: `${folder}/${name}` };
     });
     if (!q) return rows;
     return rows.filter((r) => r.name.toLowerCase().includes(q));

@@ -340,25 +340,17 @@ export const PostItem = memo(
                   <ListItemText
                     sx={{ minWidth: 0, overflow: "hidden" }}
                     primary={
-                      <>
-                        <Box
-                          component="span"
-                          sx={{
-                            minWidth: 0,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {docName}
-                        </Box>
-                        <Box
-                          component="span"
-                          sx={{ flexShrink: 0, color: "text.disabled" }}
-                        >
-                          .md
-                        </Box>
-                      </>
+                      <Box
+                        component="span"
+                        sx={{
+                          minWidth: 0,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {docName}
+                      </Box>
                     }
                     primaryTypographyProps={{
                       component: "div",
