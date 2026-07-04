@@ -212,18 +212,26 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
             )}
             {sidebarOpen && !isRenaming && (
               // Item count stays pinned at the far right; the open button sits
-              // just to its left (revealed on hover).
+              // just to its left (revealed on hover). The count used to live
+              // inside the title ListItemText, so its size came from a two-level
+              // em cascade: SB_FONT.body nested under the row's SB_FONT.meta
+              // Typography (plus its inherited weight 500). Reproduce that exact
+              // context here — an outer meta wrapper with the body size nested —
+              // so the count renders identically now that it sits outside.
               <Box
                 component="span"
                 sx={{
                   pl: 0.5,
                   flexShrink: 0,
-                  fontSize: SB_FONT.body,
+                  fontSize: SB_FONT.meta,
+                  fontWeight: 500,
                   color: "text.disabled",
                   fontVariantNumeric: "tabular-nums",
                 }}
               >
-                {group.posts.length > 99 ? "99+" : group.posts.length}
+                <Box component="span" sx={{ fontSize: SB_FONT.body }}>
+                  {group.posts.length > 99 ? "99+" : group.posts.length}
+                </Box>
               </Box>
             )}
           </ListItemButton>
