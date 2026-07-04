@@ -93,7 +93,7 @@ const ActivityRail: React.FC = () => {
         display: "flex",
         flexDirection: "column",
         alignItems: "stretch",
-        bgcolor: "background.sidebar",
+        bgcolor: "background.rail",
         borderRight: "1px solid",
         borderColor: "divider",
         py: 0.5,

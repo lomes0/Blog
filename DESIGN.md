@@ -518,7 +518,7 @@ result uses the same states:
 
 | Element                        | Radius                | Height / metric        |
 | ------------------------------ | --------------------- | ---------------------- |
-| Rail icon button               | `1.5` (6px)           | 44px tall, full width  |
+| Rail icon button               | none (full-bleed)     | 44px tall, full width; tint spans full width, 2px accent bar on left edge |
 | Tree / list / result row       | `1.5` (6px)           | ~28–32px               |
 | Tab                            | `1.5` (6px) top only  | matches top-bar height |
 | Top-bar search pill, inputs    | `1.5` (6px)           | ~32px                  |
