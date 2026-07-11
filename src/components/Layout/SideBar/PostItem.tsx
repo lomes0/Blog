@@ -18,6 +18,11 @@ import { selectChildDocumentsByParent } from "@/store/selectors/layoutSelectors"
 import type { UserDocument } from "@/types";
 import { SafeNavigationLink } from "./SafeNavigationLink";
 import type { PostItemActions } from "./hooks/useSidebarActions";
+import {
+  DRAG_MIME,
+  type DropPosition,
+  dropPositionFromEvent,
+} from "./hooks/useSidebarDnd";
 import { type SubTabEntry, SubTabList } from "./SubTabList";
 import { triggerSave } from "../../EditDocument/saveRegistry";
 import { ICON_SIZE } from "@/theme/icons";
@@ -43,6 +48,14 @@ interface PostItemProps {
    * click was a selection gesture (navigation should be suppressed).
    */
   onSelectClick?: (id: string, event: React.MouseEvent) => boolean;
+  /** Begin dragging this post (native DnD). */
+  onDragStartItem?: (event: React.DragEvent, id: string) => void;
+  onDragEndItem?: () => void;
+  /** Report a hovered reorder position relative to this row. */
+  onReorderDragOver?: (targetId: string, position: DropPosition) => void;
+  onReorderDrop?: (targetId: string, position: DropPosition) => void;
+  /** Insertion line to draw for this row, if any. */
+  dropIndicator?: DropPosition | null;
 }
 
 export const PostItem = memo(
@@ -57,6 +70,11 @@ export const PostItem = memo(
       onToggleTabs,
       isSelected: isMultiSelected = false,
       onSelectClick,
+      onDragStartItem,
+      onDragEndItem,
+      onReorderDragOver,
+      onReorderDrop,
+      dropIndicator = null,
     }: PostItemProps,
   ) => {
     const dispatch = useDispatch();
@@ -217,6 +235,26 @@ export const PostItem = memo(
       [onSelectClick, post.id],
     );
 
+    // Native drag reorder: report before/after based on the cursor's position
+    // over the row's vertical midpoint. Only our own drags are intercepted.
+    const handleDragOver = useCallback(
+      (e: React.DragEvent<HTMLElement>) => {
+        if (!onReorderDragOver) return;
+        if (!e.dataTransfer.types.includes(DRAG_MIME)) return;
+        e.preventDefault();
+        onReorderDragOver(post.id, dropPositionFromEvent(e));
+      },
+      [onReorderDragOver, post.id],
+    );
+    const handleDrop = useCallback(
+      (e: React.DragEvent<HTMLElement>) => {
+        if (!onReorderDrop) return;
+        e.preventDefault();
+        onReorderDrop(post.id, dropPositionFromEvent(e));
+      },
+      [onReorderDrop, post.id],
+    );
+
     const linkProps = isRenaming ? {} : {
       component: SafeNavigationLink,
       href: isEditing ? `/edit/${post.id}` : `/view/${post.id}`,
@@ -246,7 +284,14 @@ export const PostItem = memo(
           <ListItemButton
             {...linkProps}
             selected={highlightParent}
+            draggable={Boolean(onDragStartItem) && !isRenaming}
             onClick={handleRowClick}
+            onDragStart={onDragStartItem
+              ? (e) => onDragStartItem(e, post.id)
+              : undefined}
+            onDragEnd={onDragEndItem}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
             onContextMenu={(e) => handleContextMenu(e, post.id)}
             onDoubleClick={(e) => {
               if (sidebarOpen) handleDoubleClick(e, post.id, docName);
@@ -255,6 +300,21 @@ export const PostItem = memo(
               minHeight: inSeries ? 26 : 30,
               justifyContent: sidebarOpen ? "initial" : "center",
               overflow: "hidden",
+              position: "relative",
+              // Native-DnD insertion line: a 2px primary bar on the row edge the
+              // dragged item would drop against (matches PostsListView).
+              ...(dropIndicator && {
+                "&::after": {
+                  content: '""',
+                  position: "absolute",
+                  left: 0,
+                  right: 0,
+                  [dropIndicator === "before" ? "top" : "bottom"]: 0,
+                  height: 2,
+                  bgcolor: "primary.main",
+                  zIndex: 2,
+                },
+              }),
               // Rounded "pill" select shared with sub-tabs and series rows.
               borderRadius: SB_ITEM_RADIUS,
               // Top-level rows use the same left padding as a SeriesGroup row

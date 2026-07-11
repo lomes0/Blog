@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import {
   Box,
   Collapse,
@@ -18,6 +18,11 @@ import type {
   SeriesItemActions,
 } from "./hooks/useSidebarActions";
 import type { SidebarSelectionResult } from "./hooks/useSidebarSelection";
+import {
+  DRAG_MIME,
+  dropPositionFromEvent,
+  type SidebarDndResult,
+} from "./hooks/useSidebarDnd";
 import { PostItem } from "./PostItem";
 import { SafeNavigationLink } from "./SafeNavigationLink";
 import { CHEVRON_TRANSITION, SB_FONT, SB_ITEM_RADIUS } from "./constants";
@@ -35,6 +40,7 @@ interface SeriesGroupProps {
   expandedTabs: Set<string>;
   onToggleTabs: (id: string) => void;
   selection: SidebarSelectionResult;
+  dnd: SidebarDndResult;
 }
 
 export const SeriesGroup: React.FC<SeriesGroupProps> = ({
@@ -49,7 +55,30 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
   expandedTabs,
   onToggleTabs,
   selection,
+  dnd,
 }) => {
+  const seriesId = group.series.id;
+
+  const handleHeaderDragOver = useCallback(
+    (e: React.DragEvent<HTMLElement>) => {
+      if (!e.dataTransfer.types.includes(DRAG_MIME)) return;
+      e.preventDefault();
+      dnd.onReorderDragOver(seriesId, dropPositionFromEvent(e));
+    },
+    [dnd, seriesId],
+  );
+  const handleHeaderDrop = useCallback(
+    (e: React.DragEvent<HTMLElement>) => {
+      e.preventDefault();
+      dnd.onReorderDrop(seriesId, dropPositionFromEvent(e));
+    },
+    [dnd, seriesId],
+  );
+
+  const isDropInto = dnd.dragOverSeriesId === seriesId;
+  const headerDropIndicator = dnd.dropTarget?.id === seriesId
+    ? dnd.dropTarget.position
+    : null;
   const {
     renamingSeriesId,
     seriesRenameValue,
@@ -86,11 +115,17 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
             // so a double-click fires two toggles (net no change) before the
             // rename input mounts — an accepted one-frame flicker.
             aria-expanded={isExpanded}
+            draggable={!isRenaming}
             onClick={(e) => {
               // Modifier click selects the series row instead of toggling it.
               if (selection.handleSelectClick(group.series.id, e)) return;
               if (!isRenaming) onToggle();
             }}
+            onDragStart={(e) => dnd.onSeriesDragStart(e, seriesId)}
+            onDragEnd={dnd.onDragEnd}
+            onDragOver={handleHeaderDragOver}
+            onDragLeave={dnd.onDragLeaveRow}
+            onDrop={handleHeaderDrop}
             onContextMenu={(e) =>
               handleSeriesContextMenu(e, group.series.id)}
             onDoubleClick={(e) => {
@@ -104,8 +139,32 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
               px: 2,
               py: 0.25,
               borderRadius: SB_ITEM_RADIUS,
+              position: "relative",
               ...(isSeriesActive && { bgcolor: "action.selected" }),
               "&:hover": { bgcolor: "action.hover" },
+              // Drop-a-post-into-series: highlight the whole header with a
+              // primary ring + soft fill (matches PostsListView's SeriesRow).
+              ...(isDropInto && {
+                "&, &:hover": {
+                  bgcolor: (t) => alpha(t.palette.primary.main, 0.12),
+                },
+                outline: "1.5px solid",
+                outlineColor: "primary.main",
+                outlineOffset: "-1px",
+              }),
+              // Reorder line when a series is dragged over this header.
+              ...(headerDropIndicator && {
+                "&::after": {
+                  content: '""',
+                  position: "absolute",
+                  left: 0,
+                  right: 0,
+                  [headerDropIndicator === "before" ? "top" : "bottom"]: 0,
+                  height: 2,
+                  bgcolor: "primary.main",
+                  zIndex: 2,
+                },
+              }),
               // The series row has no "selected" state of its own, so MUI's
               // default `.Mui-focusVisible` grey fill — left behind when focus
               // returns to the row after closing the context menu / committing a
@@ -280,6 +339,13 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
               onToggleTabs={onToggleTabs}
               isSelected={selection.isSelected(post.id)}
               onSelectClick={selection.handleSelectClick}
+              onDragStartItem={dnd.onPostDragStart}
+              onDragEndItem={dnd.onDragEnd}
+              onReorderDragOver={dnd.onReorderDragOver}
+              onReorderDrop={dnd.onReorderDrop}
+              dropIndicator={dnd.dropTarget?.id === post.id
+                ? dnd.dropTarget.position
+                : null}
             />
           ))}
         </Box>

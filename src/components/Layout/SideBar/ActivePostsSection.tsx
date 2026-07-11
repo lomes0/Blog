@@ -9,6 +9,7 @@ import type {
   SeriesItemActions,
 } from "./hooks/useSidebarActions";
 import { useSidebarSelection } from "./hooks/useSidebarSelection";
+import { useSidebarDnd } from "./hooks/useSidebarDnd";
 import { PostItem } from "./PostItem";
 import { SeriesGroup } from "./SeriesGroup";
 import { styles } from "../styles";
@@ -87,6 +88,8 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
 
   const selection = useSidebarSelection(allVisibleIds);
   const { clear: clearSelection, selectAll } = selection;
+
+  const dnd = useSidebarDnd(filteredGroups);
 
   // Escape clears the selection; Ctrl/Cmd+A selects every visible row. Scoped to
   // the sidebar list (the handler sits on the scroll container, firing only when
@@ -215,6 +218,7 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
                   expandedTabs={expandedTabs}
                   onToggleTabs={toggleTabs}
                   selection={selection}
+                  dnd={dnd}
                 />
               );
             }
@@ -230,6 +234,13 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
                 onToggleTabs={toggleTabs}
                 isSelected={selection.isSelected(group.posts[0].id)}
                 onSelectClick={selection.handleSelectClick}
+                onDragStartItem={dnd.onPostDragStart}
+                onDragEndItem={dnd.onDragEnd}
+                onReorderDragOver={dnd.onReorderDragOver}
+                onReorderDrop={dnd.onReorderDrop}
+                dropIndicator={dnd.dropTarget?.id === group.posts[0].id
+                  ? dnd.dropTarget.position
+                  : null}
               />
             );
           })}
