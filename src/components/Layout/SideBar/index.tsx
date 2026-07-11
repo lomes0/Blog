@@ -1,7 +1,7 @@
 "use client";
-import { useMemo } from "react";
-import { usePathname } from "next/navigation";
-import { type RootState, useSelector } from "@/store";
+import { useCallback, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { actions, type RootState, useDispatch, useSelector } from "@/store";
 import { selectUserFilteredDocuments } from "@/store/selectors/layoutSelectors";
 import { Box, Drawer, useMediaQuery } from "@mui/material";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
@@ -14,6 +14,7 @@ import { SidebarSearchView } from "./SidebarSearchView";
 import { CollapsedRail } from "./CollapsedRail";
 import { PostContextMenu } from "./PostContextMenu";
 import { SeriesContextMenu } from "./SeriesContextMenu";
+import CreateSeriesDrawer from "@/components/drawers/CreateSeriesDrawer";
 import {
   buildSeriesMap,
   groupPostsBySeriesWithEmpty,
@@ -29,6 +30,18 @@ import {
 
 const SideBar: React.FC = () => {
   const pathname = usePathname();
+  const router = useRouter();
+  const dispatch = useDispatch();
+
+  // Create actions live in the header (IDE-style). New Post reuses the shared
+  // `/new` editor route; New Series opens the same drawer the posts page uses.
+  const [seriesDrawerOpen, setSeriesDrawerOpen] = useState(false);
+  const handleNewPost = useCallback(() => router.push("/new"), [router]);
+  const handleNewSeries = useCallback(() => setSeriesDrawerOpen(true), []);
+  const handleSeriesCreated = useCallback(() => {
+    // Refresh the Redux series list so the new series appears in the tree.
+    dispatch(actions.loadSeries());
+  }, [dispatch]);
 
   const {
     width,
@@ -131,7 +144,11 @@ const SideBar: React.FC = () => {
         {/* Full layer — pinned to at least the resting width so it clips
             cleanly (rather than squishing) while the paper animates/drags. */}
         <Box sx={layerSx(Math.max(width, SIDEBAR_MIN_WIDTH), isExpanded)}>
-          <SidebarHeader view={sidebarView} />
+          <SidebarHeader
+            view={sidebarView}
+            onNewPost={handleNewPost}
+            onNewSeries={handleNewSeries}
+          />
           {sidebarView === "search"
             ? <SidebarSearchView pathname={pathname} />
             : hasContent
@@ -189,6 +206,12 @@ const SideBar: React.FC = () => {
         onEdit={handleEditSeries}
         onRename={handleRenameSeriesFromMenu}
         onDelete={handleDeleteSeries}
+      />
+
+      <CreateSeriesDrawer
+        open={seriesDrawerOpen}
+        onClose={() => setSeriesDrawerOpen(false)}
+        onSuccess={handleSeriesCreated}
       />
     </Drawer>
   );
