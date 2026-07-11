@@ -28,32 +28,6 @@ export const AI_MODELS: AIModel[] = [
     },
   },
   {
-    id: "claude-3-5-sonnet-20241022",
-    name: "Claude 3.5 Sonnet",
-    provider: "anthropic",
-    capabilities: {
-      streaming: true,
-      maxTokens: 8192,
-    },
-    metadata: {
-      fast: false,
-      reason: true,
-    },
-  },
-  {
-    id: "claude-sonnet-4-20250514",
-    name: "Claude Sonnet 4",
-    provider: "anthropic",
-    capabilities: {
-      streaming: true,
-      maxTokens: 8192,
-    },
-    metadata: {
-      fast: false,
-      reason: true,
-    },
-  },
-  {
     id: "claude-sonnet-5",
     name: "Claude Sonnet 5",
     provider: "anthropic",

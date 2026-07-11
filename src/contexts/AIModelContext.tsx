@@ -1,6 +1,7 @@
 "use client";
-import React, { createContext, useContext } from "react";
+import React, { createContext, useContext, useEffect } from "react";
 import useLocalStorage from "@/hooks/useLocalStorage";
+import { AI_MODELS } from "@/lib/ai/models";
 
 interface LLMConfig {
   provider: string;
@@ -23,6 +24,15 @@ export const AIModelProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [llm, setLlm] = useLocalStorage<LLMConfig>("llm", DEFAULT_LLM);
+
+  // A previously-stored model may have been removed or retired (e.g. it now
+  // 404s at the provider). Fall back to the default so Copilot stays usable.
+  useEffect(() => {
+    if (!AI_MODELS.some((m) => m.id === llm.model)) {
+      setLlm(DEFAULT_LLM);
+    }
+  }, [llm.model, setLlm]);
+
   return (
     <AIModelContext.Provider value={{ llm, setLlm }}>
       {children}
