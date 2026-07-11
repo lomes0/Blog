@@ -13,6 +13,7 @@ import {
   type SerializedEditorState,
 } from "lexical";
 import { v4 as uuidv4 } from "uuid";
+import { apiClient } from "@/api";
 import { documentsSelectors, store } from "@/store";
 import { createLocalDocument, updateLocalDocument } from "@/store/app";
 import type { DocumentCreateInput, UserDocument } from "@/types";
@@ -42,12 +43,12 @@ export interface WriteResult {
 }
 
 /** Execute a read-only tool. Returns a JSON-serializable result. */
-export function runReadTool(
+export async function runReadTool(
   name: string,
   input: Record<string, unknown>,
   editor: LexicalEditor | null,
   currentDocId: string,
-): unknown {
+): Promise<unknown> {
   switch (name) {
     case "list_documents":
       return { documents: listDocuments(getDocs()) };
@@ -58,12 +59,32 @@ export function runReadTool(
     case "read_document":
       return readDocument(getDocs(), String(input.path ?? ""));
     case "read_current_document": {
-      // Prefer the live editor (captures unsaved edits); fall back to the
-      // stored document body if the editor isn't mounted or reads empty.
-      const live = currentMarkdown(editor);
-      if (live.trim()) return { path: `${currentDocId}.md`, markdown: live };
-      const stored = readDocument(getDocs(), `${currentDocId}.md`);
-      return { path: stored.path, markdown: stored.markdown };
+      // A mounted editor is authoritative, including when its unsaved content
+      // is intentionally empty. Otherwise prefer a locally hydrated body.
+      if (editor) {
+        return {
+          path: `${currentDocId}.md`,
+          markdown: currentMarkdown(editor),
+        };
+      }
+
+      const docs = getDocs();
+      const stored = readDocument(docs, `${currentDocId}.md`);
+      if (stored.hasContent) {
+        return { path: stored.path, markdown: stored.markdown };
+      }
+
+      // View mode has no editor, and cloud-only documents deliberately omit
+      // revision bodies from Redux. Hydrate the cloud head on demand.
+      const document = docs.find((doc) => doc.id === currentDocId);
+      const revisionId = document?.cloud?.head;
+      if (!revisionId) return { path: stored.path, markdown: stored.markdown };
+
+      const revision = await apiClient.revisions.get(revisionId);
+      return {
+        path: stored.path,
+        markdown: revision ? serializedStateToMarkdown(revision.data) : "",
+      };
     }
     case "get_selection": {
       if (!editor) return { selection: "" };

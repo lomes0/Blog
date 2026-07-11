@@ -168,22 +168,24 @@ const CopilotChat: React.FC<CopilotChatProps> = (
     onToolCall: ({ toolCall }) => {
       const name = toolCall.toolName;
       if (!isReadTool(name)) return;
-      let output: unknown;
-      try {
-        output = runReadTool(
-          name,
-          (toolCall.input ?? {}) as Record<string, unknown>,
-          editorRefRef.current.current,
-          documentId,
-        );
-      } catch (e) {
-        output = { error: e instanceof Error ? e.message : String(e) };
-      }
-      void addToolOutputRef.current?.({
-        tool: name,
-        toolCallId: toolCall.toolCallId,
-        output,
-      });
+      void (async () => {
+        let output: unknown;
+        try {
+          output = await runReadTool(
+            name,
+            (toolCall.input ?? {}) as Record<string, unknown>,
+            editorRefRef.current.current,
+            documentId,
+          );
+        } catch (e) {
+          output = { error: e instanceof Error ? e.message : String(e) };
+        }
+        void addToolOutputRef.current?.({
+          tool: name,
+          toolCallId: toolCall.toolCallId,
+          output,
+        });
+      })();
     },
   });
   addToolOutputRef.current = addToolOutput as unknown as GenericAddToolOutput;

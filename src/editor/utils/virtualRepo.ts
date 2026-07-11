@@ -9,9 +9,9 @@
  *
  * Content comes from `local.data` (the full `SerializedEditorState`). Cloud-only
  * documents expose metadata (title, series) and are matched by title, but their
- * body isn't in the store, so `read` reports them as not-locally-loaded rather
- * than inventing content. Hydrating cloud-only bodies (via a revision fetch) is
- * a later, additive step.
+ * body isn't in the store, so pure repo reads report them as not-locally-loaded.
+ * The current-document Copilot executor hydrates a cloud-only head revision on
+ * demand when no live editor or local body is available.
  */
 import type { SerializedEditorState } from "lexical";
 import type { UserDocument } from "@/types";

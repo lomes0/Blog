@@ -50,8 +50,11 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
     ? "view"
     : null;
   const routeDocId = routeMode ? (segments[1] ?? null) : null;
-  // In edit mode use the active tab; in view mode fall back to the URL doc id.
-  const copilotDocumentId = activeTabId ?? routeDocId ?? "";
+  // A view route is authoritative; the active tab may be stale from a prior
+  // edit session. Edit mode still follows the selected tab.
+  const copilotDocumentId = routeMode === "view"
+    ? routeDocId ?? ""
+    : activeTabId ?? routeDocId ?? "";
 
   const [activeEditorRef, setActiveEditorRef] = useState<
     RefObject<LexicalEditor | null>
