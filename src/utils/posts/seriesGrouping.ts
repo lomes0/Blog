@@ -1,4 +1,4 @@
-import { Series, UserDocument } from "@/types";
+import { Project, Series, UserDocument } from "@/types";
 import { PartitionGranularity } from "@/types/partitioning";
 import { compareDocumentsByRank, rankOf } from "@/lib/documentOrder";
 import { formatTimeHeader, getTimeKey } from "./dateHelpers";
@@ -15,6 +15,26 @@ export interface SeriesGroupItem {
   /** Sort key timestamp for ordering groups/posts together */
   sortKey: number;
 }
+
+/**
+ * A project group in the sidebar tree: a named grouping whose children are the
+ * series groups assigned to it (`series.projectId`), ordered by rank within the
+ * project.
+ */
+export interface ProjectGroupItem {
+  type: "project";
+  project: Project;
+  /** Member series groups, ordered by rank within the project. */
+  children: SeriesGroupItem[];
+}
+
+/**
+ * A top-level entry in the author's root list as rendered by the sidebar: a
+ * project, an ungrouped series, or a standalone post. Projects, ungrouped series
+ * and standalone posts share one rank space, so they interleave (see
+ * {@link groupRootItems}).
+ */
+export type RootItem = ProjectGroupItem | SeriesGroupItem;
 
 /**
  * Get the series ID from a UserDocument
@@ -64,6 +84,25 @@ const groupId = (item: SeriesGroupItem): string =>
   item.type === "series" ? (item.series?.id ?? "") : (item.posts[0]?.id ?? "");
 
 /**
+ * Ascending compare by fractional rank with a stable id tie-breaker. Unranked
+ * entries (null rank) sort last; equal/absent ranks break by id so the result is
+ * total and stable. Shared by the flat group ordering and the root-item ordering
+ * so both surfaces agree on one rank space.
+ */
+const compareByRankThenId = (
+  aRank: string | null,
+  aId: string,
+  bRank: string | null,
+  bId: string,
+): number => {
+  if (aRank != null && bRank != null) {
+    if (aRank !== bRank) return aRank < bRank ? -1 : 1;
+  } else if (aRank != null) return -1;
+  else if (bRank != null) return 1;
+  return aId < bId ? -1 : aId > bId ? 1 : 0;
+};
+
+/**
  * Order standalone posts and series in one shared rank space (ascending),
  * matching the interleaved root list on /posts (see PostsListView). Unranked
  * groups sort last; ties break by id so the result is total and stable.
@@ -71,17 +110,8 @@ const groupId = (item: SeriesGroupItem): string =>
 const compareGroupsByRank = (
   a: SeriesGroupItem,
   b: SeriesGroupItem,
-): number => {
-  const ar = groupRank(a);
-  const br = groupRank(b);
-  if (ar != null && br != null) {
-    if (ar !== br) return ar < br ? -1 : 1;
-  } else if (ar != null) return -1;
-  else if (br != null) return 1;
-  const ai = groupId(a);
-  const bi = groupId(b);
-  return ai < bi ? -1 : ai > bi ? 1 : 0;
-};
+): number =>
+  compareByRankThenId(groupRank(a), groupId(a), groupRank(b), groupId(b));
 
 /**
  * Get the creation date timestamp from a Series
@@ -194,6 +224,78 @@ export const groupPostsBySeriesWithEmpty = (
     }
   });
   return [...baseGroups, ...emptyGroups].sort(compareGroupsByRank);
+};
+
+/** The rank governing a root item's position in the interleaved root list. */
+const rootItemRank = (item: RootItem): string | null =>
+  item.type === "project" ? (item.project.rank ?? null) : groupRank(item);
+
+/** Stable tie-breaker id for a root item when ranks are equal or absent. */
+const rootItemId = (item: RootItem): string =>
+  item.type === "project" ? item.project.id : groupId(item);
+
+/**
+ * Order projects, ungrouped series and standalone posts in one shared rank space
+ * (ascending) — the same space the server ranks them in, so drag-reorder and
+ * this view agree. Unranked entries sort last; ties break by id.
+ */
+const compareRootItemsByRank = (a: RootItem, b: RootItem): number =>
+  compareByRankThenId(
+    rootItemRank(a),
+    rootItemId(a),
+    rootItemRank(b),
+    rootItemId(b),
+  );
+
+/**
+ * Build the sidebar's nested root tree: projects (each wrapping its member series
+ * groups), ungrouped series and standalone posts, interleaved by rank.
+ *
+ * Starts from {@link groupPostsBySeriesWithEmpty} (flat series groups + standalone
+ * posts, empty series included), then lifts every series whose `projectId` names
+ * a known project into that project's `children`. A series pointing at an unknown
+ * project (e.g. projects not yet loaded) falls back to the root list, so the tree
+ * degrades gracefully and matches the "ungrouped renders inline at root" rule.
+ *
+ * @param posts - Standalone-post source (series posts come from seriesMap).
+ * @param seriesMap - Series ID → Series (series.posts is authoritative).
+ * @param projects - The author's projects, in any order (sorted here by rank).
+ * @returns Root items sorted by their shared rank (newest manual order).
+ */
+export const groupRootItems = (
+  posts: UserDocument[],
+  seriesMap: Map<string, Series>,
+  projects: Project[],
+): RootItem[] => {
+  const flatGroups = groupPostsBySeriesWithEmpty(posts, seriesMap);
+  const knownProjectIds = new Set(projects.map((p) => p.id));
+
+  // Partition the flat groups: series assigned to a known project are nested;
+  // everything else (ungrouped series, standalone posts) stays at root.
+  const membersByProject = new Map<string, SeriesGroupItem[]>();
+  const rootGroups: SeriesGroupItem[] = [];
+  for (const group of flatGroups) {
+    const projectId = group.type === "series"
+      ? (group.series?.projectId ?? null)
+      : null;
+    if (projectId && knownProjectIds.has(projectId)) {
+      const members = membersByProject.get(projectId) ?? [];
+      members.push(group);
+      membersByProject.set(projectId, members);
+    } else {
+      rootGroups.push(group);
+    }
+  }
+
+  const projectItems: RootItem[] = projects.map((project) => ({
+    type: "project",
+    project,
+    children: (membersByProject.get(project.id) ?? []).sort(
+      compareGroupsByRank,
+    ),
+  }));
+
+  return [...projectItems, ...rootGroups].sort(compareRootItemsByRank);
 };
 
 /**
