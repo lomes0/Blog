@@ -2,7 +2,11 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { getToolName, isToolUIPart } from "ai";
+import {
+  getToolName,
+  isToolUIPart,
+  lastAssistantMessageIsCompleteWithToolCalls,
+} from "ai";
 import {
   Box,
   IconButton,
@@ -153,9 +157,15 @@ const CopilotChat: React.FC<CopilotChatProps> = (
   } = useChat({
     transport,
     messages: initialMessages,
+    // Resume the agent loop automatically once every tool call in the latest
+    // assistant message has a result. Auto-executed read tools satisfy this
+    // immediately; write proposals hold the loop until the user accepts (which
+    // fills their result), which is exactly the review gate we want.
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
     // Read tools run automatically so the agent can explore the library; write
     // tools are left pending (input-available) for the user to review + accept.
-    onToolCall: async ({ toolCall }) => {
+    // Do NOT await addToolOutput here — awaiting inside onToolCall can deadlock.
+    onToolCall: ({ toolCall }) => {
       const name = toolCall.toolName;
       if (!isReadTool(name)) return;
       let output: unknown;
@@ -168,7 +178,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
       } catch (e) {
         output = { error: e instanceof Error ? e.message : String(e) };
       }
-      await addToolOutputRef.current?.({
+      void addToolOutputRef.current?.({
         tool: name,
         toolCallId: toolCall.toolCallId,
         output,
