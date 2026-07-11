@@ -174,6 +174,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
           name,
           (toolCall.input ?? {}) as Record<string, unknown>,
           editorRefRef.current.current,
+          documentId,
         );
       } catch (e) {
         output = { error: e instanceof Error ? e.message : String(e) };

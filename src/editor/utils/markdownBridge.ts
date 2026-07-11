@@ -38,24 +38,27 @@ import { CodeHighlightNode, CodeNode } from "@lexical/code";
 import { AutoLinkNode, LinkNode } from "@lexical/link";
 
 /**
- * Node `type` strings whose instances are protected as opaque tokens. Anything
- * not handled by the stock prose transformers goes here so it round-trips
- * losslessly instead of being silently dropped or corrupted.
+ * Standard node `type` strings the minimal headless editor + stock prose
+ * transformers can safely handle. This is an ALLOWLIST: any node whose type is
+ * not here — a custom rich node (math, graph, table, …) or an unknown/new type
+ * — is protected as an opaque token. Defaulting the unknown to opaque (rather
+ * than a denylist that must enumerate every custom type) means the bridge can
+ * never crash the parse on an unregistered node, and never silently drops one.
  */
-const OPAQUE_TYPES = new Set([
-  "math",
-  "graph",
-  "sketch",
-  "sticky",
-  "image",
-  "attachment",
-  "iframe",
-  "kanban",
-  "page-break",
-  "details-container",
-  "layout-container",
-  "table",
-  "horizontalrule",
+const STANDARD_TYPES = new Set([
+  "root",
+  "paragraph",
+  "text",
+  "linebreak",
+  "tab",
+  "heading",
+  "quote",
+  "list",
+  "listitem",
+  "code",
+  "code-highlight",
+  "link",
+  "autolink",
 ]);
 
 /** Parents whose children are inline — a token replacing a child stays inline. */
@@ -114,7 +117,7 @@ function stripCustomNodes(
   node: SerializedElement,
   parentType: string,
 ): SerializedLexicalNode {
-  if (OPAQUE_TYPES.has(node.type)) {
+  if (!STANDARD_TYPES.has(node.type)) {
     const token = tokenTextNode(makeToken(node));
     // Inline context keeps the token inline; block context wraps it in a
     // paragraph so the parent still holds a valid block child.

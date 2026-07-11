@@ -46,6 +46,7 @@ export function runReadTool(
   name: string,
   input: Record<string, unknown>,
   editor: LexicalEditor | null,
+  currentDocId: string,
 ): unknown {
   switch (name) {
     case "list_documents":
@@ -56,8 +57,14 @@ export function runReadTool(
       };
     case "read_document":
       return readDocument(getDocs(), String(input.path ?? ""));
-    case "read_current_document":
-      return { markdown: currentMarkdown(editor) };
+    case "read_current_document": {
+      // Prefer the live editor (captures unsaved edits); fall back to the
+      // stored document body if the editor isn't mounted or reads empty.
+      const live = currentMarkdown(editor);
+      if (live.trim()) return { path: `${currentDocId}.md`, markdown: live };
+      const stored = readDocument(getDocs(), `${currentDocId}.md`);
+      return { path: stored.path, markdown: stored.markdown };
+    }
     case "get_selection": {
       if (!editor) return { selection: "" };
       const selection = editor.getEditorState().read(() => {
