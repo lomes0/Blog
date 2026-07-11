@@ -214,14 +214,13 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
                       borderRadius: 1.5,
                       transition: (t) =>
                         t.transitions.create(
-                          ["border-color", "background-color", "color"],
+                          ["background-color", "color"],
                           {
                             duration: t.transitions.duration.shortest,
                           },
                         ),
                       "&:hover": {
-                        borderColor: "primary.main",
-                        backgroundColor: "action.hover",
+                        backgroundColor: "action.selected",
                         color: "text.primary",
                       },
                     }}
