@@ -4,12 +4,10 @@ import {
   Collapse,
   ListItem,
   ListItemButton,
-  ListItemIcon,
   TextField,
   Typography,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import { ChevronRight } from "lucide-react";
 import type {
   ProjectGroupItem,
   SeriesGroupItem,
@@ -26,8 +24,10 @@ import {
   type SidebarDndResult,
 } from "./hooks/useSidebarDnd";
 import { SeriesGroup } from "./SeriesGroup";
-import { CHEVRON_TRANSITION, SB_FONT, SB_ITEM_RADIUS } from "./constants";
-import { ICON_SIZE } from "@/theme/icons";
+import { SB_FONT } from "./constants";
+
+/** Width of the leading rule stub before the tag title (the "── " lead-in). */
+const LEAD_RULE_W = 14;
 
 interface ProjectGroupProps {
   item: ProjectGroupItem;
@@ -48,13 +48,19 @@ interface ProjectGroupProps {
 }
 
 /**
- * A project section in the sidebar tree: an `overline`-style header (uppercase,
- * tracked, muted — DESIGN.md §17.2 / §chrome section headers) that collapses to
- * reveal its member series. The header is the whole toggle target (VS Code tree
- * behavior); double-click renames inline, right-click opens the project menu.
+ * A project (tag) band in the sidebar tree, rendered as a **labeled divider** —
+ * a short leading rule, the title in `overline` style (uppercase, tracked, muted
+ * — DESIGN.md §17.2 / §chrome section headers), then a rule stretching to the
+ * right edge. The divider treatment (vs. series' chevron + folder row) is what
+ * signals "band boundary, not an expandable node."
  *
- * Series membership drag/drop (into/out of a project, reordering projects) is
- * added in a later phase; here the header is a grouping + collapse affordance.
+ * The band still collapses, but without a tree-style arrow (which would make it
+ * read as an expandable node): when folded, a muted member count is appended
+ * after the title (`── PHYSICS · 3 ──────`), doubling as a "how much is hidden"
+ * cue; when expanded the members are visible so no count is shown. The whole
+ * header is the toggle target (VS Code tree behavior); double-click renames
+ * inline, right-click opens the project menu, and a series dropped onto it joins
+ * the band.
  */
 export const ProjectGroup: React.FC<ProjectGroupProps> = ({
   item,
@@ -130,20 +136,23 @@ export const ProjectGroup: React.FC<ProjectGroupProps> = ({
           }}
           sx={{
             minHeight: 24,
-            px: 2,
+            pl: 2,
+            pr: 1,
             py: 0.25,
-            borderRadius: SB_ITEM_RADIUS,
+            display: "flex",
+            alignItems: "center",
+            gap: 0.75,
             position: "relative",
+            // The divider isn't a "selectable pill", so no filled-pill hover —
+            // just a light tint (the pointer cursor signals it's clickable).
             "&:hover": { bgcolor: "action.hover" },
-            // Drop-a-series-into-project: ring + soft fill on the whole header
-            // (mirrors SeriesGroup's drop-into treatment).
+            // Drop-a-series-into-band: soft full-width fill + primary-tinted rules
+            // (a band highlight rather than SeriesGroup's pill outline).
             ...(isDropInto && {
               "&, &:hover": {
                 bgcolor: (t) => alpha(t.palette.primary.main, 0.12),
               },
-              outline: "1.5px solid",
-              outlineColor: "primary.main",
-              outlineOffset: "-1px",
+              "& .tag-rule": { bgcolor: "primary.main" },
             }),
             // Reorder line when a project is dragged over this header.
             ...(headerDropIndicator && {
@@ -166,20 +175,16 @@ export const ProjectGroup: React.FC<ProjectGroupProps> = ({
             },
           }}
         >
-          <ListItemIcon
+          {/* Leading rule stub — the "── " before the title. */}
+          <Box
+            className="tag-rule"
             sx={{
-              minWidth: 0,
-              mr: 0.5,
-              justifyContent: "center",
-              color: "text.disabled",
-              "& > svg": {
-                transition: CHEVRON_TRANSITION,
-                transform: isExpanded ? "rotate(90deg)" : "none",
-              },
+              flexShrink: 0,
+              width: LEAD_RULE_W,
+              height: "1px",
+              bgcolor: "divider",
             }}
-          >
-            <ChevronRight size={ICON_SIZE.inline} strokeWidth={2} />
-          </ListItemIcon>
+          />
           {sidebarOpen && isRenaming
             ? (
               <TextField
@@ -191,8 +196,8 @@ export const ProjectGroup: React.FC<ProjectGroupProps> = ({
                 onClick={(e) => e.stopPropagation()}
                 size="small"
                 variant="standard"
-                fullWidth
                 sx={{
+                  flexShrink: 0,
                   "& .MuiInput-input": {
                     fontSize: SB_FONT.meta,
                     fontWeight: 600,
@@ -208,19 +213,47 @@ export const ProjectGroup: React.FC<ProjectGroupProps> = ({
                 component="span"
                 noWrap
                 sx={{
+                  flexShrink: 0,
                   fontSize: SB_FONT.meta,
                   fontWeight: 600,
                   letterSpacing: "0.08em",
                   textTransform: "uppercase",
                   color: "text.disabled",
                   lineHeight: 1,
-                  flex: 1,
                   minWidth: 0,
                 }}
               >
                 {item.project.title}
               </Typography>
             )}
+          {/* Folded cue: muted member count, shown only when collapsed (expanded
+              bands show their members, so the count would be redundant). */}
+          {sidebarOpen && !isRenaming && !isExpanded && (
+            <Typography
+              component="span"
+              sx={{
+                flexShrink: 0,
+                fontSize: SB_FONT.meta,
+                fontWeight: 600,
+                letterSpacing: "0.04em",
+                color: "text.disabled",
+                lineHeight: 1,
+                opacity: 0.7,
+              }}
+            >
+              · {item.children.length}
+            </Typography>
+          )}
+          {/* Trailing rule — stretches from after the title to the right edge. */}
+          <Box
+            className="tag-rule"
+            sx={{
+              flex: 1,
+              minWidth: LEAD_RULE_W,
+              height: "1px",
+              bgcolor: "divider",
+            }}
+          />
         </ListItemButton>
       </ListItem>
 
