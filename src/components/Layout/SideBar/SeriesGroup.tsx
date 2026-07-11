@@ -10,7 +10,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import { ChevronRight, Folder, FolderOpen } from "lucide-react";
+import { Folder, FolderOpen } from "lucide-react";
 import type { Series } from "@/types";
 import type { SeriesGroupItem } from "@/utils/posts/seriesGrouping";
 import type {
@@ -25,7 +25,7 @@ import {
 } from "./hooks/useSidebarDnd";
 import { PostItem } from "./PostItem";
 import { SafeNavigationLink } from "./SafeNavigationLink";
-import { CHEVRON_TRANSITION, SB_FONT, SB_ITEM_RADIUS } from "./constants";
+import { SB_FONT, SB_ITEM_RADIUS } from "./constants";
 import { ICON_SIZE } from "@/theme/icons";
 
 interface SeriesGroupProps {
@@ -188,38 +188,23 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
               }),
             }}
           >
+            {/* The open/closed folder glyph is the sole expand indicator now —
+                the redundant tree chevron was dropped, so the folder both marks
+                the row as a container and shows its state (VS Code folder rows).
+                It leads the row where the chevron used to, so the guide-line and
+                child-indent math below are unchanged. */}
             <ListItemIcon
               sx={{
                 minWidth: 0,
-                mr: 0.5,
+                mr: sidebarOpen ? 0.75 : 0,
                 justifyContent: "center",
-                // Single chevron rotated 0deg -> 90deg on expand (design spec),
-                // rather than swapping two glyphs. The whole row toggles, so the
-                // chevron is a persistent visual indicator, not its own target.
-                "& > svg": {
-                  transition: CHEVRON_TRANSITION,
-                  transform: isExpanded ? "rotate(90deg)" : "none",
-                },
+                color: hasAnyDirtyChild ? "warning.main" : "text.secondary",
               }}
             >
-              <ChevronRight size={ICON_SIZE.inline} strokeWidth={2} />
+              {isExpanded
+                ? <FolderOpen size={ICON_SIZE.inline} strokeWidth={2} />
+                : <Folder size={ICON_SIZE.inline} strokeWidth={2} />}
             </ListItemIcon>
-            {sidebarOpen && (
-              <Box
-                component="span"
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  flexShrink: 0,
-                  mr: 0.75,
-                  color: hasAnyDirtyChild ? "warning.main" : "text.secondary",
-                }}
-              >
-                {isExpanded
-                  ? <FolderOpen size={ICON_SIZE.inline} strokeWidth={2} />
-                  : <Folder size={ICON_SIZE.inline} strokeWidth={2} />}
-              </Box>
-            )}
             {sidebarOpen && isRenaming && (
               <TextField
                 inputRef={seriesRenameInputRef}
@@ -315,15 +300,17 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
       <Collapse in={isExpanded} timeout="auto">
         <Box
           sx={{
-            // Center the 2px guide line under the series chevron: the row's
-            // px:2 (16px) + half the 14px chevron = 23px, and the line's center
-            // is ml + 1, so ml = 22px (2.75).
+            // Center the 2px guide line under the series folder icon: the row's
+            // px:2 (16px) + half the 14px folder icon = 23px, and the line's
+            // center is ml + 1, so ml = 22px (2.75).
             ml: sidebarOpen ? 2.75 : 0,
             borderLeft: sidebarOpen ? "2px solid" : "none",
             borderLeftColor: "divider",
-            // Inset the children (inside the border, so the line stays put) so a
-            // child's file icon lands under the parent folder icon (center 41px):
-            // ml(22) + border(2) + pl + post pl(6) + half icon(7) = 41 -> pl 4px.
+            // Inset the children one level past the guide line (inside the
+            // border, so the line stays put) so a child's file icon lands under
+            // the parent's title text (center 41px), the folder icon now sitting
+            // on the guide line: ml(22) + border(2) + pl + post pl(6) + half
+            // icon(7) = 41 -> pl 4px.
             pl: sidebarOpen ? "4px" : 0,
           }}
         >

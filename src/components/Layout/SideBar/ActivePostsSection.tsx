@@ -2,7 +2,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { Box, IconButton, List } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import { Plus, Search, X } from "lucide-react";
+import { FilePlus, FolderPlus, Plus, Search, X } from "lucide-react";
 import type {
   ProjectGroupItem,
   RootItem,
@@ -20,6 +20,10 @@ import { PostItem } from "./PostItem";
 import { SeriesGroup } from "./SeriesGroup";
 import { ProjectGroup } from "./ProjectGroup";
 import { SidebarBulkMenu } from "./SidebarBulkMenu";
+import {
+  SECTION_ACTION_ICON,
+  SidebarSectionHeader,
+} from "./SidebarSectionHeader";
 import { styles } from "../styles";
 import { useExpandedState } from "@/hooks/useExpandedState";
 import { ICON_SIZE } from "@/theme/icons";
@@ -32,6 +36,10 @@ interface ActivePostsSectionProps {
   itemActions: PostItemActions;
   seriesActions: SeriesItemActions;
   projectActions: ProjectItemActions;
+  /** Create a new standalone note — the Notes section's "+" affordance. */
+  onNewPost: () => void;
+  /** Create a new series — one of the Projects section's "+" affordances. */
+  onNewSeries: () => void;
 }
 
 export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
@@ -41,6 +49,8 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
   itemActions,
   seriesActions,
   projectActions,
+  onNewPost,
+  onNewSeries,
 }) => {
   const [activePostsSearch, setActivePostsSearch] = useState("");
   const {
@@ -96,11 +106,31 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
       .filter((item): item is RootItem => item !== null);
   }, [rootItems, activePostsSearch]);
 
-  // Flat list of selectable rows in render order: each series row, the posts of
-  // each *expanded* series, and the standalone posts — plus the series inside
-  // each *expanded* project. Drives Shift-range and Select-All. Project headers
-  // are structural, not selectable, so they are omitted. Collapsed containers'
-  // descendants are omitted since they aren't visible.
+  // Split the (rank-ordered) root list into the two rendered sections: standalone
+  // posts land under "Notes"; projects and ungrouped series land under
+  // "Projects". The underlying rank space stays shared (so drag-reorder is
+  // unchanged) — each section is just a rank-sorted subset of it.
+  const noteItems = useMemo(
+    () =>
+      filteredRootItems.filter(
+        (item): item is SeriesGroupItem => item.type === "standalone",
+      ),
+    [filteredRootItems],
+  );
+  const groupItems = useMemo(
+    () =>
+      filteredRootItems.filter(
+        (item) => item.type === "project" || item.type === "series",
+      ),
+    [filteredRootItems],
+  );
+
+  // Flat list of selectable rows in *visual* order (notes section, then the
+  // grouped section): each series row, the posts of each *expanded* series, the
+  // standalone posts, and the series inside each *expanded* project. Drives
+  // Shift-range and Select-All, so it must match what the user sees. Project
+  // headers are structural, not selectable, so they are omitted; collapsed
+  // containers' descendants are omitted since they aren't visible.
   const allVisibleIds = useMemo(() => {
     const ids: string[] = [];
     const pushGroup = (group: SeriesGroupItem) => {
@@ -113,17 +143,18 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
         ids.push(group.posts[0].id);
       }
     };
-    for (const item of filteredRootItems) {
+    for (const item of noteItems) pushGroup(item);
+    for (const item of groupItems) {
       if (item.type === "project") {
         if (expandedProjects.has(item.project.id)) {
           item.children.forEach(pushGroup);
         }
       } else {
-        pushGroup(item);
+        pushGroup(item as SeriesGroupItem);
       }
     }
     return ids;
-  }, [filteredRootItems, expandedSeries, expandedProjects]);
+  }, [noteItems, groupItems, expandedSeries, expandedProjects]);
 
   const selection = useSidebarSelection(allVisibleIds);
   const { clear: clearSelection, selectAll } = selection;
@@ -257,7 +288,7 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
           />
           <Box
             component="input"
-            placeholder="Search posts..."
+            placeholder="Search notes & projects..."
             value={activePostsSearch}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               setActivePostsSearch(e.target.value)}
@@ -294,8 +325,64 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
           overscrollBehavior: "contain",
         }}
       >
-        <List dense>
-          {filteredRootItems.map((item, index) => {
+        {/* Notes — standalone posts, split out from the grouped content below. */}
+        <SidebarSectionHeader
+          title="Notes"
+          actions={sidebarOpen
+            ? [{
+              key: "new-note",
+              label: "New note",
+              icon: <FilePlus size={SECTION_ACTION_ICON} strokeWidth={2} />,
+              onClick: onNewPost,
+            }]
+            : undefined}
+        />
+        <List dense disablePadding>
+          {noteItems.map((item) => (
+            <PostItem
+              key={item.posts[0].id}
+              post={item.posts[0]}
+              inSeries={false}
+              sidebarOpen={sidebarOpen}
+              pathname={pathname}
+              itemActions={bulkAwareItemActions}
+              expandedTabs={expandedTabs}
+              onToggleTabs={toggleTabs}
+              isSelected={selection.isSelected(item.posts[0].id)}
+              onSelectClick={selection.handleSelectClick}
+              onDragStartItem={dnd.onPostDragStart}
+              onDragEndItem={dnd.onDragEnd}
+              onReorderDragOver={dnd.onReorderDragOver}
+              onReorderDrop={dnd.onReorderDrop}
+              dropIndicator={dnd.dropTarget?.id === item.posts[0].id
+                ? dnd.dropTarget.position
+                : null}
+            />
+          ))}
+        </List>
+
+        {/* Projects — projects (each wrapping its series) and ungrouped series. */}
+        <SidebarSectionHeader
+          title="Projects"
+          actions={sidebarOpen
+            ? [
+              {
+                key: "new-series",
+                label: "New series",
+                icon: <FolderPlus size={SECTION_ACTION_ICON} strokeWidth={2} />,
+                onClick: onNewSeries,
+              },
+              {
+                key: "new-project",
+                label: "New project",
+                icon: <Plus size={SECTION_ACTION_ICON} strokeWidth={2} />,
+                onClick: () => projectActions.handleCreateProject(),
+              },
+            ]
+            : undefined}
+        />
+        <List dense disablePadding>
+          {groupItems.map((item, index) => {
             if (item.type === "project") {
               return (
                 <ProjectGroup
@@ -338,62 +425,10 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
                 />
               );
             }
-            return (
-              <PostItem
-                key={item.posts[0].id}
-                post={item.posts[0]}
-                inSeries={false}
-                sidebarOpen={sidebarOpen}
-                pathname={pathname}
-                itemActions={bulkAwareItemActions}
-                expandedTabs={expandedTabs}
-                onToggleTabs={toggleTabs}
-                isSelected={selection.isSelected(item.posts[0].id)}
-                onSelectClick={selection.handleSelectClick}
-                onDragStartItem={dnd.onPostDragStart}
-                onDragEndItem={dnd.onDragEnd}
-                onReorderDragOver={dnd.onReorderDragOver}
-                onReorderDrop={dnd.onReorderDrop}
-                dropIndicator={dnd.dropTarget?.id === item.posts[0].id
-                  ? dnd.dropTarget.position
-                  : null}
-              />
-            );
+            return null;
           })}
         </List>
       </Box>
-
-      {sidebarOpen && (
-        <Box
-          component="button"
-          type="button"
-          onClick={() => projectActions.handleCreateProject()}
-          sx={{
-            flexShrink: 0,
-            display: "flex",
-            alignItems: "center",
-            gap: 0.75,
-            mx: 1,
-            mt: 0.5,
-            mb: 1,
-            px: 1,
-            py: 0.5,
-            border: "none",
-            borderRadius: "8px",
-            background: "transparent",
-            cursor: "pointer",
-            color: "text.disabled",
-            fontFamily: "inherit",
-            fontSize: SB_FONT.body,
-            textAlign: "left",
-            transition: "color .15s, background-color .15s",
-            "&:hover": { color: "text.primary", bgcolor: "action.hover" },
-          }}
-        >
-          <Plus size={ICON_SIZE.inline} strokeWidth={2} />
-          <Box component="span">New project</Box>
-        </Box>
-      )}
 
       <SidebarBulkMenu
         menu={bulk.menu}

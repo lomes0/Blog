@@ -159,11 +159,16 @@ const SideBar: React.FC = () => {
         {/* Full layer — pinned to at least the resting width so it clips
             cleanly (rather than squishing) while the paper animates/drags. */}
         <Box sx={layerSx(Math.max(width, SIDEBAR_MIN_WIDTH), isExpanded)}>
-          <SidebarHeader
-            view={sidebarView}
-            onNewPost={handleNewPost}
-            onNewSeries={handleNewSeries}
-          />
+          {/* The view-title header is only needed for the search view now — in
+              the explorer the tree's own "Notes"/"Projects" section headers label
+              the content and carry the create ("+") affordances. */}
+          {sidebarView === "search" && (
+            <SidebarHeader
+              view={sidebarView}
+              onNewPost={handleNewPost}
+              onNewSeries={handleNewSeries}
+            />
+          )}
           {sidebarView === "search"
             ? <SidebarSearchView pathname={pathname} />
             : hasContent
@@ -175,6 +180,8 @@ const SideBar: React.FC = () => {
                 itemActions={sidebarActions}
                 seriesActions={sidebarActions}
                 projectActions={sidebarActions}
+                onNewPost={handleNewPost}
+                onNewSeries={handleNewSeries}
               />
             )
             : <Box sx={{ flex: "1 1 auto", minHeight: 0 }} />}
