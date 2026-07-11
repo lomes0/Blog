@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import {
   Box,
   Collapse,
@@ -8,6 +8,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { ChevronRight } from "lucide-react";
 import type {
   ProjectGroupItem,
@@ -19,7 +20,11 @@ import type {
   SeriesItemActions,
 } from "./hooks/useSidebarActions";
 import type { SidebarSelectionResult } from "./hooks/useSidebarSelection";
-import type { SidebarDndResult } from "./hooks/useSidebarDnd";
+import {
+  DRAG_MIME,
+  dropPositionFromEvent,
+  type SidebarDndResult,
+} from "./hooks/useSidebarDnd";
 import { SeriesGroup } from "./SeriesGroup";
 import { CHEVRON_TRANSITION, SB_FONT, SB_ITEM_RADIUS } from "./constants";
 import { ICON_SIZE } from "@/theme/icons";
@@ -80,14 +85,43 @@ export const ProjectGroup: React.FC<ProjectGroupProps> = ({
   } = projectActions;
   const isRenaming = renamingProjectId === projectId;
 
+  const handleHeaderDragOver = useCallback(
+    (e: React.DragEvent<HTMLElement>) => {
+      if (!e.dataTransfer.types.includes(DRAG_MIME)) return;
+      e.preventDefault();
+      dnd.onReorderDragOver(projectId, dropPositionFromEvent(e));
+    },
+    [dnd, projectId],
+  );
+  const handleHeaderDrop = useCallback(
+    (e: React.DragEvent<HTMLElement>) => {
+      e.preventDefault();
+      dnd.onReorderDrop(projectId, dropPositionFromEvent(e));
+    },
+    [dnd, projectId],
+  );
+
+  // A series dragged onto the header drops *into* the project; a project dragged
+  // over it reorders in the root list.
+  const isDropInto = dnd.dragOverProjectId === projectId;
+  const headerDropIndicator = dnd.dropTarget?.id === projectId
+    ? dnd.dropTarget.position
+    : null;
+
   return (
     <Box sx={{ mt: 1, mb: 0.25 }}>
       <ListItem disablePadding sx={{ display: "block" }}>
         <ListItemButton
           aria-expanded={isExpanded}
+          draggable={!isRenaming}
           onClick={() => {
             if (!isRenaming) onToggle();
           }}
+          onDragStart={(e) => dnd.onProjectDragStart(e, projectId)}
+          onDragEnd={dnd.onDragEnd}
+          onDragOver={handleHeaderDragOver}
+          onDragLeave={dnd.onDragLeaveRow}
+          onDrop={handleHeaderDrop}
           onContextMenu={(e) => handleProjectContextMenu(e, projectId)}
           onDoubleClick={(e) => {
             if (sidebarOpen) {
@@ -99,7 +133,31 @@ export const ProjectGroup: React.FC<ProjectGroupProps> = ({
             px: 2,
             py: 0.25,
             borderRadius: SB_ITEM_RADIUS,
+            position: "relative",
             "&:hover": { bgcolor: "action.hover" },
+            // Drop-a-series-into-project: ring + soft fill on the whole header
+            // (mirrors SeriesGroup's drop-into treatment).
+            ...(isDropInto && {
+              "&, &:hover": {
+                bgcolor: (t) => alpha(t.palette.primary.main, 0.12),
+              },
+              outline: "1.5px solid",
+              outlineColor: "primary.main",
+              outlineOffset: "-1px",
+            }),
+            // Reorder line when a project is dragged over this header.
+            ...(headerDropIndicator && {
+              "&::after": {
+                content: '""',
+                position: "absolute",
+                left: 0,
+                right: 0,
+                [headerDropIndicator === "before" ? "top" : "bottom"]: 0,
+                height: 2,
+                bgcolor: "primary.main",
+                zIndex: 2,
+              },
+            }),
             "&.Mui-focusVisible": {
               bgcolor: "transparent",
               outline: "2px solid",

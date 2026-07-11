@@ -1,0 +1,24 @@
+const TOKEN = "ba819566-d6f6-4e71-a5d3-05718f19c1ea5b765ed9-2c16-4f86-b0ec-8c8ca8bba610";
+const OUT = process.argv[2];
+const ver = await (await fetch("http://localhost:9222/json/version")).json();
+const ws = new WebSocket(ver.webSocketDebuggerUrl); await new Promise(r=>ws.onopen=r);
+let id=0; const pending=new Map();
+ws.onmessage=(e)=>{const m=JSON.parse(e.data); if(m.id&&pending.has(m.id)){pending.get(m.id)(m);pending.delete(m.id);}};
+const send=(method,params={},sessionId)=>new Promise((res,rej)=>{const mid=++id;pending.set(mid,(m)=>m.error?rej(new Error(method+": "+JSON.stringify(m.error))):res(m.result));ws.send(JSON.stringify({id:mid,method,params,sessionId}));});
+const { targetId } = await send("Target.createTarget", { url:"about:blank" });
+const { sessionId } = await send("Target.attachToTarget",{ targetId, flatten:true });
+const S=(m,p)=>send(m,p,sessionId);
+await S("Network.enable"); await S("Runtime.enable");
+await S("Network.setCookie",{name:"next-auth.session-token",value:TOKEN,url:"http://localhost:3000",path:"/",httpOnly:true,sameSite:"Lax"});
+await S("Emulation.setDeviceMetricsOverride",{width:1440,height:1100,deviceScaleFactor:1,mobile:false});
+await S("Page.navigate",{url:"http://localhost:3000/"});
+await new Promise(r=>setTimeout(r,9000));
+const ev=async(expr)=>(await S("Runtime.evaluate",{expression:expr,awaitPromise:true,returnByValue:true})).result.value;
+// Click the two project headers to expand them.
+await ev(`(()=>{const want=['WORK & STUDY','INFRA'];[...document.querySelectorAll('.MuiListItemButton-root')].forEach(b=>{if(want.includes(b.innerText.trim()))b.click();});return true;})()`);
+await new Promise(r=>setTimeout(r,1200));
+console.log("tree after expand:\n"+await ev("[...document.querySelectorAll('.MuiDrawer-paper .MuiListItemButton-root')].map(e=>e.innerText.replace(/\\n/g,' ').trim()).filter(Boolean).join('\\n')"));
+const { data } = await S("Page.captureScreenshot",{format:"png", clip:{x:0,y:0,width:400,height:1100,scale:1}});
+const fs=await import("node:fs"); fs.writeFileSync(OUT, Buffer.from(data,"base64"));
+console.log("saved", OUT);
+ws.close();

@@ -8,7 +8,6 @@ import type {
   RootItem,
   SeriesGroupItem,
 } from "@/utils/posts/seriesGrouping";
-import { flattenRootItems } from "@/utils/posts/seriesGrouping";
 import type {
   PostItemActions,
   ProjectItemActions,
@@ -126,13 +125,6 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
     return ids;
   }, [filteredRootItems, expandedSeries, expandedProjects]);
 
-  // Flattened series/standalone groups in render order, for the drag sibling
-  // lists (project headers aren't drag targets in this phase).
-  const flatGroups = useMemo(
-    () => flattenRootItems(filteredRootItems),
-    [filteredRootItems],
-  );
-
   const selection = useSidebarSelection(allVisibleIds);
   const { clear: clearSelection, selectAll } = selection;
 
@@ -148,7 +140,7 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
     [selection, allVisibleIds],
   );
 
-  const dnd = useSidebarDnd(flatGroups, getDragSet);
+  const dnd = useSidebarDnd(filteredRootItems, getDragSet);
 
   const bulk = useSidebarBulkActions({
     selectedIds: selection.selectedIds,
