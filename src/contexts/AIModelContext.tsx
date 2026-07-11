@@ -8,8 +8,8 @@ interface LLMConfig {
 }
 
 const DEFAULT_LLM: LLMConfig = {
-  provider: "google",
-  model: "gemini-2.5-flash",
+  provider: "anthropic",
+  model: "claude-sonnet-5",
 };
 
 interface AIModelContextType {

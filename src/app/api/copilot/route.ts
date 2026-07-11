@@ -5,85 +5,68 @@ import { z } from "zod";
 import { type AIProviderType, createProvider, getModelById } from "@/lib/ai";
 import { ApiError, withApiHandler } from "@/lib/api-utils";
 import { authOptions } from "@/lib/auth";
-import { COPILOT_SYSTEM_PROMPT } from "@/lib/ai/prompts";
+import { COPILOT_AGENT_SYSTEM_PROMPT } from "@/lib/ai/prompts";
 
 // Node runtime (not edge): auth uses the Prisma adapter, which cannot run on edge.
 
-const editorTools = {
-  insert_paragraph: tool({
-    description: "Insert a paragraph of plain prose. Use this to add body " +
-      "text or a new section's content (pair with insert_heading for the " +
-      "section title).",
+// Tools are declared here (schemas only) but EXECUTED ON THE CLIENT — read
+// tools auto-run against the Redux store / live editor, write tools surface as
+// reviewable proposals. See src/lib/ai/copilotAgentTools.ts for the read/write
+// split the client enforces.
+const agentTools = {
+  // ---- read (auto-executed client-side) ----
+  list_documents: tool({
+    description:
+      "List every post in the blog (metadata only: path, title, series). " +
+      "Cheap — call this to discover what exists before reading bodies.",
+    inputSchema: z.object({}),
+  }),
+  search_documents: tool({
+    description:
+      "Grep across post titles and locally-available bodies for a " +
+      "case-insensitive substring. Returns per-line hits with their path.",
+    inputSchema: z.object({ query: z.string() }),
+  }),
+  read_document: tool({
+    description:
+      "Read one post's body as Markdown by its path (e.g. \"<id>.md\"). " +
+      "Rich elements appear as opaque [[lexblk:...]] tokens — never edit their " +
+      "contents.",
+    inputSchema: z.object({ path: z.string() }),
+  }),
+  read_current_document: tool({
+    description:
+      "Read the currently open document as Markdown, including any unsaved " +
+      "edits in the editor.",
+    inputSchema: z.object({}),
+  }),
+  get_selection: tool({
+    description:
+      "Get the user's current text selection in the open document, if any.",
+    inputSchema: z.object({}),
+  }),
+
+  // ---- write (proposed; applied only on user accept) ----
+  edit_document: tool({
+    description:
+      "Propose replacing an exact substring in a post. old_text must match " +
+      "the document verbatim (including whitespace) and must not cut through " +
+      "an [[lexblk:...]] token. Prefer this for targeted edits.",
     inputSchema: z.object({
-      text: z.string(),
-      afterNodeKey: z.string().optional(),
+      path: z.string(),
+      old_text: z.string(),
+      new_text: z.string(),
     }),
   }),
-  remove_node: tool({
-    description: "Remove a node (image, table, paragraph, heading, etc.)",
-    inputSchema: z.object({ nodeKey: z.string() }),
+  write_document: tool({
+    description:
+      "Propose replacing a post's ENTIRE body with new Markdown. Use for " +
+      "large rewrites. Preserve any [[lexblk:...]] tokens you want to keep.",
+    inputSchema: z.object({ path: z.string(), markdown: z.string() }),
   }),
-  insert_table: tool({
-    description: "Insert a table at cursor or after a node",
-    inputSchema: z.object({
-      rows: z.number(),
-      cols: z.number(),
-      headers: z.array(z.string()).optional(),
-      afterNodeKey: z.string().optional(),
-    }),
-  }),
-  insert_heading: tool({
-    description: "Insert a heading",
-    inputSchema: z.object({
-      level: z.union([
-        z.literal(1),
-        z.literal(2),
-        z.literal(3),
-        z.literal(4),
-        z.literal(5),
-        z.literal(6),
-      ]),
-      text: z.string(),
-      afterNodeKey: z.string().optional(),
-    }),
-  }),
-  insert_list: tool({
-    description: "Insert a bullet or numbered list",
-    inputSchema: z.object({
-      type: z.enum(["bullet", "numbered"]),
-      items: z.array(z.string()),
-      afterNodeKey: z.string().optional(),
-    }),
-  }),
-  insert_code_block: tool({
-    description: "Insert a code block",
-    inputSchema: z.object({
-      language: z.string(),
-      code: z.string(),
-      afterNodeKey: z.string().optional(),
-    }),
-  }),
-  insert_math: tool({
-    description: "Insert a math equation",
-    inputSchema: z.object({
-      latex: z.string(),
-      afterNodeKey: z.string().optional(),
-    }),
-  }),
-  insert_horizontal_rule: tool({
-    description: "Insert a horizontal divider",
-    inputSchema: z.object({ afterNodeKey: z.string().optional() }),
-  }),
-  replace_text: tool({
-    description: "Replace the text content of a paragraph, heading, or quote " +
-      "node. The block type is preserved. Inline formatting (bold, italic, " +
-      "links) within the replaced text is not retained, so prefer this for " +
-      "rewording plain-text blocks.",
-    inputSchema: z.object({ nodeKey: z.string(), newText: z.string() }),
-  }),
-  replace_selection: tool({
-    description: "Replace the currently selected text with new content",
-    inputSchema: z.object({ newText: z.string() }),
+  create_document: tool({
+    description: "Propose creating a new post with a title and Markdown body.",
+    inputSchema: z.object({ title: z.string(), markdown: z.string() }),
   }),
 };
 
@@ -97,15 +80,13 @@ export const POST = withApiHandler(async (req: Request) => {
   const {
     messages,
     documentTitle,
-    documentContext,
-    selectedText,
+    currentPath,
     provider,
     model: modelId,
   } = body as {
     messages: UIMessage[];
     documentTitle?: string;
-    documentContext?: string;
-    selectedText?: string;
+    currentPath?: string;
     provider: AIProviderType;
     model: string;
   };
@@ -126,14 +107,15 @@ export const POST = withApiHandler(async (req: Request) => {
 
   const result = streamText({
     model: modelInstance,
-    system: COPILOT_SYSTEM_PROMPT(
+    system: COPILOT_AGENT_SYSTEM_PROMPT(
+      currentPath ?? "current.md",
       documentTitle ?? "Untitled",
-      documentContext ?? "",
-      selectedText,
     ),
     messages: modelMessages,
-    tools: editorTools,
-    stopWhen: stepCountIs(5),
+    tools: agentTools,
+    // Agentic loop: the model explores with read tools (auto-resolved) and
+    // proposes edits over many steps. Writes pause the loop for user approval.
+    stopWhen: stepCountIs(40),
   });
 
   return result.toUIMessageStreamResponse();

@@ -54,6 +54,32 @@ export const AI_MODELS: AIModel[] = [
     },
   },
   {
+    id: "claude-sonnet-5",
+    name: "Claude Sonnet 5",
+    provider: "anthropic",
+    capabilities: {
+      streaming: true,
+      maxTokens: 16000,
+    },
+    metadata: {
+      fast: true,
+      reason: true,
+    },
+  },
+  {
+    id: "claude-opus-4-8",
+    name: "Claude Opus 4.8",
+    provider: "anthropic",
+    capabilities: {
+      streaming: true,
+      maxTokens: 16000,
+    },
+    metadata: {
+      fast: false,
+      reason: true,
+    },
+  },
+  {
     id: "gpt-4o-mini",
     name: "GPT 4o Mini",
     provider: "azure",

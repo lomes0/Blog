@@ -168,6 +168,62 @@ const ActionPreview: React.FC<ActionPreviewProps> = (
     case "remove_node":
       return label("Remove this block", true);
 
+    case "edit_document": {
+      const removed = asString(input.old_text);
+      const added = asString(input.new_text);
+      return (
+        <Box>
+          {label(`Edit ${asString(input.path)}`)}
+          <Typography
+            variant="body2"
+            sx={{
+              color: onColoredBg ? "primary.contrastText" : "error.main",
+              whiteSpace: "pre-wrap",
+              overflowWrap: "anywhere",
+              textDecoration: "line-through",
+              opacity: 0.8,
+              display: "-webkit-box",
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
+            {removed}
+          </Typography>
+          <Typography
+            variant="body2"
+            sx={{
+              color: onColoredBg ? "primary.contrastText" : "success.main",
+              whiteSpace: "pre-wrap",
+              overflowWrap: "anywhere",
+              display: "-webkit-box",
+              WebkitLineClamp: 4,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
+            {added}
+          </Typography>
+        </Box>
+      );
+    }
+
+    case "write_document":
+      return (
+        <Box>
+          {label(`Rewrite ${asString(input.path)}`, true)}
+          {snippet(asString(input.markdown))}
+        </Box>
+      );
+
+    case "create_document":
+      return (
+        <Box>
+          {label(`New post · ${asString(input.title)}`)}
+          {snippet(asString(input.markdown))}
+        </Box>
+      );
+
     default:
       return label(type.replace(/_/g, " "));
   }

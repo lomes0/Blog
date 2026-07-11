@@ -3,7 +3,6 @@ import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { getToolName, isToolUIPart } from "ai";
-import { $getSelection, $isRangeSelection } from "lexical";
 import {
   Box,
   IconButton,
@@ -14,23 +13,18 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import {
-  AlertTriangle,
-  ChevronDown,
-  Send,
-  Sparkles,
-  Square,
-} from "lucide-react";
+import { ChevronDown, Send, Sparkles, Square } from "lucide-react";
 import { ActiveEditorContext } from "@/contexts/ActiveEditorContext";
-import { serializeForCopilot } from "@/editor/utils/serializeForCopilot";
-import { applyActions } from "@/editor/utils/copilotToolExecutors";
+import {
+  applyWrite,
+  runReadTool,
+} from "@/editor/utils/copilotAgentExecutors";
+import { isReadTool, isWriteTool } from "@/lib/ai/copilotAgentTools";
 import { documentsSelectors, useSelector } from "@/store";
 import { AI_MODELS } from "@/lib/ai/models";
-import type { CopilotAction } from "@/types";
 import CopilotMessage from "./CopilotMessage";
 import QuickActions from "./QuickActions";
 import { loadCurrentThread, saveCurrentThread } from "./copilotStorage";
-import { ICON_SIZE } from "@/theme/icons";
 
 const PROVIDER_COLOR: Record<string, string> = {
   anthropic: "#D97757",
@@ -49,30 +43,43 @@ const SLASH_COMMANDS: SlashCommand[] = [
   {
     command: "/summarize",
     description: "Summarize the document",
-    prompt: "Summarize this document in 3 bullet points.",
+    prompt: "Summarize the current document in 3 bullet points.",
   },
   {
     command: "/fix",
     description: "Fix grammar and spelling",
-    prompt: "Fix any grammar and spelling mistakes.",
+    prompt: "Fix any grammar and spelling mistakes in the current document.",
   },
   {
     command: "/improve",
     description: "Improve clarity and flow",
-    prompt: "Improve the clarity and flow of this document while preserving " +
-      "its meaning.",
+    prompt: "Improve the clarity and flow of the current document while " +
+      "preserving its meaning.",
   },
   {
     command: "/section",
     description: "Add a new section",
-    prompt: "Suggest and add a new section to this document.",
+    prompt: "Suggest and add a new section to the current document.",
   },
   {
-    command: "/table",
-    description: "Insert a summary table",
-    prompt: "Insert a table summarizing the key points of this document.",
+    command: "/find",
+    description: "Search across all posts",
+    prompt: "Search my posts for ",
   },
 ];
+
+// Shape of useChat.addToolOutput used across the read (auto) and write (accept)
+// paths — the union of success-output and error-output signatures.
+type GenericAddToolOutput = (
+  args:
+    | { tool: string; toolCallId: string; output: unknown }
+    | {
+      tool: string;
+      toolCallId: string;
+      state: "output-error";
+      errorText: string;
+    },
+) => Promise<void>;
 
 interface CopilotChatProps {
   documentId: string;
@@ -108,11 +115,6 @@ const CopilotChat: React.FC<CopilotChatProps> = (
   documentTitleRef.current = documentTitle;
   const llmConfigRef = useRef(llmConfig);
   llmConfigRef.current = llmConfig;
-  const selectedTextRef = useRef<string | undefined>(undefined);
-  // Document context is serialized once per send (in sendPrompt) and read here
-  // so the banner reflects exactly what was sent.
-  const documentContextRef = useRef<string>("");
-  const [contextTruncated, setContextTruncated] = useState(false);
 
   const [transport] = useState(
     () =>
@@ -123,8 +125,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
             messages,
             ...(body as object | undefined),
             documentTitle: documentTitleRef.current,
-            documentContext: documentContextRef.current,
-            selectedText: selectedTextRef.current,
+            currentPath: `${documentId}.md`,
             provider: llmConfigRef.current.provider,
             model: llmConfigRef.current.model,
           },
@@ -137,6 +138,10 @@ const CopilotChat: React.FC<CopilotChatProps> = (
   // once here is correct.
   const [initialMessages] = useState(() => loadCurrentThread(documentId));
 
+  // Referenced inside onToolCall (which fires during streaming) but assigned by
+  // useChat below — safe because tool calls only resolve after useChat returns.
+  const addToolOutputRef = useRef<GenericAddToolOutput | null>(null);
+
   const {
     messages,
     sendMessage,
@@ -145,7 +150,32 @@ const CopilotChat: React.FC<CopilotChatProps> = (
     error,
     addToolOutput,
     regenerate,
-  } = useChat({ transport, messages: initialMessages });
+  } = useChat({
+    transport,
+    messages: initialMessages,
+    // Read tools run automatically so the agent can explore the library; write
+    // tools are left pending (input-available) for the user to review + accept.
+    onToolCall: async ({ toolCall }) => {
+      const name = toolCall.toolName;
+      if (!isReadTool(name)) return;
+      let output: unknown;
+      try {
+        output = runReadTool(
+          name,
+          (toolCall.input ?? {}) as Record<string, unknown>,
+          editorRefRef.current.current,
+        );
+      } catch (e) {
+        output = { error: e instanceof Error ? e.message : String(e) };
+      }
+      await addToolOutputRef.current?.({
+        tool: name,
+        toolCallId: toolCall.toolCallId,
+        output,
+      });
+    },
+  });
+  addToolOutputRef.current = addToolOutput as unknown as GenericAddToolOutput;
 
   const isLoading = status === "submitted" || status === "streaming";
 
@@ -161,33 +191,28 @@ const CopilotChat: React.FC<CopilotChatProps> = (
     m.role === "assistant"
   )?.id;
 
-  const addToolOutputRef = useRef(addToolOutput);
-  addToolOutputRef.current = addToolOutput;
-
-  const acceptAll = useCallback(() => {
-    if (!editorRefRef.current.current) return;
+  const acceptAll = useCallback(async () => {
+    const editor = editorRefRef.current.current;
     for (const msg of messages) {
       const pending = msg.parts
         .filter(isToolUIPart)
-        .filter((p) => p.state === "input-available");
-      if (pending.length === 0) continue;
-      const acts: CopilotAction[] = pending.map((p) => ({
-        type: getToolName(p),
-        params: ((p as { input?: unknown }).input ?? {}) as Record<
-          string,
-          unknown
-        >,
-      }));
-      applyActions(editorRefRef.current.current, acts);
+        .filter((p) => p.state === "input-available")
+        .filter((p) => isWriteTool(getToolName(p)));
       for (const p of pending) {
-        void addToolOutputRef.current({
+        const result = await applyWrite(
+          getToolName(p),
+          ((p as { input?: unknown }).input ?? {}) as Record<string, unknown>,
+          editor,
+          documentId,
+        );
+        await addToolOutputRef.current?.({
           tool: getToolName(p),
           toolCallId: p.toolCallId,
-          output: { success: true },
+          output: result,
         });
       }
     }
-  }, [messages]);
+  }, [messages, documentId]);
 
   useEffect(() => {
     onRegisterAcceptAll(acceptAll);
@@ -196,7 +221,9 @@ const CopilotChat: React.FC<CopilotChatProps> = (
         acc +
         msg.parts
           .filter(isToolUIPart)
-          .filter((p) => p.state === "input-available").length
+          .filter((p) =>
+            p.state === "input-available" && isWriteTool(getToolName(p))
+          ).length
       );
     }, 0);
     onPendingCountChange(count);
@@ -204,16 +231,6 @@ const CopilotChat: React.FC<CopilotChatProps> = (
 
   const sendPrompt = useCallback((text: string) => {
     if (!text.trim() || isLoading) return;
-    const editor = editorRefRef.current.current;
-    selectedTextRef.current = editor?.getEditorState().read(() => {
-      const sel = $getSelection();
-      return $isRangeSelection(sel) ? sel.getTextContent() : undefined;
-    });
-    const ctx = editor
-      ? serializeForCopilot(editor)
-      : { content: "", truncated: false };
-    documentContextRef.current = ctx.content;
-    setContextTruncated(ctx.truncated);
     sendMessage({ text });
   }, [isLoading, sendMessage]);
 
@@ -231,6 +248,11 @@ const CopilotChat: React.FC<CopilotChatProps> = (
   const slashOpen = slashMatches.length > 0 && !isLoading;
 
   const pickSlashCommand = (cmd: SlashCommand) => {
+    // "/find" seeds the input for the user to complete; others send directly.
+    if (cmd.prompt.endsWith(" ")) {
+      setInput(cmd.prompt);
+      return;
+    }
     setInput("");
     sendPrompt(cmd.prompt);
   };
@@ -258,10 +280,9 @@ const CopilotChat: React.FC<CopilotChatProps> = (
   const currentModel = AI_MODELS.find((m) => m.id === llmConfig.model);
   const providerColor = PROVIDER_COLOR[llmConfig.provider] ?? "#888";
 
-  type GenericAddToolOutput = (
+  const genericAddToolOutput = addToolOutput as unknown as (
     args: { tool: string; toolCallId: string; output: unknown },
   ) => Promise<void>;
-  const genericAddToolOutput = addToolOutput as unknown as GenericAddToolOutput;
 
   return (
     <Box
@@ -305,15 +326,15 @@ const CopilotChat: React.FC<CopilotChatProps> = (
             </Box>
             <Box sx={{ textAlign: "center" }}>
               <Typography variant="subtitle1" fontWeight={700} gutterBottom>
-                Ask Copilot to edit this doc
+                Ask Copilot about your posts
               </Typography>
               <Typography
                 variant="body2"
                 color="text.secondary"
                 sx={{ maxWidth: 260, mx: "auto" }}
               >
-                Describe a change in plain language. I&apos;ll show a preview
-                before anything touches your document.
+                I can read and search across all your posts and edit them.
+                Every change is shown as a preview you approve first.
               </Typography>
             </Box>
           </Box>
@@ -334,6 +355,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
                 key={msg.id}
                 message={msg}
                 addToolOutput={genericAddToolOutput}
+                currentDocId={documentId}
                 onRegenerate={!isLoading && msg.id === lastAssistantId
                   ? () => regenerate({ messageId: msg.id })
                   : undefined}
@@ -364,26 +386,6 @@ const CopilotChat: React.FC<CopilotChatProps> = (
       {messages.length === 0 && (
         <Box sx={{ px: 1.5, pb: 1, flexShrink: 0 }}>
           <QuickActions onSelect={sendPrompt} />
-        </Box>
-      )}
-
-      {contextTruncated && (
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 0.75,
-            px: 1.5,
-            py: 0.75,
-            flexShrink: 0,
-            color: "warning.main",
-          }}
-        >
-          <AlertTriangle size={ICON_SIZE.inline} style={{ flexShrink: 0 }} />
-          <Typography variant="caption" color="text.secondary">
-            This document is long — Copilot only sees the first part, so edits
-            beyond that point may be missed.
-          </Typography>
         </Box>
       )}
 
@@ -457,7 +459,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
           }}
         />
 
-        {/* Footer row: @ · model selector · send */}
+        {/* Footer row: model selector · send */}
         <Box
           sx={{
             display: "flex",
