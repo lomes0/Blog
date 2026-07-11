@@ -11,7 +11,9 @@
     "lint": "next lint",
     "rebuild": "npm run clean && npm run build",
     "check:tdz": "node scripts/check-tdz.mjs",
-    "check:tdz:fix": "node scripts/check-tdz.mjs --fix-hint"
+    "check:tdz:fix": "node scripts/check-tdz.mjs --fix-hint",
+    "mcp:server": "node --import tsx --import ./mcp/bootstrap.mjs --env-file=.env mcp/content-server.ts",
+    "mcp:smoke": "node --import tsx mcp/smoke.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "3.0.9",
@@ -27,6 +29,7 @@
     "@fontsource/roboto": "^5.2.5",
     "@hello-pangea/dnd": "^18.0.1",
     "@lexical/headless": "^0.28.0",
+    "@lexical/markdown": "^0.28.0",
     "@lexical/react": "^0.28.0",
     "@lexical/selection": "^0.28.0",
     "@mui/material": "^6.5.0",
