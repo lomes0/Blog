@@ -1,25 +1,21 @@
 "use client";
 import * as React from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   Box,
   Breadcrumbs as MuiBreadcrumbs,
   Divider,
   IconButton,
   Link,
-  ToggleButton,
-  ToggleButtonGroup,
   Tooltip,
   Typography,
 } from "@mui/material";
 import {
   ArrowLeft,
   BookOpen,
-  Eye,
   FileText,
   LayoutDashboard,
   Library,
-  Pencil,
   PenLine,
   Plus,
   Search,
@@ -43,7 +39,6 @@ interface BreadcrumbItem {
 
 const EditorTopBar: React.FC = () => {
   const pathname = usePathname();
-  const router = useRouter();
   const { actions } = useTopBarActions();
   const { tabBar } = useTopBarTabs();
 
@@ -688,47 +683,6 @@ const EditorTopBar: React.FC = () => {
       {/* Centering spacer (right of search) */}
       <Box sx={{ flex: 1, minWidth: 8 }} />
 
-      {/* Read/Edit mode switch — doc pages only; navigates between routes */}
-      {isDocPage && docId && (
-        <ToggleButtonGroup
-          exclusive
-          size="small"
-          value={isEditPage ? "edit" : "view"}
-          onChange={(_e, value) => {
-            if (value && value !== (isEditPage ? "edit" : "view")) {
-              router.push(`/${value}/${docId}`);
-            }
-          }}
-          aria-label="Read or edit mode"
-          sx={{
-            flexShrink: 0,
-            ml: 0.5,
-            "& .MuiToggleButton-root": {
-              px: 1,
-              py: 0.375,
-              gap: 0.5,
-              color: "text.secondary",
-              textTransform: "none",
-              border: "1px solid",
-              borderColor: "divider",
-              "&.Mui-selected": {
-                bgcolor: "primary.main",
-                color: "primary.contrastText",
-                "&:hover": { bgcolor: "primary.dark" },
-              },
-            },
-          }}
-        >
-          <ToggleButton value="view" aria-label="Read mode">
-            <Eye size={ICON_SIZE.inline} />
-            <Typography variant="dense">Read</Typography>
-          </ToggleButton>
-          <ToggleButton value="edit" aria-label="Edit mode">
-            <Pencil size={ICON_SIZE.inline} />
-            <Typography variant="dense">Edit</Typography>
-          </ToggleButton>
-        </ToggleButtonGroup>
-      )}
     </Box>
   );
 };
