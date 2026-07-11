@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "blog-content": {
+      "command": "node",
+      "args": [
+        "--import",
+        "tsx",
+        "--import",
+        "./mcp/bootstrap.mjs",
+        "--env-file=.env",
+        "mcp/content-server.ts"
+      ],
+      "env": {
+        "MCP_AUTHOR_ID": "sabalah21@gmail.com"
+      }
+    }
+  }
+}
