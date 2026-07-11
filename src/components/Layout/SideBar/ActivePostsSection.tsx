@@ -10,8 +10,10 @@ import type {
 } from "./hooks/useSidebarActions";
 import { useSidebarSelection } from "./hooks/useSidebarSelection";
 import { useSidebarDnd } from "./hooks/useSidebarDnd";
+import { useSidebarBulkActions } from "./hooks/useSidebarBulkActions";
 import { PostItem } from "./PostItem";
 import { SeriesGroup } from "./SeriesGroup";
+import { SidebarBulkMenu } from "./SidebarBulkMenu";
 import { styles } from "../styles";
 import { useExpandedState } from "@/hooks/useExpandedState";
 import { ICON_SIZE } from "@/theme/icons";
@@ -89,11 +91,61 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
   const selection = useSidebarSelection(allVisibleIds);
   const { clear: clearSelection, selectAll } = selection;
 
-  const dnd = useSidebarDnd(filteredGroups);
+  // A drag that starts on a selected row moves the whole selection (render
+  // order); otherwise just the grabbed row.
+  const getDragSet = useCallback(
+    (primaryId: string): string[] => {
+      if (selection.isSelected(primaryId) && selection.selectedIds.size > 1) {
+        return allVisibleIds.filter((id) => selection.selectedIds.has(id));
+      }
+      return [primaryId];
+    },
+    [selection, allVisibleIds],
+  );
 
-  // Escape clears the selection; Ctrl/Cmd+A selects every visible row. Scoped to
-  // the sidebar list (the handler sits on the scroll container, firing only when
-  // a row inside holds focus) so it never fights the editor's own shortcuts.
+  const dnd = useSidebarDnd(filteredGroups, getDragSet);
+
+  const bulk = useSidebarBulkActions({
+    selectedIds: selection.selectedIds,
+    orderedIds: allVisibleIds,
+    clearSelection,
+  });
+
+  // Right-clicking a row that is part of a multi-selection opens the bulk menu
+  // instead of the single-row menu. Depend on stable selection primitives so the
+  // wrapped actions don't churn the memoized rows during a drag.
+  const { isSelected: isRowSelected, selectedIds } = selection;
+  const { openMenu: openBulkMenu } = bulk;
+  const bulkAwareItemActions = useMemo(
+    () => ({
+      ...itemActions,
+      handleContextMenu: (event: React.MouseEvent, id: string) => {
+        if (isRowSelected(id) && selectedIds.size > 1) openBulkMenu(event);
+        else itemActions.handleContextMenu(event, id);
+      },
+    }),
+    [itemActions, isRowSelected, selectedIds, openBulkMenu],
+  );
+  const bulkAwareSeriesActions = useMemo(
+    () => ({
+      ...seriesActions,
+      handleSeriesContextMenu: (event: React.MouseEvent, id: string) => {
+        if (isRowSelected(id) && selectedIds.size > 1) {
+          event.stopPropagation();
+          openBulkMenu(event);
+        } else {
+          seriesActions.handleSeriesContextMenu(event, id);
+        }
+      },
+    }),
+    [seriesActions, isRowSelected, selectedIds, openBulkMenu],
+  );
+
+  // Escape clears the selection; Ctrl/Cmd+A selects every visible row; Delete
+  // removes the selection. Scoped to the sidebar list (the handler sits on the
+  // scroll container, firing only when a row inside holds focus) so it never
+  // fights the editor's own shortcuts.
+  const { handleBulkDelete } = bulk;
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
       const tag = (event.target as HTMLElement)?.tagName;
@@ -106,9 +158,15 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
       ) {
         event.preventDefault();
         selectAll();
+      } else if (
+        (event.key === "Delete" || event.key === "Backspace") &&
+        selectedIds.size > 0
+      ) {
+        event.preventDefault();
+        handleBulkDelete();
       }
     },
-    [clearSelection, selectAll],
+    [clearSelection, selectAll, handleBulkDelete, selectedIds],
   );
 
   // A click on the empty area below the tree clears the selection (only when the
@@ -213,8 +271,8 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
                   onToggle={() => toggleSeriesExpanded(group.series!.id)}
                   sidebarOpen={sidebarOpen}
                   pathname={pathname}
-                  itemActions={itemActions}
-                  seriesActions={seriesActions}
+                  itemActions={bulkAwareItemActions}
+                  seriesActions={bulkAwareSeriesActions}
                   expandedTabs={expandedTabs}
                   onToggleTabs={toggleTabs}
                   selection={selection}
@@ -229,7 +287,7 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
                 inSeries={false}
                 sidebarOpen={sidebarOpen}
                 pathname={pathname}
-                itemActions={itemActions}
+                itemActions={bulkAwareItemActions}
                 expandedTabs={expandedTabs}
                 onToggleTabs={toggleTabs}
                 isSelected={selection.isSelected(group.posts[0].id)}
@@ -246,6 +304,17 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
           })}
         </List>
       </Box>
+
+      <SidebarBulkMenu
+        menu={bulk.menu}
+        count={bulk.selectedCount}
+        availableSeries={bulk.availableSeries}
+        canMerge={bulk.canMerge}
+        onClose={bulk.closeMenu}
+        onDelete={bulk.handleBulkDelete}
+        onMove={bulk.handleBulkMove}
+        onMerge={bulk.handleBulkMerge}
+      />
     </Box>
   );
 };
