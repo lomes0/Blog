@@ -39,6 +39,10 @@ export function useSidebarSelection(allIds: string[]): SidebarSelectionResult {
   // (per-render) identity, which would thrash memoized child rows.
   const allIdsRef = useRef(allIds);
   allIdsRef.current = allIds;
+  // Mirror the current selection so the gesture handler can branch on it without
+  // depending on `selectedIds` (which would thrash memoized child rows).
+  const selectedIdsRef = useRef(selectedIds);
+  selectedIdsRef.current = selectedIds;
 
   const isSelected = useCallback((id: string) => selectedIds.has(id), [
     selectedIds,
@@ -76,9 +80,16 @@ export function useSidebarSelection(allIds: string[]): SidebarSelectionResult {
         return true;
       }
 
-      // Plain click: drop any multi-selection and let the row act normally. The
-      // clicked row becomes the anchor for a subsequent Shift-range.
-      setSelectedIds((prev) => (prev.size ? new Set() : prev));
+      // Plain click while a multi-selection is active: cancel the selection and
+      // consume the click, so it just exits multi-select instead of navigating.
+      if (selectedIdsRef.current.size) {
+        setSelectedIds(new Set());
+        setAnchorId(id);
+        return true;
+      }
+
+      // Plain click with no selection: let the row act normally. The clicked row
+      // becomes the anchor for a subsequent Shift-range.
       setAnchorId(id);
       return false;
     },
