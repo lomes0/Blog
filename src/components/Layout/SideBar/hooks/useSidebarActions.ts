@@ -54,7 +54,29 @@ export interface SeriesItemActions {
   handleSeriesRenameKeyDown: (event: React.KeyboardEvent) => void;
 }
 
-export interface SidebarActionsResult extends PostItemActions, SeriesItemActions {
+/**
+ * Project-header equivalents of {@link SeriesItemActions}. A project has no
+ * editor document and no detail page, so it supports inline rename (persisted
+ * via `updateProject`) and delete (which frees its series to root); there is no
+ * "Edit" action.
+ */
+export interface ProjectItemActions {
+  renamingProjectId: string | null;
+  projectRenameValue: string;
+  setProjectRenameValue: (v: string) => void;
+  projectRenameInputRef: React.RefObject<HTMLInputElement | null>;
+  handleProjectContextMenu: (event: React.MouseEvent, projectId: string) => void;
+  handleProjectDoubleClick: (
+    event: React.MouseEvent,
+    projectId: string,
+    currentTitle: string,
+  ) => void;
+  handleProjectRenameBlur: () => void;
+  handleProjectRenameKeyDown: (event: React.KeyboardEvent) => void;
+}
+
+export interface SidebarActionsResult
+  extends PostItemActions, SeriesItemActions, ProjectItemActions {
   contextMenu: { mouseX: number; mouseY: number; postId: string } | null;
   handleCloseContextMenu: () => void;
   handleEditPost: (postId: string) => void;
@@ -67,6 +89,12 @@ export interface SidebarActionsResult extends PostItemActions, SeriesItemActions
   handleEditSeries: (seriesId: string) => void;
   handleRenameSeriesFromMenu: (seriesId: string) => void;
   handleDeleteSeries: (seriesId: string) => Promise<void>;
+  projectContextMenu:
+    | { mouseX: number; mouseY: number; projectId: string }
+    | null;
+  handleCloseProjectContextMenu: () => void;
+  handleRenameProjectFromMenu: (projectId: string) => void;
+  handleDeleteProject: (projectId: string) => Promise<void>;
 }
 
 export function useSidebarActions(): SidebarActionsResult {
@@ -76,6 +104,7 @@ export function useSidebarActions(): SidebarActionsResult {
     documentsSelectors.selectAll(state)
   );
   const series = useSelector((state: RootState) => state.series);
+  const projects = useSelector((state: RootState) => state.projects);
 
   const [contextMenu, setContextMenu] = useState<
     {
@@ -100,6 +129,17 @@ export function useSidebarActions(): SidebarActionsResult {
   const seriesRenameInputRef = useRef<HTMLInputElement>(null);
   // Set on Escape so the ensuing blur cancels instead of committing the rename.
   const cancelSeriesRenameRef = useRef(false);
+
+  const [projectContextMenu, setProjectContextMenu] = useState<
+    { mouseX: number; mouseY: number; projectId: string } | null
+  >(null);
+  const [renamingProjectId, setRenamingProjectId] = useState<string | null>(
+    null,
+  );
+  const [projectRenameValue, setProjectRenameValue] = useState("");
+  const projectRenameInputRef = useRef<HTMLInputElement>(null);
+  // Set on Escape so the ensuing blur cancels instead of committing the rename.
+  const cancelProjectRenameRef = useRef(false);
 
   const handleContextMenu = useCallback(
     (event: React.MouseEvent, postId: string) => {
@@ -276,6 +316,99 @@ export function useSidebarActions(): SidebarActionsResult {
     [],
   );
 
+  const handleProjectContextMenu = useCallback(
+    (event: React.MouseEvent, projectId: string) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setProjectContextMenu((prev) =>
+        prev === null
+          ? { mouseX: event.clientX + 2, mouseY: event.clientY - 6, projectId }
+          : null
+      );
+    },
+    [],
+  );
+
+  const handleCloseProjectContextMenu = useCallback(() => {
+    setProjectContextMenu(null);
+  }, []);
+
+  const handleRenameProjectFromMenu = useCallback(
+    (projectId: string) => {
+      handleCloseProjectContextMenu();
+      const target = projects?.find((p) => p.id === projectId);
+      if (target) {
+        setRenamingProjectId(projectId);
+        setProjectRenameValue(target.title || "");
+      }
+    },
+    [handleCloseProjectContextMenu, projects],
+  );
+
+  const handleDeleteProject = useCallback(
+    async (projectId: string) => {
+      handleCloseProjectContextMenu();
+      const cancelId = uuid();
+      const confirmId = uuid();
+      const response = await dispatch(
+        actions.alert({
+          title: "Delete Project",
+          content:
+            "Delete this project? Its series will be kept and moved out of the project.",
+          actions: [
+            { label: "Cancel", id: cancelId },
+            { label: "Delete", id: confirmId },
+          ],
+        }),
+      );
+      if (response.payload !== confirmId) return;
+      await dispatch(actions.deleteProject(projectId));
+      router.refresh();
+    },
+    [dispatch, handleCloseProjectContextMenu, router],
+  );
+
+  const handleProjectDoubleClick = useCallback(
+    (event: React.MouseEvent, projectId: string, currentTitle: string) => {
+      event.preventDefault();
+      setRenamingProjectId(projectId);
+      setProjectRenameValue(currentTitle);
+    },
+    [],
+  );
+
+  const handleProjectRenameBlur = useCallback(() => {
+    const cancelled = cancelProjectRenameRef.current;
+    cancelProjectRenameRef.current = false;
+    if (!cancelled && renamingProjectId && projectRenameValue.trim()) {
+      const target = projects?.find((p) => p.id === renamingProjectId);
+      if (target && target.title !== projectRenameValue.trim()) {
+        dispatch(
+          actions.updateProject({
+            id: renamingProjectId,
+            data: { title: projectRenameValue.trim() },
+          }),
+        );
+      }
+    }
+    setRenamingProjectId(null);
+    setProjectRenameValue("");
+  }, [dispatch, renamingProjectId, projectRenameValue, projects]);
+
+  const handleProjectRenameKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        projectRenameInputRef.current?.blur();
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        cancelProjectRenameRef.current = true;
+        projectRenameInputRef.current?.blur();
+      }
+    },
+    [],
+  );
+
   const handleDoubleClick = useCallback(
     (
       event: React.MouseEvent,
@@ -365,6 +498,13 @@ export function useSidebarActions(): SidebarActionsResult {
     }
   }, [renamingSeriesId]);
 
+  useEffect(() => {
+    if (renamingProjectId && projectRenameInputRef.current) {
+      projectRenameInputRef.current.focus();
+      projectRenameInputRef.current.select();
+    }
+  }, [renamingProjectId]);
+
   return {
     contextMenu,
     renamingPostId,
@@ -393,5 +533,17 @@ export function useSidebarActions(): SidebarActionsResult {
     handleSeriesDoubleClick,
     handleSeriesRenameBlur,
     handleSeriesRenameKeyDown,
+    projectContextMenu,
+    handleCloseProjectContextMenu,
+    handleRenameProjectFromMenu,
+    handleDeleteProject,
+    renamingProjectId,
+    projectRenameValue,
+    setProjectRenameValue,
+    projectRenameInputRef,
+    handleProjectContextMenu,
+    handleProjectDoubleClick,
+    handleProjectRenameBlur,
+    handleProjectRenameKeyDown,
   };
 }

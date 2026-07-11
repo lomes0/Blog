@@ -3,9 +3,15 @@ import React, { useCallback, useMemo, useState } from "react";
 import { Box, IconButton, List } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { Search, X } from "lucide-react";
-import type { SeriesGroupItem } from "@/utils/posts/seriesGrouping";
+import type {
+  ProjectGroupItem,
+  RootItem,
+  SeriesGroupItem,
+} from "@/utils/posts/seriesGrouping";
+import { flattenRootItems } from "@/utils/posts/seriesGrouping";
 import type {
   PostItemActions,
+  ProjectItemActions,
   SeriesItemActions,
 } from "./hooks/useSidebarActions";
 import { useSidebarSelection } from "./hooks/useSidebarSelection";
@@ -13,6 +19,7 @@ import { useSidebarDnd } from "./hooks/useSidebarDnd";
 import { useSidebarBulkActions } from "./hooks/useSidebarBulkActions";
 import { PostItem } from "./PostItem";
 import { SeriesGroup } from "./SeriesGroup";
+import { ProjectGroup } from "./ProjectGroup";
 import { SidebarBulkMenu } from "./SidebarBulkMenu";
 import { styles } from "../styles";
 import { useExpandedState } from "@/hooks/useExpandedState";
@@ -20,62 +27,84 @@ import { ICON_SIZE } from "@/theme/icons";
 import { SB_FONT } from "./constants";
 
 interface ActivePostsSectionProps {
-  groupedActivePosts: SeriesGroupItem[];
+  rootItems: RootItem[];
   sidebarOpen: boolean;
   pathname: string;
   itemActions: PostItemActions;
   seriesActions: SeriesItemActions;
+  projectActions: ProjectItemActions;
 }
 
 export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
-  groupedActivePosts,
+  rootItems,
   sidebarOpen,
   pathname,
   itemActions,
   seriesActions,
+  projectActions,
 }) => {
   const [activePostsSearch, setActivePostsSearch] = useState("");
   const {
     expandedSeries,
     toggleSeries: toggleSeriesExpanded,
   } = useExpandedState("sidebarSeriesCollapsedState");
+  // Independent persisted expansion state for each project's series list.
+  const {
+    expandedSeries: expandedProjects,
+    toggleSeries: toggleProjectExpanded,
+  } = useExpandedState("sidebarProjectExpandedState");
   // Independent persisted expansion state for each post's tab list.
   const {
     expandedSeries: expandedTabs,
     toggleSeries: toggleTabs,
   } = useExpandedState("sidebarPostTabsExpandedState");
 
-  const filteredGroups = useMemo((): SeriesGroupItem[] => {
-    if (!activePostsSearch.trim()) return groupedActivePosts;
+  const filteredRootItems = useMemo((): RootItem[] => {
+    if (!activePostsSearch.trim()) return rootItems;
     const searchLower = activePostsSearch.toLowerCase();
-    return groupedActivePosts
-      .map((group) => {
-        if (group.type === "series") {
-          const seriesMatches = group.series?.title
-            .toLowerCase()
-            .includes(searchLower);
-          if (seriesMatches) return group;
-          const filteredPosts = group.posts.filter((post) => {
-            const doc = post.cloud || post.local;
-            return doc?.name?.toLowerCase().includes(searchLower);
-          });
-          if (filteredPosts.length === 0) return null;
-          return { ...group, posts: filteredPosts };
-        } else {
-          const doc = group.posts[0]?.cloud || group.posts[0]?.local;
-          if (doc?.name?.toLowerCase().includes(searchLower)) return group;
-          return null;
+    // Filter a single series/standalone group; null drops it entirely.
+    const filterGroup = (group: SeriesGroupItem): SeriesGroupItem | null => {
+      if (group.type === "series") {
+        if (group.series?.title.toLowerCase().includes(searchLower)) {
+          return group;
         }
+        const filteredPosts = group.posts.filter((post) => {
+          const doc = post.cloud || post.local;
+          return doc?.name?.toLowerCase().includes(searchLower);
+        });
+        return filteredPosts.length > 0
+          ? { ...group, posts: filteredPosts }
+          : null;
+      }
+      const doc = group.posts[0]?.cloud || group.posts[0]?.local;
+      return doc?.name?.toLowerCase().includes(searchLower) ? group : null;
+    };
+    return rootItems
+      .map((item): RootItem | null => {
+        if (item.type === "project") {
+          // A title match keeps the whole project; otherwise keep only matching
+          // children, dropping the project when none match.
+          if (item.project.title.toLowerCase().includes(searchLower)) {
+            return item;
+          }
+          const children = item.children
+            .map(filterGroup)
+            .filter((c): c is SeriesGroupItem => c !== null);
+          return children.length > 0 ? { ...item, children } : null;
+        }
+        return filterGroup(item);
       })
-      .filter((group): group is SeriesGroupItem => group !== null);
-  }, [groupedActivePosts, activePostsSearch]);
+      .filter((item): item is RootItem => item !== null);
+  }, [rootItems, activePostsSearch]);
 
   // Flat list of selectable rows in render order: each series row, the posts of
-  // each *expanded* series, and the standalone posts. Drives Shift-range and
-  // Select-All. Collapsed series' posts are omitted since they aren't visible.
+  // each *expanded* series, and the standalone posts — plus the series inside
+  // each *expanded* project. Drives Shift-range and Select-All. Project headers
+  // are structural, not selectable, so they are omitted. Collapsed containers'
+  // descendants are omitted since they aren't visible.
   const allVisibleIds = useMemo(() => {
     const ids: string[] = [];
-    for (const group of filteredGroups) {
+    const pushGroup = (group: SeriesGroupItem) => {
       if (group.type === "series" && group.series) {
         ids.push(group.series.id);
         if (expandedSeries.has(group.series.id)) {
@@ -84,9 +113,25 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
       } else {
         ids.push(group.posts[0].id);
       }
+    };
+    for (const item of filteredRootItems) {
+      if (item.type === "project") {
+        if (expandedProjects.has(item.project.id)) {
+          item.children.forEach(pushGroup);
+        }
+      } else {
+        pushGroup(item);
+      }
     }
     return ids;
-  }, [filteredGroups, expandedSeries]);
+  }, [filteredRootItems, expandedSeries, expandedProjects]);
+
+  // Flattened series/standalone groups in render order, for the drag sibling
+  // lists (project headers aren't drag targets in this phase).
+  const flatGroups = useMemo(
+    () => flattenRootItems(filteredRootItems),
+    [filteredRootItems],
+  );
 
   const selection = useSidebarSelection(allVisibleIds);
   const { clear: clearSelection, selectAll } = selection;
@@ -103,7 +148,7 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
     [selection, allVisibleIds],
   );
 
-  const dnd = useSidebarDnd(filteredGroups, getDragSet);
+  const dnd = useSidebarDnd(flatGroups, getDragSet);
 
   const bulk = useSidebarBulkActions({
     selectedIds: selection.selectedIds,
@@ -258,17 +303,38 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
         }}
       >
         <List dense>
-          {filteredGroups.map((group, groupIndex) => {
-            if (group.type === "series" && group.series) {
+          {filteredRootItems.map((item, index) => {
+            if (item.type === "project") {
+              return (
+                <ProjectGroup
+                  key={`project-${item.project.id}`}
+                  item={item as ProjectGroupItem}
+                  isExpanded={expandedProjects.has(item.project.id)}
+                  onToggle={() => toggleProjectExpanded(item.project.id)}
+                  sidebarOpen={sidebarOpen}
+                  pathname={pathname}
+                  itemActions={bulkAwareItemActions}
+                  seriesActions={bulkAwareSeriesActions}
+                  projectActions={projectActions}
+                  expandedSeries={expandedSeries}
+                  onToggleSeries={toggleSeriesExpanded}
+                  expandedTabs={expandedTabs}
+                  onToggleTabs={toggleTabs}
+                  selection={selection}
+                  dnd={dnd}
+                />
+              );
+            }
+            if (item.type === "series" && item.series) {
               return (
                 <SeriesGroup
-                  key={`series-${group.series.id}`}
-                  group={group as SeriesGroupItem & {
+                  key={`series-${item.series.id}`}
+                  group={item as SeriesGroupItem & {
                     series: NonNullable<SeriesGroupItem["series"]>;
                   }}
-                  groupIndex={groupIndex}
-                  isExpanded={expandedSeries.has(group.series.id)}
-                  onToggle={() => toggleSeriesExpanded(group.series!.id)}
+                  groupIndex={index}
+                  isExpanded={expandedSeries.has(item.series.id)}
+                  onToggle={() => toggleSeriesExpanded(item.series!.id)}
                   sidebarOpen={sidebarOpen}
                   pathname={pathname}
                   itemActions={bulkAwareItemActions}
@@ -282,21 +348,21 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
             }
             return (
               <PostItem
-                key={group.posts[0].id}
-                post={group.posts[0]}
+                key={item.posts[0].id}
+                post={item.posts[0]}
                 inSeries={false}
                 sidebarOpen={sidebarOpen}
                 pathname={pathname}
                 itemActions={bulkAwareItemActions}
                 expandedTabs={expandedTabs}
                 onToggleTabs={toggleTabs}
-                isSelected={selection.isSelected(group.posts[0].id)}
+                isSelected={selection.isSelected(item.posts[0].id)}
                 onSelectClick={selection.handleSelectClick}
                 onDragStartItem={dnd.onPostDragStart}
                 onDragEndItem={dnd.onDragEnd}
                 onReorderDragOver={dnd.onReorderDragOver}
                 onReorderDrop={dnd.onReorderDrop}
-                dropIndicator={dnd.dropTarget?.id === group.posts[0].id
+                dropIndicator={dnd.dropTarget?.id === item.posts[0].id
                   ? dnd.dropTarget.position
                   : null}
               />

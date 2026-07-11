@@ -299,6 +299,14 @@ export const groupRootItems = (
 };
 
 /**
+ * Flatten the root tree back to series/standalone groups in render order —
+ * each project replaced in place by its children. Used where a flat, project-
+ * agnostic list of groups is needed (the compact rail, drag sibling lists).
+ */
+export const flattenRootItems = (items: RootItem[]): SeriesGroupItem[] =>
+  items.flatMap((item) => (item.type === "project" ? item.children : [item]));
+
+/**
  * Build a Map of series ID to Series object from an array of Series
  */
 export const buildSeriesMap = (seriesList: Series[]): Map<string, Series> => {

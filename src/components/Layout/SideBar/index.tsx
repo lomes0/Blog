@@ -14,10 +14,12 @@ import { SidebarSearchView } from "./SidebarSearchView";
 import { CollapsedRail } from "./CollapsedRail";
 import { PostContextMenu } from "./PostContextMenu";
 import { SeriesContextMenu } from "./SeriesContextMenu";
+import { ProjectContextMenu } from "./ProjectContextMenu";
 import CreateSeriesDrawer from "@/components/drawers/CreateSeriesDrawer";
 import {
   buildSeriesMap,
-  groupPostsBySeriesWithEmpty,
+  flattenRootItems,
+  groupRootItems,
 } from "@/utils/posts/seriesGrouping";
 import {
   ACTIVITY_RAIL_W,
@@ -68,6 +70,10 @@ const SideBar: React.FC = () => {
     handleEditSeries,
     handleRenameSeriesFromMenu,
     handleDeleteSeries,
+    projectContextMenu,
+    handleCloseProjectContextMenu,
+    handleRenameProjectFromMenu,
+    handleDeleteProject,
   } = sidebarActions;
 
   // Honor the OS "reduce motion" setting: drop the width slide and cross-fade.
@@ -95,6 +101,7 @@ const SideBar: React.FC = () => {
   const user = useSelector((state: RootState) => state.user);
   const filteredDocuments = useSelector(selectUserFilteredDocuments);
   const seriesList = useSelector((state: RootState) => state.series);
+  const projectsList = useSelector((state: RootState) => state.projects);
   const sidebarView = useSelector((state: RootState) => state.ui.sidebarView);
 
   const seriesMap = useMemo(
@@ -102,9 +109,17 @@ const SideBar: React.FC = () => {
     [seriesList],
   );
 
-  const groupedActivePosts = useMemo(
-    () => groupPostsBySeriesWithEmpty(filteredDocuments, seriesMap),
-    [filteredDocuments, seriesMap],
+  // Nested root tree: projects wrapping their series, interleaved with ungrouped
+  // series and standalone posts by rank.
+  const groupedRootItems = useMemo(
+    () => groupRootItems(filteredDocuments, seriesMap, projectsList || []),
+    [filteredDocuments, seriesMap, projectsList],
+  );
+
+  // Flat series/standalone list for the compact rail (projects collapse away).
+  const flatGroups = useMemo(
+    () => flattenRootItems(groupedRootItems),
+    [groupedRootItems],
   );
 
   const hasContent = Boolean(user) &&
@@ -154,11 +169,12 @@ const SideBar: React.FC = () => {
             : hasContent
             ? (
               <ActivePostsSection
-                groupedActivePosts={groupedActivePosts}
+                rootItems={groupedRootItems}
                 sidebarOpen
                 pathname={pathname}
                 itemActions={sidebarActions}
                 seriesActions={sidebarActions}
+                projectActions={sidebarActions}
               />
             )
             : <Box sx={{ flex: "1 1 auto", minHeight: 0 }} />}
@@ -167,7 +183,7 @@ const SideBar: React.FC = () => {
         {/* Compact layer — fixed icon strip shown when dragged shut. */}
         <Box sx={layerSx(COMPACT_WIDTH, sidebarMode === "compact")}>
           <CollapsedRail
-            groupedActivePosts={groupedActivePosts}
+            groupedActivePosts={flatGroups}
             pathname={pathname}
           />
         </Box>
@@ -206,6 +222,13 @@ const SideBar: React.FC = () => {
         onEdit={handleEditSeries}
         onRename={handleRenameSeriesFromMenu}
         onDelete={handleDeleteSeries}
+      />
+
+      <ProjectContextMenu
+        contextMenu={projectContextMenu}
+        onClose={handleCloseProjectContextMenu}
+        onRename={handleRenameProjectFromMenu}
+        onDelete={handleDeleteProject}
       />
 
       <CreateSeriesDrawer
