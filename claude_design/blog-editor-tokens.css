@@ -58,32 +58,32 @@
    ============================================================ */
 :root[data-theme="dark"],
 [data-theme="dark"] {
-  --bg-canvas:      #0f121a;
-  --bg-sidebar:     #0c0f18;
-  --bg-panel:       #0d1018;
-  --bg-input:       #131621;
-  --card-bg:        #161c29;
-  --chip-bg:        #1d2333;
-  --code-bg:        #0e121b;
-  --code-head-bg:   #161c29;
+  --bg-canvas:      #252b3a;
+  --bg-sidebar:     #202634;
+  --bg-panel:       #2a3141;
+  --bg-input:       #363f52;
+  --card-bg:        #303849;
+  --chip-bg:        #3a4356;
+  --code-bg:        #272e3d;
+  --code-head-bg:   #303849;
 
-  --border:         #242b3c;
-  --border-subtle:  #1c2231;
+  --border:         #465166;
+  --border-subtle:  #3a4356;
 
-  --text-primary:   #eef2f6;
-  --text-body:      #c2cbd4;
-  --text-secondary: #9aa6b2;
-  --text-tertiary:  #5f6b78;
-  --code-ink:       #c2cbd4;
+  --text-primary:   #f1f3f7;
+  --text-body:      #d0d6df;
+  --text-secondary: #adb7c5;
+  --text-tertiary:  #737f90;
+  --code-ink:       #d0d6df;
 
   --accent:         #4f46e5;
   --accent-on:      #ffffff;
-  --accent-ink:     #7b74ec;
-  --accent-weak:    #21224e;
+  --accent-ink:     #8b85f4;
+  --accent-weak:    #2d2e61;
   --accent-shadow:  rgba(79, 70, 229, 0.45);
 
-  --inline-bg:      #21224e;
-  --inline-ink:     #7b74ec;
+  --inline-bg:      #2d2e61;
+  --inline-ink:     #8b85f4;
 
   --badge-bg:       #123034;
   --badge-ink:      #50b696;

@@ -60,13 +60,13 @@ exposed as MUI CSS variables (`var(--mui-palette-*)`).
 
 | Role            | Token                              | Light     | Dark      |
 | --------------- | ---------------------------------- | --------- | --------- |
-| Canvas / page   | `--mui-palette-background-default` | `#ffffff` | `#0f121a` |
-| Surface / paper | `--mui-palette-background-paper`   | `#f8fafc` | `#161c29` |
-| Activity rail   | `--mui-palette-background-rail`    | `#eceef2` | `#080a11` |
-| Sidebar / nav   | `--mui-palette-background-sidebar` | `#f8fafc` | `#0c0f18` |
-| Panel (Copilot) | `--mui-palette-background-panel`   | `#fbfcfe` | `#0d1018` |
-| Input field     | `--mui-palette-background-input`   | `#ffffff` | `#131621` |
-| Divider         | `--mui-palette-divider`            | `#e2e8f0` | `#242b3c` |
+| Canvas / page   | `--mui-palette-background-default` | `#ffffff` | `#252b3a` |
+| Surface / paper | `--mui-palette-background-paper`   | `#f8fafc` | `#303849` |
+| Activity rail   | `--mui-palette-background-rail`    | `#eceef2` | `#1b202c` |
+| Sidebar / nav   | `--mui-palette-background-sidebar` | `#f8fafc` | `#202634` |
+| Panel (Copilot) | `--mui-palette-background-panel`   | `#fbfcfe` | `#2a3141` |
+| Input field     | `--mui-palette-background-input`   | `#ffffff` | `#363f52` |
+| Divider         | `--mui-palette-divider`            | `#e2e8f0` | `#465166` |
 
 > **Chrome surfaces** (`sidebar`/`panel`/`input`) are recessed/lifted variants
 > of `paper`, added by augmenting MUI's `TypeBackground` in `ThemeProvider.tsx`.
@@ -74,15 +74,15 @@ exposed as MUI CSS variables (`var(--mui-palette-*)`).
 > `RightRail`, and prompt/search fields — **not** raw hexes. There is **no**
 > `chip` or `accent-weak` token: selected rows, count pills, and hover fills use
 > MUI's built-in `action.selected` / `action.hover`. | Text primary |
-> `--mui-palette-text-primary` | `#0f172a` | `#eef2f6` | | Text secondary |
-> `--mui-palette-text-secondary` | `#475569` | `#9aa6b2` | | Text disabled |
-> `--mui-palette-text-disabled` | `#94a3b8` | `#5f6b78` |
+> `--mui-palette-text-primary` | `#0f172a` | `#f1f3f7` | | Text secondary |
+> `--mui-palette-text-secondary` | `#475569` | `#adb7c5` | | Text disabled |
+> `--mui-palette-text-disabled` | `#94a3b8` | `#737f90` |
 
 ### Dark Mode (system palette — do not hard-code)
 
 | Role      | `main` value |
 | --------- | ------------ |
-| Primary   | `#7b74ec`    |
+| Primary   | `#8b85f4`    |
 | Secondary | `#ce93d8`    |
 | Success   | `#34d399`    |
 | Warning   | `#ffa726`    |

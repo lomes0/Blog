@@ -89,8 +89,8 @@ const theme = createTheme({
       palette: {
         // Indigo — brand accent, lifted for dark surfaces
         primary: {
-          main: "#7b74ec",
-          light: "#9a94f0",
+          main: "#8b85f4",
+          light: "#aaa6f8",
           dark: "#4f46e5",
           contrastText: "#ffffff",
         },
@@ -99,19 +99,19 @@ const theme = createTheme({
         warning: { main: "#ffa726" },
         info: { main: "#29b6f6" },
         // Slate neutrals tinted toward the accent hue
-        divider: "#242b3c",
+        divider: "#465166",
         background: {
-          default: "#0f121a",
-          paper: "#161c29",
-          rail: "#080a11",
-          sidebar: "#0c0f18",
-          panel: "#0d1018",
-          input: "#131621",
+          default: "#252b3a",
+          paper: "#303849",
+          rail: "#1b202c",
+          sidebar: "#202634",
+          panel: "#2a3141",
+          input: "#363f52",
         },
         text: {
-          primary: "#eef2f6",
-          secondary: "#9aa6b2",
-          disabled: "#5f6b78",
+          primary: "#f1f3f7",
+          secondary: "#adb7c5",
+          disabled: "#737f90",
         },
       },
     },
