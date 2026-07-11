@@ -73,6 +73,8 @@ export interface ProjectItemActions {
   ) => void;
   handleProjectRenameBlur: () => void;
   handleProjectRenameKeyDown: (event: React.KeyboardEvent) => void;
+  /** Create a project and drop straight into inline rename on the new header. */
+  handleCreateProject: () => Promise<void>;
 }
 
 export interface SidebarActionsResult
@@ -409,6 +411,23 @@ export function useSidebarActions(): SidebarActionsResult {
     [],
   );
 
+  const handleCreateProject = useCallback(async () => {
+    try {
+      // createProject.fulfilled unshifts the project into the store, so the new
+      // section header renders immediately; open its inline rename so the user
+      // just types the name (IDE-style new-folder flow).
+      const created = await dispatch(
+        actions.createProject({ title: "New Project" }),
+      ).unwrap();
+      if (created?.id) {
+        setRenamingProjectId(created.id);
+        setProjectRenameValue(created.title || "New Project");
+      }
+    } catch {
+      // Create failed; the thunk already surfaced an announcement.
+    }
+  }, [dispatch]);
+
   const handleDoubleClick = useCallback(
     (
       event: React.MouseEvent,
@@ -545,5 +564,6 @@ export function useSidebarActions(): SidebarActionsResult {
     handleProjectDoubleClick,
     handleProjectRenameBlur,
     handleProjectRenameKeyDown,
+    handleCreateProject,
   };
 }

@@ -2,7 +2,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { Box, IconButton, List } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import { Search, X } from "lucide-react";
+import { Plus, Search, X } from "lucide-react";
 import type {
   ProjectGroupItem,
   RootItem,
@@ -362,6 +362,38 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
           })}
         </List>
       </Box>
+
+      {sidebarOpen && (
+        <Box
+          component="button"
+          type="button"
+          onClick={() => projectActions.handleCreateProject()}
+          sx={{
+            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            gap: 0.75,
+            mx: 1,
+            mt: 0.5,
+            mb: 1,
+            px: 1,
+            py: 0.5,
+            border: "none",
+            borderRadius: "8px",
+            background: "transparent",
+            cursor: "pointer",
+            color: "text.disabled",
+            fontFamily: "inherit",
+            fontSize: SB_FONT.body,
+            textAlign: "left",
+            transition: "color .15s, background-color .15s",
+            "&:hover": { color: "text.primary", bgcolor: "action.hover" },
+          }}
+        >
+          <Plus size={ICON_SIZE.inline} strokeWidth={2} />
+          <Box component="span">New project</Box>
+        </Box>
+      )}
 
       <SidebarBulkMenu
         menu={bulk.menu}
