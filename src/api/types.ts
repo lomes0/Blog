@@ -37,8 +37,17 @@ export interface MoveDocumentInput {
   between?: { afterRank?: string | null; beforeRank?: string | null };
 }
 
-// Reorder a series within the root list (PATCH /api/series/:id/move).
+// Move / reorder a series (PATCH /api/series/:id/move). `destination.projectId`
+// re-homes the series into a project (or to root when null); omit `destination`
+// to keep its current container. Omit `between` to append; otherwise it is
+// placed between the given neighbour ranks.
 export interface MoveSeriesInput {
+  destination?: { projectId?: string | null };
+  between?: { afterRank?: string | null; beforeRank?: string | null };
+}
+
+// Reorder a project within the root list (PATCH /api/projects/:id/move).
+export interface MoveProjectInput {
   between?: { afterRank?: string | null; beforeRank?: string | null };
 }
 
@@ -108,6 +117,19 @@ export interface CreateNoteResponse {
 // Series delete (DELETE /api/series/:id) – inline type in seriesThunks
 // -----------------------------------------------------------------------
 export interface DeleteSeriesResponse {
+  data?: string;
+  error?: ApiError;
+}
+
+// -----------------------------------------------------------------------
+// Project – single item (GET /api/projects/:id) and delete
+// -----------------------------------------------------------------------
+export interface GetOneProjectResponse {
+  data?: import("@/types").Project;
+  error?: ApiError;
+}
+
+export interface DeleteProjectResponse {
   data?: string;
   error?: ApiError;
 }

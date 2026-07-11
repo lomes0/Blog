@@ -42,6 +42,12 @@ import {
   updateLocalRevision,
   updateSeries,
   updateUser,
+  // Project (series grouping) actions
+  createProject,
+  deleteProject,
+  loadProjects,
+  moveProject,
+  updateProject,
 } from "./app";
 import { Action, configureStore, ThunkAction } from "@reduxjs/toolkit";
 import { nprogressMiddleware } from "./nprogressMiddleware";
@@ -92,6 +98,13 @@ export const actions = {
   updateSeries,
   deleteSeries,
   moveSeries,
+
+  // Project (series grouping) actions
+  loadProjects,
+  createProject,
+  updateProject,
+  deleteProject,
+  moveProject,
 };
 
 export const store = configureStore({

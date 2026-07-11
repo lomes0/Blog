@@ -32,6 +32,7 @@ export async function findAllSeries(): Promise<Series[]> {
       createdAt: true,
       updatedAt: true,
       authorId: true,
+      projectId: true,
       rank: true,
       author: {
         select: authorSelect,
@@ -120,6 +121,7 @@ export async function findSeriesById(id: string): Promise<Series | null> {
       createdAt: true,
       updatedAt: true,
       authorId: true,
+      projectId: true,
       rank: true,
       author: {
         select: authorSelect,
@@ -209,6 +211,7 @@ export async function findSeriesByAuthorId(
       createdAt: true,
       updatedAt: true,
       authorId: true,
+      projectId: true,
       rank: true,
       author: {
         select: authorSelect,

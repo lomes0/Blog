@@ -37,6 +37,7 @@ export interface AppState {
   user?: User;
   documents: EntityState<UserDocument, string>;
   series: Series[];
+  projects: Project[];
   ui: {
     announcements: Announcement[];
     alerts: Alert[];
@@ -111,8 +112,12 @@ export interface Series {
   createdAt: string | Date;
   updatedAt: string | Date;
   authorId: string;
-  // Manual position in the author's root list (shared rank space with root
-  // Documents, so posts and series interleave).
+  // Optional membership in a Project. When set, this series' `rank` is scoped to
+  // its project's members; when null the series lives at the author's root list.
+  projectId?: string | null;
+  // Manual position among the series' siblings: the project's members when
+  // `projectId` is set, otherwise the author's root list (shared rank space with
+  // root Documents, so posts and series interleave).
   rank?: string | null;
   author: User;
   posts: Document[]; // Use Document[] since these are documents from the database
@@ -127,6 +132,39 @@ export interface SeriesCreateInput {
 }
 
 export interface SeriesUpdateInput {
+  title?: string;
+  description?: string;
+  createdAt?: string;
+}
+
+// Project model: a named grouping of Series in the author's root list.
+export interface Project {
+  id: string;
+  title: string;
+  description?: string | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  authorId: string;
+  // Manual position in the author's root list (shared rank space with root
+  // Documents and ungrouped Series, so projects, loose series and standalone
+  // posts interleave).
+  rank?: string | null;
+  author: User;
+  // Member series, ordered by rank within the project. Optional because the API
+  // returns project metadata only; the client joins series to their project by
+  // `series.projectId` (see the sidebar grouping selectors).
+  series?: Series[];
+}
+
+// Project input types
+export interface ProjectCreateInput {
+  id: string;
+  title: string;
+  description?: string;
+  authorId: string;
+}
+
+export interface ProjectUpdateInput {
   title?: string;
   description?: string;
   createdAt?: string;
@@ -339,5 +377,15 @@ export interface GetSeriesResponse {
 
 export interface PostSeriesResponse {
   data?: Series;
+  error?: { title: string; subtitle?: string };
+}
+
+export interface GetProjectsResponse {
+  data?: Project[];
+  error?: { title: string; subtitle?: string };
+}
+
+export interface PostProjectResponse {
+  data?: Project;
   error?: { title: string; subtitle?: string };
 }

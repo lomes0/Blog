@@ -7,6 +7,28 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Project model: a named grouping of Series in the author's root list.
+model Project {
+  id          String   @id @default(uuid()) @db.Uuid
+  title       String
+  description String?
+  createdAt   DateTime @default(now()) @db.Timestamptz
+  updatedAt   DateTime @updatedAt @db.Timestamptz
+  authorId    String   @db.Uuid
+
+  // Position in the author's root list. Shares the fractional-index `rank` space
+  // with root Documents and root (ungrouped) Series, so projects, loose series
+  // and standalone posts interleave freely.
+  rank String
+
+  // Relations
+  author User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  series Series[] @relation("ProjectSeries")
+
+  @@index([authorId])
+  @@index([authorId, rank]) // Root-list ordering (shared space with Series/Documents)
+}
+
 // Series model for organizing blog posts
 model Series {
   id          String   @id @default(uuid()) @db.Uuid
@@ -16,18 +38,26 @@ model Series {
   updatedAt   DateTime @updatedAt @db.Timestamptz
   authorId    String   @db.Uuid
 
-  // Position in the author's root list. Shares a comparable fractional-index
-  // space with root Documents' `rank`, so posts and series freely interleave.
+  // Optional membership in a Project. When set, this series' `rank` is scoped to
+  // its project's members; when null the series lives at the author's root list.
+  projectId String? @db.Uuid
+
+  // Position among this series' siblings: the project's members when `projectId`
+  // is set, otherwise the author's root list (shared rank space with root
+  // Documents), so posts and series freely interleave.
   rank String
 
   // Relations
-  author User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  posts  Document[] @relation("SeriesPosts")
+  author  User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  project Project?   @relation("ProjectSeries", fields: [projectId], references: [id], onDelete: SetNull)
+  posts   Document[] @relation("SeriesPosts")
 
   @@index([authorId])
   @@index([title])
   @@index([authorId, createdAt])
   @@index([authorId, rank]) // Root-list ordering (shared space with Documents)
+  @@index([projectId]) // Membership lookups
+  @@index([projectId, rank]) // Order of series within a project
 }
 
 // Main content model with hierarchical structure (used for both posts and directories)
@@ -131,6 +161,7 @@ model User {
   documents     Document[] // User's posts  
   coauthored    DocumentCoauthors[]
   series        Series[] // User's series for organizing blog posts
+  projects      Project[] // User's projects for grouping series
   notesCanvases NotesCanvas[] // User's note canvases
 
   @@index([email])

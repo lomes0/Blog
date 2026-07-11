@@ -54,6 +54,14 @@ import {
   moveSeries,
   updateSeries,
 } from "./thunks/seriesThunks";
+import {
+  applyProjectRank,
+  createProject,
+  deleteProject,
+  loadProjects,
+  moveProject,
+  updateProject,
+} from "./thunks/projectThunks";
 import { alert, updateUser } from "./thunks/userThunks";
 
 export const documentsAdapter = createEntityAdapter<UserDocument>();
@@ -109,6 +117,7 @@ function applyCloudDocument(
 const initialState: AppState = {
   documents: documentsAdapter.getInitialState(),
   series: [],
+  projects: [],
   ui: {
     announcements: [],
     alerts: [],
@@ -147,6 +156,9 @@ export const load = createAsyncThunk("app/load", async (_, thunkAPI) => {
   // Load cloud documents, then series to ensure series.posts is authoritative
   await thunkAPI.dispatch(loadCloudDocuments());
   await thunkAPI.dispatch(loadSeries());
+  // Projects group series; load them alongside so the sidebar can nest series
+  // under their project. Independent of series.posts, so it need not block.
+  thunkAPI.dispatch(loadProjects());
 });
 
 // ── Slice ────────────────────────────────────────────────────────────────────
@@ -645,13 +657,22 @@ export const appSlice = createSlice({
       })
       .addCase(applySeriesRank, (state, action) => {
         const s = state.series.find((x) => x.id === action.payload.id);
-        if (s) s.rank = action.payload.rank;
+        if (!s) return;
+        s.rank = action.payload.rank;
+        // Only touch membership when the caller included it (a move), so a plain
+        // reorder never clears the series' project.
+        if ("projectId" in action.payload) {
+          s.projectId = action.payload.projectId ?? null;
+        }
       })
       .addCase(moveSeries.fulfilled, (state, action) => {
         const updated = action.payload;
         if (!updated) return;
         const s = state.series.find((x) => x.id === updated.id);
-        if (s) s.rank = updated.rank;
+        if (s) {
+          s.rank = updated.rank;
+          s.projectId = updated.projectId ?? null;
+        }
       })
       .addCase(moveSeries.rejected, (state, action) => {
         const message = action.payload as { title: string; subtitle: string };
@@ -668,6 +689,69 @@ export const appSlice = createSlice({
           title: string;
           subtitle: string;
         };
+        state.ui.announcements.push({ message });
+      })
+      // ===== PROJECT MANAGEMENT REDUCER CASES =====
+      .addCase(loadProjects.fulfilled, (state, action) => {
+        state.projects = action.payload || [];
+      })
+      .addCase(loadProjects.rejected, (state, action) => {
+        const message = action.payload as { title: string; subtitle: string };
+        state.ui.announcements.push({ message });
+      })
+      .addCase(createProject.fulfilled, (state, action) => {
+        const project = action.payload;
+        if (project) {
+          state.projects.unshift(project);
+        }
+      })
+      .addCase(createProject.rejected, (state, action) => {
+        const message = action.payload as { title: string; subtitle: string };
+        state.ui.announcements.push({ message });
+      })
+      .addCase(updateProject.fulfilled, (state, action) => {
+        const updated = action.payload;
+        if (updated) {
+          const index = state.projects.findIndex((p) => p.id === updated.id);
+          if (index !== -1) {
+            state.projects[index] = updated;
+          }
+        }
+      })
+      .addCase(updateProject.rejected, (state, action) => {
+        const message = action.payload as { title: string; subtitle: string };
+        state.ui.announcements.push({ message });
+      })
+      .addCase(applyProjectRank, (state, action) => {
+        const p = state.projects.find((x) => x.id === action.payload.id);
+        if (p) p.rank = action.payload.rank;
+      })
+      .addCase(moveProject.fulfilled, (state, action) => {
+        const updated = action.payload;
+        if (!updated) return;
+        const p = state.projects.find((x) => x.id === updated.id);
+        if (p) p.rank = updated.rank;
+      })
+      .addCase(moveProject.rejected, (state, action) => {
+        const message = action.payload as { title: string; subtitle: string };
+        state.ui.announcements.push({ message });
+      })
+      .addCase(deleteProject.fulfilled, (state, action) => {
+        const deletedProjectId = action.payload;
+        if (deletedProjectId) {
+          state.projects = state.projects.filter(
+            (p) => p.id !== deletedProjectId,
+          );
+          // The deleted project's series are freed to root; reflect that so the
+          // sidebar stops nesting them (server re-ranks them; a reload settles
+          // their exact rank).
+          state.series.forEach((s) => {
+            if (s.projectId === deletedProjectId) s.projectId = null;
+          });
+        }
+      })
+      .addCase(deleteProject.rejected, (state, action) => {
+        const message = action.payload as { title: string; subtitle: string };
         state.ui.announcements.push({ message });
       });
   },
@@ -723,6 +807,13 @@ export {
   moveSeries,
   updateSeries,
 } from "./thunks/seriesThunks";
+export {
+  createProject,
+  deleteProject,
+  loadProjects,
+  moveProject,
+  updateProject,
+} from "./thunks/projectThunks";
 export { alert, updateUser } from "./thunks/userThunks";
 export { duplicateDocument } from "./app/duplicateDocument";
 

@@ -31,6 +31,7 @@ import type {
   PostDocumentsResponse,
   PostRevisionResponse,
   PostSeriesResponse,
+  Project,
   Series,
   User,
   UserDocument,
@@ -42,6 +43,7 @@ import type {
   CreateNoteInput,
   DeleteSeriesResponse,
   MoveDocumentInput,
+  MoveProjectInput,
   MoveSeriesInput,
   NotesCanvas,
   UpdateDocumentTimesInput,
@@ -345,6 +347,47 @@ export const apiClient = {
         method: "PATCH",
         ...json(payload),
       }),
+  },
+
+  // -------------------------------------------------------------------------
+  // Projects (named groupings of series)
+  // -------------------------------------------------------------------------
+  projects: {
+    /** GET /api/projects */
+    list: (): Promise<Project[] | undefined> =>
+      request<Project[]>("/api/projects"),
+
+    /** GET /api/projects/:id */
+    get: (id: string): Promise<Project | undefined> =>
+      request<Project>(`/api/projects/${id}`),
+
+    /** POST /api/projects */
+    create: (input: {
+      title: string;
+      description?: string;
+    }): Promise<Project | undefined> =>
+      request<Project>("/api/projects", { method: "POST", ...json(input) }),
+
+    /** PATCH /api/projects/:id/move — reorder a project within the root list */
+    move: (
+      id: string,
+      payload: MoveProjectInput,
+    ): Promise<Project | undefined> =>
+      request<Project>(`/api/projects/${id}/move`, {
+        method: "PATCH",
+        ...json(payload),
+      }),
+
+    /** PATCH /api/projects/:id */
+    update: (
+      id: string,
+      data: { title?: string; description?: string; createdAt?: string },
+    ): Promise<Project | undefined> =>
+      request<Project>(`/api/projects/${id}`, { method: "PATCH", ...json(data) }),
+
+    /** DELETE /api/projects/:id */
+    delete: (id: string): Promise<string | undefined> =>
+      request<string>(`/api/projects/${id}`, { method: "DELETE" }),
   },
 
   // -------------------------------------------------------------------------

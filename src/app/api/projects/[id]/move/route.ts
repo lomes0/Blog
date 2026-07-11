@@ -1,8 +1,7 @@
 import { authOptions } from "@/lib/auth";
 import { ApiError, withApiHandler } from "@/lib/api-utils";
-import { findSeriesById } from "@/repositories/series";
 import { findProjectById } from "@/repositories/project";
-import { moveSeriesTx } from "@/repositories/ordering";
+import { moveProjectTx } from "@/repositories/ordering";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
@@ -11,15 +10,8 @@ import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
-// `destination.projectId` re-homes the series into a project (or to the root
-// list when null); omit `destination` to keep its current container. `between`
-// gives the neighbour ranks to drop between; omit it to append.
+// Neighbour ranks to drop the project between in the root list; omit to append.
 const moveSchema = z.object({
-  destination: z
-    .object({
-      projectId: z.string().uuid().nullish(),
-    })
-    .optional(),
   between: z
     .object({
       afterRank: z.string().nullish(),
@@ -28,7 +20,7 @@ const moveSchema = z.object({
     .optional(),
 });
 
-// PATCH /api/series/[id]/move → reorder a series within the root list
+// PATCH /api/projects/[id]/move → reorder a project within the root list
 export const PATCH = withApiHandler(
   async (request, props: { params: Promise<{ id: string }> }) => {
     const params = await props.params;
@@ -49,15 +41,15 @@ export const PATCH = withApiHandler(
       );
     }
 
-    const series = await findSeriesById(params.id);
-    if (!series) {
-      throw new ApiError(404, "Series not found");
+    const project = await findProjectById(params.id);
+    if (!project) {
+      throw new ApiError(404, "Project not found");
     }
-    if (series.authorId !== user.id) {
+    if (project.authorId !== user.id) {
       throw new ApiError(
         403,
         "Unauthorized",
-        "You can only reorder your own series",
+        "You can only reorder your own projects",
       );
     }
 
@@ -70,33 +62,12 @@ export const PATCH = withApiHandler(
       );
     }
 
-    // Moving into a project: the destination must be the caller's own project.
-    const destProjectId = parsed.data.destination?.projectId;
-    if (destProjectId) {
-      const project = await findProjectById(destProjectId);
-      if (!project) {
-        throw new ApiError(404, "Project not found");
-      }
-      if (project.authorId !== user.id) {
-        throw new ApiError(
-          403,
-          "Unauthorized",
-          "You can only move series into your own projects",
-        );
-      }
-    }
-
-    await moveSeriesTx({
-      id: params.id,
-      destination: parsed.data.destination,
-      between: parsed.data.between,
-    });
+    await moveProjectTx({ id: params.id, between: parsed.data.between });
 
     revalidatePath("/");
-    revalidatePath("/series");
-    revalidatePath(`/series/${params.id}`);
+    revalidatePath("/posts");
 
-    const updated = await findSeriesById(params.id);
+    const updated = await findProjectById(params.id);
     return NextResponse.json({ data: updated });
   },
 );

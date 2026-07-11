@@ -23,6 +23,46 @@ export interface Container {
   parentId: string | null;
 }
 
+/**
+ * Largest rank in the author's *root* list, or null when empty. The root is a
+ * shared rank space across three kinds of row — standalone documents, ungrouped
+ * series (`projectId = null`) and projects — so they interleave freely. In-project
+ * series are excluded here: they live in their project's space, not root.
+ */
+async function maxRootRank(
+  db: Db,
+  authorId: string,
+  exclude: { docIds?: string[]; seriesIds?: string[] } = {},
+): Promise<string | null> {
+  const docNotSelf = exclude.docIds?.length
+    ? { id: { notIn: exclude.docIds } }
+    : {};
+  const seriesNotSelf = exclude.seriesIds?.length
+    ? { id: { notIn: exclude.seriesIds } }
+    : {};
+  const [topDoc, topSeries, topProject] = await Promise.all([
+    db.document.findFirst({
+      where: { authorId, seriesId: null, parentId: null, ...docNotSelf },
+      orderBy: { rank: "desc" },
+      select: { rank: true },
+    }),
+    db.series.findFirst({
+      where: { authorId, projectId: null, ...seriesNotSelf },
+      orderBy: { rank: "desc" },
+      select: { rank: true },
+    }),
+    db.project.findFirst({
+      where: { authorId },
+      orderBy: { rank: "desc" },
+      select: { rank: true },
+    }),
+  ]);
+  return maxStr(
+    maxStr(topDoc?.rank ?? null, topSeries?.rank ?? null),
+    topProject?.rank ?? null,
+  );
+}
+
 /** Largest rank currently in `container`, or null when it is empty. */
 async function maxRank(
   db: Db,
@@ -49,25 +89,8 @@ async function maxRank(
     });
     return top?.rank ?? null;
   }
-  // Root: standalone documents + series share one rank space.
-  const [topDoc, topSeries] = await Promise.all([
-    db.document.findFirst({
-      where: {
-        authorId: container.authorId,
-        seriesId: null,
-        parentId: null,
-        ...notSelf,
-      },
-      orderBy: { rank: "desc" },
-      select: { rank: true },
-    }),
-    db.series.findFirst({
-      where: { authorId: container.authorId },
-      orderBy: { rank: "desc" },
-      select: { rank: true },
-    }),
-  ]);
-  return maxStr(topDoc?.rank ?? null, topSeries?.rank ?? null);
+  // Root: standalone documents + ungrouped series + projects share one space.
+  return maxRootRank(db, container.authorId, { docIds: excludeDocIds });
 }
 
 /** A rank that appends a new row to the end of `container`. */
@@ -175,34 +198,121 @@ async function assertNoParentCycle(
   }
 }
 
+/** Largest rank among a project's member series, or null when it is empty. */
+async function maxSeriesRankInProject(
+  db: Db,
+  projectId: string,
+  excludeSeriesId?: string,
+): Promise<string | null> {
+  const top = await db.series.findFirst({
+    where: {
+      projectId,
+      ...(excludeSeriesId ? { id: { not: excludeSeriesId } } : {}),
+    },
+    orderBy: { rank: "desc" },
+    select: { rank: true },
+  });
+  return top?.rank ?? null;
+}
+
 /**
- * Reorder a series within its author's root list. A series always lives at the
- * root — it has no container to change — so this only re-ranks it, in the same
- * shared rank space as root documents (letting posts and series interleave).
+ * Re-home a series: set its container (a project, or the root list) and mint a
+ * fresh rank for the destination. A series' container is `projectId ?? root`;
+ * its `rank` positions it among its siblings there. Pass `destination` to change
+ * the container (omit to keep the current one — an in-place reorder); pass
+ * `between` to drop at a position, or omit it to append.
+ *
+ * Setting `projectId` to null re-homes the series to the shared root space
+ * (where it interleaves with root documents and projects); setting it to a
+ * project id nests it among that project's series.
  */
 export async function moveSeries(
+  db: Db,
+  args: {
+    id: string;
+    destination?: { projectId?: string | null };
+    between?: { afterRank?: string | null; beforeRank?: string | null };
+  },
+): Promise<void> {
+  const series = await db.series.findUnique({
+    where: { id: args.id },
+    select: { authorId: true, projectId: true },
+  });
+  if (!series) throw new Error(`moveSeries: series ${args.id} not found`);
+
+  // A provided destination sets the container; otherwise keep the current one.
+  const projectId = args.destination
+    ? (args.destination.projectId ?? null)
+    : series.projectId;
+
+  const { afterRank, beforeRank } = args.between ?? {};
+  let rank: string;
+  if (afterRank != null || beforeRank != null) {
+    rank = rankBetween(afterRank ?? null, beforeRank ?? null);
+  } else {
+    const base = projectId
+      ? await maxSeriesRankInProject(db, projectId, args.id)
+      : await maxRootRank(db, series.authorId, { seriesIds: [args.id] });
+    rank = rankBetween(base, null);
+  }
+
+  await db.series.update({
+    where: { id: args.id },
+    data: { projectId, rank },
+  });
+}
+
+/**
+ * Reorder a project within its author's root list. A project always lives at the
+ * root — it has no container to change — so this only re-ranks it, in the same
+ * shared rank space as root documents and ungrouped series.
+ */
+export async function moveProject(
   db: Db,
   args: {
     id: string;
     between?: { afterRank?: string | null; beforeRank?: string | null };
   },
 ): Promise<void> {
-  const series = await db.series.findUnique({
+  const project = await db.project.findUnique({
     where: { id: args.id },
     select: { authorId: true },
   });
-  if (!series) throw new Error(`moveSeries: series ${args.id} not found`);
+  if (!project) throw new Error(`moveProject: project ${args.id} not found`);
 
   const { afterRank, beforeRank } = args.between ?? {};
   const rank = afterRank != null || beforeRank != null
     ? rankBetween(afterRank ?? null, beforeRank ?? null)
-    : await rankForAppend(db, {
-      authorId: series.authorId,
-      seriesId: null,
-      parentId: null,
-    });
+    : rankBetween(await maxRootRank(db, project.authorId), null);
 
-  await db.series.update({ where: { id: args.id }, data: { rank } });
+  await db.project.update({ where: { id: args.id }, data: { rank } });
+}
+
+/**
+ * Append `seriesIds` (in the given order) to the end of the author's root list,
+ * re-minting their ranks in the root space and clearing their `projectId`. Used
+ * when a project is deleted (its member series are freed to root) — their old
+ * ranks belonged to the project's space, which no longer exists. The freed
+ * series are excluded from the base so their stale ranks don't skew it.
+ *
+ * Call this *after* the project row is gone so the root scan doesn't count it.
+ */
+export async function reRankSeriesIntoRoot(
+  db: Db,
+  authorId: string,
+  seriesIds: string[],
+): Promise<void> {
+  if (seriesIds.length === 0) return;
+  const base = await maxRootRank(db, authorId, { seriesIds });
+  const keys = ranksAfter(base, seriesIds.length);
+  await Promise.all(
+    seriesIds.map((id, i) =>
+      db.series.update({
+        where: { id },
+        data: { rank: keys[i], projectId: null },
+      })
+    ),
+  );
 }
 
 const maxStr = (a: string | null, b: string | null): string | null =>
@@ -216,3 +326,7 @@ export const moveDocumentTx = (
 export const moveSeriesTx = (
   args: Parameters<typeof moveSeries>[1],
 ): Promise<void> => prisma.$transaction((tx) => moveSeries(tx, args));
+
+export const moveProjectTx = (
+  args: Parameters<typeof moveProject>[1],
+): Promise<void> => prisma.$transaction((tx) => moveProject(tx, args));

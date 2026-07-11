@@ -5,25 +5,21 @@ import { rankBetween } from "@/lib/ordering";
 const toErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : "Unknown error";
 
-// Optimistically set a series' rank (and optionally its project membership) so a
-// reorder / move is reflected immediately. `projectId` is applied only when the
-// key is present, so a pure reorder leaves the current membership untouched.
-export const applySeriesRank = createAction<
-  { id: string; rank: string; projectId?: string | null }
->(
-  "app/applySeriesRank",
+// Optimistically set a project's rank so a reorder is reflected immediately.
+export const applyProjectRank = createAction<{ id: string; rank: string }>(
+  "app/applyProjectRank",
 );
 
-interface SeriesCreateInput {
+interface ProjectCreateInput {
   title: string;
   description?: string;
 }
 
-export const loadSeries = createAsyncThunk(
-  "app/loadSeries",
+export const loadProjects = createAsyncThunk(
+  "app/loadProjects",
   async (_, thunkAPI) => {
     try {
-      const data = await apiClient.series.list();
+      const data = await apiClient.projects.list();
       return thunkAPI.fulfillWithValue(data ?? []);
     } catch (error: unknown) {
       console.error(error);
@@ -35,11 +31,11 @@ export const loadSeries = createAsyncThunk(
   },
 );
 
-export const createSeries = createAsyncThunk(
-  "app/createSeries",
-  async (arg: SeriesCreateInput, thunkAPI) => {
+export const createProject = createAsyncThunk(
+  "app/createProject",
+  async (arg: ProjectCreateInput, thunkAPI) => {
     try {
-      const data = await apiClient.series.create(arg);
+      const data = await apiClient.projects.create(arg);
       return thunkAPI.fulfillWithValue(data);
     } catch (error: unknown) {
       console.error(error);
@@ -51,8 +47,8 @@ export const createSeries = createAsyncThunk(
   },
 );
 
-export const updateSeries = createAsyncThunk(
-  "app/updateSeries",
+export const updateProject = createAsyncThunk(
+  "app/updateProject",
   async (
     { id, data }: {
       id: string;
@@ -61,7 +57,7 @@ export const updateSeries = createAsyncThunk(
     thunkAPI,
   ) => {
     try {
-      const result = await apiClient.series.update(id, data);
+      const result = await apiClient.projects.update(id, data);
       return thunkAPI.fulfillWithValue(result);
     } catch (error: unknown) {
       console.error(error);
@@ -73,40 +69,34 @@ export const updateSeries = createAsyncThunk(
   },
 );
 
-export const moveSeries = createAsyncThunk(
-  "app/moveSeries",
+export const moveProject = createAsyncThunk(
+  "app/moveProject",
   async (
     arg: {
       id: string;
-      destination?: { projectId?: string | null };
       between?: { afterRank?: string | null; beforeRank?: string | null };
     },
     thunkAPI,
   ) => {
     try {
       // Optimistic: for a positioned move the client computes the same rank the
-      // server will, so reflect it (and any membership change) immediately. No
-      // rollback by design.
+      // server will, so reflect it immediately. No rollback by design.
       const { afterRank, beforeRank } = arg.between ?? {};
       if (afterRank != null || beforeRank != null) {
         thunkAPI.dispatch(
-          applySeriesRank({
+          applyProjectRank({
             id: arg.id,
             rank: rankBetween(afterRank ?? null, beforeRank ?? null),
-            ...(arg.destination
-              ? { projectId: arg.destination.projectId ?? null }
-              : {}),
           }),
         );
       }
-      const data = await apiClient.series.move(arg.id, {
-        destination: arg.destination,
+      const data = await apiClient.projects.move(arg.id, {
         between: arg.between,
       });
       if (!data) {
         return thunkAPI.rejectWithValue({
           title: "Something went wrong",
-          subtitle: "failed to move series",
+          subtitle: "failed to move project",
         });
       }
       return thunkAPI.fulfillWithValue(data);
@@ -120,11 +110,11 @@ export const moveSeries = createAsyncThunk(
   },
 );
 
-export const deleteSeries = createAsyncThunk(
-  "app/deleteSeries",
+export const deleteProject = createAsyncThunk(
+  "app/deleteProject",
   async (id: string, thunkAPI) => {
     try {
-      const data = await apiClient.series.delete(id);
+      const data = await apiClient.projects.delete(id);
       return thunkAPI.fulfillWithValue(data);
     } catch (error: unknown) {
       console.error(error);
