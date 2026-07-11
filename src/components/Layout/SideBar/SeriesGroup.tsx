@@ -24,7 +24,6 @@ import {
   type SidebarDndResult,
 } from "./hooks/useSidebarDnd";
 import { PostItem } from "./PostItem";
-import { SafeNavigationLink } from "./SafeNavigationLink";
 import { SB_FONT, SB_ITEM_RADIUS } from "./constants";
 import { ICON_SIZE } from "@/theme/icons";
 
@@ -240,58 +239,6 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
                 }}
                 sx={{ minWidth: 0, my: 0 }}
               />
-            )}
-            {sidebarOpen && !isRenaming && (
-              // The item count doubles as the "open series" link: clicking it
-              // navigates to /posts/{id} (a real anchor, so Cmd/Ctrl-click works)
-              // while stopPropagation keeps the click off the row, which toggles.
-              // On hover it reads as a bordered pill (6px chip radius): a
-              // transparent border + padding are always present so the row never
-              // reflows, and only the border color/text brighten on hover. The
-              // wrapper span holds the Tooltip ref; the link preserves the
-              // original two-level em cascade (SB_FONT.body nested under
-              // SB_FONT.meta, weight 500) so the number renders at the same size.
-              <Tooltip title="Open series" placement="right">
-                <Box
-                  component="span"
-                  sx={{ pl: 0.5, flexShrink: 0, display: "inline-flex" }}
-                >
-                  <Box
-                    component={SafeNavigationLink}
-                    href={`/posts/${group.series.id}`}
-                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                    sx={{
-                      fontSize: SB_FONT.meta,
-                      fontWeight: 500,
-                      color: "text.disabled",
-                      fontVariantNumeric: "tabular-nums",
-                      textDecoration: "none",
-                      cursor: "pointer",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      px: 0.5,
-                      py: 0.125,
-                      border: "1px solid transparent",
-                      borderRadius: 1.5,
-                      transition: (t) =>
-                        t.transitions.create(
-                          ["background-color", "color"],
-                          {
-                            duration: t.transitions.duration.shortest,
-                          },
-                        ),
-                      "&:hover": {
-                        backgroundColor: "action.selected",
-                        color: "text.primary",
-                      },
-                    }}
-                  >
-                    <Box component="span" sx={{ fontSize: SB_FONT.body }}>
-                      {group.posts.length > 99 ? "99+" : group.posts.length}
-                    </Box>
-                  </Box>
-                </Box>
-              </Tooltip>
             )}
           </ListItemButton>
         </Tooltip>

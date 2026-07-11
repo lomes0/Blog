@@ -8,7 +8,6 @@ import {
   Typography,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import { ChevronRight } from "lucide-react";
 import type {
   ProjectGroupItem,
   SeriesGroupItem,
@@ -25,8 +24,7 @@ import {
   type SidebarDndResult,
 } from "./hooks/useSidebarDnd";
 import { SeriesGroup } from "./SeriesGroup";
-import { CHEVRON_TRANSITION, SB_FONT } from "./constants";
-import { ICON_SIZE } from "@/theme/icons";
+import { SB_FONT } from "./constants";
 
 /** Width of the leading rule stub before the tag title (the "── " lead-in). */
 const LEAD_RULE_W = 14;
@@ -51,15 +49,9 @@ interface ProjectGroupProps {
 
 /**
  * A project (tag) band in the sidebar tree, rendered as a **labeled divider** —
- * a leading open/close chevron, the title in `overline` style (uppercase,
+ * the title in `overline` style (uppercase,
  * tracked, muted — DESIGN.md §17.2 / §chrome section headers), a rule stretching
- * toward the right edge, then the member count pinned to the border. The rule
- * (vs. series' folder row) still signals "band boundary," while the chevron —
- * rotating 0deg -> 90deg — carries the open/close state the way the folder glyph
- * does for a series (`▸ PHYSICS ──────── 3`).
- *
- * The count sits in a steady right-edge column (shown whether folded or open)
- * rather than only as a folded cue. The whole header is the toggle target (VS
+ * toward the right edge. The whole header is the toggle target (VS
  * Code tree behavior); double-click renames inline, right-click opens the project
  * menu, and a series dropped onto it joins the band.
  */
@@ -176,24 +168,6 @@ export const ProjectGroup: React.FC<ProjectGroupProps> = ({
             },
           }}
         >
-          {/* Leading chevron — rotates 0deg -> 90deg to signal open/closed. The
-              band has no folder row of its own, so this is its expand indicator;
-              the trailing rule keeps the labeled-divider identity. */}
-          <Box
-            className="tag-chevron"
-            sx={{
-              flexShrink: 0,
-              display: "flex",
-              alignItems: "center",
-              color: "text.disabled",
-              "& > svg": {
-                transition: CHEVRON_TRANSITION,
-                transform: isExpanded ? "rotate(90deg)" : "none",
-              },
-            }}
-          >
-            <ChevronRight size={ICON_SIZE.inline} strokeWidth={2} />
-          </Box>
           {sidebarOpen && isRenaming
             ? (
               <TextField
@@ -235,7 +209,7 @@ export const ProjectGroup: React.FC<ProjectGroupProps> = ({
                 {item.project.title}
               </Typography>
             )}
-          {/* Trailing rule — stretches from after the title to the count. */}
+          {/* Trailing rule — stretches from after the title to the edge. */}
           <Box
             className="tag-rule"
             sx={{
@@ -245,25 +219,6 @@ export const ProjectGroup: React.FC<ProjectGroupProps> = ({
               bgcolor: "divider",
             }}
           />
-          {/* Member count — pinned to the right edge, next to the sidebar border.
-              Always shown (not just when folded) so it reads as a steady count
-              column rather than a collapse-only cue. */}
-          {sidebarOpen && !isRenaming && (
-            <Typography
-              component="span"
-              sx={{
-                flexShrink: 0,
-                fontSize: SB_FONT.meta,
-                fontWeight: 600,
-                letterSpacing: "0.04em",
-                color: "text.disabled",
-                lineHeight: 1,
-                fontVariantNumeric: "tabular-nums",
-              }}
-            >
-              {item.children.length}
-            </Typography>
-          )}
         </ListItemButton>
       </ListItem>
 

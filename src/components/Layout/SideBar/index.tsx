@@ -180,8 +180,6 @@ const SideBar: React.FC = () => {
                 itemActions={sidebarActions}
                 seriesActions={sidebarActions}
                 projectActions={sidebarActions}
-                onNewPost={handleNewPost}
-                onNewSeries={handleNewSeries}
               />
             )
             : <Box sx={{ flex: "1 1 auto", minHeight: 0 }} />}

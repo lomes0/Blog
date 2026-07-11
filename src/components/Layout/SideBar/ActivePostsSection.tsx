@@ -2,7 +2,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { Box, IconButton, List } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import { FilePlus, FolderPlus, Plus, Search, X } from "lucide-react";
+import { Plus, Search, X } from "lucide-react";
 import type {
   ProjectGroupItem,
   RootItem,
@@ -36,10 +36,6 @@ interface ActivePostsSectionProps {
   itemActions: PostItemActions;
   seriesActions: SeriesItemActions;
   projectActions: ProjectItemActions;
-  /** Create a new standalone note — the Notes section's "+" affordance. */
-  onNewPost: () => void;
-  /** Create a new series — one of the Projects section's "+" affordances. */
-  onNewSeries: () => void;
 }
 
 export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
@@ -49,8 +45,6 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
   itemActions,
   seriesActions,
   projectActions,
-  onNewPost,
-  onNewSeries,
 }) => {
   const [activePostsSearch, setActivePostsSearch] = useState("");
   const {
@@ -326,17 +320,7 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
         }}
       >
         {/* Notes — standalone posts, split out from the grouped content below. */}
-        <SidebarSectionHeader
-          title="Notes"
-          actions={sidebarOpen
-            ? [{
-              key: "new-note",
-              label: "New note",
-              icon: <FilePlus size={SECTION_ACTION_ICON} strokeWidth={2} />,
-              onClick: onNewPost,
-            }]
-            : undefined}
-        />
+        <SidebarSectionHeader title="Notes" />
         <List dense disablePadding>
           {noteItems.map((item) => (
             <PostItem
@@ -362,25 +346,19 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
         </List>
 
         {/* Projects — projects (each wrapping its series) and ungrouped series. */}
-        <SidebarSectionHeader
-          title="Projects"
-          actions={sidebarOpen
-            ? [
-              {
-                key: "new-series",
-                label: "New series",
-                icon: <FolderPlus size={SECTION_ACTION_ICON} strokeWidth={2} />,
-                onClick: onNewSeries,
-              },
-              {
+        <Box sx={{ mt: 2 }}>
+          <SidebarSectionHeader
+            title="Projects"
+            actions={sidebarOpen
+              ? [{
                 key: "new-project",
                 label: "New project",
                 icon: <Plus size={SECTION_ACTION_ICON} strokeWidth={2} />,
                 onClick: () => projectActions.handleCreateProject(),
-              },
-            ]
-            : undefined}
-        />
+              }]
+              : undefined}
+          />
+        </Box>
         <List dense disablePadding>
           {groupItems.map((item, index) => {
             if (item.type === "project") {
