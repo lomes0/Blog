@@ -9,6 +9,7 @@ import {
   TextField,
   Tooltip,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { ChevronRight, Folder, FolderOpen } from "lucide-react";
 import type { Series } from "@/types";
 import type { SeriesGroupItem } from "@/utils/posts/seriesGrouping";
@@ -16,6 +17,7 @@ import type {
   PostItemActions,
   SeriesItemActions,
 } from "./hooks/useSidebarActions";
+import type { SidebarSelectionResult } from "./hooks/useSidebarSelection";
 import { PostItem } from "./PostItem";
 import { SafeNavigationLink } from "./SafeNavigationLink";
 import { CHEVRON_TRANSITION, SB_FONT, SB_ITEM_RADIUS } from "./constants";
@@ -32,6 +34,7 @@ interface SeriesGroupProps {
   seriesActions: SeriesItemActions;
   expandedTabs: Set<string>;
   onToggleTabs: (id: string) => void;
+  selection: SidebarSelectionResult;
 }
 
 export const SeriesGroup: React.FC<SeriesGroupProps> = ({
@@ -45,6 +48,7 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
   seriesActions,
   expandedTabs,
   onToggleTabs,
+  selection,
 }) => {
   const {
     renamingSeriesId,
@@ -60,6 +64,7 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
   // A series row is "selected" when its posts page is the current route, so it
   // carries the same soft filled pill as post rows and sub-tabs.
   const isSeriesActive = pathname === `/posts/${group.series.id}`;
+  const isMultiSelected = selection.isSelected(group.series.id);
   const hasAnyDirtyChild = group.posts.some(
     (post) =>
       Boolean(post.local) &&
@@ -81,7 +86,9 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
             // so a double-click fires two toggles (net no change) before the
             // rename input mounts — an accepted one-frame flicker.
             aria-expanded={isExpanded}
-            onClick={() => {
+            onClick={(e) => {
+              // Modifier click selects the series row instead of toggling it.
+              if (selection.handleSelectClick(group.series.id, e)) return;
               if (!isRenaming) onToggle();
             }}
             onContextMenu={(e) =>
@@ -110,6 +117,16 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
                 outlineColor: "primary.main",
                 outlineOffset: "-2px",
               },
+              // Multi-selection reads as a primary-tinted pill (same treatment as
+              // post rows), distinct from the neutral active-route fill.
+              ...(isMultiSelected && {
+                "&, &:hover": {
+                  bgcolor: (t) => alpha(t.palette.primary.main, 0.16),
+                },
+                "&:hover": {
+                  bgcolor: (t) => alpha(t.palette.primary.main, 0.24),
+                },
+              }),
             }}
           >
             <ListItemIcon
@@ -261,6 +278,8 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
               itemActions={itemActions}
               expandedTabs={expandedTabs}
               onToggleTabs={onToggleTabs}
+              isSelected={selection.isSelected(post.id)}
+              onSelectClick={selection.handleSelectClick}
             />
           ))}
         </Box>

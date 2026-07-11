@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Box, IconButton, List } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { Search, X } from "lucide-react";
@@ -8,6 +8,7 @@ import type {
   PostItemActions,
   SeriesItemActions,
 } from "./hooks/useSidebarActions";
+import { useSidebarSelection } from "./hooks/useSidebarSelection";
 import { PostItem } from "./PostItem";
 import { SeriesGroup } from "./SeriesGroup";
 import { styles } from "../styles";
@@ -65,6 +66,56 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
       })
       .filter((group): group is SeriesGroupItem => group !== null);
   }, [groupedActivePosts, activePostsSearch]);
+
+  // Flat list of selectable rows in render order: each series row, the posts of
+  // each *expanded* series, and the standalone posts. Drives Shift-range and
+  // Select-All. Collapsed series' posts are omitted since they aren't visible.
+  const allVisibleIds = useMemo(() => {
+    const ids: string[] = [];
+    for (const group of filteredGroups) {
+      if (group.type === "series" && group.series) {
+        ids.push(group.series.id);
+        if (expandedSeries.has(group.series.id)) {
+          group.posts.forEach((post) => ids.push(post.id));
+        }
+      } else {
+        ids.push(group.posts[0].id);
+      }
+    }
+    return ids;
+  }, [filteredGroups, expandedSeries]);
+
+  const selection = useSidebarSelection(allVisibleIds);
+  const { clear: clearSelection, selectAll } = selection;
+
+  // Escape clears the selection; Ctrl/Cmd+A selects every visible row. Scoped to
+  // the sidebar list (the handler sits on the scroll container, firing only when
+  // a row inside holds focus) so it never fights the editor's own shortcuts.
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      const tag = (event.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (event.key === "Escape") {
+        clearSelection();
+      } else if (
+        (event.key === "a" || event.key === "A") &&
+        (event.metaKey || event.ctrlKey)
+      ) {
+        event.preventDefault();
+        selectAll();
+      }
+    },
+    [clearSelection, selectAll],
+  );
+
+  // A click on the empty area below the tree clears the selection (only when the
+  // click lands on the container itself, not a row that bubbled up).
+  const handleContainerClick = useCallback(
+    (event: React.MouseEvent) => {
+      if (event.target === event.currentTarget) clearSelection();
+    },
+    [clearSelection],
+  );
 
   return (
     <Box
@@ -137,6 +188,8 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
       )}
 
       <Box
+        onKeyDown={handleKeyDown}
+        onClick={handleContainerClick}
         sx={{
           overflow: "auto",
           flex: "1 1 auto",
@@ -161,6 +214,7 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
                   seriesActions={seriesActions}
                   expandedTabs={expandedTabs}
                   onToggleTabs={toggleTabs}
+                  selection={selection}
                 />
               );
             }
@@ -174,6 +228,8 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
                 itemActions={itemActions}
                 expandedTabs={expandedTabs}
                 onToggleTabs={toggleTabs}
+                isSelected={selection.isSelected(group.posts[0].id)}
+                onSelectClick={selection.handleSelectClick}
               />
             );
           })}

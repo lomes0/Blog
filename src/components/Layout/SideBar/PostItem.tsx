@@ -11,6 +11,7 @@ import {
   TextField,
   Tooltip,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { CloudUpload, FileText, Pencil } from "lucide-react";
 import { actions, type RootState, useDispatch, useSelector } from "@/store";
 import { selectChildDocumentsByParent } from "@/store/selectors/layoutSelectors";
@@ -35,6 +36,13 @@ interface PostItemProps {
   expandedTabs: Set<string>;
   /** Toggle a post's tab list open/closed (persisted). */
   onToggleTabs: (id: string) => void;
+  /** Whether this row is part of the current multi-selection. */
+  isSelected?: boolean;
+  /**
+   * Apply a modifier-aware selection gesture on row click. Returns true when the
+   * click was a selection gesture (navigation should be suppressed).
+   */
+  onSelectClick?: (id: string, event: React.MouseEvent) => boolean;
 }
 
 export const PostItem = memo(
@@ -47,6 +55,8 @@ export const PostItem = memo(
       itemActions,
       expandedTabs,
       onToggleTabs,
+      isSelected: isMultiSelected = false,
+      onSelectClick,
     }: PostItemProps,
   ) => {
     const dispatch = useDispatch();
@@ -193,6 +203,20 @@ export const PostItem = memo(
       router.push(`/edit/${post.id}`);
     }, [router, post.id]);
 
+    // Modifier-only selection: Ctrl/Cmd or Shift click selects this row and
+    // suppresses navigation; a plain click clears any selection and navigates.
+    const handleRowClick = useCallback(
+      (e: React.MouseEvent) => {
+        if (!onSelectClick) return;
+        const consumed = onSelectClick(post.id, e);
+        if (consumed) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      },
+      [onSelectClick, post.id],
+    );
+
     const linkProps = isRenaming ? {} : {
       component: SafeNavigationLink,
       href: isEditing ? `/edit/${post.id}` : `/view/${post.id}`,
@@ -222,6 +246,7 @@ export const PostItem = memo(
           <ListItemButton
             {...linkProps}
             selected={highlightParent}
+            onClick={handleRowClick}
             onContextMenu={(e) => handleContextMenu(e, post.id)}
             onDoubleClick={(e) => {
               if (sidebarOpen) handleDoubleClick(e, post.id, docName);
@@ -258,6 +283,19 @@ export const PostItem = memo(
                 outlineColor: "primary.main",
                 outlineOffset: "-2px",
               },
+              // Multi-selection (Ctrl/Cmd/Shift click) reads as a primary-tinted
+              // pill, distinct from the neutral `action.selected` fill that marks
+              // the currently-open document. Wins over both the base and
+              // `.Mui-selected` fills so a row that is open *and* multi-selected
+              // still shows the selection tint.
+              ...(isMultiSelected && {
+                "&, &.Mui-selected": {
+                  bgcolor: (t) => alpha(t.palette.primary.main, 0.16),
+                },
+                "&:hover, &.Mui-selected:hover": {
+                  bgcolor: (t) => alpha(t.palette.primary.main, 0.24),
+                },
+              }),
             }}
           >
             <ListItemIcon
