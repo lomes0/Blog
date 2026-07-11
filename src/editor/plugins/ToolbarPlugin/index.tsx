@@ -51,8 +51,15 @@ import {
   TableDialog,
 } from "./Dialogs";
 import { $isStickyNode, StickyNode } from "@/editor/nodes/StickyNode";
-import { Box, Divider, IconButton, Tooltip } from "@mui/material";
-import { Link, Redo, RotateCcw, Undo } from "lucide-react";
+import {
+  Box,
+  Button,
+  CircularProgress,
+  Divider,
+  IconButton,
+  Tooltip,
+} from "@mui/material";
+import { Link, Redo, RotateCcw, Save, Undo } from "lucide-react";
 import { $isIFrameNode } from "@/editor/nodes/IFrameNode";
 import { $findMatchingParent, IS_APPLE } from "@lexical/utils";
 import { $isTableNode, TableNode } from "@/editor/nodes/TableNode";
@@ -87,9 +94,12 @@ const blockTypeToBlockName = {
 interface ToolbarPluginProps {
   isActive?: boolean;
   onReset?: () => void;
+  onSave?: () => void | Promise<unknown>;
 }
 
-function ToolbarPlugin({ isActive = true, onReset }: ToolbarPluginProps) {
+function ToolbarPlugin(
+  { isActive = true, onReset, onSave }: ToolbarPluginProps,
+) {
   const [editor] = useLexicalComposerContext();
   const [activeEditor, setActiveEditor] = useState(editor);
 
@@ -98,6 +108,7 @@ function ToolbarPlugin({ isActive = true, onReset }: ToolbarPluginProps) {
   >("paragraph");
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const isDirty = useSelector(selectIsDirty);
   const [selectedNode, setSelectedNode] = useState<LexicalNode | null>(null);
   const [selectedTable, setSelectedTable] = useState<TableNode | null>(null);
@@ -108,6 +119,16 @@ function ToolbarPlugin({ isActive = true, onReset }: ToolbarPluginProps) {
   const isTouched = useRef<boolean>(false);
   const [hash] = useHash();
   const { slotEl } = useToolbarSlot();
+
+  const handleSave = useCallback(async () => {
+    if (!onSave) return;
+    setIsSaving(true);
+    try {
+      await onSave();
+    } finally {
+      setIsSaving(false);
+    }
+  }, [onSave]);
 
   const $updateToolbar = useCallback(() => {
     const selection = $getSelection();
@@ -328,6 +349,26 @@ function ToolbarPlugin({ isActive = true, onReset }: ToolbarPluginProps) {
 
       {/* Undo / Redo */}
       <Box sx={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
+        {onSave && (
+          <Button
+            size="small"
+            onClick={handleSave}
+            disabled={isSaving || !isDirty}
+            startIcon={isSaving
+              ? <CircularProgress size={14} color="inherit" />
+              : <Save size={ICON_SIZE.inline} />}
+            sx={{
+              flexShrink: 0,
+              color: "text.secondary",
+              textTransform: "none",
+              fontWeight: 600,
+              typography: "dense",
+              px: 1.25,
+            }}
+          >
+            Save
+          </Button>
+        )}
         {onReset && (
           <Tooltip title="Reset to last saved">
             <span>

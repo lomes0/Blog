@@ -23,7 +23,7 @@ export const Editor: React.FC<{
     tags: Set<string>,
   ) => void;
   ignoreHistoryMerge?: boolean;
-  onSave?: () => void;
+  onSave?: () => void | Promise<unknown>;
   onReset?: () => void;
   isActive?: boolean;
 }> = (
@@ -40,7 +40,11 @@ export const Editor: React.FC<{
   return (
     <LexicalComposer initialConfig={{ ...editorConfig, ...initialConfig }}>
       <SharedHistoryContext>
-        <ToolbarPlugin isActive={isActive} onReset={onReset} />
+        <ToolbarPlugin
+          isActive={isActive}
+          onReset={onReset}
+          onSave={onSave}
+        />
         <EditorPlugins
           onChange={onChange}
           ignoreHistoryMerge={ignoreHistoryMerge}

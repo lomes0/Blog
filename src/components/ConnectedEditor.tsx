@@ -21,7 +21,7 @@ const ConnectedEditor: React.FC<{
     tags: Set<string>,
   ) => void;
   ignoreHistoryMerge?: boolean;
-  onSave?: () => void;
+  onSave?: () => void | Promise<unknown>;
   onReset?: () => void;
   namespace?: string;
   isActive?: boolean;

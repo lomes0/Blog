@@ -1,6 +1,6 @@
 "use client";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Box, Button, CircularProgress } from "@mui/material";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { Box } from "@mui/material";
 import {
   CLEAR_HISTORY_COMMAND,
   type EditorState,
@@ -12,7 +12,7 @@ import { useSelector as useReduxSelector } from "react-redux";
 import ConnectedEditor from "@/components/ConnectedEditor";
 import SplashScreen from "@/components/shared/SplashScreen";
 import DiffView from "@/components/Diff";
-import { documentsSelectors, selectIsDirty, useSelector } from "@/store";
+import { documentsSelectors, useSelector } from "@/store";
 import type { RootState } from "@/store";
 import { useCloudSave } from "./hooks/useCloudSave";
 import { useDirtyTracking } from "./hooks/useDirtyTracking";
@@ -21,48 +21,11 @@ import { useLocalDraft } from "./hooks/useLocalDraft";
 import type { EditorDocument } from "@/types";
 import DocumentHeader from "./DocumentHeader";
 import { triggerSave } from "./saveRegistry";
-import { useTopBarActions } from "@/contexts/TopBarActionsContext";
-import { Save } from "lucide-react";
-import { ICON_SIZE } from "@/theme/icons";
 
 const EditDocumentInfo = dynamic(
   () => import("@/components/EditDocument/EditDocumentInfo"),
   { ssr: false },
 );
-
-/** Save button that persists the current revision(s) to the cloud. */
-function SaveButton() {
-  const [isSaving, setIsSaving] = useState(false);
-  const isDirty = useSelector(selectIsDirty);
-  const handleSave = useCallback(async () => {
-    setIsSaving(true);
-    try {
-      await triggerSave();
-    } finally {
-      setIsSaving(false);
-    }
-  }, []);
-
-  return (
-    <Button
-      size="small"
-      onClick={handleSave}
-      disabled={isSaving || !isDirty}
-      startIcon={isSaving
-        ? <CircularProgress size={14} color="inherit" />
-        : <Save size={ICON_SIZE.inline} />}
-      sx={{
-        color: "text.secondary",
-        textTransform: "none",
-        fontWeight: 600,
-        typography: "dense",
-        px: 1.25,
-      }}
-    >
-      Save
-    </Button>
-  );
-}
 
 function ensureValidDocumentData(doc: EditorDocument): EditorDocument {
   const defaultParagraph = {
@@ -126,17 +89,10 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
   onEditorReady,
 }) => {
   const editorRef = useRef<LexicalEditor>(null);
-  const { setActions, clearActions } = useTopBarActions();
 
   useEffect(() => {
     if (isActive) onEditorReady?.(editorRef);
   }, [isActive, onEditorReady]);
-
-  useEffect(() => {
-    if (!isActive) return;
-    setActions(<SaveButton />);
-    return clearActions;
-  }, [isActive, setActions, clearActions]);
   const showDiff = useSelector((state) => state.ui.diff.open);
 
   // Redux document for useCloudSave (stable reference, same pattern as EditDocumentContent).
