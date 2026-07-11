@@ -46,3 +46,6 @@ next-env.d.ts
 **/public/worker-*.js.map
 **/public/fallback-*.js
 **/public/uploads/*
+
+# stray design export
+/claude_design/ide/IDE UIUX redesign proposal.zip
