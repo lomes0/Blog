@@ -40,7 +40,8 @@ const RailButton: React.FC<RailButtonProps> = (
         alignItems: "center",
         justifyContent: "center",
         width: "100%",
-        height: 44,
+        // 42px around a 38px chip → the handoff's 4px chip-to-chip gap.
+        height: 42,
         p: 0,
         border: "none",
         background: "transparent",
@@ -160,7 +161,7 @@ const ActivityRail: React.FC = () => {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            height: 44,
+            height: 42,
             flexShrink: 0,
             "&:hover .rail-chip": {
               bgcolor: "action.hover",
