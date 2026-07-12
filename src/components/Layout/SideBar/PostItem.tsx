@@ -12,7 +12,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import { CloudUpload, FileText, Pencil } from "lucide-react";
+import { CloudUpload, File, Pencil } from "lucide-react";
 import { actions, type RootState, useDispatch, useSelector } from "@/store";
 import { selectChildDocumentsByParent } from "@/store/selectors/layoutSelectors";
 import type { UserDocument } from "@/types";
@@ -390,17 +390,14 @@ export const PostItem = memo(
               }}
             >
               {
-                /* A tabbed ("stacked") post reads with a bolder icon color in
-                  place of a caret; the icon also toggles its tab list. */
+                /* Refined-Explorer note glyph — the plain `File` icon, rendered
+                  identically for plain and tabbed ("stacked") posts. For tabbed
+                  posts the icon still doubles as the tab-list toggle. */
               }
-              <FileText
+              <File
                 size={ICON_SIZE.inline}
-                strokeWidth={hasTabs ? 2.75 : 2}
-                style={{
-                  color: hasTabs
-                    ? "var(--mui-palette-text-primary)"
-                    : "var(--mui-palette-text-secondary)",
-                }}
+                strokeWidth={1.8}
+                style={{ color: "var(--mui-palette-text-secondary)" }}
               />
             </ListItemIcon>
             {sidebarOpen &&
