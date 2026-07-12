@@ -144,6 +144,9 @@ const withPWAConfig = {
 };
 
 const nextConfig: NextConfig = {
+  // Emit a self-contained server bundle (.next/standalone) for a minimal
+  // production container image. See Dockerfile.
+  output: "standalone",
   devIndicators: false,
   reactStrictMode: true,
   distDir: process.env.BUILD_DIR || ".next",
