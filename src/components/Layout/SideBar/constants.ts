@@ -89,3 +89,32 @@ export const SB_FONT = {
   /** sidebar wordmark / emphasis */
   emphasis: "1.2em",
 } as const;
+
+/**
+ * Sidebar accent palette from the "Refined Explorer" design handoff
+ * (`claude_design/side`). A slightly more violet take on the app's indigo
+ * `primary.main` (#4f46e5), scoped to the sidebar so the rest of the app keeps
+ * its current theme until we decide to promote it globally.
+ *
+ * **Light mode only.** These are fixed hex values tuned for the light panel;
+ * apply them via `theme.applyStyles("light", { ... })` so dark mode falls back
+ * to the existing MUI tokens (`action.selected`, `primary.main`, …). Dark
+ * variants are a deliberate follow-up ("dark later").
+ */
+export const SB_ACCENT = {
+  /** Primary accent — active icons, accent bars, folder glyph. */
+  main: "#6d5cf5",
+  /** Accent hover (pressed pills, e.g. a future "New" button). */
+  hover: "#5d4ce8",
+  /** Active/selected row background tint. */
+  tint: "#eeecfe",
+  /** Active/selected row text + active count-pill text. */
+  activeText: "#4338ca",
+  /** Idle count-pill surface + text. */
+  pillBg: "#f4f4f6",
+  pillText: "#a1a1aa",
+  /** Active count-pill surface (row is selected). */
+  pillActiveBg: "#dfdcff",
+  /** Gradient fill for the rail account avatar when no photo is set. */
+  avatarGradient: "linear-gradient(135deg,#8b7bff,#6d5cf5)",
+} as const;

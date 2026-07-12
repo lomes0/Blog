@@ -9,6 +9,7 @@ import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
 import { useSidebarFontSize } from "./hooks/useSidebarFontSize";
 import { useSidebarActions } from "./hooks/useSidebarActions";
 import { SidebarHeader } from "./SidebarHeader";
+import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 import { ActivePostsSection } from "./ActivePostsSection";
 import { SidebarSearchView } from "./SidebarSearchView";
 import { CollapsedRail } from "./CollapsedRail";
@@ -159,6 +160,11 @@ const SideBar: React.FC = () => {
         {/* Full layer — pinned to at least the resting width so it clips
             cleanly (rather than squishing) while the paper animates/drags. */}
         <Box sx={layerSx(Math.max(width, SIDEBAR_MIN_WIDTH), isExpanded)}>
+          {/* Workspace identity chip (Refined-Explorer header). Visual
+              placeholder for now — switch behavior is wired later. */}
+          <Box sx={{ px: 2, pt: 1.5, pb: 1, flexShrink: 0 }}>
+            <WorkspaceSwitcher />
+          </Box>
           {/* The view-title header is only needed for the search view now — in
               the explorer the tree's own "Notes"/"Projects" section headers label
               the content and carry the create ("+") affordances. */}

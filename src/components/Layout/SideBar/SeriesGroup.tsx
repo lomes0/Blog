@@ -24,7 +24,8 @@ import {
   type SidebarDndResult,
 } from "./hooks/useSidebarDnd";
 import { PostItem } from "./PostItem";
-import { SB_FONT, SB_ITEM_RADIUS } from "./constants";
+import { CountPill } from "./CountPill";
+import { SB_ACCENT, SB_FONT, SB_ITEM_RADIUS } from "./constants";
 import { ICON_SIZE } from "@/theme/icons";
 
 interface SeriesGroupProps {
@@ -132,7 +133,7 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
                 handleSeriesDoubleClick(e, group.series.id, group.series.title);
               }
             }}
-            sx={{
+            sx={[{
               minHeight: 26,
               justifyContent: sidebarOpen ? "initial" : "center",
               px: 2,
@@ -185,7 +186,17 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
                   bgcolor: (t) => alpha(t.palette.primary.main, 0.24),
                 },
               }),
-            }}
+            },
+            // Light-mode: active series row takes the Refined-Explorer accent
+            // tint (dark keeps `action.selected`). Skipped when multi-selected so
+            // the primary-tint pill wins.
+            (theme) =>
+              isSeriesActive && !isMultiSelected
+                ? theme.applyStyles("light", {
+                  "&, &:hover": { backgroundColor: SB_ACCENT.tint },
+                })
+                : {},
+            ]}
           >
             {/* The open/closed folder glyph is the sole expand indicator now —
                 the redundant tree chevron was dropped, so the folder both marks
@@ -193,12 +204,16 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
                 It leads the row where the chevron used to, so the guide-line and
                 child-indent math below are unchanged. */}
             <ListItemIcon
-              sx={{
+              sx={(theme) => ({
                 minWidth: 0,
                 mr: sidebarOpen ? 0.75 : 0,
                 justifyContent: "center",
                 color: hasAnyDirtyChild ? "warning.main" : "text.secondary",
-              }}
+                // Light-mode: the folder glyph reads in the accent purple (unless
+                // it's flagging dirty children in amber).
+                ...(!hasAnyDirtyChild &&
+                  theme.applyStyles("light", { color: SB_ACCENT.main })),
+              })}
             >
               {isExpanded
                 ? <FolderOpen size={ICON_SIZE.inline} strokeWidth={2} />
@@ -235,10 +250,21 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
                   // bump): a series with modified children reads amber.
                   fontWeight: 500,
                   color: hasAnyDirtyChild ? "warning.main" : "text.secondary",
-                  sx: { display: "block", minWidth: 0 },
+                  sx: (theme) => ({
+                    display: "block",
+                    minWidth: 0,
+                    // Light-mode: active + clean series title darkens to accent.
+                    ...(isSeriesActive && !hasAnyDirtyChild &&
+                      theme.applyStyles("light", {
+                        color: SB_ACCENT.activeText,
+                      })),
+                  }),
                 }}
                 sx={{ minWidth: 0, my: 0 }}
               />
+            )}
+            {sidebarOpen && !isRenaming && group.posts.length > 0 && (
+              <CountPill count={group.posts.length} active={isSeriesActive} />
             )}
           </ListItemButton>
         </Tooltip>

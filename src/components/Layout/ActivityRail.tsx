@@ -10,7 +10,7 @@ import { actions, type RootState, useDispatch, useSelector } from "@/store";
 import type { SidebarView } from "@/types";
 import { ICON_SIZE } from "@/theme/icons";
 import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
-import { ACTIVITY_RAIL_W } from "./SideBar/constants";
+import { ACTIVITY_RAIL_W, SB_ACCENT } from "./SideBar/constants";
 
 interface RailButtonProps {
   label: string;
@@ -30,7 +30,7 @@ const RailButton: React.FC<RailButtonProps> = (
       aria-label={label}
       aria-pressed={active}
       onClick={onClick}
-      sx={{
+      sx={(theme) => ({
         position: "relative",
         display: "flex",
         alignItems: "center",
@@ -60,7 +60,16 @@ const RailButton: React.FC<RailButtonProps> = (
           opacity: active ? 1 : 0,
           transition: "opacity 0.15s",
         },
-      }}
+        // Light-mode: adopt the Refined-Explorer purple for the active button
+        // (tinted pill + accent glyph/bar). Dark mode keeps the neutral tokens
+        // above until the dark palette is derived ("dark later").
+        ...(active &&
+          theme.applyStyles("light", {
+            color: SB_ACCENT.main,
+            bgcolor: SB_ACCENT.tint,
+            "&::before": { bgcolor: SB_ACCENT.main },
+          })),
+      })}
     >
       {children}
     </Box>
@@ -192,8 +201,24 @@ const ActivityRail: React.FC = () => {
           <Avatar
             alt={user?.name}
             src={user?.image ?? undefined}
-            sx={{ width: 28, height: 28 }}
-          />
+            sx={(theme) => ({
+              width: 28,
+              height: 28,
+              fontSize: 12,
+              fontWeight: 700,
+              // No photo → the Refined-Explorer gradient chip with the user's
+              // initial (light mode only), instead of MUI's flat grey fallback.
+              ...(user && !user.image &&
+                theme.applyStyles("light", {
+                  background: SB_ACCENT.avatarGradient,
+                  color: "#fff",
+                })),
+            })}
+          >
+            {user && !user.image
+              ? user.name?.trim()?.[0]?.toUpperCase()
+              : undefined}
+          </Avatar>
         </Box>
       </Tooltip>
     </Box>
