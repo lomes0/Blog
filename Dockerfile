@@ -53,7 +53,8 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/api/health || exit 1
 
-# Apply pending migrations, then boot the server. `migrate deploy` takes a
-# Prisma advisory lock, so concurrent replicas serialize safely. If you scale
-# to many instances, move migration to a dedicated release step instead.
-CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
+# Boot the standalone server. Migrations are applied out-of-band, before the
+# server starts: Fly runs `prisma migrate deploy` as a release_command (see
+# fly.toml); docker-compose.prod.yml applies them via a `command:` override.
+# The prisma CLI is copied above so both mechanisms work against this image.
+CMD ["node", "server.js"]

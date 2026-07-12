@@ -34,6 +34,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    # The image CMD is just `node server.js` (Fly applies migrations via a
+    # release_command). Here we apply them on boot before starting the server.
+    command: ["sh", "-c", "npx prisma migrate deploy && node server.js"]
     # Pull app secrets/config from .env. DATABASE_URL there (if any) is
     # overridden below so the app targets the compose Postgres service.
     env_file:
