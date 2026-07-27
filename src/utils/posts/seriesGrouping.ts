@@ -1,6 +1,7 @@
 import { Project, Series, UserDocument } from "@/types";
 import { PartitionGranularity } from "@/types/partitioning";
 import { compareDocumentsByRank, rankOf } from "@/lib/documentOrder";
+import { compareRankThenId } from "@/lib/ordering";
 import { formatTimeHeader, getTimeKey } from "./dateHelpers";
 
 /**
@@ -84,25 +85,6 @@ const groupId = (item: SeriesGroupItem): string =>
   item.type === "series" ? (item.series?.id ?? "") : (item.posts[0]?.id ?? "");
 
 /**
- * Ascending compare by fractional rank with a stable id tie-breaker. Unranked
- * entries (null rank) sort last; equal/absent ranks break by id so the result is
- * total and stable. Shared by the flat group ordering and the root-item ordering
- * so both surfaces agree on one rank space.
- */
-const compareByRankThenId = (
-  aRank: string | null,
-  aId: string,
-  bRank: string | null,
-  bId: string,
-): number => {
-  if (aRank != null && bRank != null) {
-    if (aRank !== bRank) return aRank < bRank ? -1 : 1;
-  } else if (aRank != null) return -1;
-  else if (bRank != null) return 1;
-  return aId < bId ? -1 : aId > bId ? 1 : 0;
-};
-
-/**
  * Order standalone posts and series in one shared rank space (ascending),
  * matching the interleaved root list on /posts (see PostsListView). Unranked
  * groups sort last; ties break by id so the result is total and stable.
@@ -111,7 +93,7 @@ const compareGroupsByRank = (
   a: SeriesGroupItem,
   b: SeriesGroupItem,
 ): number =>
-  compareByRankThenId(groupRank(a), groupId(a), groupRank(b), groupId(b));
+  compareRankThenId(groupRank(a), groupId(a), groupRank(b), groupId(b));
 
 /**
  * Get the creation date timestamp from a Series
@@ -240,7 +222,7 @@ const rootItemId = (item: RootItem): string =>
  * this view agree. Unranked entries sort last; ties break by id.
  */
 const compareRootItemsByRank = (a: RootItem, b: RootItem): number =>
-  compareByRankThenId(
+  compareRankThenId(
     rootItemRank(a),
     rootItemId(a),
     rootItemRank(b),

@@ -25,6 +25,8 @@ interface SeriesRowProps {
   density: ListDensity;
   tagStyle: TagStyle;
   isSelected: boolean;
+  /** Whether a given child post is part of the current selection. */
+  isPostSelected: (id: string) => boolean;
   isExpanded: boolean;
   onToggleExpand: (seriesId: string) => void;
   onToggleSelect: (id: string, event: React.MouseEvent) => void;
@@ -72,6 +74,7 @@ export const SeriesRow = React.memo(function SeriesRow({
   density,
   tagStyle,
   isSelected,
+  isPostSelected,
   isExpanded,
   onToggleExpand,
   onToggleSelect,
@@ -361,7 +364,7 @@ export const SeriesRow = React.memo(function SeriesRow({
                 post={p}
                 density={density}
                 tagStyle={tagStyle}
-                isSelected={false}
+                isSelected={isPostSelected(p.id)}
                 editingName={editingPostNames.get(p.id)}
                 onToggleSelect={onToggleSelect}
                 onRenameStart={onPostRenameStart}

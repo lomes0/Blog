@@ -199,15 +199,17 @@ export function useSidebarActions(): SidebarActionsResult {
       if (response.payload !== confirmId) return;
       const doc = documents?.find((d) => d.id === postId);
       if (doc) {
-        if (doc.cloud) {
-          try {
+        try {
+          if (doc.cloud) {
             await dispatch(actions.deleteCloudDocument(postId)).unwrap();
-            router.refresh();
-          } catch {
-            // delete failed, skip refresh
           }
-        } else if (doc.local) {
-          dispatch(actions.deleteLocalDocument(postId));
+          // Always remove the local (IndexedDB) copy so the post is deleted
+          // completely. `doc.local` may be undefined for a server-rendered
+          // post; the delete is idempotent when there is nothing to remove.
+          await dispatch(actions.deleteLocalDocument(postId));
+          router.refresh();
+        } catch {
+          // delete failed, skip refresh
         }
       }
     },

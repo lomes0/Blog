@@ -22,7 +22,6 @@ const DeleteBothDocument: React.FC<{
   const router = useRouter();
   const localDocument = userDocument.local;
   const cloudDocument = userDocument.cloud;
-  const isLocal = !!localDocument;
   const isCloud = !!cloudDocument;
   const id = userDocument.id;
   const name = localDocument?.name || cloudDocument?.name || "This Item";
@@ -45,10 +44,11 @@ const DeleteBothDocument: React.FC<{
         await dispatch(actions.deleteCloudDocument(id));
       }
 
-      // Then delete from local (if exists)
-      if (isLocal) {
-        await dispatch(actions.deleteLocalDocument(id));
-      }
+      // Then always delete the local (IndexedDB) copy. `userDocument.local`
+      // reflects only what the caller knew — a server-rendered item may still
+      // have a local copy — and the delete is idempotent when there is nothing
+      // to remove.
+      await dispatch(actions.deleteLocalDocument(id));
 
       // Refresh the page to reflect the deletion
       router.refresh();

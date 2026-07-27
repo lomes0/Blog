@@ -18,6 +18,7 @@ import {
   ranksBracketing,
   type ReorderDirection,
 } from "@/lib/documentOrder";
+import { compareRankThenId } from "@/lib/ordering";
 import { ListDensity, TagStyle } from "./types";
 import { PostRow } from "./components/PostRow";
 import { SeriesRow } from "./components/SeriesRow";
@@ -47,13 +48,9 @@ type RootItem =
   | { kind: "series"; id: string; rank: string | null; series: Series };
 
 // Rank ascending; unranked entries sort last; ties broken by id (total/stable).
-function compareByRank(a: RootItem, b: RootItem): number {
-  if (a.rank != null && b.rank != null) {
-    if (a.rank !== b.rank) return a.rank < b.rank ? -1 : 1;
-  } else if (a.rank != null) return -1;
-  else if (b.rank != null) return 1;
-  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
-}
+// Delegates to the shared primitive so /posts and the sidebar agree on order.
+const compareByRank = (a: RootItem, b: RootItem): number =>
+  compareRankThenId(a.rank, a.id, b.rank, b.id);
 
 export function PostsListView({
   posts,
@@ -86,7 +83,10 @@ export function PostsListView({
   }, [series]);
 
   // The root list: standalone posts and series interleaved in one shared rank
-  // space (the user's chosen free-interleave model).
+  // space (the user's chosen free-interleave model). The order here is also the
+  // source of the neighbour ranks that bracket a reorder (see
+  // handleReorderRoot / handleReorderDrop), so it must stay rank-monotonic —
+  // don't group or re-sort it for presentation.
   const rootItems = useMemo((): RootItem[] => {
     const items: RootItem[] = [
       ...posts.map((p) => ({
@@ -177,7 +177,10 @@ export function PostsListView({
     const response = await dispatch(actions.alert(alertPayload));
     if (response.payload === alertPayload.actions[1].id) {
       if (post.cloud) await dispatch(actions.deleteCloudDocument(post.id));
-      if (post.local) await dispatch(actions.deleteLocalDocument(post.id));
+      // Always remove the local (IndexedDB) copy: a server-rendered post only
+      // carries its cloud record, so `post.local` may be undefined even when a
+      // local copy exists. The delete is idempotent when there is nothing to remove.
+      await dispatch(actions.deleteLocalDocument(post.id));
       router.refresh();
     }
   }, [dispatch, router]);
@@ -240,9 +243,9 @@ export function PostsListView({
             if (post.cloud) {
               await dispatch(actions.deleteCloudDocument(post.id));
             }
-            if (post.local) {
-              await dispatch(actions.deleteLocalDocument(post.id));
-            }
+            // Always remove the local copy (idempotent when absent) so a
+            // post is fully deleted even if `post.local` wasn't hydrated.
+            await dispatch(actions.deleteLocalDocument(post.id));
           }
         }
       }
@@ -552,6 +555,7 @@ export function PostsListView({
                 density={density}
                 tagStyle={tagStyle}
                 isSelected={selection.isSelected(item.id)}
+                isPostSelected={selection.isSelected}
                 isExpanded={expandedSeries.has(item.id)}
                 onToggleExpand={toggleSeries}
                 onToggleSelect={selection.toggle}

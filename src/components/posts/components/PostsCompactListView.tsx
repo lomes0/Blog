@@ -112,7 +112,10 @@ export const PostsCompactListView: React.FC<PostsCompactListViewProps> = ({
     const response = await dispatch(actions.alert(alertPayload));
     if (response.payload === alertPayload.actions[1].id) {
       if (post.cloud) await dispatch(actions.deleteCloudDocument(post.id));
-      if (post.local) await dispatch(actions.deleteLocalDocument(post.id));
+      // Always remove the local (IndexedDB) copy: a server-rendered post only
+      // carries its cloud record, so `post.local` may be undefined even when a
+      // local copy exists. The delete is idempotent when there is nothing to remove.
+      await dispatch(actions.deleteLocalDocument(post.id));
       router.refresh();
     }
   };

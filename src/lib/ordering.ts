@@ -27,6 +27,34 @@ export interface Ranked {
 }
 
 /**
+ * Whether `rank` is a well-formed fractional-index key.
+ *
+ * Legacy/partially-migrated rows can carry keys the fractional-indexing library
+ * rejects (e.g. the integer sort_order `"0"` left behind by an incomplete
+ * backfill). Feeding such a key to `generateKeyBetween` throws
+ * (`invalid order key head: 0`), which would wedge *every* insert/reorder into
+ * that key's container — a single bad row breaks moves for the whole list. We
+ * validate defensively and treat an invalid key as "absent" (a list edge) so
+ * one corrupt row can't poison rank computation. The moved row then gets a
+ * fresh valid key, so the list self-heals as items are reordered.
+ */
+export function isValidRank(rank: string | null | undefined): rank is string {
+  if (!rank) return false;
+  try {
+    // generateKeyBetween validates its first argument; a malformed key throws.
+    generateKeyBetween(rank, null);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Coerce an invalid/absent key to null (a list edge) for safe key minting. */
+function sanitizeRank(rank: string | null): string | null {
+  return isValidRank(rank) ? rank : null;
+}
+
+/**
  * A rank strictly between two adjacent siblings, ordered top-to-bottom.
  *
  * Pass the rank of the neighbour *above* the target slot as `upper` and the
@@ -40,12 +68,16 @@ export function rankBetween(
   upper: string | null,
   lower: string | null,
 ): string {
-  if (upper !== null && lower !== null && upper >= lower) {
+  // Drop malformed neighbour keys to the list edge so a legacy/corrupt rank
+  // can't crash the mint (see isValidRank).
+  const u = sanitizeRank(upper);
+  const l = sanitizeRank(lower);
+  if (u !== null && l !== null && u >= l) {
     throw new Error(
-      `rankBetween: neighbours out of order (upper=${upper}, lower=${lower})`,
+      `rankBetween: neighbours out of order (upper=${u}, lower=${l})`,
     );
   }
-  return generateKeyBetween(upper, lower);
+  return generateKeyBetween(u, l);
 }
 
 /** A rank that sorts after every sibling (append to the end of the list). */
@@ -74,27 +106,55 @@ export function ranksForList(count: number): string[] {
  */
 export function ranksAfter(after: string | null, count: number): string[] {
   if (count <= 0) return [];
-  return generateNKeysBetween(after, null, count);
+  return generateNKeysBetween(sanitizeRank(after), null, count);
+}
+
+/**
+ * Total ordering comparator over a (nullable) rank and a stable id tiebreaker:
+ * ascending by `rank`, unranked (`null`) entries sort last, and equal/absent
+ * ranks break by `id` so the order is always total and stable.
+ *
+ * This is the one primitive every rank-ordered surface builds on — the root
+ * list on /posts, the sidebar tree's group/root ordering, and {@link byRank}.
+ */
+export function compareRankThenId(
+  aRank: string | null,
+  aId: string,
+  bRank: string | null,
+  bId: string,
+): number {
+  if (aRank != null && bRank != null) {
+    if (aRank !== bRank) return aRank < bRank ? -1 : 1;
+  } else if (aRank != null) return -1;
+  else if (bRank != null) return 1;
+  return aId < bId ? -1 : aId > bId ? 1 : 0;
 }
 
 /**
  * Total ordering comparator: ascending by `rank`, with `id` as a stable
- * tiebreaker so colliding ranks never produce an ambiguous order.
+ * tiebreaker so colliding ranks never produce an ambiguous order. A thin
+ * {@link compareRankThenId} over the non-null `Ranked` shape.
  */
 export function byRank(a: Ranked, b: Ranked): number {
-  if (a.rank !== b.rank) return a.rank < b.rank ? -1 : 1;
-  if (a.id !== b.id) return a.id < b.id ? -1 : 1;
-  return 0;
+  return compareRankThenId(a.rank, a.id, b.rank, b.id);
 }
 
 function maxRank(siblings: readonly Ranked[]): string | null {
   let max: string | null = null;
-  for (const s of siblings) if (max === null || s.rank > max) max = s.rank;
+  for (const s of siblings) {
+    // Ignore malformed keys so a corrupt sibling can't become the bound we
+    // then feed to generateKeyBetween (which would throw).
+    if (!isValidRank(s.rank)) continue;
+    if (max === null || s.rank > max) max = s.rank;
+  }
   return max;
 }
 
 function minRank(siblings: readonly Ranked[]): string | null {
   let min: string | null = null;
-  for (const s of siblings) if (min === null || s.rank < min) min = s.rank;
+  for (const s of siblings) {
+    if (!isValidRank(s.rank)) continue;
+    if (min === null || s.rank < min) min = s.rank;
+  }
   return min;
 }

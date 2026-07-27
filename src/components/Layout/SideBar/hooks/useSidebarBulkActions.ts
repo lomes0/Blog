@@ -111,7 +111,9 @@ export function useSidebarBulkActions(
         const doc = docsById.get(id);
         if (!doc) continue;
         if (doc.cloud) await dispatch(actions.deleteCloudDocument(id));
-        else if (doc.local) dispatch(actions.deleteLocalDocument(id));
+        // Always remove the local (IndexedDB) copy so the post is deleted
+        // completely; the delete is idempotent when there is nothing to remove.
+        await dispatch(actions.deleteLocalDocument(id));
       }
     }
     clearSelection();
