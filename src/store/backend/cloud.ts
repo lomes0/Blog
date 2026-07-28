@@ -22,9 +22,25 @@ import type { PostBackend } from "./index";
 const toPost = (document: Post): Post => ({ ...document });
 
 export const cloudBackend: PostBackend = {
+  /**
+   * The author's whole post list, assembled from pages.
+   *
+   * The store and every list view assume a complete array, so this walks
+   * `nextCursor` to the end rather than returning the first page. The win is on
+   * the database side: each statement is bounded and index-ordered instead of
+   * one scan over everything the author has ever written. Serving pages
+   * straight to the UI is the follow-up this makes possible.
+   */
   async list() {
-    const documents = await apiClient.documents.list();
-    return (documents ?? []).map(toPost);
+    const posts: Post[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = await apiClient.documents.list({ cursor });
+      if (!page) break;
+      posts.push(...page.documents.map(toPost));
+      cursor = page.nextCursor ?? undefined;
+    } while (cursor);
+    return posts;
   },
 
   async get(id) {

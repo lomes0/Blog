@@ -29,6 +29,21 @@ const revisionAuthorSelect = {
   email: true,
 } as const;
 
+/**
+ * Revision metadata for *list* queries — the newest revision only.
+ *
+ * Without the `take` this fetches every revision of every document and
+ * `toCloudDocument` then discards all but `head`, so the cost of a list grew
+ * with how much its author had ever typed. One row per document is all a list
+ * view needs; full history comes from `findDocument(id, "all")`.
+ *
+ * `take: 1` is the newest revision, which is `head` for every document that
+ * isn't collaboratively edited — the same row the non-collab branch of
+ * `toCloudDocument` keeps. A collab document's list entry is now its newest
+ * revision rather than its whole history; the detail route still returns all of
+ * it, and `applyPost` will not let this shorter list overwrite one already
+ * loaded there.
+ */
 const revisionsSelect = {
   select: {
     id: true,
@@ -37,6 +52,7 @@ const revisionsSelect = {
     author: { select: revisionAuthorSelect },
   },
   orderBy: { createdAt: "desc" as const },
+  take: 1,
 };
 
 const documentCoreSelect = {
@@ -95,28 +111,24 @@ const toCloudDocument = (
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Documents anyone may see: published, and not marked private.
+ *
+ * This is the only listing that should back a public surface — the landing
+ * page, the sitemap. Both `published` and `private` are checked because they
+ * are independent flags, so a post can be published *and* private and must
+ * still stay out of a public list.
+ *
+ * There used to be a `findAllDocuments` beside this that filtered on neither,
+ * and it was what the landing page, the sitemap and the anonymous branch of
+ * `GET /api/documents` all actually called. It has been removed rather than
+ * left for someone to reach for again.
+ */
 const findPublishedDocuments = async (limit?: number) => {
   const docs = await prisma.document.findMany({
     where: {
       published: true,
-      type: PrismaDocumentType.DOCUMENT,
-    },
-    select: {
-      ...documentCoreSelect,
-      revisions: revisionsSelect,
-      author: { select: authorSelect },
-    },
-    orderBy: { createdAt: "desc" },
-    take: limit,
-  });
-
-  return docs.map(toCloudDocument);
-};
-
-// Find all documents (published and unpublished)
-const findAllDocuments = async (limit?: number) => {
-  const docs = await prisma.document.findMany({
-    where: {
+      private: false,
       type: PrismaDocumentType.DOCUMENT,
     },
     select: {
@@ -213,7 +225,30 @@ const findDocument = async (
   return cloudDoc;
 };
 
-const findDocumentsByAuthorId = async (authorId: string) => {
+/** Largest page a caller may request, and the size used when none is given. */
+export const AUTHOR_DOCUMENTS_PAGE_SIZE = 100;
+
+/**
+ * One page of the author's posts, newest first.
+ *
+ * Keyset pagination rather than `skip`/`take`: the sort is
+ * `(createdAt desc, id desc)` so the order is total — `createdAt` alone is not
+ * unique and would let rows repeat or vanish across page boundaries — and the
+ * cursor is the last row's id. `nextCursor` is null on the final page.
+ *
+ * The unbounded version of this query was the app's worst read: it scanned
+ * every document an author had ever written and joined in every revision of
+ * each. Callers that still want the whole list should page through it (see
+ * `cloudBackend.list`) rather than ask for it in one statement.
+ */
+const findDocumentsByAuthorId = async (
+  authorId: string,
+  options: { cursor?: string; take?: number } = {},
+) => {
+  const take = Math.min(
+    Math.max(options.take ?? AUTHOR_DOCUMENTS_PAGE_SIZE, 1),
+    AUTHOR_DOCUMENTS_PAGE_SIZE,
+  );
   const docs = await prisma.document.findMany({
     where: { authorId, type: PrismaDocumentType.DOCUMENT },
     select: {
@@ -221,10 +256,20 @@ const findDocumentsByAuthorId = async (authorId: string) => {
       revisions: revisionsSelect,
       author: { select: authorSelect },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    // One extra row is a cheaper "is there more?" than a second count query.
+    take: take + 1,
+    ...(options.cursor
+      ? { cursor: { id: options.cursor }, skip: 1 }
+      : {}),
   });
 
-  return docs.map(toCloudDocument);
+  const hasMore = docs.length > take;
+  const page = hasMore ? docs.slice(0, take) : docs;
+  return {
+    documents: page.map(toCloudDocument),
+    nextCursor: hasMore ? page[page.length - 1].id : null,
+  };
 };
 
 const findPublishedDocumentsByAuthorId = async (authorId: string) => {
@@ -408,7 +453,6 @@ const findDocumentChildren = async (parentId: string) => {
 export {
   createDocument,
   deleteDocument,
-  findAllDocuments,
   findCloudStorageUsageByAuthorId,
   findDocument,
   findDocumentChildren,

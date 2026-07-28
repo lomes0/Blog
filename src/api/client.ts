@@ -44,6 +44,7 @@ import type {
   MoveProjectInput,
   MoveSeriesInput,
   NotesCanvas,
+  PaginatedDocuments,
   UpdateDocumentTimesInput,
   UpdateSeriesPostsInput,
 } from "./types";
@@ -171,9 +172,24 @@ export const apiClient = {
   // Documents
   // -------------------------------------------------------------------------
   documents: {
-    /** GET /api/documents */
-    list: (): Promise<Post[] | undefined> =>
-      request<Post[]>("/api/documents", { cache: "no-store" }),
+    /**
+     * GET /api/documents — one page of the signed-in author's posts.
+     *
+     * Newest first. Pass the previous response's `nextCursor` to continue; a
+     * null `nextCursor` means that was the last page. `cloudBackend.list`
+     * wraps this to assemble the whole list.
+     */
+    list: (
+      params: { cursor?: string; limit?: number } = {},
+    ): Promise<PaginatedDocuments | undefined> => {
+      const query = new URLSearchParams();
+      if (params.cursor) query.set("cursor", params.cursor);
+      if (params.limit !== undefined) query.set("limit", String(params.limit));
+      const suffix = query.size ? `?${query}` : "";
+      return request<PaginatedDocuments>(`/api/documents${suffix}`, {
+        cache: "no-store",
+      });
+    },
 
     /** GET /api/documents/:id */
     get: (

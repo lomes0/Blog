@@ -9,6 +9,17 @@ export interface ApiError {
 }
 
 // -----------------------------------------------------------------------
+// Documents – paged list (GET /api/documents)
+// -----------------------------------------------------------------------
+// Keyset pagination: `nextCursor` is the last returned document's id, or null
+// once the list is exhausted. It travels inside the `{ data }` envelope so the
+// standard `request()` unwrapping still applies.
+export interface PaginatedDocuments {
+  documents: import("@/types").Post[];
+  nextCursor: string | null;
+}
+
+// -----------------------------------------------------------------------
 // Series – single item (GET /api/series/:id)
 // -----------------------------------------------------------------------
 export interface GetOneSeriesResponse {

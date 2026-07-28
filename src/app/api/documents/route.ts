@@ -2,7 +2,6 @@ import { authOptions } from "@/lib/auth";
 import { ApiError, withApiHandler } from "@/lib/api-utils";
 import {
   createDocument,
-  findAllDocuments,
   findDocument,
   findDocumentsByAuthorId,
 } from "@/repositories/document";
@@ -17,13 +16,28 @@ export const dynamic = "force-dynamic";
 
 export const GET = withApiHandler(async (request) => {
   const { searchParams } = new URL(request.url);
-  const limit = searchParams.get("limit")
-    ? parseInt(searchParams.get("limit")!)
-    : undefined;
+  const rawLimit = searchParams.get("limit");
+  const parsedLimit = rawLimit === null ? undefined : Number(rawLimit);
+  if (
+    parsedLimit !== undefined &&
+    (!Number.isInteger(parsedLimit) || parsedLimit < 1)
+  ) {
+    throw new ApiError(400, "Bad Request", "`limit` must be a positive integer");
+  }
+  const cursor = searchParams.get("cursor") ?? undefined;
+
   const session = await getServerSession(authOptions);
   if (!session) {
-    const allPosts = await findAllDocuments(limit);
-    return NextResponse.json({ data: allPosts });
+    // This route serves the signed-in author their own library. It used to fall
+    // back to `findAllDocuments`, which filters on neither `published` nor
+    // `private` and selects author emails — so an anonymous caller could read
+    // every draft in the database. Public listings are rendered server-side
+    // from `findPublishedDocuments` instead; there is no anonymous read here.
+    throw new ApiError(
+      401,
+      "Unauthorized",
+      "Please sign in to list your documents",
+    );
   }
   const { user } = session;
   if (user.disabled) {
@@ -33,8 +47,14 @@ export const GET = withApiHandler(async (request) => {
       "Account is disabled for violating terms of service",
     );
   }
-  const posts = await findDocumentsByAuthorId(user.id);
-  return NextResponse.json({ data: posts });
+  // Paged: the repository caps `take`, so an author with thousands of posts can
+  // no longer force one unbounded scan. Callers that want the whole list follow
+  // `nextCursor` until it comes back null.
+  const { documents, nextCursor } = await findDocumentsByAuthorId(user.id, {
+    cursor,
+    take: parsedLimit,
+  });
+  return NextResponse.json({ data: { documents, nextCursor } });
 });
 
 export const POST = withApiHandler(async (request) => {

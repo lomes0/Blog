@@ -1,5 +1,5 @@
 import Home from "@/components/Home";
-import { findAllDocuments } from "@/repositories/document";
+import { findPublishedDocuments } from "@/repositories/document";
 import { findAllSeries } from "@/repositories/series";
 import { Post } from "@/types";
 import type { Metadata } from "next";
@@ -20,8 +20,9 @@ export const metadata: Metadata = {
 const page = async () => {
   const session = await getServerSession(authOptions);
 
-  // Server-side: fetch public posts
-  const allPosts = await findAllDocuments(12);
+  // Server-side: fetch public posts. `findAllDocuments` filters on neither
+  // `published` nor `private`, so it was surfacing drafts on the landing page.
+  const allPosts = await findPublishedDocuments(12);
   const allSeries = await findAllSeries();
 
   const staticDocuments: Post[] = allPosts;

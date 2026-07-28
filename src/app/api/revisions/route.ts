@@ -1,6 +1,6 @@
 import { ApiError, withApiHandler } from "@/lib/api-utils";
 import { authOptions } from "@/lib/auth";
-import { createRevision } from "@/repositories/revision";
+import { createRevision, findRevisionDocumentId } from "@/repositories/revision";
 import { Revision } from "@/types";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
@@ -44,6 +44,18 @@ export const POST = withApiHandler(async (request: Request) => {
       403,
       "This document is private",
       "You are not authorized to Edit this document",
+    );
+  }
+
+  // Re-posting a known id now rewrites that revision (the editor folds a run of
+  // autosaves into one), so an id belonging to a different document must be
+  // refused — otherwise it would be a way to overwrite another post's history.
+  const existingDocumentId = await findRevisionDocumentId(body.id);
+  if (existingDocumentId && existingDocumentId !== body.documentId) {
+    throw new ApiError(
+      403,
+      "Unauthorized",
+      "That revision belongs to a different document",
     );
   }
 

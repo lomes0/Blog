@@ -25,6 +25,15 @@ const getCachedRevision = unstable_cache(findRevisionById, [], {
   tags: ["revision"],
 });
 
+/** The document a revision belongs to, or undefined if there is no such revision. */
+const findRevisionDocumentId = async (id: string) => {
+  const revision = await prisma.revision.findUnique({
+    where: { id },
+    select: { documentId: true },
+  });
+  return revision?.documentId;
+};
+
 const findRevisionAuthorId = async (id: string) => {
   const revision = await prisma.revision.findUnique({
     where: { id },
@@ -35,11 +44,23 @@ const findRevisionAuthorId = async (id: string) => {
   return revision?.authorId;
 };
 
+/**
+ * Create a revision, or rewrite one already open under the same id.
+ *
+ * The editor folds a stretch of autosaves into a single revision (see
+ * `useSave`), so re-posting a known id means "this revision's content moved on"
+ * rather than "duplicate, ignore me" — the update has to be real. Only `data`
+ * and `createdAt` move; the row keeps its document and author.
+ *
+ * Callers are responsible for checking that the id belongs to the document
+ * being written (see the POST /api/revisions route) — without that, a forged id
+ * would let this overwrite someone else's revision.
+ */
 const createRevision = async (data: Prisma.RevisionUncheckedCreateInput) => {
   return prisma.revision.upsert({
     where: { id: data.id as string },
     create: data,
-    update: {}, // no-op: if the revision already exists, keep it as-is
+    update: { data: data.data, createdAt: data.createdAt },
   });
 };
 
@@ -60,6 +81,7 @@ export {
   createRevision,
   deleteRevision,
   findRevisionAuthorId,
+  findRevisionDocumentId,
   getCachedRevision,
   updateRevision,
 };

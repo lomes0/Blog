@@ -18,6 +18,11 @@ import type { RefObject } from "react";
 /** How long after the last keystroke a save is attempted. */
 const AUTOSAVE_DELAY_MS = 2000;
 const MAX_BACKOFF_MS = 30_000;
+/**
+ * How long one revision may keep absorbing autosaves before the next save
+ * starts a fresh one. Bounds how much writing a single checkpoint can span.
+ */
+const REVISION_SESSION_MS = 10 * 60 * 1000;
 
 /**
  * Persist a post's content, and keep persisting it through a bad connection.
@@ -51,6 +56,10 @@ export function useSave(
   // first), so `editorRef` is already null by the time we flush. Stash the last
   // state seen on change and fall back to it.
   const latestState = useRef<EditorState | null>(null);
+  // The revision the current writing stretch is being folded into, and when it
+  // opened. Null means the next save opens a new one.
+  const revisionId = useRef<string | null>(null);
+  const revisionOpenedAt = useRef(0);
 
   const postId = post?.id;
   const parentId = post?.parentId;
@@ -60,6 +69,15 @@ export function useSave(
       clearTimeout(retryTimer.current);
       retryTimer.current = null;
     }
+  }, []);
+
+  /**
+   * Seal the revision autosaves are folding into, so the next one opens a fresh
+   * record. Called at the moments a user would recognise as a checkpoint; the
+   * sealed row stays in history untouched.
+   */
+  const closeRevision = useCallback(() => {
+    revisionId.current = null;
   }, []);
 
   const save = useCallback(async (): Promise<boolean> => {
@@ -85,9 +103,21 @@ export function useSave(
       return true;
     }
 
-    // A fresh revision id every attempt, so the upsert creates a record rather
-    // than hitting a no-op update.
-    const headId = uuidv4();
+    // Autosaves fold into one revision instead of minting a row every attempt.
+    // A new id opens a revision; reusing it rewrites that row in place, so a
+    // long writing stretch costs one record rather than one per two seconds.
+    // `closeRevision` ends the stretch at a checkpoint worth keeping — an
+    // explicit save, leaving the tab, or closing the editor — and the ceiling
+    // below stops a continuous session from folding into a single row forever.
+    const now = Date.now();
+    if (
+      !revisionId.current ||
+      now - revisionOpenedAt.current >= REVISION_SESSION_MS
+    ) {
+      revisionId.current = uuidv4();
+      revisionOpenedAt.current = now;
+    }
+    const headId = revisionId.current;
     const updatedAt = new Date().toISOString();
 
     inFlight.current = true;
@@ -163,19 +193,39 @@ export function useSave(
     return () => window.removeEventListener("online", onOnline);
   }, []);
 
-  // One Save action persists every open tab (see saveRegistry).
+  // One Save action persists every open tab (see saveRegistry). An explicit
+  // save is a checkpoint: it seals the revision so later edits start a new one.
   useEffect(() => {
     if (!postId) return;
-    registerSaveCallback(postId, () => saveRef.current());
+    registerSaveCallback(postId, async () => {
+      const saved = await saveRef.current();
+      if (saved) closeRevision();
+      return saved;
+    });
     return () => unregisterSaveCallback(postId);
-  }, [postId]);
+  }, [postId, closeRevision]);
+
+  // Leaving the tab is the other natural checkpoint, and the last moment we can
+  // rely on being able to write. Flush, then seal.
+  useEffect(() => {
+    const onHidden = () => {
+      if (document.visibilityState !== "hidden") return;
+      scheduleSave.clear();
+      void saveRef.current().then((saved) => {
+        if (saved) closeRevision();
+      });
+    };
+    document.addEventListener("visibilitychange", onHidden);
+    return () => document.removeEventListener("visibilitychange", onHidden);
+  }, [scheduleSave, closeRevision]);
 
   // Flush pending edits when the editor goes away (e.g. edit → view).
   useEffect(() => () => {
     scheduleSave.clear();
     cancelRetry();
     void saveRef.current();
-  }, [scheduleSave, cancelRetry]);
+    closeRevision();
+  }, [scheduleSave, cancelRetry, closeRevision]);
 
   return { save, savedBaseline, track };
 }

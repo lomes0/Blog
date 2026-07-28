@@ -82,9 +82,17 @@ function applyPost(
   if (!existing) {
     prependPost(posts, post);
   } else {
+    // A list payload carries only the newest revision (see `revisionsSelect`),
+    // so it must not replace a fuller history the detail route already loaded —
+    // otherwise a background refresh would collapse the revisions panel to one
+    // entry. Revision *deletion* has its own reducer and does not come through
+    // here, so keeping the longer list cannot strand a removed revision.
+    const incoming = post.revisions;
+    const kept = existing.revisions;
     Object.assign(existing, post, {
       data: post.data ?? existing.data,
-      revisions: post.revisions ?? existing.revisions,
+      revisions:
+        incoming && incoming.length >= (kept?.length ?? 0) ? incoming : kept,
     });
   }
 
@@ -385,9 +393,12 @@ export const appSlice = createSlice({
         const post = state.posts.entities[revision.documentId];
         if (!post) return;
         if (!post.revisions) post.revisions = [];
-        if (!post.revisions.some((r) => r.id === revision.id)) {
-          post.revisions.unshift(revision);
-        }
+        // Autosaves fold into one revision, so a known id means that revision
+        // advanced — refresh it in place rather than skipping, or the revisions
+        // panel would keep showing the timestamp the stretch started at.
+        const index = post.revisions.findIndex((r) => r.id === revision.id);
+        if (index === -1) post.revisions.unshift(revision);
+        else post.revisions[index] = revision;
       })
       .addCase(createRevision.rejected, (state, action) => {
         announceFailure(state, action.payload);

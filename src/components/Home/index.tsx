@@ -34,7 +34,7 @@ const Home: React.FC<{
   staticDocuments: Post[];
   series?: Series[];
   user?: User;
-}> = ({ staticDocuments }) => {
+}> = ({ staticDocuments, user }) => {
   const router = useRouter();
   const [activeView, setActiveView] = useState<ViewType>(null);
   const {
@@ -53,7 +53,7 @@ const Home: React.FC<{
     400,
   );
   const [isResizing, setIsResizing] = useState(false);
-  const { documents, refresh } = useDocuments(staticDocuments);
+  const { documents, refresh } = useDocuments(staticDocuments, !!user);
 
   const recentPosts = documents.slice(0, 8);
 
