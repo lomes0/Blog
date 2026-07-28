@@ -49,3 +49,9 @@ next-env.d.ts
 
 # stray design export
 /claude_design/ide/IDE UIUX redesign proposal.zip
+/claude_design/side/
+
+# local scratch — notes and throwaways, not part of the project
+/fix.diff
+/storage.md
+/src/lib/demo.ts
