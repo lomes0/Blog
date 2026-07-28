@@ -4,9 +4,9 @@ import Checkbox from "@mui/material/Checkbox";
 import TextField from "@mui/material/TextField";
 import Autocomplete from "@mui/material/Autocomplete";
 import { Square, SquareCheck } from "lucide-react";
-import { Document, User } from "@/types";
+import { User } from "@/types";
 import { extractCollaborators } from "@/utils/collaborators";
-import { actions, documentsSelectors, useDispatch, useSelector } from "@/store";
+import { actions, postsSelectors, useDispatch, useSelector } from "@/store";
 import {
   Avatar,
   Chip,
@@ -37,26 +37,25 @@ export default function UsersAutocomplete({
 }) {
   const dispatch = useDispatch();
   const user = useSelector((state) => state.user);
-  const documents = useSelector((state) => documentsSelectors.selectAll(state));
-  const cloudDocuments = documents.filter((d) => !!d.cloud).map((d) =>
-    d.cloud
-  ) as Document[];
+  const posts = useSelector((state) => postsSelectors.selectAll(state));
 
-  const users: User[] = cloudDocuments.reduce((users, document) => {
-    const author = document.author;
+  // Guest drafts have no author or collaborators, so they contribute nobody —
+  // which is also why this control is only shown to signed-in users.
+  const users: User[] = posts.reduce((users, post) => {
+    const author = post.author;
+    if (!author) return users;
     if (!users.some((u) => u.id === author.id) && author.id !== user?.id) {
       users.push(author);
     }
-    const coauthors = document.coauthors;
+    const coauthors = post.coauthors ?? [];
     coauthors.forEach((coauthor) => {
       if (
         !users.some((u) => u.id === coauthor.id) &&
         coauthor.id !== user?.id
       ) users.push(coauthor);
     });
-    const revisions = document.revisions;
     const collaborators = extractCollaborators(
-      revisions,
+      post.revisions ?? [],
       author.id,
       coauthors.map((u) => u.id),
     );

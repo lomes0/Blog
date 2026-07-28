@@ -1,6 +1,6 @@
 "use client";
 
-import { UserDocument } from "@/types";
+import { Post } from "@/types";
 import { Settings } from "lucide-react";
 import {
   Box,
@@ -9,7 +9,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  FormHelperText,
   IconButton,
   ListItemIcon,
   ListItemText,
@@ -19,9 +18,10 @@ import {
 import { useTheme } from "@mui/material/styles";
 import useFixedBodyScroll from "@/hooks/useFixedBodyScroll";
 import useOnlineStatus from "@/hooks/useOnlineStatus";
-import UploadDocument from "./Upload";
 import UsersAutocomplete from "../User/UsersAutocomplete";
 import { useEditDocumentForm } from "./hooks/useEditDocumentForm";
+import { capabilities } from "@/lib/capabilities";
+import { useSelector } from "@/store";
 import DocumentVisibilityFields from "./DocumentVisibilityFields";
 import {
   EditDateFields,
@@ -32,16 +32,14 @@ import {
 } from "./EditFields";
 
 const EditDocumentDialog: React.FC<{
-  userDocument: UserDocument;
+  post: Post;
   variant?: "menuitem" | "iconbutton";
   closeMenu?: () => void;
-}> = ({ userDocument, variant = "iconbutton", closeMenu }) => {
+}> = ({ post, variant = "iconbutton", closeMenu }) => {
   const isOnline = useOnlineStatus();
 
   const {
-    cloudDocument,
     isAuthor,
-    isCloud,
     input,
     validating,
     validationErrors,
@@ -53,7 +51,8 @@ const EditDocumentDialog: React.FC<{
     openEditDialog,
     closeEditDialog,
     handleSubmit,
-  } = useEditDocumentForm(userDocument);
+  } = useEditDocumentForm(post);
+  const can = capabilities(useSelector((state) => state.user));
 
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("md"));
@@ -134,40 +133,23 @@ const EditDocumentDialog: React.FC<{
               disabled={!isAuthor}
             />
 
-            {!cloudDocument && (
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  my: 1,
-                  gap: 1,
-                }}
-              >
-                <FormHelperText>
-                  Save the document to cloud to unlock the following options
-                </FormHelperText>
-                <UploadDocument userDocument={userDocument} variant="button" />
-              </Box>
-            )}
-
-            {isAuthor && (
+            {isAuthor && can.coauthors && (
               <UsersAutocomplete
                 label="Coauthors"
                 placeholder="Email"
                 value={input.coauthors ?? []}
                 onChange={updateCoauthors}
                 sx={{ my: 2 }}
-                disabled={!isOnline || !isCloud}
+                disabled={!isOnline}
               />
             )}
 
-            {isAuthor && (
+            {isAuthor && can.publish && (
               <DocumentVisibilityFields
                 isPrivate={input.private}
                 isPublished={input.published}
                 isCollab={input.collab}
-                disabled={!isOnline || !isCloud}
+                disabled={!isOnline}
                 onChange={updateInput}
               />
             )}

@@ -1,6 +1,6 @@
-import { Project, Series, UserDocument } from "@/types";
+import { Post, Project, Series } from "@/types";
 import { PartitionGranularity } from "@/types/partitioning";
-import { compareDocumentsByRank, rankOf } from "@/lib/documentOrder";
+import { comparePostsByRank, rankOf } from "@/lib/documentOrder";
 import { compareRankThenId } from "@/lib/ordering";
 import { formatTimeHeader, getTimeKey } from "./dateHelpers";
 
@@ -12,7 +12,7 @@ export interface SeriesGroupItem {
   /** For series: the series object. For standalone: undefined */
   series?: Series;
   /** For series: posts in the series. For standalone: single post array */
-  posts: UserDocument[];
+  posts: Post[];
   /** Sort key timestamp for ordering groups/posts together */
   sortKey: number;
 }
@@ -38,10 +38,10 @@ export interface ProjectGroupItem {
 export type RootItem = ProjectGroupItem | SeriesGroupItem;
 
 /**
- * Get the series ID from a UserDocument
+ * Get the series ID from a Post
  */
-export const getPostSeriesId = (doc: UserDocument): string | null => {
-  return doc.cloud?.seriesId || doc.local?.seriesId || null;
+export const getPostSeriesId = (doc: Post): string | null => {
+  return doc.seriesId ?? null;
 };
 
 /**
@@ -64,14 +64,14 @@ export const seriesPositionOf = (
 };
 
 /**
- * Get the creation date timestamp from a UserDocument
+ * Get the creation date timestamp from a Post
  */
-const getPostCreatedAtTime = (doc: UserDocument): number => {
-  const createdAt = doc.cloud?.createdAt || doc.local?.createdAt;
+const getPostCreatedAtTime = (doc: Post): number => {
+  const createdAt = doc.createdAt;
   return createdAt ? new Date(createdAt).getTime() : 0;
 };
 
-const sortPostsByCreatedAtDesc = (posts: UserDocument[]): UserDocument[] =>
+const sortPostsByCreatedAtDesc = (posts: Post[]): Post[] =>
   [...posts].sort((a, b) => getPostCreatedAtTime(b) - getPostCreatedAtTime(a));
 
 /** The rank governing a group's position in the interleaved root list. */
@@ -112,19 +112,19 @@ export const getSeriesCreatedAtTime = (series: Series): number => {
  * - Standalone posts (no series) are sorted by post.createdAt
  * - The final list interleaves series groups and standalone posts by their sort keys
  *
- * @param posts - Array of UserDocument posts (used only for standalone posts)
+ * @param posts - Array of Post posts (used only for standalone posts)
  * @param seriesMap - Map of series ID to Series object (series.posts is the source of truth)
  * @returns Array of SeriesGroupItem sorted by creation time (newest first)
  */
 export const groupPostsBySeries = (
-  posts: UserDocument[],
+  posts: Post[],
   seriesMap: Map<string, Series>,
 ): SeriesGroupItem[] => {
   // Build a set of post IDs actually present in this partition
   const postIdsInPartition = new Set(posts.map((p) => p.id));
 
-  // Build a map from post ID to full UserDocument (preserves local draft info)
-  const postsByIdMap = new Map<string, UserDocument>(
+  // Build a map from post ID to the store's copy of that post
+  const postsByIdMap = new Map<string, Post>(
     posts.map((p) => [p.id, p]),
   );
 
@@ -144,13 +144,14 @@ export const groupPostsBySeries = (
       // Mark all series post IDs so they don't appear as standalone
       series.posts.forEach((post) => seriesPostIds.add(post.id));
 
-      // Convert series posts to UserDocument format, reusing the full UserDocument
-      // (with both local and cloud) when available so the dirty indicator works correctly
-      const seriesPosts: UserDocument[] = series.posts.map((post) =>
-        postsByIdMap.get(post.id) ?? { id: post.id, cloud: post }
+      // Prefer the store's copy of each post — it carries anything loaded since
+      // the series was fetched (content, fresher rank) — and fall back to the
+      // copy embedded in the series.
+      const seriesPosts: Post[] = series.posts.map((post) =>
+        postsByIdMap.get(post.id) ?? post
       );
 
-      const sortedPosts = [...seriesPosts].sort(compareDocumentsByRank);
+      const sortedPosts = [...seriesPosts].sort(comparePostsByRank);
 
       result.push({
         type: "series",
@@ -185,7 +186,7 @@ export const groupPostsBySeries = (
  * reflected here.
  */
 export const groupPostsBySeriesWithEmpty = (
-  posts: UserDocument[],
+  posts: Post[],
   seriesMap: Map<string, Series>,
 ): SeriesGroupItem[] => {
   const baseGroups = groupPostsBySeries(posts, seriesMap);
@@ -245,7 +246,7 @@ const compareRootItemsByRank = (a: RootItem, b: RootItem): number =>
  * @returns Root items sorted by their shared rank (newest manual order).
  */
 export const groupRootItems = (
-  posts: UserDocument[],
+  posts: Post[],
   seriesMap: Map<string, Series>,
   projects: Project[],
 ): RootItem[] => {
@@ -305,7 +306,7 @@ export const buildSeriesMap = (seriesList: Series[]): Map<string, Series> => {
  */
 export const flattenGroupedPosts = (
   groups: SeriesGroupItem[],
-): UserDocument[] => {
+): Post[] => {
   return groups.flatMap((group) => group.posts);
 };
 
@@ -319,7 +320,7 @@ export const flattenGroupedPosts = (
  * @returns Time groups including partitions for series creation dates
  */
 export const ensureSeriesPartitions = <
-  T extends { timeKey: string; granularity: string; posts: UserDocument[] },
+  T extends { timeKey: string; granularity: string; posts: Post[] },
 >(
   timeGroups: T[],
   seriesMap: Map<string, Series>,
@@ -391,17 +392,17 @@ export const ensureSeriesPartitions = <
  * @returns Modified time groups with deduplicated series
  */
 export const deduplicateSeriesAcrossPartitions = <
-  T extends { posts: UserDocument[]; timeKey: string; granularity: string },
+  T extends { posts: Post[]; timeKey: string; granularity: string },
 >(
   timeGroups: T[],
-  allPosts: UserDocument[],
+  allPosts: Post[],
   seriesMap: Map<string, Series>,
 ): T[] => {
   // Track which series IDs we've already placed in a partition
   const placedSeries = new Set<string>();
 
   // Build a map of seriesId -> all posts in that series (from allPosts)
-  const seriesAllPostsMap = new Map<string, UserDocument[]>();
+  const seriesAllPostsMap = new Map<string, Post[]>();
   allPosts.forEach((post) => {
     const seriesId = getPostSeriesId(post);
     if (seriesId) {
@@ -450,7 +451,7 @@ export const deduplicateSeriesAcrossPartitions = <
 
   // Process each time group
   return timeGroups.map((group, groupIndex) => {
-    const newPosts: UserDocument[] = [];
+    const newPosts: Post[] = [];
     const addedPostIds = new Set<string>(); // Track added post IDs to avoid duplicates
 
     // First, add standalone posts from this partition

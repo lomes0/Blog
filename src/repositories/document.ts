@@ -1,11 +1,11 @@
 import { DocumentType as PrismaDocumentType, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
-  Document,
-  DocumentRevision,
+  CloudPost,
   DocumentStatus,
-  EditorDocument,
-  EditorDocumentRevision,
+  Post,
+  Revision,
+  RevisionMeta,
 } from "@/types";
 import { validate } from "uuid";
 import { getCachedRevision } from "./revision";
@@ -60,7 +60,7 @@ const documentCoreSelect = {
   seriesId: true,
 } as const;
 
-// Helper: map a raw prisma document row to a CloudDocument
+// Helper: map a raw prisma document row to a CloudPost
 const toCloudDocument = (
   post: Record<string, unknown> & {
     collab: boolean | null;
@@ -79,18 +79,18 @@ const toCloudDocument = (
       };
     }[];
   },
-): Document => {
+): CloudPost => {
   const revisions = post.collab
     ? post.revisions
     : post.revisions.filter((r) => r.id === post.head);
   return {
     ...post,
     coauthors: [],
-    revisions: revisions as DocumentRevision[],
+    revisions: revisions as RevisionMeta[],
     type: PrismaDocumentType.DOCUMENT,
     head: post.head || "",
     status: post.status as DocumentStatus | undefined,
-  } as unknown as Document;
+  } as unknown as CloudPost;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -179,12 +179,12 @@ const findDocument = async (
     return null;
   }
 
-  const cloudDoc: Document = {
+  const cloudDoc: CloudPost = {
     ...doc,
     coauthors: [], // Remove coauthor complexity
     type: PrismaDocumentType.DOCUMENT,
     head: doc.head || "",
-    revisions: doc.revisions as DocumentRevision[],
+    revisions: doc.revisions as RevisionMeta[],
     status: doc.status as DocumentStatus,
   };
 
@@ -301,7 +301,7 @@ const deleteDocument = async (handle: string) => {
     });
 
     if (!doc) {
-      throw new Error("Document not found");
+      throw new Error("Post not found");
     }
 
     // Child tabs are promoted to root via onDelete: SetNull — capture them
@@ -350,7 +350,7 @@ const findEditorDocument = async (handle: string) => {
       });
       revision = {
         ...latestRevision,
-        data: latestRevision.data as unknown as EditorDocumentRevision["data"],
+        data: latestRevision.data as unknown as Revision["data"],
       };
       // Update doc.head so the editorDocument below is consistent
       doc = { ...doc, head: latestRevision.id };
@@ -359,9 +359,9 @@ const findEditorDocument = async (handle: string) => {
 
   if (!revision) return null;
 
-  const editorDocument: EditorDocument = {
+  const editorDocument: Post = {
     ...doc,
-    data: revision.data as unknown as EditorDocument["data"],
+    data: revision.data as unknown as Post["data"],
     type: PrismaDocumentType.DOCUMENT,
     status: doc.status as DocumentStatus,
     head: doc.head || "",
@@ -380,7 +380,7 @@ const findCloudStorageUsageByAuthorId = async (authorId: string) => {
       d.name,
       (pg_column_size(d.*) + SUM(pg_column_size(r.*)))::float AS size
     FROM
-      "Document" d
+      "Post" d
     LEFT JOIN
       "Revision" r
     ON

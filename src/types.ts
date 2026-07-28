@@ -33,16 +33,27 @@ export interface TabsState {
 /** Which view the left sidebar renders, switched from the activity rail. */
 export type SidebarView = "explorer" | "search" | "notes";
 
+/**
+ * How an open post's latest edit is faring on its way to storage.
+ *
+ * `retrying` is the transient-disconnect case the save loop exists for: the edit
+ * is safe in the `pendingSaves` store and will land when the network returns, so
+ * the user is told to keep going rather than warned about data loss.
+ */
+export type SaveStatus = "idle" | "saving" | "retrying" | "error";
+
 export interface AppState {
   user?: User;
-  documents: EntityState<UserDocument, string>;
+  posts: EntityState<Post, string>;
   series: Series[];
   projects: Project[];
   ui: {
     announcements: Announcement[];
     alerts: Alert[];
     initialized: boolean;
-    documentsLoading: boolean;
+    postsLoading: boolean;
+    /** Per-post save status, keyed by post id. Absent means `idle`. */
+    saveStatus: Record<string, SaveStatus>;
     drawer: boolean;
     page: number;
     diff: { open: boolean; old?: string; new?: string };
@@ -65,44 +76,10 @@ export interface DocumentStorageUsage {
   size: number;
 }
 
-export type EditorDocument = {
-  id: string;
-  name: string;
-  description?: string | null;
-  head: string;
-  data: SerializedEditorState;
-  createdAt: string | Date;
-  updatedAt: string | Date;
-  handle?: string | null;
-  baseId?: string | null;
-  parentId?: string | null;
-  type: "DOCUMENT";
-  status?: DocumentStatus;
-  revisions?: EditorDocumentRevision[];
-  rank?: string | null; // Manual position within container (fractional index)
-  background_image?: string | null;
-  tabLabel?: string | null; // Label for this doc's own tab in a tabbed post
-  seriesId?: string | null; // For blog series functionality
-};
-
 export enum DocumentStatus {
   ACTIVE = "ACTIVE",
   DONE = "DONE",
 }
-
-export type Document = Omit<EditorDocument, "data" | "revisions"> & {
-  author: User;
-  coauthors: User[];
-  revisions: DocumentRevision[];
-  published?: boolean;
-  collab?: boolean;
-  private?: boolean;
-  // Ensure parentId is explicitly included since it's in the database schema
-  parentId?: string | null;
-  // Series support for blog posts
-  seriesId?: string | null;
-  series?: Series | null;
-};
 
 // New types for blog structure
 export interface Series {
@@ -120,7 +97,7 @@ export interface Series {
   // root Documents, so posts and series interleave).
   rank?: string | null;
   author: User;
-  posts: Document[]; // Use Document[] since these are documents from the database
+  posts: Post[];
 }
 
 // Series input types
@@ -170,55 +147,97 @@ export interface ProjectUpdateInput {
   createdAt?: string;
 }
 
-export type UserDocument = {
-  id: string;
-  local?: EditorDocument;
-  cloud?: Document;
-}; // Document can be local, cloud, or both
-export type BackupDocument = EditorDocument & {
-  revisions: EditorDocumentRevision[];
-  parentId?: string | null; // Explicitly include parentId for consistency
-};
+// ── Unified document model ───────────────────────────────────────────────────
+// One shape for every post, whichever backend it came from. A user is either a
+// guest (posts live in IndexedDB) or signed in (posts live in the cloud), so the
+// backend is decided once from the session — never carried per-document. There
+// is deliberately no `origin: "local" | "cloud"` discriminator: reintroducing one
+// would recreate the two-copy branching this model replaces.
+// See `src/store/backend/` for the seam and `src/lib/capabilities.ts` for what
+// each mode can do.
 
-export type DocumentCreateInput = EditorDocument & {
-  coauthors?: string[];
-  published?: boolean;
-  collab?: boolean;
-  private?: boolean;
-  baseId?: string | null;
-  revisions?: EditorDocumentRevision[];
-};
-
-export type DocumentUpdateInput = Partial<EditorDocument> & {
-  coauthors?: string[];
-  published?: boolean;
-  collab?: boolean;
-  private?: boolean;
-  baseId?: string | null;
-  parentId?: string | null; // Explicitly include parentId for updates
-  revisions?: EditorDocumentRevision[];
-  background_image?: string | null;
-  seriesId?: string | null; // For blog series functionality
-};
-
-export interface EditorDocumentRevision {
+/** A revision's metadata, without its content. `author` is cloud-only. */
+export type RevisionMeta = {
   id: string;
   documentId: string;
-  data: SerializedEditorState;
   createdAt: string | Date;
-}
-
-export type DocumentRevision = Omit<EditorDocumentRevision, "data"> & {
-  author: User;
+  author?: User;
 };
 
-// Cloud document revisions always have authors
-export type CloudDocumentRevision = DocumentRevision & {
-  author: User;
+/** A revision including its editor content. */
+export type Revision = RevisionMeta & { data: SerializedEditorState };
+
+export type Post = {
+  id: string;
+  name: string;
+  head: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  type: "DOCUMENT";
+  description?: string | null;
+  handle?: string | null;
+  /** Parent post when this is a tab of a tabbed post. */
+  parentId?: string | null;
+  baseId?: string | null;
+  seriesId?: string | null;
+  series?: Series | null;
+  /** Manual position within its container (fractional index). */
+  rank?: string | null;
+  status?: DocumentStatus;
+  background_image?: string | null;
+  /** Label for this post's own tab in a tabbed post. */
+  tabLabel?: string | null;
+
+  /**
+   * Editor content. Present when a post has been loaded for editing or viewing,
+   * absent in list views — so `data === undefined` means "not loaded", not
+   * "empty".
+   */
+  data?: SerializedEditorState;
+  /** Revision metadata (no content). */
+  revisions?: RevisionMeta[];
+
+  // ── Cloud-only. Undefined for guest drafts. ──
+  author?: User;
+  coauthors?: User[];
+  published?: boolean;
+  collab?: boolean;
+  private?: boolean;
 };
 
-export type LocalDocumentRevision = Partial<EditorDocumentRevision>; // Allow partial for local document revisions
+/**
+ * A post as it exists in the database.
+ *
+ * The cloud-only fields are optional on {@link Post} because a guest draft has
+ * no author or collaborators. Server-side that ambiguity doesn't exist — every
+ * row has an author — so the repositories return this narrowed shape and API
+ * routes can read `post.author.id` without a null check.
+ */
+export type CloudPost = Post & {
+  author: User;
+  coauthors: User[];
+  revisions: RevisionMeta[];
+};
 
+export type PostCreateInput =
+  & Omit<Post, "author" | "coauthors" | "revisions">
+  & {
+    /** Coauthor emails — cloud only, ignored by the local backend. */
+    coauthors?: string[];
+    /** Seed revisions to create alongside the post. */
+    revisions?: Revision[];
+  };
+
+export type PostUpdateInput = Partial<Omit<PostCreateInput, "id" | "type">>;
+
+/** Where a post should land, plus where among its new siblings. */
+export type MovePostArg = {
+  id: string;
+  /** Fully specifies the destination container (not a partial patch). */
+  destination: { seriesId?: string | null; parentId?: string | null };
+  /** Neighbour ranks to drop between; omit to append to the end. */
+  between?: { afterRank?: string | null; beforeRank?: string | null };
+};
 // Utility for creating empty editor states
 export const EMPTY_EDITOR_STATE: SerializedEditorState = {
   root: {
@@ -294,7 +313,7 @@ export interface DeleteUserResponse {
 }
 
 export interface GetDocumentsResponse {
-  data?: Document[];
+  data?: Post[];
   error?: { title: string; subtitle?: string };
 }
 
@@ -303,17 +322,17 @@ export interface GetDocumentStorageUsageResponse {
   error?: { title: string; subtitle?: string };
 }
 export interface PostDocumentsResponse {
-  data?: Document | null;
+  data?: Post | null;
   error?: { title: string; subtitle?: string };
 }
 
 export interface GetPublishedDocumentsResponse {
-  data?: Document[];
+  data?: Post[];
   error?: { title: string; subtitle?: string };
 }
 
 export interface GetDocumentResponse {
-  data?: EditorDocument & { cloudDocument: Document };
+  data?: Post;
   error?: { title: string; subtitle?: string };
 }
 
@@ -323,7 +342,7 @@ export interface GetDocumentThumbnailResponse {
 }
 
 export interface PatchDocumentResponse {
-  data?: Document | null;
+  data?: Post | null;
   error?: { title: string; subtitle?: string };
 }
 
@@ -341,7 +360,7 @@ export interface DeleteDocumentResponse {
 }
 
 export interface ForkDocumentResponse {
-  data?: UserDocument & { data: SerializedEditorState };
+  data?: Post;
   error?: { title: string; subtitle?: string };
 }
 
@@ -351,12 +370,12 @@ export interface CheckHandleResponse {
 }
 
 export interface GetRevisionResponse {
-  data?: EditorDocumentRevision;
+  data?: Revision;
   error?: { title: string; subtitle?: string };
 }
 
 export interface PostRevisionResponse {
-  data?: CloudDocumentRevision;
+  data?: RevisionMeta;
   error?: { title: string; subtitle?: string };
 }
 

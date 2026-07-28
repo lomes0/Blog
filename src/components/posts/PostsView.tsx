@@ -4,10 +4,10 @@ import { Box, Typography } from "@mui/material";
 import Grid from "@mui/material/Grid2";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Series, User, UserDocument } from "@/types";
+import { Series, User, Post } from "@/types";
 import { useSelector } from "@/store";
 import { selectStandalonePosts } from "@/store/selectors/postsSelectors";
-import { compareDocumentsByRank } from "@/lib/documentOrder";
+import { comparePostsByRank } from "@/lib/documentOrder";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { useTimeEditing } from "@/hooks/useTimeEditing";
 import { ViewToggle, type ViewType } from "@/components/shared/ViewToggle";
@@ -70,13 +70,13 @@ function SectionDivider({ label, color }: { label: string; color: string }) {
   );
 }
 
-const PostsGrid: React.FC<{ posts: UserDocument[]; user?: User }> = (
+const PostsGrid: React.FC<{ posts: Post[]; user?: User }> = (
   { posts, user },
 ) => (
   <Grid container spacing={5} sx={{ mb: 4 }}>
     {posts.map((doc) => (
       <Grid key={doc.id} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
-        <DocumentCard userDocument={doc} user={user} />
+        <DocumentCard post={doc} user={user} />
       </Grid>
     ))}
   </Grid>
@@ -135,24 +135,18 @@ const PostsView: React.FC<PostsViewProps> = ({ series, user: serverUser }) => {
     handleDiscardTimeChanges,
   } = useTimeEditing(series?.posts ?? []);
 
-  // Wrap series Document[] → UserDocument[]. Manual rank order is the default
-  // (series.posts arrives rank-ordered from the server); time-edit mode swaps in
-  // the date-sorted-with-pending list while the user adjusts post dates.
-  const seriesUserDocs: UserDocument[] = useMemo(
+  // Manual rank order is the default (series.posts arrives rank-ordered from
+  // the server); time-edit mode swaps in the date-sorted-with-pending list while
+  // the user adjusts post dates.
+  const seriesUserDocs: Post[] = useMemo(
     () =>
-      isSeries
-        ? (isTimeEditMode ? sortedWithPending : series!.posts).map((post) => ({
-          id: post.id,
-          cloud: post,
-          local: undefined,
-        }))
-        : [],
+      isSeries ? (isTimeEditMode ? sortedWithPending : series!.posts) : [],
     [isSeries, isTimeEditMode, sortedWithPending, series],
   );
 
   // Standalone posts in manual (rank) order.
   const sortedStandalonePosts = useMemo(
-    () => [...standalonePosts].sort(compareDocumentsByRank),
+    () => [...standalonePosts].sort(comparePostsByRank),
     [standalonePosts],
   );
 

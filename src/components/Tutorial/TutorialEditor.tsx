@@ -19,18 +19,18 @@ import {
 } from "@/editor/nodes/DetailsNode";
 import { $isListItemNode, $isListNode } from "@lexical/list";
 import { PropsWithChildren } from "react";
-import { EditorDocument } from "@/types";
+import { Post } from "@/types";
 import ConnectedEditor from "../ConnectedEditor";
 
 const TutorialEditor: React.FC<PropsWithChildren> = (
   { children: _children },
 ) => {
-  const [document, setDocument] = useState<EditorDocument | null>(null);
+  const [document, setDocument] = useState<Post | null>(null);
 
   useEffect(() => {
     fetch("/data/tutorial.json")
       .then((res) => res.json())
-      .then((data: EditorDocument) => setDocument(data));
+      .then((data: Post) => setDocument(data));
   }, []);
   const onChange = (
     editorState: EditorState,

@@ -10,7 +10,7 @@ import {
   Typography,
 } from "@mui/material";
 import { History, Plus, X } from "lucide-react";
-import { actions, documentsSelectors, useDispatch, useSelector } from "@/store";
+import { actions, postsSelectors, useDispatch, useSelector } from "@/store";
 import { AI_MODELS } from "@/lib/ai/models";
 import { useAIModel } from "@/contexts/AIModelContext";
 import { useLayoutMode } from "@/contexts/LayoutModeContext";
@@ -52,9 +52,9 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
   const acceptAllRef = useRef<(() => void) | null>(null);
 
   const doc = useSelector((state) =>
-    documentsSelectors.selectById(state, documentId)
+    postsSelectors.selectById(state, documentId)
   );
-  const documentTitle = doc?.cloud?.name ?? doc?.local?.name ?? "Untitled";
+  const documentTitle = doc.name ?? "Untitled";
   const currentModel = AI_MODELS.find((m) => m.id === llmConfig.model);
 
   const handleAcceptAll = () => {

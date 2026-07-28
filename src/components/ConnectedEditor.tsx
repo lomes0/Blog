@@ -2,7 +2,7 @@
 import { RefCallback, RefObject } from "react";
 import { COMMAND_PRIORITY_LOW } from "lexical";
 import { mergeRegister } from "@lexical/utils";
-import type { EditorDocument } from "@/types";
+import type { Post } from "@/types";
 import {
   ALERT_COMMAND,
   ANNOUNCE_COMMAND,
@@ -13,7 +13,7 @@ import type { EditorState, LexicalEditor } from "lexical";
 import Editor from "@/editor/Editor";
 
 const ConnectedEditor: React.FC<{
-  document: EditorDocument;
+  document: Post;
   editorRef?: RefObject<LexicalEditor | null> | RefCallback<LexicalEditor>;
   onChange?: (
     editorState: EditorState,

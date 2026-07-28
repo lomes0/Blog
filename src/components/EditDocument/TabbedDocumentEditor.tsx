@@ -15,39 +15,18 @@ import {
   ListItemText,
 } from "@mui/material";
 import { v4 as uuidv4 } from "uuid";
-import { actions, documentsSelectors, useDispatch, useSelector } from "@/store";
+import { actions, postsSelectors, useDispatch, useSelector } from "@/store";
 import { SetActiveEditorContext } from "@/contexts/ActiveEditorContext";
-import { apiClient } from "@/api";
 import { type TabMeta } from "@/contexts/TopBarTabsContext";
 import { useTopBarTabs } from "@/contexts/TopBarTabsContext";
 import EditorTabPanel from "./EditorTabPanel";
 import TabContextMenu from "./TabContextMenu";
-import type { DocumentCreateInput } from "@/types";
+import { EMPTY_EDITOR_STATE, type PostCreateInput } from "@/types";
 import { useAsyncEffect } from "@/hooks/useAsyncEffect";
 
 interface TabbedDocumentEditorProps {
   rootId: string;
 }
-
-const EMPTY_EDITOR_STATE = {
-  root: {
-    children: [
-      {
-        children: [],
-        direction: null,
-        format: "",
-        indent: 0,
-        type: "paragraph",
-        version: 1,
-      },
-    ],
-    direction: null,
-    format: "",
-    indent: 0,
-    type: "root",
-    version: 1,
-  },
-};
 
 const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
   rootId,
@@ -68,10 +47,10 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
 
   // All root-level posts for the "Move to other post" picker.
   const allDocuments = useSelector((state) =>
-    documentsSelectors.selectAll(state)
+    postsSelectors.selectAll(state)
   );
   const availablePosts = allDocuments.filter((doc) => {
-    const d = doc.cloud ?? doc.local;
+    const d = doc;
     return d?.type === "DOCUMENT" && !d?.parentId && doc.id !== rootId;
   });
 
@@ -105,8 +84,8 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     dispatch(actions.clearTabs());
 
     const [rootDoc, children] = await Promise.all([
-      apiClient.documents.get(rootId),
-      apiClient.documents.children(rootId),
+      dispatch(actions.getPost(rootId)).unwrap().catch(() => undefined),
+      dispatch(actions.getPostChildren(rootId)).unwrap().catch(() => []),
     ]);
 
     if (isCancelled()) return;
@@ -136,7 +115,7 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     const id = uuidv4();
     const revisionId = uuidv4();
 
-    const newDoc: DocumentCreateInput = {
+    const newDoc: PostCreateInput = {
       id,
       name: "Untitled",
       head: revisionId,
@@ -144,19 +123,16 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
       updatedAt: now,
       type: "DOCUMENT",
       parentId: rootId,
-      data: EMPTY_EDITOR_STATE as DocumentCreateInput["data"],
+      data: EMPTY_EDITOR_STATE,
       revisions: [{
         id: revisionId,
         documentId: id,
         createdAt: now,
-        data: EMPTY_EDITOR_STATE as DocumentCreateInput["data"],
+        data: EMPTY_EDITOR_STATE,
       }],
     };
 
-    const created = await apiClient.documents.create(newDoc);
-    if (!created) return;
-
-    await dispatch(actions.createLocalDocument(newDoc));
+    await dispatch(actions.createPost(newDoc)).unwrap();
 
     const newMeta: TabMeta = { id, name: "Untitled" };
     setTabMetas((prev) => [...prev, newMeta]);
@@ -177,8 +153,7 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     const { id } = deleteTarget;
     setDeleteTarget(null);
 
-    await apiClient.documents.delete(id);
-    await dispatch(actions.deleteLocalDocument(id));
+    await dispatch(actions.deletePost(id));
 
     setTabMetas((prev) => prev.filter((t) => t.id !== id));
     setMountedTabIds((prev) => {
@@ -200,20 +175,11 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     // name in the sidebar update immediately to match the renamed tab.
     // Renaming the root tab edits its own `tabLabel` so the post title (`name`)
     // stays independent; child tabs are plain docs, so their `name` is the label.
-    const userDoc = allDocuments.find((d) => d.id === tabId);
     const partial = tabId === rootId
       ? { tabLabel: trimmed }
       : { name: trimmed };
-    if (userDoc?.local) {
-      await dispatch(actions.updateLocalDocument({ id: tabId, partial }));
-    }
-    if (userDoc?.cloud) {
-      await dispatch(actions.updateCloudDocument({ id: tabId, partial }));
-    }
-    if (!userDoc?.local && !userDoc?.cloud) {
-      await apiClient.documents.update(tabId, partial);
-    }
-  }, [dispatch, allDocuments, rootId]);
+    await dispatch(actions.updatePost({ id: tabId, partial }));
+  }, [dispatch, rootId]);
 
   const handleReorder = useCallback(async (orderedIds: string[]) => {
     const prevOrder = tabMetas.map((t) => t.id);
@@ -236,11 +202,10 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     const children = orderedIds.filter((id) => id !== rootId);
     const idx = children.indexOf(movedId);
     const rankOfId = (id: string) => {
-      const d = allDocuments.find((x) => x.id === id);
-      return d?.cloud?.rank ?? d?.local?.rank ?? null;
+      return allDocuments.find((x) => x.id === id)?.rank ?? null;
     };
     await dispatch(
-      actions.moveDocument({
+      actions.movePost({
         id: movedId,
         destination: { parentId: rootId },
         between: {
@@ -281,46 +246,22 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
   }, []);
 
   const handleDuplicate = useCallback(async (tabId: string) => {
-    if (!user) return;
-    const source = await apiClient.documents.get(tabId);
-    if (!source) return;
-
-    const now = new Date().toISOString();
+    const source = allDocuments.find((d) => d.id === tabId);
+    const newName = `${source?.name ?? "Copy"} (copy)`;
     const id = uuidv4();
-    const revisionId = uuidv4();
-    const sourceName = source.name ?? "Copy";
-    const newName = `${sourceName} (copy)`;
-
-    const newDoc: DocumentCreateInput = {
-      id,
-      name: newName,
-      head: revisionId,
-      createdAt: now,
-      updatedAt: now,
-      type: "DOCUMENT",
-      parentId: rootId,
-      data: source.data ?? (EMPTY_EDITOR_STATE as DocumentCreateInput["data"]),
-      revisions: [
-        {
-          id: revisionId,
-          documentId: id,
-          createdAt: now,
-          data: source.data ??
-            (EMPTY_EDITOR_STATE as DocumentCreateInput["data"]),
-        },
-      ],
-    };
-
-    const created = await apiClient.documents.create(newDoc);
-    if (!created) return;
-
-    await dispatch(actions.createLocalDocument(newDoc));
+    try {
+      await dispatch(
+        actions.duplicatePost({ id: tabId, newId: id, newName }),
+      ).unwrap();
+    } catch {
+      return; // the thunk already announced the failure
+    }
 
     const newMeta: TabMeta = { id, name: newName };
     setTabMetas((prev) => [...prev, newMeta]);
     setMountedTabIds((prev) => new Set([...prev, id]));
     dispatch(actions.addTab(id));
-  }, [user, rootId, dispatch]);
+  }, [allDocuments, dispatch]);
 
   const handleMoveRequest = useCallback((tabId: string) => {
     setMoveDialogTabId(tabId);
@@ -332,8 +273,9 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     const tabId = moveDialogTabId;
     setMoveDialogTabId(null);
 
-    await apiClient.documents.update(tabId, { parentId: moveTargetPostId });
-    await dispatch(actions.deleteLocalDocument(tabId));
+    await dispatch(
+      actions.updatePost({ id: tabId, partial: { parentId: moveTargetPostId } }),
+    );
 
     setTabMetas((prev) => prev.filter((t) => t.id !== tabId));
     setMountedTabIds((prev) => {
@@ -346,8 +288,7 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
 
   const handleSplitOff = useCallback(async (tabId: string) => {
     // Detach the tab from this post — it becomes a standalone document.
-    await apiClient.documents.update(tabId, { parentId: null });
-    await dispatch(actions.deleteLocalDocument(tabId));
+    await dispatch(actions.updatePost({ id: tabId, partial: { parentId: null } }));
 
     setTabMetas((prev) => prev.filter((t) => t.id !== tabId));
     setMountedTabIds((prev) => {
@@ -472,7 +413,7 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
             : (
               <List dense disablePadding>
                 {availablePosts.map((doc) => {
-                  const d = doc.cloud ?? doc.local;
+                  const d = doc;
                   const name = d?.name ?? doc.id;
                   return (
                     <ListItemButton

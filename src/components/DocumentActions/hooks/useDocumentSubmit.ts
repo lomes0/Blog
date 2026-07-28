@@ -1,34 +1,27 @@
 "use client";
 import { actions, useDispatch } from "@/store";
-import { DocumentStatus, DocumentUpdateInput, UserDocument } from "@/types";
+import { DocumentStatus, PostUpdateInput, Post } from "@/types";
 
 export function useDocumentSubmit(
-  userDocument: UserDocument,
-  input: Partial<DocumentUpdateInput>,
+  post: Post,
+  input: Partial<PostUpdateInput>,
   onClose: () => void,
 ) {
   const dispatch = useDispatch();
-  const localDocument = userDocument?.local;
-  const cloudDocument = userDocument?.cloud;
-  const isLocal = !!localDocument;
-  const isCloud = !!cloudDocument;
-  const isUploaded = isLocal && isCloud;
-  const isCloudOnly = !isLocal && isCloud;
-  const document = isCloudOnly ? cloudDocument : localDocument;
-  const id = userDocument.id;
+  const document = post;
+  const id = post.id;
 
-  const name = cloudDocument?.name ?? localDocument?.name ??
-    "Untitled Document";
-  const handle = cloudDocument?.handle ?? localDocument?.handle ?? null;
-  const isPrivate = isCloud && cloudDocument.private;
-  const isPublished = isCloud && cloudDocument.published;
-  const isCollab = isCloud && cloudDocument.collab;
-  const currentStatus = document?.status || DocumentStatus.ACTIVE;
+  const name = post.name ?? "Untitled Document";
+  const handle = post.handle ?? null;
+  const isPrivate = !!post.private;
+  const isPublished = !!post.published;
+  const isCollab = !!post.collab;
+  const currentStatus = post.status || DocumentStatus.ACTIVE;
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     onClose();
-    const partial: Partial<DocumentUpdateInput> = {};
+    const partial: Partial<PostUpdateInput> = {};
     if (input.name !== name) {
       partial.name = input.name;
       partial.updatedAt = new Date().toISOString();
@@ -39,7 +32,7 @@ export function useDocumentSubmit(
     }
     if (
       input.coauthors?.join(",") !==
-        cloudDocument?.coauthors.map((u) => u.email).join(",")
+        post.coauthors?.map((u) => u.email).join(",")
     ) {
       partial.coauthors = input.coauthors;
     }
@@ -56,21 +49,7 @@ export function useDocumentSubmit(
     if (document?.parentId) partial.parentId = document.parentId;
 
     if (Object.keys(partial).length === 0) return;
-    if (isLocal) {
-      try {
-        dispatch(actions.updateLocalDocument({ id, partial }));
-      } catch {
-        dispatch(actions.announce({
-          message: {
-            title: "Error Updating Document",
-            subtitle: "An error occurred while updating local document",
-          },
-        }));
-      }
-    }
-    if (isUploaded || isCloud) {
-      await dispatch(actions.updateCloudDocument({ id, partial }));
-    }
+    await dispatch(actions.updatePost({ id, partial }));
   };
 
   return { handleSubmit };

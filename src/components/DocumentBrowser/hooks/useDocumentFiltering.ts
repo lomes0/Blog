@@ -1,9 +1,9 @@
 "use client";
 import { useMemo } from "react";
-import { UserDocument } from "@/types";
+import { Post } from "@/types";
 
 interface UseDocumentFilteringProps {
-  documents: UserDocument[];
+  documents: Post[];
 }
 
 /**
@@ -15,7 +15,7 @@ export const useDocumentFiltering = ({
   const regularDocuments = useMemo(
     () =>
       documents.filter((doc) => {
-        const docData = doc.local || doc.cloud;
+        const docData = doc;
         return docData?.type === "DOCUMENT";
       }),
     [documents],

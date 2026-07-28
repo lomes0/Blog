@@ -1,11 +1,13 @@
 "use client";
 import { useCallback } from "react";
 import { actions, useDispatch, useSelector } from "@/store";
-import type { DocumentCreateInput } from "@/types";
+import type { PostCreateInput } from "@/types";
 
 /**
- * Encapsulates Redux dispatch calls and apiClient usage for CreatePostDrawer,
- * keeping the component free of direct store and network imports.
+ * Creating a post, for the create-post drawer.
+ *
+ * There is no "save to cloud" choice any more: a post goes wherever the
+ * session's posts live — the cloud when signed in, IndexedDB for a guest.
  */
 export function useCreatePostActions() {
   const dispatch = useDispatch();
@@ -13,28 +15,16 @@ export function useCreatePostActions() {
 
   const createPost = useCallback(
     async (
-      payload: DocumentCreateInput,
-      options: { saveToCloud: boolean; isOnline: boolean },
-    ): Promise<
-      { ok: true; cloudSaved: boolean } | { ok: false; error: string }
-    > => {
+      payload: PostCreateInput,
+    ): Promise<{ ok: true } | { ok: false; error: string }> => {
       try {
-        await dispatch(actions.createLocalDocument(payload)).unwrap();
-        let cloudSaved = false;
-        if (options.saveToCloud && options.isOnline && user) {
-          try {
-            await dispatch(actions.createCloudDocument(payload)).unwrap();
-            cloudSaved = true;
-          } catch {
-            // cloud save is optional – local succeeded, that's enough
-          }
-        }
-        return { ok: true, cloudSaved };
+        await dispatch(actions.createPost(payload)).unwrap();
+        return { ok: true };
       } catch {
         return { ok: false, error: "Failed to create post. Please try again." };
       }
     },
-    [dispatch, user],
+    [dispatch],
   );
 
   return { user, createPost };

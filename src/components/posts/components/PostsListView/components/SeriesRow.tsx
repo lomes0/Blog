@@ -9,7 +9,7 @@ import {
   Typography,
 } from "@mui/material";
 import { ChevronRight } from "lucide-react";
-import { Series, User, UserDocument } from "@/types";
+import { Series, User, Post } from "@/types";
 import { formatRelativeDate } from "@/utils/dateFormat";
 import { ListDensity, TagStyle } from "../types";
 import { PostRow } from "./PostRow";
@@ -20,7 +20,7 @@ const SERIES_PREVIEW_COUNT = 3;
 
 interface SeriesRowProps {
   series: Series;
-  posts: UserDocument[];
+  posts: Post[];
   user?: User;
   density: ListDensity;
   tagStyle: TagStyle;
@@ -46,7 +46,7 @@ interface SeriesRowProps {
   ) => Promise<void>;
   onPostRenameCancel: (postId: string) => void;
   onDeleteSeries: (seriesId: string, seriesTitle: string) => void;
-  onDeletePost: (post: UserDocument) => void;
+  onDeletePost: (post: Post) => void;
   onDragStart: (e: React.DragEvent, postId: string) => void;
   onDragEnd: () => void;
   onDropPost: (seriesId: string, postId: string) => void;
@@ -54,7 +54,7 @@ interface SeriesRowProps {
   onDragOverSeries: (seriesId: string | null) => void;
   /** Reposition a post within this series (menu / keyboard). */
   onReorderPost?: (
-    siblings: UserDocument[],
+    siblings: Post[],
     postId: string,
     direction: "up" | "down" | "top" | "bottom",
   ) => void;
@@ -106,7 +106,7 @@ export const SeriesRow = React.memo(function SeriesRow({
   const isDragOver = dragOverSeriesId === series.id;
 
   const mostRecentDate = posts.reduce<string | undefined>((latest, p) => {
-    const d = p.cloud?.updatedAt || p.cloud?.createdAt;
+    const d = p.updatedAt || p.createdAt;
     if (!d) return latest;
     if (!latest) return String(d);
     return new Date(d) > new Date(latest) ? String(d) : latest;
@@ -155,9 +155,9 @@ export const SeriesRow = React.memo(function SeriesRow({
   const inlineAll = postCount <= SERIES_INLINE_LIMIT;
   const visiblePosts = inlineAll ? posts : [...posts]
     .sort((a, b) => {
-      const da = new Date(a.cloud?.updatedAt || a.cloud?.createdAt || 0)
+      const da = new Date(a.updatedAt || a.createdAt || 0)
         .getTime();
-      const db = new Date(b.cloud?.updatedAt || b.cloud?.createdAt || 0)
+      const db = new Date(b.updatedAt || b.createdAt || 0)
         .getTime();
       return db - da;
     })

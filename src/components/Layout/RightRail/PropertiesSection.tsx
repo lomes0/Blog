@@ -2,7 +2,7 @@
 import { Avatar, Box, Chip, Divider, Typography } from "@mui/material";
 import { Info } from "lucide-react";
 import RouterLink from "next/link";
-import { documentsSelectors, useSelector } from "@/store";
+import { postsSelectors, useSelector } from "@/store";
 import type { RootState } from "@/store";
 import { shallowEqual } from "react-redux";
 import { DateDisplay } from "@/components/shared/DateDisplay";
@@ -44,15 +44,14 @@ export default function PropertiesSection({
 }: PropertiesSectionProps) {
   const { localDoc, cloudDoc, series, tabIds, dirtyTabIds } = useSelector(
     (state: RootState) => {
-      const rootUserDoc = documentsSelectors.selectById(state, rootId);
+      const rootUserDoc = postsSelectors.selectById(state, rootId);
       const activeUserDoc = activeDocId
-        ? documentsSelectors.selectById(state, activeDocId)
+        ? postsSelectors.selectById(state, activeDocId)
         : undefined;
-      const seriesId = rootUserDoc?.cloud?.seriesId ??
-        rootUserDoc?.local?.seriesId;
+      const seriesId = rootUserDoc.seriesId;
       return {
-        localDoc: activeUserDoc?.local ?? rootUserDoc?.local,
-        cloudDoc: rootUserDoc?.cloud,
+        localDoc: activeUserDoc ?? rootUserDoc,
+        cloudDoc: rootUserDoc,
         series: seriesId
           ? state.series.find((s) => s.id === seriesId)
           : undefined,
@@ -66,11 +65,9 @@ export default function PropertiesSection({
   const hasMultipleTabs = tabIds.length > 1;
   const isTabDirty = activeDocId ? dirtyTabIds.includes(activeDocId) : false;
 
-  const activeLocalDoc = useSelector((state: RootState) => {
-    if (!activeDocId) return undefined;
-    const doc = documentsSelectors.selectById(state, activeDocId);
-    return doc?.local;
-  });
+  const activeLocalDoc = useSelector((state: RootState) =>
+    activeDocId ? postsSelectors.selectById(state, activeDocId) : undefined
+  );
 
   const wordCount = countWords(activeLocalDoc?.data);
   const readMin = Math.max(1, Math.ceil(wordCount / 200));
@@ -120,8 +117,10 @@ export default function PropertiesSection({
               <Chip
                 label={status === DocumentStatus.ACTIVE ? "Active" : "Done"}
                 size="small"
-                color={(statusColors[status] as "info" | "success") ??
-                  "default"}
+                color={(status ? statusColors[status] : undefined) as
+                  | "info"
+                  | "success"
+                  | undefined ?? "default"}
                 variant="outlined"
                 sx={{ height: 18, typography: "micro" }}
               />

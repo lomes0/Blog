@@ -1,6 +1,6 @@
 "use client";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { UserDocument } from "@/types";
+import type { Post } from "@/types";
 import DocumentCard from "../DocumentCard";
 import Grid from "@mui/material/Grid2";
 import { Box, Pagination, Typography } from "@mui/material";
@@ -8,7 +8,7 @@ import { FileSearch } from "lucide-react";
 import DocumentSortControl from "../DocumentControls/SortControl";
 import { ICON_SIZE } from "@/theme/icons";
 
-const UserDocuments: React.FC<{ documents?: UserDocument[]; pages?: number }> =
+const UserDocuments: React.FC<{ documents?: Post[]; pages?: number }> =
   ({ documents, pages = 0 }) => {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -86,7 +86,7 @@ const UserDocuments: React.FC<{ documents?: UserDocument[]; pages?: number }> =
                     key={document.id}
                     size={{ xs: 12, sm: 6, md: 4 }}
                   >
-                    <DocumentCard userDocument={document} />
+                    <DocumentCard post={document} />
                   </Grid>
                 ))}
               </Grid>

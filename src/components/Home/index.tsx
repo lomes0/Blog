@@ -2,7 +2,7 @@
 import { Box, Typography } from "@mui/material";
 import Grid from "@mui/material/Grid2";
 import { useRouter } from "next/navigation";
-import { Series, User, UserDocument } from "@/types";
+import { Series, User, Post } from "@/types";
 import { DragProvider } from "@/contexts/DragContext";
 import TrashBin from "./TrashBin";
 import { useCallback, useRef, useState } from "react";
@@ -31,7 +31,7 @@ import { ICON_SIZE } from "@/theme/icons";
 type ViewType = "notes" | "kanban" | "posts" | null;
 
 const Home: React.FC<{
-  staticDocuments: UserDocument[];
+  staticDocuments: Post[];
   series?: Series[];
   user?: User;
 }> = ({ staticDocuments }) => {

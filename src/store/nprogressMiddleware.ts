@@ -2,20 +2,26 @@ import NProgress from "nprogress";
 import type { Middleware } from "@reduxjs/toolkit";
 
 /**
- * Action type prefixes of thunks that perform network requests.
+ * Action type prefixes of thunks that may perform network requests.
  * NProgress is shown while any of these are in-flight.
+ *
+ * These are backend-agnostic now: against the local backend they resolve in the
+ * same tick, so the bar never has time to appear.
  */
 const TRACKED_PREFIXES = [
-  "app/loadCloudDocuments",
-  "app/getCloudDocument",
-  "app/forkCloudDocument",
-  "app/createCloudDocument",
-  "app/updateCloudDocument",
-  "app/deleteCloudDocument",
-  "app/syncLocalToCloud",
-  "app/getCloudRevision",
-  "app/createCloudRevision",
-  "app/deleteCloudRevision",
+  "app/loadPosts",
+  "app/getPost",
+  "app/forkPost",
+  "app/createPost",
+  "app/updatePost",
+  "app/deletePost",
+  "app/movePost",
+  "app/duplicatePost",
+  "app/mergePostsIntoTabs",
+  "app/getRevision",
+  "app/createRevision",
+  "app/deleteRevision",
+  "app/importGuestDrafts",
   "app/updateUser",
 ];
 

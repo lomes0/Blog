@@ -1,5 +1,5 @@
 "use client";
-import { UserDocument } from "@/types";
+import { Post } from "@/types";
 import { Copy } from "lucide-react";
 import {
   IconButton,
@@ -11,16 +11,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 const ForkDocument: React.FC<
   {
-    userDocument: UserDocument;
+    post: Post;
     variant?: "menuitem" | "iconbutton";
     closeMenu?: () => void;
   }
-> = ({ userDocument, variant = "iconbutton", closeMenu }) => {
-  const localDocument = userDocument?.local;
-  const cloudDocument = userDocument?.cloud;
-  const id = userDocument.id;
-  const handle = cloudDocument?.handle ?? localDocument?.handle ?? null;
-  const head = localDocument?.head || cloudDocument?.head;
+> = ({ post, variant = "iconbutton", closeMenu }) => {
+  const id = post.id;
+  const handle = post.handle ?? null;
+  const head = post.head;
   const searchParams = useSearchParams();
   const revisionId = searchParams.get("v");
   const router = useRouter();

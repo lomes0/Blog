@@ -12,10 +12,10 @@ import {
   Tooltip,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import { CloudUpload, File, Pencil } from "lucide-react";
-import { actions, type RootState, useDispatch, useSelector } from "@/store";
-import { selectChildDocumentsByParent } from "@/store/selectors/layoutSelectors";
-import type { UserDocument } from "@/types";
+import { File, Pencil, Save } from "lucide-react";
+import { type RootState, useSelector } from "@/store";
+import { selectChildPostsByParent } from "@/store/selectors/layoutSelectors";
+import type { Post } from "@/types";
 import { SafeNavigationLink } from "./SafeNavigationLink";
 import type { PostItemActions } from "./hooks/useSidebarActions";
 import {
@@ -28,11 +28,11 @@ import { triggerSave } from "../../EditDocument/saveRegistry";
 import { ICON_SIZE } from "@/theme/icons";
 import { MONO_FONT, SB_ACCENT, SB_FONT, SB_ITEM_RADIUS } from "./constants";
 
-const EMPTY_CHILDREN: UserDocument[] = [];
+const EMPTY_CHILDREN: Post[] = [];
 const EMPTY_TAB_ENTRIES: SubTabEntry[] = [];
 
 interface PostItemProps {
-  post: UserDocument;
+  post: Post;
   inSeries: boolean;
   sidebarOpen: boolean;
   pathname: string;
@@ -77,7 +77,6 @@ export const PostItem = memo(
       dropIndicator = null,
     }: PostItemProps,
   ) => {
-    const dispatch = useDispatch();
     const router = useRouter();
     const {
       renamingPostId,
@@ -94,7 +93,7 @@ export const PostItem = memo(
     // A tabbed post is a root document with one child per extra tab. Derive the
     // tabs from the store so they render regardless of which doc is open — the
     // live `ui.tabs` slice only tracks the currently-open document.
-    const childMap = useSelector(selectChildDocumentsByParent);
+    const childMap = useSelector(selectChildPostsByParent);
     const children = childMap.get(post.id) ?? EMPTY_CHILDREN;
     const hasTabs = children.length > 0;
 
@@ -110,7 +109,7 @@ export const PostItem = memo(
       state.ui.tabs.rootId === post.id ? state.ui.tabs.dirtyTabIds : null
     );
 
-    const doc = post.cloud || post.local;
+    const doc = post;
     const docName = doc?.name || "Untitled";
     // The first tab's label can differ from the post title; fall back to it.
     const rootTabLabel = doc?.tabLabel ?? docName;
@@ -125,32 +124,20 @@ export const PostItem = memo(
     // dirty. Driven by the same Redux `dirtyTabIds` the Save button uses, so the
     // sidebar updates live as the user types (and clears on save/reset).
     const isDirty = isOpenRoot && (openDirtyIds?.length ?? 0) > 0;
-    // IDE git-decoration style sync state, encoded on the filename:
-    //   modified (local edits diverge from cloud) -> amber + bold
-    //   new      (exists only locally, never synced) -> green
-    //   clean    (in sync, or cloud-only) -> default
-    const isModified = Boolean(post.local) &&
-      Boolean(post.cloud) &&
-      post.local!.head !== post.cloud!.head;
-    const isNew = Boolean(post.local) && !post.cloud;
-
-    // Tab entries: the root itself is the first tab, then each child. Dirty state
-    // comes from `ui.tabs` while open, else from local/cloud divergence.
+    // Tab entries: the root itself is the first tab, then each child. A tab is
+    // dirty only while its editor is open with unsaved edits — a closed post has
+    // nothing pending, since the save loop persists on unmount.
     const tabEntries = useMemo<SubTabEntry[]>(() => {
       if (!hasTabs) return EMPTY_TAB_ENTRIES;
-      const rootDirty = isOpenRoot
-        ? Boolean(openDirtyIds?.includes(post.id))
-        : isModified;
+      const rootDirty = isOpenRoot &&
+        Boolean(openDirtyIds?.includes(post.id));
       const entries: SubTabEntry[] = [
         { id: post.id, name: rootTabLabel, dirty: rootDirty },
       ];
       for (const child of children) {
-        const cd = child.cloud || child.local;
-        const childDirty = isOpenRoot
-          ? Boolean(openDirtyIds?.includes(child.id))
-          : Boolean(child.local) &&
-            Boolean(child.cloud) &&
-            child.local!.head !== child.cloud!.head;
+        const cd = child;
+        const childDirty = isOpenRoot &&
+          Boolean(openDirtyIds?.includes(child.id));
         entries.push({
           id: child.id,
           name: cd?.name || "Untitled",
@@ -163,19 +150,15 @@ export const PostItem = memo(
       children,
       isOpenRoot,
       openDirtyIds,
-      isModified,
       post.id,
       rootTabLabel,
     ]);
 
     const anyTabDirty = tabEntries.some((tab) => tab.dirty);
 
-    // Sync state is carried by filename color only (no weight bump):
-    //   unsaved/modified -> amber, new -> green, clean -> default.
-    const nameColor = isDirty || isModified || anyTabDirty
+    // Unsaved state is carried by filename color only (no weight bump).
+    const nameColor = isDirty || anyTabDirty
       ? "warning.main"
-      : isNew
-      ? "success.main"
       : "text.secondary";
     // Select is carried by the filled pill alone — no weight bump (matches the
     // sub-tab treatment), so the resting weight holds whether selected or not.
@@ -186,25 +169,13 @@ export const PostItem = memo(
     // its tabs — the expand state is entirely user-driven and persisted.
     const isExpanded = expandedTabs.has(post.id);
 
-    const handleSaveToCloud = useCallback(async (e: React.MouseEvent) => {
+    // Autosave already handles this; the button is for users who want to force
+    // it now rather than wait out the debounce.
+    const handleSaveNow = useCallback(async (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      // Unsaved live edits: persist the open editor's current state (and any
-      // sibling tabs) via the editor's registered save callbacks.
-      if (isDirty) {
-        await triggerSave();
-        return;
-      }
-      // Committed local edits diverging from cloud: push the local head.
-      dispatch(
-        actions.syncLocalToCloud({
-          id: post.id,
-          localHead: post.local!.head,
-          updatedAt: post.local!.updatedAt,
-          parentId: post.local!.parentId,
-        }),
-      );
-    }, [dispatch, isDirty, post.id, post.local]);
+      await triggerSave();
+    }, []);
 
     const handleToggleTabs = useCallback((e: React.MouseEvent) => {
       e.preventDefault();
@@ -468,12 +439,12 @@ export const PostItem = memo(
                 }}
               />
             )}
-            {sidebarOpen && (isDirty || isModified) && (
-              <Tooltip title="Save to cloud" placement="right">
+            {sidebarOpen && isDirty && (
+              <Tooltip title="Save now" placement="right">
                 <IconButton
                   className="sync-btn"
                   size="small"
-                  onClick={handleSaveToCloud}
+                  onClick={handleSaveNow}
                   sx={{
                     p: 0.25,
                     ml: isDirty && !showSubTabs ? 0.5 : "auto",
@@ -481,7 +452,7 @@ export const PostItem = memo(
                     "&:hover": { bgcolor: "action.hover" },
                   }}
                 >
-                  <CloudUpload size={ICON_SIZE.inline} />
+                  <Save size={ICON_SIZE.inline} />
                 </IconButton>
               </Tooltip>
             )}
@@ -496,7 +467,7 @@ export const PostItem = memo(
                     p: 0.25,
                     // Align the glyph's right edge with the series doc-count
                     // badge above by cancelling the button's own right padding.
-                    ml: isModified || (isDirty && !showSubTabs) ? 0.5 : "auto",
+                    ml: isDirty && !showSubTabs ? 0.5 : "auto",
                     mr: -0.25,
                     color: "text.secondary",
                     "&:hover": { bgcolor: "action.hover" },

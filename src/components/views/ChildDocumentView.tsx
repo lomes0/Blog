@@ -56,7 +56,8 @@ const ChildDocumentView: React.FC<ChildDocumentViewProps> = ({ docId }) => {
 
   // Inject as raw HTML (not htmr/React) so the view-mode DOM enhancers can
   // safely restructure code/attachment nodes without React later failing to
-  // remove nodes they reparented. See LocalDocumentView for the full rationale.
+  // remove nodes they reparented, throwing "removeChild ... not a child of
+  // this node". Raw HTML keeps the content outside React's reconciler.
   return (
     <div
       style={{ display: "contents" }}

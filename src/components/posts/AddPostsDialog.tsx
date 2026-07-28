@@ -20,7 +20,7 @@ import {
   Typography,
 } from "@mui/material";
 import { FileText, Plus, Search, X } from "lucide-react";
-import { Document } from "@/types";
+import { Post } from "@/types";
 import { DateDisplay } from "@/components/shared/DateDisplay";
 import { LoadingState } from "@/components/shared/LoadingState";
 import { useAvailablePostsSelector } from "./hooks/useAvailablePostsSelector";
@@ -30,12 +30,12 @@ interface AddPostsDialogProps {
   open: boolean;
   onClose: () => void;
   seriesId: string;
-  existingPosts?: Document[];
+  existingPosts?: Post[];
   onPostsAdded: () => void;
 }
 
 interface PostListItemProps {
-  post: Document;
+  post: Post;
   checked: boolean;
   onToggle: (id: string) => void;
   iconColor?: "primary" | "action";
@@ -82,7 +82,7 @@ function PostListItem(
 
 interface PostListSectionProps {
   label: string;
-  posts: Document[];
+  posts: Post[];
   selectedPosts: Set<string>;
   onToggle: (id: string) => void;
   iconColor?: "primary" | "action";

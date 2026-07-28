@@ -1,7 +1,7 @@
 import Home from "@/components/Home";
 import { findAllDocuments } from "@/repositories/document";
 import { findAllSeries } from "@/repositories/series";
-import { UserDocument } from "@/types";
+import { Post } from "@/types";
 import type { Metadata } from "next";
 import { findRevisionThumbnail } from "../api/utils";
 import { ThumbnailProvider } from "@/app/context/ThumbnailContext";
@@ -24,12 +24,7 @@ const page = async () => {
   const allPosts = await findAllDocuments(12);
   const allSeries = await findAllSeries();
 
-  const staticDocuments: UserDocument[] = allPosts.map(
-    (post) => ({
-      id: post.id,
-      cloud: post,
-    }),
-  );
+  const staticDocuments: Post[] = allPosts;
   const staticThumbnails = allPosts.reduce((acc, post) => {
     acc[post.head] = findRevisionThumbnail(post.head);
     return acc;

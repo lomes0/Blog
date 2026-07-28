@@ -24,7 +24,7 @@ import {
   runReadTool,
 } from "@/editor/utils/copilotAgentExecutors";
 import { isReadTool, isWriteTool } from "@/lib/ai/copilotAgentTools";
-import { documentsSelectors, useSelector } from "@/store";
+import { postsSelectors, useSelector } from "@/store";
 import { AI_MODELS } from "@/lib/ai/models";
 import CopilotMessage from "./CopilotMessage";
 import QuickActions from "./QuickActions";
@@ -104,9 +104,9 @@ const CopilotChat: React.FC<CopilotChatProps> = (
 ) => {
   const editorRef = useContext(ActiveEditorContext);
   const doc = useSelector((state) =>
-    documentsSelectors.selectById(state, documentId)
+    postsSelectors.selectById(state, documentId)
   );
-  const documentTitle = doc?.cloud?.name ?? doc?.local?.name ?? "Untitled";
+  const documentTitle = doc.name ?? "Untitled";
 
   const [input, setInput] = useState("");
   const [modelMenuAnchor, setModelMenuAnchor] = useState<null | HTMLElement>(

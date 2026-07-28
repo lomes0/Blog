@@ -2,7 +2,8 @@
 import { useCallback, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { actions, type RootState, useDispatch, useSelector } from "@/store";
-import { selectUserFilteredDocuments } from "@/store/selectors/layoutSelectors";
+import { capabilities } from "@/lib/capabilities";
+import { selectRootPosts } from "@/store/selectors/layoutSelectors";
 import { Box, Drawer, useMediaQuery } from "@mui/material";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
@@ -35,6 +36,7 @@ const SideBar: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
   const dispatch = useDispatch();
+  const can = capabilities(useSelector((state) => state.user));
 
   // Create actions live in the header (IDE-style). New Post reuses the shared
   // `/new` editor route; New Series opens the same drawer the posts page uses.
@@ -100,7 +102,7 @@ const SideBar: React.FC = () => {
   useKeyboardShortcuts({ onToggleSidebar: toggleSidebar, enabled: true });
 
   const user = useSelector((state: RootState) => state.user);
-  const filteredDocuments = useSelector(selectUserFilteredDocuments);
+  const filteredDocuments = useSelector(selectRootPosts);
   const seriesList = useSelector((state: RootState) => state.series);
   const projectsList = useSelector((state: RootState) => state.projects);
   const sidebarView = useSelector((state: RootState) => state.ui.sidebarView);
@@ -172,7 +174,7 @@ const SideBar: React.FC = () => {
             <SidebarHeader
               view={sidebarView}
               onNewPost={handleNewPost}
-              onNewSeries={handleNewSeries}
+              onNewSeries={can.series ? handleNewSeries : undefined}
             />
           )}
           {sidebarView === "search"

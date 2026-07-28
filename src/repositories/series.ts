@@ -1,13 +1,13 @@
 import { DocumentType as PrismaDocumentType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
-  moveDocument,
+  movePost,
   rankForAppend,
   reRankIntoRoot,
 } from "./ordering";
 import {
-  Document,
-  DocumentRevision,
+  CloudPost,
+  RevisionMeta,
   Series,
   SeriesCreateInput,
   SeriesUpdateInput,
@@ -105,8 +105,8 @@ export async function findAllSeries(): Promise<Series[]> {
       type: p.type as "DOCUMENT",
       head: p.head || "",
       coauthors: p.coauthors.map((c) => c.user),
-      revisions: p.revisions as DocumentRevision[],
-    })) as Document[],
+      revisions: p.revisions as RevisionMeta[],
+    })) as CloudPost[],
   })) as Series[];
 }
 
@@ -193,8 +193,8 @@ export async function findSeriesById(id: string): Promise<Series | null> {
       type: p.type as "DOCUMENT",
       head: p.head || "",
       coauthors: p.coauthors.map((c) => c.user),
-      revisions: p.revisions as DocumentRevision[],
-    })) as Document[],
+      revisions: p.revisions as RevisionMeta[],
+    })) as CloudPost[],
   } as Series;
 }
 
@@ -284,8 +284,8 @@ export async function findSeriesByAuthorId(
       type: p.type as "DOCUMENT",
       head: p.head || "",
       coauthors: p.coauthors.map((c) => c.user),
-      revisions: p.revisions as DocumentRevision[],
-    })) as Document[],
+      revisions: p.revisions as RevisionMeta[],
+    })) as CloudPost[],
   })) as Series[];
 }
 
@@ -362,14 +362,14 @@ export async function addPostToSeries(
   postId: string,
 ): Promise<void> {
   await prisma.$transaction((tx) =>
-    moveDocument(tx, { id: postId, destination: { seriesId } })
+    movePost(tx, { id: postId, destination: { seriesId } })
   );
 }
 
 // Remove a post from its series, re-homing it to the author's root list.
 export async function removePostFromSeries(postId: string): Promise<void> {
   await prisma.$transaction((tx) =>
-    moveDocument(tx, { id: postId, destination: {} })
+    movePost(tx, { id: postId, destination: {} })
   );
 }
 
@@ -382,10 +382,10 @@ export async function batchUpdateSeriesPosts(
 ): Promise<void> {
   await prisma.$transaction(async (tx) => {
     for (const postId of postIdsToRemove) {
-      await moveDocument(tx, { id: postId, destination: {} });
+      await movePost(tx, { id: postId, destination: {} });
     }
     for (const postId of postIdsToAdd) {
-      await moveDocument(tx, { id: postId, destination: { seriesId } });
+      await movePost(tx, { id: postId, destination: { seriesId } });
     }
   });
 }
@@ -393,7 +393,7 @@ export async function batchUpdateSeriesPosts(
 // Get posts available to add to a series (user's posts not in any series)
 export async function getAvailablePostsForSeries(
   authorId: string,
-): Promise<Document[]> {
+): Promise<CloudPost[]> {
   const posts = await prisma.document.findMany({
     where: {
       authorId,
@@ -457,6 +457,6 @@ export async function getAvailablePostsForSeries(
     type: p.type as "DOCUMENT",
     head: p.head || "",
     coauthors: p.coauthors.map((c) => c.user),
-    revisions: p.revisions as DocumentRevision[],
-  })) as Document[];
+    revisions: p.revisions as RevisionMeta[],
+  })) as CloudPost[];
 }

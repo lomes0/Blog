@@ -8,12 +8,12 @@ import React, {
 } from "react";
 import { Box } from "@mui/material";
 import { v4 as uuid } from "uuid";
-import { Series, User, UserDocument } from "@/types";
+import { Series, User, Post } from "@/types";
 import { actions, useDispatch } from "@/store";
 import { useRouter } from "next/navigation";
 import { useExpandedState } from "@/hooks/useExpandedState";
 import {
-  compareDocumentsByRank,
+  comparePostsByRank,
   rankOf,
   ranksBracketing,
   type ReorderDirection,
@@ -28,7 +28,7 @@ import { useInlineRename } from "./hooks/useInlineRename";
 
 interface PostsListViewProps {
   /** Standalone posts (not in any series). */
-  posts: UserDocument[];
+  posts: Post[];
   /** All series with their posts. */
   series: Series[];
   /**
@@ -44,7 +44,7 @@ interface PostsListViewProps {
 
 // A single entry in the interleaved root list: a standalone post or a series.
 type RootItem =
-  | { kind: "post"; id: string; rank: string | null; post: UserDocument }
+  | { kind: "post"; id: string; rank: string | null; post: Post }
   | { kind: "series"; id: string; rank: string | null; series: Series };
 
 // Rank ascending; unranked entries sort last; ties broken by id (total/stable).
@@ -70,13 +70,13 @@ export function PostsListView({
 
   // Each series' posts, wrapped and rank-sorted (so reorder is reflected).
   const seriesPostsById = useMemo(() => {
-    const map = new Map<string, UserDocument[]>();
+    const map = new Map<string, Post[]>();
     for (const s of series) {
       map.set(
         s.id,
         s.posts
-          .map((p) => ({ id: p.id, cloud: p, local: undefined }))
-          .sort(compareDocumentsByRank),
+          
+          .sort(comparePostsByRank),
       );
     }
     return map;
@@ -120,7 +120,7 @@ export function PostsListView({
   const selection = useListSelection({ allIds: allVisibleIds });
   const postRename = useInlineRename();
 
-  // Series rename state — uses updateSeries (different from updateCloudDocument)
+  // Series rename state — uses updateSeries (different from updatePost)
   const [editingSeriesNames, setEditingSeriesNames] = useState<
     Map<string, string>
   >(new Map());
@@ -164,8 +164,8 @@ export function PostsListView({
   }, []);
 
   // ── Delete handlers ───────────────────────────────────────────────────────
-  const handleDeletePost = useCallback(async (post: UserDocument) => {
-    const name = post.cloud?.name || post.local?.name || "This post";
+  const handleDeletePost = useCallback(async (post: Post) => {
+    const name = post.name || "This post";
     const alertPayload = {
       title: "Delete Post",
       content: `Delete "${name}"? This cannot be undone.`,
@@ -176,11 +176,7 @@ export function PostsListView({
     };
     const response = await dispatch(actions.alert(alertPayload));
     if (response.payload === alertPayload.actions[1].id) {
-      if (post.cloud) await dispatch(actions.deleteCloudDocument(post.id));
-      // Always remove the local (IndexedDB) copy: a server-rendered post only
-      // carries its cloud record, so `post.local` may be undefined even when a
-      // local copy exists. The delete is idempotent when there is nothing to remove.
-      await dispatch(actions.deleteLocalDocument(post.id));
+      await dispatch(actions.deletePost(post.id));
       router.refresh();
     }
   }, [dispatch, router]);
@@ -209,11 +205,11 @@ export function PostsListView({
 
   // Flat map of all post UserDocuments for bulk operations
   const allPostsMap = useMemo(() => {
-    const map = new Map<string, UserDocument>();
+    const map = new Map<string, Post>();
     posts.forEach((p) => map.set(p.id, p));
     series.forEach((s) =>
       s.posts.forEach((p) =>
-        map.set(p.id, { id: p.id, cloud: p, local: undefined })
+        map.set(p.id, p)
       )
     );
     return map;
@@ -240,12 +236,7 @@ export function PostsListView({
         } else {
           const post = allPostsMap.get(id);
           if (post) {
-            if (post.cloud) {
-              await dispatch(actions.deleteCloudDocument(post.id));
-            }
-            // Always remove the local copy (idempotent when absent) so a
-            // post is fully deleted even if `post.local` wasn't hydrated.
-            await dispatch(actions.deleteLocalDocument(post.id));
+            await dispatch(actions.deletePost(post.id));
           }
         }
       }
@@ -264,18 +255,17 @@ export function PostsListView({
         allPostsMap.has(id)
       )
       .map((id) => allPostsMap.get(id)!)
-      .filter((p): p is UserDocument => !!p);
+      .filter((p): p is Post => !!p);
   }, [allVisibleIds, selection.selectedIds, seriesIdSet, allPostsMap]);
 
-  // Merge is cloud-only and needs at least two posts, none of them a series.
+  // Merging needs at least two posts, none of them a series.
   const canMerge = selectedMergeablePosts.length >= 2 &&
-    selectedMergeablePosts.length === selection.selectedIds.size &&
-    selectedMergeablePosts.every((p) => !!p.cloud);
+    selectedMergeablePosts.length === selection.selectedIds.size;
 
   const handleBulkMerge = useCallback(async () => {
     if (!canMerge) return;
     const [target, ...sources] = selectedMergeablePosts;
-    const targetName = target.cloud?.name || target.local?.name || "this post";
+    const targetName = target.name || "this post";
     const alertPayload = {
       title: "Merge into tabs",
       content: `Merge ${
@@ -292,7 +282,7 @@ export function PostsListView({
     if (response.payload !== alertPayload.actions[1].id) return;
 
     await dispatch(
-      actions.mergeCloudDocumentsIntoTabs({
+      actions.mergePostsIntoTabs({
         targetId: target.id,
         sourceIds: sources.map((p) => p.id),
       }),
@@ -310,16 +300,14 @@ export function PostsListView({
       .map((id) => allPostsMap.get(id)!);
   }, [selection.selectedIds, seriesIdSet, allPostsMap]);
 
-  const canMove = selectedMovablePosts.length > 0 &&
-    selectedMovablePosts.every((p) => !!p.cloud);
+  const canMove = selectedMovablePosts.length > 0;
 
   const handleBulkMove = useCallback(
     async (seriesId: string | null) => {
       if (selectedMovablePosts.length === 0) return;
       for (const post of selectedMovablePosts) {
-        if (!post.cloud) continue;
         await dispatch(
-          actions.moveDocument({
+          actions.movePost({
             id: post.id,
             destination: seriesId ? { seriesId } : {},
           }),
@@ -341,7 +329,7 @@ export function PostsListView({
 
   const handleDragStart = useCallback((e: React.DragEvent, postId: string) => {
     const post = allPostsMap.get(postId);
-    const name = post?.cloud?.name || post?.local?.name || "";
+    const name = post?.name || "";
     draggedIdRef.current = postId;
     e.dataTransfer.setData(
       "application/matheditor-document",
@@ -382,7 +370,7 @@ export function PostsListView({
       const beforeRank = position === "before" ? rankAt(ti) : rankAt(ti + 1);
 
       await dispatch(
-        actions.moveDocument({
+        actions.movePost({
           id: draggedId,
           destination: {},
           between: { afterRank, beforeRank },
@@ -395,10 +383,10 @@ export function PostsListView({
 
   const handleDropPost = useCallback(
     async (seriesId: string, postId: string) => {
-      // moveDocument sets seriesId *and* a fresh rank in the destination series,
+      // movePost sets seriesId *and* a fresh rank in the destination series,
       // so the post no longer keeps a rank from its previous container.
       await dispatch(
-        actions.moveDocument({ id: postId, destination: { seriesId } }),
+        actions.movePost({ id: postId, destination: { seriesId } }),
       );
       router.refresh();
     },
@@ -407,9 +395,9 @@ export function PostsListView({
 
   const handleMoveToSeries = useCallback(
     async (postId: string, seriesId: string) => {
-      // moveDocument sets seriesId *and* a fresh rank in the destination.
+      // movePost sets seriesId *and* a fresh rank in the destination.
       await dispatch(
-        actions.moveDocument({ id: postId, destination: { seriesId } }),
+        actions.movePost({ id: postId, destination: { seriesId } }),
       );
       router.refresh();
     },
@@ -421,7 +409,7 @@ export function PostsListView({
   // a tab-group). `siblings` is the rendered, rank-ordered list.
   const handleReorderPost = useCallback(
     async (
-      siblings: UserDocument[],
+      siblings: Post[],
       postId: string,
       direction: ReorderDirection,
     ) => {
@@ -431,7 +419,7 @@ export function PostsListView({
       if (!between) return;
 
       // Keep the post in its current container; only its position changes.
-      const doc = siblings[i].cloud ?? siblings[i].local;
+      const doc = siblings[i];
       const destination = doc?.seriesId
         ? { seriesId: doc.seriesId }
         : doc?.parentId
@@ -439,7 +427,7 @@ export function PostsListView({
         : {};
 
       await dispatch(
-        actions.moveDocument({ id: postId, destination, between }),
+        actions.movePost({ id: postId, destination, between }),
       );
       router.refresh();
     },
@@ -447,7 +435,7 @@ export function PostsListView({
   );
 
   // Reposition a root-level item (a standalone post or a whole series) within
-  // the interleaved root list. Posts move via moveDocument, series via
+  // the interleaved root list. Posts move via movePost, series via
   // moveSeries — both re-rank in the shared root space.
   const handleReorderRoot = useCallback(
     async (index: number, direction: ReorderDirection) => {
@@ -460,7 +448,7 @@ export function PostsListView({
       const item = rootItems[index];
       if (item.kind === "post") {
         await dispatch(
-          actions.moveDocument({ id: item.id, destination: {}, between }),
+          actions.movePost({ id: item.id, destination: {}, between }),
         );
       } else {
         await dispatch(actions.moveSeries({ id: item.id, between }));

@@ -111,7 +111,7 @@ export async function rankForAppend(
  * XOR root — so setting `seriesId` clears `parentId` and vice versa. Pass
  * neighbour ranks in `between` to drop at a position; omit it to append.
  */
-export async function moveDocument(
+export async function movePost(
   db: Db,
   args: {
     id: string;
@@ -123,7 +123,7 @@ export async function moveDocument(
     where: { id: args.id },
     select: { authorId: true },
   });
-  if (!doc) throw new Error(`moveDocument: document ${args.id} not found`);
+  if (!doc) throw new Error(`movePost: document ${args.id} not found`);
 
   // Exclusivity: a series destination wins; otherwise a parent; otherwise root.
   const seriesId = args.destination.seriesId ?? null;
@@ -185,7 +185,7 @@ async function assertNoParentCycle(
   let current: string | null = parentId;
   while (current) {
     if (current === movingId) {
-      throw new Error("moveDocument: would create a parent cycle");
+      throw new Error("movePost: would create a parent cycle");
     }
     if (seen.has(current)) break; // pre-existing cycle elsewhere — stop walking
     seen.add(current);
@@ -320,8 +320,8 @@ const maxStr = (a: string | null, b: string | null): string | null =>
 
 // Convenience: run a move outside an existing transaction.
 export const moveDocumentTx = (
-  args: Parameters<typeof moveDocument>[1],
-): Promise<void> => prisma.$transaction((tx) => moveDocument(tx, args));
+  args: Parameters<typeof movePost>[1],
+): Promise<void> => prisma.$transaction((tx) => movePost(tx, args));
 
 export const moveSeriesTx = (
   args: Parameters<typeof moveSeries>[1],

@@ -1,11 +1,11 @@
 "use client";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { compareDocumentsByRank } from "@/lib/documentOrder";
-import { UserDocument } from "@/types";
+import { comparePostsByRank } from "@/lib/documentOrder";
+import { Post } from "@/types";
 
 export function useSeriesGroupState(
-  posts: UserDocument[],
+  posts: Post[],
   defaultExpanded: boolean,
   seriesId: string,
   onExpand?: () => void,
@@ -15,7 +15,7 @@ export function useSeriesGroupState(
   const [isCollapsed, setIsCollapsed] = useState(!defaultExpanded);
 
   const sortedPosts = useMemo(
-    () => [...posts].sort(compareDocumentsByRank),
+    () => [...posts].sort(comparePostsByRank),
     [posts],
   );
 

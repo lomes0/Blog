@@ -11,7 +11,7 @@
  *       └── backgrounds/{filename}
  */
 
-import type { EditorDocumentRevision, Series } from "@/types";
+import type { Revision, Series } from "@/types";
 
 // ─── Schema versioning ──────────────────────────────────────────────────────
 
@@ -56,7 +56,7 @@ export interface DocumentExport {
   status?: "ACTIVE" | "DONE";
   background_image?: string | null;
   seriesId?: string | null;
-  revisions: EditorDocumentRevision[];
+  revisions: Revision[];
   /** Filenames of any attachment assets referenced in this document's Lexical state */
   referencedAssets: string[];
 }

@@ -11,15 +11,9 @@
 import type { SerializedEditorState } from "lexical";
 import type {
   CheckHandleResponse,
-  CloudDocumentRevision,
   DeleteDocumentResponse,
   DeleteRevisionResponse,
-  Document,
-  DocumentCreateInput,
   DocumentStorageUsage,
-  DocumentUpdateInput,
-  EditorDocument,
-  EditorDocumentRevision,
   ForkDocumentResponse,
   GetDocumentStorageUsageResponse,
   GetDocumentThumbnailResponse,
@@ -28,13 +22,17 @@ import type {
   GetSessionResponse,
   PatchDocumentResponse,
   PatchUserResponse,
+  Post,
+  PostCreateInput,
   PostDocumentsResponse,
   PostRevisionResponse,
   PostSeriesResponse,
+  PostUpdateInput,
   Project,
+  Revision,
+  RevisionMeta,
   Series,
   User,
-  UserDocument,
 } from "@/types";
 
 import type {
@@ -174,27 +172,27 @@ export const apiClient = {
   // -------------------------------------------------------------------------
   documents: {
     /** GET /api/documents */
-    list: (): Promise<Document[] | undefined> =>
-      request<Document[]>("/api/documents", { cache: "no-store" }),
+    list: (): Promise<Post[] | undefined> =>
+      request<Post[]>("/api/documents", { cache: "no-store" }),
 
     /** GET /api/documents/:id */
     get: (
       id: string,
-    ): Promise<(EditorDocument & { cloudDocument: Document }) | undefined> =>
-      request<EditorDocument & { cloudDocument: Document }>(
+    ): Promise<(Post & { cloudDocument: Post }) | undefined> =>
+      request<Post & { cloudDocument: Post }>(
         `/api/documents/${id}`,
       ),
 
     /** POST /api/documents */
-    create: (input: DocumentCreateInput): Promise<Document | undefined> =>
-      request<Document>("/api/documents", { method: "POST", ...json(input) }),
+    create: (input: PostCreateInput): Promise<Post | undefined> =>
+      request<Post>("/api/documents", { method: "POST", ...json(input) }),
 
     /** PATCH /api/documents/:id */
     update: (
       id: string,
-      partial: DocumentUpdateInput,
-    ): Promise<Document | undefined> =>
-      request<Document>(`/api/documents/${id}`, {
+      partial: PostUpdateInput,
+    ): Promise<Post | undefined> =>
+      request<Post>(`/api/documents/${id}`, {
         method: "PATCH",
         ...json(partial),
       }),
@@ -203,8 +201,8 @@ export const apiClient = {
     move: (
       id: string,
       payload: MoveDocumentInput,
-    ): Promise<Document | undefined> =>
-      request<Document>(`/api/documents/${id}/move`, {
+    ): Promise<Post | undefined> =>
+      request<Post>(`/api/documents/${id}/move`, {
         method: "PATCH",
         ...json(payload),
       }),
@@ -241,8 +239,8 @@ export const apiClient = {
     fork: (
       id: string,
       revisionId?: string | null,
-    ): Promise<(UserDocument & { data: SerializedEditorState }) | undefined> =>
-      request<UserDocument & { data: SerializedEditorState }>(
+    ): Promise<(Post & { data: SerializedEditorState }) | undefined> =>
+      request<Post & { data: SerializedEditorState }>(
         `/api/documents/new/${id}${revisionId ? `?v=${revisionId}` : ""}`,
       ),
 
@@ -277,14 +275,14 @@ export const apiClient = {
   // -------------------------------------------------------------------------
   revisions: {
     /** GET /api/revisions/:id */
-    get: (id: string): Promise<EditorDocumentRevision | undefined> =>
-      request<EditorDocumentRevision>(`/api/revisions/${id}`),
+    get: (id: string): Promise<Revision | undefined> =>
+      request<Revision>(`/api/revisions/${id}`),
 
     /** POST /api/revisions */
     create: (
-      revision: EditorDocumentRevision,
-    ): Promise<CloudDocumentRevision | undefined> =>
-      request<CloudDocumentRevision>("/api/revisions", {
+      revision: Revision,
+    ): Promise<RevisionMeta | undefined> =>
+      request<RevisionMeta>("/api/revisions", {
         method: "POST",
         ...json(revision),
       }),
@@ -335,8 +333,8 @@ export const apiClient = {
       request<string>(`/api/series/${id}`, { method: "DELETE" }),
 
     /** GET /api/series/available-posts */
-    availablePosts: (): Promise<Document[] | undefined> =>
-      request<Document[]>("/api/series/available-posts"),
+    availablePosts: (): Promise<Post[] | undefined> =>
+      request<Post[]>("/api/series/available-posts"),
 
     /** PATCH /api/series/:id/posts */
     updatePosts: (

@@ -177,7 +177,7 @@ const CommandPalette = () => {
   const postItems: PaletteItem[] = useMemo(
     () =>
       posts.map((post) => {
-        const doc = post.cloud || post.local;
+        const doc = post;
         const name = doc?.name || "Untitled";
         const folder = seriesByPostId.get(post.id) ?? "posts";
         return {

@@ -1,4 +1,4 @@
-import type { UserDocument } from "@/types";
+import type { Post } from "@/types";
 
 function compareObjectsByKey(key: string, ascending = true) {
   return function innerSort(
@@ -32,15 +32,15 @@ function compareObjectsByKey(key: string, ascending = true) {
 
 // Sort a document browser's list by an explicit key (Updated / Created / Name).
 // Manual rank ordering is applied by the content surfaces (posts list, series,
-// sidebar) via compareDocumentsByRank; this browser sort is a deliberate
+// sidebar) via comparePostsByRank; this browser sort is a deliberate
 // alternate view, so it sorts purely by the chosen key.
 export const sortDocuments = (
-  documents: UserDocument[],
+  documents: Post[],
   sortkey: string,
   sortDirection: string,
 ) => {
   const data = documents.map((d) => {
-    const docData = (d.local ?? d.cloud)!;
+    const docData = (d)!;
     return { ...docData, id: d.id };
   });
 

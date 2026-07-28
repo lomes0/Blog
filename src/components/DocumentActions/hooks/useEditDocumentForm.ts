@@ -3,35 +3,30 @@ import { useEffect, useState } from "react";
 import { useSelector } from "@/store";
 import {
   DocumentStatus,
-  DocumentUpdateInput,
+  PostUpdateInput,
   User,
-  UserDocument,
+  Post,
 } from "@/types";
 import { useHandleValidation } from "./useHandleValidation";
 import { useDocumentSubmit } from "./useDocumentSubmit";
 
-export function useEditDocumentForm(userDocument: UserDocument) {
+export function useEditDocumentForm(post: Post) {
   const user = useSelector((state) => state.user);
-  const localDocument = userDocument?.local;
-  const cloudDocument = userDocument?.cloud;
-  const isLocal = !!localDocument;
-  const isCloud = !!cloudDocument;
-  const isPrivate = isCloud && cloudDocument.private;
-  const isPublished = isCloud && cloudDocument.published;
-  const isCollab = isCloud && cloudDocument.collab;
-  const isAuthor = isCloud ? cloudDocument.author.id === user?.id : true;
-  const isCloudOnly = !isLocal && isCloud;
-  const document = isCloudOnly ? cloudDocument : localDocument;
-  const currentStatus = document?.status || DocumentStatus.ACTIVE;
+  const document = post;
+  const isPrivate = !!post.private;
+  const isPublished = !!post.published;
+  const isCollab = !!post.collab;
+  // A post with no author is a guest draft, which is by definition the viewer's.
+  const isAuthor = post.author ? post.author.id === user?.id : true;
+  const currentStatus = post.status || DocumentStatus.ACTIVE;
 
-  const name = cloudDocument?.name ?? localDocument?.name ??
-    "Untitled Document";
-  const handle = cloudDocument?.handle ?? localDocument?.handle ?? null;
+  const name = post.name ?? "Untitled Document";
+  const handle = post.handle ?? null;
 
-  const [input, setInput] = useState<Partial<DocumentUpdateInput>>({
+  const [input, setInput] = useState<Partial<PostUpdateInput>>({
     name,
     handle,
-    coauthors: cloudDocument?.coauthors.map((u) => u.email) ?? [],
+    coauthors: post.coauthors?.map((u) => u.email) ?? [],
     private: isPrivate,
     published: isPublished,
     collab: isCollab,
@@ -41,7 +36,7 @@ export function useEditDocumentForm(userDocument: UserDocument) {
   });
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
-  const updateInput = (partial: Partial<DocumentUpdateInput>) => {
+  const updateInput = (partial: Partial<PostUpdateInput>) => {
     setInput((prev) => ({ ...prev, ...partial }));
   };
 
@@ -65,7 +60,7 @@ export function useEditDocumentForm(userDocument: UserDocument) {
       name,
       handle,
       description: document?.description || "",
-      coauthors: cloudDocument?.coauthors.map((u) => u.email) ?? [],
+      coauthors: post.coauthors?.map((u) => u.email) ?? [],
       private: isPrivate,
       published: isPublished,
       collab: isCollab,
@@ -75,9 +70,9 @@ export function useEditDocumentForm(userDocument: UserDocument) {
     });
     resetValidation();
   }, [
-    userDocument,
+    post,
     editDialogOpen,
-    cloudDocument?.coauthors,
+    post.coauthors,
     currentStatus,
     document?.background_image,
     document?.createdAt,
@@ -100,16 +95,13 @@ export function useEditDocumentForm(userDocument: UserDocument) {
   };
 
   const { handleSubmit } = useDocumentSubmit(
-    userDocument,
+    post,
     input,
     closeEditDialog,
   );
 
   return {
-    cloudDocument,
     document,
-    isLocal,
-    isCloud,
     isAuthor,
     isPublished,
     isCollab,

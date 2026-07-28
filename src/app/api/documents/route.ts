@@ -6,7 +6,7 @@ import {
   findDocument,
   findDocumentsByAuthorId,
 } from "@/repositories/document";
-import { DocumentCreateInput } from "@/types";
+import { PostCreateInput } from "@/types";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
@@ -54,7 +54,7 @@ export const POST = withApiHandler(async (request) => {
       "Account is disabled for violating terms of service",
     );
   }
-  const body = (await request.json()) as DocumentCreateInput;
+  const body = (await request.json()) as PostCreateInput;
   if (!body) {
     throw new ApiError(400, "Bad Request", "No document provided");
   }

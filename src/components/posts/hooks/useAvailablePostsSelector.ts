@@ -1,16 +1,16 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Document } from "@/types";
+import { Post } from "@/types";
 import { apiClient } from "@/api";
 
 export function useAvailablePostsSelector(
   open: boolean,
   seriesId: string,
-  existingPosts: Document[],
+  existingPosts: Post[],
   onPostsAdded: () => void,
   onClose: () => void,
 ) {
-  const [availablePosts, setAvailablePosts] = useState<Document[]>([]);
+  const [availablePosts, setAvailablePosts] = useState<Post[]>([]);
   const [selectedPosts, setSelectedPosts] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);

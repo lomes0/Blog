@@ -1,4 +1,4 @@
-import { CloudDocumentRevision, User } from "@/types";
+import { RevisionMeta, User } from "@/types";
 
 /**
  * Extract unique collaborators from document revisions
@@ -10,7 +10,7 @@ import { CloudDocumentRevision, User } from "@/types";
  * @returns Array of unique collaborators
  */
 export function extractCollaborators(
-  revisions: CloudDocumentRevision[],
+  revisions: RevisionMeta[],
   authorId: string,
   excludeUserIds: string[] = [],
 ): User[] {

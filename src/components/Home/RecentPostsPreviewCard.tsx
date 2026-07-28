@@ -1,12 +1,12 @@
 "use client";
 import { Box, Typography } from "@mui/material";
 import { FileText } from "lucide-react";
-import { UserDocument } from "@/types";
+import { Post } from "@/types";
 import { useRouter } from "next/navigation";
 import { DateDisplay } from "@/components/shared/DateDisplay";
 
 interface RecentPostsPreviewCardProps {
-  documents: UserDocument[];
+  documents: Post[];
   onViewFull: () => void;
 }
 
@@ -83,7 +83,7 @@ export default function RecentPostsPreviewCard({
             <>
               <Box sx={{ py: 1, flex: 1 }}>
                 {recentPosts.map((doc, _index) => {
-                  const post = doc.cloud || doc.local;
+                  const post = doc;
                   if (!post) return null;
 
                   return (

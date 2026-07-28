@@ -13,20 +13,20 @@ const DiffView = () => {
 
   const getEditorDocumentRevision = useCallback(async (revisionId: string) => {
     try {
-      return await dispatch(actions.getLocalRevision(revisionId))
+      return await dispatch(actions.getRevision(revisionId))
         .unwrap() as ReturnType<
-          typeof actions.getLocalRevision.fulfilled
+          typeof actions.getRevision.fulfilled
         >["payload"];
     } catch {
       // not in local, try cloud
     }
     try {
       const editorDocumentRevision = await dispatch(
-        actions.getCloudRevision(revisionId),
+        actions.getRevision(revisionId),
       ).unwrap() as ReturnType<
-        typeof actions.getCloudRevision.fulfilled
+        typeof actions.getRevision.fulfilled
       >["payload"];
-      dispatch(actions.createLocalRevision(editorDocumentRevision));
+      dispatch(actions.createRevision(editorDocumentRevision));
       return editorDocumentRevision;
     } catch {
       return undefined;

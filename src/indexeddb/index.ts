@@ -2,7 +2,8 @@
 import { IDB_KEY } from "./constants";
 import { getActions, getConnection } from "./idb";
 import { IndexedDBConfig } from "./interfaces";
-import { EditorDocument, EditorDocumentRevision } from "@/types";
+import { Post, Revision } from "@/types";
+import type { SerializedEditorState } from "lexical";
 
 export interface AttachmentContentCache {
   id: string; // filename
@@ -11,6 +12,22 @@ export interface AttachmentContentCache {
   mimetype: string;
   size: number;
   cachedAt: number; // timestamp
+}
+
+/**
+ * An autosave that has not yet been confirmed by the backend — one record per
+ * open post, keyed by post id.
+ *
+ * This is a resilience buffer for transient disconnects, not an offline store:
+ * it is written on every autosave tick and cleared the moment the backend
+ * acknowledges. A record surviving into the next session means the tab was
+ * closed or crashed mid-save, and the editor restores from it on load.
+ */
+export interface PendingSave {
+  id: string; // post id
+  headId: string; // revision id this save would create
+  data: SerializedEditorState;
+  updatedAt: string;
 }
 
 async function setupIndexedDB(config: IndexedDBConfig) {
@@ -32,7 +49,7 @@ export function getStore<T>(storeName: string) {
 
 const idbConfig = {
   databaseName: "matheditor",
-  version: 4,
+  version: 5,
   stores: [
     {
       name: "documents",
@@ -76,16 +93,22 @@ const idbConfig = {
         { name: "cachedAt", keyPath: "cachedAt" },
       ],
     },
+    {
+      name: "pendingSaves",
+      id: { keyPath: "id" },
+      indices: [{ name: "updatedAt", keyPath: "updatedAt" }],
+    },
   ],
 };
 
 if (typeof window !== "undefined") {
   setupIndexedDB(idbConfig).catch(console.error);
 }
-export const documentDB = getStore<EditorDocument>("documents");
-export const revisionDB = getStore<EditorDocumentRevision>("revisions");
+export const documentDB = getStore<Post>("documents");
+export const revisionDB = getStore<Revision>("revisions");
 export const attachmentContentDB = getStore<AttachmentContentCache>(
   "attachmentContent",
 );
+export const pendingSaveDB = getStore<PendingSave>("pendingSaves");
 
 export default documentDB;

@@ -125,7 +125,7 @@ export const CollapsedRail: React.FC<CollapsedRailProps> = ({
 
         const post = g.posts[0];
         if (!post) return null;
-        const doc = post.cloud || post.local;
+        const doc = post;
         const name = doc?.name || "Untitled";
         const href = `/view/${post.id}`;
         const selected = pathname === href ||

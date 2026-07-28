@@ -3,7 +3,7 @@ import Grid from "@mui/material/Grid2";
 import Box from "@mui/material/Box";
 import { useTheme } from "@mui/material/styles";
 import { useMediaQuery } from "@mui/material";
-import { User, UserDocument } from "@/types";
+import { User, Post } from "@/types";
 import DraggableDocumentCard from "../DocumentCard/DraggablePostCard";
 import SkeletonCard from "../DocumentCard/components/LoadingCard";
 import { SxProps, Theme } from "@mui/material/styles";
@@ -15,7 +15,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 
 interface DocumentGridProps {
   /** The documents to display in the grid */
-  items: UserDocument[];
+  items: Post[];
   /** The current user */
   user?: User;
   /** Optional title to display above the grid */
@@ -124,7 +124,7 @@ const DocumentGrid: React.FC<DocumentGridProps> = ({
       items.map((item) => (
         <Grid key={item.id} size={gridSizing}>
           <DraggableDocumentCard
-            userDocument={item}
+            post={item}
             user={user}
             onMoveComplete={onMoveComplete}
             sx={{

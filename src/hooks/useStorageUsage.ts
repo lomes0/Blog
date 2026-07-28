@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useSelector } from "@/store";
-import { fetchCloudStorageUsage, fetchLocalStorageUsage } from "@/store/app";
+import { fetchStorageUsage } from "@/store/app";
 import { useErrorAnnounce } from "@/hooks/useErrorAnnounce";
 import type { DocumentStorageUsage } from "@/types";
 
@@ -24,40 +24,29 @@ function parse(documents: DocumentStorageUsage[]): StorageUsageState {
 }
 
 /**
- * Encapsulates the calls to fetchLocalStorageUsage / fetchCloudStorageUsage
- * from `@/store/app`, keeping StorageChart free of direct store-module imports.
+ * Storage consumed by the session's posts.
+ *
+ * One figure, not the old local/cloud pair — posts live in exactly one place now,
+ * so there is only one number to report. `fetchStorageUsage` asks the server when
+ * signed in and measures IndexedDB for guests.
  */
 export function useStorageUsage() {
   const user = useSelector((s) => s.user);
   const initialized = useSelector((s) => s.ui.initialized);
   const errorAnnounce = useErrorAnnounce();
 
-  const [local, setLocal] = useState<StorageUsageState>(initial);
-  const [cloud, setCloud] = useState<StorageUsageState>(initial);
+  const [usage, setUsage] = useState<StorageUsageState>(initial);
 
   useEffect(() => {
-    fetchLocalStorageUsage()
-      .then((payload) => setLocal(parse(payload)))
+    setUsage(initial);
+    fetchStorageUsage(user)
+      .then((payload) => setUsage(parse(payload)))
       .catch((error: unknown) =>
-        errorAnnounce("Failed to load local storage usage", error)
+        errorAnnounce("Failed to load storage usage", error)
       );
     // errorAnnounce is stable - no need to re-run when it changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (!user) {
-      setCloud({ ...initial, loading: false });
-      return;
-    }
-    setCloud(initial);
-    fetchCloudStorageUsage()
-      .then((payload) => setCloud(parse(payload)))
-      .catch((error: unknown) =>
-        errorAnnounce("Failed to load cloud storage usage", error)
-      );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  return { local, cloud, initialized };
+  return { usage, initialized };
 }

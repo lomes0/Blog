@@ -1,15 +1,15 @@
 "use client";
 import React from "react";
 import { Box, Typography } from "@mui/material";
-import { UserDocument } from "@/types";
+import { Post } from "@/types";
 
 interface DocItemProps {
-  document: UserDocument;
+  document: Post;
 }
 
 /** Individual document item within an expanded series group card */
 const DocItem: React.FC<DocItemProps> = ({ document }) => {
-  const doc = document.local || document.cloud;
+  const doc = document;
   const title = doc?.name || "Untitled";
   const docId = document.id;
 

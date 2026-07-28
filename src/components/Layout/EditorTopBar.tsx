@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import RouterLink from "next/link";
 import { shallowEqual } from "react-redux";
-import { documentsSelectors, useSelector } from "@/store";
+import { postsSelectors, useSelector } from "@/store";
 import type { RootState } from "@/store";
 import { useTopBarActions } from "@/contexts/TopBarActionsContext";
 import { useTopBarTabs } from "@/contexts/TopBarTabsContext";
@@ -119,12 +119,12 @@ const EditorTopBar: React.FC = () => {
   } = useSelector(
     (state: RootState) => {
       const doc = docId
-        ? documentsSelectors.selectById(state, docId)
+        ? postsSelectors.selectById(state, docId)
         : undefined;
-      const dSeriesId = doc?.cloud?.seriesId || doc?.local?.seriesId;
+      const dSeriesId = doc?.seriesId;
 
       return {
-        docName: doc?.cloud?.name || doc?.local?.name,
+        docName: doc?.name,
         docSeriesId: dSeriesId,
         seriesTitle: urlSeriesId
           ? state.series.find((s) => s.id === urlSeriesId)?.title

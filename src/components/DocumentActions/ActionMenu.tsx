@@ -9,48 +9,40 @@ import {
 } from "@mui/material";
 import { MoreVertical, Pencil } from "lucide-react";
 import DownloadDocument from "./Download";
-import DeleteBothDocument from "./DeleteBoth";
-import UploadDocument from "./Upload";
-import { User, UserDocument } from "@/types";
+import DeletePost from "./Delete";
+import { Post, User } from "@/types";
+import { capabilities } from "@/lib/capabilities";
 import ShareDocument from "./Share";
 import EditDocumentDialog from "./Edit";
-import RestoreDocument from "./Restore";
 import { useRouter } from "next/navigation";
 
 function DocumentActionMenu(
-  { userDocument, user }: { userDocument: UserDocument; user?: User },
+  { post, user }: { post: Post; user?: User },
 ) {
   const router = useRouter();
   const { anchorEl, menuOpen: open, openMenu, closeMenu } = useMenuState();
 
-  const localDocument = userDocument?.local;
-  const cloudDocument = userDocument?.cloud;
-  const document = localDocument || cloudDocument;
-  const isLocal = !!localDocument;
-  const isCloud = !!cloudDocument;
-  const isUploaded = isLocal && isCloud;
-  const isUpToDate = isUploaded && localDocument.head === cloudDocument.head;
-  const isAuthor = isCloud ? cloudDocument.author.id === user?.id : true;
-  const isCoauthor = isCloud
-    ? cloudDocument.coauthors.some((u) => u.id === user?.id)
-    : false;
-  const isCollab = isCloud ? cloudDocument.collab : false;
+  const can = capabilities(user);
+  // A post with no author is a guest draft, which is by definition the viewer's.
+  const isAuthor = post.author ? post.author.id === user?.id : true;
+  const isCoauthor = !!post.coauthors?.some((u) => u.id === user?.id);
+  const isCollab = !!post.collab;
   const canEditContent = isAuthor || isCollab;
-  const id = userDocument.id;
-  const handle = document?.handle || document?.id || id;
+  const id = post.id;
+  const handle = post.handle || post.id || id;
 
-  const options = ["share"];
-  if (isAuthor || isCoauthor || isLocal || isCollab) options.push("download");
-  if (isAuthor || isLocal) options.push("delete");
-  if (isAuthor) options.push("edit");
-  if (isAuthor && isLocal && !isUpToDate) options.push("upload");
-  if (isUploaded && !isUpToDate) options.push("restore");
+  const options: string[] = [];
+  if (can.share) options.push("share");
+  if (can.exportImport && (isAuthor || isCoauthor || isCollab)) {
+    options.push("download");
+  }
+  if (isAuthor) options.push("delete", "edit");
   if (canEditContent) options.push("editContent");
 
   return (
     <>
       {options.includes("edit") && (
-        <EditDocumentDialog userDocument={userDocument} />
+        <EditDocumentDialog post={post} />
       )}
       <IconButton
         id={`${id}-action-button`}
@@ -93,35 +85,21 @@ function DocumentActionMenu(
         )}
         {options.includes("share") && (
           <ShareDocument
-            userDocument={userDocument}
+            post={post}
             variant="menuitem"
             closeMenu={closeMenu}
           />
         )}
         {options.includes("download") && (
           <DownloadDocument
-            userDocument={userDocument}
-            variant="menuitem"
-            closeMenu={closeMenu}
-          />
-        )}
-        {options.includes("upload") && (
-          <UploadDocument
-            userDocument={userDocument}
-            variant="menuitem"
-            closeMenu={closeMenu}
-          />
-        )}
-        {options.includes("restore") && (
-          <RestoreDocument
-            userDocument={userDocument}
+            post={post}
             variant="menuitem"
             closeMenu={closeMenu}
           />
         )}
         {options.includes("delete") && (
-          <DeleteBothDocument
-            userDocument={userDocument}
+          <DeletePost
+            post={post}
             variant="menuitem"
             closeMenu={closeMenu}
           />

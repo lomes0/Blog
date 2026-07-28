@@ -19,7 +19,7 @@ import {
   type ExportManifest,
 } from "@/lib/export/manifest";
 import { collectAttachmentFilenames } from "@/lib/export/lexicalAssetRewriter";
-import type { EditorDocument, EditorDocumentRevision } from "@/types";
+import type { Post, Revision } from "@/types";
 
 export interface LocalBundleResult {
   blob: Blob;
@@ -36,8 +36,8 @@ export async function buildLocalBackupZip(): Promise<LocalBundleResult> {
 
   // ── Read all local documents and revisions ────────────────────────────────
   const [allDocuments, allRevisions, allCachedAttachments] = await Promise.all([
-    documentDB.getAll() as Promise<EditorDocument[]>,
-    revisionDB.getAll() as Promise<EditorDocumentRevision[]>,
+    documentDB.getAll() as Promise<Post[]>,
+    revisionDB.getAll() as Promise<Revision[]>,
     attachmentContentDB.getAll() as Promise<
       Array<{
         id: string;
@@ -51,7 +51,7 @@ export async function buildLocalBackupZip(): Promise<LocalBundleResult> {
   ]);
 
   // Build revision lookup by documentId
-  const revisionsByDoc = new Map<string, EditorDocumentRevision[]>();
+  const revisionsByDoc = new Map<string, Revision[]>();
   for (const rev of allRevisions) {
     const list = revisionsByDoc.get(rev.documentId) ?? [];
     list.push(rev);

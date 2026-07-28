@@ -1,6 +1,6 @@
 "use client";
 import { actions, useDispatch } from "@/store";
-import { BackupDocument, UserDocument } from "@/types";
+import { Post, Revision } from "@/types";
 import { Download } from "lucide-react";
 import {
   IconButton,
@@ -11,56 +11,35 @@ import {
 
 const DownloadDocument: React.FC<
   {
-    userDocument: UserDocument;
+    post: Post;
     variant?: "menuitem" | "iconbutton";
     closeMenu?: () => void;
   }
-> = ({ userDocument, variant = "iconbutton", closeMenu }) => {
+> = ({ post, variant = "iconbutton", closeMenu }) => {
   const dispatch = useDispatch();
-  const localDocument = userDocument?.local;
-  const isLocal = !!localDocument;
-  const id = userDocument.id;
+  const id = post.id;
 
-  const getEditorDocument = async () => {
-    try {
-      if (isLocal) {
-        return await dispatch(actions.getLocalDocument(id))
-          .unwrap() as ReturnType<
-            typeof actions.getLocalDocument.fulfilled
-          >["payload"];
-      } else {
-        const { cloudDocument: _cloud, ...editorDocument } = await dispatch(
-          actions.getCloudDocument(id),
-        ).unwrap() as ReturnType<
-          typeof actions.getCloudDocument.fulfilled
-        >["payload"];
-        return editorDocument;
-      }
-    } catch {
-      return undefined;
-    }
-  };
-
+  /**
+   * The post plus the full content of every revision, which is what a backup
+   * needs — `getPost` returns revision metadata only.
+   */
   const getBackupDocument = async () => {
-    const editorDocument = await getEditorDocument();
-    if (!editorDocument) return null;
-    const backupDocument: BackupDocument = {
-      ...editorDocument,
-      revisions: [],
-    };
+    let full: Post;
     try {
-      const revisions = await dispatch(
-        actions.getLocalDocumentRevisions(id),
-      ).unwrap() as ReturnType<
-        typeof actions.getLocalDocumentRevisions.fulfilled
-      >["payload"];
-      backupDocument.revisions = revisions.filter((revision) =>
-        revision.id !== editorDocument.head
-      );
+      full = await dispatch(actions.getPost(id)).unwrap();
     } catch {
-      // no revisions available
+      return null;
     }
-    return backupDocument;
+    const revisions: Revision[] = [];
+    for (const meta of full.revisions ?? []) {
+      if (meta.id === full.head) continue; // already carried as `data`
+      try {
+        revisions.push(await dispatch(actions.getRevision(meta.id)).unwrap());
+      } catch {
+        // a missing revision shouldn't sink the whole backup
+      }
+    }
+    return { ...full, revisions };
   };
 
   const handleSave = async () => {

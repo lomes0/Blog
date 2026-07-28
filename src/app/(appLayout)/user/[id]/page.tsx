@@ -66,10 +66,7 @@ const UserDocumentsWrapper = async (
   const user = await getCachedUser(id);
   if (!user) notFound();
   const postsResponse = await getCachedUserDocuments(user.id);
-  const documents = postsResponse.map((post) => ({
-    id: post.id,
-    cloud: post,
-  }));
+  const documents = postsResponse;
   const pageSize = 12;
   const pages = Math.ceil(documents.length / pageSize);
   const sortedDocuments = sortDocuments(documents, sortKey, sortDirection);
@@ -79,7 +76,7 @@ const UserDocumentsWrapper = async (
     currentPage * pageSize,
   );
   const thumbnails = pageDocuments.reduce((acc, document) => {
-    acc[document.cloud!.head] = findRevisionThumbnail(document.cloud!.head);
+    acc[document.head] = findRevisionThumbnail(document.head);
     return acc;
   }, {} as Record<string, Promise<string | null>>);
 

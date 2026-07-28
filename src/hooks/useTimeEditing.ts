@@ -2,11 +2,11 @@
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PendingTimeChange } from "@/types/posts";
-import { Document } from "@/types";
+import { Post } from "@/types";
 import { useErrorAnnounce } from "@/hooks/useErrorAnnounce";
 import { apiClient } from "@/api";
 
-export function useTimeEditing(posts: Document[]) {
+export function useTimeEditing(posts: Post[]) {
   const router = useRouter();
   const errorAnnounce = useErrorAnnounce();
   const [isTimeEditMode, setIsTimeEditMode] = useState(false);

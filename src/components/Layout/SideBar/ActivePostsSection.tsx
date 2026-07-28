@@ -28,6 +28,8 @@ import { styles } from "../styles";
 import { useExpandedState } from "@/hooks/useExpandedState";
 import { ICON_SIZE } from "@/theme/icons";
 import { SB_FONT } from "./constants";
+import { useSelector } from "@/store";
+import { capabilities } from "@/lib/capabilities";
 
 interface ActivePostsSectionProps {
   rootItems: RootItem[];
@@ -46,6 +48,7 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
   seriesActions,
   projectActions,
 }) => {
+  const can = capabilities(useSelector((state) => state.user));
   const [activePostsSearch, setActivePostsSearch] = useState("");
   const {
     expandedSeries,
@@ -72,14 +75,14 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
           return group;
         }
         const filteredPosts = group.posts.filter((post) => {
-          const doc = post.cloud || post.local;
+          const doc = post;
           return doc?.name?.toLowerCase().includes(searchLower);
         });
         return filteredPosts.length > 0
           ? { ...group, posts: filteredPosts }
           : null;
       }
-      const doc = group.posts[0]?.cloud || group.posts[0]?.local;
+      const doc = group.posts[0];
       return doc?.name?.toLowerCase().includes(searchLower) ? group : null;
     };
     return rootItems
@@ -345,20 +348,23 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
           ))}
         </List>
 
-        {/* Projects — projects (each wrapping its series) and ungrouped series. */}
-        <Box sx={{ mt: 2 }}>
-          <SidebarSectionHeader
-            title="Projects"
-            actions={sidebarOpen
-              ? [{
-                key: "new-project",
-                label: "New project",
-                icon: <Plus size={SECTION_ACTION_ICON} strokeWidth={2} />,
-                onClick: () => projectActions.handleCreateProject(),
-              }]
-              : undefined}
-          />
-        </Box>
+        {/* Projects — projects (each wrapping its series) and ungrouped series.
+            Signed-in only: projects group series, which guests don't have. */}
+        {can.projects && (
+          <Box sx={{ mt: 2 }}>
+            <SidebarSectionHeader
+              title="Projects"
+              actions={sidebarOpen
+                ? [{
+                  key: "new-project",
+                  label: "New project",
+                  icon: <Plus size={SECTION_ACTION_ICON} strokeWidth={2} />,
+                  onClick: () => projectActions.handleCreateProject(),
+                }]
+                : undefined}
+            />
+          </Box>
+        )}
         <List dense disablePadding>
           {groupItems.map((item, index) => {
             if (item.type === "project") {

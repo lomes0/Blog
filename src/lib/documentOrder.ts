@@ -1,15 +1,14 @@
 import { byRank } from "@/lib/ordering";
-import type { UserDocument } from "@/types";
+import type { Post } from "@/types";
 
-export const rankOf = (doc: UserDocument): string | null =>
-  doc.cloud?.rank ?? doc.local?.rank ?? null;
+export const rankOf = (post: Post): string | null => post.rank ?? null;
 
 export type ReorderDirection = "up" | "down" | "top" | "bottom";
 
 /**
  * Given a rank-ordered list and the index of the item being moved, return the
  * ranks that should bracket its new slot for the requested direction — the
- * input to `moveDocument`/`moveSeries`'s `between`. Returns null when the move
+ * input to `movePost`/`moveSeries`'s `between`. Returns null when the move
  * is a no-op (already at the relevant edge).
  */
 export function ranksBracketing(
@@ -35,21 +34,18 @@ export function ranksBracketing(
   }
 }
 
-const createdAtOf = (doc: UserDocument): number =>
-  new Date(doc.cloud?.createdAt ?? doc.local?.createdAt ?? 0).getTime();
+const createdAtOf = (post: Post): number =>
+  new Date(post.createdAt ?? 0).getTime();
 
 /**
- * Order documents by their manual `rank` (ascending). Unranked documents — e.g.
- * local drafts created before they were assigned a rank — sort after ranked
- * ones, by creation time then id, so the result is always total and stable.
+ * Order posts by their manual `rank` (ascending). Unranked posts — e.g. drafts
+ * created before they were assigned a rank — sort after ranked ones, by creation
+ * time then id, so the result is always total and stable.
  *
  * This is the default ordering for the content surfaces (posts list, series
  * parts, sidebar tabs). Date/name sorting remains available as explicit views.
  */
-export function compareDocumentsByRank(
-  a: UserDocument,
-  b: UserDocument,
-): number {
+export function comparePostsByRank(a: Post, b: Post): number {
   const ar = rankOf(a);
   const br = rankOf(b);
   if (ar != null && br != null) {

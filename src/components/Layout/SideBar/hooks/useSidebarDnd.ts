@@ -76,7 +76,7 @@ export interface SidebarDndResult {
 
 /**
  * Native HTML5 drag-and-drop for the sidebar tree, dispatching the same
- * `moveDocument` / `moveSeries` / `moveProject` thunks the posts page uses. A
+ * `movePost` / `moveSeries` / `moveProject` thunks the posts page uses. A
  * single pair of row handlers covers every case; the meaning of a drop is
  * resolved from the *target* row and the grabbed row's *kind*:
  *
@@ -327,7 +327,7 @@ export function useSidebarDnd(
         for (const id of dragged.ids) {
           if (targetInfo.get(id)?.kind !== "post") continue;
           dispatch(
-            actions.moveDocument({
+            actions.movePost({
               id,
               destination: { seriesId: c.seriesId },
             }),
@@ -386,7 +386,7 @@ export function useSidebarDnd(
           // Only posts can live in a series; skip any dragged series/project.
           if (kind !== "post") continue;
           dispatch(
-            actions.moveDocument({
+            actions.movePost({
               id,
               destination: { seriesId: c.container.seriesId },
               between,
@@ -411,7 +411,7 @@ export function useSidebarDnd(
           dispatch(actions.moveProject({ id, between }));
         } else {
           dispatch(
-            actions.moveDocument({ id, destination: {}, between }),
+            actions.movePost({ id, destination: {}, between }),
           );
         }
         // Chain: the next item slots just after the one just placed.

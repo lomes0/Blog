@@ -22,8 +22,8 @@ import {
 } from "@/lib/export/manifest";
 import {
   DocumentStatus,
-  type EditorDocument,
-  type EditorDocumentRevision,
+  type Post,
+  type Revision,
 } from "@/types";
 import { filenameToAttachmentUrl } from "@/lib/export/lexicalAssetRewriter";
 
@@ -83,7 +83,7 @@ export async function importLocalBackupZip(
     try {
       // Skip if document ID already exists in IDB
       const existing = await documentDB.getByID(docExport.id) as
-        | EditorDocument
+        | Post
         | undefined;
       if (existing) {
         summary.skipped.documents.push(docExport.id);
@@ -92,7 +92,7 @@ export async function importLocalBackupZip(
 
       // Save revisions first
       for (const rev of docExport.revisions) {
-        const revRecord: EditorDocumentRevision = {
+        const revRecord: Revision = {
           id: rev.id,
           documentId: rev.documentId,
           data: rev.data,
@@ -102,14 +102,14 @@ export async function importLocalBackupZip(
         await revisionDB.update(revRecord);
       }
 
-      // Build the EditorDocument record — use head revision's data for the
+      // Build the Post record — use head revision's data for the
       // .data field (the most up-to-date state)
       const headRev = docExport.revisions.find((r) =>
         r.id === docExport.head
       ) ??
         docExport.revisions[docExport.revisions.length - 1];
 
-      const docRecord: EditorDocument = {
+      const docRecord: Post = {
         id: docExport.id,
         name: docExport.name,
         description: docExport.description,

@@ -43,7 +43,7 @@ export function useInlineRename(): UseInlineRenameReturn {
     });
     if (!newName || newName === originalName) return;
     await dispatch(
-      actions.updateCloudDocument({
+      actions.updatePost({
         id: documentId,
         partial: { name: newName },
       }),

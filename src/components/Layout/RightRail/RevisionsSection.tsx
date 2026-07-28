@@ -3,10 +3,10 @@ import { useMemo, useState } from "react";
 import { Avatar, Box, Chip, Link, Typography } from "@mui/material";
 import { Cloud, History, Smartphone } from "lucide-react";
 import { createSelector } from "@reduxjs/toolkit";
-import { documentsSelectors, useSelector } from "@/store";
+import { postsSelectors, useSelector } from "@/store";
 import type { RootState } from "@/store";
 import { DateDisplay } from "@/components/shared/DateDisplay";
-import type { DocumentRevision, EditorDocumentRevision } from "@/types";
+import type { RevisionMeta, Revision } from "@/types";
 import RailSection from "./RailSection";
 import { ICON_SIZE } from "@/theme/icons";
 
@@ -32,14 +32,14 @@ export default function RevisionsSection({
     () =>
       createSelector(
         (state: RootState) => isEditMode ? state.ui.tabs.tabIds : rootIdArray,
-        (state: RootState) => state.documents.entities,
+        (state: RootState) => state.posts.entities,
         (state: RootState) =>
           activeDocId
-            ? documentsSelectors.selectById(state, activeDocId)
+            ? postsSelectors.selectById(state, activeDocId)
             : undefined,
         (tabIds, entities, activeDoc) => {
           const sort = (
-            list: (DocumentRevision | EditorDocumentRevision)[],
+            list: (RevisionMeta | Revision)[],
           ) =>
             [...list].sort(
               (a, b) =>
@@ -47,25 +47,15 @@ export default function RevisionsSection({
                 new Date(a.createdAt).getTime(),
             );
 
-          const all: (DocumentRevision | EditorDocumentRevision)[] = [];
+          const all: (RevisionMeta | Revision)[] = [];
           for (const id of tabIds) {
             const doc = entities[id];
-            if (!doc) continue;
-            const cloud = doc.cloud?.revisions ?? [];
-            const local = (doc.local?.revisions ?? []).filter(
-              (lr) => !cloud.some((cr) => cr.id === lr.id),
-            );
-            all.push(...cloud, ...local);
+            if (doc?.revisions) all.push(...doc.revisions);
           }
 
-          const thisTab: (DocumentRevision | EditorDocumentRevision)[] = [];
-          if (activeDoc) {
-            const cloud = activeDoc.cloud?.revisions ?? [];
-            const local = (activeDoc.local?.revisions ?? []).filter(
-              (lr) => !cloud.some((cr) => cr.id === lr.id),
-            );
-            thisTab.push(...cloud, ...local);
-          }
+          const thisTab: (RevisionMeta | Revision)[] = [
+            ...(activeDoc?.revisions ?? []),
+          ];
 
           return {
             tabRevisions: sort(thisTab),

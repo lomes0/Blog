@@ -4,12 +4,12 @@ import { useRouter } from "next/navigation";
 import { v4 as uuid } from "uuid";
 import {
   actions,
-  documentsSelectors,
+  postsSelectors,
   type RootState,
   useDispatch,
   useSelector,
 } from "@/store";
-import type { Series, UserDocument } from "@/types";
+import type { Series, Post } from "@/types";
 
 export interface BulkMenuState {
   mouseX: number;
@@ -48,7 +48,7 @@ export function useSidebarBulkActions(
   const dispatch = useDispatch();
   const router = useRouter();
   const documents = useSelector((state: RootState) =>
-    documentsSelectors.selectAll(state)
+    postsSelectors.selectAll(state)
   );
   const series = useSelector((state: RootState) => state.series);
 
@@ -65,7 +65,7 @@ export function useSidebarBulkActions(
     [series],
   );
   const docsById = useMemo(() => {
-    const map = new Map<string, UserDocument>();
+    const map = new Map<string, Post>();
     for (const d of documents) map.set(d.id, d);
     return map;
   }, [documents]);
@@ -76,14 +76,13 @@ export function useSidebarBulkActions(
       orderedIds
         .filter((id) => selectedIds.has(id) && !seriesIdSet.has(id))
         .map((id) => docsById.get(id))
-        .filter((d): d is UserDocument => Boolean(d)),
+        .filter((d): d is Post => Boolean(d)),
     [orderedIds, selectedIds, seriesIdSet, docsById],
   );
 
-  // Merge is cloud-only, needs ≥2 posts, and no series in the selection.
+  // Merging needs ≥2 posts and no series in the selection.
   const canMerge = selectedPosts.length >= 2 &&
-    selectedPosts.length === selectedIds.size &&
-    selectedPosts.every((p) => Boolean(p.cloud));
+    selectedPosts.length === selectedIds.size;
 
   const handleBulkDelete = useCallback(async () => {
     closeMenu();
@@ -110,10 +109,7 @@ export function useSidebarBulkActions(
       } else {
         const doc = docsById.get(id);
         if (!doc) continue;
-        if (doc.cloud) await dispatch(actions.deleteCloudDocument(id));
-        // Always remove the local (IndexedDB) copy so the post is deleted
-        // completely; the delete is idempotent when there is nothing to remove.
-        await dispatch(actions.deleteLocalDocument(id));
+        await dispatch(actions.deletePost(id));
       }
     }
     clearSelection();
@@ -131,11 +127,10 @@ export function useSidebarBulkActions(
   const handleBulkMove = useCallback(
     async (seriesId: string | null) => {
       closeMenu();
-      const movable = selectedPosts.filter((p) => Boolean(p.cloud));
-      if (movable.length === 0) return;
-      for (const post of movable) {
+      if (selectedPosts.length === 0) return;
+      for (const post of selectedPosts) {
         await dispatch(
-          actions.moveDocument({
+          actions.movePost({
             id: post.id,
             destination: seriesId ? { seriesId } : {},
           }),
@@ -151,7 +146,7 @@ export function useSidebarBulkActions(
     closeMenu();
     if (!canMerge) return;
     const [target, ...sources] = selectedPosts;
-    const targetName = target.cloud?.name || target.local?.name || "this post";
+    const targetName = target.name || "this post";
     const cancelId = uuid();
     const confirmId = uuid();
     const response = await dispatch(
@@ -170,7 +165,7 @@ export function useSidebarBulkActions(
     );
     if (response.payload !== confirmId) return;
     await dispatch(
-      actions.mergeCloudDocumentsIntoTabs({
+      actions.mergePostsIntoTabs({
         targetId: target.id,
         sourceIds: sources.map((p) => p.id),
       }),

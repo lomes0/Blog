@@ -14,15 +14,14 @@
  * demand when no live editor or local body is available.
  */
 import type { SerializedEditorState } from "lexical";
-import type { UserDocument } from "@/types";
+import type { Post } from "@/types";
 import { serializedStateToMarkdown } from "./markdownBridge";
 
 export interface RepoFileMeta {
   path: string;
   title: string;
   seriesId: string | null;
-  source: "local" | "cloud" | "both";
-  /** Whether the body is available client-side (i.e. has local `data`). */
+  /** Whether the body has been loaded client-side (i.e. the post has `data`). */
   hasContent: boolean;
 }
 
@@ -40,38 +39,35 @@ export interface RepoSearchHit {
   text: string;
 }
 
-const pathOf = (doc: UserDocument): string => `${doc.id}.md`;
-const titleOf = (doc: UserDocument): string =>
-  doc.local?.name ?? doc.cloud?.name ?? "Untitled";
-const seriesOf = (doc: UserDocument): string | null =>
-  doc.local?.seriesId ?? doc.cloud?.seriesId ?? null;
-const sourceOf = (doc: UserDocument): RepoFileMeta["source"] =>
-  doc.local && doc.cloud ? "both" : doc.local ? "local" : "cloud";
-const dataOf = (doc: UserDocument): SerializedEditorState | undefined =>
-  doc.local?.data;
+const pathOf = (doc: Post): string => `${doc.id}.md`;
+const titleOf = (doc: Post): string =>
+  doc.name ?? "Untitled";
+const seriesOf = (doc: Post): string | null =>
+  doc.seriesId ?? null;
+const dataOf = (doc: Post): SerializedEditorState | undefined =>
+  doc.data;
 
 const findByPath = (
-  docs: UserDocument[],
+  docs: Post[],
   path: string,
-): UserDocument | undefined => {
+): Post | undefined => {
   const id = path.replace(/\.md$/, "");
   return docs.find((d) => d.id === id);
 };
 
 /** List every document as a repo file (metadata only — cheap). */
-export function listDocuments(docs: UserDocument[]): RepoFileMeta[] {
+export function listDocuments(docs: Post[]): RepoFileMeta[] {
   return docs.map((doc) => ({
     path: pathOf(doc),
     title: titleOf(doc),
     seriesId: seriesOf(doc),
-    source: sourceOf(doc),
     hasContent: Boolean(dataOf(doc)),
   }));
 }
 
 /** Read one document's body as Markdown (rich nodes as opaque tokens). */
 export function readDocument(
-  docs: UserDocument[],
+  docs: Post[],
   path: string,
 ): RepoReadResult {
   const doc = findByPath(docs, path);
@@ -93,7 +89,7 @@ export function readDocument(
  * query can't flood the context window.
  */
 export function searchDocuments(
-  docs: UserDocument[],
+  docs: Post[],
   query: string,
   maxHits = 60,
 ): RepoSearchHit[] {
@@ -127,7 +123,7 @@ export function searchDocuments(
 
 /** Resolve a repo path back to the underlying document id (or null). */
 export function resolveDocId(
-  docs: UserDocument[],
+  docs: Post[],
   path: string,
 ): string | null {
   return findByPath(docs, path)?.id ?? null;

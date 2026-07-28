@@ -1,5 +1,4 @@
 import {
-  createAction,
   createAsyncThunk,
   createEntityAdapter,
   createSlice,
@@ -9,42 +8,29 @@ import {
 import {
   Announcement,
   AppState,
-  CloudDocumentRevision,
-  Document,
-  EditorDocumentRevision,
-  EMPTY_EDITOR_STATE,
+  Post,
+  SaveStatus,
   Series,
   SidebarView,
-  UserDocument,
 } from "../types";
-
-import { duplicateDocument } from "./app/duplicateDocument";
 
 // ── Domain thunks (split into separate files for maintainability) ────────────
 import { loadSession } from "./thunks/sessionThunks";
 import {
-  applyDocumentRank,
-  createCloudDocument,
-  createLocalDocument,
-  deleteCloudDocument,
-  deleteLocalDocument,
-  forkCloudDocument,
-  getCloudDocument,
-  getLocalDocument,
-  loadCloudDocuments,
-  loadLocalDocuments,
-  moveCloudDocument,
-  moveLocalDocument,
-  updateCloudDocument,
-  updateLocalDocument,
-} from "./thunks/documentThunks";
+  applyPostRank,
+  createPost,
+  deletePost,
+  duplicatePost,
+  forkPost,
+  getPost,
+  loadPosts,
+  movePost,
+  updatePost,
+} from "./thunks/postThunks";
 import {
-  createCloudRevision,
-  createLocalRevision,
-  deleteCloudRevision,
-  deleteLocalRevision,
-  getCloudRevision,
-  updateLocalRevision,
+  createRevision,
+  deleteRevision,
+  getRevision,
 } from "./thunks/revisionThunks";
 import {
   applySeriesRank,
@@ -63,66 +49,86 @@ import {
   updateProject,
 } from "./thunks/projectThunks";
 import { alert, updateUser } from "./thunks/userThunks";
+import { importGuestDrafts } from "./thunks/importGuestDrafts";
 
-export const documentsAdapter = createEntityAdapter<UserDocument>();
+export const postsAdapter = createEntityAdapter<Post>();
 
-/** Insert a new entity at the front of ids[] so it appears first in the list. */
-function prependOneDoc(
-  adapterState: EntityState<UserDocument, string>,
-  entity: UserDocument,
-) {
-  documentsAdapter.addOne(adapterState, entity);
-  const idx = adapterState.ids.indexOf(entity.id);
+type Failure = { title: string; subtitle: string };
+
+/** Insert a new post at the front of ids[] so it appears first in the list. */
+function prependPost(state: EntityState<Post, string>, post: Post) {
+  postsAdapter.addOne(state, post);
+  const idx = state.ids.indexOf(post.id);
   if (idx > 0) {
-    adapterState.ids.splice(idx, 1);
-    adapterState.ids.unshift(entity.id);
+    state.ids.splice(idx, 1);
+    state.ids.unshift(post.id);
   }
 }
 
 /**
- * Apply an authoritative cloud Document to the store: upsert its entity and keep
- * `series.posts` in sync with any series-membership change. Shared by the
- * update and move thunks.
+ * Apply an authoritative post to the store: upsert it and keep `series.posts` in
+ * sync with any membership change. Shared by create, update and move.
+ *
+ * A list-view post carries no `data`; merging rather than replacing keeps content
+ * already loaded for the editor from being dropped by a background refresh.
  */
-function applyCloudDocument(
-  documents: EntityState<UserDocument, string>,
+function applyPost(
+  posts: EntityState<Post, string>,
   series: Series[],
-  document: Document,
+  post: Post,
 ) {
-  const existing = documents.entities[document.id];
-  const previousSeriesId = existing?.cloud?.seriesId;
+  const existing = posts.entities[post.id];
+  const previousSeriesId = existing?.seriesId;
   if (!existing) {
-    prependOneDoc(documents, { id: document.id, cloud: document });
+    prependPost(posts, post);
   } else {
-    existing.cloud = document;
+    Object.assign(existing, post, {
+      data: post.data ?? existing.data,
+      revisions: post.revisions ?? existing.revisions,
+    });
   }
-  // Remove from its previous series when membership changed.
-  if (previousSeriesId && previousSeriesId !== document.seriesId) {
+
+  if (previousSeriesId && previousSeriesId !== post.seriesId) {
     const oldSeries = series.find((s) => s.id === previousSeriesId);
     if (oldSeries) {
-      oldSeries.posts = oldSeries.posts.filter((p) => p.id !== document.id);
+      oldSeries.posts = oldSeries.posts.filter((p) => p.id !== post.id);
     }
   }
-  // Add/refresh it in its current series.
-  if (document.seriesId) {
-    const target = series.find((s) => s.id === document.seriesId);
+  if (post.seriesId) {
+    const target = series.find((s) => s.id === post.seriesId);
     if (target) {
-      const idx = target.posts.findIndex((p) => p.id === document.id);
-      if (idx === -1) target.posts.push(document);
-      else target.posts[idx] = document;
+      const idx = target.posts.findIndex((p) => p.id === post.id);
+      if (idx === -1) target.posts.push(post);
+      else target.posts[idx] = post;
     }
   }
 }
 
+/** Drop a post from the store and from any series that lists it. */
+function removePost(state: AppState, id: string) {
+  postsAdapter.removeOne(state.posts, id);
+  for (const series of state.series) {
+    if (series.posts?.length) {
+      series.posts = series.posts.filter((post) => post.id !== id);
+    }
+  }
+}
+
+/** Push a thunk's `rejectWithValue` payload onto the announcement queue. */
+const announceFailure = (state: AppState, payload: unknown) => {
+  state.ui.announcements.push({ message: payload as Failure });
+};
+
 const initialState: AppState = {
-  documents: documentsAdapter.getInitialState(),
+  posts: postsAdapter.getInitialState(),
   series: [],
   projects: [],
   ui: {
     announcements: [],
     alerts: [],
     initialized: false,
-    documentsLoading: false,
+    postsLoading: false,
+    saveStatus: {},
     drawer: false,
     page: 1,
     diff: {
@@ -143,22 +149,26 @@ const initialState: AppState = {
   },
 };
 
-export const triggerAutosaveBeforeNavigation = createAction<
-  { targetUrl: string }
->("app/triggerAutosaveBeforeNavigation");
-
+/**
+ * Bring the store up on first render.
+ *
+ * The session decides everything downstream — which backend `loadPosts` reads
+ * from, and whether series/projects exist at all — so it is awaited first. Guest
+ * drafts left over from before sign-in are imported before the load so they show
+ * up in the same pass.
+ */
 export const load = createAsyncThunk("app/load", async (_, thunkAPI) => {
-  await Promise.allSettled([
-    thunkAPI.dispatch(loadSession()),
-    thunkAPI.dispatch(loadLocalDocuments()),
-  ]);
+  await thunkAPI.dispatch(loadSession());
+  await thunkAPI.dispatch(importGuestDrafts());
+  await thunkAPI.dispatch(loadPosts());
 
-  // Load cloud documents, then series to ensure series.posts is authoritative
-  await thunkAPI.dispatch(loadCloudDocuments());
-  await thunkAPI.dispatch(loadSeries());
-  // Projects group series; load them alongside so the sidebar can nest series
-  // under their project. Independent of series.posts, so it need not block.
-  thunkAPI.dispatch(loadProjects());
+  // Series must settle after posts so `series.posts` wins for shared entries.
+  // Projects only group series, so they need not block.
+  const { user } = thunkAPI.getState() as AppState;
+  if (user) {
+    await thunkAPI.dispatch(loadSeries());
+    thunkAPI.dispatch(loadProjects());
+  }
 });
 
 // ── Slice ────────────────────────────────────────────────────────────────────
@@ -177,6 +187,14 @@ export const appSlice = createSlice({
     },
     clearAlert: (state) => {
       state.ui.alerts.shift();
+    },
+    setSaveStatus: (
+      state,
+      action: PayloadAction<{ id: string; status: SaveStatus }>,
+    ) => {
+      const { id, status } = action.payload;
+      if (status === "idle") delete state.ui.saveStatus[id];
+      else state.ui.saveStatus[id] = status;
     },
     toggleDrawer: (state, action: PayloadAction<boolean | undefined>) => {
       if (action.payload !== undefined) state.ui.drawer = action.payload;
@@ -287,373 +305,145 @@ export const appSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(load.fulfilled, (state, _action) => {
-        const sorted =
-          (Object.values(state.documents.entities) as UserDocument[])
-            .sort((a, b) => {
-              const first = a.local?.updatedAt || a.cloud?.updatedAt;
-              const second = b.local?.updatedAt || b.cloud?.updatedAt;
-              if (!first && !second) return 0;
-              if (!first) return 1;
-              if (!second) return -1;
-              return new Date(second).getTime() - new Date(first).getTime();
-            });
-        documentsAdapter.setAll(state.documents, sorted);
-        state.ui.initialized = true;
-      })
+      // ── Session ──
       .addCase(loadSession.fulfilled, (state, action) => {
         state.user = action.payload;
       })
-      .addCase(loadLocalDocuments.fulfilled, (state, action) => {
-        const documents = action.payload;
-        documents.forEach((document) => {
-          const existing = state.documents.entities[document.id];
-          if (!existing) {
-            documentsAdapter.addOne(state.documents, {
-              id: document.id,
-              local: document,
-            });
-          } else {
-            existing.local = document;
-          }
-        });
+      .addCase(load.fulfilled, (state) => {
+        state.ui.initialized = true;
       })
-      .addCase(loadCloudDocuments.pending, (state) => {
-        state.ui.documentsLoading = true;
+
+      // ── Posts ──
+      .addCase(loadPosts.pending, (state) => {
+        state.ui.postsLoading = true;
       })
-      .addCase(loadCloudDocuments.fulfilled, (state, action) => {
-        state.ui.documentsLoading = false;
-        const documents = action.payload;
-        documents.forEach((document) => {
-          const existing = state.documents.entities[document.id];
-          if (!existing) {
-            documentsAdapter.addOne(state.documents, {
-              id: document.id,
-              cloud: document,
-            });
-          } else {
-            existing.cloud = document;
-          }
-        });
-      })
-      .addCase(loadCloudDocuments.rejected, (state) => {
-        state.ui.documentsLoading = false;
-      })
-      .addCase(getLocalDocument.fulfilled, (state, action) => {
-        const document = action.payload;
-        const existing = state.documents.entities[document.id];
-        if (!existing) {
-          prependOneDoc(state.documents, { id: document.id, local: document });
-        } else {
-          existing.local = document;
-        }
-      })
-      .addCase(getCloudDocument.fulfilled, (state, action) => {
-        const { cloudDocument } = action.payload;
-        const existing = state.documents.entities[cloudDocument.id];
-        if (!existing) {
-          prependOneDoc(state.documents, {
-            id: cloudDocument.id,
-            cloud: cloudDocument,
-          });
-        } else {
-          existing.cloud = cloudDocument;
-        }
-      })
-      .addCase(getCloudRevision.rejected, (state, action) => {
-        const message = action.payload as {
-          title: string;
-          subtitle: string;
-        };
-        state.ui.announcements.push({ message });
-      })
-      .addCase(forkCloudDocument.rejected, (state, action) => {
-        const message = action.payload as {
-          title: string;
-          subtitle: string;
-        };
-        state.ui.announcements.push({ message });
-      })
-      .addCase(createLocalDocument.fulfilled, (state, action) => {
-        const document = action.payload;
-        const existing = state.documents.entities[document.id];
-        if (!existing) {
-          prependOneDoc(state.documents, {
-            id: document.id,
-            local: document,
-          });
-        } else {
-          existing.local = document;
-        }
-      })
-      .addCase(createLocalRevision.fulfilled, (state, action) => {
-        const revision = action.payload;
-        const userDocument = state.documents.entities[revision.documentId];
-        if (!userDocument) return;
-        const localDocument = userDocument.local;
-        if (!localDocument) return;
-        if (!localDocument.revisions) localDocument.revisions = [];
-        localDocument.revisions?.unshift({
-          ...revision,
-          data: EMPTY_EDITOR_STATE,
-        });
-      })
-      .addCase(updateLocalRevision.fulfilled, (state, action) => {
-        const revision = action.payload;
-        const userDocument = state.documents.entities[revision.documentId];
-        if (!userDocument) return;
-        const localDocument = userDocument.local;
-        if (!localDocument) return;
-        const existing = localDocument.revisions?.find(
-          (r) => r.id === revision.id,
+      .addCase(loadPosts.fulfilled, (state, action) => {
+        state.ui.postsLoading = false;
+        const sorted = [...action.payload].sort((a, b) =>
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
         );
-        if (existing) {
-          existing.createdAt = revision.createdAt;
-        }
+        postsAdapter.setAll(state.posts, sorted);
       })
-      .addCase(createCloudDocument.fulfilled, (state, action) => {
-        const document = action.payload;
-        const existing = state.documents.entities[document.id];
-        if (!existing) {
-          prependOneDoc(state.documents, {
-            id: document.id,
-            cloud: document,
-          });
-        } else {
-          existing.cloud = document;
-        }
-        // Keep series.posts in sync so the sidebar groups the post immediately
-        if (document.seriesId) {
-          const series = state.series.find((s) => s.id === document.seriesId);
-          if (series) {
-            const alreadyInSeries = series.posts.some((p) =>
-              p.id === document.id
-            );
-            if (!alreadyInSeries) {
-              series.posts.push(document);
-            }
-          }
-        }
+      .addCase(loadPosts.rejected, (state, action) => {
+        state.ui.postsLoading = false;
+        announceFailure(state, action.payload);
       })
-      .addCase(createCloudDocument.rejected, (state, action) => {
-        const message = action.payload as {
-          title: string;
-          subtitle: string;
-        };
-        state.ui.announcements.push({ message });
+      .addCase(getPost.fulfilled, (state, action) => {
+        applyPost(state.posts, state.series, action.payload);
       })
-      .addCase(createCloudRevision.fulfilled, (state, action) => {
-        const revision = action.payload;
-        const document = state.documents.entities[revision.documentId];
-        if (!document?.cloud) return;
-        document.cloud.revisions.unshift(revision);
+      .addCase(createPost.fulfilled, (state, action) => {
+        applyPost(state.posts, state.series, action.payload);
       })
-      .addCase(createCloudRevision.rejected, (state, action) => {
-        const message = action.payload as {
-          title: string;
-          subtitle: string;
-        };
-        state.ui.announcements.push({ message });
+      .addCase(createPost.rejected, (state, action) => {
+        announceFailure(state, action.payload);
       })
-      .addCase(updateLocalDocument.fulfilled, (state, action) => {
-        const { id, partial } = action.payload;
-        const userDocument = state.documents.entities[id];
-        if (!userDocument) return;
-        const localDocument = userDocument.local;
-        if (!localDocument) return;
-        Object.assign(localDocument, partial);
+      .addCase(updatePost.fulfilled, (state, action) => {
+        applyPost(state.posts, state.series, action.payload);
       })
-      .addCase(updateCloudDocument.fulfilled, (state, action) => {
-        applyCloudDocument(state.documents, state.series, action.payload);
+      .addCase(updatePost.rejected, (state, action) => {
+        announceFailure(state, action.payload);
       })
-      .addCase(updateCloudDocument.rejected, (state, action) => {
-        const message = action.payload as {
-          title: string;
-          subtitle: string;
-        };
-        state.ui.announcements.push({ message });
+      .addCase(duplicatePost.fulfilled, (state, action) => {
+        applyPost(state.posts, state.series, action.payload);
       })
-      .addCase(applyDocumentRank, (state, action) => {
+      .addCase(duplicatePost.rejected, (state, action) => {
+        announceFailure(state, action.payload);
+      })
+      .addCase(forkPost.rejected, (state, action) => {
+        announceFailure(state, action.payload);
+      })
+      .addCase(deletePost.fulfilled, (state, action) => {
+        removePost(state, action.payload);
+        delete state.ui.saveStatus[action.payload];
+      })
+      .addCase(deletePost.rejected, (state, action) => {
+        announceFailure(state, action.payload);
+      })
+      .addCase(applyPostRank, (state, action) => {
         const { id, rank } = action.payload;
-        const entity = state.documents.entities[id];
-        if (entity?.cloud) entity.cloud.rank = rank;
-        if (entity?.local) entity.local.rank = rank;
-        // Reflect on the post inside its series (for series-internal reorder).
+        const post = state.posts.entities[id];
+        if (post) post.rank = rank;
+        // Reflect on the copy inside its series (for series-internal reorder).
         for (const s of state.series) {
           const p = s.posts.find((post) => post.id === id);
           if (p) p.rank = rank;
         }
       })
-      .addCase(moveCloudDocument.fulfilled, (state, action) => {
-        applyCloudDocument(state.documents, state.series, action.payload);
+      .addCase(movePost.fulfilled, (state, action) => {
+        applyPost(state.posts, state.series, action.payload);
       })
-      .addCase(moveCloudDocument.rejected, (state, action) => {
-        const message = action.payload as { title: string; subtitle: string };
-        state.ui.announcements.push({ message });
+      .addCase(movePost.rejected, (state, action) => {
+        announceFailure(state, action.payload);
       })
-      .addCase(moveLocalDocument.fulfilled, (state, action) => {
-        const { id, partial } = action.payload;
-        const local = state.documents.entities[id]?.local;
-        if (local) Object.assign(local, partial);
+      .addCase(importGuestDrafts.rejected, (state, action) => {
+        announceFailure(state, action.payload);
       })
-      .addCase(deleteLocalDocument.fulfilled, (state, action) => {
-        const id = action.payload;
-        const userDocument = state.documents.entities[id];
-        if (!userDocument) return;
-        if (!userDocument.cloud) {
-          documentsAdapter.removeOne(state.documents, id);
-        } else {
-          delete userDocument.local;
-        }
 
-        // Also remove the post from any series that contains it
-        if (state.series && state.series.length > 0) {
-          state.series.forEach((series) => {
-            if (series.posts && series.posts.length > 0) {
-              series.posts = series.posts.filter((post) => post.id !== id);
-            }
-          });
+      // ── Revisions ──
+      .addCase(createRevision.fulfilled, (state, action) => {
+        const revision = action.payload;
+        const post = state.posts.entities[revision.documentId];
+        if (!post) return;
+        if (!post.revisions) post.revisions = [];
+        if (!post.revisions.some((r) => r.id === revision.id)) {
+          post.revisions.unshift(revision);
         }
       })
-      .addCase(deleteLocalRevision.fulfilled, (state, action) => {
+      .addCase(createRevision.rejected, (state, action) => {
+        announceFailure(state, action.payload);
+      })
+      .addCase(getRevision.rejected, (state, action) => {
+        announceFailure(state, action.payload);
+      })
+      .addCase(deleteRevision.fulfilled, (state, action) => {
         const { id, documentId } = action.payload;
-        const userDocument = state.documents.entities[documentId];
-        if (!userDocument) return;
-        const localDocument = userDocument.local;
-        if (!localDocument) return;
-        if (!localDocument.revisions) return;
-        const revision = localDocument.revisions.find(
-          (revision: EditorDocumentRevision) => revision.id === id,
-        );
-        if (!revision) return;
-        localDocument.revisions = localDocument.revisions.filter(
-          (revision: EditorDocumentRevision) => revision.id !== id,
-        );
+        const post = state.posts.entities[documentId];
+        if (!post?.revisions) return;
+        post.revisions = post.revisions.filter((r) => r.id !== id);
       })
-      .addCase(deleteCloudDocument.fulfilled, (state, action) => {
-        const id = action.payload;
-        const userDocument = state.documents.entities[id];
-        if (!userDocument) return;
-        if (!userDocument.local) {
-          documentsAdapter.removeOne(state.documents, id);
-        } else {
-          delete userDocument.cloud;
-        }
+      .addCase(deleteRevision.rejected, (state, action) => {
+        announceFailure(state, action.payload);
+      })
 
-        // Also remove the post from any series that contains it
-        if (state.series && state.series.length > 0) {
-          state.series.forEach((series) => {
-            if (series.posts && series.posts.length > 0) {
-              series.posts = series.posts.filter((post) => post.id !== id);
-            }
-          });
-        }
-      })
-      .addCase(deleteCloudDocument.rejected, (state, action) => {
-        const message = action.payload as {
-          title: string;
-          subtitle: string;
-        };
-        state.ui.announcements.push({ message });
-      })
-      .addCase(deleteCloudRevision.fulfilled, (state, action) => {
-        const { id, documentId } = action.payload as CloudDocumentRevision;
-        const userDocument = state.documents.entities[documentId];
-        if (!userDocument) return;
-        const cloudDocument = userDocument.cloud;
-        if (!cloudDocument) return;
-        cloudDocument.revisions = cloudDocument.revisions.filter(
-          (revision) => revision.id !== id,
-        );
-      })
-      .addCase(deleteCloudRevision.rejected, (state, action) => {
-        const message = action.payload as {
-          title: string;
-          subtitle: string;
-        };
-        state.ui.announcements.push({ message });
-      })
+      // ── User ──
       .addCase(updateUser.fulfilled, (state, action) => {
         state.user = action.payload;
       })
       .addCase(updateUser.rejected, (state, action) => {
-        const message = action.payload as {
-          title: string;
-          subtitle: string;
-        };
-        state.ui.announcements.push({ message });
-      })
-      .addCase(duplicateDocument.fulfilled, (state, action) => {
-        const duplicatedDoc = action.payload;
-        const newUserDocument: UserDocument = {
-          id: duplicatedDoc.id,
-          local: duplicatedDoc,
-        };
-        documentsAdapter.addOne(state.documents, newUserDocument);
-      })
-      .addCase(duplicateDocument.rejected, (state, action) => {
-        const message = action.payload as {
-          title: string;
-          subtitle: string;
-        };
-        state.ui.announcements.push({ message });
+        announceFailure(state, action.payload);
       })
       .addCase(alert.pending, (state, action) => {
-        const alertPayload = action.meta.arg;
-        state.ui.alerts.push(alertPayload);
+        state.ui.alerts.push(action.meta.arg);
       })
       .addCase(alert.fulfilled, (state) => {
         state.ui.alerts.shift();
       })
       .addCase(alert.rejected, (state, action) => {
         state.ui.alerts.shift();
-        const message = action.payload as {
-          title: string;
-          subtitle: string;
-        };
-        state.ui.announcements.push({ message });
+        announceFailure(state, action.payload);
       })
-      // ===== SERIES MANAGEMENT REDUCER CASES =====
+
+      // ── Series ──
       .addCase(loadSeries.fulfilled, (state, action) => {
         state.series = action.payload || [];
       })
       .addCase(loadSeries.rejected, (state, action) => {
-        const message = action.payload as {
-          title: string;
-          subtitle: string;
-        };
-        state.ui.announcements.push({ message });
+        announceFailure(state, action.payload);
       })
       .addCase(createSeries.fulfilled, (state, action) => {
-        const series = action.payload;
-        if (series) {
-          state.series.unshift(series);
-        }
+        if (action.payload) state.series.unshift(action.payload);
       })
       .addCase(createSeries.rejected, (state, action) => {
-        const message = action.payload as {
-          title: string;
-          subtitle: string;
-        };
-        state.ui.announcements.push({ message });
+        announceFailure(state, action.payload);
       })
       .addCase(updateSeries.fulfilled, (state, action) => {
-        const updatedSeries = action.payload;
-        if (updatedSeries) {
-          const index = state.series.findIndex((s) =>
-            s.id === updatedSeries.id
-          );
-          if (index !== -1) {
-            state.series[index] = updatedSeries;
-          }
-        }
+        const updated = action.payload;
+        if (!updated) return;
+        const index = state.series.findIndex((s) => s.id === updated.id);
+        if (index !== -1) state.series[index] = updated;
       })
       .addCase(updateSeries.rejected, (state, action) => {
-        const message = action.payload as {
-          title: string;
-          subtitle: string;
-        };
-        state.ui.announcements.push({ message });
+        announceFailure(state, action.payload);
       })
       .addCase(applySeriesRank, (state, action) => {
         const s = state.series.find((x) => x.id === action.payload.id);
@@ -675,52 +465,38 @@ export const appSlice = createSlice({
         }
       })
       .addCase(moveSeries.rejected, (state, action) => {
-        const message = action.payload as { title: string; subtitle: string };
-        state.ui.announcements.push({ message });
+        announceFailure(state, action.payload);
       })
       .addCase(deleteSeries.fulfilled, (state, action) => {
-        const deletedSeriesId = action.payload;
-        if (deletedSeriesId) {
-          state.series = state.series.filter((s) => s.id !== deletedSeriesId);
+        if (action.payload) {
+          state.series = state.series.filter((s) => s.id !== action.payload);
         }
       })
       .addCase(deleteSeries.rejected, (state, action) => {
-        const message = action.payload as {
-          title: string;
-          subtitle: string;
-        };
-        state.ui.announcements.push({ message });
+        announceFailure(state, action.payload);
       })
-      // ===== PROJECT MANAGEMENT REDUCER CASES =====
+
+      // ── Projects ──
       .addCase(loadProjects.fulfilled, (state, action) => {
         state.projects = action.payload || [];
       })
       .addCase(loadProjects.rejected, (state, action) => {
-        const message = action.payload as { title: string; subtitle: string };
-        state.ui.announcements.push({ message });
+        announceFailure(state, action.payload);
       })
       .addCase(createProject.fulfilled, (state, action) => {
-        const project = action.payload;
-        if (project) {
-          state.projects.unshift(project);
-        }
+        if (action.payload) state.projects.unshift(action.payload);
       })
       .addCase(createProject.rejected, (state, action) => {
-        const message = action.payload as { title: string; subtitle: string };
-        state.ui.announcements.push({ message });
+        announceFailure(state, action.payload);
       })
       .addCase(updateProject.fulfilled, (state, action) => {
         const updated = action.payload;
-        if (updated) {
-          const index = state.projects.findIndex((p) => p.id === updated.id);
-          if (index !== -1) {
-            state.projects[index] = updated;
-          }
-        }
+        if (!updated) return;
+        const index = state.projects.findIndex((p) => p.id === updated.id);
+        if (index !== -1) state.projects[index] = updated;
       })
       .addCase(updateProject.rejected, (state, action) => {
-        const message = action.payload as { title: string; subtitle: string };
-        state.ui.announcements.push({ message });
+        announceFailure(state, action.payload);
       })
       .addCase(applyProjectRank, (state, action) => {
         const p = state.projects.find((x) => x.id === action.payload.id);
@@ -733,26 +509,20 @@ export const appSlice = createSlice({
         if (p) p.rank = updated.rank;
       })
       .addCase(moveProject.rejected, (state, action) => {
-        const message = action.payload as { title: string; subtitle: string };
-        state.ui.announcements.push({ message });
+        announceFailure(state, action.payload);
       })
       .addCase(deleteProject.fulfilled, (state, action) => {
-        const deletedProjectId = action.payload;
-        if (deletedProjectId) {
-          state.projects = state.projects.filter(
-            (p) => p.id !== deletedProjectId,
-          );
-          // The deleted project's series are freed to root; reflect that so the
-          // sidebar stops nesting them (server re-ranks them; a reload settles
-          // their exact rank).
-          state.series.forEach((s) => {
-            if (s.projectId === deletedProjectId) s.projectId = null;
-          });
-        }
+        const deletedId = action.payload;
+        if (!deletedId) return;
+        state.projects = state.projects.filter((p) => p.id !== deletedId);
+        // The deleted project's series are freed to root; reflect that so the
+        // sidebar stops nesting them (a reload settles their exact rank).
+        state.series.forEach((s) => {
+          if (s.projectId === deletedId) s.projectId = null;
+        });
       })
       .addCase(deleteProject.rejected, (state, action) => {
-        const message = action.payload as { title: string; subtitle: string };
-        state.ui.announcements.push({ message });
+        announceFailure(state, action.payload);
       });
   },
 });
@@ -761,43 +531,30 @@ export const appSlice = createSlice({
 export { loadSession } from "./thunks/sessionThunks";
 
 export {
-  createCloudDocument,
-  createLocalDocument,
-  deleteCloudDocument,
-  deleteLocalDocument,
-  forkCloudDocument,
-  forkLocalDocument,
-  getCloudDocument,
-  getDocumentById,
-  getLocalDocument,
-  loadCloudDocuments,
-  loadLocalDocuments,
-  mergeCloudDocumentsIntoTabs,
-  moveCloudDocument,
-  moveDocument,
-  moveLocalDocument,
-  syncLocalToCloud,
-  updateCloudDocument,
-  updateLocalDocument,
-} from "./thunks/documentThunks";
+  applyPostRank,
+  createPost,
+  deletePost,
+  duplicatePost,
+  forkPost,
+  getPost,
+  getPostById,
+  getPostChildren,
+  loadPosts,
+  mergePostsIntoTabs,
+  movePost,
+  updatePost,
+} from "./thunks/postThunks";
 
 export {
-  createCloudRevision,
-  createLocalRevision,
-  deleteCloudRevision,
-  deleteLocalRevision,
-  getCloudRevision,
-  getLocalDocumentRevisions,
-  getLocalRevision,
-  updateLocalRevision,
+  createRevision,
+  deleteRevision,
+  getRevision,
 } from "./thunks/revisionThunks";
 
 export {
-  fetchCloudStorageUsage,
-  fetchLocalStorageUsage,
-  getCloudDocumentThumbnail,
-  getCloudStorageUsage,
-  getLocalStorageUsage,
+  fetchStorageUsage,
+  getPostThumbnail,
+  getStorageUsage,
 } from "./thunks/storageThunks";
 
 export {
@@ -815,6 +572,6 @@ export {
   updateProject,
 } from "./thunks/projectThunks";
 export { alert, updateUser } from "./thunks/userThunks";
-export { duplicateDocument } from "./app/duplicateDocument";
+export { importGuestDrafts } from "./thunks/importGuestDrafts";
 
 export default appSlice.reducer;

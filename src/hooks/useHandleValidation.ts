@@ -2,11 +2,11 @@
 import { useCallback, useMemo, useState } from "react";
 import { validate } from "uuid";
 import { debounce } from "@mui/material/utils";
-import { DocumentCreateInput } from "@/types";
+import { PostCreateInput } from "@/types";
 import { apiClient, ApiClientError } from "@/api";
 
 interface UseHandleValidationParams {
-  updateInput: (partial: Partial<DocumentCreateInput>) => void;
+  updateInput: (partial: Partial<PostCreateInput>) => void;
 }
 
 export function useHandleValidation(

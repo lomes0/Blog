@@ -2,7 +2,7 @@
 import * as React from "react";
 import { memo } from "react";
 import { SxProps, Theme } from "@mui/material/styles";
-import { User, UserDocument } from "@/types";
+import { User, Post } from "@/types";
 import CardBase from "./CardBase";
 import { usePostState } from "./hooks/usePostState";
 import PostContent from "./components/PostContent";
@@ -14,7 +14,7 @@ import LoadingCard from "./components/LoadingCard";
  * Simplified props interface for PostCard
  */
 interface PostCardProps {
-  userDocument?: UserDocument;
+  post?: Post;
   user?: User;
   sx?: SxProps<Theme>;
 }
@@ -27,18 +27,13 @@ interface PostCardProps {
  * well-structured component composition with clear data flow.
  */
 const PostCard: React.FC<PostCardProps> = memo(({
-  userDocument,
+  post,
   user,
   sx,
 }) => {
   // Use consolidated state management hook
   const { author, postState, href, seriesInfo, ariaLabel, status } =
-    usePostState(userDocument, user);
-
-  // Local is ahead of cloud when both exist but heads differ
-  const isDirty = Boolean(userDocument?.local) &&
-    Boolean(userDocument?.cloud) &&
-    userDocument?.local?.head !== userDocument?.cloud?.head;
+    usePostState(post, user);
 
   // If loading, show unified loading card
   if (postState.isLoading) {
@@ -51,10 +46,9 @@ const PostCard: React.FC<PostCardProps> = memo(({
       href={href}
       isLoading={false}
       status={status}
-      isDirty={isDirty}
       topContent={
         <PostContent
-          userDocument={userDocument}
+          post={post}
           author={author}
         />
       }
@@ -72,7 +66,7 @@ const PostCard: React.FC<PostCardProps> = memo(({
       }
       actionContent={
         <PostActions
-          userDocument={userDocument}
+          post={post}
           user={user}
         />
       }

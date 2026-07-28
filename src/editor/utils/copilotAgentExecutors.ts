@@ -14,9 +14,9 @@ import {
 } from "lexical";
 import { v4 as uuidv4 } from "uuid";
 import { apiClient } from "@/api";
-import { documentsSelectors, store } from "@/store";
-import { createLocalDocument, updateLocalDocument } from "@/store/app";
-import type { DocumentCreateInput, UserDocument } from "@/types";
+import { postsSelectors, store } from "@/store";
+import { createPost, updatePost } from "@/store/app";
+import type { PostCreateInput, Post } from "@/types";
 import {
   markdownToSerializedState,
   serializedStateToMarkdown,
@@ -28,8 +28,8 @@ import {
   searchDocuments,
 } from "./virtualRepo";
 
-const getDocs = (): UserDocument[] =>
-  documentsSelectors.selectAll(store.getState());
+const getDocs = (): Post[] =>
+  postsSelectors.selectAll(store.getState());
 
 const currentMarkdown = (editor: LexicalEditor | null): string => {
   if (!editor) return "";
@@ -77,7 +77,7 @@ export async function runReadTool(
       // View mode has no editor, and cloud-only documents deliberately omit
       // revision bodies from Redux. Hydrate the cloud head on demand.
       const document = docs.find((doc) => doc.id === currentDocId);
-      const revisionId = document?.cloud?.head;
+      const revisionId = document?.head;
       if (!revisionId) return { path: stored.path, markdown: stored.markdown };
 
       const revision = await apiClient.revisions.get(revisionId);
@@ -113,7 +113,7 @@ async function persist(
     editor.setEditorState(editor.parseEditorState(data));
     return;
   }
-  await store.dispatch(updateLocalDocument({ id: docId, partial: { data } }));
+  await store.dispatch(updatePost({ id: docId, partial: { data } }));
 }
 
 /** Apply an accepted write proposal. */
@@ -129,7 +129,7 @@ export async function applyWrite(
     const title = String(input.title ?? "Untitled");
     const markdown = String(input.markdown ?? "");
     const now = new Date().toISOString();
-    const payload: DocumentCreateInput = {
+    const payload: PostCreateInput = {
       id: uuidv4(),
       head: uuidv4(),
       name: title,
@@ -139,7 +139,7 @@ export async function applyWrite(
       createdAt: now,
       updatedAt: now,
     };
-    await store.dispatch(createLocalDocument(payload));
+    await store.dispatch(createPost(payload));
     return { ok: true, message: `Created "${title}"` };
   }
 

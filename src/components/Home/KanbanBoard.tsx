@@ -9,7 +9,7 @@ import {
   Typography,
 } from "@mui/material";
 import { GripVertical } from "lucide-react";
-import { UserDocument } from "@/types";
+import { Post } from "@/types";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useTheme } from "@mui/material/styles";
@@ -18,7 +18,7 @@ import { useErrorAnnounce } from "@/hooks/useErrorAnnounce";
 import { apiClient } from "@/api";
 
 interface KanbanBoardProps {
-  documents: UserDocument[];
+  documents: Post[];
   onRefresh: () => Promise<void>;
 }
 
@@ -26,12 +26,12 @@ interface Column {
   id: string;
   title: string;
   color: string;
-  filterFn: (doc: UserDocument) => boolean;
+  filterFn: (doc: Post) => boolean;
 }
 
 /** Type-safe helper to check if a document is published */
-function getDocumentPublished(doc: UserDocument): boolean {
-  return doc.cloud?.published === true;
+function getDocumentPublished(doc: Post): boolean {
+  return doc.published === true;
 }
 
 export default function KanbanBoard(
@@ -40,7 +40,7 @@ export default function KanbanBoard(
   const router = useRouter();
   const theme = useTheme();
   const errorAnnounce = useErrorAnnounce();
-  const [draggedDoc, setDraggedDoc] = useState<UserDocument | null>(null);
+  const [draggedDoc, setDraggedDoc] = useState<Post | null>(null);
 
   const columns: Column[] = [
     {
@@ -61,7 +61,7 @@ export default function KanbanBoard(
     return documents.filter(column.filterFn);
   };
 
-  const handleDragStart = (e: React.DragEvent, doc: UserDocument) => {
+  const handleDragStart = (e: React.DragEvent, doc: Post) => {
     setDraggedDoc(doc);
     e.dataTransfer.effectAllowed = "move";
   };
@@ -177,7 +177,7 @@ export default function KanbanBoard(
                 )
                 : (
                   columnDocs.map((doc) => {
-                    const data = doc.cloud || doc.local;
+                    const data = doc;
                     if (!data) return null;
 
                     return (

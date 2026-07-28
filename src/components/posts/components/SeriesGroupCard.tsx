@@ -12,7 +12,7 @@ import {
 import { useTheme } from "@mui/material/styles";
 import { MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { SxProps, Theme } from "@mui/material/styles";
-import { Series, User, UserDocument } from "@/types";
+import { Series, User, Post } from "@/types";
 import { createCardTheme } from "@/components/DocumentCard/theme";
 import { formatFullDate } from "@/utils/dateFormat";
 import { useRouter } from "next/navigation";
@@ -26,7 +26,7 @@ import { ICON_SIZE } from "@/theme/icons";
 interface SeriesGroupCardProps {
   series: Series;
   user?: User;
-  posts: UserDocument[];
+  posts: Post[];
   collapsible?: boolean;
   defaultExpanded?: boolean;
   showActions?: boolean;
@@ -182,7 +182,7 @@ function CollapsedView({
 
 interface ExpandedViewProps {
   series: Series;
-  sortedPosts: UserDocument[];
+  sortedPosts: Post[];
   collapsible: boolean;
   showActions: boolean;
   isAuthor: boolean;

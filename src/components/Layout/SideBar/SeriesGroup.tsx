@@ -94,12 +94,6 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
   // carries the same soft filled pill as post rows and sub-tabs.
   const isSeriesActive = pathname === `/posts/${group.series.id}`;
   const isMultiSelected = selection.isSelected(group.series.id);
-  const hasAnyDirtyChild = group.posts.some(
-    (post) =>
-      Boolean(post.local) &&
-      Boolean(post.cloud) &&
-      post.local!.head !== post.cloud!.head,
-  );
 
   return (
     <Box sx={{ mt: groupIndex > 0 ? 0.5 : 0, mb: 0.5 }}>
@@ -208,10 +202,10 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
                 minWidth: 0,
                 mr: sidebarOpen ? 0.75 : 0,
                 justifyContent: "center",
-                color: hasAnyDirtyChild ? "warning.main" : "text.secondary",
+                color: false ? "warning.main" : "text.secondary",
                 // Light-mode: the folder glyph reads in the accent purple (unless
                 // it's flagging dirty children in amber).
-                ...(!hasAnyDirtyChild &&
+                ...(!false &&
                   theme.applyStyles("light", { color: SB_ACCENT.main })),
               })}
             >
@@ -249,12 +243,12 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
                   // Mirror the doc-row sync decoration (color only, no weight
                   // bump): a series with modified children reads amber.
                   fontWeight: 500,
-                  color: hasAnyDirtyChild ? "warning.main" : "text.secondary",
+                  color: false ? "warning.main" : "text.secondary",
                   sx: (theme) => ({
                     display: "block",
                     minWidth: 0,
                     // Light-mode: active + clean series title darkens to accent.
-                    ...(isSeriesActive && !hasAnyDirtyChild &&
+                    ...(isSeriesActive && !false &&
                       theme.applyStyles("light", {
                         color: SB_ACCENT.activeText,
                       })),

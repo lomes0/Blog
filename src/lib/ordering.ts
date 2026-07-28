@@ -3,7 +3,7 @@ import { generateKeyBetween, generateNKeysBetween } from "fractional-indexing";
 /**
  * Manual-ordering primitive.
  *
- * Every orderable row (a {@link import("@/types").UserDocument} or a Series)
+ * Every orderable row (a {@link import("@/types").Post} or a Series)
  * stores a `rank`: a fractional-index key giving its position among its
  * siblings within its container (its series, its parent tab-group, or the
  * author's root list). Ranks are compared as plain strings — `a.rank < b.rank`

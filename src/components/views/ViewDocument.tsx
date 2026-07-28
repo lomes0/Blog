@@ -1,13 +1,11 @@
 "use client";
-import { Document } from "@/types";
+import { Post } from "@/types";
 import { seriesPositionOf } from "@/utils/posts/seriesGrouping";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import ViewAttachmentEnhancer from "./ViewAttachmentEnhancer";
 import ViewCodeEnhancer from "./ViewCodeEnhancer";
-import SyncToCloudFab from "../shared/SyncToCloudFab";
-import LocalDocumentView from "./LocalDocumentView";
 import ChildDocumentView from "./ChildDocumentView";
 import { useTopBarTabs } from "@/contexts/TopBarTabsContext";
 import Box from "@mui/material/Box";
@@ -32,7 +30,7 @@ const ViewDocumentInfo = dynamic(
 );
 
 const ViewDocument: React.FC<
-  { cloudDocument: Document; cloudHtml: string }
+  { cloudDocument: Post; cloudHtml: string }
 > = ({ cloudDocument, cloudHtml }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const dispatch = useDispatch();
@@ -76,7 +74,7 @@ const ViewDocument: React.FC<
       const metas: TabMeta[] = [
         // The root tab can carry its own label (`tabLabel`) distinct from the
         // post title; fall back to the post name when it isn't set.
-        { id: rootId, name: rootDoc?.tabLabel ?? rootDoc?.name ?? "Document" },
+        { id: rootId, name: rootDoc?.tabLabel ?? rootDoc?.name ?? "Post" },
         ...(childDocs ?? []).map((c) => ({ id: c.id, name: c.name })),
       ];
       setTabs(metas);
@@ -118,8 +116,7 @@ const ViewDocument: React.FC<
   }, [tabs, activeTabId, rootId]);
 
   const router = useRouter();
-  const userDocument = { id: cloudDocument.id, cloud: cloudDocument };
-  const authorLabel = cloudDocument.author.handle || cloudDocument.author.name;
+  const authorLabel = cloudDocument.author?.handle ?? cloudDocument.author?.name;
   const updatedDate = cloudDocument.updatedAt
     ? format(new Date(cloudDocument.updatedAt), "MMM d, yyyy")
     : null;
@@ -130,7 +127,7 @@ const ViewDocument: React.FC<
   return (
     <Box sx={{ minHeight: "100vh" }}>
       <Box sx={{ px: { xs: 1, sm: 2, md: 2 } }}>
-        {/* Document header */}
+        {/* Post header */}
         <Box sx={{ pt: 2, pb: 0 }}>
           <Typography variant="h4" component="h1" fontWeight={700} gutterBottom>
             {activeTabName}
@@ -198,17 +195,17 @@ const ViewDocument: React.FC<
               onClose={() => setMoreAnchor(null)}
             >
               <ShareDocument
-                userDocument={userDocument}
+                post={cloudDocument}
                 variant="menuitem"
                 closeMenu={() => setMoreAnchor(null)}
               />
               <DownloadDocument
-                userDocument={userDocument}
+                post={cloudDocument}
                 variant="menuitem"
                 closeMenu={() => setMoreAnchor(null)}
               />
               <ForkDocument
-                userDocument={userDocument}
+                post={cloudDocument}
                 variant="menuitem"
                 closeMenu={() => setMoreAnchor(null)}
               />
@@ -218,12 +215,11 @@ const ViewDocument: React.FC<
         </Box>
 
         <div className="document-container document-view" ref={containerRef}>
-          {/* Root tab: use SSR-rendered HTML + local-override logic */}
+          {/* Root tab: the server already rendered it. */}
           {activeTabId === cloudDocument.id && (
-            <LocalDocumentView
-              documentId={cloudDocument.id}
-              cloudHead={cloudDocument.head}
-              cloudHtml={cloudHtml}
+            <div
+              style={{ display: "contents" }}
+              dangerouslySetInnerHTML={{ __html: cloudHtml }}
             />
           )}
 
@@ -237,7 +233,6 @@ const ViewDocument: React.FC<
         </div>
 
         <ViewDocumentInfo cloudDocument={cloudDocument} />
-        <SyncToCloudFab documentId={cloudDocument.id} />
       </Box>
     </Box>
   );

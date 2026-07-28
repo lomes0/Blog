@@ -3,14 +3,14 @@ import React from "react";
 import { Box, IconButton } from "@mui/material";
 import { MoreVertical, Share2 } from "lucide-react";
 
-import { User, UserDocument } from "@/types";
+import { User, Post } from "@/types";
 import PostActionMenu from "../PostActionMenu";
 
 /**
  * Props for PostActions component
  */
 interface PostActionsProps {
-  userDocument?: UserDocument;
+  post?: Post;
   user?: User;
   isLoading?: boolean;
 }
@@ -34,18 +34,18 @@ const ActionsSkeleton: React.FC = () => (
  * Handles both loading states and active states
  */
 const PostActions: React.FC<PostActionsProps> = ({
-  userDocument,
+  post,
   user,
   isLoading = false,
 }) => {
   // Show skeleton during loading or when no document is available
-  if (isLoading || !userDocument) {
+  if (isLoading || !post) {
     return <ActionsSkeleton />;
   }
 
   return (
     <Box sx={{ display: "flex", gap: 0.5, alignItems: "center" }}>
-      <PostActionMenu userDocument={userDocument} user={user} />
+      <PostActionMenu post={post} user={user} />
     </Box>
   );
 };

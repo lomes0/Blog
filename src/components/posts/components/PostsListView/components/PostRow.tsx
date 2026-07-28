@@ -2,7 +2,7 @@
 import React, { useCallback, useRef } from "react";
 import { Box, Checkbox, InputBase, Typography } from "@mui/material";
 import { GripVertical } from "lucide-react";
-import { Series, User, UserDocument } from "@/types";
+import { Series, User, Post } from "@/types";
 import { useRouter } from "next/navigation";
 import { formatRelativeDate } from "@/utils/dateFormat";
 import { ListDensity, TagStyle } from "../types";
@@ -10,7 +10,7 @@ import { PostRowContextMenu } from "./PostRowContextMenu";
 import { ICON_SIZE } from "@/theme/icons";
 
 interface PostRowProps {
-  post: UserDocument;
+  post: Post;
   user?: User;
   density: ListDensity;
   tagStyle: TagStyle;
@@ -25,7 +25,7 @@ interface PostRowProps {
     originalName: string,
   ) => Promise<void>;
   onRenameCancel: (postId: string) => void;
-  onDelete: (post: UserDocument) => void;
+  onDelete: (post: Post) => void;
   onDragStart: (e: React.DragEvent, postId: string) => void;
   onDragEnd: () => void;
   /** Reposition this post among its siblings (menu / keyboard). */
@@ -76,7 +76,7 @@ export const PostRow = React.memo(function PostRow({
 }: PostRowProps) {
   const router = useRouter();
   const rowRef = useRef<HTMLDivElement>(null);
-  const document = post.cloud || post.local;
+  const document = post;
   const name = document?.name || "Untitled";
   const date = document?.updatedAt || document?.createdAt;
   const isEditing = editingName !== undefined;

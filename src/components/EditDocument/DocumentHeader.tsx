@@ -1,6 +1,6 @@
 "use client";
 import { Box, Divider, Typography } from "@mui/material";
-import { documentsSelectors, useSelector } from "@/store";
+import { postsSelectors, useSelector } from "@/store";
 import type { RootState } from "@/store";
 import { shallowEqual } from "react-redux";
 
@@ -14,13 +14,11 @@ export default function DocumentHeader({
 }: DocumentHeaderProps) {
   const { name } = useSelector(
     (state: RootState) => {
-      const activeUserDoc = documentsSelectors.selectById(state, docId);
-      const localDoc = activeUserDoc?.local;
-      const effectiveDoc = localDoc ?? activeUserDoc?.cloud;
+      const post = postsSelectors.selectById(state, docId);
       return {
         // Show this tab's own label when set (root tab can differ from the post
         // title); otherwise fall back to the post/document name.
-        name: effectiveDoc?.tabLabel ?? effectiveDoc?.name ?? "Untitled",
+        name: post?.tabLabel ?? post?.name ?? "Untitled",
       };
     },
     shallowEqual,

@@ -6,7 +6,7 @@ import { useTheme } from "@mui/material/styles";
 import { actions, useDispatch } from "@/store";
 import { v4 as uuid } from "uuid";
 import { DragContext } from "@/contexts/DragContext";
-import { UserDocument } from "@/types";
+import { Post } from "@/types";
 import { FloatingActionButton } from "../Layout/FloatingActionsContainer";
 import { useErrorAnnounce } from "@/hooks/useErrorAnnounce";
 import { ICON_SIZE } from "@/theme/icons";
@@ -53,20 +53,13 @@ const TrashBin: React.FC = () => {
       if (response.payload === alert.actions[1].id) {
         // Get the document to delete
         const docResponse = await dispatch(
-          actions.getDocumentById(draggedItem.id),
+          actions.getPostById(draggedItem.id),
         );
-        const document = docResponse.payload as UserDocument;
+        const document = docResponse.payload as Post;
 
         if (!document) return;
 
-        // Delete local and/or cloud document
-        if (document.local) {
-          await dispatch(actions.deleteLocalDocument(draggedItem.id));
-        }
-
-        if (document.cloud) {
-          await dispatch(actions.deleteCloudDocument(draggedItem.id));
-        }
+        await dispatch(actions.deletePost(draggedItem.id));
 
         // Show success message
         dispatch(actions.announce({

@@ -1,57 +1,47 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import documentDB, { revisionDB } from "@/indexeddb";
-import { BackupDocument, DocumentStorageUsage } from "@/types";
 import { apiClient } from "@/api";
+import { backendFor } from "@/store/backend";
+import { AppState, DocumentStorageUsage, User } from "@/types";
 
 const toErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : "Unknown error";
 
-export async function fetchLocalStorageUsage(): Promise<
-  DocumentStorageUsage[]
-> {
-  const documents = await documentDB.getAll();
-  const revisions = await revisionDB.getAll();
-  const localStorageUsage: DocumentStorageUsage[] = [];
-  documents
-    .sort((a, b) => {
-      const first = a.updatedAt;
-      const second = b.updatedAt;
-      if (!first && !second) return 0;
-      if (!first) return 1;
-      if (!second) return -1;
-      return new Date(second).getTime() - new Date(first).getTime();
-    })
-    .forEach((document) => {
-      const backupDocument: BackupDocument = {
-        ...document,
-        revisions: revisions.filter(
-          (revision) => revision.documentId === document.id,
-        ),
-      };
-      const backupDocumentSize =
-        new Blob([JSON.stringify(backupDocument)]).size;
-      localStorageUsage.push({
-        id: document.id,
-        name: document.name,
-        size: backupDocumentSize,
-      });
+/**
+ * How much space the session's posts occupy.
+ *
+ * Signed in, the server reports it directly. For guests it is measured from the
+ * IndexedDB records themselves — there is no server to ask, and the serialized
+ * size is what actually consumes the browser's quota.
+ */
+export async function fetchStorageUsage(
+  user?: User | null,
+): Promise<DocumentStorageUsage[]> {
+  if (user) {
+    const data = await apiClient.storage.getUsage();
+    if (!data) throw new Error("failed to get storage usage");
+    return data;
+  }
+
+  const posts = await backendFor(null).list();
+  const usage: DocumentStorageUsage[] = [];
+  for (const post of posts) {
+    const full = await backendFor(null).get(post.id);
+    if (!full) continue;
+    usage.push({
+      id: full.id,
+      name: full.name,
+      size: new Blob([JSON.stringify(full)]).size,
     });
-  return localStorageUsage;
+  }
+  return usage.sort((a, b) => b.size - a.size);
 }
 
-export async function fetchCloudStorageUsage(): Promise<
-  DocumentStorageUsage[]
-> {
-  const data = await apiClient.storage.getUsage();
-  if (!data) throw new Error("failed to get cloud storage usage");
-  return data;
-}
-
-export const getLocalStorageUsage = createAsyncThunk(
-  "app/getLocalStorageUsage",
+export const getStorageUsage = createAsyncThunk(
+  "app/getStorageUsage",
   async (_, thunkAPI) => {
     try {
-      return thunkAPI.fulfillWithValue(await fetchLocalStorageUsage());
+      const { user } = thunkAPI.getState() as AppState;
+      return thunkAPI.fulfillWithValue(await fetchStorageUsage(user));
     } catch (error: unknown) {
       console.error(error);
       return thunkAPI.rejectWithValue({
@@ -62,23 +52,8 @@ export const getLocalStorageUsage = createAsyncThunk(
   },
 );
 
-export const getCloudStorageUsage = createAsyncThunk(
-  "app/getCloudStorageUsage",
-  async (_, thunkAPI) => {
-    try {
-      return thunkAPI.fulfillWithValue(await fetchCloudStorageUsage());
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    }
-  },
-);
-
-export const getCloudDocumentThumbnail = createAsyncThunk(
-  "app/getCloudDocumentThumbnail",
+export const getPostThumbnail = createAsyncThunk(
+  "app/getPostThumbnail",
   async (id: string, thunkAPI) => {
     try {
       const data = await apiClient.thumbnails.get(id);

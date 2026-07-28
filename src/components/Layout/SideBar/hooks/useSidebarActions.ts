@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation";
 import { v4 as uuid } from "uuid";
 import {
   actions,
-  documentsSelectors,
+  postsSelectors,
   type RootState,
   useDispatch,
   useSelector,
@@ -103,7 +103,7 @@ export function useSidebarActions(): SidebarActionsResult {
   const dispatch = useDispatch();
   const router = useRouter();
   const documents = useSelector((state: RootState) =>
-    documentsSelectors.selectAll(state)
+    postsSelectors.selectAll(state)
   );
   const series = useSelector((state: RootState) => state.series);
   const projects = useSelector((state: RootState) => state.projects);
@@ -172,7 +172,7 @@ export function useSidebarActions(): SidebarActionsResult {
       handleCloseContextMenu();
       const doc = documents?.find((d) => d.id === postId);
       if (doc) {
-        const docName = (doc.cloud || doc.local)?.name || "Untitled";
+        const docName = (doc)?.name || "Untitled";
         setRenamingPostId(postId);
         setRenameField("name");
         setRenameValue(docName);
@@ -200,13 +200,7 @@ export function useSidebarActions(): SidebarActionsResult {
       const doc = documents?.find((d) => d.id === postId);
       if (doc) {
         try {
-          if (doc.cloud) {
-            await dispatch(actions.deleteCloudDocument(postId)).unwrap();
-          }
-          // Always remove the local (IndexedDB) copy so the post is deleted
-          // completely. `doc.local` may be undefined for a server-rendered
-          // post; the delete is idempotent when there is nothing to remove.
-          await dispatch(actions.deleteLocalDocument(postId));
+          await dispatch(actions.deletePost(postId)).unwrap();
           router.refresh();
         } catch {
           // delete failed, skip refresh
@@ -461,27 +455,15 @@ export function useSidebarActions(): SidebarActionsResult {
         // posts have no separate first-tab item, so their heading keeps
         // following the post name.
         if (renameField === "name") {
-          const effective = doc.cloud ?? doc.local;
+          const effective = doc;
           const hasTabs = documents.some(
-            (d) => (d.cloud ?? d.local)?.parentId === renamingPostId,
+            (d) => (d)?.parentId === renamingPostId,
           );
           if (hasTabs && effective && !effective.tabLabel && effective.name) {
             partial.tabLabel = effective.name;
           }
         }
-        // Update both stores when present so the document title above the editor
-        // (which reads the local copy) and the cloud stay in sync. Works for
-        // child tab documents too, since they're keyed the same way.
-        if (doc.local) {
-          dispatch(
-            actions.updateLocalDocument({ id: renamingPostId, partial }),
-          );
-        }
-        if (doc.cloud) {
-          dispatch(
-            actions.updateCloudDocument({ id: renamingPostId, partial }),
-          );
-        }
+        dispatch(actions.updatePost({ id: renamingPostId, partial }));
       }
     }
     setRenamingPostId(null);

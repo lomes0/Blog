@@ -1,9 +1,9 @@
 "use client";
-import { documentsSelectors, useSelector } from "@/store";
+import { postsSelectors, useSelector } from "@/store";
 import { useMemo, useState } from "react";
 import { Box, Container, Fade } from "@mui/material";
 import { FilePlus } from "lucide-react";
-import { UserDocument } from "@/types";
+import { Post } from "@/types";
 import { sortDocuments } from "../DocumentControls/sortDocuments";
 import DocumentGrid from "../DocumentGrid";
 import { DragProvider } from "@/contexts/DragContext";
@@ -22,7 +22,7 @@ import { ICON_SIZE } from "@/theme/icons";
 type DocumentBrowserProps = Record<string, never>;
 
 const DocumentBrowser: React.FC<DocumentBrowserProps> = () => {
-  const documents = useSelector((state) => documentsSelectors.selectAll(state));
+  const documents = useSelector((state) => postsSelectors.selectAll(state));
   const user = useSelector((state) => state.user);
 
   // State for loading and sorting
@@ -41,7 +41,7 @@ const DocumentBrowser: React.FC<DocumentBrowserProps> = () => {
 
   // Function to get the correct URL for a blog post
   const getDocumentUrl = useMemo(() => {
-    return (doc: UserDocument) => {
+    return (doc: Post) => {
       const docId = doc.id;
       // In blog structure, all posts use the same URL pattern
       return `/view/${docId}`;

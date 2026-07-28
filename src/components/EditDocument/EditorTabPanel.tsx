@@ -12,13 +12,12 @@ import { useSelector as useReduxSelector } from "react-redux";
 import ConnectedEditor from "@/components/ConnectedEditor";
 import SplashScreen from "@/components/shared/SplashScreen";
 import DiffView from "@/components/Diff";
-import { documentsSelectors, useSelector } from "@/store";
+import { postsSelectors, useSelector } from "@/store";
 import type { RootState } from "@/store";
-import { useCloudSave } from "./hooks/useCloudSave";
 import { useDirtyTracking } from "./hooks/useDirtyTracking";
-import { useDocumentLoader } from "./hooks/useDocumentLoader";
-import { useLocalDraft } from "./hooks/useLocalDraft";
-import type { EditorDocument } from "@/types";
+import { usePostLoader } from "./hooks/usePostLoader";
+import { useSave } from "./hooks/useSave";
+import type { Post } from "@/types";
 import DocumentHeader from "./DocumentHeader";
 import { triggerSave } from "./saveRegistry";
 
@@ -27,7 +26,7 @@ const EditDocumentInfo = dynamic(
   { ssr: false },
 );
 
-function ensureValidDocumentData(doc: EditorDocument): EditorDocument {
+function ensureValidDocumentData(doc: Post): Post {
   const defaultParagraph = {
     children: [],
     direction: null,
@@ -95,36 +94,34 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
   }, [isActive, onEditorReady]);
   const showDiff = useSelector((state) => state.ui.diff.open);
 
-  // Redux document for useCloudSave (stable reference, same pattern as EditDocumentContent).
-  const reduxDocument = useReduxSelector(
-    (state: RootState) =>
-      documentsSelectors
-        .selectAll(state)
-        .find((d) => d.local?.id === docId)
-        ?.local,
+  // Stable reference so the save hook isn't rebuilt on every unrelated change.
+  const reduxPost = useReduxSelector(
+    (state: RootState) => postsSelectors.selectById(state, docId),
     (a, b) => a?.id === b?.id,
   );
 
-  const { lastSavedCloud } = useCloudSave(reduxDocument, editorRef);
-  const trackDirty = useDirtyTracking(docId, lastSavedCloud);
-  const trackDraft = useLocalDraft(docId, lastSavedCloud);
+  const { save, savedBaseline, track: trackSave } = useSave(
+    reduxPost,
+    editorRef,
+  );
+  const trackDirty = useDirtyTracking(docId, savedBaseline);
   const handleEditorChange = useCallback(
     (editorState: EditorState, editor: LexicalEditor) => {
       trackDirty(editorState, editor);
-      trackDraft(editorState, editor);
+      trackSave(editorState, editor);
     },
-    [trackDirty, trackDraft],
+    [trackDirty, trackSave],
   );
-  const { isLoading, error, loadedDocument } = useDocumentLoader(
+  const { isLoading, error, loadedPost, restoredFromPending } = usePostLoader(
     docId,
-    lastSavedCloud,
+    savedBaseline,
   );
 
   const handleReset = useCallback(() => {
     const editor = editorRef.current;
     if (!editor) return;
-    const dataStr = lastSavedCloud.current ??
-      (loadedDocument?.data ? JSON.stringify(loadedDocument.data) : null);
+    const dataStr = savedBaseline.current ??
+      (loadedPost?.data ? JSON.stringify(loadedPost.data) : null);
     if (!dataStr) return;
     try {
       const newState = editor.parseEditorState(dataStr);
@@ -133,13 +130,29 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
     } catch (e) {
       console.error("Failed to reset editor state:", e);
     }
-  }, [editorRef, lastSavedCloud, loadedDocument]);
+  }, [editorRef, savedBaseline, loadedPost]);
 
   const documentForEditor = useMemo(
-    () => loadedDocument ? ensureValidDocumentData(loadedDocument) : undefined,
+    () => loadedPost ? ensureValidDocumentData(loadedPost) : undefined,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [loadedDocument?.id],
+    [loadedPost?.id],
   );
+
+  // Deliver content recovered from the unconfirmed-save buffer.
+  //
+  // The loader restores it but cannot save it — at that point the editor has not
+  // mounted, so there is no state to read. This effect runs after ConnectedEditor
+  // has (child effects fire first, so `editorRef` is populated), which is the
+  // earliest the save can actually see the recovered content. Without it the edit
+  // would wait for the next keystroke, an `online` event that already fired, or
+  // unmount.
+  const flushedPendingFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!restoredFromPending || !documentForEditor) return;
+    if (flushedPendingFor.current === documentForEditor.id) return;
+    flushedPendingFor.current = documentForEditor.id;
+    void save();
+  }, [restoredFromPending, documentForEditor, save]);
 
   return (
     <Box sx={{ display: isActive ? "block" : "none" }}>

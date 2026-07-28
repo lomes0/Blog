@@ -15,28 +15,28 @@ import {
   Switch,
 } from "@mui/material";
 import { Copy } from "lucide-react";
-import { Document, User } from "@/types";
+import { Post, User } from "@/types";
 import UsersAutocomplete from "../User/UsersAutocomplete";
 import { DateDisplay } from "@/components/shared/DateDisplay";
 
 interface SharedPanelProps {
-  cloudDocument: Document;
+  post: Post;
   revision: string | null;
-  setRevision: (v: string | null) => void;
+  setRevision: (v: string) => void;
   isPrivate: boolean;
   isAuthor: boolean;
   togglePrivate: () => void;
 }
 
 interface RevisionSelectorProps {
-  cloudDocument: Document;
+  post: Post;
   revision: string | null;
-  setRevision: (v: string | null) => void;
+  setRevision: (v: string) => void;
   disabled?: boolean;
 }
 
 const RevisionSelector: React.FC<RevisionSelectorProps> = ({
-  cloudDocument,
+  post,
   revision,
   setRevision,
   disabled,
@@ -45,10 +45,10 @@ const RevisionSelector: React.FC<RevisionSelectorProps> = ({
     <FormLabel>Revision</FormLabel>
     <Select
       size="small"
-      value={revision}
+      value={revision ?? ""}
       onChange={(e) => setRevision(e.target.value)}
     >
-      {cloudDocument.revisions.map((r) => (
+      {(post.revisions ?? []).map((r) => (
         <MenuItem key={r.id} value={r.id}>
           <DateDisplay date={r.createdAt} variant="full" />
         </MenuItem>
@@ -81,7 +81,7 @@ const PermissionsControl: React.FC<PermissionsControlProps> = ({
 );
 
 export const ShareViewPanel: React.FC<SharedPanelProps> = ({
-  cloudDocument,
+  post,
   revision,
   setRevision,
   isPrivate,
@@ -90,7 +90,7 @@ export const ShareViewPanel: React.FC<SharedPanelProps> = ({
 }) => (
   <Box sx={{ p: 2 }}>
     <RevisionSelector
-      cloudDocument={cloudDocument}
+      post={post}
       revision={revision}
       setRevision={setRevision}
     />
@@ -103,7 +103,7 @@ export const ShareViewPanel: React.FC<SharedPanelProps> = ({
 );
 
 export const ShareEmbedPanel: React.FC<SharedPanelProps> = ({
-  cloudDocument,
+  post,
   revision,
   setRevision,
   isPrivate,
@@ -112,7 +112,7 @@ export const ShareEmbedPanel: React.FC<SharedPanelProps> = ({
 }) => (
   <Box sx={{ p: 2 }}>
     <RevisionSelector
-      cloudDocument={cloudDocument}
+      post={post}
       revision={revision}
       setRevision={setRevision}
       disabled={isPrivate}
@@ -127,7 +127,7 @@ export const ShareEmbedPanel: React.FC<SharedPanelProps> = ({
 );
 
 export const SharePdfPanel: React.FC<SharedPanelProps> = ({
-  cloudDocument,
+  post,
   revision,
   setRevision,
   isPrivate,
@@ -136,7 +136,7 @@ export const SharePdfPanel: React.FC<SharedPanelProps> = ({
 }) => (
   <Box sx={{ p: 2 }}>
     <RevisionSelector
-      cloudDocument={cloudDocument}
+      post={post}
       revision={revision}
       setRevision={setRevision}
       disabled={isPrivate}
@@ -183,7 +183,7 @@ export const SharePdfPanel: React.FC<SharedPanelProps> = ({
 );
 
 export const ShareDocxPanel: React.FC<SharedPanelProps> = ({
-  cloudDocument,
+  post,
   revision,
   setRevision,
   isPrivate,
@@ -192,7 +192,7 @@ export const ShareDocxPanel: React.FC<SharedPanelProps> = ({
 }) => (
   <Box sx={{ p: 2 }}>
     <RevisionSelector
-      cloudDocument={cloudDocument}
+      post={post}
       revision={revision}
       setRevision={setRevision}
       disabled={isPrivate}
@@ -207,7 +207,7 @@ export const ShareDocxPanel: React.FC<SharedPanelProps> = ({
 );
 
 interface ShareEditPanelProps {
-  cloudDocument: Document;
+  post: Post;
   isAuthor: boolean;
   isCollab: boolean;
   toggleCollab: () => void;
@@ -215,7 +215,7 @@ interface ShareEditPanelProps {
 }
 
 export const ShareEditPanel: React.FC<ShareEditPanelProps> = ({
-  cloudDocument,
+  post,
   isAuthor,
   isCollab,
   toggleCollab,
@@ -227,7 +227,7 @@ export const ShareEditPanel: React.FC<ShareEditPanelProps> = ({
       <UsersAutocomplete
         label="Coauthors"
         placeholder="Email"
-        value={cloudDocument.coauthors ?? []}
+        value={post.coauthors ?? []}
         onChange={updateCoauthors}
         disabled={!isAuthor}
       />
@@ -240,21 +240,18 @@ export const ShareEditPanel: React.FC<ShareEditPanelProps> = ({
 );
 
 interface ShareCopyLinkProps {
-  isCloud: boolean;
   isPrivate: boolean;
   format: string;
   copyLink: () => void;
 }
 
 export const ShareCopyLinkButton: React.FC<ShareCopyLinkProps> = ({
-  isCloud,
   isPrivate,
   format,
   copyLink,
 }) => {
   const restrictedFormats = ["embed", "pdf", "docx"];
-  const disabled = !isCloud ||
-    (isPrivate && restrictedFormats.includes(format));
+  const disabled = isPrivate && restrictedFormats.includes(format);
   return (
     <Box sx={{ p: 2 }}>
       <Button

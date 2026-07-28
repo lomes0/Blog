@@ -1,7 +1,7 @@
 import { ApiError, withApiHandler } from "@/lib/api-utils";
 import { authOptions } from "@/lib/auth";
 import { createRevision } from "@/repositories/revision";
-import { EditorDocumentRevision } from "@/types";
+import { Revision } from "@/types";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
@@ -26,7 +26,7 @@ export const POST = withApiHandler(async (request: Request) => {
       "Account is disabled for violating terms of service",
     );
   }
-  const body = (await request.json()) as EditorDocumentRevision;
+  const body = (await request.json()) as Revision;
   if (!body) {
     throw new ApiError(400, "Bad Request", "No revision provided");
   }

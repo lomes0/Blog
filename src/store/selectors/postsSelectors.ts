@@ -1,61 +1,50 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { documentsSelectors, RootState } from "@/store";
-import { UserDocument } from "@/types";
+import { postsSelectors, RootState } from "@/store";
+import { Post } from "@/types";
 
-const selectDocuments = (state: RootState) =>
-  documentsSelectors.selectAll(state);
+const selectPosts = (state: RootState) => postsSelectors.selectAll(state);
 const selectSeries = (state: RootState) => state.series;
 
 /**
- * Memoized selector that returns only standalone posts — documents that are
- * not members of any series.  Used by the /posts page to populate the "Posts"
- * section now that series are rendered separately.
+ * Standalone posts — those that belong to no series and are not a tab of another
+ * post. Used by the /posts page, where series render as their own section.
  */
 export const selectStandalonePosts = createSelector(
-  [selectDocuments, selectSeries],
-  (documents, series): UserDocument[] => {
+  [selectPosts, selectSeries],
+  (posts, series): Post[] => {
     const seriesPostIds = new Set<string>();
-    series.forEach((s) => {
-      s.posts?.forEach((post) => seriesPostIds.add(post.id));
-    });
-    return documents.filter((doc) => {
-      const docData = doc.cloud || doc.local;
-      return docData?.type === "DOCUMENT" && !seriesPostIds.has(doc.id) &&
-        !docData.parentId;
-    });
+    series.forEach((s) => s.posts?.forEach((p) => seriesPostIds.add(p.id)));
+    return posts.filter((post) =>
+      post.type === "DOCUMENT" && !seriesPostIds.has(post.id) && !post.parentId
+    );
   },
 );
 
 /**
- * Memoized selector that builds the unified posts list from documents + series.
- * Series posts (sourced from series.posts) take precedence; remaining documents
- * that are standalone DOCUMENT-type entries are appended.
- * Re-computes only when `documents` or `series` references change.
+ * The unified posts list: series members first (sourced from `series.posts`,
+ * which is authoritative for membership), then the remaining standalone posts.
+ *
+ * Series members are resolved back to their store entity where possible so they
+ * carry whatever the store already knows — loaded content, fresher timestamps —
+ * rather than the thinner copy embedded in the series.
  */
 export const selectAllPosts = createSelector(
-  [selectDocuments, selectSeries],
-  (documents, series): UserDocument[] => {
-    // Look up the merged document entity (local + cloud) by id so series posts
-    // carry their local copy too. Without this, a series post's UserDocument
-    // would be cloud-only, and deleting it would leave the local copy behind
-    // (requiring a second delete).
-    const docsById = new Map(documents.map((doc) => [doc.id, doc]));
+  [selectPosts, selectSeries],
+  (posts, series): Post[] => {
+    const byId = new Map(posts.map((post) => [post.id, post]));
     const seriesPostIds = new Set<string>();
-    const seriesPosts: UserDocument[] = [];
+    const seriesPosts: Post[] = [];
 
     series.forEach((s) => {
       s.posts?.forEach((post) => {
         seriesPostIds.add(post.id);
-        const existing = docsById.get(post.id);
-        seriesPosts.push({ id: post.id, cloud: post, local: existing?.local });
+        seriesPosts.push(byId.get(post.id) ?? post);
       });
     });
 
-    const standalonePosts = documents.filter((doc) => {
-      const docData = doc.cloud || doc.local;
-      return docData?.type === "DOCUMENT" && !seriesPostIds.has(doc.id) &&
-        !docData.parentId;
-    });
+    const standalonePosts = posts.filter((post) =>
+      post.type === "DOCUMENT" && !seriesPostIds.has(post.id) && !post.parentId
+    );
 
     return [...seriesPosts, ...standalonePosts];
   },

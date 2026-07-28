@@ -11,7 +11,7 @@ import {
   Typography,
 } from "@mui/material";
 import { ChevronRight, Trash2 } from "lucide-react";
-import { Series, User, UserDocument } from "@/types";
+import { Series, User, Post } from "@/types";
 import { actions, useDispatch } from "@/store";
 import { useRouter } from "next/navigation";
 import { v4 as uuid } from "uuid";
@@ -27,7 +27,7 @@ const deleteIconSx = {
 } as const;
 
 interface PostsCompactListViewProps {
-  posts?: UserDocument[];
+  posts?: Post[];
   groups?: SeriesGroupItem[];
   user?: User;
   isTimeEditMode?: boolean;
@@ -74,7 +74,7 @@ export const PostsCompactListView: React.FC<PostsCompactListViewProps> = ({
     });
     if (!newName || newName === originalName) return;
     await dispatch(
-      actions.updateCloudDocument({
+      actions.updatePost({
         id: documentId,
         partial: { name: newName },
       }),
@@ -98,8 +98,8 @@ export const PostsCompactListView: React.FC<PostsCompactListViewProps> = ({
     }
   };
 
-  const handleDelete = async (post: UserDocument) => {
-    const name = post.cloud?.name || post.local?.name || "This post";
+  const handleDelete = async (post: Post) => {
+    const name = post.name || "This post";
     const alertPayload = {
       title: "Delete Post",
       content:
@@ -111,11 +111,7 @@ export const PostsCompactListView: React.FC<PostsCompactListViewProps> = ({
     };
     const response = await dispatch(actions.alert(alertPayload));
     if (response.payload === alertPayload.actions[1].id) {
-      if (post.cloud) await dispatch(actions.deleteCloudDocument(post.id));
-      // Always remove the local (IndexedDB) copy: a server-rendered post only
-      // carries its cloud record, so `post.local` may be undefined even when a
-      // local copy exists. The delete is idempotent when there is nothing to remove.
-      await dispatch(actions.deleteLocalDocument(post.id));
+      await dispatch(actions.deletePost(post.id));
       router.refresh();
     }
   };
@@ -134,7 +130,7 @@ export const PostsCompactListView: React.FC<PostsCompactListViewProps> = ({
     postCount: number,
     isExpanded: boolean,
     isAuthor: boolean,
-    posts: UserDocument[],
+    posts: Post[],
   ) => (
     <Box key={`series-${series.id}`}>
       <ListItem
@@ -224,7 +220,7 @@ export const PostsCompactListView: React.FC<PostsCompactListViewProps> = ({
     </Box>
   );
 
-  const renderPostItem = (post: UserDocument, extraIndent = 0) => (
+  const renderPostItem = (post: Post, extraIndent = 0) => (
     <PostCompactListItem
       key={post.id}
       post={post}

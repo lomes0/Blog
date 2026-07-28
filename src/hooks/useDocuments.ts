@@ -1,10 +1,10 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { UserDocument } from "@/types";
+import { Post } from "@/types";
 import { apiClient } from "@/api";
 
 interface UseDocumentsResult {
-  documents: UserDocument[];
+  documents: Post[];
   loading: boolean;
   refresh: () => Promise<void>;
 }
@@ -16,9 +16,9 @@ interface UseDocumentsResult {
  * @returns documents state, loading state, and refresh function
  */
 export function useDocuments(
-  initialDocuments: UserDocument[],
+  initialDocuments: Post[],
 ): UseDocumentsResult {
-  const [documents, setDocuments] = useState<UserDocument[]>(initialDocuments);
+  const [documents, setDocuments] = useState<Post[]>(initialDocuments);
   const [loading, setLoading] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -26,14 +26,7 @@ export function useDocuments(
     try {
       const documents = await apiClient.documents.list();
 
-      if (documents) {
-        // API returns Document[] - convert to UserDocument[] format
-        const userDocuments: UserDocument[] = documents.map((doc) => ({
-          id: doc.id,
-          cloud: doc,
-        }));
-        setDocuments(userDocuments);
-      }
+      if (documents) setDocuments(documents);
     } catch (error) {
       console.error("Failed to refresh documents:", error);
     } finally {

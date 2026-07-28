@@ -2,11 +2,12 @@
 import { useSelector } from "@/store";
 import UserCard from "./User/UserCard";
 import { ExportImportPanel } from "./ExportImportPanel";
+import { capabilities } from "@/lib/capabilities";
 import Grid from "@mui/material/Grid2";
 import { Box, CircularProgress, Paper, Typography } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { PieChart } from "@mui/x-charts/PieChart";
-import { Cloud, Database, LogIn } from "lucide-react";
+import { Cloud, Database } from "lucide-react";
 import { useStorageUsage } from "@/hooks/useStorageUsage";
 import { ICON_SIZE } from "@/theme/icons";
 
@@ -19,7 +20,7 @@ const Dashboard: React.FC = () => {
 
       <StorageChart />
 
-      <ExportImportPanel />
+      {capabilities(user).exportImport && <ExportImportPanel />}
     </Box>
   );
 };
@@ -58,15 +59,24 @@ const StorageEmptyState: React.FC<{
   </Box>
 );
 
+/**
+ * Storage consumed by the session's posts.
+ *
+ * One chart, not the old local/cloud pair — a post now lives in exactly one
+ * place, so a split would be showing a distinction that no longer exists. The
+ * inner ring is the total; the outer ring breaks it down per post.
+ */
 const StorageChart: React.FC = () => {
   const user = useSelector((state) => state.user);
-  const { local: localStorageUsage, cloud: cloudStorageUsage, initialized } =
-    useStorageUsage();
+  const { usage: storageUsage, initialized } = useStorageUsage();
   const theme = useTheme();
+
+  const label = user ? "Cloud Storage" : "Local Storage";
+  const isPending = storageUsage.loading || (!initialized && !storageUsage.usage);
 
   return (
     <Grid container spacing={2}>
-      <Grid size={{ xs: 12, sm: 6 }}>
+      <Grid size={{ xs: 12 }}>
         <Paper
           sx={{
             display: "flex",
@@ -80,16 +90,20 @@ const StorageChart: React.FC = () => {
             gutterBottom
             sx={{ alignSelf: "start", userSelect: "none" }}
           >
-            Local Storage
+            {label}
           </Typography>
-          {localStorageUsage.loading && <StorageEmptyState loading />}
-          {!localStorageUsage.loading && !localStorageUsage.usage && (
+          {isPending && <StorageEmptyState loading />}
+          {!isPending && !storageUsage.usage && (
             <StorageEmptyState
-              icon={<Database size={ICON_SIZE.display} />}
-              label="Local storage is empty"
+              icon={user
+                ? <Cloud size={ICON_SIZE.display} />
+                : <Database size={ICON_SIZE.display} />}
+              label={user
+                ? "You have no posts yet"
+                : "You have no local drafts yet"}
             />
           )}
-          {!!localStorageUsage.usage && (
+          {!!storageUsage.usage && (
             <PieChart
               series={[
                 {
@@ -97,9 +111,9 @@ const StorageChart: React.FC = () => {
                   outerRadius: 80,
                   cx: 125,
                   data: [{
-                    id: "local",
-                    label: "Local",
-                    value: localStorageUsage.usage,
+                    id: "total",
+                    label,
+                    value: storageUsage.usage,
                     color: theme.palette.info.light,
                   }],
                   valueFormatter: (item) => `${item.value.toFixed(2)} MB`,
@@ -108,7 +122,7 @@ const StorageChart: React.FC = () => {
                   innerRadius: 100,
                   outerRadius: 120,
                   cx: 125,
-                  data: localStorageUsage.details,
+                  data: storageUsage.details,
                   valueFormatter: (item) => `${item.value.toFixed(2)} MB`,
                 },
               ]}
@@ -116,68 +130,6 @@ const StorageChart: React.FC = () => {
               height={300}
               slotProps={{ legend: { hidden: true } }}
               sx={{ mx: "auto" }}
-            />
-          )}
-        </Paper>
-      </Grid>
-      <Grid size={{ xs: 12, sm: 6 }}>
-        <Paper
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            p: 2,
-          }}
-        >
-          <Typography
-            variant="overline"
-            gutterBottom
-            sx={{ alignSelf: "start", userSelect: "none" }}
-          >
-            Cloud Storage
-          </Typography>
-          {(cloudStorageUsage.loading ||
-            (!initialized && !cloudStorageUsage.usage)) && (
-            <StorageEmptyState loading />
-          )}
-          {initialized && !user && !cloudStorageUsage.loading && (
-            <StorageEmptyState
-              icon={<LogIn size={ICON_SIZE.display} />}
-              label="Please login to use cloud storage"
-            />
-          )}
-          {user && !cloudStorageUsage.loading && !cloudStorageUsage.usage && (
-            <StorageEmptyState
-              icon={<Cloud size={ICON_SIZE.display} />}
-              label="Cloud storage is empty"
-            />
-          )}
-          {!!cloudStorageUsage.usage && (
-            <PieChart
-              series={[
-                {
-                  innerRadius: 0,
-                  outerRadius: 80,
-                  cx: 125,
-                  data: [{
-                    id: "cloud",
-                    label: "Cloud",
-                    value: cloudStorageUsage.usage,
-                    color: theme.palette.warning.light,
-                  }],
-                  valueFormatter: (item) => `${item.value.toFixed(2)} MB`,
-                },
-                {
-                  innerRadius: 100,
-                  outerRadius: 120,
-                  cx: 125,
-                  data: cloudStorageUsage.details,
-                  valueFormatter: (item) => `${item.value.toFixed(2)} MB`,
-                },
-              ]}
-              width={256}
-              height={300}
-              slotProps={{ legend: { hidden: true } }}
             />
           )}
         </Paper>

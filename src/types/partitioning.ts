@@ -22,7 +22,7 @@ export interface PartitionConfig {
 export interface TimeGroup {
   timeKey: string; // "2024-01" for month, "2024-01-15" for day, etc.
   timeLabel: string; // "January 2024", "January 15, 2024", etc.
-  posts: UserDocument[];
+  posts: Post[];
   count: number;
   granularity: PartitionGranularity;
   /** Series that have zero posts, to be shown once in this partition */
@@ -49,4 +49,4 @@ export interface PartitionedPostsResponse {
   };
 }
 
-import { Series, UserDocument } from "@/types";
+import { Series, Post } from "@/types";

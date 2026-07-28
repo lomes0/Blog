@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { EditorDocumentRevision } from "@/types";
+import { Revision } from "@/types";
 import { unstable_cache } from "next/cache";
 
 const findRevisionById = async (id: string) => {
@@ -14,11 +14,11 @@ const findRevisionById = async (id: string) => {
     },
   });
   if (!revision) return null;
-  const DocumentRevision: EditorDocumentRevision = {
+  const RevisionMeta: Revision = {
     ...revision,
-    data: revision.data as unknown as EditorDocumentRevision["data"],
+    data: revision.data as unknown as Revision["data"],
   };
-  return DocumentRevision as EditorDocumentRevision;
+  return RevisionMeta as Revision;
 };
 
 const getCachedRevision = unstable_cache(findRevisionById, [], {

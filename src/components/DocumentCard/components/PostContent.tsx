@@ -2,14 +2,14 @@
 import React from "react";
 import { Box, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
-import { User, UserDocument } from "@/types";
+import { User, Post } from "@/types";
 import { formatFullDate as formatDate } from "@/utils/dateFormat";
 
 /**
  * Props for PostContent component
  */
 interface PostContentProps {
-  userDocument?: UserDocument;
+  post?: Post;
   author?: User | null;
 }
 
@@ -18,11 +18,11 @@ interface PostContentProps {
  * Follows standard blog UI conventions with title, meta info, and excerpt
  */
 export const PostContent: React.FC<PostContentProps> = ({
-  userDocument,
+  post,
   author,
 }) => {
   const router = useRouter();
-  const document = userDocument?.cloud || userDocument?.local;
+  const document = post;
   const title = document?.name || "Untitled Post";
   const createdAt = document?.createdAt;
 

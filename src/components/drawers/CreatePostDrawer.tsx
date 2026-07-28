@@ -15,10 +15,12 @@ import { Plus, X } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { useRouter } from "next/navigation";
 import useOnlineStatus from "@/hooks/useOnlineStatus";
-import type { DocumentCreateInput, User } from "@/types";
+import type { PostCreateInput, User } from "@/types";
 import { useHandleValidation } from "@/components/DocumentActions/hooks/useHandleValidation";
 import { getEditorData } from "@/utils/getEditorData";
-import PostCloudOptions from "../posts/PostCloudOptions";
+import UsersAutocomplete from "../User/UsersAutocomplete";
+import DocumentVisibilityFields from "../DocumentActions/DocumentVisibilityFields";
+import { capabilities } from "@/lib/capabilities";
 import { useCreatePostActions } from "@/hooks/useCreatePostActions";
 
 interface CreatePostDrawerProps {
@@ -39,17 +41,17 @@ const CreatePostDrawer: React.FC<CreatePostDrawerProps> = ({
   const { user, createPost } = useCreatePostActions();
   const router = useRouter();
   const isOnline = useOnlineStatus();
+  const can = capabilities(user);
 
-  const [input, setInput] = useState<Partial<DocumentCreateInput>>({
+  const [input, setInput] = useState<Partial<PostCreateInput>>({
     published: true,
     private: false,
     collab: false,
   });
-  const [saveToCloud, setSaveToCloud] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const updateInput = (partial: Partial<DocumentCreateInput>) => {
+  const updateInput = (partial: Partial<PostCreateInput>) => {
     setInput((prev) => ({ ...prev, ...partial }));
   };
 
@@ -76,14 +78,8 @@ const CreatePostDrawer: React.FC<CreatePostDrawerProps> = ({
       setInput({ published: true, private: false, collab: false });
       resetValidation();
       setError(null);
-      setSaveToCloud(true);
     }
   }, [open, resetValidation]);
-
-  // Disable cloud saving when offline or logged out
-  React.useEffect(() => {
-    if (!isOnline || !user) setSaveToCloud(false);
-  }, [isOnline, user]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -98,13 +94,13 @@ const CreatePostDrawer: React.FC<CreatePostDrawerProps> = ({
       const name = input.name || "Untitled Document";
       const createdAt = new Date().toISOString();
       const postId = uuidv4();
-      const payload: DocumentCreateInput = {
+      const payload: PostCreateInput = {
         ...input,
         id: postId,
         head: uuidv4(),
         name,
         data: input.data ??
-          (getEditorData() as DocumentCreateInput["data"]),
+          (getEditorData() as PostCreateInput["data"]),
         type: "DOCUMENT",
         parentId: null,
         seriesId,
@@ -112,7 +108,7 @@ const CreatePostDrawer: React.FC<CreatePostDrawerProps> = ({
         updatedAt: createdAt,
       };
 
-      const result = await createPost(payload, { saveToCloud, isOnline });
+      const result = await createPost(payload);
       if (!result.ok) {
         setError(result.error);
         return;
@@ -120,9 +116,7 @@ const CreatePostDrawer: React.FC<CreatePostDrawerProps> = ({
       onSuccess?.();
       onClose();
       router.refresh();
-      if (result.cloudSaved) {
-        router.push(`/edit/${postId}`);
-      }
+      router.push(`/edit/${postId}`);
     } catch {
       setError("An unexpected error occurred. Please try again.");
     } finally {
@@ -213,16 +207,25 @@ const CreatePostDrawer: React.FC<CreatePostDrawerProps> = ({
               endAdornment: validating && <CircularProgress size={20} />,
             }}
           />
-          <PostCloudOptions
-            input={input}
-            saveToCloud={saveToCloud}
-            isOnline={isOnline}
-            user={user}
-            isSubmitting={isSubmitting}
-            onSaveToCloudChange={setSaveToCloud}
-            onUpdateInput={updateInput}
-            onUpdateCoauthors={updateCoauthors}
-          />
+          {can.coauthors && (
+            <UsersAutocomplete
+              label="Coauthors"
+              placeholder="Email"
+              value={input.coauthors ?? []}
+              onChange={updateCoauthors}
+              sx={{ mb: 2 }}
+              disabled={isSubmitting || !isOnline}
+            />
+          )}
+          {can.publish && (
+            <DocumentVisibilityFields
+              isPrivate={input.private}
+              isPublished={input.published ?? true}
+              isCollab={input.collab}
+              disabled={isSubmitting || !isOnline}
+              onChange={updateInput}
+            />
+          )}
         </Box>
 
         {/* Footer */}

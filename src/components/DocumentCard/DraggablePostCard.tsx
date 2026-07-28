@@ -1,6 +1,6 @@
 "use client";
 import React, { useCallback, useContext, useRef, useState } from "react";
-import { User, UserDocument } from "@/types";
+import { User, Post } from "@/types";
 import { Box, SxProps, useMediaQuery } from "@mui/material";
 import { Theme, useTheme } from "@mui/material/styles";
 import PostCard from "./PostCard";
@@ -8,7 +8,7 @@ import PostCard from "./PostCard";
 import { DragContext } from "@/contexts/DragContext";
 
 interface DraggablePostCardProps {
-  userDocument: UserDocument;
+  post: Post;
   user?: User;
   sx?: SxProps<Theme>;
   onMoveComplete?: () => void;
@@ -19,7 +19,7 @@ interface DraggablePostCardProps {
  * Removes directory drop logic since blog only has posts
  */
 const DraggablePostCard: React.FC<DraggablePostCardProps> = ({
-  userDocument,
+  post,
   user,
   sx,
   onMoveComplete,
@@ -32,13 +32,13 @@ const DraggablePostCard: React.FC<DraggablePostCardProps> = ({
   const cardRef = useRef<HTMLDivElement>(null);
   const { setIsDragging: setGlobalDragging } = useContext(DragContext);
 
-  const document = userDocument?.local || userDocument?.cloud;
+  const document = post;
 
   const handleDragStart = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.dataTransfer.setData(
       "application/matheditor-document",
       JSON.stringify({
-        id: userDocument.id,
+        id: post.id,
         name: document?.name,
         type: "post",
       }),
@@ -56,7 +56,7 @@ const DraggablePostCard: React.FC<DraggablePostCardProps> = ({
     e.dataTransfer.effectAllowed = "move";
     setIsDragging(true);
     setGlobalDragging(true);
-  }, [userDocument.id, document?.name, setGlobalDragging]);
+  }, [post.id, document?.name, setGlobalDragging]);
 
   const handleDragEnd = useCallback(() => {
     setIsDragging(false);
@@ -71,7 +71,7 @@ const DraggablePostCard: React.FC<DraggablePostCardProps> = ({
         e.dataTransfer.getData("application/matheditor-document"),
       );
 
-      if (dragData.id && dragData.id !== userDocument.id) {
+      if (dragData.id && dragData.id !== post.id) {
         // In a blog context, we might reorder posts or move to series
         // This would need to be implemented based on specific requirements
         onMoveComplete?.();
@@ -79,7 +79,7 @@ const DraggablePostCard: React.FC<DraggablePostCardProps> = ({
     } catch (error) {
       console.warn("Failed to handle post drop:", error);
     }
-  }, [userDocument.id, onMoveComplete]);
+  }, [post.id, onMoveComplete]);
 
   return (
     <Box
@@ -112,7 +112,7 @@ const DraggablePostCard: React.FC<DraggablePostCardProps> = ({
         },
       }}
     >
-      <PostCard userDocument={userDocument} user={user} sx={sx} />
+      <PostCard post={post} user={user} sx={sx} />
     </Box>
   );
 };

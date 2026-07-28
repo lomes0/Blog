@@ -1,36 +1,32 @@
 "use client";
 import { useRef, useState } from "react";
 import { actions, useDispatch, useSelector } from "@/store";
-import { DocumentUpdateInput, User, UserDocument } from "@/types";
+import { PostUpdateInput, User, Post } from "@/types";
 import { useSearchParams } from "next/navigation";
 
-export function useShareDocument(userDocument: UserDocument) {
+export function useShareDocument(post: Post) {
   const dispatch = useDispatch();
   const user = useSelector((state) => state.user);
-  const localDocument = userDocument?.local;
-  const cloudDocument = userDocument?.cloud;
-  const isCloud = !!cloudDocument;
-  const isAuthor = isCloud ? cloudDocument.author.id === user?.id : true;
-  const isCollab = isCloud && cloudDocument.collab;
-  const isPrivate = isCloud && cloudDocument.private;
-  const id = userDocument.id;
-  const name = cloudDocument?.name ?? localDocument?.name ??
-    "Untitled Document";
-  const handle = cloudDocument?.handle ?? localDocument?.handle ?? null;
+  const isAuthor = post.author ? post.author.id === user?.id : true;
+  const isCollab = !!post.collab;
+  const isPrivate = !!post.private;
+  const id = post.id;
+  const name = post.name ?? "Untitled Document";
+  const handle = post.handle ?? null;
 
   const formats = ["view", "embed", "pdf", "docx"];
   if (isAuthor || isCollab) formats.push("edit");
 
   const [format, setFormat] = useState("view");
-  const [revision, setRevision] = useState(cloudDocument?.head ?? null);
+  const [revision, setRevision] = useState(post.head ?? null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const shareFormRef = useRef<HTMLFormElement>(null);
   const searchParams = useSearchParams();
 
   const openShareDialog = () => {
-    setFormat(cloudDocument?.collab ? "edit" : "view");
+    setFormat(post.collab ? "edit" : "view");
     const v = searchParams.get("v");
-    setRevision(v || (cloudDocument?.head ?? null));
+    setRevision(v || (post.head ?? null));
     setShareDialogOpen(true);
   };
 
@@ -42,7 +38,7 @@ export function useShareDocument(userDocument: UserDocument) {
   function getShareUrl(formdata: FormData) {
     const url = new URL(window.location.origin);
     url.pathname = `/${format}/${handle || id}`;
-    if (revision && revision !== cloudDocument?.head) {
+    if (revision && revision !== post.head) {
       url.searchParams.append("v", revision);
     }
     if (format === "pdf") {
@@ -84,38 +80,22 @@ export function useShareDocument(userDocument: UserDocument) {
   ) => {
     event.preventDefault();
     const formdata = new FormData(event.currentTarget);
-    if (!isCloud) {
-      return dispatch(actions.announce({
-        message: {
-          title: "Document is not saved to the cloud",
-          subtitle: "Please save document to the cloud first",
-        },
-      }));
-    }
     const url = getShareUrl(formdata);
     closeShareDialog(closeMenu);
     await navigator.share({ title: name, url: url.toString() });
   };
 
   const togglePrivate = async () => {
-    if (!isCloud) {
-      return dispatch(actions.announce({
-        message: {
-          title: "Document is not saved to the cloud",
-          subtitle: "Please save document to the cloud first",
-        },
-      }));
-    }
-    const payload: { id: string; partial: DocumentUpdateInput } = {
+    const payload: { id: string; partial: PostUpdateInput } = {
       id,
       partial: { private: !isPrivate },
     };
     if (isPrivate === false) {
-      if (cloudDocument?.published) payload.partial.published = false;
-      if (cloudDocument?.collab) payload.partial.collab = false;
+      if (post.published) payload.partial.published = false;
+      if (post.collab) payload.partial.collab = false;
     }
     try {
-      await dispatch(actions.updateCloudDocument(payload)).unwrap();
+      await dispatch(actions.updatePost(payload)).unwrap();
       dispatch(actions.announce({
         message: {
           title: "Document Privacy Updated",
@@ -130,17 +110,9 @@ export function useShareDocument(userDocument: UserDocument) {
   };
 
   const toggleCollab = async () => {
-    if (!isCloud) {
-      return dispatch(actions.announce({
-        message: {
-          title: "Document is not saved to the cloud",
-          subtitle: "Please save document to the cloud first",
-        },
-      }));
-    }
     const payload = { id, partial: { collab: !isCollab } };
     try {
-      await dispatch(actions.updateCloudDocument(payload)).unwrap();
+      await dispatch(actions.updatePost(payload)).unwrap();
       dispatch(actions.announce({
         message: {
           title: "Document Collaboration Updated",
@@ -155,30 +127,21 @@ export function useShareDocument(userDocument: UserDocument) {
   };
 
   const updateCoauthors = (users: (User | string)[]) => {
-    if (!cloudDocument) {
-      return dispatch(actions.announce({
-        message: {
-          title: "Document is not saved to the cloud",
-          subtitle: "Please save document to the cloud first",
-        },
-      }));
-    }
     const coauthors = users.map((u) => (typeof u === "string" ? u : u.email));
     dispatch(
-      actions.updateCloudDocument({
-        id: cloudDocument.id,
+      actions.updatePost({
+        id: post.id,
         partial: { coauthors },
       }),
     );
   };
 
   return {
-    cloudDocument,
-    isCloud,
+    post,
     isAuthor,
     isCollab,
     isPrivate,
-    isPublished: isCloud && cloudDocument.published,
+    isPublished: !!post.published,
     name,
     formats,
     format,

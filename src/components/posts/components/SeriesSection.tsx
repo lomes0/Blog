@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import Grid from "@mui/material/Grid2";
-import { Series, User, UserDocument } from "@/types";
+import { Series, User, Post } from "@/types";
 import { type ViewType } from "@/components/shared/ViewToggle";
 import { SeriesGroupItem } from "@/utils/posts/seriesGrouping";
 import SeriesGroupCard from "./SeriesGroupCard";
@@ -34,7 +34,7 @@ const SeriesSection: React.FC<SeriesSectionProps> = ({
     const groups: SeriesGroupItem[] = series.map((s) => ({
       type: "series" as const,
       series: s,
-      posts: (s.posts ?? []).map((p) => ({ id: p.id, cloud: p })),
+      posts: (s.posts ?? []),
       sortKey: s.createdAt ? new Date(s.createdAt).getTime() : 0,
     }));
     return <PostsCompactListView groups={groups} user={user} />;
@@ -43,10 +43,7 @@ const SeriesSection: React.FC<SeriesSectionProps> = ({
   return (
     <Grid container spacing={5} sx={{ mb: 4 }}>
       {series.map((s) => {
-        const posts: UserDocument[] = (s.posts ?? []).map((p) => ({
-          id: p.id,
-          cloud: p,
-        }));
+        const posts: Post[] = s.posts ?? [];
         return (
           <Grid key={s.id} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
             <SeriesGroupCard

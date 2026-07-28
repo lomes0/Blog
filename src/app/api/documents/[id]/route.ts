@@ -6,7 +6,7 @@ import {
   findEditorDocument,
   updateDocument,
 } from "@/repositories/document";
-import { DocumentUpdateInput } from "@/types";
+import { PostUpdateInput } from "@/types";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
@@ -97,7 +97,7 @@ export const PATCH = withApiHandler(
       );
     }
 
-    const body: DocumentUpdateInput = await request.json();
+    const body: PostUpdateInput = await request.json();
     if (!body) {
       throw new ApiError(400, "Bad Request", "Invalid request body");
     }

@@ -9,7 +9,7 @@ import {
   Typography,
 } from "@mui/material";
 import { Trash2 } from "lucide-react";
-import { DocumentStatus, User, UserDocument } from "@/types";
+import { DocumentStatus, User, Post } from "@/types";
 import { useRouter } from "next/navigation";
 import PostActionMenu from "@/components/DocumentCard/PostActionMenu";
 import { PendingTimeChange } from "@/types/posts";
@@ -17,7 +17,7 @@ import { TimeStepperControls } from "./TimeStepperControls";
 import { formatFullDate } from "@/utils/dateFormat";
 
 interface PostCompactListItemProps {
-  post: UserDocument;
+  post: Post;
   user?: User;
   isTimeEditMode: boolean;
   pendingChange?: PendingTimeChange;
@@ -31,7 +31,7 @@ interface PostCompactListItemProps {
   onNameCancel: (postId: string) => void;
   onTimeAdjust?: (postId: string, originalDate: Date, days: number) => void;
   onTimeReset?: (postId: string) => void;
-  onDelete: (post: UserDocument) => void;
+  onDelete: (post: Post) => void;
   extraIndent?: number;
 }
 
@@ -50,7 +50,7 @@ const PostCompactListItem: React.FC<PostCompactListItemProps> = ({
   extraIndent = 0,
 }) => {
   const router = useRouter();
-  const document = post.cloud || post.local;
+  const document = post;
   const isDone = document?.status === DocumentStatus.DONE;
   const authorName =
     (document && "author" in document && document.author?.name) || "Unknown";
@@ -290,7 +290,7 @@ const PostCompactListItem: React.FC<PostCompactListItemProps> = ({
               ".MuiListItem-root:hover &": { opacity: 1 },
             }}
           >
-            <PostActionMenu userDocument={post} user={user} />
+            <PostActionMenu post={post} user={user} />
           </Box>
         )}
       </ListItemButton>

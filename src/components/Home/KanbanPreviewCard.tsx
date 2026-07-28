@@ -1,16 +1,16 @@
 "use client";
 import { Box, Typography } from "@mui/material";
 import { Kanban } from "lucide-react";
-import { UserDocument } from "@/types";
+import { Post } from "@/types";
 
 interface KanbanPreviewCardProps {
-  documents: UserDocument[];
+  documents: Post[];
   onViewFull: () => void;
 }
 
 /** Type-safe helper to check if a document is published */
-function getDocumentPublished(doc: UserDocument): boolean {
-  return doc.cloud?.published === true;
+function getDocumentPublished(doc: Post): boolean {
+  return doc.published === true;
 }
 
 export default function KanbanPreviewCard({
@@ -159,7 +159,7 @@ export default function KanbanPreviewCard({
                   }}
                 >
                   {column.docs.map((doc) => {
-                    const data = doc.cloud || doc.local;
+                    const data = doc;
                     return (
                       <Box
                         key={doc.id}

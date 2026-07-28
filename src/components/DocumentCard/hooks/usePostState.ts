@@ -1,78 +1,52 @@
 import { useMemo } from "react";
-import { User, UserDocument } from "@/types";
+import { Post, User } from "@/types";
 import { PostState } from "../PostChips";
 import { seriesPositionOf } from "@/utils/posts/seriesGrouping";
 import { useDocumentURL } from "@/contexts/DocumentURLContext";
 
 /**
- * Consolidated state management hook for PostCard component
+ * Everything PostCard needs to render one post, derived in a single pass.
  *
- * This hook consolidates all the state calculations that were previously
- * scattered across multiple useMemo hooks in the PostCard component.
+ * "Draft" now means what it says — a post that has not been published — rather
+ * than the old proxy of "exists locally but not in the cloud". A guest's posts
+ * are all drafts because publishing needs an account.
  *
- * @param userDocument - The user document (can be local, cloud, or both)
- * @param user - The current user
- * @returns Consolidated post state including document, author, postState, and href
+ * @param post - The post to render
+ * @param user - The current user, absent for guests
  */
-export const usePostState = (userDocument?: UserDocument, user?: User) => {
+export const usePostState = (post?: Post, user?: User) => {
   const { getDocumentUrl } = useDocumentURL();
 
   return useMemo(() => {
-    // Calculate post state (loading, draft, published)
-    const postState: PostState = (() => {
-      if (!userDocument) {
-        return { isDraft: false, isPublished: false, isLoading: true };
-      }
-
-      const localDocument = userDocument.local;
-      const cloudDocument = userDocument.cloud;
-      const hasLocal = Boolean(localDocument);
-      const hasCloud = Boolean(cloudDocument);
-
-      return {
-        isDraft: hasLocal && !hasCloud,
-        isPublished: hasCloud,
+    const postState: PostState = post
+      ? {
+        isDraft: !post.published,
+        isPublished: !!post.published,
         isLoading: false,
-        documentStatus: cloudDocument?.status || localDocument?.status,
-      };
-    })();
+        documentStatus: post.status,
+      }
+      : { isDraft: false, isPublished: false, isLoading: true };
 
-    // Get the document to display (prefer local if available)
-    const document = userDocument
-      ? (userDocument.local || userDocument.cloud)
-      : null;
+    const author = post?.author ?? user;
+    const href = post ? getDocumentUrl(post) : "/";
 
-    // Get author (from cloud document or current user)
-    const author = userDocument?.cloud?.author ?? user;
+    const seriesInfo = {
+      series: post?.series ?? null,
+      seriesOrder: seriesPositionOf(post?.series, post?.id ?? ""),
+    };
 
-    // Generate navigation URL
-    const href = document && userDocument ? getDocumentUrl(userDocument) : "/";
-
-    // Series information (if available)
-    const seriesInfo = (() => {
-      const cloudDoc = userDocument?.cloud;
-      return {
-        series: cloudDoc?.series || null,
-        seriesOrder: seriesPositionOf(cloudDoc?.series, cloudDoc?.id ?? ""),
-      };
-    })();
-
-    // Generate aria label
-    const ariaLabel = document ? `Open ${document.name} post` : "Loading post";
-
-    // Document status
-    const status = document?.status;
+    const ariaLabel = post ? `Open ${post.name} post` : "Loading post";
 
     return {
-      document,
+      document: post ?? null,
       author,
       postState,
       href,
       seriesInfo,
       ariaLabel,
-      status,
+      status: post?.status,
     };
-  }, [userDocument, user, getDocumentUrl]);
+  }, [post, user, getDocumentUrl]);
 };
 
 /**

@@ -1,5 +1,5 @@
 "use client";
-import { CloudOff, Share2 } from "lucide-react";
+import { Share2 } from "lucide-react";
 import {
   Box,
   Button,
@@ -13,13 +13,11 @@ import {
   MenuItem,
   Tab,
   Tabs,
-  Typography,
 } from "@mui/material";
-import { UserDocument } from "@/types";
+import { Post } from "@/types";
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import useFixedBodyScroll from "@/hooks/useFixedBodyScroll";
-import UploadDocument from "./Upload";
 import { useShareDocument } from "./hooks/useShareDocument";
 import {
   ShareCopyLinkButton,
@@ -29,16 +27,13 @@ import {
   SharePdfPanel,
   ShareViewPanel,
 } from "./ShareTabPanels";
-import { ICON_SIZE } from "@/theme/icons";
 
 const ShareDocument: React.FC<{
-  userDocument: UserDocument;
+  post: Post;
   variant?: "menuitem" | "iconbutton";
   closeMenu?: () => void;
-}> = ({ userDocument, variant = "iconbutton", closeMenu }) => {
+}> = ({ post, variant = "iconbutton", closeMenu }) => {
   const {
-    cloudDocument,
-    isCloud,
     isAuthor,
     isCollab,
     isPrivate,
@@ -56,14 +51,14 @@ const ShareDocument: React.FC<{
     togglePrivate,
     toggleCollab,
     updateCoauthors,
-  } = useShareDocument(userDocument);
+  } = useShareDocument(post);
 
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("md"));
   useFixedBodyScroll(shareDialogOpen);
 
   const panelProps = {
-    cloudDocument: cloudDocument!,
+    post: post!,
     revision,
     setRevision,
     isPrivate: isPrivate ?? false,
@@ -122,54 +117,30 @@ const ShareDocument: React.FC<{
             >
               {formats.map((f) => <Tab key={f} label={f} value={f} />)}
             </Tabs>
-            {!cloudDocument && (
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  my: 5,
-                  gap: 2,
-                }}
-              >
-                <CloudOff size={ICON_SIZE.display} />
-                <Typography variant="overline" component="p">
-                  Please save document to the cloud first
-                </Typography>
-                <UploadDocument userDocument={userDocument} variant="button" />
-              </Box>
+            {format === "view" && <ShareViewPanel {...panelProps} />}
+            {format === "embed" && <ShareEmbedPanel {...panelProps} />}
+            {format === "pdf" && <SharePdfPanel {...panelProps} />}
+            {format === "docx" && <ShareDocxPanel {...panelProps} />}
+            {format === "edit" && (
+              <ShareEditPanel
+                post={post}
+                isAuthor={isAuthor}
+                isCollab={isCollab ?? false}
+                toggleCollab={toggleCollab}
+                updateCoauthors={updateCoauthors}
+              />
             )}
-            {cloudDocument && (
-              <>
-                {format === "view" && <ShareViewPanel {...panelProps} />}
-                {format === "embed" && <ShareEmbedPanel {...panelProps} />}
-                {format === "pdf" && <SharePdfPanel {...panelProps} />}
-                {format === "docx" && <ShareDocxPanel {...panelProps} />}
-                {format === "edit" && (
-                  <ShareEditPanel
-                    cloudDocument={cloudDocument}
-                    isAuthor={isAuthor}
-                    isCollab={isCollab ?? false}
-                    toggleCollab={toggleCollab}
-                    updateCoauthors={updateCoauthors}
-                  />
-                )}
-                {isCloud && (
-                  <ShareCopyLinkButton
-                    isCloud={isCloud}
-                    isPrivate={isPrivate ?? false}
-                    format={format}
-                    copyLink={copyLink}
-                  />
-                )}
-              </>
-            )}
+            <ShareCopyLinkButton
+              isPrivate={isPrivate ?? false}
+              format={format}
+              copyLink={copyLink}
+            />
           </DialogContent>
           <DialogActions>
             <Button onClick={() => closeShareDialog(closeMenu)}>Cancel</Button>
             <Button
               type="submit"
-              disabled={!cloudDocument ||
+              disabled={!post ||
                 (isPrivate && ["embed", "pdf", "docx"].includes(format))}
             >
               Share
