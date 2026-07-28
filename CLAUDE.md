@@ -43,9 +43,14 @@ npx prisma studio    # Browse database in browser UI
 
 ### Testing
 
-There is no test runner configured in `package.json`. A single test file exists
-at `src/utils/__tests__/collaborators.test.ts` but there is no Jest/Vitest setup
-to run it. Lint with `npm run lint`.
+There is no test runner configured in `package.json`. A single spec exists at
+`src/lib/__tests__/ordering.test.ts`, written in `describe`/`it`/`expect` shape
+so it runs as-is once Vitest/Jest is wired up — but nothing executes it today.
+
+This means no automated check covers API authorization. Verify behaviour changes
+by running the app against the local Postgres (`docker compose up -d`) and
+exercising the routes directly. Type-check and lint with `npx tsc --noEmit` and
+`npm run lint`.
 
 ## Architecture
 
@@ -74,55 +79,104 @@ Documents have a dual-storage architecture:
   authentication, supports offline use.
 - **Cloud**: Stored in PostgreSQL via Prisma. Requires authentication.
 
-Redux thunks have paired local/cloud variants (e.g., `createLocalDocument` /
-`createCloudDocument`, `createLocalRevision` / `createCloudRevision`). The
-`load` thunk initializes both sources and merges them into the Redux store.
+The two are hidden behind one seam rather than branched on per call site. The
+`PostBackend` interface (`src/store/backend/index.ts`) has two implementations —
+`cloudBackend` (PostgreSQL via `/api/*`) and `localBackend` (IndexedDB) — and
+`backendFor(user)` picks one from the session alone. Thunks call the interface,
+so there are no paired `createLocal*` / `createCloud*` variants; everything above
+the seam is written once.
 
 ### State Management (Redux Toolkit)
 
-Single app slice at `src/store/app.ts`. State shape:
+Single app slice at `src/store/app.ts` (~590 lines). Thunks live in
+`src/store/thunks/`, split by domain (`postThunks`, `seriesThunks`,
+`projectThunks`, `revisionThunks`, `userThunks`, `sessionThunks`,
+`storageThunks`, `exportThunks`, `importGuestDrafts`) and are re-exported from
+`app.ts`, so existing import paths still resolve. State shape:
 
 ```typescript
-{ documents: EditorDocument[], posts: UserPost[], series: Series[], ui: { ... } }
+{
+  user?: User,
+  posts: EntityState<Post, string>,  // entity adapter — see postsSelectors
+  series: Series[],
+  projects: Project[],
+  ui: { ... }
+}
 ```
 
 Key async thunks:
 
-- Document operations: load, create, update, delete, fork, duplicate (both local
-  and cloud)
-- Post operations: loadPosts, createPost, updatePost, deletePost
-- Series operations: loadSeries, createSeries, updateSeries, deleteSeries
-- Revision operations: create, get, delete revisions (both local and cloud)
-- User operations: updateUser
-- Storage: getLocalStorageUsage, getCloudStorageUsage
+- Bootstrap: `load` (session → guest-draft import → posts → series → projects)
+- Post operations: loadPosts, getPost, createPost, updatePost, deletePost,
+  movePost, duplicatePost, forkPost, mergePostsIntoTabs
+- Series operations: loadSeries, createSeries, updateSeries, deleteSeries,
+  moveSeries
+- Project operations: loadProjects, createProject, updateProject, deleteProject,
+  moveProject
+- Revision operations: getRevision, createRevision, deleteRevision
+- User operations: updateUser, alert
+- Storage: getStorageUsage, getPostThumbnail
 
 ### Repository Pattern
 
 Business logic is organized in repository files (`src/repositories/`):
 
-- `document.ts`: Document CRUD operations, forking, archiving
-- `post.ts`: Post-specific operations with series support
+- `document.ts`: Document CRUD, paged author listings, public listings
 - `series.ts`: Series management and post organization
+- `project.ts`: Projects (named groupings of series)
+- `notes.ts`: Sticky-note canvases and notes
+- `ordering.ts`: Server-side `rank` computation and container moves, in
+  transactions (pairs with `src/lib/ordering.ts`, which mints the keys)
 - `revision.ts`: Version control operations
 - `user.ts`: User profile operations
+
+Selectors come in owner-scoped and public variants where both exist — e.g.
+`findSeriesById` returns a series whole and must only be given to a proven
+author, while `findPublicSeriesById` and `findAllSeries` filter to published,
+non-private posts and omit author emails. Reach for the public one on any path
+an anonymous caller can hit.
 
 ### API Routes (Next.js App Router)
 
 API routes are in `src/app/api/`:
 
-- `/api/documents/*`: Document management
-- `/api/posts/*`: Post-specific endpoints
-- `/api/series/*`: Series management
+- `/api/documents/*`: Document management (posts are Documents; there is no
+  `/api/posts` route)
+- `/api/series/*`, `/api/projects/*`: Organization
 - `/api/revisions/*`: Revision history
+- `/api/notes/*`: Sticky-note canvases
 - `/api/users/*`: User profiles
 - `/api/auth/[...nextauth]`: NextAuth authentication
-- `/api/completion`: AI completion endpoint (supports Anthropic, Google, Ollama,
+- `/api/completion`, `/api/copilot`: AI endpoints (Anthropic, Google, Ollama,
   Azure OpenAI)
+- `/api/import`, `/api/export`: Backup bundles (.zip)
+- `/api/attachments/*`: Uploaded file access
 - `/api/docx/*`, `/api/pdf/*`: Export functionality
 - `/api/og`: Open Graph image generation
 - `/api/thumbnails/*`: Document thumbnails
+- `/api/health`: Liveness/readiness probe
 
 Server actions have a 2MB body size limit (configured in `next.config.ts`).
+
+#### Route conventions
+
+Handlers wrap in `withApiHandler` (`src/lib/api-utils.ts`), which turns a thrown
+`ApiError` into a `{ error: { title, subtitle } }` response and anything else
+into a 500. Authorization uses the helpers from the same module rather than
+hand-rolled session checks:
+
+- `requireUser(subtitle?)` — the signed-in, non-disabled user, or throws
+- `optionalUser()` — the user or `null`, for routes with a public branch
+- `requireOwner(ownerId, user, subtitle)` — throws unless `ownerId` is the user
+
+Authenticating is not authorizing. Every route that takes an id must also prove
+the caller owns (or may read) *that* record — including ids in a request body,
+where a batch must be checked as a whole (see `findUnownedDocumentIds`). Several
+routes previously authenticated and then acted on any id passed to them.
+
+Filenames from outside the app — URL segments, entries inside an uploaded zip —
+go through `resolveWithin`/`safeBasename` (`src/lib/safePath.ts`) before they
+become a path on disk.
 
 ### Lexical Editor
 
@@ -181,7 +235,19 @@ Required environment variables (see `.env.example`):
 - `DATABASE_URL`: PostgreSQL connection string
 - `NEXTAUTH_URL` / `NEXTAUTH_SECRET`: NextAuth configuration
 - `PUBLIC_URL`: Public base URL of the app
+
+At least one OAuth provider. `src/lib/auth.ts` registers whichever of these has
+both halves set, and the login UI reads the resulting list back from
+`/api/auth/providers` — so the buttons always match what the server can serve.
+With neither configured, sign-in is unavailable and the server logs an error at
+startup.
+
+- `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`: GitHub OAuth
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`: Google OAuth
+
+Registration is open: anyone who completes an OAuth sign-in gets an account.
+Access is managed by who is given the URL. The only sign-in refusal is an
+account with `disabled` set.
 
 Optional:
 
