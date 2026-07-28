@@ -1,11 +1,16 @@
-import { authOptions } from "@/lib/auth";
-import { ApiError, withApiHandler } from "@/lib/api-utils";
+import {
+  ApiError,
+  optionalUser,
+  requireOwner,
+  requireUser,
+  withApiHandler,
+} from "@/lib/api-utils";
 import {
   deleteSeries,
+  findPublicSeriesById,
   findSeriesById,
   updateSeries,
 } from "@/repositories/series";
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 
@@ -20,49 +25,38 @@ interface SeriesUpdateInput {
 export const GET = withApiHandler(
   async (request, props: { params: Promise<{ id: string }> }) => {
     const params = await props.params;
+    const user = await optionalUser();
+
+    // The author sees their series whole; everyone else sees only what is
+    // published. This route previously returned the unfiltered record to
+    // anonymous callers, exposing every member post's metadata and `head`.
     const series = await findSeriesById(params.id);
-    if (!series) {
-      throw new ApiError(404, "Series not found");
+    if (series && user && series.authorId === user.id) {
+      return NextResponse.json({ data: series });
     }
 
-    return NextResponse.json({ data: series });
+    const publicSeries = await findPublicSeriesById(params.id);
+    if (!publicSeries) {
+      throw new ApiError(404, "Series not found");
+    }
+    return NextResponse.json({ data: publicSeries });
   },
 );
 
 export const PATCH = withApiHandler(
   async (request, props: { params: Promise<{ id: string }> }) => {
     const params = await props.params;
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      throw new ApiError(
-        401,
-        "Unauthorized",
-        "Please sign in to update the series",
-      );
-    }
-
-    const { user } = session;
-    if (user.disabled) {
-      throw new ApiError(
-        403,
-        "Account Disabled",
-        "Account is disabled for violating terms of service",
-      );
-    }
+    const user = await requireUser("Please sign in to update the series");
 
     const series = await findSeriesById(params.id);
     if (!series) {
       throw new ApiError(404, "Series not found");
     }
-
-    const isAuthor = user.id === series.authorId;
-    if (!isAuthor) {
-      throw new ApiError(
-        403,
-        "Unauthorized",
-        "You are not authorized to update this series",
-      );
-    }
+    requireOwner(
+      series.authorId,
+      user,
+      "You are not authorized to update this series",
+    );
 
     const body = (await request.json()) as SeriesUpdateInput;
     if (!body) {
@@ -85,37 +79,17 @@ export const PATCH = withApiHandler(
 export const DELETE = withApiHandler(
   async (request, props: { params: Promise<{ id: string }> }) => {
     const params = await props.params;
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      throw new ApiError(
-        401,
-        "Unauthorized",
-        "Please sign in to delete the series",
-      );
-    }
-
-    const { user } = session;
-    if (user.disabled) {
-      throw new ApiError(
-        403,
-        "Account Disabled",
-        "Account is disabled for violating terms of service",
-      );
-    }
+    const user = await requireUser("Please sign in to delete the series");
 
     const series = await findSeriesById(params.id);
     if (!series) {
       throw new ApiError(404, "Series not found");
     }
-
-    const isAuthor = user.id === series.authorId;
-    if (!isAuthor) {
-      throw new ApiError(
-        403,
-        "Unauthorized",
-        "You are not authorized to delete this series",
-      );
-    }
+    requireOwner(
+      series.authorId,
+      user,
+      "You are not authorized to delete this series",
+    );
 
     await deleteSeries(params.id);
 

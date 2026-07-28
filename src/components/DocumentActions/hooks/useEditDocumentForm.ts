@@ -26,7 +26,7 @@ export function useEditDocumentForm(post: Post) {
   const [input, setInput] = useState<Partial<PostUpdateInput>>({
     name,
     handle,
-    coauthors: post.coauthors?.map((u) => u.email) ?? [],
+    coauthors: post.coauthors?.flatMap((u) => u.email ? [u.email] : []) ?? [],
     private: isPrivate,
     published: isPublished,
     collab: isCollab,
@@ -60,7 +60,7 @@ export function useEditDocumentForm(post: Post) {
       name,
       handle,
       description: document?.description || "",
-      coauthors: post.coauthors?.map((u) => u.email) ?? [],
+      coauthors: post.coauthors?.flatMap((u) => u.email ? [u.email] : []) ?? [],
       private: isPrivate,
       published: isPublished,
       collab: isCollab,
@@ -86,7 +86,7 @@ export function useEditDocumentForm(post: Post) {
   ]);
 
   const updateCoauthors = (users: (User | string)[]) => {
-    const coauthors = users.map((u) => (typeof u === "string" ? u : u.email));
+    const coauthors = users.flatMap((u) => typeof u === "string" ? [u] : u.email ? [u.email] : []);
     updateInput({ coauthors });
   };
 

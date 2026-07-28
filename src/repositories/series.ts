@@ -13,7 +13,8 @@ import {
   SeriesUpdateInput,
 } from "@/types";
 
-// Standard author selection for consistency
+// Author fields for owner-scoped queries — the caller is the author, so their
+// own email coming back is not a disclosure.
 const authorSelect = {
   id: true,
   handle: true,
@@ -22,9 +23,90 @@ const authorSelect = {
   image: true,
 };
 
-// Find all series with author relations
+// Author fields for anything a stranger can read. Email is deliberately absent:
+// a public series listing must not become an address-harvesting endpoint.
+const publicAuthorSelect = {
+  id: true,
+  handle: true,
+  name: true,
+  image: true,
+};
+
+/**
+ * The post fields a series carries with it.
+ *
+ * This block was copy-pasted verbatim into three queries; a `where` clause added
+ * to one and not the others is precisely how the public listing ended up
+ * serving unpublished posts. It is built once here and parameterised by which
+ * author fields are safe to include.
+ */
+const postSelect = (author: typeof authorSelect | typeof publicAuthorSelect) =>
+  ({
+    id: true,
+    handle: true,
+    name: true,
+    description: true,
+    createdAt: true,
+    updatedAt: true,
+    authorId: true,
+    published: true,
+    private: true,
+    head: true,
+    collab: true,
+    status: true,
+    seriesId: true,
+    background_image: true,
+    rank: true,
+    baseId: true,
+    parentId: true,
+    type: true,
+    author: { select: author },
+    coauthors: {
+      select: { user: { select: author } },
+      orderBy: { createdAt: "asc" as const },
+    },
+    revisions: {
+      select: {
+        id: true,
+        createdAt: true,
+        documentId: true,
+        authorId: true,
+        author: { select: author },
+      },
+      orderBy: { createdAt: "desc" as const },
+    },
+  }) as const;
+
+/**
+ * Posts a stranger may see inside a series: published and not private.
+ *
+ * Both flags are checked because they are independent — a post can be published
+ * *and* private, and must still stay out of a public listing. This mirrors
+ * `findPublishedDocuments` in the document repository.
+ */
+const publiclyVisiblePosts = {
+  type: PrismaDocumentType.DOCUMENT,
+  published: true,
+  private: false,
+} as const;
+
+/**
+ * Every series that has something public to show, for anonymous surfaces (the
+ * landing page, `GET /api/series` without a session).
+ *
+ * Public means public all the way down: only published, non-private posts are
+ * included, only series that still have at least one such post are returned,
+ * and author emails are omitted. Before this filter existed the landing page
+ * and the anonymous API branch both served every author's unpublished drafts —
+ * including each draft's `head` revision id, which was enough to fetch its full
+ * body from `GET /api/revisions/[id]`.
+ *
+ * Owner-facing listings use {@link findSeriesByAuthorId}, which is unfiltered
+ * by design.
+ */
 export async function findAllSeries(): Promise<Series[]> {
   const series = await prisma.series.findMany({
+    where: { posts: { some: publiclyVisiblePosts } },
     select: {
       id: true,
       title: true,
@@ -35,59 +117,11 @@ export async function findAllSeries(): Promise<Series[]> {
       projectId: true,
       rank: true,
       author: {
-        select: authorSelect,
+        select: publicAuthorSelect,
       },
       posts: {
-        select: {
-          id: true,
-          handle: true,
-          name: true,
-          description: true,
-          createdAt: true,
-          updatedAt: true,
-          authorId: true,
-          published: true,
-          private: true,
-          head: true,
-          collab: true,
-          status: true,
-          seriesId: true,
-          background_image: true,
-          rank: true,
-          baseId: true,
-          parentId: true,
-          type: true,
-          author: {
-            select: authorSelect,
-          },
-          coauthors: {
-            select: {
-              user: {
-                select: authorSelect,
-              },
-            },
-            orderBy: {
-              createdAt: "asc",
-            },
-          },
-          revisions: {
-            select: {
-              id: true,
-              createdAt: true,
-              documentId: true,
-              authorId: true,
-              author: {
-                select: authorSelect,
-              },
-            },
-            orderBy: {
-              createdAt: "desc",
-            },
-          },
-        },
-        where: {
-          type: PrismaDocumentType.DOCUMENT,
-        },
+        select: postSelect(publicAuthorSelect),
+        where: publiclyVisiblePosts,
         orderBy: {
           rank: "asc",
         },
@@ -110,7 +144,61 @@ export async function findAllSeries(): Promise<Series[]> {
   })) as Series[];
 }
 
-// Find series by ID with full relations
+/**
+ * One series as a stranger may see it, or null when it has nothing public.
+ *
+ * The owner-facing {@link findSeriesById} returns the series whole; this is the
+ * variant safe to hand to an unauthenticated caller.
+ */
+export async function findPublicSeriesById(
+  id: string,
+): Promise<Series | null> {
+  const series = await prisma.series.findFirst({
+    where: { id, posts: { some: publiclyVisiblePosts } },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      createdAt: true,
+      updatedAt: true,
+      authorId: true,
+      projectId: true,
+      rank: true,
+      author: {
+        select: publicAuthorSelect,
+      },
+      posts: {
+        select: postSelect(publicAuthorSelect),
+        where: publiclyVisiblePosts,
+        orderBy: {
+          rank: "asc",
+        },
+      },
+    },
+  });
+
+  if (!series) return null;
+
+  return {
+    ...series,
+    posts: series.posts.map((p) => ({
+      ...p,
+      type: p.type as "DOCUMENT",
+      head: p.head || "",
+      coauthors: p.coauthors.map((c) => c.user),
+      revisions: p.revisions as RevisionMeta[],
+    })) as CloudPost[],
+  } as Series;
+}
+
+/**
+ * One series with everything on it, for the author's own views and for the
+ * ownership checks the write routes run before mutating it.
+ *
+ * Unfiltered: it returns unpublished and private posts. Never hand the result
+ * to a caller who has not been proved to be `series.authorId` — use
+ * {@link findPublicSeriesById} for that.
+ */
 export async function findSeriesById(id: string): Promise<Series | null> {
   const series = await prisma.series.findUnique({
     where: { id },
@@ -127,53 +215,7 @@ export async function findSeriesById(id: string): Promise<Series | null> {
         select: authorSelect,
       },
       posts: {
-        select: {
-          id: true,
-          handle: true,
-          name: true,
-          description: true,
-          createdAt: true,
-          updatedAt: true,
-          authorId: true,
-          published: true,
-          private: true,
-          head: true,
-          collab: true,
-          status: true,
-          seriesId: true,
-          background_image: true,
-          rank: true,
-          baseId: true,
-          parentId: true,
-          type: true,
-          author: {
-            select: authorSelect,
-          },
-          coauthors: {
-            select: {
-              user: {
-                select: authorSelect,
-              },
-            },
-            orderBy: {
-              createdAt: "asc",
-            },
-          },
-          revisions: {
-            select: {
-              id: true,
-              createdAt: true,
-              documentId: true,
-              authorId: true,
-              author: {
-                select: authorSelect,
-              },
-            },
-            orderBy: {
-              createdAt: "desc",
-            },
-          },
-        },
+        select: postSelect(authorSelect),
         where: {
           type: PrismaDocumentType.DOCUMENT,
         },
@@ -217,53 +259,7 @@ export async function findSeriesByAuthorId(
         select: authorSelect,
       },
       posts: {
-        select: {
-          id: true,
-          handle: true,
-          name: true,
-          description: true,
-          createdAt: true,
-          updatedAt: true,
-          authorId: true,
-          published: true,
-          private: true,
-          head: true,
-          collab: true,
-          status: true,
-          seriesId: true,
-          background_image: true,
-          rank: true,
-          baseId: true,
-          parentId: true,
-          type: true,
-          author: {
-            select: authorSelect,
-          },
-          coauthors: {
-            select: {
-              user: {
-                select: authorSelect,
-              },
-            },
-            orderBy: {
-              createdAt: "asc",
-            },
-          },
-          revisions: {
-            select: {
-              id: true,
-              createdAt: true,
-              documentId: true,
-              authorId: true,
-              author: {
-                select: authorSelect,
-              },
-            },
-            orderBy: {
-              createdAt: "desc",
-            },
-          },
-        },
+        select: postSelect(authorSelect),
         where: {
           type: PrismaDocumentType.DOCUMENT,
         },
@@ -400,53 +396,7 @@ export async function getAvailablePostsForSeries(
       seriesId: null,
       type: PrismaDocumentType.DOCUMENT,
     },
-    select: {
-      id: true,
-      handle: true,
-      name: true,
-      description: true,
-      createdAt: true,
-      updatedAt: true,
-      authorId: true,
-      published: true,
-      private: true,
-      head: true,
-      collab: true,
-      status: true,
-      seriesId: true,
-      background_image: true,
-      rank: true,
-      baseId: true,
-      parentId: true,
-      type: true,
-      author: {
-        select: authorSelect,
-      },
-      coauthors: {
-        select: {
-          user: {
-            select: authorSelect,
-          },
-        },
-        orderBy: {
-          createdAt: "asc",
-        },
-      },
-      revisions: {
-        select: {
-          id: true,
-          createdAt: true,
-          documentId: true,
-          authorId: true,
-          author: {
-            select: authorSelect,
-          },
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-      },
-    },
+    select: postSelect(authorSelect),
     orderBy: {
       updatedAt: "desc",
     },

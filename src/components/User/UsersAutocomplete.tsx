@@ -104,12 +104,9 @@ export default function UsersAutocomplete({
       handleHomeEndKeys
       filterOptions={(options, params) => {
         const filtered = options.filter((option) => {
-          return option.email.toLowerCase().includes(
-            params.inputValue.toLowerCase(),
-          ) ||
-            option.name.toLowerCase().includes(
-              params.inputValue.toLowerCase(),
-            );
+          const query = params.inputValue.toLowerCase();
+          return !!option.email?.toLowerCase().includes(query) ||
+            option.name.toLowerCase().includes(query);
         });
         return filtered;
       }}
@@ -117,7 +114,10 @@ export default function UsersAutocomplete({
         if (typeof option === "string") {
           return option;
         }
-        return option.email;
+        // Coauthors are addressed by email, so that is the label when we have
+        // it; fall back to the display name for users whose email this viewer
+        // is not entitled to see.
+        return option.email ?? option.name;
       }}
       renderOption={(props, option, { selected }) => {
         const { key, ...rest } = props;

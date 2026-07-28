@@ -1,11 +1,14 @@
-import { authOptions } from "@/lib/auth";
-import { ApiError, withApiHandler } from "@/lib/api-utils";
+import {
+  ApiError,
+  requireOwner,
+  requireUser,
+  withApiHandler,
+} from "@/lib/api-utils";
 import {
   deleteProject,
   findProjectById,
   updateProject,
 } from "@/repositories/project";
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 
@@ -17,13 +20,23 @@ interface ProjectUpdateInput {
   createdAt?: string;
 }
 
+// Projects are an authoring/organization concept, not public content — the same
+// reasoning the list route at `/api/projects` already applied to anonymous
+// callers. This one served any project to anyone who knew its id.
 export const GET = withApiHandler(
   async (request, props: { params: Promise<{ id: string }> }) => {
     const params = await props.params;
+    const user = await requireUser();
+
     const project = await findProjectById(params.id);
     if (!project) {
       throw new ApiError(404, "Project not found");
     }
+    requireOwner(
+      project.authorId,
+      user,
+      "You are not authorized to view this project",
+    );
 
     return NextResponse.json({ data: project });
   },
@@ -32,36 +45,17 @@ export const GET = withApiHandler(
 export const PATCH = withApiHandler(
   async (request, props: { params: Promise<{ id: string }> }) => {
     const params = await props.params;
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      throw new ApiError(
-        401,
-        "Unauthorized",
-        "Please sign in to update the project",
-      );
-    }
-
-    const { user } = session;
-    if (user.disabled) {
-      throw new ApiError(
-        403,
-        "Account Disabled",
-        "Account is disabled for violating terms of service",
-      );
-    }
+    const user = await requireUser("Please sign in to update the project");
 
     const project = await findProjectById(params.id);
     if (!project) {
       throw new ApiError(404, "Project not found");
     }
-
-    if (user.id !== project.authorId) {
-      throw new ApiError(
-        403,
-        "Unauthorized",
-        "You are not authorized to update this project",
-      );
-    }
+    requireOwner(
+      project.authorId,
+      user,
+      "You are not authorized to update this project",
+    );
 
     const body = (await request.json()) as ProjectUpdateInput;
     if (!body) {
@@ -80,36 +74,17 @@ export const PATCH = withApiHandler(
 export const DELETE = withApiHandler(
   async (request, props: { params: Promise<{ id: string }> }) => {
     const params = await props.params;
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      throw new ApiError(
-        401,
-        "Unauthorized",
-        "Please sign in to delete the project",
-      );
-    }
-
-    const { user } = session;
-    if (user.disabled) {
-      throw new ApiError(
-        403,
-        "Account Disabled",
-        "Account is disabled for violating terms of service",
-      );
-    }
+    const user = await requireUser("Please sign in to delete the project");
 
     const project = await findProjectById(params.id);
     if (!project) {
       throw new ApiError(404, "Project not found");
     }
-
-    if (user.id !== project.authorId) {
-      throw new ApiError(
-        403,
-        "Unauthorized",
-        "You are not authorized to delete this project",
-      );
-    }
+    requireOwner(
+      project.authorId,
+      user,
+      "You are not authorized to delete this project",
+    );
 
     await deleteProject(params.id);
 

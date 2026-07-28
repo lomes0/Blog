@@ -285,7 +285,16 @@ export interface User {
   id: string;
   handle: string | null;
   name: string;
-  email: string;
+  /**
+   * Only present when the viewer is entitled to it — the user themselves, or an
+   * author looking at their own content.
+   *
+   * This is optional rather than required because public payloads genuinely do
+   * not carry it. While it was typed as always-present, every query that fed a
+   * public surface had to select it to satisfy the compiler, which is how
+   * anonymous listings ended up disclosing the email of every author.
+   */
+  email?: string;
   image: string | null;
 }
 

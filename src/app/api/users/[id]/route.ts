@@ -1,8 +1,11 @@
-import { ApiError, withApiHandler } from "@/lib/api-utils";
-import { authOptions } from "@/lib/auth";
+import {
+  ApiError,
+  optionalUser,
+  requireUser,
+  withApiHandler,
+} from "@/lib/api-utils";
 import { deleteUser, findUser, updateUser } from "@/repositories/user";
 import { UserUpdateInput } from "@/types";
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { validate } from "uuid";
 import { Prisma } from "@prisma/client";
@@ -10,11 +13,18 @@ import { validateHandle } from "../utils";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * A user's public profile.
+ *
+ * Email is returned only to the user themselves. This route previously served
+ * it to anyone, so walking user ids harvested the address of every account.
+ */
 export const GET = withApiHandler(async (
   request,
   props: { params: Promise<{ id: string }> },
 ) => {
   const params = await props.params;
+  const viewer = await optionalUser();
   const user = await findUser(params.id);
   if (!user) {
     throw new ApiError(404, "User not found");
@@ -24,7 +34,7 @@ export const GET = withApiHandler(async (
       id: user.id,
       handle: user.handle,
       name: user.name,
-      email: user.email,
+      ...(viewer?.id === user.id ? { email: user.email } : {}),
       image: user.image,
     },
   });
@@ -38,22 +48,7 @@ export const PATCH = withApiHandler(async (
   if (!validate(params.id)) {
     throw new ApiError(400, "Bad Request", "Invalid user id");
   }
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    throw new ApiError(
-      401,
-      "Unauthenticated",
-      "Please sign in to update your profile",
-    );
-  }
-  const { user } = session;
-  if (user.disabled) {
-    throw new ApiError(
-      403,
-      "Account Disabled",
-      "Account is disabled for violating terms of service",
-    );
-  }
+  const user = await requireUser("Please sign in to update your profile");
   if (user.id !== params.id) {
     throw new ApiError(
       403,
@@ -96,22 +91,7 @@ export const DELETE = withApiHandler(async (
   if (!validate(params.id)) {
     throw new ApiError(400, "Bad Request", "Invalid user id");
   }
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    throw new ApiError(
-      401,
-      "Unauthenticated",
-      "Please sign in to delete this user",
-    );
-  }
-  const { user } = session;
-  if (user.disabled) {
-    throw new ApiError(
-      403,
-      "Account Disabled",
-      "Account is disabled for violating terms of service",
-    );
-  }
+  const user = await requireUser("Please sign in to delete this user");
   if (user.role !== "admin") {
     throw new ApiError(
       403,

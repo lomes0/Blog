@@ -1,13 +1,18 @@
-import { authOptions } from "@/lib/auth";
-import { ApiError, withApiHandler } from "@/lib/api-utils";
+import {
+  ApiError,
+  optionalUser,
+  requireOwner,
+  requireUser,
+  withApiHandler,
+} from "@/lib/api-utils";
 import {
   addPostToSeries,
   batchUpdateSeriesPosts,
+  findPublicSeriesById,
   findSeriesById,
   removePostFromSeries,
 } from "@/repositories/series";
-import { findDocument } from "@/repositories/document";
-import { getServerSession } from "next-auth";
+import { findDocument, findUnownedDocumentIds } from "@/repositories/document";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { validate } from "uuid";
@@ -23,13 +28,19 @@ export const GET = withApiHandler(
       throw new ApiError(400, "Bad Request", "Invalid series id");
     }
 
+    // The author gets every post in the series; anyone else gets the published
+    // ones. This route used to return the unfiltered list to anonymous callers.
+    const user = await optionalUser();
     const series = await findSeriesById(params.id);
-    if (!series) {
-      throw new ApiError(404, "Series not found");
+    if (series && user && series.authorId === user.id) {
+      return NextResponse.json({ data: series.posts });
     }
 
-    // Return posts in series ordered by rank
-    return NextResponse.json({ data: series.posts });
+    const publicSeries = await findPublicSeriesById(params.id);
+    if (!publicSeries) {
+      throw new ApiError(404, "Series not found");
+    }
+    return NextResponse.json({ data: publicSeries.posts });
   },
 );
 
@@ -42,37 +53,17 @@ export const POST = withApiHandler(
       throw new ApiError(400, "Bad Request", "Invalid series id");
     }
 
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      throw new ApiError(
-        401,
-        "Unauthorized",
-        "Please sign in to add posts to series",
-      );
-    }
-
-    const { user } = session;
-    if (user.disabled) {
-      throw new ApiError(
-        403,
-        "Account Disabled",
-        "Account is disabled for violating terms of service",
-      );
-    }
+    const user = await requireUser("Please sign in to add posts to series");
 
     const series = await findSeriesById(params.id);
     if (!series) {
       throw new ApiError(404, "Series not found");
     }
-
-    // Check if user is the author of the series
-    if (user.id !== series.authorId) {
-      throw new ApiError(
-        403,
-        "Unauthorized",
-        "You can only add posts to your own series",
-      );
-    }
+    requireOwner(
+      series.authorId,
+      user,
+      "You can only add posts to your own series",
+    );
 
     const body = await request.json();
     const { postId } = body;
@@ -90,14 +81,11 @@ export const POST = withApiHandler(
     if (!post) {
       throw new ApiError(404, "Post not found");
     }
-
-    if (user.id !== post.author.id) {
-      throw new ApiError(
-        403,
-        "Unauthorized",
-        "You can only add your own posts to series",
-      );
-    }
+    requireOwner(
+      post.author.id,
+      user,
+      "You can only add your own posts to series",
+    );
 
     // Add post to the series (appended; manual order is set via rank)
     await addPostToSeries(params.id, postId);
@@ -122,36 +110,17 @@ export const PATCH = withApiHandler(
       throw new ApiError(400, "Bad Request", "Invalid series id");
     }
 
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      throw new ApiError(
-        401,
-        "Unauthorized",
-        "Please sign in to update series posts",
-      );
-    }
-
-    const { user } = session;
-    if (user.disabled) {
-      throw new ApiError(
-        403,
-        "Account Disabled",
-        "Account is disabled for violating terms of service",
-      );
-    }
+    const user = await requireUser("Please sign in to update series posts");
 
     const series = await findSeriesById(params.id);
     if (!series) {
       throw new ApiError(404, "Series not found");
     }
-
-    if (user.id !== series.authorId) {
-      throw new ApiError(
-        403,
-        "Unauthorized",
-        "You can only update posts in your own series",
-      );
-    }
+    requireOwner(
+      series.authorId,
+      user,
+      "You can only update posts in your own series",
+    );
 
     const body = await request.json();
     // Accept either bare ids or legacy { postId, order } objects for add.
@@ -164,6 +133,22 @@ export const PATCH = withApiHandler(
       if (!validate(postId)) {
         throw new ApiError(400, "Bad Request", `Invalid post id: ${postId}`);
       }
+    }
+
+    // Owning the series is not enough — every post named here must also be the
+    // caller's. Without this, a well-formed request could pull another author's
+    // posts into your series, or evict theirs from theirs. The single-post POST
+    // above always checked this; the batch path did not.
+    const unowned = await findUnownedDocumentIds(
+      [...postsToAdd, ...postsToRemove],
+      user.id,
+    );
+    if (unowned.length > 0) {
+      throw new ApiError(
+        403,
+        "Forbidden",
+        `You can only move your own posts (${unowned.length} not yours)`,
+      );
     }
 
     await batchUpdateSeriesPosts(params.id, postsToAdd, postsToRemove);
@@ -191,37 +176,19 @@ export const DELETE = withApiHandler(
       throw new ApiError(400, "Bad Request", "Invalid series id");
     }
 
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      throw new ApiError(
-        401,
-        "Unauthorized",
-        "Please sign in to remove posts from series",
-      );
-    }
-
-    const { user } = session;
-    if (user.disabled) {
-      throw new ApiError(
-        403,
-        "Account Disabled",
-        "Account is disabled for violating terms of service",
-      );
-    }
+    const user = await requireUser(
+      "Please sign in to remove posts from series",
+    );
 
     const series = await findSeriesById(params.id);
     if (!series) {
       throw new ApiError(404, "Series not found");
     }
-
-    // Check if user is the author of the series
-    if (user.id !== series.authorId) {
-      throw new ApiError(
-        403,
-        "Unauthorized",
-        "You can only remove posts from your own series",
-      );
-    }
+    requireOwner(
+      series.authorId,
+      user,
+      "You can only remove posts from your own series",
+    );
 
     const { searchParams } = new URL(request.url);
     const postId = searchParams.get("postId");
@@ -238,10 +205,19 @@ export const DELETE = withApiHandler(
       throw new ApiError(400, "Bad Request", "Invalid post id");
     }
 
-    // Check if post exists and belongs to this series
     const post = await findDocument(postId);
     if (!post) {
       throw new ApiError(404, "Post not found");
+    }
+    // The comment here used to claim this checked series membership; it checked
+    // only that the post existed, so any post id would be re-homed to root.
+    requireOwner(
+      post.author.id,
+      user,
+      "You can only remove your own posts from a series",
+    );
+    if (post.seriesId !== params.id) {
+      throw new ApiError(404, "Post is not in this series");
     }
 
     // Remove post from series

@@ -1,7 +1,7 @@
 import { ApiError, withApiHandler } from "@/lib/api-utils";
+import { attachmentPath, requireAttachmentRead } from "../../access";
 import { NextResponse } from "next/server";
 import { readFile } from "fs/promises";
-import path from "path";
 import { existsSync, statSync } from "fs";
 
 export const dynamic = "force-dynamic";
@@ -162,20 +162,8 @@ export const GET = withApiHandler(async (
   const params = await props.params;
   const { filename } = params;
 
-  // Security: prevent directory traversal
-  if (
-    filename.includes("..") || filename.includes("/") ||
-    filename.includes("\\")
-  ) {
-    throw new ApiError(400, "Invalid filename");
-  }
-
-  // Construct file path
-  const filePath = path.join(
-    process.cwd(),
-    "public/uploads/attachments",
-    filename,
-  );
+  const filePath = attachmentPath(filename);
+  await requireAttachmentRead(filename);
 
   // Check if file exists
   if (!existsSync(filePath)) {

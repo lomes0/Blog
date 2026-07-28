@@ -29,7 +29,7 @@ export async function generateMetadata(
     metadata.user = {
       name: user.name,
       image: user.image!,
-      email: user.email,
+      handle: user.handle,
     };
   } else {
     metadata.subtitle = "User not found";

@@ -1,7 +1,11 @@
 import { ApiError, withApiHandler } from "@/lib/api-utils";
+import {
+  attachmentPath,
+  requireAttachmentRead,
+  requireAttachmentWrite,
+} from "../access";
 import { NextResponse } from "next/server";
 import { readFile, writeFile } from "fs/promises";
-import path from "path";
 import { existsSync, statSync } from "fs";
 
 export const dynamic = "force-dynamic";
@@ -87,20 +91,8 @@ export const GET = withApiHandler(async (
   const params = await props.params;
   const { filename } = params;
 
-  // Security: prevent directory traversal
-  if (
-    filename.includes("..") || filename.includes("/") ||
-    filename.includes("\\")
-  ) {
-    throw new ApiError(400, "Invalid filename");
-  }
-
-  // Construct file path
-  const filePath = path.join(
-    process.cwd(),
-    "public/uploads/attachments",
-    filename,
-  );
+  const filePath = attachmentPath(filename);
+  await requireAttachmentRead(filename);
 
   // Check if file exists
   if (!existsSync(filePath)) {
@@ -151,25 +143,13 @@ export const PUT = withApiHandler(async (
   const params = await props.params;
   const { filename } = params;
 
-  // Security: prevent directory traversal
-  if (
-    filename.includes("..") || filename.includes("/") ||
-    filename.includes("\\")
-  ) {
-    throw new ApiError(400, "Invalid filename");
-  }
+  const filePath = attachmentPath(filename);
+  await requireAttachmentWrite(filename);
 
   // Check if file is editable
   if (!isEditableFile(filename)) {
     throw new ApiError(415, "This file type cannot be edited");
   }
-
-  // Construct file path
-  const filePath = path.join(
-    process.cwd(),
-    "public/uploads/attachments",
-    filename,
-  );
 
   // Check if file exists
   if (!existsSync(filePath)) {

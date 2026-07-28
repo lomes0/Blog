@@ -57,7 +57,7 @@ const CreatePostDrawer: React.FC<CreatePostDrawerProps> = ({
 
   const updateCoauthors = (users: (User | string)[]) => {
     updateInput({
-      coauthors: users.map((u) => (typeof u === "string" ? u : u.email)),
+      coauthors: users.flatMap((u) => typeof u === "string" ? [u] : u.email ? [u.email] : []),
     });
   };
 

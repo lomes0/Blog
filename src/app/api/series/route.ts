@@ -1,11 +1,9 @@
-import { ApiError, withApiHandler } from "@/lib/api-utils";
-import { authOptions } from "@/lib/auth";
+import { ApiError, optionalUser, requireUser, withApiHandler } from "@/lib/api-utils";
 import {
   createSeries,
   findAllSeries,
   findSeriesByAuthorId,
 } from "@/repositories/series";
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { v4 as uuidv4 } from "uuid";
@@ -18,20 +16,14 @@ interface SeriesCreateInput {
 }
 
 export const GET = withApiHandler(async () => {
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    // Return all public series for unauthenticated users
+  const user = await optionalUser();
+  if (!user) {
+    // Anonymous callers get the public listing: published, non-private posts
+    // only, no author emails. `findAllSeries` used to be unfiltered, so this
+    // branch served every author's drafts along with each draft's `head`
+    // revision id — which `GET /api/revisions/[id]` would then dereference.
     const allSeries = await findAllSeries();
     return NextResponse.json({ data: allSeries });
-  }
-
-  const { user } = session;
-  if (user.disabled) {
-    throw new ApiError(
-      403,
-      "Account Disabled",
-      "Account is disabled for violating terms of service",
-    );
   }
 
   // Return user's series
@@ -40,23 +32,7 @@ export const GET = withApiHandler(async () => {
 });
 
 export const POST = withApiHandler(async (request) => {
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    throw new ApiError(
-      401,
-      "Unauthorized",
-      "Please sign in to create a series",
-    );
-  }
-
-  const { user } = session;
-  if (user.disabled) {
-    throw new ApiError(
-      403,
-      "Account Disabled",
-      "Account is disabled for violating terms of service",
-    );
-  }
+  const user = await requireUser("Please sign in to create a series");
 
   const body = (await request.json()) as SeriesCreateInput;
   if (!body || !body.title) {

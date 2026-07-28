@@ -127,7 +127,9 @@ export function useShareDocument(post: Post) {
   };
 
   const updateCoauthors = (users: (User | string)[]) => {
-    const coauthors = users.map((u) => (typeof u === "string" ? u : u.email));
+    const coauthors = users.flatMap((u) =>
+      typeof u === "string" ? [u] : u.email ? [u.email] : []
+    );
     dispatch(
       actions.updatePost({
         id: post.id,

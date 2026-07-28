@@ -11,7 +11,10 @@ export interface OgMetadata {
   user?: {
     name: string;
     image: string;
-    email: string;
+    /** Public identifier shown under the name. Never an email: this metadata
+     *  travels in the query string of a public image URL and is rendered into
+     *  a social-preview card, so anything here is effectively published. */
+    handle?: string | null;
   };
 }
 
@@ -47,9 +50,11 @@ export async function GET(request: Request) {
                 />
                 <div tw="flex flex-col pl-8">
                   <div tw="text-[32px]">{user.name}</div>
-                  <div tw="text-[24px] text-blue-700">
-                    {user.email}
-                  </div>
+                  {user.handle && (
+                    <div tw="text-[24px] text-blue-700">
+                      @{user.handle}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

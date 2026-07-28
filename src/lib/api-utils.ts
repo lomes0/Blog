@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import type { Session } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 /**
  * Typed error class for API routes. Throw inside any `withApiHandler`-wrapped
@@ -93,4 +96,68 @@ export function withApiHandler<C = any>(
       );
     }
   };
+}
+
+/** The signed-in user, as stored in the database (a full `User` row). */
+export type SessionUser = Session["user"];
+
+/**
+ * The signed-in, enabled user — or a thrown `ApiError`.
+ *
+ * Every authenticated route repeated the same two checks by hand: reject when
+ * there is no session, then reject when the account is disabled. Written out
+ * ~35 times, an omission was invisible on review, which is exactly how several
+ * routes ended up authenticating without ever checking ownership. Routes call
+ * this instead so "did this handler check?" is answered by whether it names the
+ * helper at all.
+ *
+ * @example
+ * const user = await requireUser("Please sign in to reorder");
+ */
+export async function requireUser(subtitle?: string): Promise<SessionUser> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    throw new ApiError(401, "Unauthorized", subtitle ?? "Please sign in");
+  }
+  const { user } = session;
+  if (user.disabled) {
+    throw new ApiError(
+      403,
+      "Account Disabled",
+      "Account is disabled for violating terms of service",
+    );
+  }
+  return user;
+}
+
+/** The signed-in user if there is one, else null. Never throws on absence. */
+export async function optionalUser(): Promise<SessionUser | null> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return null;
+  if (session.user.disabled) {
+    throw new ApiError(
+      403,
+      "Account Disabled",
+      "Account is disabled for violating terms of service",
+    );
+  }
+  return session.user;
+}
+
+/**
+ * Assert `user` owns `entity`, which is anything carrying an author id.
+ *
+ * Kept deliberately blunt: it takes the owner id rather than the entity so it
+ * cannot be fooled by a row whose ownership field is spelled differently
+ * (`authorId` on a Series, `author.id` on a Post). Callers pass the id they
+ * actually resolved.
+ */
+export function requireOwner(
+  ownerId: string | null | undefined,
+  user: SessionUser,
+  subtitle: string,
+): void {
+  if (!ownerId || ownerId !== user.id) {
+    throw new ApiError(403, "Forbidden", subtitle);
+  }
 }

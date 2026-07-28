@@ -49,7 +49,7 @@ export async function generateMetadata(
       metadata.user = {
         name: document.author.name,
         image: document.author.image!,
-        email: document.author.email,
+        handle: document.author.handle,
       };
     }
   } else {

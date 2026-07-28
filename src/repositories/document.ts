@@ -442,6 +442,28 @@ const findCloudStorageUsageByAuthorId = async (authorId: string) => {
   return docSizes;
 };
 
+/**
+ * Which of `ids` the given author does *not* own (including ids that match no
+ * document at all).
+ *
+ * Membership routes take a list of post ids and act on all of them, so checking
+ * ownership one-at-a-time in the route invites checking only the first. One
+ * query answers for the whole batch, and an empty result is the only thing a
+ * caller should proceed on.
+ */
+const findUnownedDocumentIds = async (
+  ids: string[],
+  authorId: string,
+): Promise<string[]> => {
+  if (ids.length === 0) return [];
+  const owned = await prisma.document.findMany({
+    where: { id: { in: ids }, authorId },
+    select: { id: true },
+  });
+  const ownedIds = new Set(owned.map((d) => d.id));
+  return ids.filter((id) => !ownedIds.has(id));
+};
+
 const findDocumentChildren = async (parentId: string) => {
   return prisma.document.findMany({
     where: { parentId },
@@ -460,5 +482,6 @@ export {
   findEditorDocument,
   findPublishedDocuments,
   findPublishedDocumentsByAuthorId,
+  findUnownedDocumentIds,
   updateDocument,
 };
