@@ -3,6 +3,7 @@ import type { NextAuthOptions } from "next-auth";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import GitHubProvider from "next-auth/providers/github";
 import { findUserByEmail, updateUser } from "@/repositories/user";
+import { isSignInAllowed } from "@/lib/authAllowlist";
 
 interface GitHubProfile {
   name?: string;
@@ -22,8 +23,25 @@ export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   callbacks: {
     async signIn({ user, account: _account, profile }) {
+      // Membership gate. Until this existed, a successful OAuth login was the
+      // only requirement to get an account, so "invite-only" was a description
+      // of intent rather than something the app enforced. Existing users are
+      // always admitted; new addresses must match AUTH_ALLOWED_EMAILS.
+      // See src/lib/authAllowlist.ts.
+      const existing = user.email ? await findUserByEmail(user.email) : null;
+
+      if (existing?.disabled) return false;
+
+      if (!isSignInAllowed(user.email, !!existing)) {
+        console.warn(
+          `[auth] refused sign-in for ${user.email ?? "unknown address"}: ` +
+            `not an existing user and not in AUTH_ALLOWED_EMAILS`,
+        );
+        return false;
+      }
+
       if ((user as { emailVerified?: Date | null })?.emailVerified) return true;
-      const unverifiedUser = await findUserByEmail(user.email!);
+      const unverifiedUser = existing;
       if (!unverifiedUser) return true;
       if (unverifiedUser.emailVerified) return true;
       // For GitHub, profile may have different fields

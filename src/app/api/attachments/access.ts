@@ -1,5 +1,6 @@
 import { ApiError, optionalUser, requireUser } from "@/lib/api-utils";
 import { findDocument } from "@/repositories/document";
+import { resolveWithin } from "@/lib/safePath";
 import path from "path";
 import { validate as isUuid } from "uuid";
 
@@ -39,11 +40,8 @@ export function assertSafeFilename(filename: string): void {
 /** Absolute path for `filename`, verified to stay inside the upload directory. */
 export function attachmentPath(filename: string): string {
   assertSafeFilename(filename);
-  const resolved = path.resolve(ATTACHMENTS_DIR, filename);
-  if (
-    resolved !== ATTACHMENTS_DIR &&
-    !resolved.startsWith(ATTACHMENTS_DIR + path.sep)
-  ) {
+  const resolved = resolveWithin(ATTACHMENTS_DIR, filename);
+  if (!resolved) {
     throw new ApiError(400, "Invalid filename");
   }
   return resolved;

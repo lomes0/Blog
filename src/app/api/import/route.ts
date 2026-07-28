@@ -29,6 +29,7 @@ import {
   validateManifest,
 } from "@/lib/export/manifest";
 import { rankForAppend } from "@/repositories/ordering";
+import { resolveWithin, safeBasename } from "@/lib/safePath";
 
 export const dynamic = "force-dynamic";
 
@@ -239,7 +240,10 @@ export const POST = withApiHandler(async (request: Request) => {
 
       summary.imported.documents++;
 
-      // Extract and save attachment assets
+      // Extract and save attachment assets. The name comes from inside the
+      // uploaded zip, so it is resolved through `resolveWithin` rather than
+      // joined directly — a bundle listing `../../server.js` would otherwise
+      // write straight out of the uploads directory.
       for (const filename of docExport.referencedAssets ?? []) {
         const zipPath = `assets/attachments/${filename}`;
         const assetFile = zip.file(zipPath);
@@ -250,8 +254,14 @@ export const POST = withApiHandler(async (request: Request) => {
           continue;
         }
         const destDir = path.join(PUBLIC_DIR, "uploads", "attachments");
+        const destPath = resolveWithin(destDir, filename);
+        if (!destPath) {
+          summary.warnings.push(
+            `Asset "${filename}" in document "${docExport.id}" has an unsafe name — skipped.`,
+          );
+          continue;
+        }
         await mkdir(destDir, { recursive: true });
-        const destPath = path.join(destDir, filename);
         if (!existsSync(destPath)) {
           const data = await assetFile.async("nodebuffer");
           await writeFile(destPath, data);
@@ -261,17 +271,23 @@ export const POST = withApiHandler(async (request: Request) => {
 
       // Extract background image if present
       if (docExport.background_image) {
-        const bgFilename = path.basename(docExport.background_image);
+        const bgFilename = safeBasename(docExport.background_image);
         const zipPath = `assets/backgrounds/${bgFilename}`;
-        const bgFile = zip.file(zipPath);
-        if (bgFile) {
+        const bgFile = bgFilename ? zip.file(zipPath) : null;
+        if (bgFile && bgFilename) {
           const destDir = path.join(PUBLIC_DIR, "uploads", "directories");
-          await mkdir(destDir, { recursive: true });
-          const destPath = path.join(destDir, bgFilename);
-          if (!existsSync(destPath)) {
-            const data = await bgFile.async("nodebuffer");
-            await writeFile(destPath, data);
-            summary.imported.assets++;
+          const destPath = resolveWithin(destDir, bgFilename);
+          if (!destPath) {
+            summary.warnings.push(
+              `Background image for document "${docExport.id}" has an unsafe name — skipped.`,
+            );
+          } else {
+            await mkdir(destDir, { recursive: true });
+            if (!existsSync(destPath)) {
+              const data = await bgFile.async("nodebuffer");
+              await writeFile(destPath, data);
+              summary.imported.assets++;
+            }
           }
         }
       }

@@ -64,9 +64,16 @@ export const POST = withApiHandler(
     }
 
     try {
-      // Generate a unique filename, preserving original extension
+      // Generate a unique filename, preserving original extension.
+      //
+      // The extension is whatever follows the last dot in a name the uploader
+      // controls, so it is constrained to word characters before use. It cannot
+      // contain a dot (and so cannot traverse upward), but it could contain a
+      // slash — `"a.b/../x"` yields `"/x"` — which turned the destination into
+      // a nested path that was never created, failing the write with ENOENT.
       const originalName = file.name;
-      const fileExt = originalName.split(".").pop() || "bin";
+      const rawExt = originalName.split(".").pop() ?? "";
+      const fileExt = /^\w{1,16}$/.test(rawExt) ? rawExt.toLowerCase() : "bin";
       const randomId = crypto.randomBytes(16).toString("hex");
       const fileName = `attach_${params.id}_${randomId}.${fileExt}`;
 
