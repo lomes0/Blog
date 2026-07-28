@@ -12,7 +12,11 @@ function Announcer() {
   const dispatch = useDispatch();
   const router = useRouter();
   const navigate = (path: string) => router.push(path);
-  const login = () => signIn("google", undefined, { prompt: "select_account" });
+  // No provider argument: this is handed to announcement actions as a zero-arg
+  // callback, so it routes to NextAuth's own sign-in page, which lists exactly
+  // the providers that are configured. Naming one here is what previously left
+  // the prompt pointing at a provider the server did not register.
+  const login = () => signIn();
 
   const handleClose = () => dispatch(actions.clearAnnouncement());
   const handleConfirm = () => {

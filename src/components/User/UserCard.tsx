@@ -3,8 +3,9 @@ import { User } from "@/types";
 import { actions, useDispatch, useSelector } from "@/store";
 import RouterLink from "next/link";
 import { memo } from "react";
-import { signIn, signOut } from "next-auth/react";
+import { signOut } from "next-auth/react";
 import UserActionMenu from "./UserActionMenu";
+import LoginButtons from "./LoginButtons";
 import {
   Avatar,
   Box,
@@ -18,14 +19,11 @@ import {
   Typography,
 } from "@mui/material";
 import { Share2 } from "lucide-react";
-import GoogleIcon from "./GoogleIcon";
 import { ICON_SIZE } from "@/theme/icons";
 
 const UserCard: React.FC<{ user?: User; showActions?: boolean }> = memo(
   ({ user, showActions }) => {
     const dispatch = useDispatch();
-    const login = () =>
-      signIn("google", undefined, { prompt: "select_account" });
     const logout = () => signOut();
     const initialized = useSelector((state) => state.ui.initialized);
     const showLogout = showActions && user;
@@ -108,24 +106,7 @@ const UserCard: React.FC<{ user?: User; showActions?: boolean }> = memo(
                 Logout
               </Button>
             )}
-            {showLogin && (
-              <Button
-                size="small"
-                startIcon={<GoogleIcon />}
-                onClick={login}
-              >
-                <Typography
-                  variant="button"
-                  sx={{
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  Login with Google
-                </Typography>
-              </Button>
-            )}
+            {showLogin && <LoginButtons size="small" />}
             <Box sx={{ ml: "auto !important" }}>
               {showActions && user && <UserActionMenu user={user} />}
               {user && (
