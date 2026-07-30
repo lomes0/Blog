@@ -1,6 +1,6 @@
 import React from "react";
 import NextLink from "next/link";
-import { Avatar, Chip, Skeleton } from "@mui/material";
+import { Avatar, Chip } from "@mui/material";
 import { BookOpen, Pencil, User as UserIcon } from "lucide-react";
 import { DocumentStatus, Series, User } from "@/types";
 import { createCardTheme } from "./theme";
@@ -218,25 +218,4 @@ export const createSeriesChip = (
       }}
     />
   );
-};
-
-/**
- * Render loading skeleton chips
- */
-export const renderSkeletonChips = (count = 2) => {
-  const skeletonChips = Array.from({ length: count }).map((_, index) => (
-    <Chip
-      key={`skeleton-chip-${index}`}
-      size="small"
-      variant="outlined"
-      label={<Skeleton variant="text" width={index === 0 ? 60 : 80} />}
-      sx={{
-        "& .MuiChip-label": {
-          padding: "0 4px",
-        },
-      }}
-    />
-  ));
-
-  return <>{skeletonChips}</>;
 };

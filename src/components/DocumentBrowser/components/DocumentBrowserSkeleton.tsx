@@ -4,16 +4,14 @@ import { Box, Container, Skeleton } from "@mui/material";
 import DocumentGrid from "../../DocumentGrid";
 
 /**
- * Page-level skeleton for the DocumentBrowser (Level 3 – feature).
+ * Page chrome for the DocumentBrowser while it loads: the header bar's own
+ * skeleton, then two `DocumentGrid`s in their loading state — which is what
+ * puts the card skeletons on screen, so the cards themselves are
+ * `DocumentCard/components/LoadingCard` and are not restated here.
  *
- * Loading-state hierarchy:
- *   Level 1 – shared/LoadingState     : generic spinner / skeleton primitives
- *   Level 2 – DocumentCard/LoadingCard : card-shaped skeleton (domain)
- *   Level 3 – DocumentBrowserSkeleton : page-level skeleton for DocumentBrowser  ← you are here
- *   Level 3 – DocumentBrowserSkeleton : page-level skeleton for DocumentBrowser ← you are here
- *
- * This component is intentionally feature-specific; do not use it outside
- * DocumentBrowser. For generic loading states use `shared/LoadingState`.
+ * Intentionally feature-specific — it traces this page's layout, so do not use
+ * it elsewhere. For a plain spinner, DESIGN.md §Loading says reach for MUI
+ * `<CircularProgress>` directly.
  */
 const DocumentBrowserSkeleton: React.FC = () => {
   return (

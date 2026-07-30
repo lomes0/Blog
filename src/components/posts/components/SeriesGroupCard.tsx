@@ -14,6 +14,7 @@ import { MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { SxProps, Theme } from "@mui/material/styles";
 import { Series, User, Post } from "@/types";
 import { createCardTheme } from "@/components/DocumentCard/theme";
+import { SHADOW } from "@/theme/tokens";
 import { formatFullDate } from "@/utils/dateFormat";
 import { useRouter } from "next/navigation";
 import { actions, useDispatch } from "@/store";
@@ -392,7 +393,7 @@ const SeriesGroupCard: React.FC<SeriesGroupCardProps> = memo(({
         flexDirection: "column",
         overflow: "hidden",
         "&:hover": {
-          boxShadow: cardTheme.colors.shadow.hover,
+          boxShadow: SHADOW.card.hover,
           borderColor: "primary.light",
         },
         "&:focus-within": {

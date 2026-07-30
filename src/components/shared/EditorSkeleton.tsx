@@ -49,6 +49,18 @@ const Highlight = () => (
   </SvgIcon>
 );
 
+/**
+ * The editor's first paint, before Lexical and `ToolbarPlugin` have loaded.
+ *
+ * Despite the name there is no `<Skeleton>` here and there should not be: this
+ * is a static, inert copy of the real toolbar — same controls, same sizes, same
+ * scroll-trigger `AppBar` behaviour — so the chrome does not reflow when the
+ * live toolbar mounts over it. It is a layout stand-in, not a shimmer, and so
+ * shares nothing with `DocumentCard/components/LoadingCard`.
+ *
+ * The cost of that fidelity is that it must be edited in step with
+ * `editor/plugins/ToolbarPlugin` or the two will drift visibly.
+ */
 export const EditorSkeleton: React.FC<PropsWithChildren> = ({ children }) => {
   const toolbarTrigger = useScrollTrigger({
     disableHysteresis: true,

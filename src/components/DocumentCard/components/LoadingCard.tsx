@@ -12,16 +12,17 @@ interface LoadingCardProps {
 }
 
 /**
- * Card-shaped skeleton (Level 2 – domain).
+ * The card-shaped skeleton: one stand-in card, mirroring `CardBase`'s box so
+ * nothing shifts when the real card swaps in. Rendered by `PostCard` while it
+ * loads and by `DocumentGrid` (as `SkeletonCard`) to fill `skeletonCount`
+ * slots; `DocumentBrowserSkeleton` gets it a third way, by composing
+ * `DocumentGrid` — so a change here is visible on all three.
  *
- * Loading-state hierarchy:
- *   Level 1 – shared/LoadingState     : generic spinner / skeleton primitives
- *   Level 2 – LoadingCard             : card-shaped skeleton (domain)  ← you are here
- *   Level 3 – DocumentBrowserSkeleton : page-level skeleton for DocumentBrowser
- *   Level 3 – DocumentBrowserSkeleton : page-level skeleton for DocumentBrowser
- *
- * Provides a consistent loading card for all PostCard / DocumentGrid slots.
- * Higher-level page skeletons (Level 3) compose this component directly.
+ * This is the app's only card skeleton. The other loading surfaces are
+ * different shapes, not variants of this one: `shared/EditorSkeleton` is a
+ * static clone of the editor toolbar (no `<Skeleton>` in it at all), and
+ * `DocumentBrowserSkeleton` is page chrome around this. For a plain spinner,
+ * DESIGN.md §Loading says reach for MUI `<CircularProgress>` directly.
  */
 const LoadingCard: React.FC<LoadingCardProps> = ({ sx }) => {
   const theme = useTheme();
@@ -106,7 +107,7 @@ interface SkeletonProps {
 const ContentSkeleton: React.FC<SkeletonProps> = ({ shimmerStyles }) => (
   <Box
     sx={{
-      height: "70%", // cardTheme.contentRatio.top
+      height: "70%", // content preview; the remaining 30% is meta + actions
       width: "100%",
       display: "flex",
       alignItems: "center",

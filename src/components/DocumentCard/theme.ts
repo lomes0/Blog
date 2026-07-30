@@ -1,82 +1,57 @@
-import { alpha, type Theme } from "@mui/material/styles";
-import { FOCUS_RING, SHADOW } from "@/theme/tokens";
+import { type Theme } from "@mui/material/styles";
 
 /**
- * Modern blog-oriented card theme with magazine-style design.
- * Derives values from the MUI theme so palette/typography changes propagate
- * automatically (e.g. dark-mode palette, custom brand fonts).
+ * Values shared by the card family — `DocumentCard`, `DocumentGrid` and
+ * `posts/SeriesGroupCard`. Derived from the MUI theme so palette/typography
+ * changes propagate automatically (e.g. dark-mode palette, brand fonts).
  *
- * Scope note: this file is for values that are genuinely specific to a *card*.
- * DESIGN.md used to cite it as the home of the app's shadows (§6), focus ring
- * and touch target (§10), and motion policy (§11) — global rules that no other
- * surface could reasonably import from `components/DocumentCard/`, and which
- * consequently nothing did. Those moved to `@/theme/tokens`.
+ * Scope note: this file is only for values genuinely specific to a *card*, and
+ * only for values something actually reads. It used to be much larger, and the
+ * excess was not harmless:
+ *
+ * - DESIGN.md once cited it as the home of the app's shadows (§6), focus ring
+ *   and touch target (§10), and motion policy (§11) — global rules that no
+ *   other surface could reasonably import from `components/DocumentCard/`, and
+ *   which consequently nothing did. Those live in `@/theme/tokens`.
+ * - `borderRadius: 6` lived here, written as pixels. Its sole reader,
+ *   `LoadingCard`, passed it to `sx`, where a bare number is ×4 — so a card
+ *   meant to be ~10px rendered at 40px against the real card's 8px. Card radius
+ *   belongs to `MuiCard`/`CardBase`, not to a per-component token (DESIGN.md
+ *   §5), and a token nothing reads is a ×4 trap nobody is watching.
+ *
+ * So: do not park a value here speculatively. Every key below has a named
+ * reader; if you remove the last one, remove the key.
  */
 export const createCardTheme = (theme: Theme) => ({
-  // Layout - modern blog proportions with better aspect ratios
-  // (`borderRadius: 6` used to live here. Its sole reader, LoadingCard, added 4
-  // and passed the result to `sx`, where multiples are ×4 — so a card meant to
-  // be ~10px rendered at 40px against the real card's 8px. Card radius belongs
-  // to `MuiCard`/`CardBase`, not to a per-component token; DESIGN.md §5.)
+  /** Read by `LoadingCard`, so the skeleton reserves the real card's height. */
   minHeight: {
-    post: "380px", // Slightly taller for better content display
-  },
-  maxHeight: {
-    post: "450px", // Increased for more content space
-  },
-  aspectRatio: "3:4", // Better proportion for blog content
-
-  // Content areas - optimized for modern blog layout
-  contentRatio: {
-    top: "70%", // More emphasis on content preview
-    bottom: "30%", // Streamlined metadata area
+    post: "380px",
   },
 
-  // Spacing - refined for modern design (MUI spacing units)
+  /** Read by `DocumentGrid` — the base gap it scales per breakpoint. */
   spacing: {
-    contentPadding: 3.5,
-    chipGap: 1.25,
-    titleMargin: 2,
-    sectionGap: 2.5,
-    cardGap: 2, // Gap between cards in grid
+    cardGap: 2,
   },
 
-  // Typography - derived from MUI theme scale
+  /** Read by `PostChips` for the draft and series chip labels. */
   typography: {
-    titleSize: theme.typography.h5.fontSize, // ~1.25rem
-    titleWeight: theme.typography.h5.fontWeight ?? 600,
-    titleLineHeight: theme.typography.h5.lineHeight ?? 1.25,
-    excerptSize: theme.typography.body2.fontSize, // ~0.875rem
-    excerptLineHeight: theme.typography.body2.lineHeight ?? 1.6,
     metaSize: theme.typography.caption.fontSize, // ~0.75rem
-    authorSize: theme.typography.body2.fontSize,
   },
 
-  // Colors - derived from MUI theme palette
   colors: {
+    /** `SeriesGroupCard` border. */
     border: theme.palette.divider,
+    /** `LoadingCard` and `SeriesGroupCard` surface. */
     cardBackground: theme.palette.background.paper,
-    textPrimary: theme.palette.text.primary,
-    textSecondary: theme.palette.text.secondary,
 
-    // Unified hover blue - follows primary palette
-    hoverBlue: {
-      text: theme.palette.primary.main,
-      border: alpha(theme.palette.primary.main, 0.5),
-      borderActive: alpha(theme.palette.primary.main, 0.7),
-    },
-
-    // Shadows and the focus ring are app-wide rules, not card rules — they now
-    // live in `@/theme/tokens` and are re-exposed here so the existing card
-    // call sites keep working. Reach for `SHADOW` / `FOCUS_RING` directly in
-    // new code.
-    shadow: {
-      default: SHADOW.card.rest,
-      hover: SHADOW.card.hover,
-      focus: FOCUS_RING.card(theme),
-    },
-
-    // Status colors - solid values from theme palette; gradients use theme-adjacent hues
+    /**
+     * Draft chip (`PostChips.createStatusChip`). Draft is the only status that
+     * renders a chip — published/active/done deliberately render nothing, so
+     * there are no swatches for them here.
+     *
+     * The gradient is a light-mode literal with no dark branch; it predates
+     * `@/theme/tokens` and is left as-is rather than silently redrawn.
+     */
     status: {
       draft: {
         bg: "linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%)",
@@ -84,66 +59,14 @@ export const createCardTheme = (theme: Theme) => ({
         text: theme.palette.warning.dark,
         icon: theme.palette.warning.main,
       },
-      published: {
-        bg: "linear-gradient(135deg, #f0fdf4 0%, #bbf7d0 100%)",
-        border: theme.palette.success.main,
-        text: theme.palette.success.dark,
-        icon: theme.palette.success.main,
-      },
-      active: {
-        bg: "linear-gradient(135deg, #eff6ff 0%, #bfdbfe 100%)",
-        border: theme.palette.info.main,
-        text: theme.palette.info.dark,
-        icon: theme.palette.info.main,
-      },
-      done: {
-        bg: "linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%)",
-        border: theme.palette.text.secondary,
-        text: theme.palette.text.secondary,
-        icon: theme.palette.text.secondary,
-      },
     },
 
-    // Series colors - secondary palette (purple)
+    /** Series chip (`PostChips.createSeriesChip`) — secondary palette. */
     series: {
       bg: "linear-gradient(135deg, #faf5ff 0%, #e9d5ff 100%)",
       border: theme.palette.secondary.main,
       text: theme.palette.secondary.dark,
       icon: theme.palette.secondary.main,
     },
-
-    // Author chip colors
-    author: {
-      bg: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
-      border: theme.palette.text.secondary,
-      text: theme.palette.text.secondary,
-    },
-
-    // Hover states
-    hover: {
-      cardBackground: theme.palette.background.default,
-      borderColor: theme.palette.divider,
-    },
-  },
-
-  // Simplified action bar design
-  actionBar: {
-    height: "48px",
-    totalHeight: "60px",
-    minHeight: "40px",
-    backgroundColor: "transparent",
-    backdropFilter: "none",
-    borderTop: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
-  },
-
-  // Image handling for blog posts
-  image: {
-    aspectRatio: "16:9",
-    borderRadius: 4,
-    objectFit: "cover",
-    fallbackBackground: "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
   },
 });
-
-/** Inferred return type — use this when you need to type a destructured cardTheme. */
-export type CardTheme = ReturnType<typeof createCardTheme>;

@@ -22,7 +22,6 @@ import {
 import { FileText, Plus, Search, X } from "lucide-react";
 import { Post } from "@/types";
 import { DateDisplay } from "@/components/shared/DateDisplay";
-import { LoadingState } from "@/components/shared/LoadingState";
 import { useAvailablePostsSelector } from "./hooks/useAvailablePostsSelector";
 import { ICON_SIZE } from "@/theme/icons";
 
@@ -184,7 +183,19 @@ const AddPostsDialog: React.FC<AddPostsDialogProps> = ({
         {error && <Alert severity="error" sx={{ m: 2 }}>{error}</Alert>}
 
         {loading
-          ? <LoadingState variant="spinner" showMessage={false} height={150} />
+          ? (
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                p: 4,
+                minHeight: 150,
+              }}
+            >
+              <CircularProgress size={40} />
+            </Box>
+          )
           : allPostCount === 0
           ? (
             <Box sx={{ textAlign: "center", py: 6, px: 2 }}>
