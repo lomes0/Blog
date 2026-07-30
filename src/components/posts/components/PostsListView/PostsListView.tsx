@@ -24,7 +24,7 @@ import { PostRow } from "./components/PostRow";
 import { SeriesRow } from "./components/SeriesRow";
 import { BulkActionBar } from "./components/BulkActionBar";
 import { useListSelection } from "./hooks/useListSelection";
-import { useInlineRename } from "./hooks/useInlineRename";
+import { useInlineRename } from "@/hooks/useInlineRename";
 
 interface PostsListViewProps {
   /** Standalone posts (not in any series). */
@@ -118,50 +118,40 @@ export function PostsListView({
   }, [rootItems, expandedSeries, seriesPostsById]);
 
   const selection = useListSelection({ allIds: allVisibleIds });
-  const postRename = useInlineRename();
 
-  // Series rename state — uses updateSeries (different from updatePost)
-  const [editingSeriesNames, setEditingSeriesNames] = useState<
-    Map<string, string>
-  >(new Map());
-
-  const handleSeriesRenameStart = useCallback(
-    (seriesId: string, currentName: string) => {
-      setEditingSeriesNames((prev) => new Map(prev).set(seriesId, currentName));
-    },
-    [],
+  // Every renameable post: the standalone rows plus each series' children, since
+  // a rename can start on either and the hook resolves the row by id.
+  const renameablePosts = useMemo(
+    () => [...posts, ...series.flatMap((s) => s.posts)],
+    [posts, series],
   );
 
-  const handleSeriesRenameChange = useCallback(
-    (seriesId: string, value: string) => {
-      setEditingSeriesNames((prev) => new Map(prev).set(seriesId, value));
+  const postRename = useInlineRename<Post, undefined>({
+    items: renameablePosts,
+    getId: (post) => post.id,
+    // The row shows "Untitled" for an empty name, so the field opens with it —
+    // but it is compared against the stored "" so typing it counts as a change.
+    getTitle: (post) => post.name || "Untitled",
+    getStoredTitle: (post) => post.name || "",
+    onCommit: (post, name) => {
+      dispatch(actions.updatePost({ id: post.id, partial: { name } }));
+      router.refresh();
     },
-    [],
-  );
+    initialContext: undefined,
+  });
 
-  const handleSeriesRenameCommit = useCallback(async (seriesId: string) => {
-    const newTitle = editingSeriesNames.get(seriesId)?.trim();
-    setEditingSeriesNames((prev) => {
-      const m = new Map(prev);
-      m.delete(seriesId);
-      return m;
-    });
-    if (!newTitle) return;
-    const s = series.find((s_) => s_.id === seriesId);
-    if (!s || newTitle === s.title) return;
-    await dispatch(
-      actions.updateSeries({ id: seriesId, data: { title: newTitle } }),
-    );
-    router.refresh();
-  }, [dispatch, router, series, editingSeriesNames]);
-
-  const handleSeriesRenameCancel = useCallback((seriesId: string) => {
-    setEditingSeriesNames((prev) => {
-      const m = new Map(prev);
-      m.delete(seriesId);
-      return m;
-    });
-  }, []);
+  // Series rename is the same machine over a different entity — updateSeries
+  // writes `title`, not `name`.
+  const seriesRename = useInlineRename<Series, undefined>({
+    items: series,
+    getId: (s) => s.id,
+    getTitle: (s) => s.title,
+    onCommit: (s, title) => {
+      dispatch(actions.updateSeries({ id: s.id, data: { title } }));
+      router.refresh();
+    },
+    initialContext: undefined,
+  });
 
   // ── Delete handlers ───────────────────────────────────────────────────────
   const handleDeletePost = useCallback(async (post: Post) => {
@@ -508,12 +498,8 @@ export function PostsListView({
                 density={density}
                 tagStyle={tagStyle}
                 isSelected={selection.isSelected(item.id)}
-                editingName={postRename.editingNames.get(item.id)}
+                rename={postRename}
                 onToggleSelect={selection.toggle}
-                onRenameStart={postRename.startRename}
-                onRenameChange={postRename.handleChange}
-                onRenameCommit={postRename.handleCommit}
-                onRenameCancel={postRename.handleCancel}
                 onDelete={handleDeletePost}
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
@@ -547,16 +533,8 @@ export function PostsListView({
                 isExpanded={expandedSeries.has(item.id)}
                 onToggleExpand={toggleSeries}
                 onToggleSelect={selection.toggle}
-                editingSeriesName={editingSeriesNames.get(item.id)}
-                onSeriesRenameStart={handleSeriesRenameStart}
-                onSeriesRenameChange={handleSeriesRenameChange}
-                onSeriesRenameCommit={handleSeriesRenameCommit}
-                onSeriesRenameCancel={handleSeriesRenameCancel}
-                editingPostNames={postRename.editingNames}
-                onPostRenameStart={postRename.startRename}
-                onPostRenameChange={postRename.handleChange}
-                onPostRenameCommit={postRename.handleCommit}
-                onPostRenameCancel={postRename.handleCancel}
+                seriesRename={seriesRename}
+                postRename={postRename}
                 onDeleteSeries={handleDeleteSeries}
                 onDeletePost={handleDeletePost}
                 onDragStart={handleDragStart}

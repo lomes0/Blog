@@ -14,6 +14,7 @@ import { formatRelativeDate } from "@/utils/dateFormat";
 import { ListDensity, TagStyle } from "../types";
 import { PostRow } from "./PostRow";
 import { PostRowContextMenu } from "./PostRowContextMenu";
+import type { InlineRenameResult } from "@/hooks/useInlineRename";
 
 const SERIES_INLINE_LIMIT = 20;
 const SERIES_PREVIEW_COUNT = 3;
@@ -30,21 +31,10 @@ interface SeriesRowProps {
   isExpanded: boolean;
   onToggleExpand: (seriesId: string) => void;
   onToggleSelect: (id: string, event: React.MouseEvent) => void;
-  /** Current rename value if the series title is being edited. */
-  editingSeriesName?: string;
-  onSeriesRenameStart: (seriesId: string, currentName: string) => void;
-  onSeriesRenameChange: (seriesId: string, value: string) => void;
-  onSeriesRenameCommit: (seriesId: string) => Promise<void>;
-  onSeriesRenameCancel: (seriesId: string) => void;
-  editingPostNames: Map<string, string>;
-  onPostRenameStart: (postId: string, currentName: string) => void;
-  onPostRenameChange: (postId: string, value: string) => void;
-  onPostRenameCommit: (
-    postId: string,
-    documentId: string,
-    originalName: string,
-  ) => Promise<void>;
-  onPostRenameCancel: (postId: string) => void;
+  /** Rename machine for series titles — shared with the other root-level rows. */
+  seriesRename: InlineRenameResult<undefined>;
+  /** Rename machine for posts, passed straight through to each child row. */
+  postRename: InlineRenameResult<undefined>;
   onDeleteSeries: (seriesId: string, seriesTitle: string) => void;
   onDeletePost: (post: Post) => void;
   onDragStart: (e: React.DragEvent, postId: string) => void;
@@ -78,16 +68,8 @@ export const SeriesRow = React.memo(function SeriesRow({
   isExpanded,
   onToggleExpand,
   onToggleSelect,
-  editingSeriesName,
-  onSeriesRenameStart,
-  onSeriesRenameChange,
-  onSeriesRenameCommit,
-  onSeriesRenameCancel,
-  editingPostNames,
-  onPostRenameStart,
-  onPostRenameChange,
-  onPostRenameCommit,
-  onPostRenameCancel,
+  seriesRename,
+  postRename,
   onDeleteSeries,
   onReorder,
   canMoveUp,
@@ -248,23 +230,19 @@ export const SeriesRow = React.memo(function SeriesRow({
             gap: 1,
           }}
         >
-          {editingSeriesName !== undefined
+          {seriesRename.renamingId === series.id
             ? (
               <InputBase
-                autoFocus
-                value={editingSeriesName}
+                inputRef={seriesRename.inputRef}
+                value={seriesRename.value}
                 onChange={(e) => {
                   e.stopPropagation();
-                  onSeriesRenameChange(series.id, e.target.value);
+                  seriesRename.setValue(e.target.value);
                 }}
-                onBlur={() => onSeriesRenameCommit(series.id)}
+                onBlur={seriesRename.handleBlur}
                 onKeyDown={(e) => {
                   e.stopPropagation();
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    onSeriesRenameCommit(series.id);
-                  }
-                  if (e.key === "Escape") onSeriesRenameCancel(series.id);
+                  seriesRename.handleKeyDown(e);
                 }}
                 onClick={(e) => e.stopPropagation()}
                 sx={{
@@ -335,7 +313,7 @@ export const SeriesRow = React.memo(function SeriesRow({
         >
           <PostRowContextMenu
             mode="series"
-            onRename={() => onSeriesRenameStart(series.id, series.title)}
+            onRename={() => seriesRename.start(series.id)}
             onDelete={() => onDeleteSeries(series.id, series.title)}
             onReorder={onReorder}
             canMoveUp={canMoveUp}
@@ -365,12 +343,8 @@ export const SeriesRow = React.memo(function SeriesRow({
                 density={density}
                 tagStyle={tagStyle}
                 isSelected={isPostSelected(p.id)}
-                editingName={editingPostNames.get(p.id)}
+                rename={postRename}
                 onToggleSelect={onToggleSelect}
-                onRenameStart={onPostRenameStart}
-                onRenameChange={onPostRenameChange}
-                onRenameCommit={onPostRenameCommit}
-                onRenameCancel={onPostRenameCancel}
                 onDelete={onDeletePost}
                 onDragStart={onDragStart}
                 onDragEnd={onDragEnd}

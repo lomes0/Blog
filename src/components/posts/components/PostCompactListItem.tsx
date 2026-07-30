@@ -15,20 +15,15 @@ import PostActionMenu from "@/components/DocumentCard/PostActionMenu";
 import { PendingTimeChange } from "@/types/posts";
 import { TimeStepperControls } from "./TimeStepperControls";
 import { formatFullDate } from "@/utils/dateFormat";
+import type { InlineRenameResult } from "@/hooks/useInlineRename";
 
 interface PostCompactListItemProps {
   post: Post;
   user?: User;
   isTimeEditMode: boolean;
   pendingChange?: PendingTimeChange;
-  editingName: string | undefined;
-  onNameChange: (postId: string, value: string) => void;
-  onNameCommit: (
-    postId: string,
-    documentId: string,
-    originalName: string,
-  ) => void;
-  onNameCancel: (postId: string) => void;
+  /** Shared rename machine — one row across the whole list is open at a time. */
+  rename: InlineRenameResult<undefined>;
   onTimeAdjust?: (postId: string, originalDate: Date, days: number) => void;
   onTimeReset?: (postId: string) => void;
   onDelete: (post: Post) => void;
@@ -40,10 +35,7 @@ const PostCompactListItem: React.FC<PostCompactListItemProps> = ({
   user,
   isTimeEditMode,
   pendingChange,
-  editingName,
-  onNameChange,
-  onNameCommit,
-  onNameCancel,
+  rename,
   onTimeAdjust,
   onTimeReset,
   onDelete,
@@ -60,7 +52,9 @@ const PostCompactListItem: React.FC<PostCompactListItemProps> = ({
   );
   const displayDate = pendingChange ? pendingChange.newDate : originalDate;
   const hasRowChanges = !!pendingChange;
-  const isEditing = editingName !== undefined;
+  const isEditing = rename.renamingId === post.id;
+  // Stable identities (see useInlineRename), so they can be dependencies.
+  const { start: startRename, setValue } = rename;
 
   const handleNavigate = useCallback(() => {
     if (!isTimeEditMode && document?.id) {
@@ -76,29 +70,17 @@ const PostCompactListItem: React.FC<PostCompactListItemProps> = ({
   const handleNameChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       e.stopPropagation();
-      onNameChange(post.id, e.target.value);
+      setValue(e.target.value);
     },
-    [post.id, onNameChange],
+    [setValue],
   );
 
-  const handleNameBlur = useCallback(() => {
-    if (document?.id) {
-      onNameCommit(post.id, document.id, document?.name || "");
-    }
-  }, [post.id, document?.id, document?.name, onNameCommit]);
-
-  const handleNameKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        if (document?.id) {
-          onNameCommit(post.id, document.id, document?.name || "");
-        }
-      }
-      if (e.key === "Escape") onNameCancel(post.id);
-    },
-    [post.id, document?.id, document?.name, onNameCommit, onNameCancel],
-  );
+  // In time-edit mode every row renders its field, seeded from the stored name.
+  // Focusing one is what opens the rename, so the machine only tracks the row
+  // actually being edited.
+  const handleNameFocus = useCallback(() => {
+    if (!isEditing) startRename(post.id);
+  }, [post.id, isEditing, startRename]);
 
   const handleDelete = useCallback(
     (e: React.MouseEvent) => {
@@ -154,10 +136,15 @@ const PostCompactListItem: React.FC<PostCompactListItemProps> = ({
             {isTimeEditMode && document?.id
               ? (
                 <InputBase
-                  value={isEditing ? editingName : (document?.name || "")}
+                  // One shared ref across the list, so only the row actually
+                  // being renamed may claim it — otherwise the last row
+                  // rendered would steal the hook's focus effect.
+                  inputRef={isEditing ? rename.inputRef : undefined}
+                  value={isEditing ? rename.value : (document?.name || "")}
                   onChange={handleNameChange}
-                  onBlur={handleNameBlur}
-                  onKeyDown={handleNameKeyDown}
+                  onFocus={handleNameFocus}
+                  onBlur={rename.handleBlur}
+                  onKeyDown={rename.handleKeyDown}
                   onClick={handleStopPropagation}
                   fullWidth
                   sx={{

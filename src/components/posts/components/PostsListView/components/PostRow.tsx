@@ -8,6 +8,7 @@ import { formatRelativeDate } from "@/utils/dateFormat";
 import { ListDensity, TagStyle } from "../types";
 import { PostRowContextMenu } from "./PostRowContextMenu";
 import { ICON_SIZE } from "@/theme/icons";
+import type { InlineRenameResult } from "@/hooks/useInlineRename";
 
 interface PostRowProps {
   post: Post;
@@ -15,16 +16,9 @@ interface PostRowProps {
   density: ListDensity;
   tagStyle: TagStyle;
   isSelected: boolean;
-  editingName?: string;
+  /** Shared rename machine — one row across the whole list is open at a time. */
+  rename: InlineRenameResult<undefined>;
   onToggleSelect: (id: string, event: React.MouseEvent) => void;
-  onRenameStart: (postId: string, currentName: string) => void;
-  onRenameChange: (postId: string, value: string) => void;
-  onRenameCommit: (
-    postId: string,
-    documentId: string,
-    originalName: string,
-  ) => Promise<void>;
-  onRenameCancel: (postId: string) => void;
   onDelete: (post: Post) => void;
   onDragStart: (e: React.DragEvent, postId: string) => void;
   onDragEnd: () => void;
@@ -54,12 +48,8 @@ export const PostRow = React.memo(function PostRow({
   density,
   tagStyle: _tagStyle,
   isSelected,
-  editingName,
+  rename,
   onToggleSelect,
-  onRenameStart,
-  onRenameChange,
-  onRenameCommit,
-  onRenameCancel,
   onDelete,
   onDragStart,
   onDragEnd,
@@ -79,8 +69,10 @@ export const PostRow = React.memo(function PostRow({
   const document = post;
   const name = document?.name || "Untitled";
   const date = document?.updatedAt || document?.createdAt;
-  const isEditing = editingName !== undefined;
+  const isEditing = rename.renamingId === post.id;
   const rowHeight = density === "compact" ? 36 : 44;
+  // Stable identity (see useInlineRename), so it can be a callback dependency.
+  const { start: startRename } = rename;
 
   // Single-click vs double-click: 200ms delay to distinguish
   const singleClickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -90,14 +82,14 @@ export const PostRow = React.memo(function PostRow({
     if (singleClickTimer.current) {
       clearTimeout(singleClickTimer.current);
       singleClickTimer.current = null;
-      onRenameStart(post.id, name);
+      startRename(post.id);
       return;
     }
     singleClickTimer.current = setTimeout(() => {
       singleClickTimer.current = null;
       if (document?.id) router.push(`/view/${document.id}`);
     }, 200);
-  }, [post.id, name, document?.id, router, onRenameStart]);
+  }, [post.id, document?.id, router, startRename]);
 
   const handleRowClick = useCallback((e: React.MouseEvent) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey) {
@@ -110,22 +102,6 @@ export const PostRow = React.memo(function PostRow({
     e.stopPropagation();
     onToggleSelect(post.id, e);
   }, [post.id, onToggleSelect]);
-
-  const handleRenameBlur = useCallback(() => {
-    if (document?.id) {
-      onRenameCommit(post.id, document.id, document?.name || "");
-    }
-  }, [post.id, document?.id, document?.name, onRenameCommit]);
-
-  const handleRenameKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      if (document?.id) {
-        onRenameCommit(post.id, document.id, document?.name || "");
-      }
-    }
-    if (e.key === "Escape") onRenameCancel(post.id);
-  }, [post.id, document?.id, document?.name, onRenameCommit, onRenameCancel]);
 
   const dropPosition = (e: React.DragEvent): "before" | "after" => {
     const rect = rowRef.current?.getBoundingClientRect();
@@ -225,11 +201,11 @@ export const PostRow = React.memo(function PostRow({
           {isEditing
             ? (
               <InputBase
-                autoFocus
-                value={editingName}
-                onChange={(e) => onRenameChange(post.id, e.target.value)}
-                onBlur={handleRenameBlur}
-                onKeyDown={handleRenameKeyDown}
+                inputRef={rename.inputRef}
+                value={rename.value}
+                onChange={(e) => rename.setValue(e.target.value)}
+                onBlur={rename.handleBlur}
+                onKeyDown={rename.handleKeyDown}
                 onClick={(e) => e.stopPropagation()}
                 fullWidth
                 sx={{
@@ -302,7 +278,7 @@ export const PostRow = React.memo(function PostRow({
         >
           <PostRowContextMenu
             mode="post"
-            onRename={() => onRenameStart(post.id, name)}
+            onRename={() => startRename(post.id)}
             onDelete={() => onDelete(post)}
             onReorder={onReorder}
             canMoveUp={canMoveUp}

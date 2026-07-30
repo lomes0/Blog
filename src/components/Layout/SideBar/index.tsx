@@ -14,9 +14,7 @@ import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 import { ActivePostsSection } from "./ActivePostsSection";
 import { SidebarSearchView } from "./SidebarSearchView";
 import { CollapsedRail } from "./CollapsedRail";
-import { PostContextMenu } from "./PostContextMenu";
-import { SeriesContextMenu } from "./SeriesContextMenu";
-import { ProjectContextMenu } from "./ProjectContextMenu";
+import { SidebarContextMenu } from "./SidebarContextMenu";
 import CreateSeriesDrawer from "@/components/drawers/CreateSeriesDrawer";
 import {
   buildSeriesMap,
@@ -212,7 +210,7 @@ const SideBar: React.FC = () => {
         />
       )}
 
-      <PostContextMenu
+      <SidebarContextMenu
         contextMenu={postMenu.contextMenu}
         onClose={postMenu.close}
         onEdit={postMenu.onEdit}
@@ -220,7 +218,7 @@ const SideBar: React.FC = () => {
         onDelete={postMenu.onDelete}
       />
 
-      <SeriesContextMenu
+      <SidebarContextMenu
         contextMenu={seriesMenu.contextMenu}
         onClose={seriesMenu.close}
         onEdit={seriesMenu.onEdit}
@@ -228,7 +226,7 @@ const SideBar: React.FC = () => {
         onDelete={seriesMenu.onDelete}
       />
 
-      <ProjectContextMenu
+      <SidebarContextMenu
         contextMenu={projectMenu.contextMenu}
         onClose={projectMenu.close}
         onRename={projectMenu.onRename}

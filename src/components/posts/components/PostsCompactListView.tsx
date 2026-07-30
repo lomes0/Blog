@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useMemo } from "react";
 import {
   Box,
   Collapse,
@@ -18,6 +18,7 @@ import { v4 as uuid } from "uuid";
 import PostCompactListItem from "./PostCompactListItem";
 import { SeriesGroupItem } from "@/utils/posts/seriesGrouping";
 import { useExpandedState } from "@/hooks/useExpandedState";
+import { useInlineRename } from "@/hooks/useInlineRename";
 import { PendingTimeChange } from "@/types/posts";
 import { ICON_SIZE } from "@/theme/icons";
 
@@ -53,34 +54,27 @@ export const PostsCompactListView: React.FC<PostsCompactListViewProps> = ({
 }) => {
   const router = useRouter();
   const dispatch = useDispatch();
-  const [editingNames, setEditingNames] = useState<Map<string, string>>(
-    new Map(),
-  );
-
   const { expandedSeries, toggleSeries } = useExpandedState(
     "seriesViewExpandedState",
   );
 
-  const handleRenameCommit = async (
-    postId: string,
-    documentId: string,
-    originalName: string,
-  ) => {
-    const newName = editingNames.get(postId)?.trim();
-    setEditingNames((prev) => {
-      const m = new Map(prev);
-      m.delete(postId);
-      return m;
-    });
-    if (!newName || newName === originalName) return;
-    await dispatch(
-      actions.updatePost({
-        id: documentId,
-        partial: { name: newName },
-      }),
-    );
-    router.refresh();
-  };
+  // Every post the list can show, flat — the hook resolves the edited row by id
+  // whether it sits at the top level or inside a series group.
+  const renameablePosts = useMemo(
+    () => [...posts, ...(groups ?? []).flatMap((g) => g.posts)],
+    [posts, groups],
+  );
+
+  const rename = useInlineRename<Post, undefined>({
+    items: renameablePosts,
+    getId: (post) => post.id,
+    getTitle: (post) => post.name || "",
+    onCommit: (post, name) => {
+      dispatch(actions.updatePost({ id: post.id, partial: { name } }));
+      router.refresh();
+    },
+    initialContext: undefined,
+  });
 
   const handleDeleteSeries = async (seriesId: string, seriesTitle: string) => {
     const alertPayload = {
@@ -228,17 +222,7 @@ export const PostsCompactListView: React.FC<PostsCompactListViewProps> = ({
       extraIndent={extraIndent}
       isTimeEditMode={isTimeEditMode}
       pendingChange={pendingChanges.get(post.id)}
-      editingName={editingNames.get(post.id)}
-      onNameChange={(postId, value) =>
-        setEditingNames((prev) => new Map(prev).set(postId, value))}
-      onNameCommit={handleRenameCommit}
-      onNameCancel={(postId) => {
-        setEditingNames((prev) => {
-          const m = new Map(prev);
-          m.delete(postId);
-          return m;
-        });
-      }}
+      rename={rename}
       onTimeAdjust={onTimeAdjust}
       onTimeReset={onTimeReset}
       onDelete={handleDelete}
