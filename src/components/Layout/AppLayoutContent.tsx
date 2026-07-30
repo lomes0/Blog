@@ -4,6 +4,7 @@ import type { RefObject } from "react";
 import type { LexicalEditor } from "lexical";
 import SideBar from "./SideBar";
 import ActivityRail from "./ActivityRail";
+import SidebarResizeHandle from "./SideBar/SidebarResizeHandle";
 import { ACTIVITY_RAIL_W } from "./SideBar/constants";
 import HydrationManager from "./HydrationManager";
 import EditorTopBar from "./EditorTopBar";
@@ -30,7 +31,7 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
   const { setSlotEl } = useToolbarSlot();
   const dispatch = useDispatch();
   const initialized = useSelector((state: RootState) => state.ui.initialized);
-  const { isResizing, getEffectiveWidth } = useSidebarWidth();
+  const { isResizing, isAnimating, getEffectiveWidth } = useSidebarWidth();
   const {
     railMode,
     railWidth,
@@ -96,9 +97,12 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
                 `${ACTIVITY_RAIL_W}px ${sidebarW}px 1fr ${copilotCol}${railW}px`,
               height: "100vh",
               overflow: "hidden",
-              transition: isResizing || isRailResizing || isCopilotResizing
-                ? "none"
-                : "grid-template-columns 225ms cubic-bezier(0.4, 0, 0.6, 1)",
+              // The sidebar's settle spring drives its column width per frame,
+              // so the grid must not also transition it.
+              transition:
+                isResizing || isAnimating || isRailResizing || isCopilotResizing
+                  ? "none"
+                  : "grid-template-columns 225ms cubic-bezier(0.4, 0, 0.6, 1)",
             }}
           >
             <ActivityRail />
@@ -158,6 +162,12 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
               : <Box />}
             <RightRail railMode={railMode} />
           </Box>
+          {
+            /* Outside the grid on purpose: it is `position: fixed` and owns its
+              own offset, and a child of the grid container — even an
+              out-of-flow one — invites miscounting the five tracks above. */
+          }
+          <SidebarResizeHandle />
           <CommandPalette />
         </ActiveEditorContext.Provider>
       </SetActiveEditorContext.Provider>

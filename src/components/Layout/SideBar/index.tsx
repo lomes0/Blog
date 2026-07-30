@@ -49,15 +49,25 @@ const SideBar: React.FC = () => {
   const {
     width,
     sidebarMode,
+    dragZone,
+    panelOpacity,
     sidebarOpen: open,
     toggleSidebar,
     isMobile,
     isResizing,
-    startResize,
+    isAnimating,
     getEffectiveWidth,
   } = useSidebarWidth();
 
-  const isExpanded = sidebarMode === "full";
+  // While dragging, render the mode the release would land in rather than the
+  // committed one: the drag is WYSIWYG, so the compact rail is already on screen
+  // by the time you let go of it.
+  const shownMode = dragZone ?? sidebarMode;
+  const isExpanded = shownMode === "full";
+  // The hidden zone keeps showing the compact rail and fades the whole surface
+  // out instead — an emptied panel mid-drag reads as a glitch, a dimming one
+  // reads as "let go and it's gone".
+  const showCompactRail = shownMode === "compact" || shownMode === "hidden";
   const { sidebarFontSize } = useSidebarFontSize();
   const {
     postActions,
@@ -132,9 +142,12 @@ const SideBar: React.FC = () => {
           left: `${ACTIVITY_RAIL_W}px`,
           width: getEffectiveWidth(),
           boxSizing: "border-box",
-          transition: isResizing || reducedMotion
+          // The drag and its settle spring both set the width per frame; a CSS
+          // transition on top would lag behind and fight the spring.
+          transition: isResizing || isAnimating || reducedMotion
             ? "none"
             : SIDEBAR_WIDTH_TRANSITION,
+          opacity: panelOpacity,
           overflowX: "hidden",
           overscrollBehavior: "contain",
           display: "flex",
@@ -183,32 +196,13 @@ const SideBar: React.FC = () => {
         </Box>
 
         {/* Compact layer — fixed icon strip shown when dragged shut. */}
-        <Box sx={layerSx(COMPACT_WIDTH, sidebarMode === "compact")}>
+        <Box sx={layerSx(COMPACT_WIDTH, showCompactRail)}>
           <CollapsedRail
             groupedActivePosts={flatGroups}
             pathname={pathname}
           />
         </Box>
       </Box>
-
-      {isExpanded && !isMobile && (
-        <Box
-          onMouseDown={startResize}
-          sx={{
-            position: "fixed",
-            top: 0,
-            left: ACTIVITY_RAIL_W + getEffectiveWidth() - 4,
-            bottom: 0,
-            width: 4,
-            cursor: "col-resize",
-            backgroundColor: isResizing ? "primary.main" : "transparent",
-            transition: isResizing ? "none" : "background-color 0.2s",
-            "&:hover": { backgroundColor: "primary.main", opacity: 0.5 },
-            "&:active": { backgroundColor: "primary.main", opacity: 1 },
-            zIndex: 1300,
-          }}
-        />
-      )}
 
       <SidebarContextMenu
         contextMenu={postMenu.contextMenu}
