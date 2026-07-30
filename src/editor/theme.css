@@ -1491,7 +1491,7 @@ html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
 }
 
-.attachment-preview pre {
+:is(.attachment-preview, .view-attachment) pre {
   margin: 0;
   padding: 16px;
   background: #f6f8fa;
@@ -1508,7 +1508,7 @@ html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
   border-radius: 0;
 }
 
-.attachment-preview code {
+:is(.attachment-preview, .view-attachment) code {
   font-family:
     "SF Mono",
     "Monaco",
@@ -1572,52 +1572,52 @@ html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
 }
 
 /* Syntax highlighting tokens */
-.attachment-preview .token.comment,
-.attachment-preview .token.prolog,
-.attachment-preview .token.doctype,
-.attachment-preview .token.cdata {
+:is(.attachment-preview, .view-attachment) .token.comment,
+:is(.attachment-preview, .view-attachment) .token.prolog,
+:is(.attachment-preview, .view-attachment) .token.doctype,
+:is(.attachment-preview, .view-attachment) .token.cdata {
   color: #6a737d;
 }
 
-.attachment-preview .token.property,
-.attachment-preview .token.tag,
-.attachment-preview .token.boolean,
-.attachment-preview .token.number,
-.attachment-preview .token.constant,
-.attachment-preview .token.symbol,
-.attachment-preview .token.deleted {
+:is(.attachment-preview, .view-attachment) .token.property,
+:is(.attachment-preview, .view-attachment) .token.tag,
+:is(.attachment-preview, .view-attachment) .token.boolean,
+:is(.attachment-preview, .view-attachment) .token.number,
+:is(.attachment-preview, .view-attachment) .token.constant,
+:is(.attachment-preview, .view-attachment) .token.symbol,
+:is(.attachment-preview, .view-attachment) .token.deleted {
   color: #005cc5;
 }
 
-.attachment-preview .token.selector,
-.attachment-preview .token.attr-name,
-.attachment-preview .token.string,
-.attachment-preview .token.char,
-.attachment-preview .token.builtin,
-.attachment-preview .token.inserted {
+:is(.attachment-preview, .view-attachment) .token.selector,
+:is(.attachment-preview, .view-attachment) .token.attr-name,
+:is(.attachment-preview, .view-attachment) .token.string,
+:is(.attachment-preview, .view-attachment) .token.char,
+:is(.attachment-preview, .view-attachment) .token.builtin,
+:is(.attachment-preview, .view-attachment) .token.inserted {
   color: #22863a;
 }
 
-.attachment-preview .token.operator,
-.attachment-preview .token.entity,
-.attachment-preview .token.url {
+:is(.attachment-preview, .view-attachment) .token.operator,
+:is(.attachment-preview, .view-attachment) .token.entity,
+:is(.attachment-preview, .view-attachment) .token.url {
   color: #d73a49;
 }
 
-.attachment-preview .token.atrule,
-.attachment-preview .token.attr-value,
-.attachment-preview .token.keyword {
+:is(.attachment-preview, .view-attachment) .token.atrule,
+:is(.attachment-preview, .view-attachment) .token.attr-value,
+:is(.attachment-preview, .view-attachment) .token.keyword {
   color: #d73a49;
 }
 
-.attachment-preview .token.function,
-.attachment-preview .token.class-name {
+:is(.attachment-preview, .view-attachment) .token.function,
+:is(.attachment-preview, .view-attachment) .token.class-name {
   color: #6f42c1;
 }
 
-.attachment-preview .token.regex,
-.attachment-preview .token.important,
-.attachment-preview .token.variable {
+:is(.attachment-preview, .view-attachment) .token.regex,
+:is(.attachment-preview, .view-attachment) .token.important,
+:is(.attachment-preview, .view-attachment) .token.variable {
   color: #e36209;
 }
 
@@ -1684,7 +1684,7 @@ html.dark .attachment-preview {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-html.dark .attachment-preview pre {
+html.dark :is(.attachment-preview, .view-attachment) pre {
   background: #2d3748;
 }
 
@@ -1720,49 +1720,49 @@ html.dark .attachment-preview-btn:hover {
 }
 
 /* Syntax highlighting tokens — GitHub Dark */
-html.dark .attachment-preview .token.comment,
-html.dark .attachment-preview .token.prolog,
-html.dark .attachment-preview .token.doctype,
-html.dark .attachment-preview .token.cdata {
+html.dark :is(.attachment-preview, .view-attachment) .token.comment,
+html.dark :is(.attachment-preview, .view-attachment) .token.prolog,
+html.dark :is(.attachment-preview, .view-attachment) .token.doctype,
+html.dark :is(.attachment-preview, .view-attachment) .token.cdata {
   color: #8b949e;
 }
 
-html.dark .attachment-preview .token.property,
-html.dark .attachment-preview .token.tag,
-html.dark .attachment-preview .token.boolean,
-html.dark .attachment-preview .token.number,
-html.dark .attachment-preview .token.constant,
-html.dark .attachment-preview .token.symbol,
-html.dark .attachment-preview .token.deleted {
+html.dark :is(.attachment-preview, .view-attachment) .token.property,
+html.dark :is(.attachment-preview, .view-attachment) .token.tag,
+html.dark :is(.attachment-preview, .view-attachment) .token.boolean,
+html.dark :is(.attachment-preview, .view-attachment) .token.number,
+html.dark :is(.attachment-preview, .view-attachment) .token.constant,
+html.dark :is(.attachment-preview, .view-attachment) .token.symbol,
+html.dark :is(.attachment-preview, .view-attachment) .token.deleted {
   color: #79c0ff;
 }
 
-html.dark .attachment-preview .token.selector,
-html.dark .attachment-preview .token.attr-name,
-html.dark .attachment-preview .token.string,
-html.dark .attachment-preview .token.char,
-html.dark .attachment-preview .token.builtin,
-html.dark .attachment-preview .token.inserted {
+html.dark :is(.attachment-preview, .view-attachment) .token.selector,
+html.dark :is(.attachment-preview, .view-attachment) .token.attr-name,
+html.dark :is(.attachment-preview, .view-attachment) .token.string,
+html.dark :is(.attachment-preview, .view-attachment) .token.char,
+html.dark :is(.attachment-preview, .view-attachment) .token.builtin,
+html.dark :is(.attachment-preview, .view-attachment) .token.inserted {
   color: #7ee787;
 }
 
-html.dark .attachment-preview .token.operator,
-html.dark .attachment-preview .token.entity,
-html.dark .attachment-preview .token.url,
-html.dark .attachment-preview .token.atrule,
-html.dark .attachment-preview .token.attr-value,
-html.dark .attachment-preview .token.keyword {
+html.dark :is(.attachment-preview, .view-attachment) .token.operator,
+html.dark :is(.attachment-preview, .view-attachment) .token.entity,
+html.dark :is(.attachment-preview, .view-attachment) .token.url,
+html.dark :is(.attachment-preview, .view-attachment) .token.atrule,
+html.dark :is(.attachment-preview, .view-attachment) .token.attr-value,
+html.dark :is(.attachment-preview, .view-attachment) .token.keyword {
   color: #ff7b72;
 }
 
-html.dark .attachment-preview .token.function,
-html.dark .attachment-preview .token.class-name {
+html.dark :is(.attachment-preview, .view-attachment) .token.function,
+html.dark :is(.attachment-preview, .view-attachment) .token.class-name {
   color: #d2a8ff;
 }
 
-html.dark .attachment-preview .token.regex,
-html.dark .attachment-preview .token.important,
-html.dark .attachment-preview .token.variable {
+html.dark :is(.attachment-preview, .view-attachment) .token.regex,
+html.dark :is(.attachment-preview, .view-attachment) .token.important,
+html.dark :is(.attachment-preview, .view-attachment) .token.variable {
   color: #ffa657;
 }
 

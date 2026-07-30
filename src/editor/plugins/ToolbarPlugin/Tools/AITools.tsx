@@ -432,12 +432,14 @@ export default function AITools(
         endIcon={isLoading
           ? <CircularProgress size={14} color="inherit" />
           : <ChevronDown size={ICON_SIZE.dense} />}
+        // Colors deliberately absent: `#ai-tools-button` in toolbar.css owns
+        // them via the scheme-aware --tb-accent-* tokens, and an id selector
+        // outranks emotion's class anyway. What stood here was
+        // `primary.50/.200/.300/.700` — shades augmentColor never generates, so
+        // they resolved to undefined and dropped even where they did apply.
         sx={{
-          bgcolor: "primary.50",
-          color: "primary.700",
           boxShadow: "none",
           border: "1px solid",
-          borderColor: "primary.200",
           textTransform: "none",
           fontWeight: 600,
           typography: "dense",
@@ -446,9 +448,7 @@ export default function AITools(
           minWidth: 0,
           whiteSpace: "nowrap",
           "&:hover": {
-            bgcolor: "primary.100",
             boxShadow: "none",
-            borderColor: "primary.300",
           },
           "& .MuiButton-startIcon": { mr: 0.75, ml: 0 },
           "& .MuiButton-endIcon": { ml: 0.5, mr: 0 },

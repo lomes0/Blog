@@ -145,7 +145,10 @@ const ViewAttachment: React.FC<ViewAttachmentProps> = ({
         borderRadius: "8px",
         margin: "8px 0",
         overflow: "hidden",
-        backgroundColor: "var(--mui-palette-grey-50)",
+        // Was --mui-palette-grey-50. MUI's grey scale is scheme-invariant
+        // (#fafafa in both), so a published post rendered a near-white card on
+        // the dark canvas. background.paper is the lifted-surface token.
+        backgroundColor: "var(--mui-palette-background-paper)",
         maxWidth: "40%",
       }}
     >
@@ -156,7 +159,7 @@ const ViewAttachment: React.FC<ViewAttachmentProps> = ({
           alignItems: "center",
           padding: "8px 12px",
           cursor: canPreview ? "pointer" : "default",
-          backgroundColor: "var(--mui-palette-grey-100)",
+          backgroundColor: "var(--mui-palette-action-selected)",
           borderBottom: expanded
             ? "1px solid var(--mui-palette-divider)"
             : "none",
@@ -232,6 +235,15 @@ const ViewAttachment: React.FC<ViewAttachmentProps> = ({
 
           {content && !loading && !error && (
             <>
+              {
+                /* The highlighted <pre> takes its surface and token colors from
+                  the shared `:is(.attachment-preview, .view-attachment)` rules
+                  in theme.css, which flip with the scheme. It used to pin a
+                  fixed Dracula box (#282a36 on #f8f8f2) in both schemes —
+                  necessary at the time because nothing styled Prism's
+                  `.token.*` output here, so the near-white `color` was the only
+                  thing keeping the text legible. */
+              }
               {highlightedContent
                 ? (
                   <pre
@@ -241,8 +253,6 @@ const ViewAttachment: React.FC<ViewAttachmentProps> = ({
                       fontSize: "13px",
                       lineHeight: "1.5",
                       overflow: "auto",
-                      backgroundColor: "rgb(40, 42, 54)",
-                      color: "rgb(248, 248, 242)",
                     }}
                   >
                   <code

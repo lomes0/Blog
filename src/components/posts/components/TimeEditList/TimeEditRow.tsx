@@ -7,6 +7,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { Trash2 } from "lucide-react";
 import { DocumentStatus, Post } from "@/types";
 import { PendingTimeChange } from "@/types/posts";
@@ -91,11 +92,20 @@ const TimeEditRow: React.FC<TimeEditRowProps> = ({
   return (
     <ListItem
       disablePadding
-      sx={{
-        bgcolor: hasRowChanges ? "warning.50" : "transparent",
-        "&:hover": { bgcolor: hasRowChanges ? "warning.100" : "action.hover" },
+      // `warning.50`/`.100` are shades augmentColor never generates — the
+      // dirty-row tint resolved to undefined and never rendered in either
+      // scheme. alpha() over warning.main is defined and scheme-aware.
+      sx={(theme) => ({
+        bgcolor: hasRowChanges
+          ? alpha(theme.palette.warning.main, 0.14)
+          : "transparent",
+        "&:hover": {
+          bgcolor: hasRowChanges
+            ? alpha(theme.palette.warning.main, 0.22)
+            : theme.palette.action.hover,
+        },
         transition: "background-color 0.2s ease",
-      }}
+      })}
     >
       <Box
         sx={{

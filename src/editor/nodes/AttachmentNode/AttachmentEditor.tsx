@@ -131,7 +131,9 @@ export default function AttachmentEditor({
         <Box
           sx={{
             width: 50,
-            bgcolor: "grey.200",
+            // grey.* does not flip with the color scheme — see the note in
+            // AttachmentComponent. action.selected is the scheme-aware tint.
+            bgcolor: "action.selected",
             borderRight: 1,
             borderColor: "divider",
             overflow: "hidden",
@@ -168,14 +170,17 @@ export default function AttachmentEditor({
             fontFamily: "monospace",
             fontSize: "0.85rem",
             lineHeight: 1.5,
-            bgcolor: "grey.50",
+            // `background.input` is this theme's field surface (#ffffff light /
+            // #363f52 dark), so the textarea stays lifted above the panel in
+            // both schemes rather than pinned to grey.50's fixed #fafafa.
+            bgcolor: "background.input",
             color: "text.primary",
             overflow: "auto",
             "&:focus": {
               outline: "none",
             },
             "&:disabled": {
-              bgcolor: "grey.200",
+              bgcolor: "action.disabledBackground",
               color: "text.disabled",
             },
           }}

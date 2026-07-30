@@ -317,7 +317,7 @@ export default function AttachmentPreview({
       <Box
         sx={{
           border: 1,
-          borderColor: "grey.200",
+          borderColor: "divider",
           borderRadius: "0 0 8px 8px",
           bgcolor: "background.paper",
           overflow: "hidden",
@@ -359,7 +359,7 @@ export default function AttachmentPreview({
                   m: 0,
                   p: 2,
                   pt: 4,
-                  bgcolor: "grey.100",
+                  bgcolor: "action.hover",
                   borderRadius: 1,
                   overflow: "auto",
                   maxHeight: 400,

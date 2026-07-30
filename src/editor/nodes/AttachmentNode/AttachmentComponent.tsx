@@ -16,6 +16,7 @@ import { useLexicalNodeSelection } from "@lexical/react/useLexicalNodeSelection"
 import { mergeRegister } from "@lexical/utils";
 import { $isAttachmentNode } from ".";
 import { Box, CircularProgress, IconButton, Typography } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import {
   Archive,
   ChevronDown,
@@ -275,27 +276,38 @@ export default function AttachmentComponent({
       }}
     >
       <Box
-        sx={{
+        // `grey.*` is spread once at the top of MUI's createPalette, outside
+        // the light/dark blocks, so grey.50 is #fafafa in both schemes — this
+        // chip rendered near-white on the dark canvas. `primary.50`/`.100` are
+        // worse than wrong: augmentColor only emits main/light/dark/
+        // contrastText, so `--mui-palette-primary-50` never exists and the
+        // selected fill silently dropped in *both* schemes. The action.* tints
+        // and alpha() below are scheme-aware and always defined.
+        sx={(theme) => ({
           display: "inline-flex",
           alignItems: "center",
           gap: 1,
           px: 1.5,
           py: 0.75,
-          bgcolor: isSelected ? "primary.50" : "grey.50",
+          bgcolor: isSelected
+            ? alpha(theme.palette.primary.main, 0.12)
+            : theme.palette.action.hover,
           border: 1,
-          borderColor: isSelected ? "primary.main" : "grey.200",
+          borderColor: isSelected ? "primary.main" : "divider",
           borderBottom: expanded ? 0 : 1,
           borderRadius: expanded ? "8px 8px 0 0" : 2,
           cursor: "pointer",
           transition: "all 0.15s ease",
           "&:hover": {
-            bgcolor: isSelected ? "primary.100" : "grey.100",
-            borderColor: isSelected ? "primary.dark" : "grey.300",
+            bgcolor: isSelected
+              ? alpha(theme.palette.primary.main, 0.2)
+              : theme.palette.action.selected,
+            borderColor: isSelected ? "primary.main" : "text.disabled",
             "& .attachment-actions": {
               opacity: 1,
             },
           },
-        }}
+        })}
         onClick={(e) => {
           if ((e.target as HTMLElement).closest("button")) {
             return;
