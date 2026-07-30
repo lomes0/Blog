@@ -1,9 +1,7 @@
-import { createAction, createAsyncThunk } from "@reduxjs/toolkit";
+import { createAction } from "@reduxjs/toolkit";
 import { apiClient } from "@/api";
 import { rankBetween } from "@/lib/ordering";
-
-const toErrorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : "Unknown error";
+import { createApiThunk, fail } from "./createApiThunk";
 
 // Optimistically set a series' rank (and optionally its project membership) so a
 // reorder / move is reflected immediately. `projectId` is applied only when the
@@ -19,61 +17,24 @@ interface SeriesCreateInput {
   description?: string;
 }
 
-export const loadSeries = createAsyncThunk(
+export const loadSeries = createApiThunk(
   "app/loadSeries",
-  async (_, thunkAPI) => {
-    try {
-      const data = await apiClient.series.list();
-      return thunkAPI.fulfillWithValue(data ?? []);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    }
-  },
+  async () => (await apiClient.series.list()) ?? [],
 );
 
-export const createSeries = createAsyncThunk(
+export const createSeries = createApiThunk(
   "app/createSeries",
-  async (arg: SeriesCreateInput, thunkAPI) => {
-    try {
-      const data = await apiClient.series.create(arg);
-      return thunkAPI.fulfillWithValue(data);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    }
-  },
+  async (arg: SeriesCreateInput) => await apiClient.series.create(arg),
 );
 
-export const updateSeries = createAsyncThunk(
+export const updateSeries = createApiThunk(
   "app/updateSeries",
   async (
-    { id, data }: {
-      id: string;
-      data: { title?: string; description?: string };
-    },
-    thunkAPI,
-  ) => {
-    try {
-      const result = await apiClient.series.update(id, data);
-      return thunkAPI.fulfillWithValue(result);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    }
-  },
+    { id, data }: { id: string; data: { title?: string; description?: string } },
+  ) => await apiClient.series.update(id, data),
 );
 
-export const moveSeries = createAsyncThunk(
+export const moveSeries = createApiThunk(
   "app/moveSeries",
   async (
     arg: {
@@ -83,55 +44,31 @@ export const moveSeries = createAsyncThunk(
     },
     thunkAPI,
   ) => {
-    try {
-      // Optimistic: for a positioned move the client computes the same rank the
-      // server will, so reflect it (and any membership change) immediately. No
-      // rollback by design.
-      const { afterRank, beforeRank } = arg.between ?? {};
-      if (afterRank != null || beforeRank != null) {
-        thunkAPI.dispatch(
-          applySeriesRank({
-            id: arg.id,
-            rank: rankBetween(afterRank ?? null, beforeRank ?? null),
-            ...(arg.destination
-              ? { projectId: arg.destination.projectId ?? null }
-              : {}),
-          }),
-        );
-      }
-      const data = await apiClient.series.move(arg.id, {
-        destination: arg.destination,
-        between: arg.between,
-      });
-      if (!data) {
-        return thunkAPI.rejectWithValue({
-          title: "Something went wrong",
-          subtitle: "failed to move series",
-        });
-      }
-      return thunkAPI.fulfillWithValue(data);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
+    // Optimistic: for a positioned move the client computes the same rank the
+    // server will, so reflect it (and any membership change) immediately. No
+    // rollback by design.
+    const { afterRank, beforeRank } = arg.between ?? {};
+    if (afterRank != null || beforeRank != null) {
+      thunkAPI.dispatch(
+        applySeriesRank({
+          id: arg.id,
+          rank: rankBetween(afterRank ?? null, beforeRank ?? null),
+          ...(arg.destination
+            ? { projectId: arg.destination.projectId ?? null }
+            : {}),
+        }),
+      );
     }
+    const data = await apiClient.series.move(arg.id, {
+      destination: arg.destination,
+      between: arg.between,
+    });
+    if (!data) fail("failed to move series");
+    return data;
   },
 );
 
-export const deleteSeries = createAsyncThunk(
+export const deleteSeries = createApiThunk(
   "app/deleteSeries",
-  async (id: string, thunkAPI) => {
-    try {
-      const data = await apiClient.series.delete(id);
-      return thunkAPI.fulfillWithValue(data);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    }
-  },
+  async (id: string) => await apiClient.series.delete(id),
 );

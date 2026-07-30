@@ -1,4 +1,4 @@
-import { createAction, createAsyncThunk } from "@reduxjs/toolkit";
+import { createAction } from "@reduxjs/toolkit";
 import { v4 as uuidv4 } from "uuid";
 import { apiClient } from "@/api";
 import { backendFor, toCreateInput } from "@/store/backend";
@@ -12,116 +12,62 @@ import {
 } from "@/types";
 import { rankAtEnd, rankBetween, type Ranked } from "@/lib/ordering";
 import type { SerializedEditorState } from "lexical";
-
-const toErrorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : "Unknown error";
-
-const failure = (subtitle: string) => ({
-  title: "Something went wrong",
-  subtitle,
-});
+import { createApiThunk, fail, ThunkFailure } from "./createApiThunk";
 
 /** The backend for the current session — cloud when signed in, local for guests. */
-const backendOf = (getState: () => unknown) =>
-  backendFor((getState() as AppState).user);
+const backendOf = (getState: () => AppState) => backendFor(getState().user);
 
 // ─── Read ────────────────────────────────────────────────────────────────────
 
-export const loadPosts = createAsyncThunk(
+export const loadPosts = createApiThunk(
   "app/loadPosts",
-  async (_, thunkAPI) => {
-    try {
-      return thunkAPI.fulfillWithValue(
-        await backendOf(thunkAPI.getState).list(),
-      );
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue(failure(toErrorMessage(error)));
-    }
-  },
+  async (_, thunkAPI) => await backendOf(thunkAPI.getState).list(),
 );
 
 /** Load one post *with* its content. Accepts an id or a handle. */
-export const getPost = createAsyncThunk(
+export const getPost = createApiThunk(
   "app/getPost",
   async (id: string, thunkAPI) => {
-    try {
-      const post = await backendOf(thunkAPI.getState).get(id);
-      if (!post) return thunkAPI.rejectWithValue(failure("post not found"));
-      return thunkAPI.fulfillWithValue(post);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue(failure(toErrorMessage(error)));
-    }
+    const post = await backendOf(thunkAPI.getState).get(id);
+    if (!post) fail("post not found");
+    return post;
   },
 );
 
 /** A tabbed post's child tabs, rank-ordered, without their content. */
-export const getPostChildren = createAsyncThunk(
+export const getPostChildren = createApiThunk(
   "app/getPostChildren",
-  async (id: string, thunkAPI) => {
-    try {
-      return thunkAPI.fulfillWithValue(
-        await backendOf(thunkAPI.getState).children(id),
-      );
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue(failure(toErrorMessage(error)));
-    }
-  },
+  async (id: string, thunkAPI) =>
+    await backendOf(thunkAPI.getState).children(id),
 );
 
-export const getPostById = createAsyncThunk(
+export const getPostById = createApiThunk(
   "app/getPostById",
   async (id: string, thunkAPI) => {
-    const post = (thunkAPI.getState() as AppState).posts.entities[id];
-    if (!post) return thunkAPI.rejectWithValue(failure("post not found"));
-    return thunkAPI.fulfillWithValue(post);
+    const post = thunkAPI.getState().posts.entities[id];
+    if (!post) fail("post not found");
+    return post;
   },
 );
 
 // ─── Write ───────────────────────────────────────────────────────────────────
 
-export const createPost = createAsyncThunk(
+export const createPost = createApiThunk(
   "app/createPost",
-  async (input: PostCreateInput, thunkAPI) => {
-    try {
-      return thunkAPI.fulfillWithValue(
-        await backendOf(thunkAPI.getState).create(input),
-      );
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue(failure(toErrorMessage(error)));
-    }
-  },
+  async (input: PostCreateInput, thunkAPI) =>
+    await backendOf(thunkAPI.getState).create(input),
 );
 
-export const updatePost = createAsyncThunk(
+export const updatePost = createApiThunk(
   "app/updatePost",
-  async (arg: { id: string; partial: PostUpdateInput }, thunkAPI) => {
-    try {
-      return thunkAPI.fulfillWithValue(
-        await backendOf(thunkAPI.getState).update(arg.id, arg.partial),
-      );
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue(failure(toErrorMessage(error)));
-    }
-  },
+  async (arg: { id: string; partial: PostUpdateInput }, thunkAPI) =>
+    await backendOf(thunkAPI.getState).update(arg.id, arg.partial),
 );
 
-export const deletePost = createAsyncThunk(
+export const deletePost = createApiThunk(
   "app/deletePost",
-  async (id: string, thunkAPI) => {
-    try {
-      return thunkAPI.fulfillWithValue(
-        await backendOf(thunkAPI.getState).delete(id),
-      );
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue(failure(toErrorMessage(error)));
-    }
-  },
+  async (id: string, thunkAPI) =>
+    await backendOf(thunkAPI.getState).delete(id),
 );
 
 /**
@@ -130,37 +76,26 @@ export const deletePost = createAsyncThunk(
  * The copy starts a fresh revision history — it is a new document, not a fork
  * that tracks its origin.
  */
-export const duplicatePost = createAsyncThunk(
+export const duplicatePost = createApiThunk(
   "app/duplicatePost",
-  async (
-    arg: { id: string; newId: string; newName: string },
-    thunkAPI,
-  ) => {
-    try {
-      const backend = backendOf(thunkAPI.getState);
-      const source = await backend.get(arg.id);
-      if (!source) {
-        return thunkAPI.rejectWithValue(failure("post not found"));
-      }
-      const now = new Date().toISOString();
-      const head = uuidv4();
-      const data = source.data ?? EMPTY_EDITOR_STATE;
-      const created = await backend.create(toCreateInput(source, {
-        id: arg.newId,
-        name: arg.newName,
-        handle: null, // handles are unique; the copy earns its own
-        rank: null, // appended to its container rather than tying with the source
-        head,
-        createdAt: now,
-        updatedAt: now,
-        data,
-        revisions: [{ id: head, documentId: arg.newId, createdAt: now, data }],
-      }));
-      return thunkAPI.fulfillWithValue(created);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue(failure(toErrorMessage(error)));
-    }
+  async (arg: { id: string; newId: string; newName: string }, thunkAPI) => {
+    const backend = backendOf(thunkAPI.getState);
+    const source = await backend.get(arg.id);
+    if (!source) fail("post not found");
+    const now = new Date().toISOString();
+    const head = uuidv4();
+    const data = source.data ?? EMPTY_EDITOR_STATE;
+    return await backend.create(toCreateInput(source, {
+      id: arg.newId,
+      name: arg.newName,
+      handle: null, // handles are unique; the copy earns its own
+      rank: null, // appended to its container rather than tying with the source
+      head,
+      createdAt: now,
+      updatedAt: now,
+      data,
+      revisions: [{ id: head, documentId: arg.newId, createdAt: now, data }],
+    }));
   },
 );
 
@@ -171,7 +106,7 @@ export const duplicatePost = createAsyncThunk(
  * someone else's, so fall back to the public fork endpoint (which serves
  * published and collab posts to guests and members alike).
  */
-export const forkPost = createAsyncThunk(
+export const forkPost = createApiThunk(
   "app/forkPost",
   async (arg: { id: string; revisionId?: string | null }, thunkAPI) => {
     const { id, revisionId } = arg;
@@ -179,36 +114,30 @@ export const forkPost = createAsyncThunk(
       const backend = backendOf(thunkAPI.getState);
       const own = await backend.get(id);
       if (own) {
-        if (!revisionId || revisionId === own.head) {
-          return thunkAPI.fulfillWithValue(own);
-        }
+        if (!revisionId || revisionId === own.head) return own;
         const revision = await backend.revisions.get(revisionId);
-        if (!revision) {
-          return thunkAPI.rejectWithValue(failure("revision not found"));
-        }
-        return thunkAPI.fulfillWithValue({
+        if (!revision) fail("revision not found");
+        return {
           ...own,
           head: revision.id,
           updatedAt: revision.createdAt,
           data: revision.data,
-        });
+        };
       }
     } catch (error: unknown) {
-      // Not ours (or unreadable) — fall through to the public endpoint.
+      // Not ours (or unreadable) — fall through to the public endpoint. A
+      // `fail()` above is a real answer about our own copy, so it is rethrown
+      // rather than retried publicly.
+      if (error instanceof ThunkFailure) throw error;
       console.warn(error);
     }
-    try {
-      const forked = await apiClient.documents.fork(id, revisionId);
-      if (!forked) return thunkAPI.rejectWithValue(failure("post not found"));
-      const { cloud, data } = forked as unknown as {
-        cloud: Post;
-        data: SerializedEditorState;
-      };
-      return thunkAPI.fulfillWithValue({ ...cloud, data });
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue(failure(toErrorMessage(error)));
-    }
+    const forked = await apiClient.documents.fork(id, revisionId);
+    if (!forked) fail("post not found");
+    const { cloud, data } = forked as unknown as {
+      cloud: Post;
+      data: SerializedEditorState;
+    };
+    return { ...cloud, data };
   },
 );
 
@@ -268,20 +197,12 @@ export const applyPostRank = createAction<{ id: string; rank: string }>(
   "app/applyPostRank",
 );
 
-export const movePost = createAsyncThunk(
+export const movePost = createApiThunk(
   "app/movePost",
   async (arg: MovePostArg, thunkAPI) => {
-    const state = thunkAPI.getState() as AppState;
-    const rank = moveRank(state, arg);
+    const rank = moveRank(thunkAPI.getState(), arg);
     thunkAPI.dispatch(applyPostRank({ id: arg.id, rank }));
-    try {
-      return thunkAPI.fulfillWithValue(
-        await backendOf(thunkAPI.getState).move({ ...arg, rank }),
-      );
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue(failure(toErrorMessage(error)));
-    }
+    return await backendOf(thunkAPI.getState).move({ ...arg, rank });
   },
 );
 
@@ -297,58 +218,53 @@ export const movePost = createAsyncThunk(
  * source post (and its former children) is deleted. Tabs are appended in the
  * order `sourceIds` is given.
  */
-export const mergePostsIntoTabs = createAsyncThunk(
+export const mergePostsIntoTabs = createApiThunk(
   "app/mergePostsIntoTabs",
   async (arg: { targetId: string; sourceIds: string[] }, thunkAPI) => {
-    try {
-      const { targetId, sourceIds } = arg;
-      const backend = backendOf(thunkAPI.getState);
+    const { targetId, sourceIds } = arg;
+    const backend = backendOf(thunkAPI.getState);
 
-      const createTab = async (name: string, data: SerializedEditorState) => {
-        const now = new Date().toISOString();
-        const id = uuidv4();
-        const head = uuidv4();
-        await backend.create({
-          id,
-          name,
-          head,
-          createdAt: now,
-          updatedAt: now,
-          type: "DOCUMENT",
-          parentId: targetId,
-          data,
-          revisions: [{ id: head, documentId: id, createdAt: now, data }],
-        });
-      };
+    const createTab = async (name: string, data: SerializedEditorState) => {
+      const now = new Date().toISOString();
+      const id = uuidv4();
+      const head = uuidv4();
+      await backend.create({
+        id,
+        name,
+        head,
+        createdAt: now,
+        updatedAt: now,
+        type: "DOCUMENT",
+        parentId: targetId,
+        data,
+        revisions: [{ id: head, documentId: id, createdAt: now, data }],
+      });
+    };
 
-      for (const sourceId of sourceIds) {
-        const source = await backend.get(sourceId);
-        if (!source) continue;
+    for (const sourceId of sourceIds) {
+      const source = await backend.get(sourceId);
+      if (!source) continue;
 
-        // Flatten: the source's own child tabs become siblings too.
-        const childStubs = await backend.children(sourceId);
+      // Flatten: the source's own child tabs become siblings too.
+      const childStubs = await backend.children(sourceId);
 
-        await createTab(source.name, source.data ?? EMPTY_EDITOR_STATE);
-        for (const stub of childStubs) {
-          const child = await backend.get(stub.id);
-          if (!child) continue;
-          await createTab(
-            child.name ?? stub.name,
-            child.data ?? EMPTY_EDITOR_STATE,
-          );
-        }
-
-        // Originals go last, so nothing is lost if a copy fails midway.
-        for (const stub of childStubs) {
-          await thunkAPI.dispatch(deletePost(stub.id));
-        }
-        await thunkAPI.dispatch(deletePost(sourceId));
+      await createTab(source.name, source.data ?? EMPTY_EDITOR_STATE);
+      for (const stub of childStubs) {
+        const child = await backend.get(stub.id);
+        if (!child) continue;
+        await createTab(
+          child.name ?? stub.name,
+          child.data ?? EMPTY_EDITOR_STATE,
+        );
       }
 
-      return thunkAPI.fulfillWithValue({ targetId });
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue(failure(toErrorMessage(error)));
+      // Originals go last, so nothing is lost if a copy fails midway.
+      for (const stub of childStubs) {
+        await thunkAPI.dispatch(deletePost(stub.id));
+      }
+      await thunkAPI.dispatch(deletePost(sourceId));
     }
+
+    return { targetId };
   },
 );

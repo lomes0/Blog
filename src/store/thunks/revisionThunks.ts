@@ -1,62 +1,27 @@
-import { createAsyncThunk } from "@reduxjs/toolkit";
 import { backendFor } from "@/store/backend";
 import { AppState, Revision } from "@/types";
+import { createApiThunk, fail } from "./createApiThunk";
 
-const toErrorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : "Unknown error";
-
-const failure = (subtitle: string) => ({
-  title: "Something went wrong",
-  subtitle,
-});
-
-const backendOf = (getState: () => unknown) =>
-  backendFor((getState() as AppState).user);
+const backendOf = (getState: () => AppState) => backendFor(getState().user);
 
 /** A revision *including* its content — used to restore or diff a version. */
-export const getRevision = createAsyncThunk(
+export const getRevision = createApiThunk(
   "app/getRevision",
   async (id: string, thunkAPI) => {
-    try {
-      const revision = await backendOf(thunkAPI.getState).revisions.get(id);
-      if (!revision) {
-        return thunkAPI.rejectWithValue(failure("revision not found"));
-      }
-      return thunkAPI.fulfillWithValue(revision);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue(failure(toErrorMessage(error)));
-    }
+    const revision = await backendOf(thunkAPI.getState).revisions.get(id);
+    if (!revision) fail("revision not found");
+    return revision;
   },
 );
 
-export const createRevision = createAsyncThunk(
+export const createRevision = createApiThunk(
   "app/createRevision",
-  async (revision: Revision, thunkAPI) => {
-    try {
-      return thunkAPI.fulfillWithValue(
-        await backendOf(thunkAPI.getState).revisions.create(revision),
-      );
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue(failure(toErrorMessage(error)));
-    }
-  },
+  async (revision: Revision, thunkAPI) =>
+    await backendOf(thunkAPI.getState).revisions.create(revision),
 );
 
-export const deleteRevision = createAsyncThunk(
+export const deleteRevision = createApiThunk(
   "app/deleteRevision",
-  async (arg: { id: string; documentId: string }, thunkAPI) => {
-    try {
-      return thunkAPI.fulfillWithValue(
-        await backendOf(thunkAPI.getState).revisions.delete(
-          arg.id,
-          arg.documentId,
-        ),
-      );
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue(failure(toErrorMessage(error)));
-    }
-  },
+  async (arg: { id: string; documentId: string }, thunkAPI) =>
+    await backendOf(thunkAPI.getState).revisions.delete(arg.id, arg.documentId),
 );

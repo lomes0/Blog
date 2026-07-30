@@ -1,10 +1,7 @@
-import { createAsyncThunk } from "@reduxjs/toolkit";
 import { apiClient } from "@/api";
 import { backendFor } from "@/store/backend";
-import { AppState, DocumentStorageUsage, User } from "@/types";
-
-const toErrorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : "Unknown error";
+import { DocumentStorageUsage, User } from "@/types";
+import { createApiThunk, fail } from "./createApiThunk";
 
 /**
  * How much space the session's posts occupy.
@@ -36,40 +33,16 @@ export async function fetchStorageUsage(
   return usage.sort((a, b) => b.size - a.size);
 }
 
-export const getStorageUsage = createAsyncThunk(
+export const getStorageUsage = createApiThunk(
   "app/getStorageUsage",
-  async (_, thunkAPI) => {
-    try {
-      const { user } = thunkAPI.getState() as AppState;
-      return thunkAPI.fulfillWithValue(await fetchStorageUsage(user));
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    }
-  },
+  async (_, thunkAPI) => await fetchStorageUsage(thunkAPI.getState().user),
 );
 
-export const getPostThumbnail = createAsyncThunk(
+export const getPostThumbnail = createApiThunk(
   "app/getPostThumbnail",
-  async (id: string, thunkAPI) => {
-    try {
-      const data = await apiClient.thumbnails.get(id);
-      if (!data) {
-        return thunkAPI.rejectWithValue({
-          title: "Something went wrong",
-          subtitle: "thumbnail not found",
-        });
-      }
-      return thunkAPI.fulfillWithValue(data);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    }
+  async (id: string) => {
+    const data = await apiClient.thumbnails.get(id);
+    if (!data) fail("thumbnail not found");
+    return data;
   },
 );

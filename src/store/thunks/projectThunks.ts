@@ -1,9 +1,7 @@
-import { createAction, createAsyncThunk } from "@reduxjs/toolkit";
+import { createAction } from "@reduxjs/toolkit";
 import { apiClient } from "@/api";
 import { rankBetween } from "@/lib/ordering";
-
-const toErrorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : "Unknown error";
+import { createApiThunk, fail } from "./createApiThunk";
 
 // Optimistically set a project's rank so a reorder is reflected immediately.
 export const applyProjectRank = createAction<{ id: string; rank: string }>(
@@ -15,61 +13,24 @@ interface ProjectCreateInput {
   description?: string;
 }
 
-export const loadProjects = createAsyncThunk(
+export const loadProjects = createApiThunk(
   "app/loadProjects",
-  async (_, thunkAPI) => {
-    try {
-      const data = await apiClient.projects.list();
-      return thunkAPI.fulfillWithValue(data ?? []);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    }
-  },
+  async () => (await apiClient.projects.list()) ?? [],
 );
 
-export const createProject = createAsyncThunk(
+export const createProject = createApiThunk(
   "app/createProject",
-  async (arg: ProjectCreateInput, thunkAPI) => {
-    try {
-      const data = await apiClient.projects.create(arg);
-      return thunkAPI.fulfillWithValue(data);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    }
-  },
+  async (arg: ProjectCreateInput) => await apiClient.projects.create(arg),
 );
 
-export const updateProject = createAsyncThunk(
+export const updateProject = createApiThunk(
   "app/updateProject",
   async (
-    { id, data }: {
-      id: string;
-      data: { title?: string; description?: string };
-    },
-    thunkAPI,
-  ) => {
-    try {
-      const result = await apiClient.projects.update(id, data);
-      return thunkAPI.fulfillWithValue(result);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    }
-  },
+    { id, data }: { id: string; data: { title?: string; description?: string } },
+  ) => await apiClient.projects.update(id, data),
 );
 
-export const moveProject = createAsyncThunk(
+export const moveProject = createApiThunk(
   "app/moveProject",
   async (
     arg: {
@@ -78,50 +39,26 @@ export const moveProject = createAsyncThunk(
     },
     thunkAPI,
   ) => {
-    try {
-      // Optimistic: for a positioned move the client computes the same rank the
-      // server will, so reflect it immediately. No rollback by design.
-      const { afterRank, beforeRank } = arg.between ?? {};
-      if (afterRank != null || beforeRank != null) {
-        thunkAPI.dispatch(
-          applyProjectRank({
-            id: arg.id,
-            rank: rankBetween(afterRank ?? null, beforeRank ?? null),
-          }),
-        );
-      }
-      const data = await apiClient.projects.move(arg.id, {
-        between: arg.between,
-      });
-      if (!data) {
-        return thunkAPI.rejectWithValue({
-          title: "Something went wrong",
-          subtitle: "failed to move project",
-        });
-      }
-      return thunkAPI.fulfillWithValue(data);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
+    // Optimistic: for a positioned move the client computes the same rank the
+    // server will, so reflect it immediately. No rollback by design.
+    const { afterRank, beforeRank } = arg.between ?? {};
+    if (afterRank != null || beforeRank != null) {
+      thunkAPI.dispatch(
+        applyProjectRank({
+          id: arg.id,
+          rank: rankBetween(afterRank ?? null, beforeRank ?? null),
+        }),
+      );
     }
+    const data = await apiClient.projects.move(arg.id, {
+      between: arg.between,
+    });
+    if (!data) fail("failed to move project");
+    return data;
   },
 );
 
-export const deleteProject = createAsyncThunk(
+export const deleteProject = createApiThunk(
   "app/deleteProject",
-  async (id: string, thunkAPI) => {
-    try {
-      const data = await apiClient.projects.delete(id);
-      return thunkAPI.fulfillWithValue(data);
-    } catch (error: unknown) {
-      console.error(error);
-      return thunkAPI.rejectWithValue({
-        title: "Something went wrong",
-        subtitle: toErrorMessage(error),
-      });
-    }
-  },
+  async (id: string) => await apiClient.projects.delete(id),
 );

@@ -1,5 +1,4 @@
 import {
-  createAsyncThunk,
   createEntityAdapter,
   createSlice,
   EntityState,
@@ -50,10 +49,9 @@ import {
 } from "./thunks/projectThunks";
 import { alert, updateUser } from "./thunks/userThunks";
 import { importGuestDrafts } from "./thunks/importGuestDrafts";
+import { createApiThunk, type Failure } from "./thunks/createApiThunk";
 
 export const postsAdapter = createEntityAdapter<Post>();
-
-type Failure = { title: string; subtitle: string };
 
 /** Insert a new post at the front of ids[] so it appears first in the list. */
 function prependPost(state: EntityState<Post, string>, post: Post) {
@@ -165,14 +163,14 @@ const initialState: AppState = {
  * drafts left over from before sign-in are imported before the load so they show
  * up in the same pass.
  */
-export const load = createAsyncThunk("app/load", async (_, thunkAPI) => {
+export const load = createApiThunk("app/load", async (_, thunkAPI) => {
   await thunkAPI.dispatch(loadSession());
   await thunkAPI.dispatch(importGuestDrafts());
   await thunkAPI.dispatch(loadPosts());
 
   // Series must settle after posts so `series.posts` wins for shared entries.
   // Projects only group series, so they need not block.
-  const { user } = thunkAPI.getState() as AppState;
+  const { user } = thunkAPI.getState();
   if (user) {
     await thunkAPI.dispatch(loadSeries());
     thunkAPI.dispatch(loadProjects());
