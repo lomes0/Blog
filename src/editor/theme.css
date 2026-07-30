@@ -611,11 +611,11 @@ html.dark .code-edit-chrome,
 }
 
 .LexicalTheme__tableSelected {
-  outline: 2px solid rgb(60, 132, 244);
+  outline: 2px solid var(--doc-selected-outline);
 }
 
 .LexicalTheme__tableCell {
-  border: 1px solid rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--doc-table-border);
   min-width: 75px;
   max-width: 200px;
   padding: 8px;
@@ -650,7 +650,7 @@ html.dark .code-edit-chrome,
   right: 0;
   bottom: 0;
   top: 0;
-  background-color: #5fb7ff80;
+  background-color: var(--doc-selection-fill);
   content: "";
   pointer-events: none;
 }
@@ -847,7 +847,7 @@ iframe {
 }
 
 .LexicalTheme__embedBlockFocus {
-  outline: 2px solid rgb(60, 132, 244);
+  outline: 2px solid var(--doc-selected-outline);
 }
 
 .LexicalTheme__image {
@@ -953,7 +953,7 @@ iframe {
 }
 
 .LexicalTheme__hr.selected {
-  background-color: rgb(95 183 255 / 50%);
+  background-color: var(--doc-selection-fill);
   user-select: none;
 }
 
@@ -1048,12 +1048,9 @@ iframe {
   ); /* Position exactly in the middle of the gap, accounting for 2px separator width */
   height: auto; /* Let it stretch between top and bottom */
   width: 2px;
-  background-color: #ccc; /* Light gray divider */
-}
-
-/* For dark mode, adjust divider color */
-html.dark .LexicalTheme__layoutItem:not(:last-child)::after {
-  background-color: #444; /* Darker gray for dark mode */
+  /* Was a #ccc/#444 pair with its own html.dark rule, while `.LexicalTheme__hr`
+     a few rules down already drew the same idea from the palette. */
+  background-color: var(--mui-palette-divider);
 }
 
 /* Don't show divider in print */
@@ -1169,6 +1166,11 @@ html.dark .LexicalTheme__layoutItem:not(:last-child)::after {
    Values that flip with the scheme are custom properties rather than paired
    rules, so a light island can restore them for its own subtree in one place
    instead of restating each rule.
+
+   Scope: this covers document *content*. The syntax themes (`--tok-*`,
+   `--code-*`, `--cb-*`) and the toolbar (`--tb-*` in toolbar.css) are already
+   two-block token sets of their own and stay that way — a syntax theme is not
+   a content color (DESIGN.md §3.3 / §17.6).
    --------------------------------------------------------------------------- */
 
 :root,
@@ -1181,27 +1183,41 @@ html.dark .sticky-note {
   --doc-quote-fg: rgb(101, 103, 107);
   --doc-quote-rule: rgb(206, 208, 212);
   --doc-link-fg: rgb(33, 111, 219);
+  --doc-inline-code-bg: rgb(225 230 235 / 44%);
   --doc-table-border: rgba(0, 0, 0, 0.2);
   --doc-table-header-bg: rgba(0, 0, 0, 0.03);
   --doc-details-border: rgba(0, 0, 0, 0.12);
   --doc-details-hover-bg: rgba(0, 0, 0, 0.04);
-  --doc-node-selected: rgb(60, 132, 244);
+  --doc-selected-outline: rgb(60, 132, 244);
 }
 
 html.dark {
   --doc-quote-fg: #a6a6a6;
   --doc-quote-rule: #4d4d4d;
   --doc-link-fg: #90caf9;
+  /* The light fill is a near-white at 44%, which composites to ~#787d87 on
+     the dark canvas — ~3.8:1 against `text.primary`, under the 4.5:1 floor.
+     A white-alpha tint keeps the same "recessed chip" read at full contrast. */
+  --doc-inline-code-bg: rgba(255, 255, 255, 0.09);
   --doc-table-border: rgba(255, 255, 255, 0.2);
   --doc-table-header-bg: rgba(255, 255, 255, 0.03);
   --doc-details-border: rgba(255, 255, 255, 0.12);
   --doc-details-hover-bg: rgba(255, 255, 255, 0.08);
-  --doc-node-selected: #90caf9;
+  --doc-selected-outline: #90caf9;
 }
 
-/* Unchanged across schemes — a translucent neutral that reads on both. */
+/* Scheme-invariant: translucent washes that composite correctly over both
+   canvases, so they carry no `html.dark` counterpart. Tokens rather than
+   literals because each was spelled out at several call sites — the fill
+   appeared seven times across five files in two notations (`#5fb7ff80` and
+   `rgb(95 183 255 / 50%)`). */
+:root {
+  --doc-selection-fill: rgb(95 183 255 / 50%);
+  --doc-selection-accent: rgb(95 183 255 / 75%);
+}
+
 .LexicalTheme__textCode {
-  background-color: rgb(225 230 235 / 44%);
+  background-color: var(--doc-inline-code-bg);
 }
 
 .LexicalTheme__quote {
@@ -1212,10 +1228,6 @@ html.dark {
 
 .LexicalTheme__link {
   color: var(--doc-link-fg);
-}
-
-.LexicalTheme__tableCell {
-  border-color: var(--doc-table-border);
 }
 
 .LexicalTheme__tableCellHeader {
@@ -1271,7 +1283,7 @@ html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
 
 /* Node Selection Styles */
 .LexicalTheme__nodeSelected {
-  outline: 2px solid var(--doc-node-selected);
+  outline: 2px solid var(--doc-selected-outline);
   outline-offset: 2px;
   caret-color: transparent;
 }

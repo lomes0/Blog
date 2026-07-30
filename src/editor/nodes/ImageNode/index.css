@@ -28,7 +28,7 @@
 
 .LexicalTheme__image .image-control-wrapper--active,
 .LexicalTheme__image:focus-within {
-  outline: 2px solid rgb(95 183 255 / 75%);
+  outline: 2px solid var(--doc-selection-accent);
 }
 
 .image-control-wrapper--active .draggable {
@@ -67,7 +67,7 @@
   position: absolute;
   touch-action: none;
   padding: 0;
-  color: rgb(95 183 255 / 75%) !important;
+  color: var(--doc-selection-accent) !important;
 }
 
 .LexicalTheme__image .image-resizer svg {
