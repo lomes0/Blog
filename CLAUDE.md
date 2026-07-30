@@ -43,12 +43,27 @@ npx prisma studio    # Browse database in browser UI
 
 ### Testing
 
-There is no test runner configured in `package.json`. A single spec exists at
-`src/lib/__tests__/ordering.test.ts`, written in `describe`/`it`/`expect` shape
-so it runs as-is once Vitest/Jest is wired up — but nothing executes it today.
+```bash
+npm test             # Vitest, single run
+npm run test:watch   # Vitest, watch mode
+```
 
-This means no automated check covers API authorization. Verify behaviour changes
-by running the app against the local Postgres (`docker compose up -d`) and
+Config is `vitest.config.mts`: `globals: true` (no importing `describe`/`it`/
+`expect`), the `@/*` alias mirrored from `tsconfig.json`, and `environment:
+"node"` — both current specs are pure logic. A spec that needs a DOM should opt
+in per-file with a `// @vitest-environment jsdom` docblock rather than slowing
+the whole run. `src/types/vitest.d.ts` is what gives `tsc` the globals;
+`compilerOptions.types` is deliberately left unset, because setting it would
+restrict resolution to only its entries and drop every other ambient package.
+
+Coverage is two specs, 28 assertions: `src/lib/__tests__/ordering.test.ts`
+(fractional rank keys) and
+`src/components/Layout/SideBar/__tests__/dragGeometry.test.ts` (sidebar drag
+thresholds — `dragGeometry.ts` is kept import-free precisely so it is testable
+without a browser).
+
+**No automated check covers API authorization.** Verify behaviour changes by
+running the app against the local Postgres (`docker compose up -d`) and
 exercising the routes directly. Type-check and lint with `npx tsc --noEmit` and
 `npm run lint`. For UI changes also run `npm run check:theme`, which catches
 colors that do not respond to the light/dark toggle (DESIGN.md §19).

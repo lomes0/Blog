@@ -9,13 +9,6 @@
     "src/**/*.{ts,tsx}",
     "mcp/**/*.ts"
   ],
-  // `src/lib/__tests__` is a spec deliberately awaiting a test runner (see
-  // CLAUDE.md § Testing). It has no importer by design, so knip would report it
-  // as an unused file on every sweep; that is a decision already taken, not a
-  // finding to re-litigate.
-  "ignore": [
-    "src/lib/__tests__/**"
-  ],
   // All five are `require`d by the vendored `next-pwa/` in the repo root, which
   // is outside `project` and so invisible to knip's resolver: `index.js` pulls
   // clean-webpack-plugin + workbox-webpack-plugin, `build-{custom,fallback}-worker.js`
