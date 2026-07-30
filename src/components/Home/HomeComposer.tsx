@@ -5,7 +5,12 @@ import { Send } from "lucide-react";
 import { ICON_SIZE } from "@/theme/icons";
 import { FOCUS_RING, MOTION } from "@/theme/tokens";
 import { MONO_FONT } from "@/components/Layout/SideBar/constants";
-import { HOME_COLUMN_W } from "./layout";
+
+/**
+ * Fluid below the fixed width — the pane sits between two rails whose widths
+ * the user drags, so it cannot assume the viewport.
+ */
+const COLUMN_W = "min(660px, 100%)";
 
 interface HomeComposerProps {
   value: string;
@@ -41,7 +46,7 @@ const HomeComposer = forwardRef<HTMLTextAreaElement, HomeComposerProps>(
     return (
       <Box
         sx={(theme) => ({
-          width: HOME_COLUMN_W,
+          width: COLUMN_W,
           bgcolor: "background.input",
           border: "1px solid",
           borderColor: "divider",
