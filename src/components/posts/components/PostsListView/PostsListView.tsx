@@ -75,7 +75,7 @@ export function PostsListView({
       map.set(
         s.id,
         s.posts
-          
+          .slice()
           .sort(comparePostsByRank),
       );
     }
