@@ -10,6 +10,7 @@ import {
 } from "@mui/material";
 import { ChevronRight } from "lucide-react";
 import { Series, Post } from "@/types";
+import { DRAG_MIME, readDragPayload } from "@/lib/dragDrop";
 import { formatRelativeDate } from "@/utils/dateFormat";
 import { ListDensity } from "../types";
 import { PostRow } from "./PostRow";
@@ -106,7 +107,7 @@ export const SeriesRow = React.memo(function SeriesRow({
   }, [series.id, onToggleSelect]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
-    if (e.dataTransfer.types.includes("application/matheditor-document")) {
+    if (e.dataTransfer.types.includes(DRAG_MIME)) {
       e.preventDefault();
       e.dataTransfer.dropEffect = "move";
       onDragOverSeries(series.id);
@@ -120,14 +121,10 @@ export const SeriesRow = React.memo(function SeriesRow({
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     onDragOverSeries(null);
-    try {
-      const data = JSON.parse(
-        e.dataTransfer.getData("application/matheditor-document"),
-      ) as { id: string };
-      if (data.id) onDropPost(series.id, data.id);
-    } catch {
-      // ignore malformed drag data
-    }
+    // The grabbed row; `onDropPost` expands it to the whole dragged block when
+    // the drag started in this list (see PostsListView.handleDropPost).
+    const payload = readDragPayload(e.dataTransfer);
+    if (payload) onDropPost(series.id, payload.id);
   }, [series.id, onDropPost, onDragOverSeries]);
 
   // Determine which child posts to show

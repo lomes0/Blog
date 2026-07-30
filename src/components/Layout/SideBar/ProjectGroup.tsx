@@ -17,12 +17,9 @@ import type {
   ProjectItemActions,
   SeriesItemActions,
 } from "./hooks/useSidebarActions";
-import type { SidebarSelectionResult } from "./hooks/useSidebarSelection";
-import {
-  DRAG_MIME,
-  dropPositionFromEvent,
-  type SidebarDndResult,
-} from "./hooks/useSidebarDnd";
+import type { RowSelectionResult } from "@/hooks/useRowSelection";
+import type { SidebarDndResult } from "./hooks/useSidebarDnd";
+import { DRAG_MIME, dropPositionFromEvent } from "@/lib/dragDrop";
 import { SeriesGroup } from "./SeriesGroup";
 import { SB_FONT } from "./constants";
 
@@ -43,7 +40,7 @@ interface ProjectGroupProps {
   onToggleSeries: (id: string) => void;
   expandedTabs: Set<string>;
   onToggleTabs: (id: string) => void;
-  selection: SidebarSelectionResult;
+  selection: RowSelectionResult;
   dnd: SidebarDndResult;
 }
 

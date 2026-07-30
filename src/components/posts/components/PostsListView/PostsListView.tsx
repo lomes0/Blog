@@ -13,17 +13,19 @@ import { actions, useDispatch } from "@/store";
 import { useRouter } from "next/navigation";
 import { useExpandedState } from "@/hooks/useExpandedState";
 import {
+  bracketForDrop,
   comparePostsByRank,
   rankOf,
   ranksBracketing,
   type ReorderDirection,
 } from "@/lib/documentOrder";
-import { compareRankThenId } from "@/lib/ordering";
+import { compareRankThenId, rankBetween } from "@/lib/ordering";
+import { type DropPosition, setDragPayload } from "@/lib/dragDrop";
 import { ListDensity } from "./types";
 import { PostRow } from "./components/PostRow";
 import { SeriesRow } from "./components/SeriesRow";
 import { BulkActionBar } from "./components/BulkActionBar";
-import { useListSelection } from "./hooks/useListSelection";
+import { useRowSelection } from "@/hooks/useRowSelection";
 import { useInlineRename } from "@/hooks/useInlineRename";
 
 interface PostsListViewProps {
@@ -113,7 +115,7 @@ export function PostsListView({
     return ids;
   }, [rootItems, expandedSeries, seriesPostsById]);
 
-  const selection = useListSelection({ allIds: allVisibleIds });
+  const selection = useRowSelection(allVisibleIds, "toggle");
 
   // Every renameable post: the standalone rows plus each series' children, since
   // a rename can start on either and the hook resolves the row by id.
@@ -226,7 +228,7 @@ export function PostsListView({
           }
         }
       }
-      selection.clearAll();
+      selection.clear();
       router.refresh();
     }
   }, [dispatch, router, selection, seriesIdSet, allPostsMap]);
@@ -273,7 +275,7 @@ export function PostsListView({
         sourceIds: sources.map((p) => p.id),
       }),
     );
-    selection.clearAll();
+    selection.clear();
     router.refresh();
   }, [canMerge, selectedMergeablePosts, dispatch, selection, router]);
 
@@ -299,84 +301,123 @@ export function PostsListView({
           }),
         );
       }
-      selection.clearAll();
+      selection.clear();
       router.refresh();
     },
     [selectedMovablePosts, dispatch, selection, router],
   );
 
   // ── Drag and drop ─────────────────────────────────────────────────────────
-  // Drag-to-reorder: the id of the row currently being dragged, and the drop
-  // target (a root row + which side) used to draw the insertion indicator.
-  const draggedIdRef = useRef<string | null>(null);
+  // Drag-to-reorder: the rows currently being dragged, and the drop target (a
+  // root row + which side) used to draw the insertion indicator.
+  const draggedRef = useRef<{ ids: string[]; idSet: Set<string> } | null>(null);
   const [dropTarget, setDropTarget] = useState<
-    { id: string; position: "before" | "after" } | null
+    { id: string; position: DropPosition } | null
   >(null);
 
+  // Depend on `selectedIds` rather than the whole `selection` object, which is a
+  // fresh literal each render — the rows below are memoized, so a churning
+  // handler identity would re-render every one of them on every render.
+  const { selectedIds } = selection;
   const handleDragStart = useCallback((e: React.DragEvent, postId: string) => {
-    const post = allPostsMap.get(postId);
-    const name = post?.name || "";
-    draggedIdRef.current = postId;
-    e.dataTransfer.setData(
-      "application/matheditor-document",
-      JSON.stringify({ id: postId, name, type: "post" }),
-    );
-    e.dataTransfer.effectAllowed = "move";
-  }, [allPostsMap]);
+    // Grabbing a row that is part of the multi-selection drags the whole
+    // selection (render order, so the block keeps its relative order at the
+    // destination); otherwise just the grabbed row. Mirrors the sidebar's
+    // `getDragSet` — see useSidebarDnd.
+    const ids = selectedIds.has(postId) && selectedIds.size > 1
+      ? allVisibleIds.filter((id) => selectedIds.has(id))
+      : [postId];
+    draggedRef.current = { ids, idSet: new Set(ids) };
+    setDragPayload(e.dataTransfer, ids, allPostsMap.get(postId)?.name);
+  }, [allPostsMap, allVisibleIds, selectedIds]);
 
   const handleDragEnd = useCallback(() => {
     setDragOverSeriesId(null);
     setDropTarget(null);
-    draggedIdRef.current = null;
+    draggedRef.current = null;
   }, []);
 
   const handleReorderDragOver = useCallback(
-    (targetId: string, position: "before" | "after") => {
-      if (draggedIdRef.current && draggedIdRef.current !== targetId) {
+    (targetId: string, position: DropPosition) => {
+      const dragged = draggedRef.current;
+      if (dragged && !dragged.idSet.has(targetId)) {
         setDropTarget({ id: targetId, position });
       }
     },
     [],
   );
 
-  // Drop a dragged post at a root position (before/after the target row).
-  // Reorders within, or moves out of a series into, the interleaved root list.
-  const handleReorderDrop = useCallback(
-    async (targetId: string, position: "before" | "after") => {
-      const draggedId = draggedIdRef.current;
-      setDropTarget(null);
-      if (!draggedId || draggedId === targetId) return;
-
-      const list = rootItems.filter((it) => it.id !== draggedId);
-      const ti = list.findIndex((it) => it.id === targetId);
-      if (ti === -1) return;
-      const rankAt = (i: number) =>
-        i >= 0 && i < list.length ? list[i].rank : null;
-      const afterRank = position === "before" ? rankAt(ti - 1) : rankAt(ti);
-      const beforeRank = position === "before" ? rankAt(ti) : rankAt(ti + 1);
-
-      await dispatch(
-        actions.movePost({
-          id: draggedId,
-          destination: {},
-          between: { afterRank, beforeRank },
-        }),
-      );
-      router.refresh();
+  /**
+   * Dispatch a move for each dragged row into the root list at `between`,
+   * chaining the ranks so a multi-row block keeps its relative order. Series
+   * rows can be part of the selection even though only posts are drag *sources*,
+   * so each id is routed by kind.
+   */
+  const moveDraggedInto = useCallback(
+    async (
+      ids: string[],
+      bracket: { afterRank: string | null; beforeRank: string | null },
+    ) => {
+      const { beforeRank } = bracket;
+      let afterRank = bracket.afterRank;
+      for (const id of ids) {
+        const between = { afterRank, beforeRank };
+        if (seriesIdSet.has(id)) {
+          await dispatch(
+            actions.moveSeries({ id, between }),
+          );
+        } else {
+          await dispatch(
+            actions.movePost({ id, destination: {}, between }),
+          );
+        }
+        // Chain: the next row slots just after the one just placed.
+        afterRank = rankBetween(afterRank, beforeRank);
+      }
     },
-    [rootItems, dispatch, router],
+    [dispatch, seriesIdSet],
   );
 
-  const handleDropPost = useCallback(
-    async (seriesId: string, postId: string) => {
-      // movePost sets seriesId *and* a fresh rank in the destination series,
-      // so the post no longer keeps a rank from its previous container.
-      await dispatch(
-        actions.movePost({ id: postId, destination: { seriesId } }),
+  // Drop the dragged rows at a root position (before/after the target row).
+  // Reorders within, or moves out of a series into, the interleaved root list.
+  const handleReorderDrop = useCallback(
+    async (targetId: string, position: DropPosition) => {
+      const dragged = draggedRef.current;
+      setDropTarget(null);
+      if (!dragged || dragged.idSet.has(targetId)) return;
+
+      // Null covers both "target vanished" and a degenerate slot whose colliding
+      // neighbour ranks would make rankBetween throw — see bracketForDrop.
+      const bracket = bracketForDrop(
+        rootItems,
+        dragged.idSet,
+        targetId,
+        position,
       );
+      if (!bracket) return;
+
+      await moveDraggedInto(dragged.ids, bracket);
       router.refresh();
     },
-    [dispatch, router],
+    [rootItems, moveDraggedInto, router],
+  );
+
+  // Drop onto a series header: move every dragged post into that series. Series
+  // rows in the selection are skipped — a series can't nest in a series.
+  const handleDropPost = useCallback(
+    async (seriesId: string, postId: string) => {
+      const ids = draggedRef.current?.ids ?? [postId];
+      // movePost sets seriesId *and* a fresh rank in the destination series,
+      // so the post no longer keeps a rank from its previous container.
+      for (const id of ids) {
+        if (seriesIdSet.has(id)) continue;
+        await dispatch(
+          actions.movePost({ id, destination: { seriesId } }),
+        );
+      }
+      router.refresh();
+    },
+    [dispatch, router, seriesIdSet],
   );
 
   const handleMoveToSeries = useCallback(
@@ -451,7 +492,7 @@ export function PostsListView({
       const isInputFocused = tag === "INPUT" || tag === "TEXTAREA";
 
       if (e.key === "Escape") {
-        selection.clearAll();
+        selection.clear();
         return;
       }
       if ((e.key === "Delete" || e.key === "Backspace") && !isInputFocused) {
@@ -474,7 +515,7 @@ export function PostsListView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     selection.selectedIds.size,
-    selection.clearAll,
+    selection.clear,
     selection.selectAll,
     handleBulkDelete,
   ]);
@@ -494,7 +535,7 @@ export function PostsListView({
                 density={density}
                 isSelected={selection.isSelected(item.id)}
                 rename={postRename}
-                onToggleSelect={selection.toggle}
+                onToggleSelect={selection.handleSelectClick}
                 onDelete={handleDeletePost}
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
@@ -526,7 +567,7 @@ export function PostsListView({
                 isPostSelected={selection.isSelected}
                 isExpanded={expandedSeries.has(item.id)}
                 onToggleExpand={toggleSeries}
-                onToggleSelect={selection.toggle}
+                onToggleSelect={selection.handleSelectClick}
                 seriesRename={seriesRename}
                 postRename={postRename}
                 onDeleteSeries={handleDeleteSeries}
@@ -547,7 +588,7 @@ export function PostsListView({
       <BulkActionBar
         count={selection.selectedIds.size}
         onDelete={handleBulkDelete}
-        onClear={selection.clearAll}
+        onClear={selection.clear}
         onMerge={handleBulkMerge}
         canMerge={canMerge}
         availableSeries={moveTargetSeries ?? series}

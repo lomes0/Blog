@@ -4,6 +4,7 @@ import { Box, Checkbox, InputBase, Typography } from "@mui/material";
 import { GripVertical } from "lucide-react";
 import { Series, Post } from "@/types";
 import { useRouter } from "next/navigation";
+import { type DropPosition, dropPositionFromEvent } from "@/lib/dragDrop";
 import { formatRelativeDate } from "@/utils/dateFormat";
 import { ListDensity } from "../types";
 import { PostRowContextMenu } from "./PostRowContextMenu";
@@ -28,11 +29,11 @@ interface PostRowProps {
    * Drop-to-reorder: when set, this row is a drop target that reports where a
    * dragged item would land relative to it. Only wired for root-level rows.
    */
-  onReorderDragOver?: (postId: string, position: "before" | "after") => void;
-  onReorderDrop?: (postId: string, position: "before" | "after") => void;
+  onReorderDragOver?: (postId: string, position: DropPosition) => void;
+  onReorderDrop?: (postId: string, position: DropPosition) => void;
   onReorderDragLeave?: () => void;
   /** Insertion indicator to render for this row, if any. */
-  dropIndicator?: "before" | "after" | null;
+  dropIndicator?: DropPosition | null;
   /** Left indent in px (for series children). */
   indent?: number;
   /** Series the post can be moved to. Hidden when empty. */
@@ -61,7 +62,6 @@ export const PostRow = React.memo(function PostRow({
   onMoveToSeries,
 }: PostRowProps) {
   const router = useRouter();
-  const rowRef = useRef<HTMLDivElement>(null);
   const document = post;
   const name = document?.name || "Untitled";
   const date = document?.updatedAt || document?.createdAt;
@@ -99,26 +99,20 @@ export const PostRow = React.memo(function PostRow({
     onToggleSelect(post.id, e);
   }, [post.id, onToggleSelect]);
 
-  const dropPosition = (e: React.DragEvent): "before" | "after" => {
-    const rect = rowRef.current?.getBoundingClientRect();
-    if (!rect) return "after";
-    return e.clientY < rect.top + rect.height / 2 ? "before" : "after";
-  };
-  const handleReorderDragOver = useCallback((e: React.DragEvent) => {
+  const handleReorderDragOver = useCallback((e: React.DragEvent<HTMLElement>) => {
     if (!onReorderDragOver) return;
     e.preventDefault();
-    onReorderDragOver(post.id, dropPosition(e));
+    onReorderDragOver(post.id, dropPositionFromEvent(e));
   }, [onReorderDragOver, post.id]);
-  const handleReorderDrop = useCallback((e: React.DragEvent) => {
+  const handleReorderDrop = useCallback((e: React.DragEvent<HTMLElement>) => {
     if (!onReorderDrop) return;
     e.preventDefault();
-    onReorderDrop(post.id, dropPosition(e));
+    onReorderDrop(post.id, dropPositionFromEvent(e));
   }, [onReorderDrop, post.id]);
 
   return (
     <Box>
       <Box
-        ref={rowRef}
         className="post-list-row"
         onClick={handleRowClick}
         onDragOver={onReorderDragOver ? handleReorderDragOver : undefined}

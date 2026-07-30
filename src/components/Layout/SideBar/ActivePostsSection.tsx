@@ -13,7 +13,7 @@ import type {
   ProjectItemActions,
   SeriesItemActions,
 } from "./hooks/useSidebarActions";
-import { useSidebarSelection } from "./hooks/useSidebarSelection";
+import { useRowSelection } from "@/hooks/useRowSelection";
 import { useSidebarDnd } from "./hooks/useSidebarDnd";
 import { useSidebarBulkActions } from "./hooks/useSidebarBulkActions";
 import { PostItem } from "./PostItem";
@@ -153,7 +153,7 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
     return ids;
   }, [noteItems, groupItems, expandedSeries, expandedProjects]);
 
-  const selection = useSidebarSelection(allVisibleIds);
+  const selection = useRowSelection(allVisibleIds, "clear");
   const { clear: clearSelection, selectAll } = selection;
 
   // A drag that starts on a selected row moves the whole selection (render

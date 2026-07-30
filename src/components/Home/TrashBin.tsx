@@ -6,6 +6,7 @@ import { useTheme } from "@mui/material/styles";
 import { actions, useDispatch } from "@/store";
 import { v4 as uuid } from "uuid";
 import { DragContext } from "@/contexts/DragContext";
+import { readDragPayload } from "@/lib/dragDrop";
 import { Post } from "@/types";
 import { FloatingActionButton } from "../Layout/FloatingActionsContainer";
 import { useErrorAnnounce } from "@/hooks/useErrorAnnounce";
@@ -33,15 +34,17 @@ const TrashBin: React.FC = () => {
     setIsDropTarget(false);
 
     try {
-      const data = e.dataTransfer.getData("application/matheditor-document");
-      if (!data) return;
-
-      const draggedItem = JSON.parse(data);
+      // Acts on the grabbed row only, which is what the prompt below names —
+      // a multi-row drag deletes just that one.
+      const draggedItem = readDragPayload(e.dataTransfer);
+      if (!draggedItem) return;
 
       // Show confirmation dialog before deleting
       const alert = {
         title: "Delete Document",
-        content: `Are you sure you want to delete "${draggedItem.name}"?`,
+        content: `Are you sure you want to delete "${
+          draggedItem.name ?? "this document"
+        }"?`,
         actions: [
           { label: "Cancel", id: uuid() },
           { label: "Delete", id: uuid() },
@@ -64,7 +67,7 @@ const TrashBin: React.FC = () => {
         // Show success message
         dispatch(actions.announce({
           message: {
-            title: `Deleted ${draggedItem.name}`,
+            title: `Deleted ${draggedItem.name ?? "document"}`,
           },
           timeout: 3000,
         }));

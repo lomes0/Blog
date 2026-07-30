@@ -3,25 +3,14 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { actions, useDispatch } from "@/store";
 import { rankBetween } from "@/lib/ordering";
-import { rankOf } from "@/lib/documentOrder";
+import {
+  bracketForDrop,
+  type RankedSibling,
+  rankOf,
+} from "@/lib/documentOrder";
+import { type DropPosition, setDragPayload } from "@/lib/dragDrop";
 import type { RootItem } from "@/utils/posts/seriesGrouping";
-
-/** Shared drag payload MIME, matching the posts page (PostsListView). */
-export const DRAG_MIME = "application/matheditor-document";
-
-export type DropPosition = "before" | "after";
-
-/**
- * Whether the cursor is over the top or bottom half of the row the drag event is
- * bound to. Reads `currentTarget` (valid synchronously in the handler) so no ref
- * is needed on the row element.
- */
-export function dropPositionFromEvent(
-  e: React.DragEvent<HTMLElement>,
-): DropPosition {
-  const rect = e.currentTarget.getBoundingClientRect();
-  return e.clientY < rect.top + rect.height / 2 ? "before" : "after";
-}
+import type { Post } from "@/types";
 
 type DragKind = "post" | "series" | "project";
 
@@ -34,11 +23,6 @@ interface DragState {
   primaryKind: DragKind;
 }
 
-interface Sibling {
-  id: string;
-  rank: string | null;
-}
-
 /** The container a row lives in / a target stands for. */
 type Container =
   | { type: "root" }
@@ -49,6 +33,8 @@ type Container =
 interface TargetInfo {
   kind: DragKind;
   container: Container;
+  /** The row's display name, carried in the drag payload for confirm prompts. */
+  label?: string;
 }
 
 /** Resolve the full set of ids a grab should drag (e.g. the multi-selection). */
@@ -125,54 +111,62 @@ export function useSidebarDnd(
   const { targetInfo, rootSiblings, projectSiblings, seriesSiblings } = useMemo(
     () => {
       const targetInfo = new Map<string, TargetInfo>();
-      const rootSiblings: Sibling[] = [];
-      const projectSiblings = new Map<string, Sibling[]>();
-      const seriesSiblings = new Map<string, Sibling[]>();
+      const rootSiblings: RankedSibling[] = [];
+      const projectSiblings = new Map<string, RankedSibling[]>();
+      const seriesSiblings = new Map<string, RankedSibling[]>();
 
       const addSeries = (
-        seriesId: string,
-        seriesRank: string | null,
-        posts: { id: string; rank: string | null }[],
+        series: { id: string; title: string; rank?: string | null },
+        posts: Post[],
         container: Container,
       ) => {
-        targetInfo.set(seriesId, { kind: "series", container });
-        seriesSiblings.set(seriesId, posts);
+        targetInfo.set(series.id, {
+          kind: "series",
+          container,
+          label: series.title,
+        });
+        seriesSiblings.set(
+          series.id,
+          posts.map((p) => ({ id: p.id, rank: rankOf(p) })),
+        );
         for (const p of posts) {
           targetInfo.set(p.id, {
             kind: "post",
-            container: { type: "series", seriesId },
+            container: { type: "series", seriesId: series.id },
+            label: p.name,
           });
         }
-        return { id: seriesId, rank: seriesRank };
+        return { id: series.id, rank: series.rank ?? null };
       };
 
       for (const item of rootItems) {
         if (item.type === "project") {
           const pid = item.project.id;
-          targetInfo.set(pid, { kind: "project", container: { type: "root" } });
+          targetInfo.set(pid, {
+            kind: "project",
+            container: { type: "root" },
+            label: item.project.title,
+          });
           rootSiblings.push({ id: pid, rank: item.project.rank ?? null });
-          const members: Sibling[] = item.children.map((child) =>
-            addSeries(
-              child.series!.id,
-              child.series!.rank ?? null,
-              child.posts.map((p) => ({ id: p.id, rank: rankOf(p) })),
-              { type: "project", projectId: pid },
-            )
+          const members: RankedSibling[] = item.children.map((child) =>
+            addSeries(child.series!, child.posts, {
+              type: "project",
+              projectId: pid,
+            })
           );
           projectSiblings.set(pid, members);
         } else if (item.type === "series" && item.series) {
           rootSiblings.push(
-            addSeries(
-              item.series.id,
-              item.series.rank ?? null,
-              item.posts.map((p) => ({ id: p.id, rank: rankOf(p) })),
-              { type: "root" },
-            ),
+            addSeries(item.series, item.posts, { type: "root" }),
           );
         } else {
           const p = item.posts[0];
           if (!p) continue;
-          targetInfo.set(p.id, { kind: "post", container: { type: "root" } });
+          targetInfo.set(p.id, {
+            kind: "post",
+            container: { type: "root" },
+            label: p.name,
+          });
           rootSiblings.push({ id: p.id, rank: rankOf(p) });
         }
       }
@@ -181,6 +175,12 @@ export function useSidebarDnd(
     [rootItems],
   );
 
+  // Same reason as `getDragSetRef`: the drag-start callbacks below are declared
+  // with no deps (their other inputs are refs/setters), so they must not close
+  // over a render-scoped map or they would serve labels from the first render.
+  const targetInfoRef = useRef(targetInfo);
+  targetInfoRef.current = targetInfo;
+
   const startDrag = (
     event: React.DragEvent,
     primaryId: string,
@@ -188,8 +188,11 @@ export function useSidebarDnd(
   ) => {
     const ids = getDragSetRef.current?.(primaryId) ?? [primaryId];
     draggedRef.current = { ids, idSet: new Set(ids), primaryKind };
-    event.dataTransfer.setData(DRAG_MIME, JSON.stringify({ ids }));
-    event.dataTransfer.effectAllowed = "move";
+    setDragPayload(
+      event.dataTransfer,
+      ids,
+      targetInfoRef.current.get(primaryId)?.label,
+    );
     setIsDragging(true);
   };
 
@@ -361,21 +364,15 @@ export function useSidebarDnd(
         : c.container.type === "project"
         ? projectSiblings.get(c.container.projectId) ?? []
         : rootSiblings;
-      const bracket = computeBetween(
+      // Null covers both "target vanished" and a degenerate slot whose colliding
+      // neighbour ranks would make rankBetween throw — see bracketForDrop.
+      const bracket = bracketForDrop(
         siblings,
         dragged.idSet,
         targetId,
         position,
       );
       if (!bracket) return;
-      // Degenerate slot (colliding neighbour ranks): bail rather than let
-      // rankBetween throw. A refresh reconciles ranks server-side.
-      if (
-        bracket.afterRank !== null && bracket.beforeRank !== null &&
-        bracket.afterRank >= bracket.beforeRank
-      ) {
-        return;
-      }
 
       const beforeRank = bracket.beforeRank;
       let afterRank = bracket.afterRank;
@@ -443,24 +440,4 @@ export function useSidebarDnd(
     onReorderDrop,
     onDragLeaveRow,
   };
-}
-
-/**
- * Ranks that bracket the slot `position` relative to `targetId` in `siblings`,
- * with every dragged row removed first (so the set's own ranks never bracket the
- * drop). Returns null when the target isn't found.
- */
-function computeBetween(
-  siblings: Sibling[],
-  draggedIds: Set<string>,
-  targetId: string,
-  position: DropPosition,
-): { afterRank: string | null; beforeRank: string | null } | null {
-  const list = siblings.filter((s) => !draggedIds.has(s.id));
-  const ti = list.findIndex((s) => s.id === targetId);
-  if (ti === -1) return null;
-  const rankAt = (i: number) => (i >= 0 && i < list.length ? list[i].rank : null);
-  const afterRank = position === "before" ? rankAt(ti - 1) : rankAt(ti);
-  const beforeRank = position === "before" ? rankAt(ti) : rankAt(ti + 1);
-  return { afterRank, beforeRank };
 }

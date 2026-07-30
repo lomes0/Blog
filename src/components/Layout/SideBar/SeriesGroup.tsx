@@ -17,12 +17,9 @@ import type {
   PostItemActions,
   SeriesItemActions,
 } from "./hooks/useSidebarActions";
-import type { SidebarSelectionResult } from "./hooks/useSidebarSelection";
-import {
-  DRAG_MIME,
-  dropPositionFromEvent,
-  type SidebarDndResult,
-} from "./hooks/useSidebarDnd";
+import type { RowSelectionResult } from "@/hooks/useRowSelection";
+import type { SidebarDndResult } from "./hooks/useSidebarDnd";
+import { DRAG_MIME, dropPositionFromEvent } from "@/lib/dragDrop";
 import { PostItem } from "./PostItem";
 import { CountPill } from "./CountPill";
 import { SB_FONT, SB_ITEM_RADIUS } from "./constants";
@@ -39,7 +36,7 @@ interface SeriesGroupProps {
   seriesActions: SeriesItemActions;
   expandedTabs: Set<string>;
   onToggleTabs: (id: string) => void;
-  selection: SidebarSelectionResult;
+  selection: RowSelectionResult;
   dnd: SidebarDndResult;
 }
 

@@ -6,6 +6,7 @@ import { Theme, useTheme } from "@mui/material/styles";
 import PostCard from "./PostCard";
 
 import { DragContext } from "@/contexts/DragContext";
+import { readDragPayload, setDragPayload } from "@/lib/dragDrop";
 
 interface DraggablePostCardProps {
   post: Post;
@@ -35,14 +36,7 @@ const DraggablePostCard: React.FC<DraggablePostCardProps> = ({
   const document = post;
 
   const handleDragStart = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.dataTransfer.setData(
-      "application/matheditor-document",
-      JSON.stringify({
-        id: post.id,
-        name: document?.name,
-        type: "post",
-      }),
-    );
+    setDragPayload(e.dataTransfer, [post.id], document?.name);
 
     if (cardRef.current) {
       const rect = cardRef.current.getBoundingClientRect();
@@ -53,7 +47,6 @@ const DraggablePostCard: React.FC<DraggablePostCardProps> = ({
       );
     }
 
-    e.dataTransfer.effectAllowed = "move";
     setIsDragging(true);
     setGlobalDragging(true);
   }, [post.id, document?.name, setGlobalDragging]);
@@ -65,19 +58,11 @@ const DraggablePostCard: React.FC<DraggablePostCardProps> = ({
 
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-
-    try {
-      const dragData = JSON.parse(
-        e.dataTransfer.getData("application/matheditor-document"),
-      );
-
-      if (dragData.id && dragData.id !== post.id) {
-        // In a blog context, we might reorder posts or move to series
-        // This would need to be implemented based on specific requirements
-        onMoveComplete?.();
-      }
-    } catch (error) {
-      console.warn("Failed to handle post drop:", error);
+    const dragData = readDragPayload(e.dataTransfer);
+    if (dragData && dragData.id !== post.id) {
+      // In a blog context, we might reorder posts or move to series
+      // This would need to be implemented based on specific requirements
+      onMoveComplete?.();
     }
   }, [post.id, onMoveComplete]);
 

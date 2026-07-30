@@ -1,21 +1,34 @@
 "use client";
 import { useCallback, useRef, useState } from "react";
 
-export interface SidebarSelectionResult {
+/** What a click with no modifier key does to the selection. */
+export type PlainClickBehavior =
+  /**
+   * Drop any active multi-selection and consume the click; with nothing
+   * selected, leave the selection alone and let the row act normally. For rows
+   * that are navigation targets (the sidebar tree), where a plain click must
+   * still open the post.
+   */
+  | "clear"
+  /**
+   * Toggle the row, like a file browser. For rows whose primary gesture *is*
+   * selection (the /posts list, where navigation lives on the title).
+   */
+  | "toggle";
+
+export interface RowSelectionResult {
   /** Ids of the rows currently in the multi-selection. */
   selectedIds: Set<string>;
   isSelected: (id: string) => boolean;
   hasSelection: boolean;
   /**
-   * Apply a modifier-aware selection gesture for a row activation. Sidebar rows
-   * are navigation targets, so selection is *modifier-only*:
+   * Apply a modifier-aware selection gesture for a row activation:
    *   - Shift+click       → extend a contiguous range from the anchor
    *   - Ctrl/Cmd+click    → toggle the row in/out of the selection
-   *   - plain click       → drop any multi-selection (the row then navigates)
+   *   - plain click       → per {@link PlainClickBehavior}
    *
    * Returns true when the click was consumed as a selection gesture and the
-   * caller should suppress the row's default navigation/toggle; false for a
-   * plain click, where the caller proceeds as normal.
+   * caller should suppress the row's default navigation/toggle.
    */
   handleSelectClick: (id: string, event: React.MouseEvent) => boolean;
   clear: () => void;
@@ -23,18 +36,27 @@ export interface SidebarSelectionResult {
 }
 
 /**
- * Multi-selection state for the sidebar tree (posts + series rows), keyed by
- * render order so Shift-range spans the visible rows. Mirrors the file-browser
- * behavior of {@link useListSelection} on the posts page, but gated to modifier
- * clicks so a plain click still opens the post.
+ * Multi-selection state for a flat list of rows, keyed by render order so a
+ * Shift-range spans exactly the rows the user can see.
  *
- * `allIds` is the flat list of selectable rows in render order (series rows plus
- * the posts of each *expanded* series and the standalone posts); it is only read
- * inside the gesture handlers, so an unstable array reference is fine.
+ * Shared by the two surfaces that render the post tree — the sidebar and the
+ * /posts list. They differ only in what a plain click means, so that is the one
+ * option; everything else (range, toggle, select-all, anchor tracking) is the
+ * same gesture vocabulary and lives here once.
+ *
+ * `allIds` is the flat list of selectable rows in render order (series/project
+ * rows plus the children of each *expanded* one). It is only read inside the
+ * gesture handlers, so an unstable array reference is fine — the handlers keep
+ * stable identities so they can be passed to memoized rows without thrashing
+ * them mid-drag.
  */
-export function useSidebarSelection(allIds: string[]): SidebarSelectionResult {
+export function useRowSelection(
+  allIds: string[],
+  plainClick: PlainClickBehavior,
+): RowSelectionResult {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [anchorId, setAnchorId] = useState<string | null>(null);
+
   // Read `allIds` lazily inside callbacks without making them depend on its
   // (per-render) identity, which would thrash memoized child rows.
   const allIdsRef = useRef(allIds);
@@ -47,6 +69,16 @@ export function useSidebarSelection(allIds: string[]): SidebarSelectionResult {
   const isSelected = useCallback((id: string) => selectedIds.has(id), [
     selectedIds,
   ]);
+
+  const toggleId = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    setAnchorId(id);
+  }, []);
 
   const handleSelectClick = useCallback(
     (id: string, event: React.MouseEvent): boolean => {
@@ -70,18 +102,18 @@ export function useSidebarSelection(allIds: string[]): SidebarSelectionResult {
       }
 
       if (event.metaKey || event.ctrlKey) {
-        setSelectedIds((prev) => {
-          const next = new Set(prev);
-          if (next.has(id)) next.delete(id);
-          else next.add(id);
-          return next;
-        });
-        setAnchorId(id);
+        toggleId(id);
         return true;
       }
 
-      // Plain click while a multi-selection is active: cancel the selection and
-      // consume the click, so it just exits multi-select instead of navigating.
+      if (plainClick === "toggle") {
+        toggleId(id);
+        return true;
+      }
+
+      // "clear": a plain click while a multi-selection is active cancels the
+      // selection and consumes the click, so it just exits multi-select instead
+      // of navigating.
       if (selectedIdsRef.current.size) {
         setSelectedIds(new Set());
         setAnchorId(id);
@@ -93,7 +125,7 @@ export function useSidebarSelection(allIds: string[]): SidebarSelectionResult {
       setAnchorId(id);
       return false;
     },
-    [anchorId],
+    [anchorId, plainClick, toggleId],
   );
 
   const clear = useCallback(() => {

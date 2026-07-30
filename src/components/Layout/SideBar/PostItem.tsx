@@ -22,7 +22,7 @@ import {
   DRAG_MIME,
   type DropPosition,
   dropPositionFromEvent,
-} from "./hooks/useSidebarDnd";
+} from "@/lib/dragDrop";
 import { type SubTabEntry, SubTabList } from "./SubTabList";
 import { triggerSave } from "../../EditDocument/saveRegistry";
 import { ICON_SIZE } from "@/theme/icons";
