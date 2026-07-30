@@ -8,7 +8,7 @@ import React, {
 } from "react";
 import { Box } from "@mui/material";
 import { v4 as uuid } from "uuid";
-import { Series, Post } from "@/types";
+import { Post, type PostContainer, Series } from "@/types";
 import { actions, useDispatch } from "@/store";
 import { useRouter } from "next/navigation";
 import { useExpandedState } from "@/hooks/useExpandedState";
@@ -39,6 +39,14 @@ interface PostsListViewProps {
    * series to move posts into.
    */
   moveTargetSeries?: Series[];
+  /**
+   * The container whose contents the root list is rendering. Defaults to the
+   * author's root list. In series mode the rows are a *series'* posts, so this
+   * must name that series — `movePost`'s destination fully specifies the
+   * container, so reordering with the default would silently detach every row
+   * from its series.
+   */
+  rootContainer?: PostContainer;
   density: ListDensity;
 }
 
@@ -56,11 +64,23 @@ export function PostsListView({
   posts,
   series,
   moveTargetSeries,
+  rootContainer = {},
   density,
 }: PostsListViewProps) {
   const dispatch = useDispatch();
   const router = useRouter();
   const [dragOverSeriesId, setDragOverSeriesId] = useState<string | null>(null);
+
+  // Pinned to the two ids rather than the prop's identity: callers pass this
+  // inline, and the reorder handlers below are React.memo'd row props — a fresh
+  // object each render would re-create them and re-render every row mid-drag.
+  const container = useMemo<PostContainer>(
+    () => ({
+      seriesId: rootContainer.seriesId ?? null,
+      parentId: rootContainer.parentId ?? null,
+    }),
+    [rootContainer.seriesId, rootContainer.parentId],
+  );
 
   const { expandedSeries, toggleSeries } = useExpandedState(
     "postsListExpansion",
@@ -195,11 +215,7 @@ export function PostsListView({
   const allPostsMap = useMemo(() => {
     const map = new Map<string, Post>();
     posts.forEach((p) => map.set(p.id, p));
-    series.forEach((s) =>
-      s.posts.forEach((p) =>
-        map.set(p.id, p)
-      )
-    );
+    series.forEach((s) => s.posts.forEach((p) => map.set(p.id, p)));
     return map;
   }, [posts, series]);
 
@@ -368,14 +384,14 @@ export function PostsListView({
           );
         } else {
           await dispatch(
-            actions.movePost({ id, destination: {}, between }),
+            actions.movePost({ id, destination: container, between }),
           );
         }
         // Chain: the next row slots just after the one just placed.
         afterRank = rankBetween(afterRank, beforeRank);
       }
     },
-    [dispatch, seriesIdSet],
+    [dispatch, seriesIdSet, container],
   );
 
   // Drop the dragged rows at a root position (before/after the target row).
@@ -475,14 +491,14 @@ export function PostsListView({
       const item = rootItems[index];
       if (item.kind === "post") {
         await dispatch(
-          actions.movePost({ id: item.id, destination: {}, between }),
+          actions.movePost({ id: item.id, destination: container, between }),
         );
       } else {
         await dispatch(actions.moveSeries({ id: item.id, between }));
       }
       router.refresh();
     },
-    [rootItems, dispatch, router],
+    [rootItems, dispatch, router, container],
   );
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────────

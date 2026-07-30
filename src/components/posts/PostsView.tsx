@@ -4,7 +4,7 @@ import { Box, Typography } from "@mui/material";
 import Grid from "@mui/material/Grid2";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Series, User, Post } from "@/types";
+import { Post, Series, User } from "@/types";
 import { useSelector } from "@/store";
 import { selectStandalonePosts } from "@/store/selectors/postsSelectors";
 import { comparePostsByRank } from "@/lib/documentOrder";
@@ -134,8 +134,7 @@ const PostsView: React.FC<PostsViewProps> = ({ series, user: serverUser }) => {
   // the server); time-edit mode swaps in the date-sorted-with-pending list while
   // the user adjusts post dates.
   const seriesUserDocs: Post[] = useMemo(
-    () =>
-      isSeries ? (isTimeEditMode ? sortedWithPending : series!.posts) : [],
+    () => isSeries ? (isTimeEditMode ? sortedWithPending : series!.posts) : [],
     [isSeries, isTimeEditMode, sortedWithPending, series],
   );
 
@@ -262,6 +261,7 @@ const PostsView: React.FC<PostsViewProps> = ({ series, user: serverUser }) => {
                   <PostsListView
                     posts={seriesUserDocs}
                     series={[]}
+                    rootContainer={{ seriesId: series!.id }}
                     moveTargetSeries={seriesList.filter((s) =>
                       s.id !== series!.id
                     )}

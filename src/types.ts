@@ -239,11 +239,24 @@ export type PostUpdateInput = Partial<
   Omit<PostCreateInput, "id" | "type" | "parentId" | "seriesId" | "rank">
 >;
 
+/**
+ * The container a post lives in. `{}` is the author's root list; a `seriesId`
+ * puts it in that series; a `parentId` makes it a tab of that post. It is
+ * always read as a *whole* container, never a partial patch — an omitted
+ * `seriesId` means "root", not "leave it where it was" — so a caller that
+ * renders a container's contents must say which container that is, or a
+ * reorder will re-home every row it touches.
+ */
+export type PostContainer = {
+  seriesId?: string | null;
+  parentId?: string | null;
+};
+
 /** Where a post should land, plus where among its new siblings. */
 export type MovePostArg = {
   id: string;
   /** Fully specifies the destination container (not a partial patch). */
-  destination: { seriesId?: string | null; parentId?: string | null };
+  destination: PostContainer;
   /** Neighbour ranks to drop between; omit to append to the end. */
   between?: { afterRank?: string | null; beforeRank?: string | null };
 };
