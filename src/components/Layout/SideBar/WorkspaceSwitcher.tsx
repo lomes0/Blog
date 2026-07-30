@@ -4,7 +4,7 @@ import { Box, Typography } from "@mui/material";
 import { ChevronDown } from "lucide-react";
 import { type RootState, useSelector } from "@/store";
 import { ICON_SIZE } from "@/theme/icons";
-import { SB_ACCENT, SB_FONT } from "./constants";
+import { SB_FONT } from "./constants";
 
 /**
  * Header identity chip from the "Refined Explorer" handoff: a tinted-initial
@@ -37,23 +37,20 @@ export const WorkspaceSwitcher: React.FC = () => {
     >
       <Box
         component="span"
-        sx={(theme) => ({
+        sx={{
           flexShrink: 0,
           width: 22,
           height: 22,
-          borderRadius: "6px",
+          // 1.5 on the ×4 `sx` scale = 6px (DESIGN.md §5).
+          borderRadius: 1.5,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           fontSize: SB_FONT.meta,
           fontWeight: 700,
-          bgcolor: "action.selected",
-          color: "primary.main",
-          ...theme.applyStyles("light", {
-            backgroundColor: SB_ACCENT.tint,
-            color: SB_ACCENT.main,
-          }),
-        })}
+          bgcolor: "accent.tint",
+          color: "accent.main",
+        }}
       >
         {initial}
       </Box>

@@ -1,7 +1,45 @@
-# DESIGN.md — Machine-Readable Design Contract
+# DESIGN.md — Design Contract
 
 > **Agents**: Reference this file in every UI prompt.\
 > "Follow DESIGN.md conventions when implementing any component or page."
+
+## How to read this file
+
+This document has two halves, and they carry different authority.
+
+**Codified sections — the code is the source of truth, this file describes it.**
+§2 colors · §3 typography · §4 spacing · §5 radius · §6 shadows · §7 breakpoints
+· §11 motion · §12 scrollbars · §13 print · §14 fonts · §16 icons · §17.1/.3/.4
+surfaces, tints and density.
+
+For these, the value lives in exactly one place in code and this file points at
+it. **Do not restate a value here that the code owns** — a number written in two
+places is a second source of truth, and the copy in Markdown is the one nothing
+validates. Where a table below still lists concrete values (the palette hexes,
+the type scale) it is a *rendering* of the theme for humans reading in one
+place; if it disagrees with the theme, the theme is right and this file is a bug.
+
+**Checklist sections — no machine enforces these; a reviewer does.** §1 library
+choice · §8 naming · §9 required states · §10 accessibility · §17.5/.6 process
+and scope. Nothing can be codified into a token here: "handle the empty state"
+and "icon-only buttons need `aria-label`" are properties of a component's logic,
+not of its style values. These are a review checklist, and they are not weaker
+for it — they are just enforced by reading.
+
+### Where a value lives
+
+| Home                            | What belongs there                                     |
+| ------------------------------- | ------------------------------------------------------ |
+| `ThemeProvider.tsx`             | Palette (incl. `accent`), typography scale             |
+| `src/theme/components.ts`       | Anything MUI can apply as a component default          |
+| `src/theme/tokens.ts`           | Motion, shadows, focus rings, touch target             |
+| `src/theme/icons.ts`            | lucide `size` values (`ICON_SIZE`)                     |
+| `src/app/globals.css`           | Global CSS: scrollbars, print, selection, reduced-motion |
+| `sx` at the call site           | Only what is genuinely local to that one component     |
+
+Section numbers are cited from code comments, so they are stable: a retired
+section's number is not reused. (There is no §15 — the cheat sheet that held
+that number is now §18.)
 
 ---
 
@@ -23,6 +61,9 @@ Theme provider: `src/components/Layout/ThemeProvider.tsx` — palette, typograph
 scale, and wiring.\
 Component defaults: `src/theme/components.ts` — the rules below expressed as MUI
 `defaultProps`/`styleOverrides`, so they apply without a call site opting in.\
+Cross-cutting tokens: `src/theme/tokens.ts` (`MOTION`, `SHADOW`, `FOCUS_RING`,
+`TOUCH_TARGET`) — values a call site must compose by hand, that MUI has no
+`components` slot for.\
 Icon sizes: `src/theme/icons.ts` (`ICON_SIZE`) — lucide bypasses the theme, so
 that map is the only way to reach the scale in §16.
 
@@ -90,6 +131,36 @@ exposed as MUI CSS variables (`var(--mui-palette-*)`).
 > `--mui-palette-text-primary` | `#0f172a` | `#f1f3f7` | | Text secondary |
 > `--mui-palette-text-secondary` | `#475569` | `#adb7c5` | | Text disabled |
 > `--mui-palette-text-disabled` | `#94a3b8` | `#737f90` |
+
+### Explorer Accent (`palette.accent`)
+
+A slightly more violet take on `primary`, used by the activity rail, file tree
+and count pills. Reach it like any palette entry — `sx={{ color: "accent.main" }}`
+— which resolves to a scheme-aware `var(--mui-palette-accent-*)`.
+
+| Key              | Light                                | Dark                       |
+| ---------------- | ------------------------------------ | -------------------------- |
+| `main`           | `#6d5cf5`                            | `primary.main`             |
+| `hover`          | `#5d4ce8`                            | `primary.dark`             |
+| `tint`           | `#eeecfe`                            | `action.selected`          |
+| `activeText`     | `#4338ca`                            | `primary.main`             |
+| `pillBg`         | `#f4f4f6`                            | `action.hover`             |
+| `pillText`       | `#a1a1aa`                            | `text.disabled`            |
+| `pillActiveBg`   | `#dfdcff`                            | `action.selected`          |
+| `avatarGradient` | `linear-gradient(135deg,#8b7bff,#6d5cf5)` | primary light → main  |
+
+The dark column is written as references, not fresh hexes: the accent's dark
+form *is* the lifted brand indigo plus the neutral action tints. `avatarGradient`
+is a gradient rather than a colour, so it is read as
+`var(--mui-palette-accent-avatarGradient)` rather than through an `sx` palette
+path.
+
+> This was `SB_ACCENT` in `components/Layout/SideBar/constants.ts`: fixed
+> light-mode hexes applied through `theme.applyStyles("light", …)`, so dark mode
+> fell through to whatever the base `sx` happened to set. That made it a second
+> palette — invisible to the theme, unreachable from `sx` strings, and
+> dark-incomplete by construction. It is a palette decision, so it lives in the
+> palette.
 
 ### Dark Mode (system palette — do not hard-code)
 
@@ -218,7 +289,7 @@ Do **not** introduce arbitrary pixel values when an MUI spacing unit exists.
 | Card, Paper, Button, Dialog | `8px` (= MUI `borderRadius: 1` in `px` or `8` raw) | `MuiCard`, `MuiButton`, `MuiPaper` overrides |
 | Chip                        | `6px`                                              | `MuiChip` override                           |
 | Circular / avatar           | `"50%"`                                            | avatar-like elements                         |
-| Image within cards          | `4px` (`borderRadius: 4` as a raw px value)        | `cardTheme.image.borderRadius`               |
+| Image within cards          | `4px` (`borderRadius: 4` as a raw px value)        | `cardTheme.image.borderRadius` — **unread**  |
 | Fine-grained card border    | `6` (MUI units)                                    | `createCardTheme`                            |
 
 > **`sx` multiples are ×4, not ×8.** There is **no `shape.borderRadius`
@@ -234,16 +305,23 @@ Do **not** introduce arbitrary pixel values when an MUI spacing unit exists.
 
 ## 6. Shadows & Elevation
 
-Prefer MUI `elevation` props over custom box-shadows. When a custom shadow is
-required (e.g. interactive cards), use:
+Prefer MUI `elevation` props over custom box-shadows. When a raw `box-shadow` is
+genuinely required, take it from **`SHADOW` in `src/theme/tokens.ts`**:
 
-```ts
-shadow.default = "0 4px 12px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04)";
-shadow.hover = "0 12px 32px rgba(0,0,0,0.15), 0 6px 16px rgba(0,0,0,0.1)";
-shadow.focus = `0 0 0 3px ${alpha(primary.main, 0.25)}`;
-```
+- `SHADOW.card.rest` / `SHADOW.card.hover` — interactive cards.
+- `SHADOW.raised.light` / `.dark` — chips and small lifted surfaces. This one is
+  a **scheme pair**: a shadow tuned for a white canvas reads as nothing on a
+  `#252b3a` one. `raisedShadow(theme)` applies both branches at once — but only
+  where the same object literal has no other `applyStyles("dark", …)`, since
+  those collide on one selector key and the later spread wins.
 
-These are defined in `src/components/DocumentCard/theme.ts` (`createCardTheme`).
+`createCardTheme` re-exposes `shadow.default`/`hover`/`focus` from these tokens
+so existing card call sites keep working; new code should reach for the tokens.
+
+> These used to be defined *in* `createCardTheme`, i.e. a global rule living
+> inside one component's folder. `shadow.default` and `shadow.focus` had zero
+> readers as a result, while unrelated surfaces hand-rolled their own — two
+> competing "default shadow" definitions and six spellings of one transition.
 
 ---
 
@@ -327,10 +405,11 @@ Every data-dependent component **must** handle all four states:
 
 Target: **WCAG AA minimum**.
 
-- **Focus rings**: `box-shadow: 0 0 0 3px alpha(primary.main, 0.25)` with
-  `outline: none` — see `cardTheme.accessibility.focusRingWidth = 3`.
-- **Minimum touch target**: 48×48px — see
-  `cardTheme.accessibility.minimumTouchTarget = 48`.
+- **Focus rings**: `FOCUS_RING.card(theme)` (3px at 25%, for cards and anything
+  with room around it) or `FOCUS_RING.chrome` (2px at 60%, for dense tree rows,
+  tabs and rail buttons) from `src/theme/tokens.ts`. Both pair with
+  `outline: "none"`.
+- **Minimum touch target**: 48×48px — `TOUCH_TARGET` in `src/theme/tokens.ts`.
 - **Color contrast**: All text must pass AA against its background. Never convey
   state by color alone — pair with an icon or label.
 - **Interactive elements**: Must have an accessible label (`aria-label`,
@@ -346,15 +425,24 @@ Target: **WCAG AA minimum**.
 
 ## 11. Animation & Motion
 
-Animations are **disabled** in card components (set to `"none"` / `"0ms"` in
-`createCardTheme`).\
-For any new animated element:
+Durations and easing come from **`MOTION` in `src/theme/tokens.ts`**:
 
-- Use `transition` durations ≤ 200ms for micro-interactions.
-- Respect `prefers-reduced-motion` — wrap animations in:
-  ```css
-  @media (prefers-reduced-motion: no-preference) { … }
-  ```
+| Token           | Value                          | Use                                    |
+| --------------- | ------------------------------ | -------------------------------------- |
+| `MOTION.fast`   | 150ms (MUI `duration.shortest`) | hover, opacity, colour                 |
+| `MOTION.base`   | 200ms (MUI `duration.shorter`)  | the ceiling for a micro-interaction    |
+| `MOTION.layout` | 340ms                          | container moves (sidebar width slide)  |
+| `MOTION.easing` | `cubic-bezier(0.4, 0, 0.2, 1)` (MUI `easing.easeInOut`) | everything |
+
+These *are* MUI's own values, named. Prefer `theme.transitions.create()`; reach
+for `MOTION` when writing a raw CSS transition string. Do not invent a duration
+— the codebase had converged on 150/200ms by hand, just spelled six ways.
+
+**`prefers-reduced-motion` is handled globally** in `src/app/globals.css`: all
+animation and transition durations collapse to 1ms under
+`@media (prefers-reduced-motion: reduce)`. Individual components no longer need
+to guard their own animations. (1ms rather than `none` so `transitionend` /
+`animationend` listeners still fire.)
 
 ---
 
@@ -379,6 +467,11 @@ Thin auto-hiding scrollbars are applied globally:
   scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
 }
 ```
+
+The dark scheme has its own thumb (`rgba(255,255,255,0.22)`, keyed off
+`html.dark` per §2) — a thumb tuned for a white canvas is invisible on a
+`#252b3a` one. This section previously described the light rules as applying
+"globally", which was only ever true in light mode.
 
 Do not override these per-component unless strictly required (e.g. hidden
 scrollbar for a masonry canvas).
@@ -507,6 +600,9 @@ a literal `fontSize`.
 | Palette shortcut hints / `esc` chip       | `micro`     | mono                               |
 | Post title (front-matter / doc)           | `h4`/`h5`   | per existing scale                 |
 
+Colours for these surfaces come from `palette.accent` (§2), not from a
+sidebar-local constant.
+
 > **Sidebar carve-out.** The left sidebar has a **user-adjustable text size**
 > (`useSidebarFontSize`, Settings +/- controls): the drawer paper sets a `px`
 > base and rows size in **`em`** so they track the user's scale. Fixed
@@ -533,7 +629,14 @@ result uses the same states:
 | Selected / active row | `action.selected`                                     |
 | Active accent bar (rail item, active tab, active file) | 2px `primary.main` inset bar via `::before` |
 | Scheme-aware accent tint (when a literal is unavoidable) | `rgba(var(--mui-palette-primary-mainChannel) / <a>)` |
-| Focus ring     | `box-shadow: 0 0 0 2px rgba(var(--mui-palette-primary-mainChannel) / 0.6)` inset for dense chrome; `3px` at `0.25` for cards (§10) |
+| Explorer accent surfaces | `accent.main` / `accent.tint` / `accent.activeText` (§2) |
+| Focus ring     | `FOCUS_RING.chrome` for dense chrome; `FOCUS_RING.card(theme)` for cards (§10) |
+
+> **Open question — `FOCUS_RING.chrome` is not `inset`.** This table used to
+> specify an inset ring for dense chrome, but the only implementation of it
+> (`ActivityRail`) draws it outset, and the token matches the shipped rendering
+> rather than silently redrawing an accessibility-visible element. Whether the
+> spec or the code is right needs a human with the app in front of them.
 
 ### 17.4 Radius & density
 
@@ -555,7 +658,9 @@ density (`body2`, 6px/14px padding, icon hugging its label). A menu needs no
 
 Icon sizes come from `ICON_SIZE` (§16): rail = `default` (24), dense chrome
 (tree/tabs/toolbar) = `dense` (18), inline-with-text = `inline` (14),
-meta/counters = `micro` (12). Never raw numbers.
+meta/counters = `micro` (12). Never raw numbers — there are currently **zero**
+raw `size={N}` props on lucide icons anywhere in `src`, and it is worth keeping
+that number at zero rather than letting it drift back.
 
 ### 17.5 Sweep rule
 
@@ -577,22 +682,28 @@ variant with custom weight/tracking (e.g. `-0.01em`/`0.08em`), and idiomatic
 
 ---
 
-## 15. Quick-Reference Cheat Sheet
+## 18. Quick-Reference Cheat Sheet
 
 ```
 Primary indigo:   #4f46e5  (light #6366f1 / dark #463eca)
+Explorer accent:  #6d5cf5  → palette.accent (dark = primary.main)
 Secondary purple: #9333ea  (light #c084fc / dark #7e22ce)
 Success green:    #059669  → Published
 Warning orange:   #f97316  → Draft
 Info blue:        #3b82f6  → Active/In-progress
-Canvas/Surface:   #ffffff / #f8fafc  (dark #0f121a / #161c29)
+Canvas/Surface:   #ffffff / #f8fafc  (dark #252b3a / #303849)
 Text/Divider:     #0f172a text, #e2e8f0 divider (slate)
 Border radius:    8px cards/buttons, 6px chips, 4px images
 Spacing unit:     8px (use MUI units 1–4 for 8–32px)
 Font:             Public Sans 300/400/500/600/700
-Min touch target: 48px
-Focus ring:       0 0 0 3px alpha(primary, 0.25)
+Min touch target: 48px          → TOUCH_TARGET
+Focus ring:       0 0 0 3px alpha(primary, 0.25)  → FOCUS_RING.card
+Motion:           150 / 200ms, cubic-bezier(.4,0,.2,1)  → MOTION
+Icon sizes:       12 / 14 / 18 / 24 / 32 / 64  → ICON_SIZE
 Selection:        rgb(79 70 229 / 22%)
 Progress bar:     #4f46e5 (NProgress, 3px, fixed top)
 Component lib:    MUI v6 only — no Tailwind, no shadcn
 ```
+
+> Numbered 18, not 15: it used to sit at §15 but appear after §17. Section
+> numbers are cited from code comments, so retired numbers are not reused.

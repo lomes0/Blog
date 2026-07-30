@@ -49,6 +49,45 @@ declare module "@mui/material/Typography" {
   }
 }
 
+/**
+ * Explorer accent — the "Refined Explorer" handoff's slightly-more-violet take
+ * on `primary`, used by the activity rail, file tree, and count pills.
+ *
+ * This lived in `components/Layout/SideBar/constants.ts` as a `SB_ACCENT` const
+ * of fixed light-mode hexes, applied through `theme.applyStyles("light", …)` so
+ * that dark mode fell through to whatever the base `sx` happened to set. That
+ * made it a second palette: invisible to the theme, unreachable from `sx`
+ * strings, and dark-mode-incomplete by construction. It is a palette decision,
+ * so it lives in the palette — and the dark scheme now has real values instead
+ * of an absence.
+ */
+declare module "@mui/material/styles" {
+  interface Palette {
+    accent: AccentPalette;
+  }
+  interface PaletteOptions {
+    accent?: AccentPalette;
+  }
+}
+
+interface AccentPalette {
+  /** Active icons, accent bars, folder glyph. */
+  main: string;
+  /** Accent hover (pressed pills). */
+  hover: string;
+  /** Active/selected row background tint. */
+  tint: string;
+  /** Active/selected row text + active count-pill text. */
+  activeText: string;
+  /** Idle count-pill surface + text. */
+  pillBg: string;
+  pillText: string;
+  /** Active count-pill surface (row is selected). */
+  pillActiveBg: string;
+  /** Fill for the rail account avatar when no photo is set. */
+  avatarGradient: string;
+}
+
 // Create a stable theme with deterministic class names
 const theme = createTheme({
   colorSchemes: {
@@ -84,6 +123,18 @@ const theme = createTheme({
           secondary: "#475569",
           disabled: "#94a3b8",
         },
+        // Fixed hexes from the design handoff — this is the scheme they were
+        // tuned for.
+        accent: {
+          main: "#6d5cf5",
+          hover: "#5d4ce8",
+          tint: "#eeecfe",
+          activeText: "#4338ca",
+          pillBg: "#f4f4f6",
+          pillText: "#a1a1aa",
+          pillActiveBg: "#dfdcff",
+          avatarGradient: "linear-gradient(135deg,#8b7bff,#6d5cf5)",
+        },
       },
     },
     dark: {
@@ -113,6 +164,23 @@ const theme = createTheme({
           primary: "#f1f3f7",
           secondary: "#adb7c5",
           disabled: "#737f90",
+        },
+        // Expressed as channel/token references rather than fresh hexes: the
+        // accent's dark form *is* the lifted brand indigo plus the neutral
+        // action tints, which is what every call site was already falling back
+        // to. `tint`, `pillBg`, `pillText` reproduce the previous dark
+        // rendering exactly; `pillActiveBg` and `avatarGradient` are new —
+        // dark mode had no selected-pill tint and no gradient avatar at all.
+        accent: {
+          main: "var(--mui-palette-primary-main)",
+          hover: "var(--mui-palette-primary-dark)",
+          tint: "var(--mui-palette-action-selected)",
+          activeText: "var(--mui-palette-primary-main)",
+          pillBg: "var(--mui-palette-action-hover)",
+          pillText: "var(--mui-palette-text-disabled)",
+          pillActiveBg: "var(--mui-palette-action-selected)",
+          avatarGradient:
+            "linear-gradient(135deg,var(--mui-palette-primary-light),var(--mui-palette-primary-main))",
         },
       },
     },

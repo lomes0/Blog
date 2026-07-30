@@ -1,9 +1,16 @@
 import { alpha, type Theme } from "@mui/material/styles";
+import { FOCUS_RING, SHADOW } from "@/theme/tokens";
 
 /**
  * Modern blog-oriented card theme with magazine-style design.
  * Derives values from the MUI theme so palette/typography changes propagate
  * automatically (e.g. dark-mode palette, custom brand fonts).
+ *
+ * Scope note: this file is for values that are genuinely specific to a *card*.
+ * DESIGN.md used to cite it as the home of the app's shadows (§6), focus ring
+ * and touch target (§10), and motion policy (§11) — global rules that no other
+ * surface could reasonably import from `components/DocumentCard/`, and which
+ * consequently nothing did. Those moved to `@/theme/tokens`.
  */
 export const createCardTheme = (theme: Theme) => ({
   // Layout - modern blog proportions with better aspect ratios
@@ -56,11 +63,14 @@ export const createCardTheme = (theme: Theme) => ({
       borderActive: alpha(theme.palette.primary.main, 0.7),
     },
 
-    // Enhanced shadows with subtle depth
+    // Shadows and the focus ring are app-wide rules, not card rules — they now
+    // live in `@/theme/tokens` and are re-exposed here so the existing card
+    // call sites keep working. Reach for `SHADOW` / `FOCUS_RING` directly in
+    // new code.
     shadow: {
-      default: "0 4px 12px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04)",
-      hover: "0 12px 32px rgba(0,0,0,0.15), 0 6px 16px rgba(0,0,0,0.1)",
-      focus: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.25)}`,
+      default: SHADOW.card.rest,
+      hover: SHADOW.card.hover,
+      focus: FOCUS_RING.card(theme),
     },
 
     // Status colors - solid values from theme palette; gradients use theme-adjacent hues
@@ -113,14 +123,6 @@ export const createCardTheme = (theme: Theme) => ({
     },
   },
 
-  // Simplified animations (removed)
-  animation: {
-    transition: "none",
-    hoverTransform: "none",
-    hoverDuration: "0ms",
-    focusTransition: "none",
-  },
-
   // Simplified action bar design
   actionBar: {
     height: "48px",
@@ -129,13 +131,6 @@ export const createCardTheme = (theme: Theme) => ({
     backgroundColor: "transparent",
     backdropFilter: "none",
     borderTop: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
-  },
-
-  // Enhanced accessibility
-  accessibility: {
-    minimumTouchTarget: 48,
-    focusRingWidth: 3,
-    focusRingOffset: 2,
   },
 
   // Image handling for blog posts

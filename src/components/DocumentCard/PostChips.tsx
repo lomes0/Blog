@@ -5,6 +5,7 @@ import { BookOpen, Pencil, User as UserIcon } from "lucide-react";
 import { DocumentStatus, Series, User } from "@/types";
 import { createCardTheme } from "./theme";
 import { ICON_SIZE } from "@/theme/icons";
+import { MOTION, raisedShadow, SHADOW } from "@/theme/tokens";
 
 /**
  * Simplified post state for blog
@@ -92,10 +93,10 @@ export const createAuthorChip = (author?: User | null, showAuthor = true) => {
         overflow: "hidden",
         position: "relative",
         background: "rgba(0, 0, 0, 0.03)",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)",
+        boxShadow: SHADOW.raised.light,
         ...theme.applyStyles("dark", {
           background: "rgba(255, 255, 255, 0.06)",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2)",
+          boxShadow: SHADOW.raised.dark,
         }),
         color: "text.secondary",
         fontWeight: 500,
@@ -103,7 +104,7 @@ export const createAuthorChip = (author?: User | null, showAuthor = true) => {
         letterSpacing: "0.01em",
         textDecoration: "none",
         cursor: "pointer",
-        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+        transition: `all ${MOTION.base}ms ${MOTION.easing}`,
         outline: "none",
         WebkitTapHighlightColor: "transparent",
 
@@ -170,10 +171,7 @@ export const createAuthorChip = (author?: User | null, showAuthor = true) => {
 
         "&:focus:not(:focus-visible)": {
           outline: "none",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)",
-          ...theme.applyStyles("dark", {
-            boxShadow: "0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2)",
-          }),
+          ...raisedShadow(theme),
         },
       })}
     />

@@ -9,7 +9,8 @@ import { actions, type RootState, useDispatch, useSelector } from "@/store";
 import type { SidebarView } from "@/types";
 import { ICON_SIZE } from "@/theme/icons";
 import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
-import { ACTIVITY_RAIL_W, SB_ACCENT } from "./SideBar/constants";
+import { ACTIVITY_RAIL_W } from "./SideBar/constants";
+import { FOCUS_RING, MOTION } from "@/theme/tokens";
 
 interface RailButtonProps {
   label: string;
@@ -34,7 +35,7 @@ const RailButton: React.FC<RailButtonProps> = (
       aria-label={label}
       aria-pressed={active}
       onClick={onClick}
-      sx={(theme) => ({
+      sx={{
         position: "relative",
         display: "flex",
         alignItems: "center",
@@ -55,11 +56,9 @@ const RailButton: React.FC<RailButtonProps> = (
           bottom: 12,
           width: 3,
           borderRadius: "0 3px 3px 0",
-          bgcolor: "primary.main",
+          bgcolor: "accent.main",
           opacity: active ? 1 : 0,
-          transition: "opacity 0.15s",
-          ...(active &&
-            theme.applyStyles("light", { backgroundColor: SB_ACCENT.main })),
+          transition: `opacity ${MOTION.fast}ms`,
         },
         // Hover only lifts inactive chips — the active chip keeps its tint.
         ...(!active && {
@@ -70,31 +69,24 @@ const RailButton: React.FC<RailButtonProps> = (
         }),
         "&:focus-visible": {
           outline: "none",
-          "& .rail-chip": {
-            boxShadow:
-              "0 0 0 2px rgba(var(--mui-palette-primary-mainChannel) / 0.6)",
-          },
+          "& .rail-chip": { boxShadow: FOCUS_RING.chrome },
         },
-      })}
+      }}
     >
       <Box
         className="rail-chip"
-        sx={(theme) => ({
+        sx={{
           width: 38,
           height: 38,
           borderRadius: "11px",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          color: active ? "text.primary" : "text.secondary",
-          bgcolor: active ? "action.selected" : "transparent",
-          transition: "color 0.15s, background-color 0.15s",
-          ...(active &&
-            theme.applyStyles("light", {
-              color: SB_ACCENT.main,
-              backgroundColor: SB_ACCENT.tint,
-            })),
-        })}
+          color: active ? "accent.main" : "text.secondary",
+          bgcolor: active ? "accent.tint" : "transparent",
+          transition:
+            `color ${MOTION.fast}ms, background-color ${MOTION.fast}ms`,
+        }}
       >
         {children}
       </Box>
@@ -246,19 +238,20 @@ const ActivityRail: React.FC = () => {
           <Avatar
             alt={user?.name}
             src={user?.image ?? undefined}
-            sx={(theme) => ({
+            sx={{
               width: 28,
               height: 28,
               fontSize: 12,
               fontWeight: 700,
               // No photo → the Refined-Explorer gradient chip with the user's
-              // initial (light mode only), instead of MUI's flat grey fallback.
-              ...(user && !user.image &&
-                theme.applyStyles("light", {
-                  background: SB_ACCENT.avatarGradient,
-                  color: "#fff",
-                })),
-            })}
+              // initial, instead of MUI's flat grey fallback. `background` takes
+              // a gradient, not a palette colour, so it reads the generated
+              // variable directly rather than via an `sx` palette path.
+              ...(user && !user.image && {
+                background: "var(--mui-palette-accent-avatarGradient)",
+                color: "common.white",
+              }),
+            }}
           >
             {user && !user.image
               ? user.name?.trim()?.[0]?.toUpperCase()

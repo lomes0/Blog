@@ -2,6 +2,7 @@
  * Sidebar layout constants
  * Single source of truth for all sidebar-related dimensions
  */
+import { MOTION } from "@/theme/tokens";
 
 /** Width when sidebar is collapsed (icons only) — legacy value kept for reference */
 export const SIDEBAR_COLLAPSED_WIDTH = 72;
@@ -44,18 +45,23 @@ export const CONTENT_RIGHT_PADDING = 75;
 export const SIDEBAR_STORAGE_KEY = "sidebar-width";
 
 /**
- * Motion tokens from the sidebar design handoff. Durations/easings are shared
- * across header, tree chevrons, and the collapse transition so the whole nav
- * animates in concert. `prefers-reduced-motion` callers should swap these for
- * `none`.
+ * Sidebar motion, derived from the app-wide tokens in `@/theme/tokens`.
+ *
+ * These were four hand-written constants until it turned out they restated
+ * values the theme already had: `cubic-bezier(.4,0,.2,1)` is MUI's
+ * `easing.easeInOut` and `.2s` is `duration.shorter`. They stay as named
+ * sidebar constants because call sites want the whole composed transition
+ * string, but the numbers come from one place now.
+ *
+ * `prefers-reduced-motion` no longer needs handling per call site — it is
+ * enforced globally in `globals.css` (DESIGN.md §11).
  */
-export const SIDEBAR_EASING = "cubic-bezier(.4,0,.2,1)";
+export const SIDEBAR_EASING = MOTION.easing;
 /** Container width slide between open and hidden states */
-export const SIDEBAR_WIDTH_TRANSITION = `width .34s ${SIDEBAR_EASING}`;
+export const SIDEBAR_WIDTH_TRANSITION =
+  `width ${MOTION.layout}ms ${SIDEBAR_EASING}`;
 /** Full/compact layer cross-fade duration (s) */
-export const LAYER_FADE_DURATION = 0.2;
-/** Folder chevron rotate (0deg -> 90deg) on expand/collapse */
-export const CHEVRON_TRANSITION = `transform .22s ${SIDEBAR_EASING}`;
+export const LAYER_FADE_DURATION = MOTION.base / 1000;
 
 /**
  * Corner radius (MUI borderRadius units) shared by every selectable sidebar row
@@ -91,30 +97,10 @@ export const SB_FONT = {
 } as const;
 
 /**
- * Sidebar accent palette from the "Refined Explorer" design handoff
- * (`claude_design/side`). A slightly more violet take on the app's indigo
- * `primary.main` (#4f46e5), scoped to the sidebar so the rest of the app keeps
- * its current theme until we decide to promote it globally.
- *
- * **Light mode only.** These are fixed hex values tuned for the light panel;
- * apply them via `theme.applyStyles("light", { ... })` so dark mode falls back
- * to the existing MUI tokens (`action.selected`, `primary.main`, …). Dark
- * variants are a deliberate follow-up ("dark later").
+ * The Explorer accent moved to `palette.accent` in
+ * `components/Layout/ThemeProvider.tsx`. It was a palette, so it belongs in the
+ * palette: reach it as `sx={{ color: "accent.main" }}` — scheme-aware, and
+ * available to any surface rather than only to files willing to import from a
+ * component folder. The dark scheme has real values now, so the
+ * `theme.applyStyles("light", …)` wrapper each call site used to need is gone.
  */
-export const SB_ACCENT = {
-  /** Primary accent — active icons, accent bars, folder glyph. */
-  main: "#6d5cf5",
-  /** Accent hover (pressed pills, e.g. a future "New" button). */
-  hover: "#5d4ce8",
-  /** Active/selected row background tint. */
-  tint: "#eeecfe",
-  /** Active/selected row text + active count-pill text. */
-  activeText: "#4338ca",
-  /** Idle count-pill surface + text. */
-  pillBg: "#f4f4f6",
-  pillText: "#a1a1aa",
-  /** Active count-pill surface (row is selected). */
-  pillActiveBg: "#dfdcff",
-  /** Gradient fill for the rail account avatar when no photo is set. */
-  avatarGradient: "linear-gradient(135deg,#8b7bff,#6d5cf5)",
-} as const;

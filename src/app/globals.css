@@ -27,6 +27,39 @@
   scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
 }
 
+/* A thumb tuned for a white canvas is invisible on a #252b3a one, so the dark
+   scheme gets its own. DESIGN.md §12 described these as applied "globally" —
+   which was only ever true in light mode. Uses `html.dark`, not
+   `prefers-color-scheme`, per DESIGN.md §2: the media query ignores the in-app
+   theme toggle. */
+html.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.38);
+}
+
+html.dark * {
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+
+/* DESIGN.md §11 requires every animation to respect `prefers-reduced-motion`.
+   Enforcing it per-component never held, so it is enforced once here. Motion
+   is reduced to a 1ms tick rather than `none` so that `transitionend` /
+   `animationend` listeners still fire and nothing waits forever on a callback
+   that was silently removed. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 body {
   overflow-x: hidden !important;
   overflow-y: auto !important; /* Keep scroll functionality */

@@ -26,7 +26,7 @@ import {
 import { type SubTabEntry, SubTabList } from "./SubTabList";
 import { triggerSave } from "../../EditDocument/saveRegistry";
 import { ICON_SIZE } from "@/theme/icons";
-import { MONO_FONT, SB_ACCENT, SB_FONT, SB_ITEM_RADIUS } from "./constants";
+import { MONO_FONT, SB_FONT, SB_ITEM_RADIUS } from "./constants";
 
 const EMPTY_CHILDREN: Post[] = [];
 const EMPTY_TAB_ENTRIES: SubTabEntry[] = [];
@@ -326,17 +326,16 @@ export const PostItem = memo(
                 },
               }),
             },
-            // Light-mode: the selected pill picks up the Refined-Explorer accent
-            // tint (dark mode keeps the neutral `action.selected` fill above).
-            // Skipped for multi-selected rows so their primary-tint wins.
-            (theme) => ({
-              ...(!isMultiSelected && {
-                "&.Mui-selected": theme.applyStyles("light", {
-                  backgroundColor: SB_ACCENT.tint,
-                  "&:hover": { backgroundColor: SB_ACCENT.tint },
-                }),
-              }),
-            }),
+            // The selected pill picks up the accent tint. Skipped for
+            // multi-selected rows so their primary-tint wins.
+            !isMultiSelected
+              ? {
+                "&.Mui-selected": {
+                  backgroundColor: "accent.tint",
+                  "&:hover": { backgroundColor: "accent.tint" },
+                },
+              }
+              : {},
             ]}
           >
             <ListItemIcon
@@ -405,17 +404,13 @@ export const PostItem = memo(
                     primaryTypographyProps={{
                       component: "div",
                       fontSize: SB_FONT.meta,
-                      sx: (theme) => ({
+                      sx: {
                         display: "flex",
                         minWidth: 0,
                         fontFamily: MONO_FONT,
                         fontWeight: nameWeight,
-                        color: nameColor,
-                        ...(showAccentText &&
-                          theme.applyStyles("light", {
-                            color: SB_ACCENT.activeText,
-                          })),
-                      }),
+                        color: showAccentText ? "accent.activeText" : nameColor,
+                      },
                     }}
                   />
                 ))}
