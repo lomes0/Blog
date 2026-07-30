@@ -7,6 +7,3 @@ export { default as DocumentGridError } from "./DocumentGridError";
 // Hooks
 export { useResponsiveDocumentGrid } from "./hooks/useResponsiveDocumentGrid";
 export { useDocumentGridPerformance } from "./hooks/useDocumentGridPerformance";
-
-// Types
-export * from "./types";
