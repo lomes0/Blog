@@ -47,6 +47,16 @@ COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/prisma ./prisma
 
+# Attachment storage, deliberately outside ./public so Next cannot serve it
+# statically (see src/lib/uploads.ts). Created here and owned by the runtime user
+# so that a named volume mounted over it inherits that ownership — without this,
+# the mount arrives root-owned and every upload fails with EACCES.
+#
+# NOTE: unless a volume IS mounted here, uploads live in the container's
+# writable layer and are lost on redeploy.
+RUN mkdir -p ./var/uploads/attachments \
+  && chown -R nextjs:nodejs ./var
+
 USER nextjs
 EXPOSE 3000
 

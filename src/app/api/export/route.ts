@@ -26,6 +26,7 @@ import {
   type SeriesExport,
 } from "@/lib/export/manifest";
 import { collectAttachmentFilenames } from "@/lib/export/lexicalAssetRewriter";
+import { ATTACHMENTS_DIR } from "@/lib/uploads";
 import type { SerializedEditorState } from "lexical";
 
 export const dynamic = "force-dynamic";
@@ -115,12 +116,7 @@ export const GET = userRoute(async (_request, { user }) => {
     // Bundle attachment files
     for (const filename of referencedAssets) {
       if (bundledAttachments.has(filename)) continue;
-      const filePath = path.join(
-        PUBLIC_DIR,
-        "uploads",
-        "attachments",
-        filename,
-      );
+      const filePath = path.join(ATTACHMENTS_DIR, filename);
       if (existsSync(filePath)) {
         const content = await readFile(filePath);
         attachmentsFolder.file(filename, content);

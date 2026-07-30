@@ -1,7 +1,7 @@
 import { ApiError, type SessionUser } from "@/lib/api-utils";
 import { requireDocument } from "@/lib/access";
 import { resolveWithin } from "@/lib/safePath";
-import path from "path";
+import { ATTACHMENTS_DIR } from "@/lib/uploads";
 import { validate as isUuid } from "uuid";
 
 /**
@@ -19,13 +19,6 @@ import { validate as isUuid } from "uuid";
  */
 
 const ATTACHMENT_NAME = /^attach_([0-9a-fA-F-]{36})_/;
-
-/** The upload directory. Callers pass a filename that has already been checked
- * for traversal; this resolves it and re-verifies containment as a backstop. */
-export const ATTACHMENTS_DIR = path.join(
-  process.cwd(),
-  "public/uploads/attachments",
-);
 
 /** Reject anything that could escape the attachments directory. */
 export function assertSafeFilename(filename: string): void {

@@ -301,6 +301,10 @@ Optional:
   `AZURE_OPENAI_API_VERSION`
 - `NEXT_PUBLIC_FASTAPI_URL`: External FastAPI backend URL
 - `BROWSERLESS_URL`: For PDF generation (falls back to local Puppeteer)
+- `UPLOADS_DIR`: Where attachments are written. Defaults to `<cwd>/var/uploads`.
+  Must stay outside `public/` — see `src/lib/uploads.ts`; anything in the static
+  tree is served with no session and no authorization check, bypassing
+  `/api/attachments`. Point it at a mounted volume in production.
 
 ## Important Notes
 

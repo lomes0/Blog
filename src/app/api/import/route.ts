@@ -17,7 +17,6 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { mkdir, writeFile } from "fs/promises";
 import { existsSync } from "fs";
-import path from "path";
 import JSZip from "jszip";
 import { revalidatePath } from "next/cache";
 import {
@@ -28,10 +27,9 @@ import {
 } from "@/lib/export/manifest";
 import { rankForAppend } from "@/repositories/ordering";
 import { resolveWithin, safeBasename } from "@/lib/safePath";
+import { ATTACHMENTS_DIR, BACKGROUNDS_DIR } from "@/lib/uploads";
 
 export const dynamic = "force-dynamic";
-
-const PUBLIC_DIR = path.join(process.cwd(), "public");
 
 export const POST = userRoute(async (request, { user }) => {
   // ── 1. Parse multipart form data ─────────────────────────────────────────
@@ -242,7 +240,7 @@ export const POST = userRoute(async (request, { user }) => {
           );
           continue;
         }
-        const destDir = path.join(PUBLIC_DIR, "uploads", "attachments");
+        const destDir = ATTACHMENTS_DIR;
         const destPath = resolveWithin(destDir, filename);
         if (!destPath) {
           summary.warnings.push(
@@ -264,7 +262,7 @@ export const POST = userRoute(async (request, { user }) => {
         const zipPath = `assets/backgrounds/${bgFilename}`;
         const bgFile = bgFilename ? zip.file(zipPath) : null;
         if (bgFile && bgFilename) {
-          const destDir = path.join(PUBLIC_DIR, "uploads", "directories");
+          const destDir = BACKGROUNDS_DIR;
           const destPath = resolveWithin(destDir, bgFilename);
           if (!destPath) {
             summary.warnings.push(
