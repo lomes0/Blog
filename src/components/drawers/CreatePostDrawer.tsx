@@ -1,6 +1,5 @@
 "use client";
 import * as React from "react";
-import { useState } from "react";
 import {
   Alert,
   Box,
@@ -8,20 +7,12 @@ import {
   CircularProgress,
   Drawer,
   IconButton,
-  TextField,
   Typography,
 } from "@mui/material";
 import { Plus, X } from "lucide-react";
-import { v4 as uuidv4 } from "uuid";
 import { useRouter } from "next/navigation";
-import useOnlineStatus from "@/hooks/useOnlineStatus";
-import type { PostCreateInput, User } from "@/types";
-import { useHandleValidation } from "@/components/DocumentActions/hooks/useHandleValidation";
-import { getEditorData } from "@/utils/getEditorData";
-import UsersAutocomplete from "../User/UsersAutocomplete";
-import DocumentVisibilityFields from "../DocumentActions/DocumentVisibilityFields";
-import { capabilities } from "@/lib/capabilities";
-import { useCreatePostActions } from "@/hooks/useCreatePostActions";
+import { useCreatePostForm } from "@/hooks/useCreatePostForm";
+import PostFormFields from "../DocumentActions/PostFormFields";
 
 interface CreatePostDrawerProps {
   open: boolean;
@@ -38,90 +29,27 @@ const CreatePostDrawer: React.FC<CreatePostDrawerProps> = ({
   seriesTitle,
   onSuccess,
 }) => {
-  const { user, createPost } = useCreatePostActions();
   const router = useRouter();
-  const isOnline = useOnlineStatus();
-  const can = capabilities(user);
-
-  const [input, setInput] = useState<Partial<PostCreateInput>>({
-    published: true,
-    private: false,
-    collab: false,
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const updateInput = (partial: Partial<PostCreateInput>) => {
-    setInput((prev) => ({ ...prev, ...partial }));
-  };
-
-  const updateCoauthors = (users: (User | string)[]) => {
-    updateInput({
-      coauthors: users.flatMap((u) => typeof u === "string" ? [u] : u.email ? [u.email] : []),
-    });
-  };
-
-  const {
-    validating,
-    validationErrors,
-    hasErrors,
-    updateHandle,
-    resetValidation,
-  } = useHandleValidation(
-    null,
-    (value) => updateInput({ handle: value }),
-  );
+  const form = useCreatePostForm({ seriesId });
+  const { reset, submitting } = form;
 
   // Reset form when drawer closes
   React.useEffect(() => {
-    if (!open) {
-      setInput({ published: true, private: false, collab: false });
-      resetValidation();
-      setError(null);
-    }
-  }, [open, resetValidation]);
+    if (!open) reset();
+  }, [open, reset]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError(null);
-    setIsSubmitting(true);
     if (!seriesId?.trim()) {
-      setError("Invalid series. Please try again.");
-      setIsSubmitting(false);
+      form.setError("Invalid series. Please try again.");
       return;
     }
-    try {
-      const name = input.name || "Untitled Document";
-      const createdAt = new Date().toISOString();
-      const postId = uuidv4();
-      const payload: PostCreateInput = {
-        ...input,
-        id: postId,
-        head: uuidv4(),
-        name,
-        data: input.data ??
-          (getEditorData() as PostCreateInput["data"]),
-        type: "DOCUMENT",
-        parentId: null,
-        seriesId,
-        createdAt,
-        updatedAt: createdAt,
-      };
-
-      const result = await createPost(payload);
-      if (!result.ok) {
-        setError(result.error);
-        return;
-      }
-      onSuccess?.();
-      onClose();
-      router.refresh();
-      router.push(`/edit/${postId}`);
-    } catch {
-      setError("An unexpected error occurred. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
+    const result = await form.submit();
+    if (!result.ok) return;
+    onSuccess?.();
+    onClose();
+    router.refresh();
+    router.push(`/edit/${result.id}`);
   };
 
   return (
@@ -164,7 +92,7 @@ const CreatePostDrawer: React.FC<CreatePostDrawerProps> = ({
             onClick={onClose}
             edge="end"
             aria-label="close"
-            disabled={isSubmitting}
+            disabled={submitting}
           >
             <X />
           </IconButton>
@@ -172,60 +100,16 @@ const CreatePostDrawer: React.FC<CreatePostDrawerProps> = ({
 
         {/* Form Content */}
         <Box sx={{ flex: 1, overflowY: "auto", p: 3 }}>
-          {error && (
+          {form.error && (
             <Alert
               severity="error"
               sx={{ mb: 2 }}
-              onClose={() => setError(null)}
+              onClose={() => form.setError(null)}
             >
-              {error}
+              {form.error}
             </Alert>
           )}
-          <TextField
-            autoFocus
-            label="Title"
-            placeholder="Enter post title"
-            fullWidth
-            value={input.name || ""}
-            onChange={(e) => updateInput({ name: e.target.value })}
-            required
-            sx={{ mb: 2 }}
-            disabled={isSubmitting}
-          />
-          <TextField
-            label="Handle"
-            placeholder="url-slug-for-post"
-            fullWidth
-            value={input.handle || ""}
-            onChange={updateHandle}
-            error={!!validationErrors.handle}
-            helperText={validationErrors.handle ||
-              "Optional: Custom URL for this post"}
-            sx={{ mb: 2 }}
-            disabled={isSubmitting}
-            InputProps={{
-              endAdornment: validating && <CircularProgress size={20} />,
-            }}
-          />
-          {can.coauthors && (
-            <UsersAutocomplete
-              label="Coauthors"
-              placeholder="Email"
-              value={input.coauthors ?? []}
-              onChange={updateCoauthors}
-              sx={{ mb: 2 }}
-              disabled={isSubmitting || !isOnline}
-            />
-          )}
-          {can.publish && (
-            <DocumentVisibilityFields
-              isPrivate={input.private}
-              isPublished={input.published ?? true}
-              isCollab={input.collab}
-              disabled={isSubmitting || !isOnline}
-              onChange={updateInput}
-            />
-          )}
+          <PostFormFields form={form} disabled={submitting} />
         </Box>
 
         {/* Footer */}
@@ -239,16 +123,16 @@ const CreatePostDrawer: React.FC<CreatePostDrawerProps> = ({
             justifyContent: "flex-end",
           }}
         >
-          <Button onClick={onClose} disabled={isSubmitting} variant="outlined">
+          <Button onClick={onClose} disabled={submitting} variant="outlined">
             Cancel
           </Button>
           <Button
             type="submit"
             variant="contained"
-            startIcon={isSubmitting ? <CircularProgress size={20} /> : <Plus />}
-            disabled={hasErrors || validating || isSubmitting}
+            startIcon={submitting ? <CircularProgress size={20} /> : <Plus />}
+            disabled={!form.canSubmit}
           >
-            {isSubmitting ? "Creating..." : "Create Post"}
+            {submitting ? "Creating..." : "Create Post"}
           </Button>
         </Box>
       </Box>

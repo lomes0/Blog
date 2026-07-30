@@ -16,7 +16,7 @@ import {
 } from "@mui/material";
 import { Settings } from "lucide-react";
 import useOnlineStatus from "@/hooks/useOnlineStatus";
-import { useHandleValidation } from "@/components/DocumentActions/hooks/useHandleValidation";
+import { useHandleValidation } from "@/hooks/useHandleValidation";
 
 function UserActionMenu({ user }: { user: User }) {
   const dispatch = useDispatch();
@@ -38,11 +38,11 @@ function UserActionMenu({ user }: { user: User }) {
     hasErrors,
     updateHandle,
     resetValidation,
-  } = useHandleValidation(
-    user.handle,
-    (value) => updateInput({ handle: value }),
-    "/api/users/check",
-  );
+  } = useHandleValidation({
+    currentHandle: user.handle,
+    onChange: (value) => updateInput({ handle: value }),
+    checkEndpoint: "/api/users/check",
+  });
 
   useEffect(() => {
     setInput({ handle: user.handle });

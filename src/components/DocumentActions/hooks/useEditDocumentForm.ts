@@ -7,7 +7,7 @@ import {
   User,
   Post,
 } from "@/types";
-import { useHandleValidation } from "./useHandleValidation";
+import { useHandleValidation } from "@/hooks/useHandleValidation";
 import { useDocumentSubmit } from "./useDocumentSubmit";
 
 export function useEditDocumentForm(post: Post) {
@@ -46,7 +46,10 @@ export function useEditDocumentForm(post: Post) {
     hasErrors,
     updateHandle,
     resetValidation,
-  } = useHandleValidation(handle, (value) => updateInput({ handle: value }));
+  } = useHandleValidation({
+    currentHandle: handle,
+    onChange: (value) => updateInput({ handle: value }),
+  });
 
   const openEditDialog = (closeMenu?: () => void) => {
     if (closeMenu) closeMenu();
