@@ -8399,7 +8399,7 @@
                                           "format": 16,
                                           "mode": "normal",
                                           "style": "",
-                                          "text": "![Math Editor Logo](https://matheditor.me/logo.svg)",
+                                          "text": "![Blog Logo](/logo.svg)",
                                           "type": "text",
                                           "version": 1
                                         },
