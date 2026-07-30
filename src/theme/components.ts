@@ -84,7 +84,9 @@ export const components: ThemeOptions["components"] = {
         // ListItemText renders its own <Typography variant="body1">, so the
         // root typography above never reaches the label — hence the
         // `primaryTypographyProps={{ variant: "body2" }}` on every menu row.
-        "& .MuiListItemText-primary": theme.typography.body2,
+        // Matching `body1` specifically restates the *default*: a row that
+        // asks for another variant renders a different class and is left alone.
+        "& .MuiListItemText-primary.MuiTypography-body1": theme.typography.body2,
       }),
     },
   },
