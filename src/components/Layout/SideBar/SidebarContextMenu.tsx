@@ -1,12 +1,16 @@
 import React from "react";
 import { ListItemIcon, ListItemText, Menu, MenuItem } from "@mui/material";
-import { FilePen, Pencil, Trash2 } from "lucide-react";
+import { FilePen, FilePlus, FolderPlus, Pencil, Trash2 } from "lucide-react";
 import { ICON_SIZE } from "@/theme/icons";
 import type { ContextMenuState } from "@/hooks/useContextMenu";
 
 interface SidebarContextMenuProps {
   contextMenu: ContextMenuState<string> | null;
   onClose: () => void;
+  /** Create a post inside the target — supplied by a series row. */
+  onNewPost?: (targetId: string) => void;
+  /** Create a series inside the target — supplied by a project row. */
+  onNewSeries?: (targetId: string) => void;
   /**
    * Omitted by rows with no editor document or detail page to open — a project
    * section header offers only Rename and Delete.
@@ -25,11 +29,21 @@ interface SidebarContextMenuProps {
 export const SidebarContextMenu: React.FC<SidebarContextMenuProps> = ({
   contextMenu,
   onClose,
+  onNewPost,
+  onNewSeries,
   onEdit,
   onRename,
   onDelete,
 }) => {
+  // Create first: it acts *inside* the row, while the rest act *on* it.
   const items = [
+    { key: "new-post", label: "New post", Icon: FilePlus, handler: onNewPost },
+    {
+      key: "new-series",
+      label: "New series",
+      Icon: FolderPlus,
+      handler: onNewSeries,
+    },
     { key: "edit", label: "Edit", Icon: Pencil, handler: onEdit },
     { key: "rename", label: "Rename", Icon: FilePen, handler: onRename },
     { key: "delete", label: "Delete", Icon: Trash2, handler: onDelete },

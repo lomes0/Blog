@@ -1,8 +1,8 @@
 "use client";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Box, IconButton, List } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import { Plus, Search, X } from "lucide-react";
+import { FilePlus, FolderPlus, Plus, Search, X } from "lucide-react";
 import {
   type ProjectGroupItem,
   type RootItem,
@@ -54,17 +54,52 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
   const {
     expandedSeries,
     toggleSeries: toggleSeriesExpanded,
+    expand: expandSeries,
   } = useExpandedState("sidebarSeriesCollapsedState");
   // Independent persisted expansion state for each project's series list.
   const {
     expandedSeries: expandedProjects,
     toggleSeries: toggleProjectExpanded,
+    expand: expandProject,
   } = useExpandedState("sidebarProjectExpandedState");
   // Independent persisted expansion state for each post's tab list.
   const {
     expandedSeries: expandedTabs,
     toggleSeries: toggleTabs,
   } = useExpandedState("sidebarPostTabsExpandedState");
+
+  // Open whatever is being renamed, all the way down.
+  //
+  // A row created from a "+" or a context menu opens its rename field the moment
+  // it exists, and the container it landed in may be collapsed — leaving the
+  // field mounted somewhere the user cannot see or type into. Answering it here,
+  // off the rename state itself, covers every way a rename can start rather than
+  // making each new create affordance remember to expand its own target.
+  const renamingPostId = itemActions.rename.renamingId;
+  const renamingSeriesId = seriesActions.rename.renamingId;
+
+  useEffect(() => {
+    if (!renamingPostId) return;
+    for (const item of rootItems) {
+      const groups = item.type === "project" ? item.children : [item];
+      for (const group of groups) {
+        if (group.type !== "series" || !group.series) continue;
+        if (!group.posts.some((post) => post.id === renamingPostId)) continue;
+        expandSeries(group.series.id);
+        if (item.type === "project") expandProject(item.project.id);
+        return;
+      }
+    }
+  }, [renamingPostId, rootItems, expandSeries, expandProject]);
+
+  useEffect(() => {
+    if (!renamingSeriesId) return;
+    const owner = rootItems.find((item) =>
+      item.type === "project" &&
+      item.children.some((child) => child.series?.id === renamingSeriesId)
+    );
+    if (owner?.type === "project") expandProject(owner.project.id);
+  }, [renamingSeriesId, rootItems, expandProject]);
 
   const filteredRootItems = useMemo((): RootItem[] => {
     if (!activePostsSearch.trim()) return rootItems;
@@ -332,8 +367,22 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
           overscrollBehavior: "contain",
         }}
       >
-        {/* Notes — standalone posts, split out from the grouped content below. */}
-        <SidebarSectionHeader title="Notes" />
+        {
+          /* Notes — standalone posts, split out from the grouped content below.
+            Creating a post is the one affordance a guest gets too: it needs no
+            server, only the session's backend. */
+        }
+        <SidebarSectionHeader
+          title="Notes"
+          actions={sidebarOpen
+            ? [{
+              key: "new-post",
+              label: "New post",
+              icon: <FilePlus size={SECTION_ACTION_ICON} strokeWidth={2} />,
+              onClick: () => itemActions.handleCreatePost(),
+            }]
+            : undefined}
+        />
         <List dense disablePadding>
           {noteItems.map((item) => (
             <PostItem
@@ -362,17 +411,34 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
           /* Projects — projects (each wrapping its series) and ungrouped series.
             Signed-in only: projects group series, which guests don't have. */
         }
-        {can.projects && (
+        {(can.series || can.projects) && (
           <Box sx={{ mt: 2 }}>
             <SidebarSectionHeader
               title="Projects"
               actions={sidebarOpen
-                ? [{
-                  key: "new-project",
-                  label: "New project",
-                  icon: <Plus size={SECTION_ACTION_ICON} strokeWidth={2} />,
-                  onClick: () => projectActions.handleCreateProject(),
-                }]
+                ? [
+                  ...(can.series
+                    ? [{
+                      key: "new-series",
+                      label: "New series",
+                      icon: (
+                        <FolderPlus
+                          size={SECTION_ACTION_ICON}
+                          strokeWidth={2}
+                        />
+                      ),
+                      onClick: () => seriesActions.handleCreateSeries(),
+                    }]
+                    : []),
+                  ...(can.projects
+                    ? [{
+                      key: "new-project",
+                      label: "New project",
+                      icon: <Plus size={SECTION_ACTION_ICON} strokeWidth={2} />,
+                      onClick: () => projectActions.handleCreateProject(),
+                    }]
+                    : []),
+                ]
                 : undefined}
             />
           </Box>

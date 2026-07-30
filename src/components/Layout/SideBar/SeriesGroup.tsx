@@ -9,7 +9,7 @@ import {
   TextField,
   Tooltip,
 } from "@mui/material";
-import { Folder, FolderOpen } from "lucide-react";
+import { FilePlus, Folder, FolderOpen } from "lucide-react";
 import type { Series } from "@/types";
 import type { SeriesGroupItem } from "@/utils/posts/seriesGrouping";
 import type {
@@ -21,12 +21,14 @@ import type { TreeDndResult } from "@/lib/tree/useTreeDnd";
 import { DRAG_MIME, dropPositionFromEvent } from "@/lib/dragDrop";
 import { PostItem } from "./PostItem";
 import { CountPill } from "./CountPill";
+import { RowCreateButton } from "./RowCreateButton";
 import { SB_FONT, SB_ITEM_RADIUS } from "./constants";
 import {
   chromeFocusRingSx,
   dropIndicatorSx,
   dropIntoSx,
   multiSelectSx,
+  rowHoverRevealSx,
 } from "@/theme/treeRow";
 import { ICON_SIZE } from "@/theme/icons";
 
@@ -146,6 +148,7 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
                 // here needs its fill preserved under focus.
                 ...chromeFocusRingSx(),
                 ...(isMultiSelected && multiSelectSx()),
+                ...rowHoverRevealSx,
               },
               // Active series row takes the accent tint. Skipped when
               // multi-selected so the primary-tint pill wins.
@@ -219,6 +222,13 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
             )}
             {sidebarOpen && !isRenaming && group.posts.length > 0 && (
               <CountPill count={group.posts.length} active={isSeriesActive} />
+            )}
+            {sidebarOpen && !isRenaming && (
+              <RowCreateButton
+                label="New post in series"
+                icon={<FilePlus size={ICON_SIZE.micro} strokeWidth={2} />}
+                onClick={() => itemActions.handleCreatePost(seriesId)}
+              />
             )}
           </ListItemButton>
         </Tooltip>

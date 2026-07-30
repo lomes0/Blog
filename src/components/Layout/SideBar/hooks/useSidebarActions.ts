@@ -1,6 +1,7 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { v4 as uuid } from "uuid";
+import { buildPostCreateInput, UNTITLED_POST } from "@/lib/newPost";
 import {
   actions,
   postsSelectors,
@@ -34,13 +35,25 @@ export interface RowActions<C = undefined> {
  * Post rows and sub-tabs. Renaming is field-discriminated (see
  * {@link RenameField}); everything else is the shared row machinery.
  */
-export type PostItemActions = RowActions<RenameField>;
+export interface PostItemActions extends RowActions<RenameField> {
+  /**
+   * Create a post, inline-rename it, and open it once the name is settled.
+   * Pass a `seriesId` to create it inside that series rather than at the root.
+   */
+  handleCreatePost: (seriesId?: string | null) => Promise<void>;
+}
 
 /**
  * Series headers. A series has no editor document, so "Edit" opens the series
  * edit form and "Rename" inline-edits the series title (via `updateSeries`).
  */
-export type SeriesItemActions = RowActions;
+export interface SeriesItemActions extends RowActions {
+  /**
+   * Create a series and drop straight into inline rename on the new header.
+   * Pass a `projectId` to create it inside that project rather than at the root.
+   */
+  handleCreateSeries: (projectId?: string | null) => Promise<void>;
+}
 
 /**
  * Project headers. A project has no editor document and no detail page, so it
@@ -65,14 +78,24 @@ export interface EditableRowContextMenu extends RowContextMenu {
   onEdit: (id: string) => void;
 }
 
+/** A series' menu can also create a post inside it. */
+export interface SeriesRowContextMenu extends EditableRowContextMenu {
+  onNewPost: (seriesId: string) => void;
+}
+
+/** A project's menu can also create a series inside it. */
+export interface ProjectRowContextMenu extends RowContextMenu {
+  onNewSeries: (projectId: string) => void;
+}
+
 export interface SidebarActionsResult {
   postActions: PostItemActions;
   seriesActions: SeriesItemActions;
   projectActions: ProjectItemActions;
   postMenu: EditableRowContextMenu;
-  seriesMenu: EditableRowContextMenu;
+  seriesMenu: SeriesRowContextMenu;
   /** Projects have no detail page, so no "Edit". */
-  projectMenu: RowContextMenu;
+  projectMenu: ProjectRowContextMenu;
 }
 
 /** Title a post's inline field opens with, per renamed field. */
@@ -121,6 +144,15 @@ export function useSidebarActions(): SidebarActionsResult {
     open: openPostMenu,
     close: closePostMenu,
   } = useContextMenu<string>();
+  /**
+   * The post a "+" just created, held until its inline rename closes.
+   *
+   * Opening the editor at create time instead would mount the route while the
+   * rename field is still up in the tree, and the editor's own autofocus would
+   * take the caret out from under whoever is typing the name. Naming first and
+   * navigating after keeps one focus owner at a time.
+   */
+  const pendingOpenRef = useRef<string | null>(null);
   const postRename = useInlineRename<Post, RenameField>({
     items: documents,
     getId: (post) => post.id,
@@ -145,8 +177,18 @@ export function useSidebarActions(): SidebarActionsResult {
       }
       dispatch(actions.updatePost({ id: post.id, partial }));
     },
+    // Whether or not a name was typed, the post exists — so a cancelled rename
+    // opens it too rather than stranding an "Untitled Document" in the tree.
+    onEnd: (id) => {
+      if (pendingOpenRef.current !== id) return;
+      pendingOpenRef.current = null;
+      router.push(`/edit/${id}`);
+    },
   });
-  const { start: startPostRename } = postRename;
+  const {
+    start: startPostRename,
+    startWith: startPostRenameWith,
+  } = postRename;
 
   const handleEditPost = useCallback(
     (postId: string) => {
@@ -183,6 +225,34 @@ export function useSidebarActions(): SidebarActionsResult {
     [dispatch, closePostMenu, confirmDelete, documents, router],
   );
 
+  const handleCreatePost = useCallback(
+    async (seriesId?: string | null) => {
+      try {
+        const payload = buildPostCreateInput({
+          name: UNTITLED_POST,
+          // A post born from a "+" is a draft. `/new` shows the visibility
+          // checkboxes before anything is created; a one-click affordance has no
+          // such moment, and `published && !private` is exactly the pair that
+          // puts a document in the public listing, the author's profile and the
+          // sitemap (`repositories/document.ts`). Publishing stays a decision
+          // the author makes on purpose, from the post's own settings.
+          published: false,
+          private: false,
+          collab: false,
+          seriesId: seriesId ?? null,
+        });
+        await dispatch(actions.createPost(payload)).unwrap();
+        // Seed the rename explicitly — this closure's `documents` predates the
+        // new row, so `start` would find nothing to read a title off.
+        pendingOpenRef.current = payload.id;
+        startPostRenameWith(payload.id, UNTITLED_POST, "name");
+      } catch {
+        // Create failed; the thunk already surfaced an announcement.
+      }
+    },
+    [dispatch, startPostRenameWith],
+  );
+
   // --- Series ----------------------------------------------------------------
 
   // Series and project headers nest inside right-clickable rows, so their menus
@@ -201,7 +271,10 @@ export function useSidebarActions(): SidebarActionsResult {
       dispatch(actions.updateSeries({ id: item.id, data: { title } }));
     },
   });
-  const { start: startSeriesRename } = seriesRename;
+  const {
+    start: startSeriesRename,
+    startWith: startSeriesRenameWith,
+  } = seriesRename;
 
   const handleEditSeries = useCallback(
     (seriesId: string) => {
@@ -209,6 +282,14 @@ export function useSidebarActions(): SidebarActionsResult {
       router.push(`/series/${seriesId}/edit`);
     },
     [router, closeSeriesMenu],
+  );
+
+  const handleNewPostFromSeriesMenu = useCallback(
+    (seriesId: string) => {
+      closeSeriesMenu();
+      handleCreatePost(seriesId);
+    },
+    [closeSeriesMenu, handleCreatePost],
   );
 
   const handleRenameSeriesFromMenu = useCallback(
@@ -233,6 +314,30 @@ export function useSidebarActions(): SidebarActionsResult {
     [dispatch, closeSeriesMenu, confirmDelete, router],
   );
 
+  const handleCreateSeries = useCallback(
+    async (projectId?: string | null) => {
+      try {
+        // Same shape as `handleCreateProject` below: create, let the reducer put
+        // the row in the tree, then open its inline rename so the user just types
+        // the name. Unlike the create-series drawer this does not navigate — a
+        // series is a container, and being thrown to `/posts/{id}` would take you
+        // out of whatever you were editing when you reached for the "+".
+        const created = await dispatch(
+          actions.createSeries({
+            title: "New Series",
+            projectId: projectId ?? null,
+          }),
+        ).unwrap();
+        if (created?.id) {
+          startSeriesRenameWith(created.id, created.title || "New Series");
+        }
+      } catch {
+        // Create failed; the thunk already surfaced an announcement.
+      }
+    },
+    [dispatch, startSeriesRenameWith],
+  );
+
   // --- Projects --------------------------------------------------------------
 
   const {
@@ -253,6 +358,14 @@ export function useSidebarActions(): SidebarActionsResult {
     start: startProjectRename,
     startWith: startProjectRenameWith,
   } = projectRename;
+
+  const handleNewSeriesFromProjectMenu = useCallback(
+    (projectId: string) => {
+      closeProjectMenu();
+      handleCreateSeries(projectId);
+    },
+    [closeProjectMenu, handleCreateSeries],
+  );
 
   const handleRenameProjectFromMenu = useCallback(
     (projectId: string) => {
@@ -294,10 +407,15 @@ export function useSidebarActions(): SidebarActionsResult {
   }, [dispatch, startProjectRenameWith]);
 
   return {
-    postActions: { rename: postRename, openContextMenu: openPostMenu },
+    postActions: {
+      rename: postRename,
+      openContextMenu: openPostMenu,
+      handleCreatePost,
+    },
     seriesActions: {
       rename: seriesRename,
       openContextMenu: openSeriesMenu,
+      handleCreateSeries,
     },
     projectActions: {
       rename: projectRename,
@@ -314,6 +432,7 @@ export function useSidebarActions(): SidebarActionsResult {
     seriesMenu: {
       contextMenu: seriesContextMenu,
       close: closeSeriesMenu,
+      onNewPost: handleNewPostFromSeriesMenu,
       onEdit: handleEditSeries,
       onRename: handleRenameSeriesFromMenu,
       onDelete: handleDeleteSeries,
@@ -321,6 +440,7 @@ export function useSidebarActions(): SidebarActionsResult {
     projectMenu: {
       contextMenu: projectContextMenu,
       close: closeProjectMenu,
+      onNewSeries: handleNewSeriesFromProjectMenu,
       onRename: handleRenameProjectFromMenu,
       onDelete: handleDeleteProject,
     },

@@ -1,7 +1,7 @@
 "use client";
-import { useCallback, useMemo, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import { actions, type RootState, useDispatch, useSelector } from "@/store";
+import { useMemo } from "react";
+import { usePathname } from "next/navigation";
+import { type RootState, useSelector } from "@/store";
 import { capabilities } from "@/lib/capabilities";
 import { selectRootPosts } from "@/store/selectors/layoutSelectors";
 import { Box, Drawer, useMediaQuery } from "@mui/material";
@@ -15,7 +15,7 @@ import { ActivePostsSection } from "./ActivePostsSection";
 import { SidebarSearchView } from "./SidebarSearchView";
 import { CollapsedRail } from "./CollapsedRail";
 import { SidebarContextMenu } from "./SidebarContextMenu";
-import CreateSeriesDrawer from "@/components/drawers/CreateSeriesDrawer";
+import { SidebarEmptyState } from "./SidebarEmptyState";
 import {
   buildSeriesMap,
   flattenRootItems,
@@ -30,19 +30,7 @@ import { COMPACT_WIDTH } from "./dragGeometry";
 
 const SideBar: React.FC = () => {
   const pathname = usePathname();
-  const router = useRouter();
-  const dispatch = useDispatch();
   const can = capabilities(useSelector((state) => state.user));
-
-  // Create actions live in the header (IDE-style). New Post reuses the shared
-  // `/new` editor route; New Series opens the same drawer the posts page uses.
-  const [seriesDrawerOpen, setSeriesDrawerOpen] = useState(false);
-  const handleNewPost = useCallback(() => router.push("/new"), [router]);
-  const handleNewSeries = useCallback(() => setSeriesDrawerOpen(true), []);
-  const handleSeriesCreated = useCallback(() => {
-    // Refresh the Redux series list so the new series appears in the tree.
-    dispatch(actions.loadSeries());
-  }, [dispatch]);
 
   const {
     minOpenWidth,
@@ -206,13 +194,7 @@ const SideBar: React.FC = () => {
               the explorer the tree's own "Notes"/"Projects" section headers label
               the content and carry the create ("+") affordances. */
             }
-            {sidebarView === "search" && (
-              <SidebarHeader
-                view={sidebarView}
-                onNewPost={handleNewPost}
-                onNewSeries={can.series ? handleNewSeries : undefined}
-              />
-            )}
+            {sidebarView === "search" && <SidebarHeader view={sidebarView} />}
             {sidebarView === "search"
               ? <SidebarSearchView pathname={pathname} />
               : hasContent
@@ -226,7 +208,14 @@ const SideBar: React.FC = () => {
                   projectActions={projectActions}
                 />
               )
-              : <Box sx={{ flex: "1 1 auto", minHeight: 0 }} />}
+              : (
+                <SidebarEmptyState
+                  onNewPost={() => postActions.handleCreatePost()}
+                  onNewSeries={can.series
+                    ? () => seriesActions.handleCreateSeries()
+                    : undefined}
+                />
+              )}
           </Box>
         </Box>
       </Box>
@@ -242,6 +231,7 @@ const SideBar: React.FC = () => {
       <SidebarContextMenu
         contextMenu={seriesMenu.contextMenu}
         onClose={seriesMenu.close}
+        onNewPost={seriesMenu.onNewPost}
         onEdit={seriesMenu.onEdit}
         onRename={seriesMenu.onRename}
         onDelete={seriesMenu.onDelete}
@@ -250,14 +240,9 @@ const SideBar: React.FC = () => {
       <SidebarContextMenu
         contextMenu={projectMenu.contextMenu}
         onClose={projectMenu.close}
+        onNewSeries={projectMenu.onNewSeries}
         onRename={projectMenu.onRename}
         onDelete={projectMenu.onDelete}
-      />
-
-      <CreateSeriesDrawer
-        open={seriesDrawerOpen}
-        onClose={() => setSeriesDrawerOpen(false)}
-        onSuccess={handleSeriesCreated}
       />
     </Drawer>
   );

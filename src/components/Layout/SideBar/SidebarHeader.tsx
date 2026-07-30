@@ -1,9 +1,7 @@
 "use client";
 import React from "react";
-import { Box, IconButton, Tooltip, Typography } from "@mui/material";
-import { FilePlus, FolderPlus } from "lucide-react";
+import { Box, Typography } from "@mui/material";
 import type { SidebarView } from "@/types";
-import { ICON_SIZE } from "@/theme/icons";
 import { SB_FONT } from "./constants";
 
 const VIEW_TITLES: Record<SidebarView, string> = {
@@ -14,28 +12,21 @@ const VIEW_TITLES: Record<SidebarView, string> = {
 
 interface SidebarHeaderProps {
   view: SidebarView;
-  /** Create a new post (rendered as a trailing action in the explorer view). */
-  onNewPost?: () => void;
-  /** Create a new series (rendered as a trailing action in the explorer view). */
-  onNewSeries?: () => void;
 }
 
 /**
- * IDE-style view-title header (e.g. "EXPLORER") shown at the top of the sidebar.
+ * IDE-style view-title header (e.g. "SEARCH") shown at the top of the sidebar.
  * Uppercase, tracked, muted — the `overline` look from DESIGN.md §17.2, but
  * sized via the `SB_FONT` ladder to honor the sidebar's user font-scale
  * carve-out rather than the fixed `overline` variant.
  *
- * In the explorer view it also carries the IDE-style create actions (New Post,
- * New Series) as trailing icon buttons.
+ * It used to carry the New Post / New Series buttons as well, behind a
+ * `view === "explorer"` guard — but the explorer never rendered this header, so
+ * those were unreachable. Creation belongs to the tree's own section headers
+ * ("Notes", "Projects"), which is where a "+" can name the container it creates
+ * into; this is a title again.
  */
-export const SidebarHeader: React.FC<SidebarHeaderProps> = ({
-  view,
-  onNewPost,
-  onNewSeries,
-}) => {
-  const showActions = view === "explorer" && (onNewPost || onNewSeries);
-
+export const SidebarHeader: React.FC<SidebarHeaderProps> = ({ view }) => {
   return (
     <Box
       sx={{
@@ -62,43 +53,6 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({
       >
         {VIEW_TITLES[view]}
       </Typography>
-
-      {showActions && (
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.25, ml: 1 }}>
-          {onNewPost && (
-            <Tooltip title="New post" placement="bottom">
-              <IconButton
-                aria-label="New post"
-                size="small"
-                onClick={onNewPost}
-                sx={{
-                  p: 0.25,
-                  color: "text.secondary",
-                  "&:hover": { color: "text.primary", bgcolor: "action.hover" },
-                }}
-              >
-                <FilePlus size={ICON_SIZE.inline} strokeWidth={2} />
-              </IconButton>
-            </Tooltip>
-          )}
-          {onNewSeries && (
-            <Tooltip title="New series" placement="bottom">
-              <IconButton
-                aria-label="New series"
-                size="small"
-                onClick={onNewSeries}
-                sx={{
-                  p: 0.25,
-                  color: "text.secondary",
-                  "&:hover": { color: "text.primary", bgcolor: "action.hover" },
-                }}
-              >
-                <FolderPlus size={ICON_SIZE.inline} strokeWidth={2} />
-              </IconButton>
-            </Tooltip>
-          )}
-        </Box>
-      )}
     </Box>
   );
 };

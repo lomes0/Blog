@@ -19,12 +19,16 @@ import type {
 import type { RowSelectionResult } from "@/hooks/useRowSelection";
 import type { TreeDndResult } from "@/lib/tree/useTreeDnd";
 import { DRAG_MIME, dropPositionFromEvent } from "@/lib/dragDrop";
+import { FolderPlus } from "lucide-react";
 import { SeriesGroup } from "./SeriesGroup";
+import { RowCreateButton } from "./RowCreateButton";
 import { SB_FONT } from "./constants";
+import { ICON_SIZE } from "@/theme/icons";
 import {
   chromeFocusRingSx,
   dropIndicatorSx,
   dropIntoSx,
+  rowHoverRevealSx,
 } from "@/theme/treeRow";
 
 /** Width of the leading rule stub before the tag title (the "── " lead-in). */
@@ -141,6 +145,7 @@ export const ProjectGroup: React.FC<ProjectGroupProps> = ({
             // Reorder line when a project is dragged over this header.
             ...(headerDropIndicator && dropIndicatorSx(headerDropIndicator)),
             ...chromeFocusRingSx(),
+            ...rowHoverRevealSx,
           }}
         >
           {sidebarOpen && isRenaming
@@ -194,6 +199,13 @@ export const ProjectGroup: React.FC<ProjectGroupProps> = ({
               bgcolor: "divider",
             }}
           />
+          {sidebarOpen && !isRenaming && (
+            <RowCreateButton
+              label="New series in project"
+              icon={<FolderPlus size={ICON_SIZE.micro} strokeWidth={2} />}
+              onClick={() => seriesActions.handleCreateSeries(projectId)}
+            />
+          )}
         </ListItemButton>
       </ListItem>
 
