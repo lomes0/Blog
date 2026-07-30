@@ -18,8 +18,8 @@ import { SidebarContextMenu } from "./SidebarContextMenu";
 import { SidebarEmptyState } from "./SidebarEmptyState";
 import {
   buildSeriesMap,
-  flattenRootItems,
   groupRootItems,
+  railItems,
 } from "@/utils/posts/seriesGrouping";
 import {
   ACTIVITY_RAIL_W,
@@ -104,9 +104,10 @@ const SideBar: React.FC = () => {
     [filteredDocuments, seriesMap, projectsList],
   );
 
-  // Flat series/standalone list for the compact rail (projects collapse away).
+  // Flat list for the compact rail: notes first, then series (projects collapse
+  // away) — the same order the expanded tree renders in.
   const flatGroups = useMemo(
-    () => flattenRootItems(groupedRootItems),
+    () => railItems(groupedRootItems),
     [groupedRootItems],
   );
 

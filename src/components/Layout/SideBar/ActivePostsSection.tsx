@@ -4,6 +4,7 @@ import { Box, IconButton, List } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { FilePlus, FolderPlus, Plus, Search, X } from "lucide-react";
 import {
+  partitionRootItems,
   type ProjectGroupItem,
   type RootItem,
   rootItemsToTreeNodes,
@@ -139,22 +140,10 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
       .filter((item): item is RootItem => item !== null);
   }, [rootItems, activePostsSearch]);
 
-  // Split the (rank-ordered) root list into the two rendered sections: standalone
-  // posts land under "Notes"; projects and ungrouped series land under
-  // "Projects". The underlying rank space stays shared (so drag-reorder is
-  // unchanged) — each section is just a rank-sorted subset of it.
-  const noteItems = useMemo(
-    () =>
-      filteredRootItems.filter(
-        (item): item is SeriesGroupItem => item.type === "standalone",
-      ),
-    [filteredRootItems],
-  );
-  const groupItems = useMemo(
-    () =>
-      filteredRootItems.filter(
-        (item) => item.type === "project" || item.type === "series",
-      ),
+  // Standalone posts land under "Notes"; projects and ungrouped series under
+  // "Projects". Shared with the compact rail so both views order alike.
+  const { noteItems, groupItems } = useMemo(
+    () => partitionRootItems(filteredRootItems),
     [filteredRootItems],
   );
 

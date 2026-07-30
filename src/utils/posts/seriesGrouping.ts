@@ -250,12 +250,41 @@ export const groupRootItems = (
 };
 
 /**
- * Flatten the root tree back to series/standalone groups in render order —
- * each project replaced in place by its children. Used where a flat, project-
- * agnostic list of groups is needed (the compact rail, drag sibling lists).
+ * Split the rank-ordered root list into the two sections the sidebar renders:
+ * standalone posts ("Notes"), then projects and ungrouped series ("Projects").
+ * The shared rank space is untouched — each section is a rank-sorted subset of
+ * it, so drag-reorder still agrees with the server.
+ *
+ * Lives here rather than in the tree component because the compact rail orders
+ * itself the same way; see {@link flattenRootItems}.
  */
-export const flattenRootItems = (items: RootItem[]): SeriesGroupItem[] =>
+export const partitionRootItems = (
+  items: RootItem[],
+): { noteItems: SeriesGroupItem[]; groupItems: RootItem[] } => ({
+  noteItems: items.filter(
+    (item): item is SeriesGroupItem => item.type === "standalone",
+  ),
+  groupItems: items.filter(
+    (item) => item.type === "project" || item.type === "series",
+  ),
+});
+
+/**
+ * Flatten the root tree back to series/standalone groups in render order —
+ * each project replaced in place by its children, for the project-agnostic
+ * compact rail.
+ */
+const flattenRootItems = (items: RootItem[]): SeriesGroupItem[] =>
   items.flatMap((item) => (item.type === "project" ? item.children : [item]));
+
+/**
+ * The compact rail's item list: the same notes-then-groups order the expanded
+ * tree renders, with projects collapsed away (their series inlined in place).
+ */
+export const railItems = (items: RootItem[]): SeriesGroupItem[] => {
+  const { noteItems, groupItems } = partitionRootItems(items);
+  return [...noteItems, ...flattenRootItems(groupItems)];
+};
 
 const postTreeNode = (post: Post): TreeNode => ({
   kind: "post",
