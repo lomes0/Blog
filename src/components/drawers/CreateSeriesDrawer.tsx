@@ -13,7 +13,7 @@ import {
 } from "@mui/material";
 import { Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { apiClient } from "@/api";
+import { actions, useDispatch } from "@/store";
 
 interface CreateSeriesDrawerProps {
   /** Whether the drawer is open */
@@ -34,6 +34,7 @@ const CreateSeriesDrawer: React.FC<CreateSeriesDrawerProps> = ({
   onSuccess,
 }) => {
   const router = useRouter();
+  const dispatch = useDispatch();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
@@ -59,10 +60,10 @@ const CreateSeriesDrawer: React.FC<CreateSeriesDrawerProps> = ({
     setError(null);
 
     try {
-      const series = await apiClient.series.create({
+      const series = await dispatch(actions.createSeries({
         title: title.trim(),
         description: description.trim() || undefined,
-      });
+      })).unwrap();
 
       if (!series) throw new Error("Failed to create series");
 
@@ -72,7 +73,10 @@ const CreateSeriesDrawer: React.FC<CreateSeriesDrawerProps> = ({
       router.push(`/posts/${series.id}`);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      // The thunk announced the failure globally; this is the inline copy.
+      setError(
+        err instanceof Error ? err.message : "Failed to create series",
+      );
     } finally {
       setLoading(false);
     }

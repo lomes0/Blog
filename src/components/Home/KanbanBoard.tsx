@@ -14,8 +14,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useTheme } from "@mui/material/styles";
 import { DateDisplay } from "@/components/shared/DateDisplay";
-import { useErrorAnnounce } from "@/hooks/useErrorAnnounce";
-import { apiClient } from "@/api";
+import { actions, useDispatch } from "@/store";
 
 interface KanbanBoardProps {
   documents: Post[];
@@ -39,7 +38,7 @@ export default function KanbanBoard(
 ) {
   const router = useRouter();
   const theme = useTheme();
-  const errorAnnounce = useErrorAnnounce();
+  const dispatch = useDispatch();
   const [draggedDoc, setDraggedDoc] = useState<Post | null>(null);
 
   const columns: Column[] = [
@@ -75,16 +74,17 @@ export default function KanbanBoard(
     e.preventDefault();
     if (!draggedDoc) return;
 
-    // Update document status based on column
+    // Publishing state goes through the store like every other write, so the
+    // rest of the app sees the change; this board's own list is server-fetched,
+    // hence the refresh on top.
     try {
       const published = columnId === "published";
-
-      await apiClient.documents.update(draggedDoc.id, { published });
-
-      // Refresh documents to show updated data
+      await dispatch(
+        actions.updatePost({ id: draggedDoc.id, partial: { published } }),
+      ).unwrap();
       await onRefresh();
-    } catch (error) {
-      errorAnnounce("Failed to update document", error);
+    } catch {
+      // the thunk already announced the failure
     }
 
     setDraggedDoc(null);

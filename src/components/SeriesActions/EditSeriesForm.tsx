@@ -10,7 +10,7 @@ import {
 } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { Series } from "@/types";
-import { apiClient } from "@/api";
+import { actions, useDispatch } from "@/store";
 
 interface EditSeriesFormProps {
   series: Series;
@@ -32,6 +32,7 @@ export default function EditSeriesForm(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const dispatch = useDispatch();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,15 +45,19 @@ export default function EditSeriesForm(
     setError(null);
 
     try {
-      await apiClient.series.update(series.id, {
-        title: title.trim(),
-        description: description.trim() || undefined,
-        createdAt: new Date(createdAt).toISOString(),
-      });
+      await dispatch(actions.updateSeries({
+        id: series.id,
+        data: {
+          title: title.trim(),
+          description: description.trim() || undefined,
+          createdAt: new Date(createdAt).toISOString(),
+        },
+      })).unwrap();
 
       router.push(`/posts/${series.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      // The thunk announced the failure globally; this is the inline copy.
+      setError(err instanceof Error ? err.message : "Failed to update series");
     } finally {
       setLoading(false);
     }
@@ -79,11 +84,12 @@ export default function EditSeriesForm(
     setError(null);
 
     try {
-      await apiClient.series.delete(series.id);
+      await dispatch(actions.deleteSeries(series.id)).unwrap();
 
       router.push("/series");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      // The thunk announced the failure globally; this is the inline copy.
+      setError(err instanceof Error ? err.message : "Failed to delete series");
       setLoading(false);
     }
   };

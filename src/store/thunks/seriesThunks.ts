@@ -30,7 +30,10 @@ export const createSeries = createApiThunk(
 export const updateSeries = createApiThunk(
   "app/updateSeries",
   async (
-    { id, data }: { id: string; data: { title?: string; description?: string } },
+    { id, data }: {
+      id: string;
+      data: { title?: string; description?: string; createdAt?: string };
+    },
   ) => await apiClient.series.update(id, data),
 );
 
