@@ -3,10 +3,11 @@ import React, { useCallback, useMemo, useState } from "react";
 import { Box, IconButton, List } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { Plus, Search, X } from "lucide-react";
-import type {
-  ProjectGroupItem,
-  RootItem,
-  SeriesGroupItem,
+import {
+  type ProjectGroupItem,
+  type RootItem,
+  rootItemsToTreeNodes,
+  type SeriesGroupItem,
 } from "@/utils/posts/seriesGrouping";
 import type {
   PostItemActions,
@@ -14,7 +15,7 @@ import type {
   SeriesItemActions,
 } from "./hooks/useSidebarActions";
 import { useRowSelection } from "@/hooks/useRowSelection";
-import { useSidebarDnd } from "./hooks/useSidebarDnd";
+import { useTreeDnd } from "@/lib/tree/useTreeDnd";
 import { useSidebarBulkActions } from "./hooks/useSidebarBulkActions";
 import { PostItem } from "./PostItem";
 import { SeriesGroup } from "./SeriesGroup";
@@ -168,7 +169,14 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
     [selection, allVisibleIds],
   );
 
-  const dnd = useSidebarDnd(filteredRootItems, getDragSet);
+  // The engine works on the structural tree, not the sidebar's render model.
+  const treeNodes = useMemo(
+    () => rootItemsToTreeNodes(filteredRootItems),
+    [filteredRootItems],
+  );
+  // `rendersProjects`: dragging a series out to this list is how a series leaves
+  // a project here, so the move asserts membership.
+  const dnd = useTreeDnd(treeNodes, { rendersProjects: true, getDragSet });
 
   const bulk = useSidebarBulkActions({
     selectedIds: selection.selectedIds,
@@ -350,8 +358,10 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
           ))}
         </List>
 
-        {/* Projects — projects (each wrapping its series) and ungrouped series.
-            Signed-in only: projects group series, which guests don't have. */}
+        {
+          /* Projects — projects (each wrapping its series) and ungrouped series.
+            Signed-in only: projects group series, which guests don't have. */
+        }
         {can.projects && (
           <Box sx={{ mt: 2 }}>
             <SidebarSectionHeader

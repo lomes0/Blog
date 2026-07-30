@@ -2,7 +2,7 @@ import type { DragEvent } from "react";
 
 /**
  * Native drag-and-drop vocabulary shared by every surface that renders the post
- * tree — the sidebar (`useSidebarDnd`), the /posts list (`PostsListView`) and
+ * tree — the sidebar and the /posts list (both via `@/lib/tree/useTreeDnd`) and
  * the card grid (`DraggablePostCard`).
  *
  * These surfaces are on screen *at the same time* (the sidebar is part of the

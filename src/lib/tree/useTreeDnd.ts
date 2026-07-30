@@ -3,16 +3,22 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { actions, useDispatch } from "@/store";
 import { rankBetween } from "@/lib/ordering";
+import { bracketForDrop } from "@/lib/documentOrder";
 import {
-  bracketForDrop,
-  type RankedSibling,
-  rankOf,
-} from "@/lib/documentOrder";
-import { type DropPosition, setDragPayload } from "@/lib/dragDrop";
-import type { RootItem } from "@/utils/posts/seriesGrouping";
-import type { Post } from "@/types";
-
-type DragKind = "post" | "series" | "project";
+  buildIndex,
+  containerKey,
+  postDestination,
+  ROOT_CONTAINER,
+  type TreeContainer,
+  type TreeNode,
+  type TreeNodeKind,
+} from "./model";
+import {
+  DRAG_MIME,
+  type DropPosition,
+  readDragPayload,
+  setDragPayload,
+} from "@/lib/dragDrop";
 
 /** The rows being dragged: the whole selection when a selected row is grabbed. */
 interface DragState {
@@ -20,27 +26,58 @@ interface DragState {
   ids: string[];
   idSet: Set<string>;
   /** Kind of the grabbed row — decides the drop mode (into vs reorder). */
-  primaryKind: DragKind;
+  primaryKind: TreeNodeKind;
 }
 
-/** The container a row lives in / a target stands for. */
-type Container =
-  | { type: "root" }
-  | { type: "series"; seriesId: string }
-  | { type: "project"; projectId: string };
+/**
+ * A gesture that started on *another* tree surface. The sidebar and the posts
+ * list are on screen together, so a drag can cross between them, and the
+ * receiving hook holds no `DragState` for it. The grabbed kind is unknowable
+ * mid-drag (the payload is unreadable until `drop`), so it is taken to be a
+ * post — the only kind a container drop accepts, and the only kind the other
+ * surfaces drag onto this one.
+ */
+const FOREIGN_DRAG: DragState = {
+  ids: [],
+  idSet: new Set(),
+  primaryKind: "post",
+};
 
-/** What a given row id represents and which container it lives in / stands for. */
-interface TargetInfo {
-  kind: DragKind;
-  container: Container;
-  /** The row's display name, carried in the drag payload for confirm prompts. */
-  label?: string;
-}
+/**
+ * The drag a gesture is carrying, and whether it came from another surface. A
+ * row opts into accepting a foreign drag by passing its event; a row that
+ * passes none behaves exactly as if no drag were in flight.
+ */
+const resolveDrag = (
+  local: DragState | null,
+  event?: React.DragEvent,
+): { dragged: DragState; foreign: boolean } | null => {
+  if (local) return { dragged: local, foreign: false };
+  if (!event?.dataTransfer.types.includes(DRAG_MIME)) return null;
+  return { dragged: FOREIGN_DRAG, foreign: true };
+};
 
 /** Resolve the full set of ids a grab should drag (e.g. the multi-selection). */
 export type DragSetResolver = (primaryId: string) => string[];
 
-export interface SidebarDndResult {
+export interface TreeDndOptions {
+  /**
+   * The container the top-level rows belong to. Defaults to the author's root
+   * list. Must be referentially stable — it is a memo dependency.
+   */
+  root?: TreeContainer;
+  /**
+   * Whether this surface renders projects. When it does, reordering a series
+   * into the root list *is* the gesture for taking it out of a project, so the
+   * move asserts `projectId: null`. When it does not, project membership is
+   * invisible here and a reorder leaves it untouched rather than silently
+   * unfiling a series the user cannot see is filed.
+   */
+  rendersProjects?: boolean;
+  getDragSet?: DragSetResolver;
+}
+
+export interface TreeDndResult {
   isDragging: boolean;
   /** Reorder insertion line: the target row and which edge. */
   dropTarget: { id: string; position: DropPosition } | null;
@@ -52,43 +89,58 @@ export interface SidebarDndResult {
   onSeriesDragStart: (event: React.DragEvent, id: string) => void;
   onProjectDragStart: (event: React.DragEvent, id: string) => void;
   onDragEnd: () => void;
-  /** Row reports a hovered reorder position (before/after itself). */
-  onReorderDragOver: (targetId: string, position: DropPosition) => void;
+  /**
+   * Row reports a hovered reorder position (before/after itself). Pass `event`
+   * to also accept drags that started on another tree surface.
+   */
+  onReorderDragOver: (
+    targetId: string,
+    position: DropPosition,
+    event?: React.DragEvent,
+  ) => void;
   /** Row reports a drop at the given reorder position. */
-  onReorderDrop: (targetId: string, position: DropPosition) => void;
+  onReorderDrop: (
+    targetId: string,
+    position: DropPosition,
+    event?: React.DragEvent,
+  ) => void;
   /** A drag left the row without entering another target. */
   onDragLeaveRow: () => void;
 }
 
 /**
- * Native HTML5 drag-and-drop for the sidebar tree, dispatching the same
- * `movePost` / `moveSeries` / `moveProject` thunks the posts page uses. A
- * single pair of row handlers covers every case; the meaning of a drop is
- * resolved from the *target* row and the grabbed row's *kind*:
+ * Native HTML5 drag-and-drop for the post tree, dispatching the `movePost` /
+ * `moveSeries` / `moveProject` thunks. One pair of row handlers covers every
+ * case; the meaning of a drop is resolved from the *target* row and the grabbed
+ * row's *kind*:
  *
- *   - post → onto a series header        → move the post(s) into that series
- *   - post → between rows in a series     → reorder / move into the series there
- *   - post → between root rows            → reorder / move out to the root list
- *   - series → onto a project header      → move the series into that project
- *   - series → between a project's series  → reorder within (move into) the project
- *   - series → between root rows           → reorder / move out to the root list
- *   - project → between root rows          → reorder the project in the root list
+ *   - post → onto a series header         → move the post(s) into that series
+ *   - post → between rows in a series      → reorder / move into the series there
+ *   - post → between root rows             → reorder / move out to the root list
+ *   - series → onto a project header       → move the series into that project
+ *   - series → between a project's series   → reorder within (move into) the project
+ *   - series → between root rows            → reorder / move out to the root list
+ *   - project → between root rows           → reorder the project in the root list
  *
- * Containers share one rank space per level (root: projects + ungrouped series +
- * standalone posts; project: its series; series: its posts), so a "reorder" drop
- * both re-homes and re-ranks a row against the target's siblings.
+ * Containers share one rank space per level (see `TreeContainer`), so a
+ * "reorder" drop both re-homes and re-ranks a row against the target's siblings.
+ * The destination is always the container in *full* — never a patch of it — so a
+ * reorder inside a series keeps its rows in that series.
  *
  * When the grabbed row is part of the multi-selection, `getDragSet` expands the
  * drag to the whole selection (render order); the set is dropped as a contiguous
- * block, each item taking a chained rank so their relative order is preserved.
+ * block, each item taking a **chained** rank so their relative order is
+ * preserved. Dispatching the block against one shared bracket would scramble it.
  *
- * `rootItems` is the rendered, rank-ordered tree, the source of the sibling
- * ranks that bracket a drop.
+ * `nodes` is the rendered, rank-ordered tree — the source of the sibling ranks
+ * that bracket a drop. Both the sidebar and the posts list adapt into it.
  */
-export function useSidebarDnd(
-  rootItems: RootItem[],
-  getDragSet?: DragSetResolver,
-): SidebarDndResult {
+export function useTreeDnd(
+  nodes: readonly TreeNode[],
+  options: TreeDndOptions = {},
+): TreeDndResult {
+  const { root = ROOT_CONTAINER, rendersProjects = false, getDragSet } =
+    options;
   const dispatch = useDispatch();
   const router = useRouter();
   const draggedRef = useRef<DragState | null>(null);
@@ -105,74 +157,10 @@ export function useSidebarDnd(
   const getDragSetRef = useRef<DragSetResolver | undefined>(getDragSet);
   getDragSetRef.current = getDragSet;
 
-  // Row → container/kind lookup, plus the rank-ordered sibling lists for the
-  // root (projects + ungrouped series + standalone posts), each project's series
-  // and each series' posts.
-  const { targetInfo, rootSiblings, projectSiblings, seriesSiblings } = useMemo(
-    () => {
-      const targetInfo = new Map<string, TargetInfo>();
-      const rootSiblings: RankedSibling[] = [];
-      const projectSiblings = new Map<string, RankedSibling[]>();
-      const seriesSiblings = new Map<string, RankedSibling[]>();
-
-      const addSeries = (
-        series: { id: string; title: string; rank?: string | null },
-        posts: Post[],
-        container: Container,
-      ) => {
-        targetInfo.set(series.id, {
-          kind: "series",
-          container,
-          label: series.title,
-        });
-        seriesSiblings.set(
-          series.id,
-          posts.map((p) => ({ id: p.id, rank: rankOf(p) })),
-        );
-        for (const p of posts) {
-          targetInfo.set(p.id, {
-            kind: "post",
-            container: { type: "series", seriesId: series.id },
-            label: p.name,
-          });
-        }
-        return { id: series.id, rank: series.rank ?? null };
-      };
-
-      for (const item of rootItems) {
-        if (item.type === "project") {
-          const pid = item.project.id;
-          targetInfo.set(pid, {
-            kind: "project",
-            container: { type: "root" },
-            label: item.project.title,
-          });
-          rootSiblings.push({ id: pid, rank: item.project.rank ?? null });
-          const members: RankedSibling[] = item.children.map((child) =>
-            addSeries(child.series!, child.posts, {
-              type: "project",
-              projectId: pid,
-            })
-          );
-          projectSiblings.set(pid, members);
-        } else if (item.type === "series" && item.series) {
-          rootSiblings.push(
-            addSeries(item.series, item.posts, { type: "root" }),
-          );
-        } else {
-          const p = item.posts[0];
-          if (!p) continue;
-          targetInfo.set(p.id, {
-            kind: "post",
-            container: { type: "root" },
-            label: p.name,
-          });
-          rootSiblings.push({ id: p.id, rank: rankOf(p) });
-        }
-      }
-      return { targetInfo, rootSiblings, projectSiblings, seriesSiblings };
-    },
-    [rootItems],
+  // Row → container/kind lookup, plus each container's rank-ordered siblings.
+  const { targetInfo, siblings } = useMemo(
+    () => buildIndex(nodes, root),
+    [nodes, root],
   );
 
   // Same reason as `getDragSetRef`: the drag-start callbacks below are declared
@@ -184,7 +172,7 @@ export function useSidebarDnd(
   const startDrag = (
     event: React.DragEvent,
     primaryId: string,
-    primaryKind: DragKind,
+    primaryKind: TreeNodeKind,
   ) => {
     const ids = getDragSetRef.current?.(primaryId) ?? [primaryId];
     draggedRef.current = { ids, idSet: new Set(ids), primaryKind };
@@ -235,7 +223,7 @@ export function useSidebarDnd(
     ):
       | { mode: "into"; seriesId: string }
       | { mode: "intoProject"; projectId: string }
-      | { mode: "reorder"; container: Container }
+      | { mode: "reorder"; container: TreeContainer }
       | { mode: "invalid" } => {
       const info = targetInfo.get(targetId);
       if (!info) return { mode: "invalid" };
@@ -247,7 +235,7 @@ export function useSidebarDnd(
           return { mode: "intoProject", projectId: targetId };
         }
         if (dragged.primaryKind === "project") {
-          return { mode: "reorder", container: { type: "root" } };
+          return { mode: "reorder", container: ROOT_CONTAINER };
         }
         return { mode: "invalid" };
       }
@@ -264,7 +252,7 @@ export function useSidebarDnd(
           return { mode: "reorder", container: info.container };
         }
         return info.container.type === "root"
-          ? { mode: "reorder", container: { type: "root" } }
+          ? { mode: "reorder", container: ROOT_CONTAINER }
           : { mode: "invalid" };
       }
 
@@ -275,16 +263,17 @@ export function useSidebarDnd(
       // A series or project can only live at root, so it may only reorder
       // against a root-level post row — never nest inside a series.
       return info.container.type === "root"
-        ? { mode: "reorder", container: { type: "root" } }
+        ? { mode: "reorder", container: ROOT_CONTAINER }
         : { mode: "invalid" };
     },
     [targetInfo],
   );
 
   const onReorderDragOver = useCallback(
-    (targetId: string, position: DropPosition) => {
-      const dragged = draggedRef.current;
-      if (!dragged) return;
+    (targetId: string, position: DropPosition, event?: React.DragEvent) => {
+      const resolved = resolveDrag(draggedRef.current, event);
+      if (!resolved) return;
+      const { dragged, foreign } = resolved;
       if (dragged.idSet.has(targetId)) {
         // Hovering a row that is itself being dragged: no drop here.
         setDropTarget(null);
@@ -301,7 +290,8 @@ export function useSidebarDnd(
         setDragOverProjectId(c.projectId);
         setDragOverSeriesId(null);
         setDropTarget(null);
-      } else if (c.mode === "reorder") {
+      } else if (c.mode === "reorder" && !foreign) {
+        // A foreign drag gets no insertion line: it cannot be ranked (below).
         setDragOverSeriesId(null);
         setDragOverProjectId(null);
         setDropTarget({ id: targetId, position });
@@ -315,25 +305,40 @@ export function useSidebarDnd(
   );
 
   const onReorderDrop = useCallback(
-    (targetId: string, position: DropPosition) => {
-      const dragged = draggedRef.current;
+    async (
+      targetId: string,
+      position: DropPosition,
+      event?: React.DragEvent,
+    ) => {
+      const resolved = resolveDrag(draggedRef.current, event);
       setDropTarget(null);
       setDragOverSeriesId(null);
       setDragOverProjectId(null);
-      if (!dragged || dragged.idSet.has(targetId)) return;
+      if (!resolved || resolved.dragged.idSet.has(targetId)) return;
 
-      const c = classify(targetId, dragged);
+      const c = classify(targetId, resolved.dragged);
       if (c.mode === "invalid") return;
+
+      let dragged = resolved.dragged;
+      if (resolved.foreign) {
+        // A foreign gesture can name an absolute destination but not a slot: the
+        // block's render order and this list's sibling ranks are not its own.
+        if (c.mode === "reorder") return;
+        const payload = event && readDragPayload(event.dataTransfer);
+        if (!payload) return;
+        dragged = {
+          ids: payload.ids,
+          idSet: new Set(payload.ids),
+          primaryKind: "post",
+        };
+      }
 
       // Move a set of posts into a series: append each (render order preserved).
       if (c.mode === "into") {
         for (const id of dragged.ids) {
           if (targetInfo.get(id)?.kind !== "post") continue;
-          dispatch(
-            actions.movePost({
-              id,
-              destination: { seriesId: c.seriesId },
-            }),
+          await dispatch(
+            actions.movePost({ id, destination: { seriesId: c.seriesId } }),
           );
         }
         router.refresh();
@@ -344,11 +349,8 @@ export function useSidebarDnd(
       if (c.mode === "intoProject") {
         for (const id of dragged.ids) {
           if (targetInfo.get(id)?.kind !== "series") continue;
-          dispatch(
-            actions.moveSeries({
-              id,
-              destination: { projectId: c.projectId },
-            }),
+          await dispatch(
+            actions.moveSeries({ id, destination: { projectId: c.projectId } }),
           );
         }
         router.refresh();
@@ -359,72 +361,61 @@ export function useSidebarDnd(
       // block's outer bracket comes from the target's neighbours (the whole
       // dragged set removed first); each item then takes a chained rank so the
       // set's internal order is preserved.
-      const siblings = c.container.type === "series"
-        ? seriesSiblings.get(c.container.seriesId) ?? []
-        : c.container.type === "project"
-        ? projectSiblings.get(c.container.projectId) ?? []
-        : rootSiblings;
+      const container = c.container;
       // Null covers both "target vanished" and a degenerate slot whose colliding
       // neighbour ranks would make rankBetween throw — see bracketForDrop.
       const bracket = bracketForDrop(
-        siblings,
+        siblings.get(containerKey(container)) ?? [],
         dragged.idSet,
         targetId,
         position,
       );
       if (!bracket) return;
 
+      const destination = postDestination(container);
       const beforeRank = bracket.beforeRank;
       let afterRank = bracket.afterRank;
       for (const id of dragged.ids) {
         const kind = targetInfo.get(id)?.kind ?? "post";
         const between = { afterRank, beforeRank };
-        if (c.container.type === "series") {
-          // Only posts can live in a series; skip any dragged series/project.
-          if (kind !== "post") continue;
-          dispatch(
-            actions.movePost({
-              id,
-              destination: { seriesId: c.container.seriesId },
-              between,
-            }),
-          );
-        } else if (c.container.type === "project") {
-          // Only series can live in a project; skip posts/projects.
-          if (kind !== "series") continue;
-          dispatch(
-            actions.moveSeries({
-              id,
-              destination: { projectId: c.container.projectId },
-              between,
-            }),
-          );
+        if (kind === "post") {
+          // Posts can't live directly in a project; skip them there.
+          if (!destination) continue;
+          await dispatch(actions.movePost({ id, destination, between }));
         } else if (kind === "series") {
-          // Reorder at root moves the series out of any project.
-          dispatch(
-            actions.moveSeries({ id, destination: { projectId: null }, between }),
-          );
-        } else if (kind === "project") {
-          dispatch(actions.moveProject({ id, between }));
+          if (container.type === "project") {
+            await dispatch(
+              actions.moveSeries({
+                id,
+                destination: { projectId: container.projectId },
+                between,
+              }),
+            );
+          } else if (container.type === "root") {
+            await dispatch(
+              actions.moveSeries({
+                id,
+                // Only a surface that renders projects may assert membership.
+                ...(rendersProjects
+                  ? { destination: { projectId: null } }
+                  : {}),
+                between,
+              }),
+            );
+          } else {
+            // A series can nest in neither a series nor a tab group.
+            continue;
+          }
         } else {
-          dispatch(
-            actions.movePost({ id, destination: {}, between }),
-          );
+          if (container.type !== "root") continue;
+          await dispatch(actions.moveProject({ id, between }));
         }
         // Chain: the next item slots just after the one just placed.
         afterRank = rankBetween(afterRank, beforeRank);
       }
       router.refresh();
     },
-    [
-      classify,
-      dispatch,
-      router,
-      rootSiblings,
-      projectSiblings,
-      seriesSiblings,
-      targetInfo,
-    ],
+    [classify, dispatch, router, siblings, targetInfo, rendersProjects],
   );
 
   return {

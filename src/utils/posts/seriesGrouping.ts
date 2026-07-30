@@ -1,6 +1,7 @@
 import { Post, Project, Series } from "@/types";
 import { comparePostsByRank, rankOf } from "@/lib/documentOrder";
 import { compareRankThenId } from "@/lib/ordering";
+import type { TreeNode } from "@/lib/tree/model";
 
 /**
  * Represents either a series group (with posts) or a standalone post
@@ -276,6 +277,52 @@ export const groupRootItems = (
  */
 export const flattenRootItems = (items: RootItem[]): SeriesGroupItem[] =>
   items.flatMap((item) => (item.type === "project" ? item.children : [item]));
+
+const postTreeNode = (post: Post): TreeNode => ({
+  kind: "post",
+  id: post.id,
+  rank: rankOf(post),
+  label: post.name,
+});
+
+/** A series group, or the lone post a standalone group wraps. */
+const groupTreeNode = (group: SeriesGroupItem): TreeNode | null => {
+  if (group.type === "series" && group.series) {
+    return {
+      kind: "series",
+      id: group.series.id,
+      rank: group.series.rank ?? null,
+      label: group.series.title,
+      children: group.posts.map(postTreeNode),
+    };
+  }
+  const post = group.posts[0];
+  return post ? postTreeNode(post) : null;
+};
+
+/**
+ * Adapt the sidebar's render tree to the structural {@link TreeNode} the shared
+ * drag engine indexes (`@/lib/tree`). The two shapes differ only in encoding —
+ * this one discriminates on `type`, embeds a series' posts, and models a
+ * standalone post as a one-element array — so the mapping is mechanical.
+ */
+export const rootItemsToTreeNodes = (items: RootItem[]): TreeNode[] =>
+  items.flatMap((item): TreeNode[] => {
+    if (item.type === "project") {
+      return [{
+        kind: "project",
+        id: item.project.id,
+        rank: item.project.rank ?? null,
+        label: item.project.title,
+        children: item.children.flatMap((child) => {
+          const node = groupTreeNode(child);
+          return node ? [node] : [];
+        }),
+      }];
+    }
+    const node = groupTreeNode(item);
+    return node ? [node] : [];
+  });
 
 /**
  * Build a Map of series ID to Series object from an array of Series
