@@ -54,4 +54,5 @@ next-env.d.ts
 # local scratch — notes and throwaways, not part of the project
 /fix.diff
 /storage.md
+/review2.md
 /src/lib/demo.ts
