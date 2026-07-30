@@ -59,8 +59,8 @@ export const containerKey = (c: TreeContainer): string => {
   }
 };
 
-/** The container a node's `children` live in. */
-export const childContainer = (node: TreeNode): TreeContainer => {
+/** The container a node's `children` live in. Only `buildIndex` needs it. */
+const childContainer = (node: TreeNode): TreeContainer => {
   switch (node.kind) {
     case "series":
       return { type: "series", seriesId: node.id };

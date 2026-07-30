@@ -358,10 +358,8 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
           ))}
         </List>
 
-        {
-          /* Projects — projects (each wrapping its series) and ungrouped series.
-            Signed-in only: projects group series, which guests don't have. */
-        }
+        {/* Projects — projects (each wrapping its series) and ungrouped series.
+            Signed-in only: projects group series, which guests don't have. */}
         {can.projects && (
           <Box sx={{ mt: 2 }}>
             <SidebarSectionHeader
