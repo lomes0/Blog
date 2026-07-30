@@ -12,8 +12,6 @@ export interface SeriesGroupItem {
   series?: Series;
   /** For series: posts in the series. For standalone: single post array */
   posts: Post[];
-  /** Sort key timestamp for ordering groups/posts together */
-  sortKey: number;
 }
 
 /**
@@ -55,14 +53,6 @@ export const seriesPositionOf = (
   return idx === -1 ? null : idx + 1;
 };
 
-/**
- * Get the creation date timestamp from a Post
- */
-const getPostCreatedAtTime = (doc: Post): number => {
-  const createdAt = doc.createdAt;
-  return createdAt ? new Date(createdAt).getTime() : 0;
-};
-
 /** The rank governing a group's position in the interleaved root list. */
 const groupRank = (item: SeriesGroupItem): string | null =>
   item.type === "series"
@@ -85,25 +75,16 @@ const compareGroupsByRank = (
   compareRankThenId(groupRank(a), groupId(a), groupRank(b), groupId(b));
 
 /**
- * Get the creation date timestamp from a Series
- */
-const getSeriesCreatedAtTime = (series: Series): number => {
-  return series.createdAt ? new Date(series.createdAt).getTime() : 0;
-};
-
-/**
- * Group posts by series and return a mixed list of series groups and standalone posts,
- * sorted by their respective creation times (newest first).
+ * Group posts by series and return a mixed list of series groups and standalone
+ * posts, interleaved in one shared rank space (see {@link compareGroupsByRank}).
  *
  * - Uses series.posts from seriesMap as the authoritative source for series posts
  * - Only posts NOT in any series are added as standalone posts
- * - Series groups are sorted by series.createdAt
- * - Standalone posts (no series) are sorted by post.createdAt
- * - The final list interleaves series groups and standalone posts by their sort keys
+ * - A series with no post in this partition is dropped
  *
  * @param posts - Array of Post posts (used only for standalone posts)
  * @param seriesMap - Map of series ID to Series object (series.posts is the source of truth)
- * @returns Array of SeriesGroupItem sorted by creation time (newest first)
+ * @returns Array of SeriesGroupItem in manual (rank) order
  */
 const groupPostsBySeries = (
   posts: Post[],
@@ -146,7 +127,6 @@ const groupPostsBySeries = (
         type: "series",
         series,
         posts: sortedPosts,
-        sortKey: getSeriesCreatedAtTime(series),
       });
     }
   });
@@ -157,7 +137,6 @@ const groupPostsBySeries = (
       result.push({
         type: "standalone",
         posts: [post],
-        sortKey: getPostCreatedAtTime(post),
       });
     }
   });
@@ -191,7 +170,6 @@ const groupPostsBySeriesWithEmpty = (
         type: "series",
         series,
         posts: [],
-        sortKey: getSeriesCreatedAtTime(series),
       });
     }
   });
