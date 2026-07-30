@@ -300,343 +300,363 @@ const EditorTopBar: React.FC = () => {
         bgcolor: "background.paper",
       }}
     >
-      {/* Edit pages: back-to-view button (view pages have their own Edit btn) */}
-      {isEditPage && docId && (
-        <Tooltip title="Back to view">
-          <IconButton
-            size="small"
-            component={RouterLink}
-            href={`/view/${docId}`}
-            aria-label="Back to view"
-            sx={{ flexShrink: 0, color: "text.secondary", mr: 0.25 }}
-          >
-            <ArrowLeft size={ICON_SIZE.dense} strokeWidth={2} />
-          </IconButton>
-        </Tooltip>
-      )}
+      {
+        /* Left region: everything that precedes the search pill.
 
-      {/* Edit/view pages: compact document name */}
-      {isDocPage
-        ? (
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 0.5,
-              px: 0.75,
-              py: 0.5,
-              borderRadius: 1.5,
-              cursor: "default",
-              flexShrink: 0,
-              maxWidth: 200,
-              "&:hover": { bgcolor: "action.hover" },
-            }}
-          >
-            <FileText
-              size={ICON_SIZE.inline}
-              style={{
-                color: "var(--mui-palette-text-secondary)",
-                flexShrink: 0,
-              }}
-            />
-            <Typography
-              noWrap
-              variant="dense"
+          It and the empty right region below both take `flex: 1 1 0`, so the
+          two always resolve to the same width and the pill between them lands
+          on the bar's center. A pair of bare spacers cannot do this — with the
+          left content sitting *outside* them they split only the space it
+          leaves over, which puts the pill half the left content's width
+          off-center. That was 205px on the home route, and it grew with the
+          breadcrumb, because the breadcrumb's own `flex: 1` had it expanding in
+          lockstep with the spacers. */
+      }
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          flex: "1 1 0",
+          minWidth: 0,
+        }}
+      >
+        {/* Edit pages: back-to-view button (view pages have their own Edit btn) */}
+        {isEditPage && docId && (
+          <Tooltip title="Back to view">
+            <IconButton
+              size="small"
+              component={RouterLink}
+              href={`/view/${docId}`}
+              aria-label="Back to view"
+              sx={{ flexShrink: 0, color: "text.secondary", mr: 0.25 }}
+            >
+              <ArrowLeft size={ICON_SIZE.dense} strokeWidth={2} />
+            </IconButton>
+          </Tooltip>
+        )}
+
+        {/* Edit/view pages: compact document name */}
+        {isDocPage
+          ? (
+            <Box
               sx={{
-                fontWeight: 500,
-                color: "text.primary",
+                display: "flex",
+                alignItems: "center",
+                gap: 0.5,
+                px: 0.75,
+                py: 0.5,
+                borderRadius: 1.5,
+                cursor: "default",
+                flexShrink: 0,
+                maxWidth: 200,
+                "&:hover": { bgcolor: "action.hover" },
               }}
             >
-              {docName || "Untitled"}
-            </Typography>
-          </Box>
-        )
-        : (
-          /* Non-edit pages: full breadcrumb chain */
-          <MuiBreadcrumbs
-            aria-label="breadcrumb"
-            separator="/"
-            sx={{ flex: 1, minWidth: 0 }}
-          >
-            {breadcrumbs.map((item, index) => {
-              const isLast = index === breadcrumbs.length - 1;
+              <FileText
+                size={ICON_SIZE.inline}
+                style={{
+                  color: "var(--mui-palette-text-secondary)",
+                  flexShrink: 0,
+                }}
+              />
+              <Typography
+                noWrap
+                variant="dense"
+                sx={{
+                  fontWeight: 500,
+                  color: "text.primary",
+                }}
+              >
+                {docName || "Untitled"}
+              </Typography>
+            </Box>
+          )
+          : (
+            /* Non-edit pages: full breadcrumb chain */
+            <MuiBreadcrumbs
+              aria-label="breadcrumb"
+              separator="/"
+              sx={{ flex: 1, minWidth: 0 }}
+            >
+              {breadcrumbs.map((item, index) => {
+                const isLast = index === breadcrumbs.length - 1;
 
-              if (item.href) {
+                if (item.href) {
+                  return (
+                    <Link
+                      key={index}
+                      component={RouterLink}
+                      href={item.href}
+                      underline="hover"
+                      color={isLast ? "text.primary" : "inherit"}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        typography: "body2",
+                        fontWeight: isLast ? 600 : 400,
+                        "&:hover": { color: "primary.main" },
+                      }}
+                    >
+                      {item.icon}
+                      {item.label}
+                    </Link>
+                  );
+                }
+
                 return (
-                  <Link
+                  <Typography
                     key={index}
-                    component={RouterLink}
-                    href={item.href}
-                    underline="hover"
-                    color={isLast ? "text.primary" : "inherit"}
+                    color="text.primary"
                     sx={{
                       display: "flex",
                       alignItems: "center",
                       typography: "body2",
                       fontWeight: isLast ? 600 : 400,
-                      "&:hover": { color: "primary.main" },
                     }}
                   >
                     {item.icon}
                     {item.label}
-                  </Link>
+                  </Typography>
                 );
-              }
+              })}
+            </MuiBreadcrumbs>
+          )}
 
-              return (
-                <Typography
-                  key={index}
-                  color="text.primary"
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    typography: "body2",
-                    fontWeight: isLast ? 600 : 400,
-                  }}
-                >
-                  {item.icon}
-                  {item.label}
-                </Typography>
-              );
-            })}
-          </MuiBreadcrumbs>
-        )}
-
-      {/* Inline tabs — only on edit pages when tabs exist */}
-      {hasTabs && (
-        <>
-          <Divider
-            orientation="vertical"
-            flexItem
-            sx={{ mx: 1, my: 0.75 }}
-          />
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 0.25,
-              overflowX: "auto",
-              overflowY: "hidden",
-              flexShrink: 1,
-              minWidth: 0,
-              "&::-webkit-scrollbar": { height: 2 },
-              "&::-webkit-scrollbar-thumb": { bgcolor: "divider" },
-            }}
-          >
-            {tabBar.tabs.map((tab) => {
-              const isActive = tab.id === tabBar.activeTabId;
-              const isDirty = tabBar.dirtyTabIds?.includes(tab.id) ?? false;
-              const isRoot = tab.id === tabBar.rootTabId;
-
-              return (
-                <Box
-                  key={tab.id}
-                  onClick={() => tabBar.onSwitch(tab.id)}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    tabBar.onContextMenu?.(tab.id, isRoot, e.currentTarget);
-                  }}
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 0.5,
-                    px: 1,
-                    py: 0.375,
-                    cursor: "pointer",
-                    userSelect: "none",
-                    flexShrink: 0,
-                    width: 95,
-                    bgcolor: "transparent",
-                    borderBottom: 2,
-                    borderColor: isActive ? "primary.main" : "transparent",
-                    borderRadius: 0,
-                    "&:hover": {
-                      bgcolor: isActive ? "transparent" : "action.hover",
-                    },
-                    "&:hover .tab-close-btn": { opacity: 1 },
-                    "&:hover .tab-dirty-dot": { opacity: 0 },
-                    transition: "background-color 0.15s, border-color 0.15s",
-                  }}
-                >
-                  <FileText
-                    size={ICON_SIZE.inline}
-                    style={{
-                      color: "var(--mui-palette-text-secondary)",
-                      flexShrink: 0,
-                    }}
-                  />
-                  {editingTabId === tab.id
-                    ? (
-                      <Box
-                        component="input"
-                        ref={renameInputRef}
-                        value={renameDraft}
-                        onChange={(e) => setRenameDraft(e.target.value)}
-                        onBlur={commitTabRename}
-                        onClick={(e) => e.stopPropagation()}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") commitTabRename();
-                          if (e.key === "Escape") cancelTabRename();
-                        }}
-                        sx={{
-                          flex: 1,
-                          minWidth: 0,
-                          border: "none",
-                          outline: "1px solid",
-                          outlineColor: "primary.main",
-                          borderRadius: 1.5,
-                          bgcolor: "background.paper",
-                          color: "text.primary",
-                          typography: "dense",
-                          fontFamily: "inherit",
-                          px: 0.5,
-                          py: 0,
-                        }}
-                      />
-                    )
-                    : (
-                      <Typography
-                        noWrap
-                        onDoubleClick={(e) => {
-                          e.stopPropagation();
-                          startTabRename(tab.id, tab.name);
-                        }}
-                        sx={{
-                          typography: "dense",
-                          fontWeight: isActive ? 600 : 400,
-                          color: "text.secondary",
-                          flex: 1,
-                          minWidth: 0,
-                        }}
-                      >
-                        {tab.name}
-                      </Typography>
-                    )}
-                  {!isRoot && tabBar.onClose
-                    ? (
-                      <Box
-                        sx={{
-                          position: "relative",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          width: 16,
-                          height: 16,
-                          flexShrink: 0,
-                        }}
-                      >
-                        {isDirty && (
-                          <Box
-                            className="tab-dirty-dot"
-                            sx={{
-                              position: "absolute",
-                              width: 5,
-                              height: 5,
-                              borderRadius: "50%",
-                              bgcolor: "warning.main",
-                              transition: "opacity 0.15s",
-                            }}
-                          />
-                        )}
-                        <IconButton
-                          className="tab-close-btn"
-                          size="small"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            tabBar.onClose!(tab.id);
-                          }}
-                          sx={{
-                            position: "absolute",
-                            opacity: isActive && !isDirty ? 0.7 : 0,
-                            p: 0.125,
-                            transition: "opacity 0.15s",
-                            color: isActive ? "primary.main" : "text.secondary",
-                            "&:hover": {
-                              color: "error.main",
-                              opacity: 1,
-                            },
-                          }}
-                        >
-                          <X size={ICON_SIZE.micro} />
-                        </IconButton>
-                      </Box>
-                    )
-                    : isDirty
-                    ? (
-                      <Box
-                        sx={{
-                          width: 5,
-                          height: 5,
-                          borderRadius: "50%",
-                          bgcolor: "warning.main",
-                          flexShrink: 0,
-                        }}
-                      />
-                    )
-                    : null}
-                </Box>
-              );
-            })}
-
-            {tabBar.onAdd && (
-              <Tooltip title="New sub-doc">
-                <IconButton
-                  size="small"
-                  onClick={tabBar.onAdd}
-                  sx={{
-                    flexShrink: 0,
-                    color: "text.secondary",
-                    p: 0.5,
-                    "&:hover": { color: "primary.main" },
-                  }}
-                >
-                  <Plus size={ICON_SIZE.dense} />
-                </IconButton>
-              </Tooltip>
-            )}
-          </Box>
-          <Divider
-            orientation="vertical"
-            flexItem
-            sx={{ mx: 1, my: 0.75 }}
-          />
-        </>
-      )}
-
-      {
-        /* Single-tab edit pages don't render the strip above, so surface a lone
-          "New tab" button to create the first extra tab. */
-      }
-      {isEditPage && tabBar && !hasTabs && tabBar.onAdd && (
-        <>
-          <Divider
-            orientation="vertical"
-            flexItem
-            sx={{ mx: 1, my: 0.75 }}
-          />
-          <Tooltip title="New tab">
-            <IconButton
-              size="small"
-              onClick={tabBar.onAdd}
-              aria-label="New tab"
+        {/* Inline tabs — only on edit pages when tabs exist */}
+        {hasTabs && (
+          <>
+            <Divider
+              orientation="vertical"
+              flexItem
+              sx={{ mx: 1, my: 0.75 }}
+            />
+            <Box
               sx={{
-                flexShrink: 0,
-                color: "text.secondary",
-                p: 0.5,
-                "&:hover": { color: "primary.main" },
+                display: "flex",
+                alignItems: "center",
+                gap: 0.25,
+                overflowX: "auto",
+                overflowY: "hidden",
+                flexShrink: 1,
+                minWidth: 0,
+                "&::-webkit-scrollbar": { height: 2 },
+                "&::-webkit-scrollbar-thumb": { bgcolor: "divider" },
               }}
             >
-              <Plus size={ICON_SIZE.dense} />
-            </IconButton>
-          </Tooltip>
-        </>
-      )}
+              {tabBar.tabs.map((tab) => {
+                const isActive = tab.id === tabBar.activeTabId;
+                const isDirty = tabBar.dirtyTabIds?.includes(tab.id) ?? false;
+                const isRoot = tab.id === tabBar.rootTabId;
 
-      {/* Page-level actions slot — right after the sub-doc tabs (or title) */}
-      {actions}
+                return (
+                  <Box
+                    key={tab.id}
+                    onClick={() => tabBar.onSwitch(tab.id)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      tabBar.onContextMenu?.(tab.id, isRoot, e.currentTarget);
+                    }}
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 0.5,
+                      px: 1,
+                      py: 0.375,
+                      cursor: "pointer",
+                      userSelect: "none",
+                      flexShrink: 0,
+                      width: 95,
+                      bgcolor: "transparent",
+                      borderBottom: 2,
+                      borderColor: isActive ? "primary.main" : "transparent",
+                      borderRadius: 0,
+                      "&:hover": {
+                        bgcolor: isActive ? "transparent" : "action.hover",
+                      },
+                      "&:hover .tab-close-btn": { opacity: 1 },
+                      "&:hover .tab-dirty-dot": { opacity: 0 },
+                      transition: "background-color 0.15s, border-color 0.15s",
+                    }}
+                  >
+                    <FileText
+                      size={ICON_SIZE.inline}
+                      style={{
+                        color: "var(--mui-palette-text-secondary)",
+                        flexShrink: 0,
+                      }}
+                    />
+                    {editingTabId === tab.id
+                      ? (
+                        <Box
+                          component="input"
+                          ref={renameInputRef}
+                          value={renameDraft}
+                          onChange={(e) => setRenameDraft(e.target.value)}
+                          onBlur={commitTabRename}
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") commitTabRename();
+                            if (e.key === "Escape") cancelTabRename();
+                          }}
+                          sx={{
+                            flex: 1,
+                            minWidth: 0,
+                            border: "none",
+                            outline: "1px solid",
+                            outlineColor: "primary.main",
+                            borderRadius: 1.5,
+                            bgcolor: "background.paper",
+                            color: "text.primary",
+                            typography: "dense",
+                            fontFamily: "inherit",
+                            px: 0.5,
+                            py: 0,
+                          }}
+                        />
+                      )
+                      : (
+                        <Typography
+                          noWrap
+                          onDoubleClick={(e) => {
+                            e.stopPropagation();
+                            startTabRename(tab.id, tab.name);
+                          }}
+                          sx={{
+                            typography: "dense",
+                            fontWeight: isActive ? 600 : 400,
+                            color: "text.secondary",
+                            flex: 1,
+                            minWidth: 0,
+                          }}
+                        >
+                          {tab.name}
+                        </Typography>
+                      )}
+                    {!isRoot && tabBar.onClose
+                      ? (
+                        <Box
+                          sx={{
+                            position: "relative",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: 16,
+                            height: 16,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {isDirty && (
+                            <Box
+                              className="tab-dirty-dot"
+                              sx={{
+                                position: "absolute",
+                                width: 5,
+                                height: 5,
+                                borderRadius: "50%",
+                                bgcolor: "warning.main",
+                                transition: "opacity 0.15s",
+                              }}
+                            />
+                          )}
+                          <IconButton
+                            className="tab-close-btn"
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              tabBar.onClose!(tab.id);
+                            }}
+                            sx={{
+                              position: "absolute",
+                              opacity: isActive && !isDirty ? 0.7 : 0,
+                              p: 0.125,
+                              transition: "opacity 0.15s",
+                              color: isActive
+                                ? "primary.main"
+                                : "text.secondary",
+                              "&:hover": {
+                                color: "error.main",
+                                opacity: 1,
+                              },
+                            }}
+                          >
+                            <X size={ICON_SIZE.micro} />
+                          </IconButton>
+                        </Box>
+                      )
+                      : isDirty
+                      ? (
+                        <Box
+                          sx={{
+                            width: 5,
+                            height: 5,
+                            borderRadius: "50%",
+                            bgcolor: "warning.main",
+                            flexShrink: 0,
+                          }}
+                        />
+                      )
+                      : null}
+                  </Box>
+                );
+              })}
 
-      {/* Centering spacer (left of search) */}
-      <Box sx={{ flex: 1, minWidth: 8 }} />
+              {tabBar.onAdd && (
+                <Tooltip title="New sub-doc">
+                  <IconButton
+                    size="small"
+                    onClick={tabBar.onAdd}
+                    sx={{
+                      flexShrink: 0,
+                      color: "text.secondary",
+                      p: 0.5,
+                      "&:hover": { color: "primary.main" },
+                    }}
+                  >
+                    <Plus size={ICON_SIZE.dense} />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Box>
+            <Divider
+              orientation="vertical"
+              flexItem
+              sx={{ mx: 1, my: 0.75 }}
+            />
+          </>
+        )}
+
+        {
+          /* Single-tab edit pages don't render the strip above, so surface a lone
+          "New tab" button to create the first extra tab. */
+        }
+        {isEditPage && tabBar && !hasTabs && tabBar.onAdd && (
+          <>
+            <Divider
+              orientation="vertical"
+              flexItem
+              sx={{ mx: 1, my: 0.75 }}
+            />
+            <Tooltip title="New tab">
+              <IconButton
+                size="small"
+                onClick={tabBar.onAdd}
+                aria-label="New tab"
+                sx={{
+                  flexShrink: 0,
+                  color: "text.secondary",
+                  p: 0.5,
+                  "&:hover": { color: "primary.main" },
+                }}
+              >
+                <Plus size={ICON_SIZE.dense} />
+              </IconButton>
+            </Tooltip>
+          </>
+        )}
+
+        {/* Page-level actions slot — right after the sub-doc tabs (or title) */}
+        {actions}
+      </Box>
 
       {/* Command palette entry — opens the ⌘K palette (mouse path) */}
       <Box
@@ -701,8 +721,8 @@ const EditorTopBar: React.FC = () => {
         </Box>
       </Box>
 
-      {/* Centering spacer (right of search) */}
-      <Box sx={{ flex: 1, minWidth: 8 }} />
+      {/* Right region — empty, and the same share as the left one. */}
+      <Box sx={{ flex: "1 1 0", minWidth: 0 }} />
     </Box>
   );
 };
