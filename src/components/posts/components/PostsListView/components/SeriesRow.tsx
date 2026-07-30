@@ -9,8 +9,12 @@ import {
   Typography,
 } from "@mui/material";
 import { ChevronRight } from "lucide-react";
-import { Series, Post } from "@/types";
-import { DRAG_MIME, readDragPayload } from "@/lib/dragDrop";
+import { Post, Series } from "@/types";
+import {
+  DRAG_MIME,
+  type DropPosition,
+  dropPositionFromEvent,
+} from "@/lib/dragDrop";
 import { formatRelativeDate } from "@/utils/dateFormat";
 import { ListDensity } from "../types";
 import { PostRow } from "./PostRow";
@@ -18,6 +22,7 @@ import { PostRowContextMenu } from "./PostRowContextMenu";
 import type { InlineRenameResult } from "@/hooks/useInlineRename";
 import { ICON_SIZE } from "@/theme/icons";
 import {
+  dropIntoSx,
   ROW_TRANSITION,
   rowHoverRevealSx,
   TREE_ROW_RADIUS,
@@ -42,11 +47,27 @@ interface SeriesRowProps {
   postRename: InlineRenameResult<undefined>;
   onDeleteSeries: (seriesId: string, seriesTitle: string) => void;
   onDeletePost: (post: Post) => void;
-  onDragStart: (e: React.DragEvent, postId: string) => void;
+  /** Drag source for the child post rows. */
+  onPostDragStart: (e: React.DragEvent, postId: string) => void;
   onDragEnd: () => void;
-  onDropPost: (seriesId: string, postId: string) => void;
-  dragOverSeriesId: string | null;
-  onDragOverSeries: (seriesId: string | null) => void;
+  /**
+   * Header drag handlers, from the shared tree engine. It decides from the
+   * dragged row's kind whether a hover over this header means "drop into this
+   * series" or "reorder against it", so the header reports position either way.
+   */
+  onReorderDragOver: (
+    seriesId: string,
+    position: DropPosition,
+    event?: React.DragEvent,
+  ) => void;
+  onReorderDrop: (
+    seriesId: string,
+    position: DropPosition,
+    event?: React.DragEvent,
+  ) => void;
+  onDragLeaveRow: () => void;
+  /** This header is the drop-into target: posts would land in this series. */
+  isDragOver: boolean;
   /** Reposition a post within this series (menu / keyboard). */
   onReorderPost?: (
     siblings: Post[],
@@ -78,17 +99,17 @@ export const SeriesRow = React.memo(function SeriesRow({
   canMoveUp,
   canMoveDown,
   onDeletePost,
-  onDragStart,
+  onPostDragStart,
   onDragEnd,
-  onDropPost,
-  dragOverSeriesId,
-  onDragOverSeries,
+  onReorderDragOver,
+  onReorderDrop,
+  onDragLeaveRow,
+  isDragOver,
   onReorderPost,
   availableSeries,
   onMovePost,
 }: SeriesRowProps) {
   const postCount = posts.length;
-  const isDragOver = dragOverSeriesId === series.id;
 
   const mostRecentDate = posts.reduce<string | undefined>((latest, p) => {
     const d = p.updatedAt || p.createdAt;
@@ -111,26 +132,19 @@ export const SeriesRow = React.memo(function SeriesRow({
     onToggleSelect(series.id, e);
   }, [series.id, onToggleSelect]);
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    if (e.dataTransfer.types.includes(DRAG_MIME)) {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = "move";
-      onDragOverSeries(series.id);
-    }
-  }, [series.id, onDragOverSeries]);
-
-  const handleDragLeave = useCallback(() => {
-    onDragOverSeries(null);
-  }, [onDragOverSeries]);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  // The event is passed on so a drag that started on another tree surface (the
+  // sidebar is on screen beside this list) can still drop a post into a series.
+  const handleDragOver = useCallback((e: React.DragEvent<HTMLElement>) => {
+    if (!e.dataTransfer.types.includes(DRAG_MIME)) return;
     e.preventDefault();
-    onDragOverSeries(null);
-    // The grabbed row; `onDropPost` expands it to the whole dragged block when
-    // the drag started in this list (see PostsListView.handleDropPost).
-    const payload = readDragPayload(e.dataTransfer);
-    if (payload) onDropPost(series.id, payload.id);
-  }, [series.id, onDropPost, onDragOverSeries]);
+    e.dataTransfer.dropEffect = "move";
+    onReorderDragOver(series.id, dropPositionFromEvent(e), e);
+  }, [series.id, onReorderDragOver]);
+
+  const handleDrop = useCallback((e: React.DragEvent<HTMLElement>) => {
+    e.preventDefault();
+    onReorderDrop(series.id, dropPositionFromEvent(e), e);
+  }, [series.id, onReorderDrop]);
 
   // Determine which child posts to show
   const inlineAll = postCount <= SERIES_INLINE_LIMIT;
@@ -153,7 +167,7 @@ export const SeriesRow = React.memo(function SeriesRow({
         className="post-list-row series-row"
         onClick={handleRowClick}
         onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
+        onDragLeave={onDragLeaveRow}
         onDrop={handleDrop}
         sx={{
           display: "flex",
@@ -163,25 +177,24 @@ export const SeriesRow = React.memo(function SeriesRow({
           borderRadius: TREE_ROW_RADIUS,
           position: "relative",
           cursor: "pointer",
-          bgcolor: isSelected
-            ? "action.selected"
-            : isDragOver
-            ? "action.selected"
-            : "transparent",
-          outline: isDragOver
-            ? "1.5px solid"
-            : isSelected
-            ? "1px solid"
-            : "none",
-          outlineColor: isDragOver ? "primary.main" : "secondary.main",
+          bgcolor: isSelected ? "action.selected" : "transparent",
+          outline: isSelected ? "1px solid" : "none",
+          outlineColor: "secondary.main",
           outlineOffset: -1,
           transition: ROW_TRANSITION,
           "&:hover": {
-            bgcolor: isSelected || isDragOver
-              ? "action.selected"
-              : "action.hover",
+            bgcolor: isSelected ? "action.selected" : "action.hover",
           },
           ...rowHoverRevealSx,
+          // Drop-a-post-into-this-series: the shared tint (§17.3) plus the pill
+          // outline that marks the header as a container — same pair the
+          // sidebar's SeriesGroup draws. Spread last so it wins the hover rule.
+          ...(isDragOver && {
+            ...dropIntoSx(),
+            outline: "1.5px solid",
+            outlineColor: "primary.main",
+            outlineOffset: "-1px",
+          }),
         }}
       >
         {/* Gutter — 22px, checkbox only, no drag handle for series */}
@@ -341,7 +354,7 @@ export const SeriesRow = React.memo(function SeriesRow({
                 rename={postRename}
                 onToggleSelect={onToggleSelect}
                 onDelete={onDeletePost}
-                onDragStart={onDragStart}
+                onDragStart={onPostDragStart}
                 onDragEnd={onDragEnd}
                 onReorder={onReorderPost && inlineAll
                   ? (direction) => onReorderPost(posts, p.id, direction)

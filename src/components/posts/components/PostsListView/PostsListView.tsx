@@ -1,11 +1,5 @@
 "use client";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { Box } from "@mui/material";
 import { v4 as uuid } from "uuid";
 import { Post, type PostContainer, Series } from "@/types";
@@ -13,14 +7,14 @@ import { actions, useDispatch } from "@/store";
 import { useRouter } from "next/navigation";
 import { useExpandedState } from "@/hooks/useExpandedState";
 import {
-  bracketForDrop,
   comparePostsByRank,
   rankOf,
   ranksBracketing,
   type ReorderDirection,
 } from "@/lib/documentOrder";
-import { compareRankThenId, rankBetween } from "@/lib/ordering";
-import { type DropPosition, setDragPayload } from "@/lib/dragDrop";
+import { compareRankThenId } from "@/lib/ordering";
+import { containerFromPost, type TreeNode } from "@/lib/tree/model";
+import { useTreeDnd } from "@/lib/tree/useTreeDnd";
 import { ListDensity } from "./types";
 import { PostRow } from "./components/PostRow";
 import { SeriesRow } from "./components/SeriesRow";
@@ -69,7 +63,6 @@ export function PostsListView({
 }: PostsListViewProps) {
   const dispatch = useDispatch();
   const router = useRouter();
-  const [dragOverSeriesId, setDragOverSeriesId] = useState<string | null>(null);
 
   // Pinned to the two ids rather than the prop's identity: callers pass this
   // inline, and the reorder handlers below are React.memo'd row props — a fresh
@@ -324,117 +317,58 @@ export function PostsListView({
   );
 
   // ── Drag and drop ─────────────────────────────────────────────────────────
-  // Drag-to-reorder: the rows currently being dragged, and the drop target (a
-  // root row + which side) used to draw the insertion indicator.
-  const draggedRef = useRef<{ ids: string[]; idSet: Set<string> } | null>(null);
-  const [dropTarget, setDropTarget] = useState<
-    { id: string; position: DropPosition } | null
-  >(null);
+  // The rendered tree, as the shared engine indexes it: the root list, with each
+  // series carrying its *full* rank-ordered post list (not the truncated preview
+  // `SeriesRow` shows past 20), since that list is the source of the sibling
+  // ranks that bracket a drop.
+  const treeNodes = useMemo(
+    (): TreeNode[] =>
+      rootItems.map((item) =>
+        item.kind === "post"
+          ? {
+            kind: "post" as const,
+            id: item.id,
+            rank: item.rank,
+            label: item.post.name,
+          }
+          : {
+            kind: "series" as const,
+            id: item.id,
+            rank: item.rank,
+            label: item.series.title,
+            children: (seriesPostsById.get(item.id) ?? []).map((p) => ({
+              kind: "post" as const,
+              id: p.id,
+              rank: rankOf(p),
+              label: p.name,
+            })),
+          }
+      ),
+    [rootItems, seriesPostsById],
+  );
+
+  // Which container the top-level rows are in — the author's root list, or the
+  // one series whose contents this list is rendering (`/posts/[seriesId]`).
+  const dndRoot = useMemo(() => containerFromPost(container), [container]);
 
   // Depend on `selectedIds` rather than the whole `selection` object, which is a
   // fresh literal each render — the rows below are memoized, so a churning
   // handler identity would re-render every one of them on every render.
   const { selectedIds } = selection;
-  const handleDragStart = useCallback((e: React.DragEvent, postId: string) => {
-    // Grabbing a row that is part of the multi-selection drags the whole
-    // selection (render order, so the block keeps its relative order at the
-    // destination); otherwise just the grabbed row. Mirrors the sidebar's
-    // `getDragSet` — see useSidebarDnd.
-    const ids = selectedIds.has(postId) && selectedIds.size > 1
-      ? allVisibleIds.filter((id) => selectedIds.has(id))
-      : [postId];
-    draggedRef.current = { ids, idSet: new Set(ids) };
-    setDragPayload(e.dataTransfer, ids, allPostsMap.get(postId)?.name);
-  }, [allPostsMap, allVisibleIds, selectedIds]);
-
-  const handleDragEnd = useCallback(() => {
-    setDragOverSeriesId(null);
-    setDropTarget(null);
-    draggedRef.current = null;
-  }, []);
-
-  const handleReorderDragOver = useCallback(
-    (targetId: string, position: DropPosition) => {
-      const dragged = draggedRef.current;
-      if (dragged && !dragged.idSet.has(targetId)) {
-        setDropTarget({ id: targetId, position });
-      }
-    },
-    [],
+  // Grabbing a row that is part of the multi-selection drags the whole selection
+  // (render order, so the block keeps its relative order at the destination);
+  // otherwise just the grabbed row.
+  const getDragSet = useCallback(
+    (primaryId: string): string[] =>
+      selectedIds.has(primaryId) && selectedIds.size > 1
+        ? allVisibleIds.filter((id) => selectedIds.has(id))
+        : [primaryId],
+    [allVisibleIds, selectedIds],
   );
 
-  /**
-   * Dispatch a move for each dragged row into the root list at `between`,
-   * chaining the ranks so a multi-row block keeps its relative order. Series
-   * rows can be part of the selection even though only posts are drag *sources*,
-   * so each id is routed by kind.
-   */
-  const moveDraggedInto = useCallback(
-    async (
-      ids: string[],
-      bracket: { afterRank: string | null; beforeRank: string | null },
-    ) => {
-      const { beforeRank } = bracket;
-      let afterRank = bracket.afterRank;
-      for (const id of ids) {
-        const between = { afterRank, beforeRank };
-        if (seriesIdSet.has(id)) {
-          await dispatch(
-            actions.moveSeries({ id, between }),
-          );
-        } else {
-          await dispatch(
-            actions.movePost({ id, destination: container, between }),
-          );
-        }
-        // Chain: the next row slots just after the one just placed.
-        afterRank = rankBetween(afterRank, beforeRank);
-      }
-    },
-    [dispatch, seriesIdSet, container],
-  );
-
-  // Drop the dragged rows at a root position (before/after the target row).
-  // Reorders within, or moves out of a series into, the interleaved root list.
-  const handleReorderDrop = useCallback(
-    async (targetId: string, position: DropPosition) => {
-      const dragged = draggedRef.current;
-      setDropTarget(null);
-      if (!dragged || dragged.idSet.has(targetId)) return;
-
-      // Null covers both "target vanished" and a degenerate slot whose colliding
-      // neighbour ranks would make rankBetween throw — see bracketForDrop.
-      const bracket = bracketForDrop(
-        rootItems,
-        dragged.idSet,
-        targetId,
-        position,
-      );
-      if (!bracket) return;
-
-      await moveDraggedInto(dragged.ids, bracket);
-      router.refresh();
-    },
-    [rootItems, moveDraggedInto, router],
-  );
-
-  // Drop onto a series header: move every dragged post into that series. Series
-  // rows in the selection are skipped — a series can't nest in a series.
-  const handleDropPost = useCallback(
-    async (seriesId: string, postId: string) => {
-      const ids = draggedRef.current?.ids ?? [postId];
-      // movePost sets seriesId *and* a fresh rank in the destination series,
-      // so the post no longer keeps a rank from its previous container.
-      for (const id of ids) {
-        if (seriesIdSet.has(id)) continue;
-        await dispatch(
-          actions.movePost({ id, destination: { seriesId } }),
-        );
-      }
-      router.refresh();
-    },
-    [dispatch, router, seriesIdSet],
-  );
+  // `rendersProjects` is left off: this surface has no project rows, so a series
+  // reordered here must not assert (and thereby clear) its project membership.
+  const dnd = useTreeDnd(treeNodes, { root: dndRoot, getDragSet });
 
   const handleMoveToSeries = useCallback(
     async (postId: string, seriesId: string) => {
@@ -553,15 +487,15 @@ export function PostsListView({
                 rename={postRename}
                 onToggleSelect={selection.handleSelectClick}
                 onDelete={handleDeletePost}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
+                onDragStart={dnd.onPostDragStart}
+                onDragEnd={dnd.onDragEnd}
                 onReorder={(direction) => handleReorderRoot(i, direction)}
                 canMoveUp={i > 0}
                 canMoveDown={i < rootItems.length - 1}
-                onReorderDragOver={handleReorderDragOver}
-                onReorderDrop={handleReorderDrop}
-                dropIndicator={dropTarget?.id === item.id
-                  ? dropTarget.position
+                onReorderDragOver={dnd.onReorderDragOver}
+                onReorderDrop={dnd.onReorderDrop}
+                dropIndicator={dnd.dropTarget?.id === item.id
+                  ? dnd.dropTarget.position
                   : null}
                 availableSeries={hasSeries ? series : undefined}
                 onMoveToSeries={hasSeries
@@ -588,11 +522,12 @@ export function PostsListView({
                 postRename={postRename}
                 onDeleteSeries={handleDeleteSeries}
                 onDeletePost={handleDeletePost}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
-                onDropPost={handleDropPost}
-                dragOverSeriesId={dragOverSeriesId}
-                onDragOverSeries={setDragOverSeriesId}
+                onPostDragStart={dnd.onPostDragStart}
+                onDragEnd={dnd.onDragEnd}
+                onReorderDragOver={dnd.onReorderDragOver}
+                onReorderDrop={dnd.onReorderDrop}
+                onDragLeaveRow={dnd.onDragLeaveRow}
+                isDragOver={dnd.dragOverSeriesId === item.id}
                 availableSeries={series.filter((other) => other.id !== item.id)}
                 onMovePost={handleMoveToSeries}
               />
