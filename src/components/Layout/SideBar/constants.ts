@@ -3,6 +3,7 @@
  * Single source of truth for all sidebar-related dimensions
  */
 import { MOTION } from "@/theme/tokens";
+import { TREE_ROW_RADIUS } from "@/theme/treeRow";
 
 /** Width when sidebar is collapsed (icons only) — legacy value kept for reference */
 export const SIDEBAR_COLLAPSED_WIDTH = 72;
@@ -153,11 +154,16 @@ export const SIDEBAR_EDGE_TRANSITION = [
 ].join(", ");
 
 /**
- * Corner radius (MUI borderRadius units) shared by every selectable sidebar row
- * — post/document rows, series rows, and sub-tabs — so the "soft filled pill"
- * select treatment stays identical across all three. Single source of truth.
+ * Corner radius shared by every selectable sidebar row — post/document rows,
+ * series rows, and sub-tabs — so the "soft filled pill" select treatment stays
+ * identical across all three.
+ *
+ * Re-exported from `@/theme/treeRow`: the value is DESIGN.md §17.4's radius for
+ * *any* tree row, not a sidebar preference, and the /posts rows were carrying
+ * their own (`0.5`, `1`) precisely because it was only written down here. Kept
+ * as an alias so the sidebar's own call sites read in sidebar vocabulary.
  */
-export const SB_ITEM_RADIUS = 1.5;
+export const SB_ITEM_RADIUS = TREE_ROW_RADIUS;
 
 /**
  * Monospace stack for IDE file-system cues (`.md` filenames, folder paths,

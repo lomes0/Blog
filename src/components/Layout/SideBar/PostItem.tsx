@@ -11,7 +11,6 @@ import {
   TextField,
   Tooltip,
 } from "@mui/material";
-import { alpha } from "@mui/material/styles";
 import { File, Pencil, Save } from "lucide-react";
 import { type RootState, useSelector } from "@/store";
 import { selectChildPostsByParent } from "@/store/selectors/layoutSelectors";
@@ -27,6 +26,11 @@ import { type SubTabEntry, SubTabList } from "./SubTabList";
 import { triggerSave } from "../../EditDocument/saveRegistry";
 import { ICON_SIZE } from "@/theme/icons";
 import { MONO_FONT, SB_FONT, SB_ITEM_RADIUS } from "./constants";
+import {
+  chromeFocusRingSx,
+  dropIndicatorSx,
+  multiSelectSx,
+} from "@/theme/treeRow";
 
 const EMPTY_CHILDREN: Post[] = [];
 const EMPTY_TAB_ENTRIES: SubTabEntry[] = [];
@@ -270,20 +274,7 @@ export const PostItem = memo(
               justifyContent: sidebarOpen ? "initial" : "center",
               overflow: "hidden",
               position: "relative",
-              // Native-DnD insertion line: a 2px primary bar on the row edge the
-              // dragged item would drop against (matches PostsListView).
-              ...(dropIndicator && {
-                "&::after": {
-                  content: '""',
-                  position: "absolute",
-                  left: 0,
-                  right: 0,
-                  [dropIndicator === "before" ? "top" : "bottom"]: 0,
-                  height: 2,
-                  bgcolor: "primary.main",
-                  zIndex: 2,
-                },
-              }),
+              ...(dropIndicator && dropIndicatorSx(dropIndicator)),
               // Rounded "pill" select shared with sub-tabs and series rows.
               borderRadius: SB_ITEM_RADIUS,
               // Top-level rows use the same left padding as a SeriesGroup row
@@ -298,33 +289,12 @@ export const PostItem = memo(
                 bgcolor: "action.selected",
                 "&:hover": { bgcolor: "action.hover" },
               },
-              // Keyboard focus must stay visible for a11y, but MUI's default
-              // `.Mui-focusVisible` fills the row with `action.focus` — a gray
-              // nearly identical to `action.selected`. Left on a row that is no
-              // longer the open document (focus lingers after navigating away by
-              // another route), it reads as a second "selected" item. Replace the
-              // fill with a focus ring so only the viewed row carries a bg fill.
-              "&.Mui-focusVisible:not(.Mui-selected)": {
-                bgcolor: "transparent",
-              },
-              "&.Mui-focusVisible": {
-                outline: "2px solid",
-                outlineColor: "primary.main",
-                outlineOffset: "-2px",
-              },
-              // Multi-selection (Ctrl/Cmd/Shift click) reads as a primary-tinted
-              // pill, distinct from the neutral `action.selected` fill that marks
-              // the currently-open document. Wins over both the base and
-              // `.Mui-selected` fills so a row that is open *and* multi-selected
-              // still shows the selection tint.
-              ...(isMultiSelected && {
-                "&, &.Mui-selected": {
-                  bgcolor: (t) => alpha(t.palette.primary.main, 0.16),
-                },
-                "&:hover, &.Mui-selected:hover": {
-                  bgcolor: (t) => alpha(t.palette.primary.main, 0.24),
-                },
-              }),
+              // The open document keeps its fill under focus; every other row
+              // trades MUI's grey `action.focus` fill for the ring.
+              ...chromeFocusRingSx(".Mui-selected"),
+              // Wins over both the base and `.Mui-selected` fills so a row that
+              // is open *and* multi-selected still shows the selection tint.
+              ...(isMultiSelected && multiSelectSx("&.Mui-selected")),
             },
             // The selected pill picks up the accent tint. Skipped for
             // multi-selected rows so their primary-tint wins.

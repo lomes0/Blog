@@ -638,6 +638,27 @@ result uses the same states:
 > rather than silently redrawing an accessibility-visible element. Whether the
 > spec or the code is right needs a human with the app in front of them.
 
+**Tree rows are codified — do not re-derive them.** This table's states have no
+MUI slot (a tree row is a plain `Box`/`ListItemButton`), so they lived only as
+prose and five files answered them independently. They are now `sx` fragments in
+`src/theme/treeRow.ts`; compose those rather than writing the literal:
+
+| State                          | Fragment                                    |
+| ------------------------------ | ------------------------------------------- |
+| Reorder insertion line         | `dropIndicatorSx(position)` (needs `position: relative`) |
+| Drop-into-container fill       | `dropIntoSx()` — add your own outline/rule on top |
+| Multi-selection pill           | `multiSelectSx(alsoWhen?)`                  |
+| Keyboard focus                 | `chromeFocusRingSx(keepFillWhen?)`          |
+| Hover-revealed row controls    | `rowHoverRevealSx`                          |
+| Row radius (§17.4)             | `TREE_ROW_RADIUS`                           |
+| Row state transition (§11)     | `ROW_TRANSITION`                            |
+
+> **Second open question — the tree-row focus ring is an `outline`, not
+> `FOCUS_RING.chrome`.** The table above names that token, but every shipped
+> tree row draws an outline and `ActivityRail` is its only user.
+> `chromeFocusRingSx` matches what ships. Reconciling the two forms is the same
+> kind of accessibility-visible call as the `inset` question.
+
 ### 17.4 Radius & density
 
 | Element                        | Radius                | Height / metric        |

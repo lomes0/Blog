@@ -9,7 +9,6 @@ import {
   TextField,
   Tooltip,
 } from "@mui/material";
-import { alpha } from "@mui/material/styles";
 import { Folder, FolderOpen } from "lucide-react";
 import type { Series } from "@/types";
 import type { SeriesGroupItem } from "@/utils/posts/seriesGrouping";
@@ -23,6 +22,12 @@ import { DRAG_MIME, dropPositionFromEvent } from "@/lib/dragDrop";
 import { PostItem } from "./PostItem";
 import { CountPill } from "./CountPill";
 import { SB_FONT, SB_ITEM_RADIUS } from "./constants";
+import {
+  chromeFocusRingSx,
+  dropIndicatorSx,
+  dropIntoSx,
+  multiSelectSx,
+} from "@/theme/treeRow";
 import { ICON_SIZE } from "@/theme/icons";
 
 interface SeriesGroupProps {
@@ -124,50 +129,21 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
               position: "relative",
               ...(isSeriesActive && { bgcolor: "action.selected" }),
               "&:hover": { bgcolor: "action.hover" },
-              // Drop-a-post-into-series: highlight the whole header with a
-              // primary ring + soft fill (matches PostsListView's SeriesRow).
+              // Drop-a-post-into-series: the shared fill, plus a pill outline
+              // that marks the header as a container (ProjectGroup uses a rule
+              // instead — see its band treatment).
               ...(isDropInto && {
-                "&, &:hover": {
-                  bgcolor: (t) => alpha(t.palette.primary.main, 0.12),
-                },
+                ...dropIntoSx(),
                 outline: "1.5px solid",
                 outlineColor: "primary.main",
                 outlineOffset: "-1px",
               }),
               // Reorder line when a series is dragged over this header.
-              ...(headerDropIndicator && {
-                "&::after": {
-                  content: '""',
-                  position: "absolute",
-                  left: 0,
-                  right: 0,
-                  [headerDropIndicator === "before" ? "top" : "bottom"]: 0,
-                  height: 2,
-                  bgcolor: "primary.main",
-                  zIndex: 2,
-                },
-              }),
-              // The series row has no "selected" state of its own, so MUI's
-              // default `.Mui-focusVisible` grey fill — left behind when focus
-              // returns to the row after closing the context menu / committing a
-              // rename — reads as a stuck "selected" mark. Drop the fill and show
-              // a focus ring instead (mirrors PostItem's row treatment).
-              "&.Mui-focusVisible": {
-                bgcolor: "transparent",
-                outline: "2px solid",
-                outlineColor: "primary.main",
-                outlineOffset: "-2px",
-              },
-              // Multi-selection reads as a primary-tinted pill (same treatment as
-              // post rows), distinct from the neutral active-route fill.
-              ...(isMultiSelected && {
-                "&, &:hover": {
-                  bgcolor: (t) => alpha(t.palette.primary.main, 0.16),
-                },
-                "&:hover": {
-                  bgcolor: (t) => alpha(t.palette.primary.main, 0.24),
-                },
-              }),
+              ...(headerDropIndicator && dropIndicatorSx(headerDropIndicator)),
+              // The series row has no "selected" state of its own, so nothing
+              // here needs its fill preserved under focus.
+              ...chromeFocusRingSx(),
+              ...(isMultiSelected && multiSelectSx()),
             },
             // Active series row takes the accent tint. Skipped when
             // multi-selected so the primary-tint pill wins.

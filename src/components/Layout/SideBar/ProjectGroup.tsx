@@ -7,7 +7,6 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { alpha } from "@mui/material/styles";
 import type {
   ProjectGroupItem,
   SeriesGroupItem,
@@ -22,6 +21,11 @@ import type { SidebarDndResult } from "./hooks/useSidebarDnd";
 import { DRAG_MIME, dropPositionFromEvent } from "@/lib/dragDrop";
 import { SeriesGroup } from "./SeriesGroup";
 import { SB_FONT } from "./constants";
+import {
+  chromeFocusRingSx,
+  dropIndicatorSx,
+  dropIntoSx,
+} from "@/theme/treeRow";
 
 /** Width of the leading rule stub before the tag title (the "── " lead-in). */
 const LEAD_RULE_W = 14;
@@ -128,33 +132,15 @@ export const ProjectGroup: React.FC<ProjectGroupProps> = ({
             // The divider isn't a "selectable pill", so no filled-pill hover —
             // just a light tint (the pointer cursor signals it's clickable).
             "&:hover": { bgcolor: "action.hover" },
-            // Drop-a-series-into-band: soft full-width fill + primary-tinted rules
-            // (a band highlight rather than SeriesGroup's pill outline).
+            // Drop-a-series-into-band: the shared fill, plus primary-tinted
+            // rules — a band highlight rather than SeriesGroup's pill outline.
             ...(isDropInto && {
-              "&, &:hover": {
-                bgcolor: (t) => alpha(t.palette.primary.main, 0.12),
-              },
+              ...dropIntoSx(),
               "& .tag-rule": { bgcolor: "primary.main" },
             }),
             // Reorder line when a project is dragged over this header.
-            ...(headerDropIndicator && {
-              "&::after": {
-                content: '""',
-                position: "absolute",
-                left: 0,
-                right: 0,
-                [headerDropIndicator === "before" ? "top" : "bottom"]: 0,
-                height: 2,
-                bgcolor: "primary.main",
-                zIndex: 2,
-              },
-            }),
-            "&.Mui-focusVisible": {
-              bgcolor: "transparent",
-              outline: "2px solid",
-              outlineColor: "primary.main",
-              outlineOffset: "-2px",
-            },
+            ...(headerDropIndicator && dropIndicatorSx(headerDropIndicator)),
+            ...chromeFocusRingSx(),
           }}
         >
           {sidebarOpen && isRenaming

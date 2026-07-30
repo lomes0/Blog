@@ -9,6 +9,12 @@ import { formatRelativeDate } from "@/utils/dateFormat";
 import { ListDensity } from "../types";
 import { PostRowContextMenu } from "./PostRowContextMenu";
 import { ICON_SIZE } from "@/theme/icons";
+import {
+  dropIndicatorSx,
+  ROW_TRANSITION,
+  rowHoverRevealSx,
+  TREE_ROW_RADIUS,
+} from "@/theme/treeRow";
 import type { InlineRenameResult } from "@/hooks/useInlineRename";
 
 interface PostRowProps {
@@ -124,30 +130,16 @@ export const PostRow = React.memo(function PostRow({
           minHeight: rowHeight,
           pl: indent ? `${indent}px` : 1,
           pr: 1,
-          borderRadius: 0.5,
+          borderRadius: TREE_ROW_RADIUS,
           position: "relative",
           cursor: "default",
-          ...(dropIndicator && {
-            "&::after": {
-              content: '""',
-              position: "absolute",
-              left: 0,
-              right: 0,
-              [dropIndicator === "before" ? "top" : "bottom"]: -1,
-              height: 2,
-              bgcolor: "primary.main",
-              zIndex: 2,
-            },
-          }),
+          ...(dropIndicator && dropIndicatorSx(dropIndicator)),
           bgcolor: isSelected ? "action.selected" : "transparent",
-          transition: "background-color 0.15s",
+          transition: ROW_TRANSITION,
           "&:hover": {
             bgcolor: isSelected ? "action.selected" : "action.hover",
           },
-          // Hover-reveal selectors for child elements
-          "&:hover .row-checkbox-grip": { visibility: "visible" },
-          "&:hover .row-actions-btn": { opacity: 1 },
-          "&:hover .row-date": { opacity: 0.45 },
+          ...rowHoverRevealSx,
         }}
       >
         {/* Gutter: Checkbox + Drag Handle */}

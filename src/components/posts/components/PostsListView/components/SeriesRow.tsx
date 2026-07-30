@@ -17,6 +17,11 @@ import { PostRow } from "./PostRow";
 import { PostRowContextMenu } from "./PostRowContextMenu";
 import type { InlineRenameResult } from "@/hooks/useInlineRename";
 import { ICON_SIZE } from "@/theme/icons";
+import {
+  ROW_TRANSITION,
+  rowHoverRevealSx,
+  TREE_ROW_RADIUS,
+} from "@/theme/treeRow";
 
 const SERIES_INLINE_LIMIT = 20;
 const SERIES_PREVIEW_COUNT = 3;
@@ -155,7 +160,7 @@ export const SeriesRow = React.memo(function SeriesRow({
           alignItems: "center",
           minHeight: rowHeight,
           px: 1,
-          borderRadius: 1,
+          borderRadius: TREE_ROW_RADIUS,
           position: "relative",
           cursor: "pointer",
           bgcolor: isSelected
@@ -170,16 +175,13 @@ export const SeriesRow = React.memo(function SeriesRow({
             : "none",
           outlineColor: isDragOver ? "primary.main" : "secondary.main",
           outlineOffset: -1,
-          transition: "background-color 80ms",
+          transition: ROW_TRANSITION,
           "&:hover": {
             bgcolor: isSelected || isDragOver
               ? "action.selected"
               : "action.hover",
           },
-          "&:hover .row-checkbox-grip": { visibility: "visible" },
-          "&:hover .row-actions-btn": { opacity: 1 },
-          "&:hover .row-date": { opacity: 0.45 },
-          "&:hover .row-post-count": { opacity: 1 },
+          ...rowHoverRevealSx,
         }}
       >
         {/* Gutter — 22px, checkbox only, no drag handle for series */}
