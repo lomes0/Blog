@@ -273,6 +273,53 @@ export function useNotesStore(canvasId: string | null) {
     [canvas],
   );
 
+  /**
+   * Deletes a whole selection. Not a loop over `deleteNote`: each call captures
+   * its own pre-delete list for rollback, so one failed request would restore
+   * the notes its siblings had already removed. Here the batch rolls back as a
+   * batch — only the notes whose DELETE actually failed come back.
+   */
+  const deleteNotes = useCallback(
+    async (ids: string[]) => {
+      if (!canvas || ids.length === 0) return;
+
+      const removed = canvas.notes.filter((note) => ids.includes(note.id));
+      setCanvas((prev) =>
+        prev
+          ? { ...prev, notes: prev.notes.filter((n) => !ids.includes(n.id)) }
+          : prev
+      );
+
+      const failed = await Promise.all(
+        ids.map(async (id) => {
+          try {
+            const response = await fetch(`${API_BASE}/${id}`, {
+              method: "DELETE",
+            });
+            if (!response.ok) throw new Error("Failed to delete note");
+            return null;
+          } catch (err) {
+            console.error("Error deleting note:", err);
+            return id;
+          }
+        }),
+      );
+
+      const stillThere = removed.filter((note) => failed.includes(note.id));
+      if (stillThere.length > 0) {
+        setCanvas((prev) =>
+          prev ? { ...prev, notes: [...prev.notes, ...stillThere] } : prev
+        );
+        setError(
+          stillThere.length === ids.length
+            ? "Failed to delete notes"
+            : `Failed to delete ${stillThere.length} of ${ids.length} notes`,
+        );
+      }
+    },
+    [canvas],
+  );
+
   const bringToFront = useCallback(
     async (id: string) => {
       if (!canvas) return;
@@ -331,6 +378,7 @@ export function useNotesStore(canvasId: string | null) {
     addNote,
     updateNote,
     deleteNote,
+    deleteNotes,
     bringToFront,
     refresh,
   };

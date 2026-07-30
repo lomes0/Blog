@@ -4,34 +4,35 @@ import { useNotesStore } from "@/hooks/useNotesStore";
 import { useCanvasZoomShortcuts } from "@/hooks/useCanvasZoomShortcuts";
 import DraggableNote from "./DraggableNote";
 import StandaloneNoteEditor from "./StandaloneNoteEditor";
-import {
-  toClipboardNote,
-  useNotesClipboard,
-} from "@/contexts/NotesClipboardContext";
+import { toClip, useNotesClipboard } from "@/hooks/useNotesClipboard";
 import NotesCanvasPreview from "./NotesCanvasPreview";
 import NotesMigrationBanner from "./NotesMigrationBanner";
-import PasteButton from "./PasteButton";
+import SelectionBar from "./SelectionBar";
+import SelectionMarquee from "./SelectionMarquee";
+import { useNotesSelection } from "./hooks/useNotesSelection";
+import {
+  CANVAS_GROW_MARGIN,
+  VIRTUAL_CANVAS_HEIGHT,
+  VIRTUAL_CANVAS_WIDTH,
+} from "./canvasGeometry";
 import { NOTES_ZOOM_DEFAULT } from "@/hooks/useNotesZoom";
 import {
   forwardRef,
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from "react";
+import type { Note } from "@/types/notes";
 
 export interface NotesCanvasHandle {
   addNote: (color: string) => void;
 }
 
-// Virtual canvas dimensions for consistent coordinate system
-const VIRTUAL_CANVAS_WIDTH = 1920;
-const VIRTUAL_CANVAS_HEIGHT = 1080;
-
-// Extra room (in virtual units) kept beyond the furthest note so the board can
-// always grow as notes are dragged toward its edges, giving an unbounded feel.
-const CANVAS_GROW_MARGIN = 800;
+/** Stable identity while the canvas loads, so the memos below don't churn. */
+const EMPTY_NOTES: Note[] = [];
 
 interface NotesCanvasProps {
   preview?: boolean;
@@ -63,13 +64,15 @@ const NotesCanvas = forwardRef<NotesCanvasHandle, NotesCanvasProps>(
       addNote,
       updateNote,
       deleteNote,
+      deleteNotes,
       bringToFront,
       refresh,
     } = useNotesStore(canvasId);
-    const { copyNote } = useNotesClipboard();
+    const { copyNotes } = useNotesClipboard();
 
     const scale = scaleProp ?? NOTES_ZOOM_DEFAULT;
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const notes = useMemo(() => canvas?.notes ?? EMPTY_NOTES, [canvas]);
 
     // Track the scroll container's pixel size so the note area (and the
     // bounds="parent" region) can grow to fill the visible grid. Without this,
@@ -97,18 +100,14 @@ const NotesCanvas = forwardRef<NotesCanvasHandle, NotesCanvasProps>(
     // draggable bounds are the board's actual size. Without growing the board
     // to follow the notes, drags get clamped at the fixed virtual edge even
     // though the grid still appears beyond it.
-    const noteExtentX = canvas
-      ? canvas.notes.reduce(
-        (max, n) => Math.max(max, n.position.x + n.size.width),
-        0,
-      )
-      : 0;
-    const noteExtentY = canvas
-      ? canvas.notes.reduce(
-        (max, n) => Math.max(max, n.position.y + n.size.height),
-        0,
-      )
-      : 0;
+    const noteExtentX = notes.reduce(
+      (max, n) => Math.max(max, n.position.x + n.size.width),
+      0,
+    );
+    const noteExtentY = notes.reduce(
+      (max, n) => Math.max(max, n.position.y + n.size.height),
+      0,
+    );
 
     const canvasWidth = Math.max(
       VIRTUAL_CANVAS_WIDTH,
@@ -148,17 +147,39 @@ const NotesCanvas = forwardRef<NotesCanvasHandle, NotesCanvasProps>(
           size: { width: 240, height: 200 },
           content: "",
           color,
-          zIndex: canvas
-            ? Math.max(...canvas.notes.map((n) => n.zIndex), 0) + 1
-            : 1,
+          zIndex: Math.max(...notes.map((n) => n.zIndex), 0) + 1,
         });
       },
-      [addNote, canvas, scale],
+      [addNote, notes, scale],
     );
 
     useImperativeHandle(ref, () => ({ addNote: handleAddNote }), [
       handleAddNote,
     ]);
+
+    // A `/notes` note stores its content as the serialized string already.
+    const getContent = useCallback(
+      (id: string) => notes.find((n) => n.id === id)?.content ?? "",
+      [notes],
+    );
+
+    // Each pasted note is its own row, so the board posts them independently —
+    // one failure rolls back one note rather than the whole paste.
+    const addPastedNotes = useCallback(
+      (pasted: Parameters<typeof addNote>[0][]) => pasted.forEach(addNote),
+      [addNote],
+    );
+
+    const selection = useNotesSelection({
+      notes,
+      containerRef: scrollContainerRef,
+      scale,
+      canvasId,
+      enabled: !preview,
+      getContent,
+      onAddNotes: addPastedNotes,
+      onDeleteNotes: deleteNotes,
+    });
 
     // Refresh notes when in preview mode
     useEffect(() => {
@@ -226,15 +247,35 @@ const NotesCanvas = forwardRef<NotesCanvasHandle, NotesCanvasProps>(
             overflow: "hidden",
           }}
         >
-          <PasteButton addNote={addNote} notes={canvas?.notes ?? []} />
+          <SelectionBar
+            selectedCount={selection.selectedIds.size}
+            clipCount={selection.clip?.notes.length ?? 0}
+            onCopy={selection.copySelection}
+            onCut={selection.cutSelection}
+            onDelete={selection.deleteSelection}
+            onClearSelection={selection.clearSelection}
+            onPaste={selection.paste}
+            onClearClip={selection.clearClip}
+          />
 
           <Box
             ref={scrollContainerRef}
+            // Focusable so the clipboard shortcuts land on the board the author
+            // is in, rather than on a document-wide listener that every board
+            // on the page would answer.
+            tabIndex={0}
+            onKeyDown={selection.handleKeyDown}
             sx={(theme) => ({
               flex: 1,
               minHeight: 0,
               overflow: "auto",
               position: "relative",
+              outline: "none",
+              "&:focus-visible": {
+                outline: "2px solid",
+                outlineColor: "primary.main",
+                outlineOffset: "-2px",
+              },
               backgroundImage:
                 `linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
                  linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px)`,
@@ -258,6 +299,7 @@ const NotesCanvas = forwardRef<NotesCanvasHandle, NotesCanvasProps>(
               }}
             >
               <Box
+                onPointerDown={selection.handleBoardPointerDown}
                 sx={{
                   position: "absolute",
                   top: 0,
@@ -268,7 +310,7 @@ const NotesCanvas = forwardRef<NotesCanvasHandle, NotesCanvasProps>(
                   transformOrigin: "top left",
                 }}
               >
-                {canvas?.notes.map((note) => (
+                {notes.map((note) => (
                   <DraggableNote
                     key={note.id}
                     note={note}
@@ -276,9 +318,17 @@ const NotesCanvas = forwardRef<NotesCanvasHandle, NotesCanvasProps>(
                     onDelete={deleteNote}
                     onFocus={bringToFront}
                     scale={scale}
-                    onCopy={() => copyNote(toClipboardNote(note, note.content))}
+                    selected={selection.selectedIds.has(note.id)}
+                    onSelect={(event) =>
+                      selection.handleNoteMouseDown(note.id, event)}
+                    onCopy={() =>
+                      copyNotes(
+                        toClip([{ note, content: note.content }], canvasId),
+                      )}
                     onCut={() => {
-                      copyNote(toClipboardNote(note, note.content));
+                      copyNotes(
+                        toClip([{ note, content: note.content }], canvasId),
+                      );
                       deleteNote(note.id);
                     }}
                   >
@@ -288,6 +338,9 @@ const NotesCanvas = forwardRef<NotesCanvasHandle, NotesCanvasProps>(
                     />
                   </DraggableNote>
                 ))}
+                {selection.marquee && (
+                  <SelectionMarquee rect={selection.marquee} />
+                )}
               </Box>
             </Box>
           </Box>

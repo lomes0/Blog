@@ -7,13 +7,14 @@ import { Trash2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import DraggableNote from "@/components/NotesCanvas/DraggableNote";
 import AddNoteButton from "@/components/NotesCanvas/AddNoteButton";
-import PasteButton from "@/components/NotesCanvas/PasteButton";
+import SelectionBar from "@/components/NotesCanvas/SelectionBar";
+import SelectionMarquee from "@/components/NotesCanvas/SelectionMarquee";
 import ZoomControls from "@/components/NotesCanvas/ZoomControls";
 import {
-  NotesClipboardProvider,
-  toClipboardNote,
-  useNotesClipboard,
-} from "@/contexts/NotesClipboardContext";
+  PastedNote,
+  useNotesSelection,
+} from "@/components/NotesCanvas/hooks/useNotesSelection";
+import { toClip, useNotesClipboard } from "@/hooks/useNotesClipboard";
 import { NoteColorKey } from "@/components/NotesCanvas/noteColors";
 import { useNotesZoom } from "@/hooks/useNotesZoom";
 import { useCanvasZoomShortcuts } from "@/hooks/useCanvasZoomShortcuts";
@@ -40,22 +41,12 @@ interface CanvasComponentProps {
   height: number;
 }
 
-export default function CanvasComponent(props: CanvasComponentProps) {
-  // Scoped per board rather than per document, so a note cut from one canvas
-  // can't be pasted into another one and silently share a child editor.
-  return (
-    <NotesClipboardProvider>
-      <CanvasBoard {...props} />
-    </NotesClipboardProvider>
-  );
-}
-
-function CanvasBoard(
+export default function CanvasComponent(
   { nodeKey, canvasId, notes, height }: CanvasComponentProps,
 ) {
   const [editor] = useLexicalComposerContext();
   const isEditable = useLexicalEditable();
-  const { copyNote } = useNotesClipboard();
+  const { copyNotes } = useNotesClipboard();
   const zoom = useNotesZoom(canvasId);
   const { scale } = zoom;
 
@@ -114,6 +105,25 @@ function CanvasBoard(
     [editor, mutateNotes, topZIndex],
   );
 
+  /**
+   * Paste, as one node write: the whole clip lands in a single `mutateNotes`,
+   * so it is one undo step rather than one per note.
+   */
+  const addNotes = useCallback(
+    (pasted: PastedNote[]) => {
+      if (pasted.length === 0) return;
+      mutateNotes((current) => [
+        ...current,
+        ...pasted.map((init) => {
+          const note = createCanvasNote(init);
+          note.editor._parentEditor = editor;
+          return note;
+        }),
+      ]);
+    },
+    [editor, mutateNotes],
+  );
+
   const handleAdd = useCallback(
     (color: NoteColorKey) => {
       // Place the new note at the centre of what the author is looking at.
@@ -151,6 +161,15 @@ function CanvasBoard(
   const deleteNote = useCallback(
     (id: string) => {
       mutateNotes((current) => current.filter((note) => note.id !== id));
+    },
+    [mutateNotes],
+  );
+
+  /** Deletes a selection in one node write, so it is one undo step. */
+  const deleteNotes = useCallback(
+    (ids: string[]) => {
+      const doomed = new Set(ids);
+      mutateNotes((current) => current.filter((note) => !doomed.has(note.id)));
     },
     [mutateNotes],
   );
@@ -196,6 +215,27 @@ function CanvasBoard(
 
   const liveHeight = useCanvasResize(nodeKey, height, editor);
 
+  // A `CanvasNode` note keeps its content in a live child editor, so the clip
+  // takes a snapshot of that editor's state.
+  const getContent = useCallback(
+    (id: string) => {
+      const note = notes.find((n) => n.id === id);
+      return note ? serializeNoteContent(note) : "";
+    },
+    [notes],
+  );
+
+  const selection = useNotesSelection({
+    notes,
+    containerRef: scrollContainerRef,
+    scale,
+    canvasId,
+    enabled: isEditable,
+    getContent,
+    onAddNotes: addNotes,
+    onDeleteNotes: deleteNotes,
+  });
+
   return (
     <Box
       sx={{
@@ -236,26 +276,35 @@ function CanvasBoard(
       )}
 
       {isEditable && (
-        <PasteButton
-          notes={notes}
-          addNote={(note) =>
-            addNote({
-              position: note.position,
-              size: note.size,
-              color: note.color,
-              title: note.title,
-              content: note.content,
-            })}
+        <SelectionBar
+          selectedCount={selection.selectedIds.size}
+          clipCount={selection.clip?.notes.length ?? 0}
+          onCopy={selection.copySelection}
+          onCut={selection.cutSelection}
+          onDelete={selection.deleteSelection}
+          onClearSelection={selection.clearSelection}
+          onPaste={selection.paste}
+          onClearClip={selection.clearClip}
         />
       )}
 
       <Box
         ref={scrollContainerRef}
+        // Focusable so the clipboard shortcuts land on the board the author is
+        // in — a document can hold several, alongside the host editor itself.
+        tabIndex={isEditable ? 0 : undefined}
+        onKeyDown={selection.handleKeyDown}
         sx={(theme) => ({
           flex: 1,
           minHeight: 0,
           overflow: "auto",
           position: "relative",
+          outline: "none",
+          "&:focus-visible": {
+            outline: "2px solid",
+            outlineColor: "primary.main",
+            outlineOffset: "-2px",
+          },
           backgroundImage:
             `linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
              linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px)`,
@@ -278,6 +327,7 @@ function CanvasBoard(
           }}
         >
           <Box
+            onPointerDown={selection.handleBoardPointerDown}
             sx={{
               position: "absolute",
               top: 0,
@@ -297,16 +347,30 @@ function CanvasBoard(
                 onFocus={bringToFront}
                 scale={scale}
                 readOnly={!isEditable}
+                selected={selection.selectedIds.has(note.id)}
+                onSelect={(event) =>
+                  selection.handleNoteMouseDown(note.id, event)}
                 onCopy={() =>
-                  copyNote(toClipboardNote(note, serializeNoteContent(note)))}
+                  copyNotes(
+                    toClip(
+                      [{ note, content: serializeNoteContent(note) }],
+                      canvasId,
+                    ),
+                  )}
                 onCut={() => {
-                  copyNote(toClipboardNote(note, serializeNoteContent(note)));
+                  copyNotes(
+                    toClip(
+                      [{ note, content: serializeNoteContent(note) }],
+                      canvasId,
+                    ),
+                  );
                   deleteNote(note.id);
                 }}
               >
                 <CanvasNoteEditor noteEditor={note.editor} />
               </DraggableNote>
             ))}
+            {selection.marquee && <SelectionMarquee rect={selection.marquee} />}
           </Box>
         </Box>
       </Box>

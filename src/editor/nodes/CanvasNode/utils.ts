@@ -13,19 +13,15 @@ import { NOTE_COLORS, NoteColorKey } from "@/components/NotesCanvas/noteColors";
 export const CANVAS_NODE_TYPE = "canvas";
 
 /**
- * Board geometry in unscaled ("virtual") units, matching the standalone
- * `/notes` board so a canvas looks the same in both places.
+ * Board geometry, shared with the standalone `/notes` board so a canvas looks
+ * the same in both places. Re-exported here because this module is what the
+ * `CanvasNode` side already imports from.
  */
-export const VIRTUAL_CANVAS_WIDTH = 1920;
-export const VIRTUAL_CANVAS_HEIGHT = 1080;
-
-/**
- * Room kept beyond the furthest note so the board can always grow as notes are
- * dragged toward its edges. The grid background is fixed to the viewport so it
- * looks infinite; without growing the board, drags clamp at the virtual edge
- * even though the grid still appears beyond it.
- */
-export const CANVAS_GROW_MARGIN = 800;
+export {
+  CANVAS_GROW_MARGIN,
+  VIRTUAL_CANVAS_HEIGHT,
+  VIRTUAL_CANVAS_WIDTH,
+} from "@/components/NotesCanvas/canvasGeometry";
 
 /**
  * A document is a scrolling column, so the board gets a fixed viewport height

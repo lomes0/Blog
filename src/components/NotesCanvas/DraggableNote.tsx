@@ -41,6 +41,15 @@ interface DraggableNoteProps {
    */
   onCopy?: () => void;
   onCut?: () => void;
+  /** Part of the board's multi-selection. Draws the selected ring. */
+  selected?: boolean;
+  /**
+   * Mouse-down on the note, offered to the board's selection first. Returning
+   * true means the selection consumed it — the note then skips its own focus
+   * and bring-to-front, because a modifier-click is picking the note out, not
+   * opening it.
+   */
+  onSelect?: (event: React.MouseEvent) => boolean;
   /** Locks position, size and chrome. Used when the host editor isn't editable. */
   readOnly?: boolean;
 }
@@ -54,6 +63,8 @@ export default function DraggableNote({
   children,
   onCopy,
   onCut,
+  selected = false,
+  onSelect,
   readOnly = false,
 }: DraggableNoteProps) {
   const [isFocused, setIsFocused] = useState(false);
@@ -73,9 +84,13 @@ export default function DraggableNote({
 
   const handleDragStop = useCallback(
     (_e: RndDragEvent, d: DraggableData) => {
+      // A click on the header is a zero-distance drag. Writing it back costs a
+      // PATCH on `/notes` and an undo step in a document — and a modifier-click
+      // for multi-select lands on the header often.
+      if (d.x === note.position.x && d.y === note.position.y) return;
       onUpdate(note.id, { position: { x: d.x, y: d.y } });
     },
-    [onUpdate, note.id],
+    [onUpdate, note.id, note.position.x, note.position.y],
   );
 
   const handleResizeStop = useCallback<RndResizeCallback>(
@@ -92,6 +107,14 @@ export default function DraggableNote({
     setIsFocused(true);
     onFocus(note.id);
   }, [onFocus, note.id]);
+
+  const handleMouseDown = useCallback(
+    (event: React.MouseEvent) => {
+      if (onSelect?.(event)) return;
+      handleFocus();
+    },
+    [onSelect, handleFocus],
+  );
 
   const handleBlur = useCallback(() => {
     setIsFocused(false);
@@ -188,21 +211,32 @@ export default function DraggableNote({
           flexDirection: "column",
           overflow: "hidden",
           borderRadius: "6px",
-          border: isFocused
+          // Three states, strongest first. Selected has to out-read focused:
+          // a multi-selection is usually looked at while focus sits elsewhere,
+          // so it carries a full-strength border plus a wider halo.
+          border: selected
+            ? (theme) =>
+              `2px solid rgba(${theme.vars.palette.primary.mainChannel} / 0.9)`
+            : isFocused
             ? (theme) =>
               `2px solid rgba(${theme.vars.palette.primary.mainChannel} / 0.5)`
             : "1px solid rgba(0, 0, 0, 0.1)",
-          boxShadow: isFocused
+          boxShadow: selected
+            ? (theme) =>
+              `0 8px 32px rgba(0,0,0,0.14), 0 0 0 5px rgba(${theme.vars.palette.primary.mainChannel} / 0.22), inset 0 1px 0 rgba(255,255,255,0.5)`
+            : isFocused
             ? (theme) =>
               `0 8px 32px rgba(0,0,0,0.12), 0 0 0 3px rgba(${theme.vars.palette.primary.mainChannel} / 0.08), inset 0 1px 0 rgba(255,255,255,0.5)`
             : "0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.5)",
           transition: "box-shadow 0.2s ease, border-color 0.2s ease",
           "&:hover": {
-            boxShadow:
-              "0 4px 16px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.5)",
+            boxShadow: selected
+              ? (theme) =>
+                `0 8px 32px rgba(0,0,0,0.14), 0 0 0 5px rgba(${theme.vars.palette.primary.mainChannel} / 0.22), inset 0 1px 0 rgba(255,255,255,0.5)`
+              : "0 4px 16px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.5)",
           },
         }}
-        onMouseDown={handleFocus}
+        onMouseDown={handleMouseDown}
       >
         {/* Header */}
         <Box
