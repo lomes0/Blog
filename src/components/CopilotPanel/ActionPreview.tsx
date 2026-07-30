@@ -1,6 +1,7 @@
 "use client";
 import { Box, Typography } from "@mui/material";
 import { AlertTriangle } from "lucide-react";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface ActionPreviewProps {
   /** Tool name, e.g. "insert_heading". */
@@ -42,7 +43,7 @@ const ActionPreview: React.FC<ActionPreviewProps> = (
     >
       {destructive && (
         <AlertTriangle
-          size={11}
+          size={ICON_SIZE.micro}
           style={{ marginRight: 4, verticalAlign: "-1px" }}
         />
       )}

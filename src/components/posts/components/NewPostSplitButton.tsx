@@ -84,14 +84,14 @@ export function NewPostSplitButton({
           ? [
             <MenuItem key="new-in-series" onClick={wrap(onNewPost)} dense>
               <ListItemIcon>
-                <Plus size={15} />
+                <Plus size={ICON_SIZE.dense} />
               </ListItemIcon>
               <ListItemText>New post in series</ListItemText>
             </MenuItem>,
             onAddRemovePosts && (
               <MenuItem key="add-remove" onClick={wrap(onAddRemovePosts)} dense>
                 <ListItemIcon>
-                  <FolderPlus size={15} />
+                  <FolderPlus size={ICON_SIZE.dense} />
                 </ListItemIcon>
                 <ListItemText>Add / remove posts</ListItemText>
               </MenuItem>
@@ -100,13 +100,13 @@ export function NewPostSplitButton({
           : [
             <MenuItem key="new-post" onClick={wrap(onNewPost)} dense>
               <ListItemIcon>
-                <Plus size={15} />
+                <Plus size={ICON_SIZE.dense} />
               </ListItemIcon>
               <ListItemText>New post</ListItemText>
             </MenuItem>,
             <MenuItem key="new-series" onClick={wrap(onNewSeries)} dense>
               <ListItemIcon>
-                <FolderPlus size={15} />
+                <FolderPlus size={ICON_SIZE.dense} />
               </ListItemIcon>
               <ListItemText>New series</ListItemText>
             </MenuItem>,

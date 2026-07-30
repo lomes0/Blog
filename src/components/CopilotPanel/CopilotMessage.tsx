@@ -228,7 +228,7 @@ const CopilotMessage: React.FC<CopilotMessageProps> = (
           {pendingParts.length === 0 && appliedParts.length > 0 && (
             <Chip
               size="small"
-              icon={<Check size={12} />}
+              icon={<Check size={ICON_SIZE.micro} />}
               label="Applied"
               color="success"
               variant="outlined"
@@ -248,7 +248,7 @@ const CopilotMessage: React.FC<CopilotMessageProps> = (
                 aria-label="Copy message"
                 sx={{ color: "text.secondary", p: 0.5 }}
               >
-                {copied ? <Check size={13} /> : <Copy size={13} />}
+                {copied ? <Check size={ICON_SIZE.inline} /> : <Copy size={ICON_SIZE.inline} />}
               </IconButton>
             </Tooltip>
           )}
@@ -260,7 +260,7 @@ const CopilotMessage: React.FC<CopilotMessageProps> = (
                 aria-label="Regenerate response"
                 sx={{ color: "text.secondary", p: 0.5 }}
               >
-                <RefreshCw size={13} />
+                <RefreshCw size={ICON_SIZE.inline} />
               </IconButton>
             </Tooltip>
           )}

@@ -29,6 +29,7 @@ import { AI_MODELS } from "@/lib/ai/models";
 import CopilotMessage from "./CopilotMessage";
 import QuickActions from "./QuickActions";
 import { loadCurrentThread, saveCurrentThread } from "./copilotStorage";
+import { ICON_SIZE } from "@/theme/icons";
 
 const PROVIDER_COLOR: Record<string, string> = {
   anthropic: "#D97757",
@@ -335,7 +336,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
                 flexShrink: 0,
               }}
             >
-              <Sparkles size={28} color="white" />
+              <Sparkles size={ICON_SIZE.large} color="white" />
             </Box>
             <Box sx={{ textAlign: "center" }}>
               <Typography variant="subtitle1" fontWeight={700} gutterBottom>
@@ -512,7 +513,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
             >
               {currentModel?.name ?? llmConfig.model}
             </Typography>
-            <ChevronDown size={12} />
+            <ChevronDown size={ICON_SIZE.micro} />
           </IconButton>
 
           <Menu
@@ -552,7 +553,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
           {isLoading
             ? (
               <IconButton onClick={stop} size="small">
-                <Square size={15} />
+                <Square size={ICON_SIZE.dense} />
               </IconButton>
             )
             : (
@@ -576,7 +577,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
                   transition: "background-color 0.15s",
                 }}
               >
-                <Send size={15} />
+                <Send size={ICON_SIZE.dense} />
               </IconButton>
             )}
         </Box>

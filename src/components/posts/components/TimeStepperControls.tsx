@@ -99,7 +99,7 @@ export const TimeStepperControls: React.FC<{
               "&:hover": { bgcolor: "warning.light", color: "warning.dark" },
             }}
           >
-            <Undo size={16} />
+            <Undo size={ICON_SIZE.dense} />
           </IconButton>
         </Tooltip>
       )}

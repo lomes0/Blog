@@ -428,10 +428,10 @@ export default function AITools(
         aria-expanded={open ? "true" : undefined}
         variant="contained"
         onClick={openMenu}
-        startIcon={<Sparkles size={16} />}
+        startIcon={<Sparkles size={ICON_SIZE.inline} />}
         endIcon={isLoading
           ? <CircularProgress size={14} color="inherit" />
-          : <ChevronDown size={15} />}
+          : <ChevronDown size={ICON_SIZE.dense} />}
         sx={{
           bgcolor: "primary.50",
           color: "primary.700",

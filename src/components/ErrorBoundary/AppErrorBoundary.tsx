@@ -10,6 +10,7 @@ import {
 } from "@mui/material";
 import { AlertCircle, Home, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface Props {
   children: ReactNode;
@@ -81,7 +82,7 @@ class AppErrorBoundary extends Component<Props, State> {
             }}
           >
             <AlertCircle
-              size={80}
+              size={ICON_SIZE.display}
               style={{
                 color: "var(--mui-palette-error-main)",
                 marginBottom: 24,

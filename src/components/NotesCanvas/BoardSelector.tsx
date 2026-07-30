@@ -51,7 +51,7 @@ function BoardContextMenu({
       onClose={onClose}
     >
       <MenuItem onClick={onRenameClick} dense>
-        <FilePen size={16} style={{ marginRight: 8 }} />
+        <FilePen size={ICON_SIZE.dense} style={{ marginRight: 8 }} />
         Rename
       </MenuItem>
       <MenuItem
@@ -60,7 +60,7 @@ function BoardContextMenu({
         disabled={!canDelete}
         sx={{ color: canDelete ? "error.main" : undefined }}
       >
-        <Trash2 size={16} style={{ marginRight: 8 }} />
+        <Trash2 size={ICON_SIZE.dense} style={{ marginRight: 8 }} />
         Delete
       </MenuItem>
     </Menu>

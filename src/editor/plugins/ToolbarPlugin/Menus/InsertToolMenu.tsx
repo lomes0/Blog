@@ -85,7 +85,7 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
         aria-expanded={open ? "true" : undefined}
         aria-label="Insert"
         onClick={handleClick}
-        startIcon={<Plus size={16} />}
+        startIcon={<Plus size={ICON_SIZE.inline} />}
         endIcon={<ChevronDown size={ICON_SIZE.inline} />}
         sx={{
           color: "text.secondary",

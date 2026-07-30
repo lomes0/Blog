@@ -3,6 +3,7 @@ import { alpha, Box, Typography } from "@mui/material";
 import { StickyNote } from "lucide-react";
 import StaticNoteCard from "./StaticNoteCard";
 import type { NotesCanvas as CanvasData } from "@/types/notes";
+import { ICON_SIZE } from "@/theme/icons";
 
 const VIRTUAL_CANVAS_WIDTH = 1920;
 const VIRTUAL_CANVAS_HEIGHT = 1080;
@@ -47,7 +48,7 @@ export default function NotesCanvasPreview(
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <StickyNote
-            size={20}
+            size={ICON_SIZE.dense}
             style={{ color: "var(--mui-palette-text-secondary)" }}
           />
           <Typography
@@ -106,7 +107,7 @@ export default function NotesCanvasPreview(
                 color: "text.secondary",
               }}
             >
-              <StickyNote size={48} style={{ opacity: 0.3 }} />
+              <StickyNote size={ICON_SIZE.large} style={{ opacity: 0.3 }} />
               <Typography variant="body2" sx={{ opacity: 0.7 }}>
                 No notes yet
               </Typography>

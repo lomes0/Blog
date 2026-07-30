@@ -87,7 +87,7 @@ export function PostRowContextMenu({
           ...(open && { opacity: 1 }),
         }}
       >
-        <MoreHorizontal size={16} />
+        <MoreHorizontal size={ICON_SIZE.dense} />
       </IconButton>
       <Menu
         anchorEl={anchor}
@@ -100,7 +100,7 @@ export function PostRowContextMenu({
       >
         <MenuItem onClick={wrap(onRename)} dense>
           <ListItemIcon>
-            <Pencil size={15} />
+            <Pencil size={ICON_SIZE.dense} />
           </ListItemIcon>
           <ListItemText>Rename</ListItemText>
         </MenuItem>
@@ -114,7 +114,7 @@ export function PostRowContextMenu({
             onClick={wrap(() => onReorder("up"))}
           >
             <ListItemIcon>
-              <ChevronUp size={15} />
+              <ChevronUp size={ICON_SIZE.dense} />
             </ListItemIcon>
             <ListItemText>Move up</ListItemText>
           </MenuItem>,
@@ -125,7 +125,7 @@ export function PostRowContextMenu({
             onClick={wrap(() => onReorder("down"))}
           >
             <ListItemIcon>
-              <ChevronDown size={15} />
+              <ChevronDown size={ICON_SIZE.dense} />
             </ListItemIcon>
             <ListItemText>Move down</ListItemText>
           </MenuItem>,
@@ -136,7 +136,7 @@ export function PostRowContextMenu({
             onClick={wrap(() => onReorder("top"))}
           >
             <ListItemIcon>
-              <ArrowUpToLine size={15} />
+              <ArrowUpToLine size={ICON_SIZE.dense} />
             </ListItemIcon>
             <ListItemText>Move to top</ListItemText>
           </MenuItem>,
@@ -147,7 +147,7 @@ export function PostRowContextMenu({
             onClick={wrap(() => onReorder("bottom"))}
           >
             <ListItemIcon>
-              <ArrowDownToLine size={15} />
+              <ArrowDownToLine size={ICON_SIZE.dense} />
             </ListItemIcon>
             <ListItemText>Move to bottom</ListItemText>
           </MenuItem>,
@@ -164,7 +164,7 @@ export function PostRowContextMenu({
             sx={{ justifyContent: "space-between" }}
           >
             <ListItemIcon>
-              <FolderOpen size={15} />
+              <FolderOpen size={ICON_SIZE.dense} />
             </ListItemIcon>
             <ListItemText>Move to series</ListItemText>
             <ChevronRight
@@ -178,7 +178,7 @@ export function PostRowContextMenu({
           <span>
             <MenuItem dense disabled>
               <ListItemIcon>
-                <Tag size={15} />
+                <Tag size={ICON_SIZE.dense} />
               </ListItemIcon>
               <ListItemText>Edit tags</ListItemText>
             </MenuItem>
@@ -189,7 +189,7 @@ export function PostRowContextMenu({
 
         <MenuItem onClick={wrap(onDelete)} dense sx={{ color: "error.main" }}>
           <ListItemIcon sx={{ color: "inherit" }}>
-            <Trash2 size={15} />
+            <Trash2 size={ICON_SIZE.dense} />
           </ListItemIcon>
           <ListItemText>
             {mode === "series" ? "Delete series" : "Delete"}

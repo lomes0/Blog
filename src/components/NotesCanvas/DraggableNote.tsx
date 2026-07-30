@@ -364,16 +364,16 @@ export default function DraggableNote({
           onClick={handleStopPropagation}
         >
           <MenuItem onClick={handleCut} dense>
-            <Scissors size={15} style={{ marginRight: 8 }} />
+            <Scissors size={ICON_SIZE.dense} style={{ marginRight: 8 }} />
             Cut
           </MenuItem>
           <MenuItem onClick={handleCopy} dense>
-            <Copy size={15} style={{ marginRight: 8 }} />
+            <Copy size={ICON_SIZE.dense} style={{ marginRight: 8 }} />
             Copy
           </MenuItem>
           <Divider />
           <MenuItem onClick={handleDelete} dense sx={{ color: "error.main" }}>
-            <Trash2 size={15} style={{ marginRight: 8 }} />
+            <Trash2 size={ICON_SIZE.dense} style={{ marginRight: 8 }} />
             Delete
           </MenuItem>
         </Menu>

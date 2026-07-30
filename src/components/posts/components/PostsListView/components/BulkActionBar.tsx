@@ -134,7 +134,7 @@ export function BulkActionBar(
         >
           <MenuItem dense onClick={() => handleMove(null)}>
             <ListItemIcon>
-              <FolderMinus size={15} />
+              <FolderMinus size={ICON_SIZE.dense} />
             </ListItemIcon>
             <ListItemText>No series (standalone)</ListItemText>
           </MenuItem>
@@ -146,7 +146,7 @@ export function BulkActionBar(
               onClick={() => handleMove(s.id)}
             >
               <ListItemIcon>
-                <FolderOpen size={15} />
+                <FolderOpen size={ICON_SIZE.dense} />
               </ListItemIcon>
               <ListItemText>{s.title}</ListItemText>
             </MenuItem>
@@ -191,7 +191,7 @@ export function BulkActionBar(
             p: 0.5,
           }}
         >
-          <X size={16} />
+          <X size={ICON_SIZE.dense} />
         </Button>
       </Paper>
     </Fade>

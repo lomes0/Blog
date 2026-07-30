@@ -2,6 +2,7 @@
 import React, { Component, ErrorInfo, ReactNode } from "react";
 import { Alert, Button, Card, CardContent, Typography } from "@mui/material";
 import { AlertCircle, RefreshCw } from "lucide-react";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface Props {
   children: ReactNode;
@@ -76,7 +77,7 @@ class CardErrorBoundary extends Component<Props, State> {
             }}
           >
             <AlertCircle
-              size={48}
+              size={ICON_SIZE.large}
               style={{
                 color: "var(--mui-palette-error-main)",
                 marginBottom: 16,

@@ -15,6 +15,7 @@ import { useState } from "react";
 import { useTheme } from "@mui/material/styles";
 import { DateDisplay } from "@/components/shared/DateDisplay";
 import { actions, useDispatch } from "@/store";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface KanbanBoardProps {
   documents: Post[];
@@ -210,7 +211,7 @@ export default function KanbanBoard(
                               }}
                             >
                               <GripVertical
-                                size={16}
+                                size={ICON_SIZE.inline}
                                 style={{
                                   color: "var(--mui-palette-text-disabled)",
                                   marginTop: "1.6px",

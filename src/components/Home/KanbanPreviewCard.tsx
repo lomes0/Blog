@@ -2,6 +2,7 @@
 import { Box, Typography } from "@mui/material";
 import { Kanban } from "lucide-react";
 import { Post } from "@/types";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface KanbanPreviewCardProps {
   documents: Post[];
@@ -58,7 +59,7 @@ export default function KanbanPreviewCard({
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <Kanban
-            size={20}
+            size={ICON_SIZE.dense}
             style={{ color: "var(--mui-palette-text-secondary)" }}
           />
           <Typography

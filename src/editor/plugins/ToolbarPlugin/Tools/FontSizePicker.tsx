@@ -1,6 +1,7 @@
 import { Minus, Plus } from "lucide-react";
 import { Box, IconButton, SxProps, TextField, Theme } from "@mui/material";
 import { useCallback } from "react";
+import { ICON_SIZE } from "@/theme/icons";
 
 const MIN_ALLOWED_FONT_SIZE = 8;
 const MAX_ALLOWED_FONT_SIZE = 72;
@@ -78,7 +79,7 @@ export const FontSizePicker = ({ fontSize, updateFontSize, onBlur, sx }: {
           }}
           aria-label="decrease font size"
         >
-          <Minus size={16} />
+          <Minus size={ICON_SIZE.dense} />
         </IconButton>
         <TextField
           hiddenLabel
@@ -161,7 +162,7 @@ export const FontSizePicker = ({ fontSize, updateFontSize, onBlur, sx }: {
           }}
           aria-label="increase font size"
         >
-          <Plus size={16} />
+          <Plus size={ICON_SIZE.dense} />
         </IconButton>
       </Box>
     )

@@ -155,8 +155,8 @@ export default function RevisionsSection({
                   <Chip
                     size="small"
                     icon={isCloud
-                      ? <Cloud size={11} />
-                      : <Smartphone size={11} />}
+                      ? <Cloud size={ICON_SIZE.micro} />
+                      : <Smartphone size={ICON_SIZE.micro} />}
                     label={isCloud ? "Cloud" : "Local"}
                     sx={{
                       height: 16,

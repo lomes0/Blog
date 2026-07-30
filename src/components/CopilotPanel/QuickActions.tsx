@@ -1,22 +1,23 @@
 "use client";
 import { Box, Chip } from "@mui/material";
 import { ListPlus, SpellCheck, Text } from "lucide-react";
+import { ICON_SIZE } from "@/theme/icons";
 
 const QUICK_ACTIONS = [
   {
     label: "Summarize doc",
     prompt: "Summarize this document in 3 bullet points.",
-    icon: <Text size={13} />,
+    icon: <Text size={ICON_SIZE.inline} />,
   },
   {
     label: "Fix grammar",
     prompt: "Fix any grammar and spelling mistakes.",
-    icon: <SpellCheck size={13} />,
+    icon: <SpellCheck size={ICON_SIZE.inline} />,
   },
   {
     label: "Add section",
     prompt: "Suggest and add a new section to this document.",
-    icon: <ListPlus size={13} />,
+    icon: <ListPlus size={ICON_SIZE.inline} />,
   },
 ];
 

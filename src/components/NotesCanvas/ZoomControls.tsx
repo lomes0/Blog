@@ -2,6 +2,7 @@
 import { Box, Divider, IconButton, Tooltip, Typography } from "@mui/material";
 import { ZoomIn, ZoomOut } from "lucide-react";
 import { NotesZoom } from "@/hooks/useNotesZoom";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface ZoomControlsProps {
   zoom: NotesZoom;
@@ -33,7 +34,7 @@ export default function ZoomControls({ zoom }: ZoomControlsProps) {
               disabled={!canZoomOut}
               sx={{ borderRadius: 0, px: 0.5, height: "100%" }}
             >
-              <ZoomOut size={15} />
+              <ZoomOut size={ICON_SIZE.dense} />
             </IconButton>
           </span>
         </Tooltip>
@@ -65,7 +66,7 @@ export default function ZoomControls({ zoom }: ZoomControlsProps) {
               disabled={!canZoomIn}
               sx={{ borderRadius: 0, px: 0.5, height: "100%" }}
             >
-              <ZoomIn size={15} />
+              <ZoomIn size={ICON_SIZE.dense} />
             </IconButton>
           </span>
         </Tooltip>

@@ -103,17 +103,17 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ open, onClose }) => {
             >
               <Tooltip title="System">
                 <ToggleButton value="system" aria-label="System">
-                  <Computer size={16} />
+                  <Computer size={ICON_SIZE.dense} />
                 </ToggleButton>
               </Tooltip>
               <Tooltip title="Light">
                 <ToggleButton value="light" aria-label="Light">
-                  <Sun size={16} />
+                  <Sun size={ICON_SIZE.dense} />
                 </ToggleButton>
               </Tooltip>
               <Tooltip title="Dark">
                 <ToggleButton value="dark" aria-label="Dark">
-                  <Moon size={16} />
+                  <Moon size={ICON_SIZE.dense} />
                 </ToggleButton>
               </Tooltip>
             </ToggleButtonGroup>
@@ -142,7 +142,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ open, onClose }) => {
                     disabled={sidebarFontSize <= 10}
                     aria-label="Decrease sidebar font size"
                   >
-                    <Minus size={16} />
+                    <Minus size={ICON_SIZE.dense} />
                   </IconButton>
                 </span>
               </Tooltip>
@@ -171,7 +171,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ open, onClose }) => {
                     disabled={sidebarFontSize >= 24}
                     aria-label="Increase sidebar font size"
                   >
-                    <Plus size={16} />
+                    <Plus size={ICON_SIZE.dense} />
                   </IconButton>
                 </span>
               </Tooltip>
@@ -232,7 +232,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ open, onClose }) => {
               {AI_MODELS.map((model) => (
                 <MenuItem key={model.id} value={model.id}>
                   <ListItemIcon>
-                    <AlignLeft size={16} />
+                    <AlignLeft size={ICON_SIZE.dense} />
                   </ListItemIcon>
                   <ListItemText
                     primary={model.name}

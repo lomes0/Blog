@@ -4,6 +4,7 @@ import { Box, Tooltip } from "@mui/material";
 import { FileText, Folder } from "lucide-react";
 import type { SeriesGroupItem } from "@/utils/posts/seriesGrouping";
 import { SafeNavigationLink } from "./SafeNavigationLink";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface CollapsedRailProps {
   /** All active-post groups: series collections and standalone posts. */
@@ -117,7 +118,7 @@ export const CollapsedRail: React.FC<CollapsedRailProps> = ({
               selected={selected}
               title={`${g.series.title} · ${g.posts.length}`}
             >
-              <Folder size={20} strokeWidth={1.7} />
+              <Folder size={ICON_SIZE.dense} strokeWidth={1.7} />
               <CountBadge count={g.posts.length} />
             </RailItem>
           );
@@ -137,7 +138,7 @@ export const CollapsedRail: React.FC<CollapsedRailProps> = ({
             selected={selected}
             title={name}
           >
-            <FileText size={20} strokeWidth={1.7} />
+            <FileText size={ICON_SIZE.dense} strokeWidth={1.7} />
           </RailItem>
         );
       })}

@@ -52,7 +52,7 @@ export default function NotesPage() {
           }}
         >
           <StickyNote
-            size={20}
+            size={ICON_SIZE.dense}
             style={{ color: "var(--mui-palette-text-secondary)" }}
           />
           <BoardSelector

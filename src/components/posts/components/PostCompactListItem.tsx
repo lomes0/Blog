@@ -16,6 +16,7 @@ import { PendingTimeChange } from "@/types/posts";
 import { TimeStepperControls } from "./TimeStepperControls";
 import { formatFullDate } from "@/utils/dateFormat";
 import type { InlineRenameResult } from "@/hooks/useInlineRename";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface PostCompactListItemProps {
   post: Post;
@@ -201,7 +202,7 @@ const PostCompactListItem: React.FC<PostCompactListItemProps> = ({
                     },
                   }}
                 >
-                  <Trash2 size={15} />
+                  <Trash2 size={ICON_SIZE.dense} />
                 </IconButton>
               </Tooltip>
             )}

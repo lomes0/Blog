@@ -15,6 +15,7 @@ import { ListDensity } from "../types";
 import { PostRow } from "./PostRow";
 import { PostRowContextMenu } from "./PostRowContextMenu";
 import type { InlineRenameResult } from "@/hooks/useInlineRename";
+import { ICON_SIZE } from "@/theme/icons";
 
 const SERIES_INLINE_LIMIT = 20;
 const SERIES_PREVIEW_COUNT = 3;
@@ -206,7 +207,7 @@ export const SeriesRow = React.memo(function SeriesRow({
 
         {/* Chevron — direct flex sibling so it aligns with the title */}
         <ChevronRight
-          size={16}
+          size={ICON_SIZE.inline}
           style={{
             color: "var(--mui-palette-text-secondary)",
             flexShrink: 0,

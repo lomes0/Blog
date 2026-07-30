@@ -24,6 +24,7 @@ import {
   removeFromHistory,
   saveCurrentThread,
 } from "./copilotStorage";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface CopilotPanelProps {
   documentId: string;
@@ -135,7 +136,7 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
             onClick={handleNewConversation}
             aria-label="New conversation"
           >
-            <Plus size={16} />
+            <Plus size={ICON_SIZE.dense} />
           </IconButton>
         </Tooltip>
 
@@ -177,7 +178,7 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
             onClick={openHistory}
             aria-label="Conversation history"
           >
-            <History size={16} />
+            <History size={ICON_SIZE.dense} />
           </IconButton>
         </Tooltip>
         <IconButton
@@ -185,7 +186,7 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
           onClick={() => dispatch(actions.setCopilotOpen(false))}
           aria-label="Close Copilot"
         >
-          <X size={16} />
+          <X size={ICON_SIZE.dense} />
         </IconButton>
 
         <Menu

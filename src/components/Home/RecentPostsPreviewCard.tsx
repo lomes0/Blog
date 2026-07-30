@@ -4,6 +4,7 @@ import { FileText } from "lucide-react";
 import { Post } from "@/types";
 import { useRouter } from "next/navigation";
 import { DateDisplay } from "@/components/shared/DateDisplay";
+import { ICON_SIZE } from "@/theme/icons";
 
 interface RecentPostsPreviewCardProps {
   documents: Post[];
@@ -37,7 +38,7 @@ export default function RecentPostsPreviewCard({
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <FileText
-            size={20}
+            size={ICON_SIZE.dense}
             style={{ color: "var(--mui-palette-text-secondary)" }}
           />
           <Typography

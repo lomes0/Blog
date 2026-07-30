@@ -146,7 +146,7 @@ const EditorTopBar: React.FC = () => {
         items.push({
           label: "Posts",
           href: "/posts",
-          icon: <BookOpen size={16} style={{ marginRight: 4 }} />,
+          icon: <BookOpen size={ICON_SIZE.inline} style={{ marginRight: 4 }} />,
         });
         break;
 
@@ -154,13 +154,13 @@ const EditorTopBar: React.FC = () => {
         items.push({
           label: "Posts",
           href: "/posts",
-          icon: <BookOpen size={16} style={{ marginRight: 4 }} />,
+          icon: <BookOpen size={ICON_SIZE.inline} style={{ marginRight: 4 }} />,
         });
         if (segments.length > 1) {
           items.push({
             label: seriesTitle || "Series",
             href: `/series/${segments[1]}`,
-            icon: <Library size={16} style={{ marginRight: 4 }} />,
+            icon: <Library size={ICON_SIZE.inline} style={{ marginRight: 4 }} />,
           });
         }
         break;
@@ -169,7 +169,7 @@ const EditorTopBar: React.FC = () => {
         items.push({
           label: "Posts",
           href: "/posts",
-          icon: <BookOpen size={16} style={{ marginRight: 4 }} />,
+          icon: <BookOpen size={ICON_SIZE.inline} style={{ marginRight: 4 }} />,
         });
         if (segments.length > 1) {
           const sId = segments[1];
@@ -177,14 +177,14 @@ const EditorTopBar: React.FC = () => {
             items.push({
               label: seriesTitle || "Series",
               href: `/series/${sId}`,
-              icon: <Library size={16} style={{ marginRight: 4 }} />,
+              icon: <Library size={ICON_SIZE.inline} style={{ marginRight: 4 }} />,
             });
             items.push({ label: "Edit", href: `/series/${sId}/edit` });
           } else {
             items.push({
               label: seriesTitle || "Series",
               href: `/series/${sId}`,
-              icon: <Library size={16} style={{ marginRight: 4 }} />,
+              icon: <Library size={ICON_SIZE.inline} style={{ marginRight: 4 }} />,
             });
           }
         }
@@ -194,7 +194,7 @@ const EditorTopBar: React.FC = () => {
         items.push({
           label: "Dashboard",
           href: "/dashboard",
-          icon: <LayoutDashboard size={16} style={{ marginRight: 4 }} />,
+          icon: <LayoutDashboard size={ICON_SIZE.inline} style={{ marginRight: 4 }} />,
         });
         break;
 
@@ -202,12 +202,12 @@ const EditorTopBar: React.FC = () => {
         items.push({
           label: "Posts",
           href: "/posts",
-          icon: <BookOpen size={16} style={{ marginRight: 4 }} />,
+          icon: <BookOpen size={ICON_SIZE.inline} style={{ marginRight: 4 }} />,
         });
         items.push({
           label: "New Post",
           href: "/new",
-          icon: <PenLine size={16} style={{ marginRight: 4 }} />,
+          icon: <PenLine size={ICON_SIZE.inline} style={{ marginRight: 4 }} />,
         });
         break;
 
@@ -216,13 +216,13 @@ const EditorTopBar: React.FC = () => {
         items.push({
           label: "Posts",
           href: "/posts",
-          icon: <BookOpen size={16} style={{ marginRight: 4 }} />,
+          icon: <BookOpen size={ICON_SIZE.inline} style={{ marginRight: 4 }} />,
         });
         if (docSeriesId) {
           items.push({
             label: docSeriesTitle || "Series",
             href: `/series/${docSeriesId}`,
-            icon: <Library size={16} style={{ marginRight: 4 }} />,
+            icon: <Library size={ICON_SIZE.inline} style={{ marginRight: 4 }} />,
           });
         }
         items.push({
@@ -243,7 +243,7 @@ const EditorTopBar: React.FC = () => {
         items.push({
           label: "Notes",
           href: "/notes",
-          icon: <StickyNote size={16} style={{ marginRight: 4 }} />,
+          icon: <StickyNote size={ICON_SIZE.inline} style={{ marginRight: 4 }} />,
         });
         break;
 
@@ -289,7 +289,7 @@ const EditorTopBar: React.FC = () => {
             aria-label="Back to view"
             sx={{ flexShrink: 0, color: "text.secondary", mr: 0.25 }}
           >
-            <ArrowLeft size={16} strokeWidth={2} />
+            <ArrowLeft size={ICON_SIZE.dense} strokeWidth={2} />
           </IconButton>
         </Tooltip>
       )}
@@ -438,7 +438,7 @@ const EditorTopBar: React.FC = () => {
                   }}
                 >
                   <FileText
-                    size={13}
+                    size={ICON_SIZE.inline}
                     style={{
                       color: "var(--mui-palette-text-secondary)",
                       flexShrink: 0,
@@ -536,7 +536,7 @@ const EditorTopBar: React.FC = () => {
                             },
                           }}
                         >
-                          <X size={11} />
+                          <X size={ICON_SIZE.micro} />
                         </IconButton>
                       </Box>
                     )
@@ -569,7 +569,7 @@ const EditorTopBar: React.FC = () => {
                     "&:hover": { color: "primary.main" },
                   }}
                 >
-                  <Plus size={15} />
+                  <Plus size={ICON_SIZE.dense} />
                 </IconButton>
               </Tooltip>
             )}
@@ -605,7 +605,7 @@ const EditorTopBar: React.FC = () => {
                 "&:hover": { color: "primary.main" },
               }}
             >
-              <Plus size={15} />
+              <Plus size={ICON_SIZE.dense} />
             </IconButton>
           </Tooltip>
         </>

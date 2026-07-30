@@ -6,6 +6,7 @@ import { Box, Card, CardActionArea, Tooltip } from "@mui/material";
 import { Pencil } from "lucide-react";
 import Link from "next/link";
 import { DocumentStatus } from "@/types";
+import { ICON_SIZE } from "@/theme/icons";
 
 /**
  * Simplified props interface for blog posts
@@ -119,7 +120,7 @@ const CardBase: React.FC<SimplifiedCardBaseProps> = ({
           {isDirty && (
             <Tooltip title="Unsaved changes" arrow placement="top">
               <Pencil
-                size={16}
+                size={ICON_SIZE.inline}
                 style={{
                   color: "var(--mui-palette-primary-main)",
                   opacity: 0.75,

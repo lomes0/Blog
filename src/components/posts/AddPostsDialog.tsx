@@ -57,7 +57,7 @@ function PostListItem(
         </ListItemIcon>
         <ListItemIcon sx={{ minWidth: 36 }}>
           <FileText
-            size={20}
+            size={ICON_SIZE.dense}
             style={{
               color: iconColor === "primary"
                 ? "var(--mui-palette-primary-main)"
@@ -189,7 +189,7 @@ const AddPostsDialog: React.FC<AddPostsDialogProps> = ({
           ? (
             <Box sx={{ textAlign: "center", py: 6, px: 2 }}>
               <Search
-                size={48}
+                size={ICON_SIZE.large}
                 style={{
                   color: "var(--mui-palette-text-secondary)",
                   marginBottom: 16,

@@ -1,6 +1,7 @@
 import React from "react";
 import { ToggleButton, ToggleButtonGroup, Tooltip } from "@mui/material";
 import { LayoutGrid, List } from "lucide-react";
+import { ICON_SIZE } from "@/theme/icons";
 
 export type ViewType = "grid" | "compact";
 
@@ -51,12 +52,12 @@ export const ViewToggle: React.FC<ViewToggleProps> = ({ view, onChange }) => {
     >
       <ToggleButton value="grid" aria-label="grid view">
         <Tooltip title="Grid View">
-          <LayoutGrid size={16} strokeWidth={2} />
+          <LayoutGrid size={ICON_SIZE.dense} strokeWidth={2} />
         </Tooltip>
       </ToggleButton>
       <ToggleButton value="compact" aria-label="compact list view">
         <Tooltip title="Compact List">
-          <List size={16} strokeWidth={2} />
+          <List size={ICON_SIZE.dense} strokeWidth={2} />
         </Tooltip>
       </ToggleButton>
     </ToggleButtonGroup>
