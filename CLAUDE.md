@@ -185,6 +185,22 @@ wrapper, and `no-restricted-imports` bars `getServerSession` and `authOptions`
 from `src/app/api/**`. Exemptions are `api/auth/**` (it *is* the auth handler)
 and `api/og` (edge runtime, reads nothing).
 
+Request bodies are validated, not cast. `(await request.json()) as SomeType` is a
+compile-time fiction over attacker-controlled JSON, and a third
+`no-restricted-syntax` rule bans `request.json()` under `src/app/api/**` for that
+reason. Read a body with `parseBody(request, schema)` from `src/lib/api-utils.ts`,
+which 400s with the offending field path. (`request.formData()` and `.text()` are
+untouched — the upload and export routes need them.)
+
+Prefer `.strict()` on update schemas. A field you did not mean to expose is then a
+400 naming it rather than a silent write: that is what keeps `parentId` /
+`seriesId` / `rank` out of `PATCH /api/documents/[id]`, where passing one used to
+reparent a document into any other post with no check on the destination.
+Container changes belong to the `/move` routes, which authorize the destination,
+refuse parent cycles and mint a rank — and `PostUpdateInput` omits those three
+fields so the client cannot express the mistake either. Document schemas live in
+`src/app/api/documents/schemas.ts`; smaller ones sit in the route file.
+
 Authenticating is not authorizing. Do not call a `find…` function and then
 compare author ids by hand — use the authorized fetches in `src/lib/access.ts`,
 which return the row only after proving the caller may have it, so forgetting

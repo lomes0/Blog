@@ -1,4 +1,4 @@
-import { ApiError, userRoute } from "@/lib/api-utils";
+import { parseBody, userRoute } from "@/lib/api-utils";
 import { requireCanvas } from "@/lib/access";
 import {
   createNote,
@@ -6,8 +6,23 @@ import {
   getOrCreateDefaultCanvas,
 } from "@/repositories/notes";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
+
+// `canvasId` is optional: without one the note goes to the caller's default
+// canvas. With one, the route proves they own it first.
+const createNoteSchema = z.object({
+  positionX: z.number(),
+  positionY: z.number(),
+  width: z.number(),
+  height: z.number(),
+  content: z.string(),
+  title: z.string().optional(),
+  color: z.string().optional(),
+  zIndex: z.number().int().optional(),
+  canvasId: z.string().uuid().optional(),
+}).strict();
 
 // GET /api/notes - Get all notes for user's default canvas
 export const GET = userRoute(async (_request, { user }) => {
@@ -21,7 +36,6 @@ export const GET = userRoute(async (_request, { user }) => {
 
 // POST /api/notes - Create new note
 export const POST = userRoute(async (request, { user }) => {
-  const body = await request.json();
   const {
     positionX,
     positionY,
@@ -32,26 +46,11 @@ export const POST = userRoute(async (request, { user }) => {
     color,
     zIndex,
     canvasId,
-  } = body;
-
-  // Validate required fields
-  if (
-    typeof positionX !== "number" ||
-    typeof positionY !== "number" ||
-    typeof width !== "number" ||
-    typeof height !== "number" ||
-    typeof content !== "string"
-  ) {
-    throw new ApiError(
-      400,
-      "Invalid Input",
-      "Missing or invalid required fields",
-    );
-  }
+  } = await parseBody(request, createNoteSchema);
 
   // Resolve the target canvas
   let targetCanvasId: string;
-  if (canvasId && typeof canvasId === "string") {
+  if (canvasId) {
     await requireCanvas(
       canvasId,
       user,

@@ -46,7 +46,6 @@ export function useDocumentSubmit(
       partial.createdAt = input.createdAt;
     }
     if (input.status !== currentStatus) partial.status = input.status;
-    if (document?.parentId) partial.parentId = document.parentId;
 
     if (Object.keys(partial).length === 0) return;
     await dispatch(actions.updatePost({ id, partial }));

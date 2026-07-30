@@ -1,16 +1,21 @@
-import { ApiError, optionalUserRoute, userRoute } from "@/lib/api-utils";
+import {
+  ApiError,
+  optionalUserRoute,
+  parseBody,
+  userRoute,
+} from "@/lib/api-utils";
 import { requireDocument } from "@/lib/access";
 import {
   deleteDocument,
   findEditorDocument,
   updateDocument,
 } from "@/repositories/document";
-import { PostUpdateInput } from "@/types";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { validate } from "uuid";
 import { Prisma } from "@prisma/client";
 import { validateHandle } from "../utils";
+import { documentUpdateSchema } from "../schemas";
 
 export const dynamic = "force-dynamic";
 
@@ -42,10 +47,7 @@ export const PATCH = userRoute<{ id: string }>(
       subtitle: "You are not authorized to Edit this document",
     });
 
-    const body: PostUpdateInput = await request.json();
-    if (!body) {
-      throw new ApiError(400, "Bad Request", "Invalid request body");
-    }
+    const body = await parseBody(request, documentUpdateSchema);
 
     const input: Prisma.DocumentUncheckedUpdateInput = {
       name: body.name,
@@ -55,15 +57,17 @@ export const PATCH = userRoute<{ id: string }>(
       published: body.published,
       collab: body.collab,
       private: body.private,
-      parentId: body.parentId,
       background_image: body.background_image,
       status: body.status,
       ...(body.description !== undefined && { description: body.description }),
       ...(body.tabLabel !== undefined && { tabLabel: body.tabLabel }),
     };
 
-    // Series membership changes go through PATCH /api/documents/[id]/move,
-    // which also assigns a rank in the destination container.
+    // Container changes — `parentId`, `seriesId`, `rank` — are not reachable from
+    // here: they are absent from `documentUpdateSchema`, which is `.strict()`, so
+    // sending one is a 400 naming the field. They go through PATCH
+    // /api/documents/[id]/move, which authorizes the destination, refuses parent
+    // cycles, and assigns a rank in the container the document lands in.
 
     if (body.handle && body.handle !== userPost.handle) {
       input.handle = body.handle.toLowerCase();
@@ -112,7 +116,9 @@ export const PATCH = userRoute<{ id: string }>(
       };
     }
 
-    if (body.data) {
+    // `head` names the revision the content belongs to, so content without one
+    // has nowhere to go — previously it reached Prisma as `where: { id: undefined }`.
+    if (body.data && body.head) {
       input.revisions = {
         connectOrCreate: {
           where: { id: body.head },

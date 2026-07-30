@@ -1,4 +1,9 @@
-import { ApiError, optionalUserRoute, userRoute } from "@/lib/api-utils";
+import {
+  ApiError,
+  optionalUserRoute,
+  parseBody,
+  userRoute,
+} from "@/lib/api-utils";
 import {
   attachmentPath,
   requireAttachmentRead,
@@ -7,8 +12,11 @@ import {
 import { NextResponse } from "next/server";
 import { readFile, writeFile } from "fs/promises";
 import { existsSync, statSync } from "fs";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
+
+const editAttachmentSchema = z.object({ content: z.string() }).strict();
 
 // Text-based file extensions that can be edited
 const EDITABLE_EXTENSIONS = new Set([
@@ -154,13 +162,7 @@ export const PUT = userRoute<{ filename: string }>(async (
     throw new ApiError(404, "File not found");
   }
 
-  // Parse request body
-  const body = await request.json();
-  const { content } = body;
-
-  if (typeof content !== "string") {
-    throw new ApiError(400, "Content must be a string");
-  }
+  const { content } = await parseBody(request, editAttachmentSchema);
 
   // Write the file
   await writeFile(filePath, content, "utf-8");

@@ -62,7 +62,6 @@ export function useSave(
   const revisionOpenedAt = useRef(0);
 
   const postId = post?.id;
-  const parentId = post?.parentId;
 
   const cancelRetry = useCallback(() => {
     if (retryTimer.current) {
@@ -140,7 +139,7 @@ export function useSave(
       await dispatch(
         actions.updatePost({
           id: postId,
-          partial: { head: headId, updatedAt, parentId, data },
+          partial: { head: headId, updatedAt, data },
         }),
       ).unwrap();
 
@@ -167,7 +166,7 @@ export function useSave(
     } finally {
       inFlight.current = false;
     }
-  }, [postId, parentId, dispatch, editorRef, errorAnnounce, cancelRetry]);
+  }, [postId, dispatch, editorRef, errorAnnounce, cancelRetry]);
 
   // Keep a live handle so unmount and event listeners never call a stale save.
   const saveRef = useRef(save);

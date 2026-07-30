@@ -1,8 +1,13 @@
-import { ApiError, publicRoute, userRoute } from "@/lib/api-utils";
+import { ApiError, parseBody, publicRoute, userRoute } from "@/lib/api-utils";
 import { requireDocument } from "@/lib/access";
 import { updateDocument } from "@/repositories/document";
 import { DocumentStatus } from "@/types";
 import { NextResponse } from "next/server";
+import { z } from "zod";
+
+const statusSchema = z.object({
+  status: z.nativeEnum(DocumentStatus),
+}).strict();
 
 export const dynamic = "force-dynamic";
 
@@ -21,15 +26,8 @@ export const PATCH = userRoute<{ id: string }>(
       subtitle: "You are not authorized to edit this document",
     });
 
-    const body = await request.json();
-    const { status } = body;
+    const { status } = await parseBody(request, statusSchema);
 
-    // Validate status
-    if (!status || !Object.values(DocumentStatus).includes(status)) {
-      throw new ApiError(400, "Bad Request", "Invalid status value");
-    }
-
-    // Update the document status
     const updatedPost = await updateDocument(params.id, {
       status,
     });

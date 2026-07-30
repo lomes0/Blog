@@ -1,16 +1,21 @@
-import { ApiError, userRoute } from "@/lib/api-utils";
+import { parseBody, userRoute } from "@/lib/api-utils";
 import { requireOwnedProject } from "@/lib/access";
 import { deleteProject, updateProject } from "@/repositories/project";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
-interface ProjectUpdateInput {
-  title?: string;
-  description?: string;
-  createdAt?: string;
-}
+// `authorId` and `rank` are absent: ownership is fixed, and a project's position
+// in the author's root list is set by PATCH /api/projects/[id]/move.
+const projectUpdateSchema = z.object({
+  title: z.string().min(1),
+  description: z.string(),
+  createdAt: z
+    .string()
+    .refine((value) => !Number.isNaN(Date.parse(value)), "must be a valid date"),
+}).partial().strict();
 
 // Projects are an authoring/organization concept, not public content — the same
 // reasoning the list route at `/api/projects` already applied to anonymous
@@ -35,10 +40,7 @@ export const PATCH = userRoute<{ id: string }>(
       "You are not authorized to update this project",
     );
 
-    const body = (await request.json()) as ProjectUpdateInput;
-    if (!body) {
-      throw new ApiError(400, "Bad Request", "No project data provided");
-    }
+    const body = await parseBody(request, projectUpdateSchema);
 
     const data = await updateProject(params.id, body);
 

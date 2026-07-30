@@ -1,17 +1,26 @@
-import { ApiError, userRoute } from "@/lib/api-utils";
+import { ApiError, parseBody, userRoute } from "@/lib/api-utils";
 import { requireDocument } from "@/lib/access";
 import { createRevision, findRevisionDocumentId } from "@/repositories/revision";
-import { Revision } from "@/types";
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
+import { z } from "zod";
+import { editorStateSchema } from "../documents/schemas";
 
 export const dynamic = "force-dynamic";
 
+// `authorId` is not accepted — it comes from the session, so a revision cannot be
+// attributed to someone else.
+const revisionSchema = z.object({
+  id: z.string().uuid(),
+  documentId: z.string().uuid(),
+  createdAt: z
+    .string()
+    .refine((value) => !Number.isNaN(Date.parse(value)), "must be a valid date"),
+  data: editorStateSchema,
+}).strict();
+
 export const POST = userRoute(async (request, { user }) => {
-  const body = (await request.json()) as Revision;
-  if (!body) {
-    throw new ApiError(400, "Bad Request", "No revision provided");
-  }
+  const body = await parseBody(request, revisionSchema);
 
   await requireDocument(body.documentId, user, "write", {
     subtitle: "You are not authorized to Edit this document",

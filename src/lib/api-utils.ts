@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import type { Session } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import type { z } from "zod";
 
 /**
  * Typed error class for API routes. Throw inside any route wrapper to return a
@@ -92,6 +93,61 @@ export function requireOwner(
   if (!ownerId || ownerId !== user.id) {
     throw new ApiError(403, "Forbidden", subtitle);
   }
+}
+
+// ─── Request bodies ──────────────────────────────────────────────────────────
+
+/**
+ * Read and validate a JSON request body, or throw a 400.
+ *
+ * `(await request.json()) as SomeType` is a compile-time fiction: the cast
+ * describes what a well-behaved client sends, and the handler then works with a
+ * value that was never checked against it. Routes that spread such a body into a
+ * Prisma `data` argument are assigning whichever columns the caller named, not
+ * the ones the route meant to expose.
+ *
+ * So parsing a body is spelled with a schema and nothing else — see the ESLint
+ * rule banning bare `request.json()` under `src/app/api`. The schema is also the
+ * readable answer to "what does this endpoint accept?", which a `Partial<…>`
+ * type alias never was.
+ *
+ * Prefer `.strict()` on update schemas: an unknown key is then a 400 that names
+ * the field, rather than a silently dropped one. That is what makes a field
+ * deliberately *not* accepted here — `parentId` on a document PATCH, say —
+ * enforceable rather than merely commented.
+ *
+ * @example
+ * const patchSchema = z.object({ name: z.string() }).strict();
+ * const body = await parseBody(request, patchSchema);
+ */
+export async function parseBody<S extends z.ZodTypeAny>(
+  request: Request,
+  schema: S,
+): Promise<z.infer<S>> {
+  let raw: unknown;
+  try {
+    raw = await request.json();
+  } catch {
+    throw new ApiError(
+      400,
+      "Bad Request",
+      "Request body must be valid JSON",
+    );
+  }
+
+  const parsed = schema.safeParse(raw);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    const field = issue?.path.join(".");
+    throw new ApiError(
+      400,
+      "Bad Request",
+      field
+        ? `${field}: ${issue.message}`
+        : issue?.message ?? "Invalid request body",
+    );
+  }
+  return parsed.data;
 }
 
 // ─── Route wrappers ──────────────────────────────────────────────────────────

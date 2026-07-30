@@ -1,4 +1,9 @@
-import { ApiError, optionalUserRoute, userRoute } from "@/lib/api-utils";
+import {
+  ApiError,
+  optionalUserRoute,
+  parseBody,
+  userRoute,
+} from "@/lib/api-utils";
 import { requireOwnedSeries } from "@/lib/access";
 import {
   deleteSeries,
@@ -8,14 +13,20 @@ import {
 } from "@/repositories/series";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
-interface SeriesUpdateInput {
-  title?: string;
-  description?: string;
-  createdAt?: string;
-}
+// `projectId` and `rank` are absent: a series' container and its position in it
+// are set by PATCH /api/series/[id]/move, which authorizes the destination
+// project and ranks the series among its members.
+const seriesUpdateSchema = z.object({
+  title: z.string().min(1),
+  description: z.string(),
+  createdAt: z
+    .string()
+    .refine((value) => !Number.isNaN(Date.parse(value)), "must be a valid date"),
+}).partial().strict();
 
 export const GET = optionalUserRoute<{ id: string }>(
   async (_request, { params, user }) => {
@@ -43,10 +54,7 @@ export const PATCH = userRoute<{ id: string }>(
       "You are not authorized to update this series",
     );
 
-    const body = (await request.json()) as SeriesUpdateInput;
-    if (!body) {
-      throw new ApiError(400, "Bad Request", "No series data provided");
-    }
+    const body = await parseBody(request, seriesUpdateSchema);
 
     const data = await updateSeries(params.id, body);
 

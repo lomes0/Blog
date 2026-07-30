@@ -1,4 +1,4 @@
-import { ApiError, requireOwner, userRoute } from "@/lib/api-utils";
+import { ApiError, parseBody, requireOwner, userRoute } from "@/lib/api-utils";
 import { requireDocument } from "@/lib/access";
 import { findDocument } from "@/repositories/document";
 import { findSeriesById } from "@/repositories/series";
@@ -38,15 +38,7 @@ export const PATCH = userRoute<{ id: string }>(
       subtitle: "You can only reorder your own documents",
     });
 
-    const parsed = moveSchema.safeParse(await request.json());
-    if (!parsed.success) {
-      throw new ApiError(
-        400,
-        "Bad Request",
-        parsed.error.issues[0]?.message ?? "Invalid request body",
-      );
-    }
-    const { destination, between } = parsed.data;
+    const { destination, between } = await parseBody(request, moveSchema);
 
     // Container exclusivity: a series destination wins over a parent.
     const seriesId = destination.seriesId ?? null;

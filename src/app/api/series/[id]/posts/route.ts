@@ -1,4 +1,9 @@
-import { ApiError, optionalUserRoute, userRoute } from "@/lib/api-utils";
+import {
+  ApiError,
+  optionalUserRoute,
+  parseBody,
+  userRoute,
+} from "@/lib/api-utils";
 import { requireDocument, requireOwnedSeries } from "@/lib/access";
 import {
   addPostToSeries,
@@ -11,8 +16,27 @@ import { findUnownedDocumentIds } from "@/repositories/document";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { validate } from "uuid";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
+
+const addPostSchema = z.object({
+  postId: z.string().uuid("Invalid post id"),
+}).strict();
+
+// `postsToAdd` accepts bare ids or legacy `{ postId, order }` objects; `order` is
+// ignored either way, since position within a series is a `rank`.
+const batchPostsSchema = z.object({
+  postsToAdd: z
+    .array(
+      z.union([
+        z.string().uuid(),
+        z.object({ postId: z.string().uuid() }).passthrough(),
+      ]),
+    )
+    .default([]),
+  postsToRemove: z.array(z.string().uuid()).default([]),
+}).strict();
 
 // GET /api/series/[id]/posts → get posts in series (ordered by rank)
 export const GET = optionalUserRoute<{ id: string }>(
@@ -49,16 +73,7 @@ export const POST = userRoute<{ id: string }>(
       "You can only add posts to your own series",
     );
 
-    const body = await request.json();
-    const { postId } = body;
-
-    if (!postId) {
-      throw new ApiError(400, "Bad Request", "Post ID is required");
-    }
-
-    if (!validate(postId)) {
-      throw new ApiError(400, "Bad Request", "Invalid post id");
-    }
+    const { postId } = await parseBody(request, addPostSchema);
 
     await requireDocument(postId, user, "own", {
       subtitle: "You can only add your own posts to series",
@@ -92,18 +107,11 @@ export const PATCH = userRoute<{ id: string }>(
       "You can only update posts in your own series",
     );
 
-    const body = await request.json();
-    // Accept either bare ids or legacy { postId, order } objects for add.
-    const postsToAdd: string[] = (body.postsToAdd ?? []).map(
-      (p: string | { postId: string }) => typeof p === "string" ? p : p.postId,
+    const body = await parseBody(request, batchPostsSchema);
+    const postsToAdd = body.postsToAdd.map((p) =>
+      typeof p === "string" ? p : p.postId
     );
-    const postsToRemove: string[] = body.postsToRemove ?? [];
-
-    for (const postId of [...postsToAdd, ...postsToRemove]) {
-      if (!validate(postId)) {
-        throw new ApiError(400, "Bad Request", `Invalid post id: ${postId}`);
-      }
-    }
+    const postsToRemove = body.postsToRemove;
 
     // Owning the series is not enough — every post named here must also be the
     // caller's. Without this, a well-formed request could pull another author's

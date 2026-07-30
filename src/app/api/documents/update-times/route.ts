@@ -1,17 +1,27 @@
-import { ApiError, userRoute } from "@/lib/api-utils";
+import { parseBody, userRoute } from "@/lib/api-utils";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
-interface TimeUpdate {
-  id: string;
-  createdAt: Date | string;
-}
-
-interface UpdateTimesRequest {
-  updates: TimeUpdate[];
-}
+// An unparseable date used to reach `new Date(...)` and land in the query as an
+// Invalid Date, which Prisma rejects as a 500.
+const updateTimesSchema = z.object({
+  updates: z
+    .array(
+      z.object({
+        id: z.string().uuid(),
+        createdAt: z
+          .string()
+          .refine(
+            (value) => !Number.isNaN(Date.parse(value)),
+            "must be a valid date",
+          ),
+      }).strict(),
+    )
+    .nonempty("No updates provided"),
+}).strict();
 
 /**
  * POST /api/documents/update-times
@@ -19,12 +29,7 @@ interface UpdateTimesRequest {
  * Only the author can update their documents' times
  */
 export const POST = userRoute(async (request, { user }) => {
-  const body: UpdateTimesRequest = await request.json();
-  const { updates } = body;
-
-  if (!updates || !Array.isArray(updates) || updates.length === 0) {
-    throw new ApiError(400, "Invalid request", "No updates provided");
-  }
+  const { updates } = await parseBody(request, updateTimesSchema);
 
   const userId = user.id;
 

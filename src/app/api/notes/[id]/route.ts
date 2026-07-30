@@ -1,38 +1,34 @@
-import { userRoute } from "@/lib/api-utils";
+import { parseBody, userRoute } from "@/lib/api-utils";
 import { requireOwnedNote } from "@/lib/access";
 import { deleteNote, updateNote } from "@/repositories/notes";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
 const MODIFY_DENIED = "You don't have permission to modify this note";
+
+// `canvasId` is absent on purpose: moving a note between canvases would need the
+// destination authorized, which this route does not do — it proves ownership of
+// the note's *current* canvas. `updateNote` spreads what it is given straight
+// into Prisma, so the schema is the allowlist.
+const updateNoteSchema = z.object({
+  positionX: z.number(),
+  positionY: z.number(),
+  width: z.number(),
+  height: z.number(),
+  title: z.string(),
+  content: z.string(),
+  color: z.string(),
+  zIndex: z.number().int(),
+}).partial().strict();
 
 // PATCH /api/notes/[id] - Update note
 export const PATCH = userRoute<{ id: string }>(
   async (request, { params, user }) => {
     await requireOwnedNote(params.id, user, MODIFY_DENIED);
 
-    const body = await request.json();
-    const {
-      positionX,
-      positionY,
-      width,
-      height,
-      title,
-      content,
-      color,
-      zIndex,
-    } = body;
-
-    const updates: Record<string, number | string | undefined> = {};
-    if (typeof positionX === "number") updates.positionX = positionX;
-    if (typeof positionY === "number") updates.positionY = positionY;
-    if (typeof width === "number") updates.width = width;
-    if (typeof height === "number") updates.height = height;
-    if (title !== undefined) updates.title = title;
-    if (typeof content === "string") updates.content = content;
-    if (typeof color === "string") updates.color = color;
-    if (typeof zIndex === "number") updates.zIndex = zIndex;
+    const updates = await parseBody(request, updateNoteSchema);
 
     const updatedNote = await updateNote(params.id, updates);
     return NextResponse.json({ data: updatedNote });

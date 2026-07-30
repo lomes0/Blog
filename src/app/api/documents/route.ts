@@ -1,14 +1,15 @@
-import { ApiError, userRoute } from "@/lib/api-utils";
+import { ApiError, parseBody, userRoute } from "@/lib/api-utils";
+import { requireDocument, requireOwnedSeries } from "@/lib/access";
 import {
   createDocument,
   findDocument,
   findDocumentsByAuthorId,
 } from "@/repositories/document";
-import { PostCreateInput } from "@/types";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { validateHandle } from "./utils";
+import { documentCreateSchema } from "./schemas";
 
 export const dynamic = "force-dynamic";
 
@@ -41,10 +42,7 @@ export const GET = userRoute(async (request, { user }) => {
 }, { signInMessage: "Please sign in to list your documents" });
 
 export const POST = userRoute(async (request, { user }) => {
-  const body = (await request.json()) as PostCreateInput;
-  if (!body) {
-    throw new ApiError(400, "Bad Request", "No document provided");
-  }
+  const body = await parseBody(request, documentCreateSchema);
 
   const userPost = await findDocument(body.id);
   if (userPost) {
@@ -52,6 +50,23 @@ export const POST = userRoute(async (request, { user }) => {
       403,
       "Unauthorized",
       "A document with this id already exists",
+    );
+  }
+
+  // A new document may be born inside a container — a tab under its parent, a
+  // post in a series — but the caller has to own where it lands. Otherwise this
+  // is the create-time half of the reparenting hole `PATCH /api/documents/[id]`
+  // had: a document grafted into someone else's post as a child tab.
+  if (body.parentId) {
+    await requireDocument(body.parentId, user, "own", {
+      subtitle: "You can only add tabs to your own document",
+    });
+  }
+  if (body.seriesId) {
+    await requireOwnedSeries(
+      body.seriesId,
+      user,
+      "You can only add posts to your own series",
     );
   }
 
@@ -117,6 +132,11 @@ export const POST = userRoute(async (request, { user }) => {
     };
   }
 
+  // `baseId` is provenance, and existence is all that is checked: it satisfies
+  // the foreign key, and a base the caller cannot read is dropped rather than
+  // refused because `duplicatePost` copies `baseId` along with the rest of a post
+  // — the copy is still valid without it. Nothing reads the reverse `forks`
+  // relation, so an unreadable base here confers no access and surfaces nowhere.
   if (body.baseId) {
     const basePost = await findDocument(body.baseId);
     if (basePost) input.baseId = body.baseId;

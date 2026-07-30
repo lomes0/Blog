@@ -1,4 +1,4 @@
-import { ApiError, userRoute } from "@/lib/api-utils";
+import { ApiError, parseBody, userRoute } from "@/lib/api-utils";
 import { requireOwnedProject, requireOwnedSeries } from "@/lib/access";
 import { findSeriesById } from "@/repositories/series";
 import { moveSeriesTx } from "@/repositories/ordering";
@@ -39,30 +39,18 @@ export const PATCH = userRoute<{ id: string }>(
       "You can only reorder your own series",
     );
 
-    const parsed = moveSchema.safeParse(await request.json());
-    if (!parsed.success) {
-      throw new ApiError(
-        400,
-        "Bad Request",
-        parsed.error.issues[0]?.message ?? "Invalid request body",
-      );
-    }
+    const { destination, between } = await parseBody(request, moveSchema);
 
     // Moving into a project: the destination must be the caller's own project.
-    const destProjectId = parsed.data.destination?.projectId;
-    if (destProjectId) {
+    if (destination?.projectId) {
       await requireOwnedProject(
-        destProjectId,
+        destination.projectId,
         user,
         "You can only move series into your own projects",
       );
     }
 
-    await moveSeriesTx({
-      id: params.id,
-      destination: parsed.data.destination,
-      between: parsed.data.between,
-    });
+    await moveSeriesTx({ id: params.id, destination, between });
 
     revalidatePath("/");
     revalidatePath("/series");

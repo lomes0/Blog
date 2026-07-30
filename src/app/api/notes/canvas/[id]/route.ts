@@ -1,9 +1,14 @@
-import { userRoute } from "@/lib/api-utils";
+import { parseBody, userRoute } from "@/lib/api-utils";
 import { requireCanvas } from "@/lib/access";
 import { deleteCanvas, updateCanvas } from "@/repositories/notes";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
+
+// `updateCanvas` passes its `data` argument straight to Prisma, so this schema is
+// the list of columns a rename may touch.
+const updateCanvasSchema = z.object({ name: z.string() }).strict();
 
 // GET /api/notes/canvas/[id] - Get a single canvas with its notes
 export const GET = userRoute<{ id: string }>(
@@ -30,8 +35,7 @@ export const PATCH = userRoute<{ id: string }>(
       "You don't have permission to update this canvas",
     );
 
-    const body = await request.json();
-    const { name } = body;
+    const { name } = await parseBody(request, updateCanvasSchema);
 
     const updatedCanvas = await updateCanvas(params.id, { name });
     return NextResponse.json({ data: updatedCanvas });

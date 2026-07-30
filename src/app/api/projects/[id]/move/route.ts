@@ -1,4 +1,4 @@
-import { ApiError, userRoute } from "@/lib/api-utils";
+import { ApiError, parseBody, userRoute } from "@/lib/api-utils";
 import { requireOwnedProject } from "@/lib/access";
 import { findProjectById } from "@/repositories/project";
 import { moveProjectTx } from "@/repositories/ordering";
@@ -32,16 +32,9 @@ export const PATCH = userRoute<{ id: string }>(
       "You can only reorder your own projects",
     );
 
-    const parsed = moveSchema.safeParse(await request.json());
-    if (!parsed.success) {
-      throw new ApiError(
-        400,
-        "Bad Request",
-        parsed.error.issues[0]?.message ?? "Invalid request body",
-      );
-    }
+    const { between } = await parseBody(request, moveSchema);
 
-    await moveProjectTx({ id: params.id, between: parsed.data.between });
+    await moveProjectTx({ id: params.id, between });
 
     revalidatePath("/");
     revalidatePath("/posts");

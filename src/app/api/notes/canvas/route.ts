@@ -1,12 +1,17 @@
-import { userRoute } from "@/lib/api-utils";
+import { parseBody, userRoute } from "@/lib/api-utils";
 import {
   createCanvas,
   findCanvasByAuthorId,
   getOrCreateDefaultCanvas,
 } from "@/repositories/notes";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
+
+const createCanvasSchema = z.object({
+  name: z.string().default("My Notes"),
+}).strict();
 
 // GET /api/notes/canvas - Get all canvases for the user (auto-creates Default if none exist)
 export const GET = userRoute(async (_request, { user }) => {
@@ -27,8 +32,7 @@ export const GET = userRoute(async (_request, { user }) => {
 
 // POST /api/notes/canvas - Create new canvas
 export const POST = userRoute(async (request, { user }) => {
-  const body = await request.json();
-  const { name = "My Notes" } = body;
+  const { name } = await parseBody(request, createCanvasSchema);
 
   const canvas = await createCanvas(user.id, name);
   return NextResponse.json({ data: canvas }, { status: 201 });

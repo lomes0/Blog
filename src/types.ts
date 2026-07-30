@@ -228,7 +228,22 @@ export type PostCreateInput =
     revisions?: Revision[];
   };
 
-export type PostUpdateInput = Partial<Omit<PostCreateInput, "id" | "type">>;
+/**
+ * The fields an update may change.
+ *
+ * A post's *container* is not among them. `parentId`, `seriesId` and `rank`
+ * describe where a post sits relative to others, which is a move: it has to
+ * authorize the destination, refuse parent cycles, and mint a rank among the new
+ * siblings — all of which `movePost` / `PATCH /api/documents/[id]/move` do in one
+ * transaction, and none of which a field-by-field patch can.
+ *
+ * Omitting them here is what makes that a fact rather than a convention. The
+ * server's update schema is `.strict()` about the same three fields, so the two
+ * sides of the seam agree; this half just means the mistake does not compile.
+ */
+export type PostUpdateInput = Partial<
+  Omit<PostCreateInput, "id" | "type" | "parentId" | "seriesId" | "rank">
+>;
 
 /** Where a post should land, plus where among its new siblings. */
 export type MovePostArg = {

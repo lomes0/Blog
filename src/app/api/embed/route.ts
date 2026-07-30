@@ -1,30 +1,14 @@
-import { ApiError, publicRoute } from "@/lib/api-utils";
+import { ApiError, parseBody, publicRoute } from "@/lib/api-utils";
 import { generateServerHtml } from "@/editor/utils/generateServerHtml";
+import { editorStateSchema } from "../documents/schemas";
 
 // Public: this renders editor state supplied in the request body and touches no
 // stored data, so there is nothing here to authorize against.
 export const POST = publicRoute(
   async (request) => {
-    const body = await request.json().catch(() => {
-      return null;
-    });
-
-    if (!body) {
-      throw new ApiError(
-        400,
-        "Invalid request",
-        "Request body is required and must be valid JSON",
-      );
-    }
-
-    // Validate that the body contains editor state data
-    if (!body.root) {
-      throw new ApiError(
-        400,
-        "Invalid editor state",
-        "Editor state must contain a root node",
-      );
-    }
+    // The body *is* the editor state here, so the schema carries the `root` check
+    // this route was already making by hand.
+    const body = await parseBody(request, editorStateSchema);
 
     const html = await generateServerHtml(body);
 

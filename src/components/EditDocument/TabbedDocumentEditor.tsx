@@ -273,8 +273,15 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     const tabId = moveDialogTabId;
     setMoveDialogTabId(null);
 
+    // A re-home, not a field edit: `movePost` authorizes the destination, refuses
+    // a parent cycle, and ranks the tab among its new siblings. Patching
+    // `parentId` did none of those — the tab landed carrying the rank it held in
+    // this post's container.
     await dispatch(
-      actions.updatePost({ id: tabId, partial: { parentId: moveTargetPostId } }),
+      actions.movePost({
+        id: tabId,
+        destination: { parentId: moveTargetPostId },
+      }),
     );
 
     setTabMetas((prev) => prev.filter((t) => t.id !== tabId));
@@ -287,8 +294,11 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
   }, [moveDialogTabId, moveTargetPostId, dispatch]);
 
   const handleSplitOff = useCallback(async (tabId: string) => {
-    // Detach the tab from this post — it becomes a standalone document.
-    await dispatch(actions.updatePost({ id: tabId, partial: { parentId: null } }));
+    // Detach the tab from this post — it becomes a standalone document, which
+    // means a move to the author's root list and a rank in it.
+    await dispatch(
+      actions.movePost({ id: tabId, destination: { parentId: null } }),
+    );
 
     setTabMetas((prev) => prev.filter((t) => t.id !== tabId));
     setMountedTabIds((prev) => {

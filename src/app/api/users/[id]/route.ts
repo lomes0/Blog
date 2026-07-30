@@ -1,17 +1,28 @@
 import {
   ApiError,
   optionalUserRoute,
+  parseBody,
   requireOwner,
   userRoute,
 } from "@/lib/api-utils";
 import { deleteUser, findUser, updateUser } from "@/repositories/user";
-import { UserUpdateInput } from "@/types";
 import { NextResponse } from "next/server";
 import { validate } from "uuid";
 import { Prisma } from "@prisma/client";
 import { validateHandle } from "../utils";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
+
+// The handle is the only self-service field. `email`, `role` and `disabled` are
+// deliberately absent — a user editing their own profile must not be able to
+// grant themselves a role or re-point the identity their OAuth account resolves
+// to.
+// `null` is accepted because the profile dialog sends `handle || null`; as before,
+// the handler treats it as "no change" rather than a clear.
+const userUpdateSchema = z.object({
+  handle: z.string().nullish(),
+}).strict();
 
 /**
  * A user's public profile.
@@ -48,10 +59,7 @@ export const PATCH = userRoute<{ id: string }>(
       "You are not authorized to update this profile",
     );
 
-    const body: UserUpdateInput = await request.json();
-    if (!body) {
-      throw new ApiError(400, "Bad Request", "No update provided");
-    }
+    const body = await parseBody(request, userUpdateSchema);
 
     const input: Prisma.UserUncheckedUpdateInput = {};
     if (body.handle && body.handle !== user.handle) {

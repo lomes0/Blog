@@ -1,5 +1,11 @@
-import { ApiError, userRoute } from "@/lib/api-utils";
+import { ApiError, parseBody, userRoute } from "@/lib/api-utils";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { z } from "zod";
+
+const revalidateSchema = z.object({
+  path: z.string().optional(),
+  tag: z.string().optional(),
+}).strict();
 
 export const POST = userRoute(async (request, { user }) => {
   if (user.role !== "admin") {
@@ -10,8 +16,7 @@ export const POST = userRoute(async (request, { user }) => {
     );
   }
 
-  const body = await request.json();
-  const { path, tag } = body;
+  const { path, tag } = await parseBody(request, revalidateSchema);
 
   if (path) {
     revalidatePath(path);

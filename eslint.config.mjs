@@ -102,6 +102,23 @@ export default [
           "ExportNamedDeclaration > VariableDeclaration > VariableDeclarator[id.name=/^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)$/] > :matches(ArrowFunctionExpression, FunctionExpression)",
         message:
           "Wrap the handler in publicRoute / userRoute / optionalUserRoute from @/lib/api-utils instead of exporting a bare function, so its auth requirement is stated in the source.",
+      }, {
+        // `(await request.json()) as SomeType` is a cast, not a check: the type
+        // says what a well-behaved client sends while the handler goes on to use
+        // whatever arrived. Routes that fed such a body to Prisma were assigning
+        // the columns the *caller* named — which is how `parentId` on a document
+        // PATCH became a way to graft a document into someone else's post.
+        //
+        // So reading a body is spelled `parseBody(request, schema)`, and the
+        // schema is the endpoint's stated input. Same reasoning as the wrapper
+        // rules above: the mistake should be unavailable, not discouraged.
+        //
+        // Only `.json()` is restricted — `request.formData()` and `.text()` are
+        // untouched, since the upload and export routes legitimately need them.
+        selector:
+          "AwaitExpression > CallExpression[callee.property.name='json'][callee.object.name='request']",
+        message:
+          "Use `parseBody(request, schema)` from @/lib/api-utils instead of request.json(), so the body is validated rather than cast. Declare a zod schema for what the route accepts (`.strict()` on updates, so a field you did not mean to expose is a 400 and not a silent write).",
       }],
     },
   },
