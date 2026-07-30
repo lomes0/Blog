@@ -367,9 +367,8 @@ function CodeBlockChrome(
     height: FOOTER_HEIGHT,
   };
   const isActive = caret?.key === nodeKey;
-  const isDark = element.closest('[theme="dark"]') !== null ||
-    (typeof document !== "undefined" &&
-      document.documentElement.classList.contains("dark"));
+  const isDark = typeof document !== "undefined" &&
+    document.documentElement.classList.contains("dark");
 
   return (
     <div className={`code-edit-chrome${isDark ? " is-dark" : ""}`}>

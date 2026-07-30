@@ -1156,96 +1156,84 @@ html.dark .LexicalTheme__layoutItem:not(:last-child)::after {
   left: 16px;
 }
 
-/* color theme */
+/* ---------------------------------------------------------------------------
+   Color theme
 
-.LexicalTheme__textCode,
-[theme="light"] .LexicalTheme__textCode {
+   Keyed to `html.dark` — the class MUI writes via `InitColorSchemeScript`
+   (`layout.tsx`) and `colorSchemeSelector: "class"` (`ThemeProvider.tsx`).
+   Not `prefers-color-scheme`, which ignores the in-app toggle (DESIGN.md §2),
+   and not the `[theme="dark"]` attribute these rules used to carry: nothing
+   has set that attribute since the color-theme toggle was removed in
+   `bc20ee77` (Jul 2024), so every dark rule below silently did nothing.
+
+   Values that flip with the scheme are custom properties rather than paired
+   rules, so a light island can restore them for its own subtree in one place
+   instead of restating each rule.
+   --------------------------------------------------------------------------- */
+
+:root,
+/* A sticky note is colored paper with fixed dark ink in both schemes
+   (DESIGN.md §17.6 lists it as deliberate), so its contents stay on the light
+   values — otherwise dark mode puts a #90caf9 link and white-alpha table
+   borders on #bceac4 paper. This is what `theme="light"` on `.sticky-note`
+   used to express. Higher specificity than `html.dark`, so order-independent. */
+html.dark .sticky-note {
+  --doc-quote-fg: rgb(101, 103, 107);
+  --doc-quote-rule: rgb(206, 208, 212);
+  --doc-link-fg: rgb(33, 111, 219);
+  --doc-table-border: rgba(0, 0, 0, 0.2);
+  --doc-table-header-bg: rgba(0, 0, 0, 0.03);
+  --doc-details-border: rgba(0, 0, 0, 0.12);
+  --doc-details-hover-bg: rgba(0, 0, 0, 0.04);
+  --doc-node-selected: rgb(60, 132, 244);
+}
+
+html.dark {
+  --doc-quote-fg: #a6a6a6;
+  --doc-quote-rule: #4d4d4d;
+  --doc-link-fg: #90caf9;
+  --doc-table-border: rgba(255, 255, 255, 0.2);
+  --doc-table-header-bg: rgba(255, 255, 255, 0.03);
+  --doc-details-border: rgba(255, 255, 255, 0.12);
+  --doc-details-hover-bg: rgba(255, 255, 255, 0.08);
+  --doc-node-selected: #90caf9;
+}
+
+/* Unchanged across schemes — a translucent neutral that reads on both. */
+.LexicalTheme__textCode {
   background-color: rgb(225 230 235 / 44%);
 }
 
-.LexicalTheme__quote,
-[theme="light"] .LexicalTheme__quote {
-  color: rgb(101, 103, 107);
-  border-left-color: rgb(206, 208, 212);
-  border-right-color: rgb(206, 208, 212);
+.LexicalTheme__quote {
+  color: var(--doc-quote-fg);
+  border-left-color: var(--doc-quote-rule);
+  border-right-color: var(--doc-quote-rule);
 }
 
-.LexicalTheme__link,
-[theme="light"] .LexicalTheme__link {
-  color: rgb(33, 111, 219);
+.LexicalTheme__link {
+  color: var(--doc-link-fg);
 }
 
-[theme="light"] .LexicalTheme__code {
-  --code-bg: #ffffff;
-  --code-fg: #2c333d;
-  --code-border: #e4e7ec;
-  --code-gutter-bg: var(--code-bg);
-  --code-gutter-fg: #b9bfc9;
-  --code-gutter-active: #2b313b;
-  --code-active-line: rgba(45, 107, 230, 0.05);
-  --code-emph-line: rgba(45, 107, 230, 0.07);
-  --code-emph-bar: #2d6be6;
-  --code-accent: #2d6be6;
-  --tok-comment: #98a0ab;
-  --tok-punctuation: #6b7280;
-  --tok-property: #9a6700;
-  --tok-selector: #2c7a4d;
-  --tok-operator: #2c333d;
-  --tok-keyword: #c0392b;
-  --tok-variable: #7a4bc2;
-  --tok-function: #2d6be6;
+.LexicalTheme__tableCell {
+  border-color: var(--doc-table-border);
 }
 
-[theme="light"] .code-block-wrapper {
-  --code-border: #e4e7ec;
-  --code-fg: #2c333d;
-  --code-bg: #ffffff;
-  --code-chrome-bg: #f7f8fa;
-  --code-chrome-fg: #3b434f;
-  --code-chrome-border: #edeff2;
-  --code-chrome-muted: #7a828f;
-  --code-accent: #2d6be6;
+.LexicalTheme__tableCellHeader {
+  background-color: var(--doc-table-header-bg);
 }
 
-.LexicalTheme__tableCell,
-[theme="light"] .LexicalTheme__tableCell {
-  border-color: rgba(0, 0, 0, 0.2);
-}
-
-.LexicalTheme__tableCellHeader,
-[theme="light"] .LexicalTheme__tableCellHeader {
-  background-color: rgba(0, 0, 0, 0.03);
-}
-
-.details__container,
-[theme="light"] .details__container {
-  border-color: rgba(0, 0, 0, 0.12);
+.details__container {
+  border-color: var(--doc-details-border);
 }
 
 .details__summary:hover,
-.details__container[open] > .details__summary,
-[theme="light"] .details__summary:hover,
-[theme="light"] .details__container[open] > .details__summary {
-  background-color: rgba(0, 0, 0, 0.04);
+.details__container[open] > .details__summary {
+  background-color: var(--doc-details-hover-bg);
 }
 
-[theme="light"]
-  .LexicalTheme__image.LexicalTheme__darkModeFilter
-  :is(img, svg) {
-  filter: none !important;
-}
-
-[theme="dark"] .LexicalTheme__quote {
-  color: #a6a6a6;
-  border-left-color: #4d4d4d;
-  border-right-color: #4d4d4d;
-}
-
-[theme="dark"] .LexicalTheme__link {
-  color: #90caf9;
-}
-
-[theme="dark"] .LexicalTheme__code {
+/* Code blocks and the image filter carry their own opaque surface or are
+   toggled per-node, so they need no light-island exception. */
+html.dark .LexicalTheme__code {
   --code-bg: #0f1318;
   --code-fg: #c3ccd8;
   --code-border: #232b35;
@@ -1266,7 +1254,7 @@ html.dark .LexicalTheme__layoutItem:not(:last-child)::after {
   --tok-function: #82b4f2;
 }
 
-[theme="dark"] .code-block-wrapper {
+html.dark .code-block-wrapper {
   --code-border: #232b35;
   --code-fg: #c3ccd8;
   --code-bg: #0f1318;
@@ -1277,30 +1265,13 @@ html.dark .LexicalTheme__layoutItem:not(:last-child)::after {
   --code-accent: #6aa6ff;
 }
 
-[theme="dark"] .LexicalTheme__tableCell {
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-[theme="dark"] .LexicalTheme__tableCellHeader {
-  background-color: rgba(255, 255, 255, 0.03);
-}
-
-[theme="dark"] .details__container {
-  border-color: rgba(255, 255, 255, 0.12);
-}
-
-[theme="dark"] .details__summary:hover,
-[theme="dark"] .details__container[open] > .details__summary {
-  background-color: rgba(255, 255, 255, 0.08);
-}
-
-[theme="dark"] .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
+html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
   filter: invert(93%) hue-rotate(180deg);
 }
 
 /* Node Selection Styles */
 .LexicalTheme__nodeSelected {
-  outline: 2px solid rgb(60, 132, 244);
+  outline: 2px solid var(--doc-node-selected);
   outline-offset: 2px;
   caret-color: transparent;
 }
@@ -1311,15 +1282,6 @@ html.dark .LexicalTheme__layoutItem:not(:last-child)::after {
   caret-color: transparent;
   background-color: transparent;
 }
-
-[theme="dark"] .LexicalTheme__nodeSelected {
-  outline-color: #90caf9;
-}
-
-/* The [theme="light"] / [theme="dark"] attribute selectors above already
-   handle all per-instance Lexical theming. The duplicate @media blocks
-   that used to live here have been removed — html.dark overrides from
-   the app shell cover global (non-editor) contexts instead. */
 
 @media print {
   .details__container .details__container li img {
@@ -1647,40 +1609,82 @@ html.dark .LexicalTheme__layoutItem:not(:last-child)::after {
   color: #e36209;
 }
 
-/* Dark mode support */
-html.dark .attachment-link {
+/* ---- Dark mode ----
+   The card surface is `.attachment-container`; `.attachment-link` is the inner
+   flex row and carries `color: inherit` with no box of its own. These rules
+   used to target `.attachment-link`, which predates the
+   container/content/link split in `AttachmentNode.createDOM` — so dark mode
+   painted a dark gradient across part of an otherwise white card and left the
+   filename at its light `#24292e`. They now target the real surfaces.
+
+   Neutrals reuse the block's existing dark hexes; syntax tokens are GitHub
+   Dark, matching the GitHub Light set used above. */
+html.dark .attachment-container {
   background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
   border-color: #4a5568;
-  color: #e2e8f0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
-html.dark .attachment-link:hover {
+html.dark .attachment-container:hover {
   background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
   border-color: #718096;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+html.dark .attachment-filename {
+  color: #e2e8f0;
 }
 
 html.dark .attachment-info {
   color: #a0aec0;
 }
 
+/* Same indigo family as the icon gradients, lifted for contrast on #2d3748
+   (#667eea lands at ~2.8:1 there). */
+html.dark .attachment-download {
+  background: rgba(154, 165, 245, 0.14);
+  color: #9aa5f5;
+}
+
+html.dark .attachment-download:hover {
+  background: rgba(154, 165, 245, 0.24);
+}
+
 html.dark .attachment-toggle {
+  background: rgba(255, 255, 255, 0.03);
   border-color: #4a5568;
   color: #a0aec0;
 }
 
 html.dark .attachment-toggle:hover {
-  background: #2d3748;
+  background: rgba(255, 255, 255, 0.07);
   border-color: #718096;
   color: #e2e8f0;
+}
+
+html.dark .attachment-toggle:active {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 html.dark .attachment-preview {
   background: #1a202c;
   border-color: #4a5568;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 html.dark .attachment-preview pre {
   background: #2d3748;
+}
+
+html.dark .attachment-preview-loading {
+  background: #2d3748;
+  color: #a0aec0;
+}
+
+html.dark .attachment-preview-error {
+  background: rgba(255, 193, 7, 0.12);
+  color: #ffd970;
+  border-left-color: #ffc107;
 }
 
 html.dark .attachment-preview-header {
@@ -1689,26 +1693,77 @@ html.dark .attachment-preview-header {
   color: #a0aec0;
 }
 
+/* Light mode gives this a #ffffff fill, so the base needs a dark surface too —
+   without it the button stayed white — and hover lifts rather than darkens. */
 html.dark .attachment-preview-btn {
+  background: #2d3748;
   border-color: #4a5568;
   color: #a0aec0;
 }
 
 html.dark .attachment-preview-btn:hover {
-  background: #1a202c;
+  background: #4a5568;
   border-color: #718096;
   color: #e2e8f0;
 }
 
-/* Print styles */
+/* Syntax highlighting tokens — GitHub Dark */
+html.dark .attachment-preview .token.comment,
+html.dark .attachment-preview .token.prolog,
+html.dark .attachment-preview .token.doctype,
+html.dark .attachment-preview .token.cdata {
+  color: #8b949e;
+}
+
+html.dark .attachment-preview .token.property,
+html.dark .attachment-preview .token.tag,
+html.dark .attachment-preview .token.boolean,
+html.dark .attachment-preview .token.number,
+html.dark .attachment-preview .token.constant,
+html.dark .attachment-preview .token.symbol,
+html.dark .attachment-preview .token.deleted {
+  color: #79c0ff;
+}
+
+html.dark .attachment-preview .token.selector,
+html.dark .attachment-preview .token.attr-name,
+html.dark .attachment-preview .token.string,
+html.dark .attachment-preview .token.char,
+html.dark .attachment-preview .token.builtin,
+html.dark .attachment-preview .token.inserted {
+  color: #7ee787;
+}
+
+html.dark .attachment-preview .token.operator,
+html.dark .attachment-preview .token.entity,
+html.dark .attachment-preview .token.url,
+html.dark .attachment-preview .token.atrule,
+html.dark .attachment-preview .token.attr-value,
+html.dark .attachment-preview .token.keyword {
+  color: #ff7b72;
+}
+
+html.dark .attachment-preview .token.function,
+html.dark .attachment-preview .token.class-name {
+  color: #d2a8ff;
+}
+
+html.dark .attachment-preview .token.regex,
+html.dark .attachment-preview .token.important,
+html.dark .attachment-preview .token.variable {
+  color: #ffa657;
+}
+
+/* Print styles — same misdirected selector as the dark rules above: the card
+   is `.attachment-container`. */
 @media print {
-  .attachment-link {
+  .attachment-container {
     background: #f8f9fa;
     border: 1px solid #dee2e6;
     box-shadow: none;
   }
 
-  .attachment-link:hover {
+  .attachment-container:hover {
     background: #f8f9fa;
     transform: none;
   }

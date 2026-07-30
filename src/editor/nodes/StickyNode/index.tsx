@@ -113,7 +113,6 @@ export class StickyNode extends DecoratorNode<JSX.Element> {
     this.__editor._parentEditor = editor;
     const dom = document.createElement("div");
     dom.className = "sticky-note";
-    dom.setAttribute("theme", "light");
     const style = getStyleObjectFromRawCSS(this.__style);
     const color = style.color;
     const backgroundColor = style["background-color"];
