@@ -3,7 +3,7 @@ import Privacy from "@/components/Privacy";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "Editor Privacy Policy",
+  description: "What this site stores, what leaves it, and how to remove it",
 };
 
 const page = () => <Privacy />;
