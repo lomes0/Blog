@@ -18,9 +18,7 @@ import {
 import { actions, type RootState, useDispatch, useSelector } from "@/store";
 import { selectAllPosts } from "@/store/selectors/postsSelectors";
 import { ICON_SIZE } from "@/theme/icons";
-import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
-import { RAIL_COMPACT_W, useLayoutMode } from "@/contexts/LayoutModeContext";
-import { ACTIVITY_RAIL_W } from "@/components/Layout/SideBar/constants";
+import { useLayoutMode } from "@/contexts/LayoutModeContext";
 
 /**
  * Custom window event other entry points (title-bar search, activity rail,
@@ -56,11 +54,7 @@ const CommandPalette = () => {
 
   const posts = useSelector(selectAllPosts);
   const series = useSelector((state: RootState) => state.series);
-  // Layout column widths (same source the grid in AppLayoutContent uses), so the
-  // palette can center over the main content column instead of the viewport.
-  const { getEffectiveWidth } = useSidebarWidth();
-  const { railMode, railWidth, copilotOpen, setCopilotOpen, copilotWidth } =
-    useLayoutMode();
+  const { copilotOpen, setCopilotOpen } = useLayoutMode();
 
   // Current document id from the URL (edit/view routes), used by the mode switch.
   const segments = pathname.split("/").filter(Boolean);
@@ -230,18 +224,6 @@ const CommandPalette = () => {
     el?.scrollIntoView({ block: "nearest" });
   }, [activeIndex]);
 
-  // The Modal portals to <body>, so it centers on the whole viewport. The app's
-  // left chrome (activity rail + sidebar) and right chrome (copilot panel +
-  // right rail) are asymmetric, which pushes that viewport-center off the actual
-  // editing area. Shift the dialog right by half the (left − right) chrome
-  // difference so it sits centered over the main content column.
-  const railW = railMode === "full"
-    ? railWidth + RAIL_COMPACT_W
-    : RAIL_COMPACT_W;
-  const copilotW = copilotOpen ? copilotWidth : 0;
-  const contentOffsetX =
-    (ACTIVITY_RAIL_W + getEffectiveWidth() - copilotW - railW) / 2;
-
   return (
     <Modal
       open={open}
@@ -256,6 +238,12 @@ const CommandPalette = () => {
           },
         },
       }}
+      // Centered on the viewport, not on the main content column. The palette
+      // used to translate right by half the (left chrome − right chrome)
+      // difference so it sat over the `1fr` track; that is geometrically true
+      // but reads as broken — the backdrop covers the whole window, so the
+      // dialog belongs to the window, and the offset both looked off-center and
+      // jumped by ~120px when the right rail collapsed.
       sx={{
         display: "flex",
         alignItems: "flex-start",
@@ -270,8 +258,6 @@ const CommandPalette = () => {
         sx={{
           width: "min(560px, calc(100vw - 32px))",
           maxHeight: "60vh",
-          // Center over the main content column rather than the viewport.
-          transform: `translateX(${contentOffsetX}px)`,
           display: "flex",
           flexDirection: "column",
           bgcolor: "background.paper",
