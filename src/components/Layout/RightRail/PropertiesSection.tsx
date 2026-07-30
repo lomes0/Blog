@@ -49,7 +49,9 @@ export default function PropertiesSection({
       const activeUserDoc = activeDocId
         ? postsSelectors.selectById(state, activeDocId)
         : undefined;
-      const seriesId = rootUserDoc.seriesId;
+      // The store is empty during SSR and until `load` resolves, so a rootId
+      // parsed out of the URL can name a post that isn't in the entity map yet.
+      const seriesId = rootUserDoc?.seriesId;
       return {
         localDoc: activeUserDoc ?? rootUserDoc,
         cloudDoc: rootUserDoc,
