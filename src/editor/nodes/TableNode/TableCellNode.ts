@@ -35,10 +35,9 @@ export type SerializedTableCellNode = LexicalSerializedTableCellNode & {
 /** @noInheritDoc */
 export class TableCellNode extends LexicalTableCellNode {
   __style: string;
-  // Inherited name, deliberately NOT renamed — see the note on TableNode.
-  // This string is persisted in every serialized table cell.
+  // Persisted in every serialized table cell — see the note on TableNode.
   static getType(): string {
-    return "matheditor-tablecell";
+    return "blog-tablecell";
   }
 
   static clone(node: TableCellNode): TableCellNode {
@@ -168,6 +167,29 @@ export class TableCellNode extends LexicalTableCellNode {
       super.updateDOM(prevNode) ||
       prevNode.__style !== this.__style
     );
+  }
+}
+
+/**
+ * Read-only alias for `"matheditor-tablecell"` — see `LegacyTableNode`, which
+ * this mirrors exactly. Register the pair or neither: a table whose cells have
+ * no registered type fails to parse just as hard as one whose table does.
+ */
+export class LegacyTableCellNode extends TableCellNode {
+  static getType(): string {
+    return "matheditor-tablecell";
+  }
+
+  static clone(node: TableCellNode): TableCellNode {
+    return TableCellNode.clone(node);
+  }
+
+  static importJSON(serializedNode: SerializedTableCellNode): TableCellNode {
+    return TableCellNode.importJSON(serializedNode);
+  }
+
+  static importDOM(): DOMConversionMap | null {
+    return null;
   }
 }
 

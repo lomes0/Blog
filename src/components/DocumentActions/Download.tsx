@@ -56,9 +56,9 @@ const DownloadDocument: React.FC<
     const link = window.document.createElement("a");
 
     // `.json`, because that is what the blob is. This used to be `.me`, a pun on
-    // the upstream project's matheditor.me domain, registered as a file handler
-    // in the manifest. Nothing reads the extension back — the import panel only
-    // accepts `.zip` — so no existing backup is invalidated by the change.
+    // the domain of the project this app was forked from, registered as a file
+    // handler in the manifest. Nothing reads the extension back — the import
+    // panel only accepts `.zip` — so no existing backup is invalidated.
     link.download = backupDocument.name + ".json";
     link.href = window.URL.createObjectURL(blob);
     link.dataset.downloadurl = ["text/json", link.download, link.href].join(

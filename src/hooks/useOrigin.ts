@@ -10,9 +10,9 @@ import useIsHydrated from "./useIsHydrated";
  * the server and first client render agree — callers should render the path
  * alone in that frame rather than branching on it.
  *
- * This exists because the two handle fields used to hardcode
- * `https://matheditor.me/...`, a domain inherited from the upstream project,
- * and so promised every user a URL that does not resolve.
+ * This exists because the two handle fields used to hardcode the domain of the
+ * project this app was forked from, and so promised every user a URL that does
+ * not resolve.
  */
 export default function useOrigin(): string {
   const isHydrated = useIsHydrated();

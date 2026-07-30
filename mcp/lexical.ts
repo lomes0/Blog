@@ -17,6 +17,8 @@ import { ListItemNode, ListNode } from "@lexical/list";
 import { CodeHighlightNode, CodeNode as LexicalCodeNode } from "@lexical/code";
 import { AutoLinkNode, LinkNode } from "@lexical/link";
 import {
+  LegacyTableCellNode,
+  LegacyTableNode,
   LexicalTableCellNode,
   LexicalTableNode,
   LexicalTableRowNode,
@@ -54,12 +56,15 @@ const NODES: ReadonlyArray<Klass<LexicalNode> | LexicalNodeReplacement> = [
   QuoteNode,
   LexicalCodeNode,
   CodeHighlightNode,
-  // The app's table subclasses use their OWN `type` strings ("matheditor-table"
-  // etc.), so — unlike code — they don't collide with the base @lexical/table
-  // nodes. Register both: the custom classes parse stored tables, the base
-  // replacements catch tables the Markdown transformer creates at import.
+  // The app's table subclasses use their OWN `type` strings ("blog-table" etc.),
+  // so — unlike code — they don't collide with the base @lexical/table nodes.
+  // Register both: the custom classes parse stored tables, the base replacements
+  // catch tables the Markdown transformer creates at import. The Legacy pair
+  // covers revisions written before the rename.
   TableNode,
   TableCellNode,
+  LegacyTableNode,
+  LegacyTableCellNode,
   { replace: LexicalTableNode, with: () => new TableNode() },
   {
     replace: LexicalTableCellNode,
@@ -101,8 +106,20 @@ const newEditor = () =>
 const ROUND_TRIPPABLE = new Set([
   "root", "paragraph", "text", "linebreak", "tab", "heading", "quote",
   "list", "listitem", "code", "code-highlight", "link", "autolink",
-  "table", "tablerow", "tablecell", "horizontalrule", "math", "image",
-  "graph", "sketch",
+  "tablerow", "horizontalrule", "math", "image", "graph", "sketch",
+  // Tables and cells serialize under the app's own type strings, never
+  // @lexical/table's. Ask the classes instead of spelling the strings out: this
+  // list used to say "table"/"tablecell" by hand, which matched nothing stored,
+  // so `update_post` refused every post containing a table — even though
+  // TRANSFORMERS has a TABLE transformer and tables round-trip fine. The Legacy
+  // entries cover content written before the type strings were renamed.
+  TableNode.getType(),
+  TableCellNode.getType(),
+  LegacyTableNode.getType(),
+  LegacyTableCellNode.getType(),
+  // The base types, for anything stored before the subclasses existed.
+  "table",
+  "tablecell",
 ]);
 
 type LexicalJson = { root?: unknown } & Record<string, unknown>;

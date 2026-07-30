@@ -65,13 +65,12 @@ function wrapTableElement(
 export class TableNode extends LexicalTableNode {
   __style: string;
   __id: string;
-  // Inherited name, deliberately NOT renamed. `getType()` is the discriminator
-  // Lexical writes into the `type` field of every serialized node and dispatches
-  // on when reading one back, so this string is baked into every Revision row
-  // that contains a table. Renaming it makes those posts fail to deserialize.
-  // Changing it would need a data migration over the Revision JSON first.
+  // `getType()` is the discriminator Lexical writes into the `type` field of
+  // every serialized node and dispatches on when reading one back, so this
+  // string is baked into stored content. Renaming it is safe only because
+  // `LegacyTableNode` below still answers for the old spelling.
   static getType(): string {
-    return "matheditor-table";
+    return "blog-table";
   }
 
   static clone(node: TableNode): TableNode {
@@ -213,6 +212,44 @@ export class TableNode extends LexicalTableNode {
     } catch {
       return false;
     }
+  }
+}
+
+/**
+ * Read-only alias for `"matheditor-table"`, the type string this node carried
+ * before the fork's name was scrubbed.
+ *
+ * Every table saved before that rename — in a Revision row, in a guest's
+ * IndexedDB, in a `.zip` backup already on someone's disk — still says
+ * `"matheditor-table"`, and Lexical throws on a `type` it has no entry for.
+ * Registering this alongside `TableNode` gives that string an entry again.
+ *
+ * It only ever acts as an import entry point: `importJSON` delegates to
+ * `TableNode`, which builds a real `TableNode`, so what lands in the editor is
+ * the current class and the next save writes the current type. No instance of
+ * this class is ever constructed, and `importDOM` is dropped so it cannot
+ * register a second, competing conversion for `<table>`.
+ *
+ * The delegating statics are declared rather than inherited because Lexical
+ * checks for them with `hasOwnProperty` at registration and warns per editor.
+ *
+ * Keep it. Migrating the database would not reach the backups.
+ */
+export class LegacyTableNode extends TableNode {
+  static getType(): string {
+    return "matheditor-table";
+  }
+
+  static clone(node: TableNode): TableNode {
+    return TableNode.clone(node);
+  }
+
+  static importJSON(serializedNode: SerializedTableNode): TableNode {
+    return TableNode.importJSON(serializedNode);
+  }
+
+  static importDOM(): DOMConversionMap | null {
+    return null;
   }
 }
 

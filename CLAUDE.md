@@ -56,11 +56,13 @@ the whole run. `src/types/vitest.d.ts` is what gives `tsc` the globals;
 `compilerOptions.types` is deliberately left unset, because setting it would
 restrict resolution to only its entries and drop every other ambient package.
 
-Coverage is two specs, 28 assertions: `src/lib/__tests__/ordering.test.ts`
-(fractional rank keys) and
-`src/components/Layout/SideBar/__tests__/dragGeometry.test.ts` (sidebar drag
-thresholds — `dragGeometry.ts` is kept import-free precisely so it is testable
-without a browser).
+Coverage is three specs, 32 assertions: `src/lib/__tests__/ordering.test.ts`
+(fractional rank keys), `src/components/Layout/SideBar/__tests__/
+dragGeometry.test.ts` (sidebar drag thresholds — `dragGeometry.ts` is kept
+import-free precisely so it is testable without a browser) and
+`src/editor/nodes/TableNode/__tests__/legacyTypes.test.ts` (that stored tables
+still parse under both their current and pre-rename `type` strings — it builds a
+headless editor, so it stays DOM-free).
 
 **No automated check covers API authorization.** Verify behaviour changes by
 running the app against the local Postgres (`docker compose up -d`) and

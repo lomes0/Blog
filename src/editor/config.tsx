@@ -1,5 +1,10 @@
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
-import { TableCellNode, TableNode } from "./nodes/TableNode";
+import {
+  LegacyTableCellNode,
+  LegacyTableNode,
+  TableCellNode,
+  TableNode,
+} from "./nodes/TableNode";
 import { ListItemNode, ListNode } from "@lexical/list";
 import { CodeHighlightNode, CodeNode as LexicalCodeNode } from "@lexical/code";
 import { CodeNode } from "./nodes/CodeNode";
@@ -70,6 +75,10 @@ export const editorConfig = {
     CodeHighlightNode,
     TableNode,
     TableCellNode,
+    // Type aliases for tables stored before the rename. Import-only; see
+    // `nodes/TableNode/TableNode.ts`.
+    LegacyTableNode,
+    LegacyTableCellNode,
     {
       replace: LexicalTableNode,
       with: (_node: LexicalTableNode) => new TableNode(),
