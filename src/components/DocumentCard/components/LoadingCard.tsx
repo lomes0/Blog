@@ -28,11 +28,17 @@ const LoadingCard: React.FC<LoadingCardProps> = ({ sx }) => {
   const theme = useTheme();
   const cardTheme = createCardTheme(theme);
 
+  // A shimmer is a contrast sweep, so it has to run the opposite direction in
+  // each scheme. Keyed off grey[200]/[300] it could not: MUI's grey scale is
+  // identical in both, so the band was a near-white wash — all but invisible
+  // on the light card it was designed against, and only legible in dark by
+  // accident. text.primary inverts with the scheme, which is the property this
+  // effect actually needs.
   const shimmerStyles = {
-    background: `linear-gradient(90deg, 
-      ${alpha(theme.palette.grey[300], 0.1)} 25%, 
-      ${alpha(theme.palette.grey[200], 0.3)} 50%, 
-      ${alpha(theme.palette.grey[300], 0.1)} 75%)`,
+    background: `linear-gradient(90deg,
+      ${alpha(theme.palette.text.primary, 0.04)} 25%,
+      ${alpha(theme.palette.text.primary, 0.1)} 50%,
+      ${alpha(theme.palette.text.primary, 0.04)} 75%)`,
     backgroundSize: "200% 100%",
     animation: "shimmer 1.8s ease-in-out infinite",
     "@keyframes shimmer": {

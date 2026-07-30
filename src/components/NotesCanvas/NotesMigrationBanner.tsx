@@ -108,6 +108,10 @@ export default function NotesMigrationBanner() {
               bgcolor: "common.white",
               color: "info.main",
               "&:hover": {
+                // Constant by design: the banner is info.main in both schemes,
+                // so this is a dimmed white on saturated blue, not a surface
+                // that should follow the scheme. See the note above.
+                // eslint-disable-next-line no-restricted-syntax
                 bgcolor: "grey.100",
               },
             }}

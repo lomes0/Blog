@@ -10,7 +10,7 @@ This document has two halves, and they carry different authority.
 **Codified sections — the code is the source of truth, this file describes it.**
 §2 colors · §3 typography · §4 spacing · §5 radius · §6 shadows · §7 breakpoints
 · §11 motion · §12 scrollbars · §13 print · §14 fonts · §16 icons · §17.1/.3/.4
-surfaces, tints and density.
+surfaces, tints and density · §19 color-scheme conformance.
 
 For these, the value lives in exactly one place in code and this file points at
 it. **Do not restate a value here that the code owns** — a number written in two
@@ -81,7 +81,9 @@ MUI CSS variables are enabled with
 
 > **CSS rule:** use `html.dark .selector { … }` for dark overrides. Do **not**
 > use `@media (prefers-color-scheme: dark)` — that signal is independent of the
-> in-app theme toggle.
+> in-app theme toggle. This rule stood here in prose for a year and was
+> nonetheless broken across the whole editor; it is now enforced by
+> `npm run check:theme`. See §19.
 
 ---
 
@@ -722,6 +724,12 @@ labels that pair a base variant with custom weight/tracking (e.g.
 `-0.01em`/`0.08em`), and idiomatic `boxShadow: … rgba(0,0,0,x)` (§6). Tune these
 per-component on their own merits.
 
+**This exemption is not a color-scheme exemption.** §19 applies to content too:
+tune the values per-component, but a value that differs between light and dark
+still has to change with the scheme. Reading this section as "content is outside
+the design system" is how the editor came to have no working dark mode for two
+years — see §19.1.
+
 ---
 
 ## 18. Quick-Reference Cheat Sheet
@@ -749,3 +757,80 @@ Component lib:    MUI v6 only — no Tailwind, no shadcn
 
 > Numbered 18, not 15: it used to sit at §15 but appear after §17. Section
 > numbers are cited from code comments, so retired numbers are not reused.
+
+---
+
+## 19. Color-scheme conformance
+
+**A color that differs between light and dark must be expressed so that it
+changes with the scheme.** Unlike §17, this section governs application
+_content_ as well as chrome — §17.6 exempts content from _chrome_ conformance
+(its typographic intent, its density), not from responding to the theme. A
+sticky note may keep its own ink; it may not stop having a dark mode.
+
+Machine-enforced: `npm run check:theme` for CSS, `no-restricted-syntax` in
+`eslint.config.mjs` for `sx`/TSX. Both explain themselves at the point of
+failure; the reasoning below is the _why_, not the rule text.
+
+### 19.1 The scheme selector is `html.dark`
+
+MUI writes that class via `InitColorSchemeScript` (`app/layout.tsx`) and
+`colorSchemeSelector: "class"` (`Layout/ThemeProvider.tsx`). It is SSR-safe and
+it tracks the in-app toggle.
+
+Two other spellings are banned because both have already shipped as silent
+no-ops:
+
+- **`[theme="dark"]`** — nothing has set that attribute since the color-theme
+  toggle was removed in `bc20ee77` (Jul 2024). ~90 lines of tuned dark styling
+  sat in `editor/theme.css` matching nothing for two years, and `0adc7ae7` then
+  deleted the `@media` block that _was_ working, as a "duplicate" of it.
+- **`prefers-color-scheme`** — reads the OS preference and ignores the in-app
+  toggle, so it disagrees with the rest of the app the moment a reader overrides
+  the theme. Only `app/layout.tsx`'s `themeColor` metadata uses it, correctly:
+  that is a browser-chrome hint, not a style rule.
+
+### 19.2 Two MUI tokens that look scheme-aware and are not
+
+- **`grey.*` / `--mui-palette-grey-*`** — MUI spreads `grey` once at the top of
+  `createPalette`, outside the light/dark blocks. `grey.50` is `#fafafa` in dark
+  too. Reach for `action.hover` / `action.selected` (tints), `divider` /
+  `text.secondary` / `text.disabled` (borders), `background.paper` /
+  `background.input` (surfaces).
+- **Numeric shades of a semantic color** (`primary.50`, `warning.100`, …) —
+  `augmentColor` generates only `main`/`light`/`dark`/`contrastText`, so these
+  resolve to `undefined` and the declaration is dropped _in both schemes_. This
+  is not a wrong color, it is no color. Use `alpha(theme.palette.X.main, n)`.
+
+### 19.3 Light islands
+
+A surface that is deliberately constant needs its exception written down, not
+inferred. Two shapes, both already in use:
+
+- **Constant on a saturated surface** — a white button on an `info.main` banner
+  is correct in both schemes. Spell the fill `common.white` and disable the lint
+  rule on the line with the reason (`NotesCanvas/NotesMigrationBanner.tsx`).
+- **A whole subtree that stays light** — sticky notes are colored paper with
+  fixed dark ink. Express the flipping values as custom properties and let the
+  island re-declare them once, rather than restating every rule:
+
+  ```css
+  :root, html.dark .sticky-note {
+    --doc-link-fg: ; /* light */
+  }
+  html.dark {
+    --doc-link-fg: ; /* dark  */
+  }
+  ```
+
+  `html.dark .sticky-note` outranks `html.dark`, so this is order-independent.
+  See the `--doc-*` block in `editor/theme.css`.
+
+### 19.4 Lexical renders through two layers — check both
+
+9 of 14 node families are `DecoratorNode`s whose `decorate()` returns React. The
+`.attachment-*`-style classes in `editor/theme.css` come from `exportDOM`, so
+they style **exported HTML, print, and the pre-hydration render** — not what you
+see while editing or reading a post. Fixing `theme.css` alone left attachments
+light through two separate commits. When restyling an editor feature, find its
+`decorate()` component before assuming the CSS is the whole story.

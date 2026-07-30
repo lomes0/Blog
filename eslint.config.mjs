@@ -122,4 +122,52 @@ export default [
       }],
     },
   },
+  {
+    // Color tokens that do not respond to the active scheme (DESIGN.md §19).
+    //
+    // Both of these read as ordinary theme access and are wrong in a way the
+    // call site cannot show you. They shipped, survived review, and were only
+    // found by asking why attachments were still light after the CSS had been
+    // fixed twice (277c9db7, 6614f07e, then a1c14273).
+    //
+    // The CSS-var spellings of the same mistakes are caught by
+    // `npm run check:theme`; this covers the `sx` / TSX side.
+    //
+    // Scoped away from `src/app/api/**` only because a second
+    // `no-restricted-syntax` block over the same files would replace the route
+    // rules above rather than add to them — API routes have no UI colors.
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/app/api/**"],
+    rules: {
+      "no-restricted-syntax": ["error", {
+        // MUI spreads `grey` once at the top of createPalette, outside the
+        // light/dark blocks, so grey.50 is #fafafa in *both* schemes. Whole
+        // cards rendered near-white on the #252b3a canvas. Worse in
+        // CardBase, where grey.800 was darker than the dark-mode surface it
+        // outlined and so inverted the signal it drew.
+        selector: "Literal[value=/^grey\\.\\d+$/]",
+        message:
+          "MUI's grey scale is the same in both color schemes — grey.50 is #fafafa in dark too. Use a scheme-aware token: action.hover / action.selected for tints, divider or text.secondary / text.disabled for borders, background.paper / background.input for surfaces. If a fixed light value is genuinely correct (a button on a saturated banner, say), spell it common.white and disable this rule with the reason.",
+      }, {
+        // augmentColor only emits main/light/dark/contrastText, so
+        // `--mui-palette-primary-50` is never generated: the declaration is
+        // invalid and drops silently, in both schemes. This is why the
+        // attachment's selected state and TimeEditRow's dirty-row tint had no
+        // fill at all — not the wrong color, no color.
+        selector:
+          "Literal[value=/^(primary|secondary|success|warning|info|error)\\.\\d+$/]",
+        message:
+          "Numeric shades of a semantic color do not exist — augmentColor generates only main/light/dark/contrastText, so this resolves to undefined and the declaration is dropped. Use alpha(theme.palette.X.main, n) for a tint, or the .light / .dark members.",
+      }, {
+        selector: "Literal[value=/--mui-palette-grey-/]",
+        message:
+          "MUI's grey scale is the same in both color schemes. Use --mui-palette-{background,action,text,divider}-* instead.",
+      }, {
+        selector:
+          "MemberExpression[property.name='grey'][object.property.name='palette']",
+        message:
+          "theme.palette.grey is the same in both color schemes. Use theme.palette.{background,action,text,divider} instead.",
+      }],
+    },
+  },
 ];

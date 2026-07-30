@@ -50,7 +50,8 @@ so it runs as-is once Vitest/Jest is wired up — but nothing executes it today.
 This means no automated check covers API authorization. Verify behaviour changes
 by running the app against the local Postgres (`docker compose up -d`) and
 exercising the routes directly. Type-check and lint with `npx tsc --noEmit` and
-`npm run lint`.
+`npm run lint`. For UI changes also run `npm run check:theme`, which catches
+colors that do not respond to the light/dark toggle (DESIGN.md §19).
 
 ## Architecture
 
@@ -325,6 +326,10 @@ Key rules enforced by `eslint.config.mjs`:
 - `no-console`: only `console.warn` and `console.error` are allowed
 - `@typescript-eslint/no-explicit-any`: disallowed
 - `react-hooks/exhaustive-deps`: enforced
+- `no-restricted-syntax` on `grey.*` and numeric shades of semantic colors
+  (`primary.50`, `warning.100`, …) — neither responds to the active color
+  scheme, and the second resolves to `undefined` and drops. See DESIGN.md §19;
+  `npm run check:theme` covers the CSS spellings of the same mistakes.
 
 ### Documentation
 
