@@ -24,8 +24,11 @@ export default function DocumentHeader({
     shallowEqual,
   );
 
+  // pb keeps the editor's first line clear of the divider — `.editor-input` has
+  // no top padding and the first paragraph no top margin, so without it the
+  // caret sits flush against the rule and reads as part of the title.
   return (
-    <Box sx={{ pt: 2, pb: 0 }}>
+    <Box sx={{ pt: 2, pb: 3 }}>
       <Typography
         variant="h4"
         component="h1"
