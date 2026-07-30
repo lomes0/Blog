@@ -38,8 +38,10 @@ function helper(x) {
 
 ## The Specific Bug
 
-**File:**
-[src/components/EditDocument/Editor.tsx](../../src/components/EditDocument/Editor.tsx)
+**File:** `src/components/EditDocument/Editor.tsx` — since moved to
+[EditorTabPanel.tsx](../../src/components/EditDocument/EditorTabPanel.tsx),
+where the fix still holds: `ensureValidDocumentData` is a hoisted `function`
+declaration used from a `useMemo` above it.
 
 Inside the `DocumentEditor` component, `ensureValidDocumentData` was declared as
 a `const` arrow function near the bottom of the component body (~line 171), but

@@ -26,18 +26,23 @@ import { apiClient, ApiClientError } from "@/api";
 Every route is accessed through a named method grouped by resource. The full
 surface is:
 
-| Namespace    | Methods                                                                                                                                                                    |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `auth`       | `getSession()`                                                                                                                                                             |
-| `documents`  | `list()`, `get(id)`, `create(input)`, `update(id, partial)`, `delete(id)`, `checkHandle(handle, endpoint?)`, `fork(id, revisionId?)`, `uploadAttachment(documentId, file)` |
-| `revisions`  | `get(id)`, `create(revision)`, `delete(id)`                                                                                                                                |
-| `series`     | `list()`, `get(id)`, `create(input)`, `update(id, data)`, `delete(id)`, `availablePosts()`, `updatePosts(id, payload)`                                                     |
-| `posts`      | `updateTimes(updates)`                                                                                                                                                     |
-| `users`      | `update(id, data)`                                                                                                                                                         |
-| `storage`    | `getUsage()`                                                                                                                                                               |
-| `thumbnails` | `get(documentId)`                                                                                                                                                          |
-| `embed`      | `render(state)`                                                                                                                                                            |
-| `notes`      | `getCanvas()`, `create(note)`                                                                                                                                              |
+| Namespace    | Methods                                                                                                                                         |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `auth`       | `getSession()`                                                                                                                                  |
+| `documents`  | `list()`, `get()`, `create()`, `update()`, `move()`, `delete()`, `children()`, `checkHandle()`, `fork()`, `uploadAttachment()`, `updateTimes()` |
+| `revisions`  | `get()`, `create()`, `delete()`                                                                                                                 |
+| `series`     | `list()`, `get()`, `create()`, `move()`, `update()`, `delete()`, `availablePosts()`, `updatePosts()`                                            |
+| `projects`   | `list()`, `get()`, `create()`, `move()`, `update()`, `delete()`                                                                                 |
+| `users`      | `update()`                                                                                                                                      |
+| `storage`    | `getUsage()`                                                                                                                                    |
+| `thumbnails` | `get()`                                                                                                                                         |
+| `embed`      | `render()`                                                                                                                                      |
+| `notes`      | `getCanvas()`, `create()`                                                                                                                       |
+
+Container changes go through the dedicated `move()` methods, never `update()`.
+`PostUpdateInput` omits `parentId` / `seriesId` / `rank`, and the `PATCH` route
+schemas are `.strict()`, so passing one is a 400 naming the field rather than a
+silent reparent. See the route conventions in [CLAUDE.md](../../CLAUDE.md).
 
 ---
 

@@ -18,10 +18,13 @@ adding new features.
 ├─────────────────────────────────────────────────────┤
 │  State layer  (src/store/)                          │
 │  Redux Toolkit · async thunks · single app slice    │
+├─────────────────────────────────────────────────────┤
+│  Backend seam  (src/store/backend/)                 │
+│  PostBackend interface · backendFor(user) picks one │
 ├──────────────────────┬──────────────────────────────┤
-│  API client          │  IndexedDB                   │
+│  cloudBackend        │  localBackend                │
 │  src/api/client.ts   │  src/indexeddb/              │
-│  HTTP → /api/*       │  Local-first storage         │
+│  HTTP → /api/*       │  Browser IndexedDB           │
 ├──────────────────────┴──────────────────────────────┤
 │  API routes  (src/app/api/)                         │
 │  Route handlers · validation · auth checks          │
@@ -37,21 +40,29 @@ adding new features.
 
 ## Storage duality
 
-Every document has two independent storage paths that are merged in Redux.
+A post lives in one of two places, but the difference is hidden behind a single
+seam rather than branched on at every call site.
 
-|                    | Local                                | Cloud                            |
-| ------------------ | ------------------------------------ | -------------------------------- |
-| Storage            | Browser IndexedDB (`src/indexeddb/`) | PostgreSQL via Prisma            |
-| Auth required      | No                                   | Yes                              |
-| Redux thunk prefix | `createLocal*`, `updateLocal*` …     | `createCloud*`, `updateCloud*` … |
-| Works offline      | Yes                                  | No                               |
+|               | Local                                | Cloud                 |
+| ------------- | ------------------------------------ | --------------------- |
+| Storage       | Browser IndexedDB (`src/indexeddb/`) | PostgreSQL via Prisma |
+| Auth required | No                                   | Yes                   |
+| Implements    | `localBackend`                       | `cloudBackend`        |
+| Works offline | Yes                                  | No                    |
 
-The `load` thunk in `store/app.ts` boots both sources in parallel and merges
-them into `AppState.documents` as `UserDocument[]` where each entry has an
-optional `local` and `optional`cloud` field.
+The `PostBackend` interface (`src/store/backend/index.ts`) has those two
+implementations, and `backendFor(user)` picks one from the session alone. Thunks
+call the interface, so there is exactly one `createPost`, one `updatePost`, and
+so on — everything above the seam is written once.
 
-**Rule:** Always dispatch paired thunks for operations that should persist to
-both stores, unless the feature is intentionally local-only or cloud-only.
+**Rule:** New persistence operations go on the `PostBackend` interface and get
+both implementations. Do not add a call-site branch on whether a user is signed
+in, and do not reach past the seam into `apiClient` or `src/indexeddb/` from a
+thunk.
+
+> There is no `UserDocument { local?, cloud? }` hybrid type and no paired
+> `createLocal*` / `createCloud*` thunks. Both were removed; a post is one flat
+> `Post`.
 
 ---
 
@@ -71,18 +82,21 @@ Single slice in `src/store/app.ts`. Shape:
 ```ts
 {
   user?: User;
-  documents: UserDocument[];
+  posts: EntityState<Post, string>;   // entity adapter — see postsSelectors
   series: Series[];
+  projects: Project[];
   ui: { ... };
 }
 ```
 
 Async thunks use `thunkAPI.fulfillWithValue` / `thunkAPI.rejectWithValue` and
-delegate HTTP work to `apiClient`. They must **not** contain inline `fetch`
-calls.
+delegate persistence to `backendFor(user)`. They must **not** contain inline
+`fetch` calls.
 
-Series and user thunks live in dedicated files under `src/store/thunks/` and are
-re-exported from `store/app.ts`.
+Thunks live under `src/store/thunks/`, split by domain (`postThunks`,
+`seriesThunks`, `projectThunks`, `revisionThunks`, `userThunks`,
+`sessionThunks`, `storageThunks`, `exportThunks`, `importGuestDrafts`) and are
+re-exported from `store/app.ts`, so existing import paths still resolve.
 
 **Rule:** Components that need data should read from the Redux store via
 `useSelector`. Direct API fetches in components are only acceptable for data
@@ -113,12 +127,24 @@ themselves.
 
 ```
 src/repositories/
-├── document.ts   – CRUD, forking, archiving
-├── post.ts       – Post-specific ops with series support
-├── series.ts     – Series management
+├── document.ts   – Document CRUD, paged author listings, public listings
+├── series.ts     – Series management and post organization
+├── project.ts    – Projects (named groupings of series)
+├── notes.ts      – Sticky-note canvases and notes
+├── ordering.ts   – Server-side `rank` computation and container moves
 ├── revision.ts   – Version control
 └── user.ts       – Profile operations
 ```
+
+Selectors come in owner-scoped and public variants where both exist — e.g.
+`findSeriesById` returns a series whole and must only be given to a proven
+author, while `findPublicSeriesById` filters to published, non-private posts.
+Reach for the public one on any path an anonymous caller can hit.
+
+Authorization is not the repository's job: routes fetch through the authorized
+helpers in `src/lib/access.ts` (`requireDocument`, `requireRevision`,
+`requireOwnedSeries` …), which return the row only after proving the caller may
+have it. See the route conventions in [CLAUDE.md](../../CLAUDE.md).
 
 ---
 
@@ -152,8 +178,8 @@ API routes.
 
 | Thing               | Convention                                                           |
 | ------------------- | -------------------------------------------------------------------- |
-| Cloud thunk         | `createCloudDocument`, `updateCloudDocument` …                       |
-| Local thunk         | `createLocalDocument`, `updateLocalDocument` …                       |
+| Thunk               | verb-first, storage-agnostic: `createPost`, `updatePost`, `movePost` |
+| Backend method      | `PostBackend` member, implemented by both `cloud.ts` and `local.ts`  |
 | API client method   | `apiClient.<resource>.<verb>()`                                      |
 | Repository function | verb-first: `createDocument`, `getDocumentById` …                    |
 | Response type       | `Get*Response`, `Post*Response`, `Patch*Response`, `Delete*Response` |
@@ -167,10 +193,13 @@ API routes.
       `src/api/client.ts`
 - [ ] New request/response types are in `src/api/types.ts` or `src/types.ts`,
       not inline
-- [ ] Mutations that should persist call both `*Local` and `*Cloud` thunks (or
-      document why only one is needed)
+- [ ] New persistence operations are `PostBackend` methods implemented in both
+      `backend/cloud.ts` and `backend/local.ts` — no call-site branch on auth
 - [ ] Mutations in components call `router.refresh()` after success
 - [ ] Business logic is in `src/repositories/`, not in route handlers
+- [ ] Route handlers are wrapped in `userRoute` / `optionalUserRoute` /
+      `publicRoute`, read bodies with `parseBody`, and fetch rows through
+      `src/lib/access.ts` — never a `find…` plus a hand-written id comparison
 - [ ] No `console.log` — only `console.warn` and `console.error` (ESLint rule)
 - [ ] No `any` types (ESLint rule `@typescript-eslint/no-explicit-any`)
 - [ ] `react-hooks/exhaustive-deps` is satisfied — no disabled eslint comments

@@ -1,7 +1,8 @@
 # Step 6 — Tree-model decision brief
 
-**Status: written brief only. No code changed. Working tree was clean at start
-and still is (this file is untracked, like `bloat.md`).**
+**Status: written brief only. No code changed.** This is Step 6 of
+[bloat-remediation.md](./bloat-remediation.md); Step 7 is blocked until the
+product question in §0 is answered.
 
 ---
 

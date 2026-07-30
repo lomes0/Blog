@@ -2,247 +2,100 @@
 applyTo: 'src/**/*ai*,src/**/*completion*,src/**/*llm*'
 ---
 
-# AI Integration Architecture Guidelines
+# AI Integration
 
-## Current State (January 2026)
+Reference for the multi-provider completion layer. Last verified against the
+code on 2026-07-30.
 
-### SDK Versions (Pinned)
-
-- `ai`: 6.0.27
-- `@ai-sdk/react`: 3.0.29
-- `@ai-sdk/google`: 3.0.6
-- `@ai-sdk/anthropic`: 3.0.9 ✓ v3 model support with AI SDK v6
-- `@ai-sdk/azure`: 3.0.12
-
-### Active Providers
-
-| Provider     | Models                                               | Use Case                  |
-| ------------ | ---------------------------------------------------- | ------------------------- |
-| Google       | gemini-2.5-flash, gemini-2.5-pro                     | Default, fast completions |
-| Anthropic    | claude-3-5-sonnet-20241022, claude-sonnet-4-20250514 | Complex reasoning         |
-| Azure OpenAI | gpt-4o-mini, gpt-5.1-2025-11-13                      | Enterprise fallback       |
-| Ollama       | phi4                                                 | Local/offline             |
-
-### Key Files
-
-- `src/app/api/completion/route.ts` - API endpoint
-- `src/editor/plugins/ToolbarPlugin/Dialogs/AIDialog.tsx` - Model selection UI
-- `src/editor/plugins/ToolbarPlugin/Tools/AITools.tsx` - Toolbar actions
-
----
-
-## Target Architecture
-
-### Directory Structure
+## Layout
 
 ```
 src/lib/ai/
-├── index.ts           # Public API exports
-├── types.ts           # AIProvider, AIModel, AIOption interfaces
-├── models.ts          # Single source of truth for model definitions
-├── prompts.ts         # Centralized prompt templates
-├── providers.ts       # Provider factory functions
-└── errors.ts          # Custom error classes
+├── index.ts               # Public API exports
+├── types.ts               # AIProvider, AIModel, AIOption interfaces
+├── models.ts              # Single source of truth for model definitions
+├── prompts.ts             # Centralized prompt templates
+├── providers.ts           # Provider factory functions
+├── errors.ts              # Custom error classes
+└── copilotAgentTools.ts   # Tool definitions for the copilot panel
 ```
 
-### Design Principles
+Consumers:
 
-1. **Single Source of Truth**
-   - Model definitions in ONE file (`models.ts`)
-   - Prompt templates in ONE file (`prompts.ts`)
-   - No duplicate model lists across components
+- `src/app/api/completion/route.ts` — completion endpoint
+- `src/app/api/copilot/route.ts` — copilot endpoint
+- `src/editor/plugins/ToolbarPlugin/Dialogs/AIDialog.tsx` — model selection UI
+- `src/editor/plugins/ToolbarPlugin/Tools/AITools.tsx` — toolbar actions
 
-2. **Type Safety**
-   - Eliminate `as any` type assertions
-   - Use discriminated unions for providers
-   - Strict typing for model capabilities
+## Rules
 
-3. **Provider Abstraction**
-   - Factory pattern for provider instantiation
-   - Consistent interface across all providers
-   - Environment-based configuration
+1. **Single source of truth.** Model definitions live only in `models.ts`,
+   prompt templates only in `prompts.ts`. Never hardcode a model array or a
+   prompt string in a component — import from `@/lib/ai`.
+2. **No `as any`.** Provider interface mismatches are handled with discriminated
+   unions and type guards in `providers.ts`. The codebase is currently clean of
+   AI-related type assertions; keep it that way (ESLint
+   `@typescript-eslint/no-explicit-any` enforces it).
+3. **Pin exact versions.** The AI SDK breaks between majors — `ai` and the
+   `@ai-sdk/*` packages are pinned without `^` where a break has bitten before.
+4. **Degrade gracefully.** A provider whose env vars are unset must not break
+   the UI; surface a user-facing message via the `errors.ts` classes.
 
-4. **Error Handling**
-   - Custom error classes for AI failures
-   - Graceful degradation when providers unavailable
-   - User-friendly error messages
+## Pinned SDK versions
 
----
+| Package             | Version |
+| ------------------- | ------- |
+| `ai`                | 6.0.27  |
+| `@ai-sdk/react`     | ^3.0.29 |
+| `@ai-sdk/google`    | 3.0.6   |
+| `@ai-sdk/anthropic` | 3.0.9   |
+| `@ai-sdk/openai`    | ^3.0.65 |
 
-## Implementation Steps
+AI SDK v6 supports model specifications v1, v2 and v3; `@ai-sdk/anthropic` v3.x
+uses spec v3.
 
-### Phase 1: Create Abstraction Layer
+## Registered models
 
-```typescript
-// src/lib/ai/types.ts
-export type AIProviderType = "google" | "anthropic" | "azure" | "ollama";
+Defined in `src/lib/ai/models.ts`. `getDefaultModel()` returns the first entry.
 
-export interface AIModel {
-  id: string;
-  name: string;
-  provider: AIProviderType;
-  capabilities: {
-    streaming: boolean;
-    maxTokens: number;
-    supportsImages?: boolean;
-  };
-}
+| Provider     | Models                               | Notes                     |
+| ------------ | ------------------------------------ | ------------------------- |
+| Google       | `gemini-2.5-flash`, `gemini-2.5-pro` | Default, fast completions |
+| Anthropic    | `claude-sonnet-5`, `claude-opus-4-8` | Reasoning tasks           |
+| Azure OpenAI | `gpt-4o-mini`, `gpt-5.1-2025-11-13`  | Enterprise fallback       |
+| Ollama       | `phi4`                               | Local/offline             |
 
-export interface AIOption {
-  value: string;
-  label: string;
-  prompt: string;
-}
-```
+Models get deprecated and renamed. When a provider changes an id, edit
+`models.ts` — nothing else should need touching.
 
-```typescript
-// src/lib/ai/models.ts
-import type { AIModel } from "./types";
-
-export const AI_MODELS: AIModel[] = [
-  {
-    id: "gemini-2.5-flash",
-    name: "Gemini 2.5 Flash",
-    provider: "google",
-    capabilities: { streaming: true, maxTokens: 8192 },
-  },
-  // ... other models
-];
-
-export const getModelById = (id: string) => AI_MODELS.find((m) => m.id === id);
-
-export const getModelsByProvider = (provider: AIProviderType) =>
-  AI_MODELS.filter((m) => m.provider === provider);
-```
-
-```typescript
-// src/lib/ai/prompts.ts
-export const PROMPTS = {
-  rewrite: "Rewrite the following text to improve clarity and flow:",
-  continue: "Continue writing from where the text ends:",
-  shorter: "Make this text more concise while keeping key information:",
-  longer: "Expand this text with more detail and examples:",
-  fixSpelling: "Fix any spelling and grammar errors:",
-  changeTone: (tone: string) => `Rewrite in a ${tone} tone:`,
-} as const;
-```
-
-### Phase 2: Refactor API Route
-
-```typescript
-// src/app/api/completion/route.ts
-import { createProvider, getModelInstance } from "@/lib/ai/providers";
-import { PROMPTS } from "@/lib/ai/prompts";
-import { AICompletionError } from "@/lib/ai/errors";
-
-export async function POST(req: Request) {
-  const { prompt, model: modelId, option } = await req.json();
-
-  const model = getModelById(modelId);
-  if (!model) throw new AICompletionError("Invalid model");
-
-  const provider = createProvider(model.provider);
-  const systemPrompt = PROMPTS[option] ?? PROMPTS.rewrite;
-
-  // ... rest of implementation
-}
-```
-
-### Phase 3: Update UI Components
-
-- Import models from `@/lib/ai/models`
-- Import prompts from `@/lib/ai/prompts`
-- Remove hardcoded model arrays from components
-
----
-
-## Migration Checklist
-
-- [ ] Create `src/lib/ai/` directory structure
-- [ ] Implement `types.ts` with interfaces
-- [ ] Implement `models.ts` with model definitions
-- [ ] Implement `prompts.ts` with prompt templates
-- [ ] Implement `providers.ts` with factory functions
-- [ ] Implement `errors.ts` with custom errors
-- [ ] Create `index.ts` with public exports
-- [ ] Refactor `route.ts` to use abstraction
-- [ ] Refactor `AIDialog.tsx` to import from lib
-- [ ] Refactor `AITools.tsx` to use centralized prompts
-- [ ] Remove `as any` type assertions
-- [ ] Add unit tests for provider factory
-- [ ] Update package.json with exact versions (no ^)
-- [ ] Remove debug console.log statements
-- [ ] Document environment variables in README
-
----
-
-## Environment Variables
+## Environment variables
 
 ```bash
-# Required for Google Gemini
+# Google Gemini
 GOOGLE_GENERATIVE_AI_API_KEY=
 
-# Required for Anthropic Claude
+# Anthropic Claude
 ANTHROPIC_API_KEY=
 
 # Azure OpenAI (gateway/proxy setup)
 AZURE_API_KEY=
-AZURE_OPENAI_BASE_URL=https://staging-openai.azure-api.net/openai-gw-proxy-dev
-AZURE_OPENAI_API_VERSION=2025-04-01-preview
+AZURE_OPENAI_BASE_URL=
+AZURE_OPENAI_API_VERSION=
 
-# Optional: Local Ollama
+# Optional: local Ollama
 OLLAMA_API_URL=http://localhost:11434/api
 ```
 
----
+All are optional — the app runs without any of them, with AI features
+unavailable.
 
-## Known Issues & Workarounds
+## Testing checklist
 
-### SDK Version Compatibility
+There is no test runner in this project, so this is a manual pass:
 
-The AI SDK has frequent breaking changes between major versions:
-
-- v4 → v5: Model interface changes
-- v5 → v6: Support for model specification v3, React hooks architecture updates
-
-**Current Setup (AI SDK v6)**:
-
-- AI SDK v6 supports model specifications v1, v2, and v3
-- `@ai-sdk/anthropic` v3.x uses specification v3 (compatible with SDK v6)
-- Enables access to latest Claude models (Claude Sonnet 4)
-
-**Migration Notes**:
-
-- Upgraded from AI SDK v5 to v6 on January 10, 2026
-- No breaking changes detected in core API usage
-- All existing code continues to work
-
-**Mitigation**: Pin exact versions in package.json, test before upgrading.
-
-### Type Assertions
-
-Current code uses `model as any` due to interface mismatches between provider
-SDKs.
-
-**Mitigation**: After refactoring, use discriminated unions and proper type
-guards.
-
-### Model Availability
-
-Models may be deprecated or renamed (e.g., gemini-2.0 → gemini-2.5).
-
-**Mitigation**: Centralize model definitions, monitor provider changelogs.
-
----
-
-## Testing Checklist
-
-When modifying AI integration:
-
-1. [ ] Test with Google Gemini (default provider)
-2. [ ] Test with Anthropic Claude (reasoning tasks)
-3. [ ] Test each AI option (rewrite, continue, shorter, longer, etc.)
-4. [ ] Verify streaming works in UI
-5. [ ] Test error handling (invalid API key, rate limits)
-6. [ ] Check console for unexpected errors
-7. [ ] Verify build passes without type errors
+1. [ ] Google Gemini (default provider) returns a completion
+2. [ ] Anthropic Claude returns a completion
+3. [ ] Each AI option (rewrite, continue, shorter, longer, …)
+4. [ ] Streaming renders incrementally in the UI
+5. [ ] Error handling: invalid API key, rate limit, unset provider
+6. [ ] `npx tsc --noEmit` and `npm run lint` are clean

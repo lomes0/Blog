@@ -24,10 +24,13 @@ visualizations, and series organization.
 
 ## Getting Started
 
+See [docs/bootstrap.md](docs/bootstrap.md) for the full from-zero setup (Node, a
+Docker Postgres, and the required environment variables).
+
 ```
-git clone https://github.com/IBastawisi/matheditor.git
-cd matheditor
 npm install
+docker compose up -d
+npx prisma migrate dev
 npm run dev
 ```
 
@@ -39,9 +42,8 @@ instructions.
 
 ## Documentation
 
-- [Hydration Troubleshooting](docs/guides/hydration.md) - Fixing common
-  rendering issues
-- [Date Formatting Best Practices](docs/guides/date-formatting.md) - Avoiding
-  hydration errors from date rendering
-- [Architecture Overview](docs/architecture/overview.md) - Layered architecture
-  and conventions
+- [docs/](docs/README.md) — index of all guides, architecture notes, and plans
+- [CLAUDE.md](CLAUDE.md) — architecture, API route conventions, and
+  authorization rules
+- [DESIGN.md](DESIGN.md) — design system: tokens, typography, spacing, component
+  conventions
