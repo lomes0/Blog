@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 export interface InlineRenameOptions<T, C> {
   /** The rows the rename can target; looked up by id when starting and committing. */
@@ -16,6 +16,16 @@ export interface InlineRenameOptions<T, C> {
   /** Persist the rename. Called only for a non-empty title that differs from the stored one. */
   onCommit: (item: T, title: string, context: C) => void;
   /**
+   * Fired when the open rename closes, however it closed — committed, cancelled
+   * with Escape, or blurred on an unchanged title. `wrote` says whether a new
+   * title actually reached `onCommit`.
+   *
+   * For follow-up work that belongs *after* naming rather than after a
+   * successful rename: a post created from a "+" is opened once its name is
+   * settled either way, since the post exists whether or not you typed one.
+   */
+  onEnd?: (id: string, wrote: boolean) => void;
+  /**
    * Extra per-rename discriminator, for entities with more than one renameable
    * field. `undefined` for the common single-field case.
    */
@@ -29,7 +39,13 @@ export interface InlineRenameResult<C> {
   context: C;
   value: string;
   setValue: (value: string) => void;
-  inputRef: React.RefObject<HTMLInputElement | null>;
+  /**
+   * Attach to the rename field. A callback ref rather than an object one: it
+   * has to focus the input the moment it mounts, and the mount can lag the
+   * `start` call by a render — creating the first post swaps a whole empty
+   * state out for the tree that contains the field.
+   */
+  inputRef: (node: HTMLInputElement | null) => void;
   /** Open the field on `id`, seeded from that item's current title. */
   start: (id: string, context?: C) => void;
   /**
@@ -59,9 +75,29 @@ export function useInlineRename<T, C = undefined>(
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [context, setContext] = useState<C>(options.initialContext);
   const [value, setValue] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputNode = useRef<HTMLInputElement | null>(null);
   // Set on Escape so the ensuing blur cancels instead of committing the rename.
   const cancelRef = useRef(false);
+
+  /**
+   * Take the field on mount, hand it focus, and release it on unmount.
+   *
+   * Stable identity, so React runs this exactly once per mounted field rather
+   * than on every render. Doing the focus here instead of in an effect keyed on
+   * `renamingId` is what makes it survive the field appearing a render *after*
+   * the rename opened — an effect keyed that way sees a null ref and never runs
+   * again, leaving the user typing into nothing.
+   */
+  const inputRef = useCallback((node: HTMLInputElement | null) => {
+    inputNode.current = node;
+    if (!node) return;
+    // Reveal before focusing. A row created by a "+" is ranked to the *end* of
+    // its container (every `create*` repository call appends), so on any
+    // non-trivial tree the field opens below the fold.
+    node.scrollIntoView({ block: "nearest" });
+    node.focus();
+    node.select();
+  }, []);
 
   // Latest-options ref so the callbacks below read config without depending on
   // it. Read only from event handlers, never during render.
@@ -89,35 +125,33 @@ export function useInlineRename<T, C = undefined>(
     const cancelled = cancelRef.current;
     cancelRef.current = false;
     const title = value.trim();
+    let wrote = false;
     if (!cancelled && renamingId && title) {
       const { items, getId, getTitle, getStoredTitle, onCommit } =
         optionsRef.current;
       const item = items?.find((candidate) => getId(candidate) === renamingId);
       if (item && (getStoredTitle ?? getTitle)(item, context) !== title) {
         onCommit(item, title, context);
+        wrote = true;
       }
     }
+    const endedId = renamingId;
     setRenamingId(null);
     setValue("");
+    // Last, so an `onEnd` that navigates finds the field already closed.
+    if (endedId) optionsRef.current.onEnd?.(endedId, wrote);
   }, [renamingId, context, value]);
 
   const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
     if (event.key === "Enter") {
       event.preventDefault();
-      inputRef.current?.blur();
+      inputNode.current?.blur();
     } else if (event.key === "Escape") {
       event.preventDefault();
       cancelRef.current = true;
-      inputRef.current?.blur();
+      inputNode.current?.blur();
     }
   }, []);
-
-  useEffect(() => {
-    if (renamingId && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [renamingId]);
 
   return {
     renamingId,
