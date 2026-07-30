@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { v4 as uuid } from "uuid";
 import {
@@ -8,95 +8,81 @@ import {
   useDispatch,
   useSelector,
 } from "@/store";
+import type { Post, Project, Series } from "@/types";
+import {
+  type ContextMenuState,
+  useContextMenu,
+} from "@/hooks/useContextMenu";
+import {
+  type InlineRenameResult,
+  useInlineRename,
+} from "@/hooks/useInlineRename";
 
 /**
- * Which field an inline rename writes to. The root document doubles as the post
- * and its first tab, so the post row renames `name` (the post title) while the
- * first sub-tab renames `tabLabel` (the tab's own label) — both keyed by the
+ * Which field a post's inline rename writes to. The root document doubles as the
+ * post and its first tab, so the post row renames `name` (the post title) while
+ * the first sub-tab renames `tabLabel` (the tab's own label) — both keyed by the
  * same id, so the field disambiguates which is being edited.
  */
 export type RenameField = "name" | "tabLabel";
 
-export interface PostItemActions {
-  renamingPostId: string | null;
-  renameField: RenameField;
-  renameValue: string;
-  setRenameValue: (v: string) => void;
-  renameInputRef: React.RefObject<HTMLInputElement | null>;
-  handleContextMenu: (event: React.MouseEvent, postId: string) => void;
-  handleDoubleClick: (
-    event: React.MouseEvent,
-    postId: string,
-    currentName: string,
-    field?: RenameField,
-  ) => void;
-  handleRenameBlur: () => void;
-  handleRenameKeyDown: (event: React.KeyboardEvent) => void;
+/** Rename machinery for the rows of one entity type, plus their right-click menu. */
+export interface RowActions<C = undefined> {
+  rename: InlineRenameResult<C>;
+  /** Right-click handler for a row of this entity type. */
+  openContextMenu: (event: React.MouseEvent, id: string) => void;
 }
 
 /**
- * Series-row equivalents of {@link PostItemActions}. A series has no editor
- * document, so "Edit" opens the series edit form and "Rename" inline-edits the
- * series title (persisted via `updateSeries`).
+ * Post rows and sub-tabs. Renaming is field-discriminated (see
+ * {@link RenameField}); everything else is the shared row machinery.
  */
-export interface SeriesItemActions {
-  renamingSeriesId: string | null;
-  seriesRenameValue: string;
-  setSeriesRenameValue: (v: string) => void;
-  seriesRenameInputRef: React.RefObject<HTMLInputElement | null>;
-  handleSeriesContextMenu: (event: React.MouseEvent, seriesId: string) => void;
-  handleSeriesDoubleClick: (
-    event: React.MouseEvent,
-    seriesId: string,
-    currentTitle: string,
-  ) => void;
-  handleSeriesRenameBlur: () => void;
-  handleSeriesRenameKeyDown: (event: React.KeyboardEvent) => void;
-}
+export type PostItemActions = RowActions<RenameField>;
 
 /**
- * Project-header equivalents of {@link SeriesItemActions}. A project has no
- * editor document and no detail page, so it supports inline rename (persisted
- * via `updateProject`) and delete (which frees its series to root); there is no
- * "Edit" action.
+ * Series headers. A series has no editor document, so "Edit" opens the series
+ * edit form and "Rename" inline-edits the series title (via `updateSeries`).
  */
-export interface ProjectItemActions {
-  renamingProjectId: string | null;
-  projectRenameValue: string;
-  setProjectRenameValue: (v: string) => void;
-  projectRenameInputRef: React.RefObject<HTMLInputElement | null>;
-  handleProjectContextMenu: (event: React.MouseEvent, projectId: string) => void;
-  handleProjectDoubleClick: (
-    event: React.MouseEvent,
-    projectId: string,
-    currentTitle: string,
-  ) => void;
-  handleProjectRenameBlur: () => void;
-  handleProjectRenameKeyDown: (event: React.KeyboardEvent) => void;
+export type SeriesItemActions = RowActions;
+
+/**
+ * Project headers. A project has no editor document and no detail page, so it
+ * supports inline rename (via `updateProject`) and delete (which frees its
+ * series to root); there is no "Edit" action.
+ */
+export interface ProjectItemActions extends RowActions {
   /** Create a project and drop straight into inline rename on the new header. */
   handleCreateProject: () => Promise<void>;
 }
 
-export interface SidebarActionsResult
-  extends PostItemActions, SeriesItemActions, ProjectItemActions {
-  contextMenu: { mouseX: number; mouseY: number; postId: string } | null;
-  handleCloseContextMenu: () => void;
-  handleEditPost: (postId: string) => void;
-  handleRenameFromMenu: (postId: string) => void;
-  handleDeletePost: (postId: string) => Promise<void>;
-  seriesContextMenu:
-    | { mouseX: number; mouseY: number; seriesId: string }
-    | null;
-  handleCloseSeriesContextMenu: () => void;
-  handleEditSeries: (seriesId: string) => void;
-  handleRenameSeriesFromMenu: (seriesId: string) => void;
-  handleDeleteSeries: (seriesId: string) => Promise<void>;
-  projectContextMenu:
-    | { mouseX: number; mouseY: number; projectId: string }
-    | null;
-  handleCloseProjectContextMenu: () => void;
-  handleRenameProjectFromMenu: (projectId: string) => void;
-  handleDeleteProject: (projectId: string) => Promise<void>;
+/** The menu itself: where it sits, and what its items do. */
+export interface RowContextMenu {
+  contextMenu: ContextMenuState<string> | null;
+  close: () => void;
+  onRename: (id: string) => void;
+  onDelete: (id: string) => Promise<void>;
+}
+
+/** A menu whose entity has a page to open, so it carries an "Edit" item too. */
+export interface EditableRowContextMenu extends RowContextMenu {
+  onEdit: (id: string) => void;
+}
+
+export interface SidebarActionsResult {
+  postActions: PostItemActions;
+  seriesActions: SeriesItemActions;
+  projectActions: ProjectItemActions;
+  postMenu: EditableRowContextMenu;
+  seriesMenu: EditableRowContextMenu;
+  /** Projects have no detail page, so no "Edit". */
+  projectMenu: RowContextMenu;
+}
+
+/** Title a post's inline field opens with, per renamed field. */
+function postTitle(post: Post, field: RenameField): string {
+  const name = post.name || "Untitled";
+  // The first tab's label can differ from the post title; fall back to it.
+  return field === "tabLabel" ? post.tabLabel ?? name : name;
 }
 
 export function useSidebarActions(): SidebarActionsResult {
@@ -108,446 +94,238 @@ export function useSidebarActions(): SidebarActionsResult {
   const series = useSelector((state: RootState) => state.series);
   const projects = useSelector((state: RootState) => state.projects);
 
-  const [contextMenu, setContextMenu] = useState<
-    {
-      mouseX: number;
-      mouseY: number;
-      postId: string;
-    } | null
-  >(null);
-
-  const [renamingPostId, setRenamingPostId] = useState<string | null>(null);
-  const [renameField, setRenameField] = useState<RenameField>("name");
-  const [renameValue, setRenameValue] = useState("");
-  const renameInputRef = useRef<HTMLInputElement>(null);
-  // Set on Escape so the ensuing blur cancels instead of committing the rename.
-  const cancelRenameRef = useRef(false);
-
-  const [seriesContextMenu, setSeriesContextMenu] = useState<
-    { mouseX: number; mouseY: number; seriesId: string } | null
-  >(null);
-  const [renamingSeriesId, setRenamingSeriesId] = useState<string | null>(null);
-  const [seriesRenameValue, setSeriesRenameValue] = useState("");
-  const seriesRenameInputRef = useRef<HTMLInputElement>(null);
-  // Set on Escape so the ensuing blur cancels instead of committing the rename.
-  const cancelSeriesRenameRef = useRef(false);
-
-  const [projectContextMenu, setProjectContextMenu] = useState<
-    { mouseX: number; mouseY: number; projectId: string } | null
-  >(null);
-  const [renamingProjectId, setRenamingProjectId] = useState<string | null>(
-    null,
-  );
-  const [projectRenameValue, setProjectRenameValue] = useState("");
-  const projectRenameInputRef = useRef<HTMLInputElement>(null);
-  // Set on Escape so the ensuing blur cancels instead of committing the rename.
-  const cancelProjectRenameRef = useRef(false);
-
-  const handleContextMenu = useCallback(
-    (event: React.MouseEvent, postId: string) => {
-      event.preventDefault();
-      setContextMenu((prev) =>
-        prev === null
-          ? { mouseX: event.clientX + 2, mouseY: event.clientY - 6, postId }
-          : null
+  /**
+   * Ask before destroying something. Returns whether the user confirmed; the
+   * two option ids are freshly minted so a stale reply can't match.
+   */
+  const confirmDelete = useCallback(
+    async (title: string, content: string) => {
+      const cancelId = uuid();
+      const confirmId = uuid();
+      const response = await dispatch(
+        actions.alert({
+          title,
+          content,
+          actions: [
+            { label: "Cancel", id: cancelId },
+            { label: "Delete", id: confirmId },
+          ],
+        }),
       );
+      return response.payload === confirmId;
     },
-    [],
+    [dispatch],
   );
 
-  const handleCloseContextMenu = useCallback(() => {
-    setContextMenu(null);
-  }, []);
+  // --- Posts -----------------------------------------------------------------
+
+  const {
+    contextMenu: postContextMenu,
+    open: openPostMenu,
+    close: closePostMenu,
+  } = useContextMenu<string>();
+  const postRename = useInlineRename<Post, RenameField>({
+    items: documents,
+    getId: (post) => post.id,
+    getTitle: postTitle,
+    // Compare against the raw stored value, not `postTitle`'s "Untitled"
+    // placeholder, so naming an untitled post "Untitled" for real still writes.
+    getStoredTitle: (post, field) =>
+      (field === "tabLabel" ? post.tabLabel : post.name) ?? "",
+    initialContext: "name",
+    onCommit: (post, title, field) => {
+      const partial: { name?: string; tabLabel?: string } = { [field]: title };
+      // Renaming the post title must not drag the first tab's label with it.
+      // The first tab falls back to the post `name` until `tabLabel` is set, so
+      // when renaming a tabbed post's title we pin the first tab to its current
+      // label by seeding `tabLabel` with the old name. Single-tab posts have no
+      // separate first-tab item, so their heading keeps following the post name.
+      if (field === "name") {
+        const hasTabs = documents.some((doc) => doc.parentId === post.id);
+        if (hasTabs && !post.tabLabel && post.name) {
+          partial.tabLabel = post.name;
+        }
+      }
+      dispatch(actions.updatePost({ id: post.id, partial }));
+    },
+  });
+  const { start: startPostRename } = postRename;
 
   const handleEditPost = useCallback(
     (postId: string) => {
-      handleCloseContextMenu();
+      closePostMenu();
       router.push(`/edit/${postId}`);
     },
-    [router, handleCloseContextMenu],
+    [router, closePostMenu],
   );
 
-  const handleRenameFromMenu = useCallback(
+  const handleRenamePostFromMenu = useCallback(
     (postId: string) => {
-      handleCloseContextMenu();
-      const doc = documents?.find((d) => d.id === postId);
-      if (doc) {
-        const docName = (doc)?.name || "Untitled";
-        setRenamingPostId(postId);
-        setRenameField("name");
-        setRenameValue(docName);
-      }
+      closePostMenu();
+      startPostRename(postId, "name");
     },
-    [handleCloseContextMenu, documents],
+    [closePostMenu, startPostRename],
   );
 
   const handleDeletePost = useCallback(
     async (postId: string) => {
-      handleCloseContextMenu();
-      const cancelId = uuid();
-      const confirmId = uuid();
-      const response = await dispatch(
-        actions.alert({
-          title: "Delete Post",
-          content: "Are you sure you want to delete this post?",
-          actions: [
-            { label: "Cancel", id: cancelId },
-            { label: "Delete", id: confirmId },
-          ],
-        }),
+      closePostMenu();
+      const confirmed = await confirmDelete(
+        "Delete Post",
+        "Are you sure you want to delete this post?",
       );
-      if (response.payload !== confirmId) return;
-      const doc = documents?.find((d) => d.id === postId);
-      if (doc) {
-        try {
-          await dispatch(actions.deletePost(postId)).unwrap();
-          router.refresh();
-        } catch {
-          // delete failed, skip refresh
-        }
+      if (!confirmed) return;
+      if (!documents?.some((doc) => doc.id === postId)) return;
+      try {
+        await dispatch(actions.deletePost(postId)).unwrap();
+        router.refresh();
+      } catch {
+        // delete failed, skip refresh
       }
     },
-    [dispatch, handleCloseContextMenu, documents, router],
+    [dispatch, closePostMenu, confirmDelete, documents, router],
   );
 
-  const handleSeriesContextMenu = useCallback(
-    (event: React.MouseEvent, seriesId: string) => {
-      event.preventDefault();
-      event.stopPropagation();
-      setSeriesContextMenu((prev) =>
-        prev === null
-          ? { mouseX: event.clientX + 2, mouseY: event.clientY - 6, seriesId }
-          : null
-      );
+  // --- Series ----------------------------------------------------------------
+
+  // Series and project headers nest inside right-clickable rows, so their menus
+  // must not let the event reach the ancestor's handler.
+  const {
+    contextMenu: seriesContextMenu,
+    open: openSeriesMenu,
+    close: closeSeriesMenu,
+  } = useContextMenu<string>({ stopPropagation: true });
+  const seriesRename = useInlineRename<Series, undefined>({
+    items: series,
+    getId: (item) => item.id,
+    getTitle: (item) => item.title || "",
+    initialContext: undefined,
+    onCommit: (item, title) => {
+      dispatch(actions.updateSeries({ id: item.id, data: { title } }));
     },
-    [],
-  );
-
-  const handleCloseSeriesContextMenu = useCallback(() => {
-    setSeriesContextMenu(null);
-  }, []);
+  });
+  const { start: startSeriesRename } = seriesRename;
 
   const handleEditSeries = useCallback(
     (seriesId: string) => {
-      handleCloseSeriesContextMenu();
+      closeSeriesMenu();
       router.push(`/series/${seriesId}/edit`);
     },
-    [router, handleCloseSeriesContextMenu],
+    [router, closeSeriesMenu],
   );
 
   const handleRenameSeriesFromMenu = useCallback(
     (seriesId: string) => {
-      handleCloseSeriesContextMenu();
-      const target = series?.find((s) => s.id === seriesId);
-      if (target) {
-        setRenamingSeriesId(seriesId);
-        setSeriesRenameValue(target.title || "");
-      }
+      closeSeriesMenu();
+      startSeriesRename(seriesId);
     },
-    [handleCloseSeriesContextMenu, series],
+    [closeSeriesMenu, startSeriesRename],
   );
 
   const handleDeleteSeries = useCallback(
     async (seriesId: string) => {
-      handleCloseSeriesContextMenu();
-      const cancelId = uuid();
-      const confirmId = uuid();
-      const response = await dispatch(
-        actions.alert({
-          title: "Delete Series",
-          content: "Delete this series? Posts will not be deleted.",
-          actions: [
-            { label: "Cancel", id: cancelId },
-            { label: "Delete", id: confirmId },
-          ],
-        }),
+      closeSeriesMenu();
+      const confirmed = await confirmDelete(
+        "Delete Series",
+        "Delete this series? Posts will not be deleted.",
       );
-      if (response.payload !== confirmId) return;
+      if (!confirmed) return;
       await dispatch(actions.deleteSeries(seriesId));
       router.refresh();
     },
-    [dispatch, handleCloseSeriesContextMenu, router],
+    [dispatch, closeSeriesMenu, confirmDelete, router],
   );
 
-  const handleSeriesDoubleClick = useCallback(
-    (event: React.MouseEvent, seriesId: string, currentTitle: string) => {
-      event.preventDefault();
-      setRenamingSeriesId(seriesId);
-      setSeriesRenameValue(currentTitle);
+  // --- Projects --------------------------------------------------------------
+
+  const {
+    contextMenu: projectContextMenu,
+    open: openProjectMenu,
+    close: closeProjectMenu,
+  } = useContextMenu<string>({ stopPropagation: true });
+  const projectRename = useInlineRename<Project, undefined>({
+    items: projects,
+    getId: (item) => item.id,
+    getTitle: (item) => item.title || "",
+    initialContext: undefined,
+    onCommit: (item, title) => {
+      dispatch(actions.updateProject({ id: item.id, data: { title } }));
     },
-    [],
-  );
-
-  const handleSeriesRenameBlur = useCallback(() => {
-    const cancelled = cancelSeriesRenameRef.current;
-    cancelSeriesRenameRef.current = false;
-    if (!cancelled && renamingSeriesId && seriesRenameValue.trim()) {
-      const target = series?.find((s) => s.id === renamingSeriesId);
-      if (target && target.title !== seriesRenameValue.trim()) {
-        dispatch(
-          actions.updateSeries({
-            id: renamingSeriesId,
-            data: { title: seriesRenameValue.trim() },
-          }),
-        );
-      }
-    }
-    setRenamingSeriesId(null);
-    setSeriesRenameValue("");
-  }, [dispatch, renamingSeriesId, seriesRenameValue, series]);
-
-  const handleSeriesRenameKeyDown = useCallback(
-    (event: React.KeyboardEvent) => {
-      // Both keys commit/cancel by blurring the input: focus lands on <body>
-      // before the field unmounts, so it never falls back to the row's
-      // focusable ListItemButton ancestor (which would leave a stuck focus
-      // ring). The blur handler does the actual commit/cancel.
-      if (event.key === "Enter") {
-        event.preventDefault();
-        seriesRenameInputRef.current?.blur();
-      } else if (event.key === "Escape") {
-        event.preventDefault();
-        cancelSeriesRenameRef.current = true;
-        seriesRenameInputRef.current?.blur();
-      }
-    },
-    [],
-  );
-
-  const handleProjectContextMenu = useCallback(
-    (event: React.MouseEvent, projectId: string) => {
-      event.preventDefault();
-      event.stopPropagation();
-      setProjectContextMenu((prev) =>
-        prev === null
-          ? { mouseX: event.clientX + 2, mouseY: event.clientY - 6, projectId }
-          : null
-      );
-    },
-    [],
-  );
-
-  const handleCloseProjectContextMenu = useCallback(() => {
-    setProjectContextMenu(null);
-  }, []);
+  });
+  const {
+    start: startProjectRename,
+    startWith: startProjectRenameWith,
+  } = projectRename;
 
   const handleRenameProjectFromMenu = useCallback(
     (projectId: string) => {
-      handleCloseProjectContextMenu();
-      const target = projects?.find((p) => p.id === projectId);
-      if (target) {
-        setRenamingProjectId(projectId);
-        setProjectRenameValue(target.title || "");
-      }
+      closeProjectMenu();
+      startProjectRename(projectId);
     },
-    [handleCloseProjectContextMenu, projects],
+    [closeProjectMenu, startProjectRename],
   );
 
   const handleDeleteProject = useCallback(
     async (projectId: string) => {
-      handleCloseProjectContextMenu();
-      const cancelId = uuid();
-      const confirmId = uuid();
-      const response = await dispatch(
-        actions.alert({
-          title: "Delete Project",
-          content:
-            "Delete this project? Its series will be kept and moved out of the project.",
-          actions: [
-            { label: "Cancel", id: cancelId },
-            { label: "Delete", id: confirmId },
-          ],
-        }),
+      closeProjectMenu();
+      const confirmed = await confirmDelete(
+        "Delete Project",
+        "Delete this project? Its series will be kept and moved out of the project.",
       );
-      if (response.payload !== confirmId) return;
+      if (!confirmed) return;
       await dispatch(actions.deleteProject(projectId));
       router.refresh();
     },
-    [dispatch, handleCloseProjectContextMenu, router],
-  );
-
-  const handleProjectDoubleClick = useCallback(
-    (event: React.MouseEvent, projectId: string, currentTitle: string) => {
-      event.preventDefault();
-      setRenamingProjectId(projectId);
-      setProjectRenameValue(currentTitle);
-    },
-    [],
-  );
-
-  const handleProjectRenameBlur = useCallback(() => {
-    const cancelled = cancelProjectRenameRef.current;
-    cancelProjectRenameRef.current = false;
-    if (!cancelled && renamingProjectId && projectRenameValue.trim()) {
-      const target = projects?.find((p) => p.id === renamingProjectId);
-      if (target && target.title !== projectRenameValue.trim()) {
-        dispatch(
-          actions.updateProject({
-            id: renamingProjectId,
-            data: { title: projectRenameValue.trim() },
-          }),
-        );
-      }
-    }
-    setRenamingProjectId(null);
-    setProjectRenameValue("");
-  }, [dispatch, renamingProjectId, projectRenameValue, projects]);
-
-  const handleProjectRenameKeyDown = useCallback(
-    (event: React.KeyboardEvent) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        projectRenameInputRef.current?.blur();
-      } else if (event.key === "Escape") {
-        event.preventDefault();
-        cancelProjectRenameRef.current = true;
-        projectRenameInputRef.current?.blur();
-      }
-    },
-    [],
+    [dispatch, closeProjectMenu, confirmDelete, router],
   );
 
   const handleCreateProject = useCallback(async () => {
     try {
       // createProject.fulfilled unshifts the project into the store, so the new
       // section header renders immediately; open its inline rename so the user
-      // just types the name (IDE-style new-folder flow).
+      // just types the name (IDE-style new-folder flow). Seed the title
+      // explicitly — this closure's `projects` predates the new row.
       const created = await dispatch(
         actions.createProject({ title: "New Project" }),
       ).unwrap();
       if (created?.id) {
-        setRenamingProjectId(created.id);
-        setProjectRenameValue(created.title || "New Project");
+        startProjectRenameWith(created.id, created.title || "New Project");
       }
     } catch {
       // Create failed; the thunk already surfaced an announcement.
     }
-  }, [dispatch]);
-
-  const handleDoubleClick = useCallback(
-    (
-      event: React.MouseEvent,
-      postId: string,
-      currentName: string,
-      field: RenameField = "name",
-    ) => {
-      event.preventDefault();
-      setRenamingPostId(postId);
-      setRenameField(field);
-      setRenameValue(currentName);
-    },
-    [],
-  );
-
-  const handleRenameBlur = useCallback(() => {
-    const cancelled = cancelRenameRef.current;
-    cancelRenameRef.current = false;
-    if (!cancelled && renamingPostId && renameValue.trim()) {
-      const doc = documents?.find((d) => d.id === renamingPostId);
-      if (doc) {
-        const partial: { name?: string; tabLabel?: string } = {
-          [renameField]: renameValue.trim(),
-        };
-        // Renaming the post title must not drag the first tab's label with it.
-        // The first tab falls back to the post `name` until `tabLabel` is set,
-        // so when renaming a tabbed post's title we pin the first tab to its
-        // current label by seeding `tabLabel` with the old name. Single-tab
-        // posts have no separate first-tab item, so their heading keeps
-        // following the post name.
-        if (renameField === "name") {
-          const effective = doc;
-          const hasTabs = documents.some(
-            (d) => (d)?.parentId === renamingPostId,
-          );
-          if (hasTabs && effective && !effective.tabLabel && effective.name) {
-            partial.tabLabel = effective.name;
-          }
-        }
-        dispatch(actions.updatePost({ id: renamingPostId, partial }));
-      }
-    }
-    setRenamingPostId(null);
-    setRenameValue("");
-  }, [dispatch, renamingPostId, renameField, renameValue, documents]);
-
-  const handleRenameKeyDown = useCallback(
-    (event: React.KeyboardEvent) => {
-      // Commit/cancel by blurring the input so focus lands on <body> before the
-      // field unmounts, rather than falling back to the row and leaving a stuck
-      // focus ring. The blur handler performs the commit (or cancel).
-      if (event.key === "Enter") {
-        event.preventDefault();
-        renameInputRef.current?.blur();
-      } else if (event.key === "Escape") {
-        event.preventDefault();
-        cancelRenameRef.current = true;
-        renameInputRef.current?.blur();
-      }
-    },
-    [],
-  );
-
-  useEffect(() => {
-    if (renamingPostId && renameInputRef.current) {
-      renameInputRef.current.focus();
-      renameInputRef.current.select();
-    }
-  }, [renamingPostId]);
-
-  useEffect(() => {
-    if (renamingSeriesId && seriesRenameInputRef.current) {
-      seriesRenameInputRef.current.focus();
-      seriesRenameInputRef.current.select();
-    }
-  }, [renamingSeriesId]);
-
-  useEffect(() => {
-    if (renamingProjectId && projectRenameInputRef.current) {
-      projectRenameInputRef.current.focus();
-      projectRenameInputRef.current.select();
-    }
-  }, [renamingProjectId]);
+  }, [dispatch, startProjectRenameWith]);
 
   return {
-    contextMenu,
-    renamingPostId,
-    renameField,
-    renameValue,
-    setRenameValue,
-    renameInputRef,
-    handleContextMenu,
-    handleCloseContextMenu,
-    handleEditPost,
-    handleRenameFromMenu,
-    handleDeletePost,
-    handleDoubleClick,
-    handleRenameBlur,
-    handleRenameKeyDown,
-    seriesContextMenu,
-    handleCloseSeriesContextMenu,
-    handleEditSeries,
-    handleRenameSeriesFromMenu,
-    handleDeleteSeries,
-    renamingSeriesId,
-    seriesRenameValue,
-    setSeriesRenameValue,
-    seriesRenameInputRef,
-    handleSeriesContextMenu,
-    handleSeriesDoubleClick,
-    handleSeriesRenameBlur,
-    handleSeriesRenameKeyDown,
-    projectContextMenu,
-    handleCloseProjectContextMenu,
-    handleRenameProjectFromMenu,
-    handleDeleteProject,
-    renamingProjectId,
-    projectRenameValue,
-    setProjectRenameValue,
-    projectRenameInputRef,
-    handleProjectContextMenu,
-    handleProjectDoubleClick,
-    handleProjectRenameBlur,
-    handleProjectRenameKeyDown,
-    handleCreateProject,
+    postActions: { rename: postRename, openContextMenu: openPostMenu },
+    seriesActions: {
+      rename: seriesRename,
+      openContextMenu: openSeriesMenu,
+    },
+    projectActions: {
+      rename: projectRename,
+      openContextMenu: openProjectMenu,
+      handleCreateProject,
+    },
+    postMenu: {
+      contextMenu: postContextMenu,
+      close: closePostMenu,
+      onEdit: handleEditPost,
+      onRename: handleRenamePostFromMenu,
+      onDelete: handleDeletePost,
+    },
+    seriesMenu: {
+      contextMenu: seriesContextMenu,
+      close: closeSeriesMenu,
+      onEdit: handleEditSeries,
+      onRename: handleRenameSeriesFromMenu,
+      onDelete: handleDeleteSeries,
+    },
+    projectMenu: {
+      contextMenu: projectContextMenu,
+      close: closeProjectMenu,
+      onRename: handleRenameProjectFromMenu,
+      onDelete: handleDeleteProject,
+    },
   };
 }

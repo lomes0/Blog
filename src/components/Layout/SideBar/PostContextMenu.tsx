@@ -2,15 +2,10 @@ import React from "react";
 import { ListItemIcon, ListItemText, Menu, MenuItem } from "@mui/material";
 import { FilePen, Pencil, Trash2 } from "lucide-react";
 import { ICON_SIZE } from "@/theme/icons";
-
-interface ContextMenuState {
-  mouseX: number;
-  mouseY: number;
-  postId: string;
-}
+import type { ContextMenuState } from "@/hooks/useContextMenu";
 
 interface PostContextMenuProps {
-  contextMenu: ContextMenuState | null;
+  contextMenu: ContextMenuState<string> | null;
   onClose: () => void;
   onEdit: (postId: string) => void;
   onRename: (postId: string) => void;
@@ -59,7 +54,7 @@ export const PostContextMenu: React.FC<PostContextMenuProps> = ({
       }}
     >
       <MenuItem
-        onClick={() => contextMenu && onEdit(contextMenu.postId)}
+        onClick={() => contextMenu && onEdit(contextMenu.target)}
         sx={{ ...menuItemSx, ...borderBottomSx }}
       >
         <ListItemIcon sx={{ minWidth: "auto !important" }}>
@@ -70,7 +65,7 @@ export const PostContextMenu: React.FC<PostContextMenuProps> = ({
         </ListItemText>
       </MenuItem>
       <MenuItem
-        onClick={() => contextMenu && onRename(contextMenu.postId)}
+        onClick={() => contextMenu && onRename(contextMenu.target)}
         sx={{ ...menuItemSx, ...borderBottomSx }}
       >
         <ListItemIcon sx={{ minWidth: "auto !important" }}>
@@ -81,7 +76,7 @@ export const PostContextMenu: React.FC<PostContextMenuProps> = ({
         </ListItemText>
       </MenuItem>
       <MenuItem
-        onClick={() => contextMenu && onDelete(contextMenu.postId)}
+        onClick={() => contextMenu && onDelete(contextMenu.target)}
         sx={menuItemSx}
       >
         <ListItemIcon sx={{ minWidth: "auto !important" }}>

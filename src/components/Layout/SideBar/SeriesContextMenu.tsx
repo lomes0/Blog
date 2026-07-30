@@ -2,15 +2,10 @@ import React from "react";
 import { ListItemIcon, ListItemText, Menu, MenuItem } from "@mui/material";
 import { FilePen, Pencil, Trash2 } from "lucide-react";
 import { ICON_SIZE } from "@/theme/icons";
-
-interface SeriesContextMenuState {
-  mouseX: number;
-  mouseY: number;
-  seriesId: string;
-}
+import type { ContextMenuState } from "@/hooks/useContextMenu";
 
 interface SeriesContextMenuProps {
-  contextMenu: SeriesContextMenuState | null;
+  contextMenu: ContextMenuState<string> | null;
   onClose: () => void;
   onEdit: (seriesId: string) => void;
   onRename: (seriesId: string) => void;
@@ -59,7 +54,7 @@ export const SeriesContextMenu: React.FC<SeriesContextMenuProps> = ({
       }}
     >
       <MenuItem
-        onClick={() => contextMenu && onEdit(contextMenu.seriesId)}
+        onClick={() => contextMenu && onEdit(contextMenu.target)}
         sx={{ ...menuItemSx, ...borderBottomSx }}
       >
         <ListItemIcon sx={{ minWidth: "auto !important" }}>
@@ -70,7 +65,7 @@ export const SeriesContextMenu: React.FC<SeriesContextMenuProps> = ({
         </ListItemText>
       </MenuItem>
       <MenuItem
-        onClick={() => contextMenu && onRename(contextMenu.seriesId)}
+        onClick={() => contextMenu && onRename(contextMenu.target)}
         sx={{ ...menuItemSx, ...borderBottomSx }}
       >
         <ListItemIcon sx={{ minWidth: "auto !important" }}>
@@ -81,7 +76,7 @@ export const SeriesContextMenu: React.FC<SeriesContextMenuProps> = ({
         </ListItemText>
       </MenuItem>
       <MenuItem
-        onClick={() => contextMenu && onDelete(contextMenu.seriesId)}
+        onClick={() => contextMenu && onDelete(contextMenu.target)}
         sx={menuItemSx}
       >
         <ListItemIcon sx={{ minWidth: "auto !important" }}>

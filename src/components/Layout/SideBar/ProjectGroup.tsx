@@ -72,17 +72,8 @@ export const ProjectGroup: React.FC<ProjectGroupProps> = ({
   dnd,
 }) => {
   const projectId = item.project.id;
-  const {
-    renamingProjectId,
-    projectRenameValue,
-    setProjectRenameValue,
-    projectRenameInputRef,
-    handleProjectContextMenu,
-    handleProjectDoubleClick,
-    handleProjectRenameBlur,
-    handleProjectRenameKeyDown,
-  } = projectActions;
-  const isRenaming = renamingProjectId === projectId;
+  const { rename } = projectActions;
+  const isRenaming = rename.renamingId === projectId;
 
   const handleHeaderDragOver = useCallback(
     (e: React.DragEvent<HTMLElement>) => {
@@ -121,10 +112,11 @@ export const ProjectGroup: React.FC<ProjectGroupProps> = ({
           onDragOver={handleHeaderDragOver}
           onDragLeave={dnd.onDragLeaveRow}
           onDrop={handleHeaderDrop}
-          onContextMenu={(e) => handleProjectContextMenu(e, projectId)}
+          onContextMenu={(e) => projectActions.openContextMenu(e, projectId)}
           onDoubleClick={(e) => {
             if (sidebarOpen) {
-              handleProjectDoubleClick(e, projectId, item.project.title);
+              e.preventDefault();
+              rename.start(projectId);
             }
           }}
           sx={{
@@ -171,11 +163,11 @@ export const ProjectGroup: React.FC<ProjectGroupProps> = ({
           {sidebarOpen && isRenaming
             ? (
               <TextField
-                inputRef={projectRenameInputRef}
-                value={projectRenameValue}
-                onChange={(e) => setProjectRenameValue(e.target.value)}
-                onBlur={handleProjectRenameBlur}
-                onKeyDown={handleProjectRenameKeyDown}
+                inputRef={rename.inputRef}
+                value={rename.value}
+                onChange={(e) => rename.setValue(e.target.value)}
+                onBlur={rename.handleBlur}
+                onKeyDown={rename.handleKeyDown}
                 onClick={(e) => e.stopPropagation()}
                 size="small"
                 variant="standard"

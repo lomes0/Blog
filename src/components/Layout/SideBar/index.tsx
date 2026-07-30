@@ -61,23 +61,14 @@ const SideBar: React.FC = () => {
 
   const isExpanded = sidebarMode === "full";
   const { sidebarFontSize } = useSidebarFontSize();
-  const sidebarActions = useSidebarActions();
   const {
-    contextMenu,
-    handleCloseContextMenu,
-    handleEditPost,
-    handleRenameFromMenu,
-    handleDeletePost,
-    seriesContextMenu,
-    handleCloseSeriesContextMenu,
-    handleEditSeries,
-    handleRenameSeriesFromMenu,
-    handleDeleteSeries,
-    projectContextMenu,
-    handleCloseProjectContextMenu,
-    handleRenameProjectFromMenu,
-    handleDeleteProject,
-  } = sidebarActions;
+    postActions,
+    seriesActions,
+    projectActions,
+    postMenu,
+    seriesMenu,
+    projectMenu,
+  } = useSidebarActions();
 
   // Honor the OS "reduce motion" setting: drop the width slide and cross-fade.
   const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
@@ -185,9 +176,9 @@ const SideBar: React.FC = () => {
                 rootItems={groupedRootItems}
                 sidebarOpen
                 pathname={pathname}
-                itemActions={sidebarActions}
-                seriesActions={sidebarActions}
-                projectActions={sidebarActions}
+                itemActions={postActions}
+                seriesActions={seriesActions}
+                projectActions={projectActions}
               />
             )
             : <Box sx={{ flex: "1 1 auto", minHeight: 0 }} />}
@@ -222,26 +213,26 @@ const SideBar: React.FC = () => {
       )}
 
       <PostContextMenu
-        contextMenu={contextMenu}
-        onClose={handleCloseContextMenu}
-        onEdit={handleEditPost}
-        onRename={handleRenameFromMenu}
-        onDelete={handleDeletePost}
+        contextMenu={postMenu.contextMenu}
+        onClose={postMenu.close}
+        onEdit={postMenu.onEdit}
+        onRename={postMenu.onRename}
+        onDelete={postMenu.onDelete}
       />
 
       <SeriesContextMenu
-        contextMenu={seriesContextMenu}
-        onClose={handleCloseSeriesContextMenu}
-        onEdit={handleEditSeries}
-        onRename={handleRenameSeriesFromMenu}
-        onDelete={handleDeleteSeries}
+        contextMenu={seriesMenu.contextMenu}
+        onClose={seriesMenu.close}
+        onEdit={seriesMenu.onEdit}
+        onRename={seriesMenu.onRename}
+        onDelete={seriesMenu.onDelete}
       />
 
       <ProjectContextMenu
-        contextMenu={projectContextMenu}
-        onClose={handleCloseProjectContextMenu}
-        onRename={handleRenameProjectFromMenu}
-        onDelete={handleDeleteProject}
+        contextMenu={projectMenu.contextMenu}
+        onClose={projectMenu.close}
+        onRename={projectMenu.onRename}
+        onDelete={projectMenu.onDelete}
       />
 
       <CreateSeriesDrawer

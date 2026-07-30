@@ -184,9 +184,9 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
   const bulkAwareItemActions = useMemo(
     () => ({
       ...itemActions,
-      handleContextMenu: (event: React.MouseEvent, id: string) => {
+      openContextMenu: (event: React.MouseEvent, id: string) => {
         if (isRowSelected(id) && selectedIds.size > 1) openBulkMenu(event);
-        else itemActions.handleContextMenu(event, id);
+        else itemActions.openContextMenu(event, id);
       },
     }),
     [itemActions, isRowSelected, selectedIds, openBulkMenu],
@@ -194,12 +194,14 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
   const bulkAwareSeriesActions = useMemo(
     () => ({
       ...seriesActions,
-      handleSeriesContextMenu: (event: React.MouseEvent, id: string) => {
+      openContextMenu: (event: React.MouseEvent, id: string) => {
         if (isRowSelected(id) && selectedIds.size > 1) {
+          // The series header nests inside a right-clickable row, so the bulk
+          // branch has to stop the event the row's own handler would have.
           event.stopPropagation();
           openBulkMenu(event);
         } else {
-          seriesActions.handleSeriesContextMenu(event, id);
+          seriesActions.openContextMenu(event, id);
         }
       },
     }),

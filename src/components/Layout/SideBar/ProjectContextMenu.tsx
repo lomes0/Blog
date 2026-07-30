@@ -2,15 +2,10 @@ import React from "react";
 import { ListItemIcon, ListItemText, Menu, MenuItem } from "@mui/material";
 import { FilePen, Trash2 } from "lucide-react";
 import { ICON_SIZE } from "@/theme/icons";
-
-interface ProjectContextMenuState {
-  mouseX: number;
-  mouseY: number;
-  projectId: string;
-}
+import type { ContextMenuState } from "@/hooks/useContextMenu";
 
 interface ProjectContextMenuProps {
-  contextMenu: ProjectContextMenuState | null;
+  contextMenu: ContextMenuState<string> | null;
   onClose: () => void;
   onRename: (projectId: string) => void;
   onDelete: (projectId: string) => void;
@@ -63,7 +58,7 @@ export const ProjectContextMenu: React.FC<ProjectContextMenuProps> = ({
       }}
     >
       <MenuItem
-        onClick={() => contextMenu && onRename(contextMenu.projectId)}
+        onClick={() => contextMenu && onRename(contextMenu.target)}
         sx={{ ...menuItemSx, ...borderBottomSx }}
       >
         <ListItemIcon sx={{ minWidth: "auto !important" }}>
@@ -74,7 +69,7 @@ export const ProjectContextMenu: React.FC<ProjectContextMenuProps> = ({
         </ListItemText>
       </MenuItem>
       <MenuItem
-        onClick={() => contextMenu && onDelete(contextMenu.projectId)}
+        onClick={() => contextMenu && onDelete(contextMenu.target)}
         sx={menuItemSx}
       >
         <ListItemIcon sx={{ minWidth: "auto !important" }}>

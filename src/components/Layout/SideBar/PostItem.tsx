@@ -78,17 +78,7 @@ export const PostItem = memo(
     }: PostItemProps,
   ) => {
     const router = useRouter();
-    const {
-      renamingPostId,
-      renameField,
-      renameValue,
-      setRenameValue,
-      renameInputRef,
-      handleContextMenu,
-      handleDoubleClick,
-      handleRenameBlur,
-      handleRenameKeyDown,
-    } = itemActions;
+    const { rename } = itemActions;
 
     // A tabbed post is a root document with one child per extra tab. Derive the
     // tabs from the store so they render regardless of which doc is open — the
@@ -118,7 +108,8 @@ export const PostItem = memo(
     const isSelected = isViewing || isEditing;
     // The post row renames the post title (`name`); the first sub-tab (same id)
     // renames `tabLabel`. Disambiguate by field so only one input shows.
-    const isRenaming = renamingPostId === post.id && renameField === "name";
+    const isRenaming = rename.renamingId === post.id &&
+      rename.context === "name";
 
     // The post has unsaved live edits if it's the open document and any tab is
     // dirty. Driven by the same Redux `dirtyTabIds` the Save button uses, so the
@@ -267,9 +258,12 @@ export const PostItem = memo(
             onDragEnd={onDragEndItem}
             onDragOver={handleDragOver}
             onDrop={handleDrop}
-            onContextMenu={(e) => handleContextMenu(e, post.id)}
+            onContextMenu={(e) => itemActions.openContextMenu(e, post.id)}
             onDoubleClick={(e) => {
-              if (sidebarOpen) handleDoubleClick(e, post.id, docName);
+              if (sidebarOpen) {
+                e.preventDefault();
+                rename.start(post.id, "name");
+              }
             }}
             sx={[{
               minHeight: inSeries ? 26 : 30,
@@ -375,11 +369,11 @@ export const PostItem = memo(
               (isRenaming
                 ? (
                   <TextField
-                    inputRef={renameInputRef}
-                    value={renameValue}
-                    onChange={(e) => setRenameValue(e.target.value)}
-                    onBlur={handleRenameBlur}
-                    onKeyDown={handleRenameKeyDown}
+                    inputRef={rename.inputRef}
+                    value={rename.value}
+                    onChange={(e) => rename.setValue(e.target.value)}
+                    onBlur={rename.handleBlur}
+                    onKeyDown={rename.handleKeyDown}
                     size="small"
                     variant="standard"
                     fullWidth

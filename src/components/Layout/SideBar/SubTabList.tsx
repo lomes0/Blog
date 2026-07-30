@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React from "react";
 import {
   Box,
   ListItemIcon,
@@ -11,9 +11,13 @@ import {
 import { FilePen } from "lucide-react";
 import { actions, useDispatch } from "@/store";
 import { ICON_SIZE } from "@/theme/icons";
+import { useContextMenu } from "@/hooks/useContextMenu";
 import { SafeNavigationLink } from "./SafeNavigationLink";
 import { MONO_FONT, SB_FONT, SB_ITEM_RADIUS } from "./constants";
-import type { PostItemActions } from "./hooks/useSidebarActions";
+import type {
+  PostItemActions,
+  RenameField,
+} from "./hooks/useSidebarActions";
 
 export interface SubTabEntry {
   id: string;
@@ -58,44 +62,22 @@ export const SubTabList: React.FC<SubTabListProps> = (
   { tabs, activeTabId, isOpenRoot, rootTabId, itemActions },
 ) => {
   const dispatch = useDispatch();
-  const {
-    renamingPostId,
-    renameField,
-    renameValue,
-    setRenameValue,
-    renameInputRef,
-    handleDoubleClick,
-    handleRenameBlur,
-    handleRenameKeyDown,
-  } = itemActions;
+  const { rename } = itemActions;
 
   // The first (root) tab renames its own `tabLabel`; the rest rename `name`.
-  const fieldFor = (tabId: string) => tabId === rootTabId ? "tabLabel" : "name";
+  const fieldFor = (tabId: string): RenameField =>
+    tabId === rootTabId ? "tabLabel" : "name";
 
-  // Right-click menu, anchored at the cursor and keyed to the target tab.
-  const [menu, setMenu] = useState<
-    { mouseX: number; mouseY: number; tab: SubTabEntry } | null
-  >(null);
+  // Right-click menu, anchored at the cursor. A sub-tab sits inside the post
+  // row, which has its own menu, so the event must stop here.
+  const { contextMenu: menu, open: openMenu, close: closeMenu } =
+    useContextMenu<SubTabEntry>({ stopPropagation: true });
 
-  const handleContextMenu = (e: React.MouseEvent, tab: SubTabEntry) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setMenu((prev) =>
-      prev === null
-        ? { mouseX: e.clientX + 2, mouseY: e.clientY - 6, tab }
-        : null
-    );
-  };
-
-  const handleCloseMenu = () => setMenu(null);
-
-  const handleRenameFromMenu = (e: React.MouseEvent) => {
+  const handleRenameFromMenu = () => {
     if (!menu) return;
-    const { tab } = menu;
-    setMenu(null);
-    // Reuse the double-click rename starter (it only reads the event to
-    // suppress default behavior), so the inline TextField opens on this tab.
-    handleDoubleClick(e, tab.id, tab.name, fieldFor(tab.id));
+    const { target: tab } = menu;
+    closeMenu();
+    rename.start(tab.id, fieldFor(tab.id));
   };
 
   return (
@@ -114,8 +96,8 @@ export const SubTabList: React.FC<SubTabListProps> = (
       >
         {tabs.map((tab) => {
           const isActive = isOpenRoot && tab.id === activeTabId;
-          const isRenaming = renamingPostId === tab.id &&
-            renameField === fieldFor(tab.id);
+          const isRenaming = rename.renamingId === tab.id &&
+            rename.context === fieldFor(tab.id);
 
           if (isRenaming) {
             return (
@@ -134,11 +116,11 @@ export const SubTabList: React.FC<SubTabListProps> = (
               >
                 <Box component="span" aria-hidden sx={dotSx} />
                 <TextField
-                  inputRef={renameInputRef}
-                  value={renameValue}
-                  onChange={(e) => setRenameValue(e.target.value)}
-                  onBlur={handleRenameBlur}
-                  onKeyDown={handleRenameKeyDown}
+                  inputRef={rename.inputRef}
+                  value={rename.value}
+                  onChange={(e) => rename.setValue(e.target.value)}
+                  onBlur={rename.handleBlur}
+                  onKeyDown={rename.handleKeyDown}
                   size="small"
                   variant="standard"
                   fullWidth
@@ -171,9 +153,11 @@ export const SubTabList: React.FC<SubTabListProps> = (
               key={tab.id}
               component="li"
               {...interactionProps}
-              onDoubleClick={(e: React.MouseEvent) =>
-                handleDoubleClick(e, tab.id, tab.name, fieldFor(tab.id))}
-              onContextMenu={(e: React.MouseEvent) => handleContextMenu(e, tab)}
+              onDoubleClick={(e: React.MouseEvent) => {
+                e.preventDefault();
+                rename.start(tab.id, fieldFor(tab.id));
+              }}
+              onContextMenu={(e: React.MouseEvent) => openMenu(e, tab)}
               sx={{
                 display: "flex",
                 alignItems: "center",
@@ -229,7 +213,7 @@ export const SubTabList: React.FC<SubTabListProps> = (
 
       <Menu
         open={menu !== null}
-        onClose={handleCloseMenu}
+        onClose={closeMenu}
         anchorReference="anchorPosition"
         anchorPosition={menu !== null
           ? { top: menu.mouseY, left: menu.mouseX }

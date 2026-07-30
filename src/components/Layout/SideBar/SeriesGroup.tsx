@@ -79,17 +79,8 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
   const headerDropIndicator = dnd.dropTarget?.id === seriesId
     ? dnd.dropTarget.position
     : null;
-  const {
-    renamingSeriesId,
-    seriesRenameValue,
-    setSeriesRenameValue,
-    seriesRenameInputRef,
-    handleSeriesContextMenu,
-    handleSeriesDoubleClick,
-    handleSeriesRenameBlur,
-    handleSeriesRenameKeyDown,
-  } = seriesActions;
-  const isRenaming = renamingSeriesId === group.series.id;
+  const { rename } = seriesActions;
+  const isRenaming = rename.renamingId === seriesId;
   // A series row is "selected" when its posts page is the current route, so it
   // carries the same soft filled pill as post rows and sub-tabs.
   const isSeriesActive = pathname === `/posts/${group.series.id}`;
@@ -120,11 +111,11 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
             onDragOver={handleHeaderDragOver}
             onDragLeave={dnd.onDragLeaveRow}
             onDrop={handleHeaderDrop}
-            onContextMenu={(e) =>
-              handleSeriesContextMenu(e, group.series.id)}
+            onContextMenu={(e) => seriesActions.openContextMenu(e, seriesId)}
             onDoubleClick={(e) => {
               if (sidebarOpen) {
-                handleSeriesDoubleClick(e, group.series.id, group.series.title);
+                e.preventDefault();
+                rename.start(seriesId);
               }
             }}
             sx={[{
@@ -215,11 +206,11 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
             </ListItemIcon>
             {sidebarOpen && isRenaming && (
               <TextField
-                inputRef={seriesRenameInputRef}
-                value={seriesRenameValue}
-                onChange={(e) => setSeriesRenameValue(e.target.value)}
-                onBlur={handleSeriesRenameBlur}
-                onKeyDown={handleSeriesRenameKeyDown}
+                inputRef={rename.inputRef}
+                value={rename.value}
+                onChange={(e) => rename.setValue(e.target.value)}
+                onBlur={rename.handleBlur}
+                onKeyDown={rename.handleKeyDown}
                 onClick={(e) => e.stopPropagation()}
                 size="small"
                 variant="standard"
