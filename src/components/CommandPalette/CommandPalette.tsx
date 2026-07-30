@@ -44,6 +44,7 @@ const CommandPalette = () => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
+  const [offsetX, setOffsetX] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -69,7 +70,40 @@ const CommandPalette = () => {
     setActiveIndex(0);
   }, []);
 
-  // Global ⌘K / Ctrl+K toggle + external open event.
+  /**
+   * How far right of the viewport's center the palette has to sit.
+   *
+   * The Modal portals to <body> and centers on the whole viewport, but the app's
+   * left chrome (activity rail + sidebar) and right chrome (Copilot panel +
+   * right rail) are asymmetric, so viewport-center is not where the page's own
+   * content sits. The palette has to land on the same vertical axis as the home
+   * composer — the thing directly beneath it.
+   *
+   * Measured off the live content container rather than re-derived from the
+   * layout constants. The column's own width is only half the answer: the
+   * container also carries asymmetric padding (`pl` 96 / `pr` 64 at `md`) and
+   * may own a scrollbar, and a formula built from rail widths silently misses
+   * both. `clientWidth` excludes the scrollbar and `clientLeft` the border, so
+   * what this measures is exactly the box a centered child is centered in.
+   */
+  const measureOffset = useCallback(() => {
+    const el = document.getElementById("editor-main-container");
+    if (!el) return setOffsetX(0);
+    const style = getComputedStyle(el);
+    const padLeft = parseFloat(style.paddingLeft) || 0;
+    const padRight = parseFloat(style.paddingRight) || 0;
+    const contentLeft = el.getBoundingClientRect().left + el.clientLeft +
+      padLeft;
+    const contentWidth = el.clientWidth - padLeft - padRight;
+    // The Modal root is `position: fixed`, so its viewport is the initial
+    // containing block — `clientWidth`, not `innerWidth` (which counts a
+    // classic scrollbar the fixed layer does not get).
+    const viewportWidth = document.documentElement.clientWidth;
+    setOffsetX(contentLeft + contentWidth / 2 - viewportWidth / 2);
+  }, []);
+
+  // Global ⌘K / Ctrl+K toggle + external open event. Both measure before
+  // opening, so the dialog is placed on its first paint and never visibly jumps.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -79,17 +113,34 @@ const CommandPalette = () => {
         const el = document.activeElement as HTMLElement | null;
         if (el?.isContentEditable) return;
         e.preventDefault();
+        measureOffset();
         setOpen((prev) => !prev);
       }
     };
-    const onOpen = () => setOpen(true);
+    const onOpen = () => {
+      measureOffset();
+      setOpen(true);
+    };
     window.addEventListener("keydown", onKeyDown, true);
     window.addEventListener(OPEN_COMMAND_PALETTE_EVENT, onOpen);
     return () => {
       window.removeEventListener("keydown", onKeyDown, true);
       window.removeEventListener(OPEN_COMMAND_PALETTE_EVENT, onOpen);
     };
-  }, []);
+  }, [measureOffset]);
+
+  // The chrome can move under an open palette: a window resize, but also the
+  // sidebar or a rail animating to a new width — including from the palette's
+  // own "Toggle sidebar" / "Show AI assistant" commands, which run before it
+  // closes. Observing the container covers all of them, per frame, where a
+  // `resize` listener would only catch the first.
+  useEffect(() => {
+    const el = open && document.getElementById("editor-main-container");
+    if (!el) return;
+    const observer = new ResizeObserver(measureOffset);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [open, measureOffset]);
 
   // Map each post id → owning series title, so results can show a mono path.
   const seriesByPostId = useMemo(() => {
@@ -238,12 +289,6 @@ const CommandPalette = () => {
           },
         },
       }}
-      // Centered on the viewport, not on the main content column. The palette
-      // used to translate right by half the (left chrome − right chrome)
-      // difference so it sat over the `1fr` track; that is geometrically true
-      // but reads as broken — the backdrop covers the whole window, so the
-      // dialog belongs to the window, and the offset both looked off-center and
-      // jumped by ~120px when the right rail collapsed.
       sx={{
         display: "flex",
         alignItems: "flex-start",
@@ -258,6 +303,8 @@ const CommandPalette = () => {
         sx={{
           width: "min(560px, calc(100vw - 32px))",
           maxHeight: "60vh",
+          // Sit on the same axis as the page's content — see `measureOffset`.
+          transform: `translateX(${offsetX}px)`,
           display: "flex",
           flexDirection: "column",
           bgcolor: "background.paper",
