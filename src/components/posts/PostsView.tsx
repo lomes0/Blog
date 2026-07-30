@@ -13,7 +13,7 @@ import { useTimeEditing } from "@/hooks/useTimeEditing";
 import { ViewToggle, type ViewType } from "@/components/shared/ViewToggle";
 import { EmptyState } from "@/components/shared/EmptyState";
 import DocumentCard from "@/components/DocumentCard";
-import { PostsCompactListView } from "./components/PostsCompactListView";
+import { TimeEditList } from "./components/TimeEditList";
 import { type ListDensity, PostsListView } from "./components/PostsListView";
 import { NewPostSplitButton } from "./components/NewPostSplitButton";
 
@@ -250,10 +250,8 @@ const PostsView: React.FC<PostsViewProps> = ({ series, user: serverUser }) => {
                 ? (
                   <>
                     <SectionDivider label="Posts" color="primary.main" />
-                    <PostsCompactListView
+                    <TimeEditList
                       posts={seriesUserDocs}
-                      user={user}
-                      isTimeEditMode
                       pendingChanges={pendingTimeChanges}
                       onTimeAdjust={canEdit ? handleTimeAdjust : undefined}
                       onTimeReset={canEdit ? handleTimeReset : undefined}
@@ -313,11 +311,7 @@ const PostsView: React.FC<PostsViewProps> = ({ series, user: serverUser }) => {
             {hasSeries && (
               <Box component="section" sx={{ mb: { xs: 4, md: 6 } }}>
                 <SectionDivider label="Series" color="secondary.main" />
-                <SeriesSection
-                  series={seriesList}
-                  user={user}
-                  viewType={viewType}
-                />
+                <SeriesSection series={seriesList} user={user} />
               </Box>
             )}
             {hasPosts && (
