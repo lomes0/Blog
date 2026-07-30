@@ -1,0 +1,24 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "src/app/**/{page,layout,route,template,error,loading,not-found,global-error,default,sitemap,robots,opengraph-image,icon,apple-icon,manifest}.{ts,tsx}",
+    "src/middleware.ts",
+    "next.config.ts",
+    "eslint.config.mjs",
+    "mcp/content-server.ts",
+    "prisma/**/*.ts",
+    "scripts/**/*.mjs"
+  ],
+  "project": [
+    "src/**/*.{ts,tsx}",
+    "mcp/**/*.ts"
+  ],
+  "ignore": [
+    "public/**",
+    "next-pwa/**",
+    "claude_design/**"
+  ],
+  "ignoreDependencies": [
+    "patch-package"
+  ]
+}

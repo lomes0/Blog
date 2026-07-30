@@ -12,6 +12,7 @@
     "rebuild": "npm run clean && npm run build",
     "check:tdz": "node scripts/check-tdz.mjs",
     "check:tdz:fix": "node scripts/check-tdz.mjs --fix-hint",
+    "check:unused": "knip",
     "mcp:server": "node --import tsx --import ./mcp/bootstrap.mjs --env-file=.env mcp/content-server.ts",
     "mcp:smoke": "node --import tsx mcp/smoke.ts"
   },
