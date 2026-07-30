@@ -56,21 +56,28 @@ const CardBase: React.FC<SimplifiedCardBaseProps> = ({
     borderRadius: 2,
     backgroundColor: "background.paper",
     border: "2px solid",
-    borderColor: isDone ? "grey.800" : "divider",
+    // A done card is marked by a stronger neutral border than `divider`.
+    // That was `grey.800`/`grey.600`, but MUI's grey scale is spread outside
+    // the light/dark blocks and so is the same in both schemes: #424242 is
+    // *darker* than the dark-mode paper it sits on, which inverted the signal
+    // — done cards read as borderless while active ones kept a visible
+    // `divider`. text.secondary/text.disabled are within a few points of the
+    // old greys in light and step the right way in dark.
+    borderColor: isDone ? "text.secondary" : "divider",
     overflow: "hidden",
     transition: "box-shadow 0.2s ease, border-color 0.2s ease",
 
     // Simple hover effects for blog cards
     "&:hover": {
       boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-      borderColor: isDone ? "grey.600" : "primary.light",
+      borderColor: isDone ? "text.disabled" : "primary.light",
     },
 
     // Simple focus states
     "&:focus-within": {
       boxShadow: (theme: Theme) =>
         `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
-      borderColor: isDone ? "grey.600" : "primary.main",
+      borderColor: isDone ? "text.disabled" : "primary.main",
     },
 
     ...sx,

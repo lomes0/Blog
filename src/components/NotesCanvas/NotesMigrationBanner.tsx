@@ -99,8 +99,13 @@ export default function NotesMigrationBanner() {
             onClick={handleMigrate}
             disabled={migrating}
             startIcon={migrating ? <CircularProgress size={16} /> : undefined}
+            // Fixed white/near-white on purpose, not scheme-invariance drift:
+            // the banner is `info.main` in both schemes, so this button is
+            // sitting on a saturated blue either way and wants a constant
+            // light fill. A scheme-aware `action.hover` here would replace the
+            // white with a near-transparent tint over the blue.
             sx={{
-              bgcolor: "white",
+              bgcolor: "common.white",
               color: "info.main",
               "&:hover": {
                 bgcolor: "grey.100",
