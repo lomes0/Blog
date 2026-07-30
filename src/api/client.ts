@@ -313,6 +313,8 @@ export const apiClient = {
     create: (input: {
       title: string;
       description?: string;
+      /** Create it inside this project; omit for the author's root list. */
+      projectId?: string | null;
     }): Promise<Series | undefined> =>
       request<Series>("/api/series", { method: "POST", ...json(input) }),
 

@@ -214,6 +214,32 @@ async function maxSeriesRankInProject(
 }
 
 /**
+ * A rank that appends a series to the end of its container: the project's member
+ * list when `projectId` is set, otherwise the author's root list.
+ *
+ * A series' container rule (project XOR root) is its own — not the document rule
+ * {@link rankForAppend} encodes (series XOR tab-group XOR root) — so it gets its
+ * own append rather than a `Container` that would have to carry a fourth field
+ * meaningless to documents. Creating a series and moving one both land here, so
+ * a series born inside a project is ranked the same way one dragged into it is.
+ *
+ * `excludeSeriesId` drops a series from its own baseline — for a move, whose
+ * subject is already in the container it is being re-ranked within.
+ */
+export async function rankForAppendSeries(
+  db: Db,
+  args: { authorId: string; projectId?: string | null },
+  excludeSeriesId?: string,
+): Promise<string> {
+  const base = args.projectId
+    ? await maxSeriesRankInProject(db, args.projectId, excludeSeriesId)
+    : await maxRootRank(db, args.authorId, {
+      seriesIds: excludeSeriesId ? [excludeSeriesId] : [],
+    });
+  return rankBetween(base, null);
+}
+
+/**
  * Re-home a series: set its container (a project, or the root list) and mint a
  * fresh rank for the destination. A series' container is `projectId ?? root`;
  * its `rank` positions it among its siblings there. Pass `destination` to change
@@ -244,15 +270,13 @@ export async function moveSeries(
     : series.projectId;
 
   const { afterRank, beforeRank } = args.between ?? {};
-  let rank: string;
-  if (afterRank != null || beforeRank != null) {
-    rank = rankBetween(afterRank ?? null, beforeRank ?? null);
-  } else {
-    const base = projectId
-      ? await maxSeriesRankInProject(db, projectId, args.id)
-      : await maxRootRank(db, series.authorId, { seriesIds: [args.id] });
-    rank = rankBetween(base, null);
-  }
+  const rank = afterRank != null || beforeRank != null
+    ? rankBetween(afterRank ?? null, beforeRank ?? null)
+    : await rankForAppendSeries(
+      db,
+      { authorId: series.authorId, projectId },
+      args.id,
+    );
 
   await db.series.update({
     where: { id: args.id },

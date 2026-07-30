@@ -100,6 +100,13 @@ export interface SeriesCreateInput {
   title: string;
   description?: string;
   authorId: string;
+  /**
+   * The project the series is born into. Omitted (or null) puts it at the
+   * author's root list. Unlike a post's container this *is* accepted at create
+   * time — a project is the only container a series can have, so there is no
+   * cycle to refuse and nothing for a later `/move` to disambiguate.
+   */
+  projectId?: string | null;
 }
 
 export interface SeriesUpdateInput {

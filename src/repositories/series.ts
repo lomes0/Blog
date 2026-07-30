@@ -1,6 +1,6 @@
 import { DocumentType as PrismaDocumentType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { movePost, rankForAppend, reRankIntoRoot } from "./ordering";
+import { movePost, rankForAppendSeries, reRankIntoRoot } from "./ordering";
 import {
   CloudPost,
   RevisionMeta,
@@ -283,10 +283,13 @@ export async function findSeriesByAuthorId(
 
 // Create series and return full entity with relations
 export async function createSeries(data: SeriesCreateInput): Promise<Series> {
-  const rank = await rankForAppend(prisma, {
+  // A series may be born inside a project — the sidebar's per-project "+"
+  // creates one there directly. Its rank belongs to whichever space it lands
+  // in, so the container decides it rather than the call site.
+  const projectId = data.projectId ?? null;
+  const rank = await rankForAppendSeries(prisma, {
     authorId: data.authorId,
-    seriesId: null,
-    parentId: null,
+    projectId,
   });
   await prisma.series.create({
     data: {
@@ -294,6 +297,7 @@ export async function createSeries(data: SeriesCreateInput): Promise<Series> {
       title: data.title,
       description: data.description,
       authorId: data.authorId,
+      projectId,
       rank,
     },
   });

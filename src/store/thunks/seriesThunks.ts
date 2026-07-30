@@ -15,6 +15,8 @@ export const applySeriesRank = createAction<
 interface SeriesCreateInput {
   title: string;
   description?: string;
+  /** Create it inside this project; omit for the author's root list. */
+  projectId?: string | null;
 }
 
 export const loadSeries = createApiThunk(
