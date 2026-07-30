@@ -10,6 +10,7 @@ import React, {
 import { useTheme } from "@mui/material/styles";
 import { useMediaQuery } from "@mui/material";
 import { usePathname } from "next/navigation";
+import { readStoredWidth, useDragCapture } from "@/hooks/useResizablePanel";
 import {
   COMPACT_WIDTH,
   SIDEBAR_DEFAULT_WIDTH,
@@ -163,12 +164,12 @@ export const SidebarWidthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // ── Width persistence ──────────────────────────────────────────────────────
   useEffect(() => {
-    const saved = localStorage.getItem(SIDEBAR_STORAGE_KEY);
-    if (!saved) return;
-    const parsed = parseInt(saved, 10);
-    if (parsed >= SIDEBAR_MIN_WIDTH && parsed <= SIDEBAR_MAX_WIDTH) {
-      setWidth(parsed);
-    }
+    const stored = readStoredWidth(
+      SIDEBAR_STORAGE_KEY,
+      SIDEBAR_MIN_WIDTH,
+      SIDEBAR_MAX_WIDTH,
+    );
+    if (stored !== null) setWidth(stored);
   }, []);
 
   const startXRef = useRef(0);
@@ -266,19 +267,10 @@ export const SidebarWidthProvider: React.FC<{ children: React.ReactNode }> = ({
     runSpring(from, zone === "compact" ? COMPACT_WIDTH : 0);
   }, [runSpring, setSidebarMode]);
 
-  useEffect(() => {
-    if (!isResizing) return;
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-    };
-  }, [isResizing, handleMouseMove, handleMouseUp]);
+  // Shared with the rail/Copilot panels. The rest of this drag is not — the
+  // detent and the settle spring above are exactly what `useResizablePanel`
+  // deliberately does not try to express.
+  useDragCapture(isResizing, handleMouseMove, handleMouseUp);
 
   const modeWidth = sidebarMode === "hidden"
     ? 0

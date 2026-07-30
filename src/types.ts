@@ -60,7 +60,6 @@ export interface AppState {
     attachmentPreview: AttachmentPreviewState | null;
     attachmentModified: { url: string; timestamp: number } | null;
     tabs: TabsState;
-    copilot: { open: boolean };
     sidebarView: SidebarView;
   };
 }

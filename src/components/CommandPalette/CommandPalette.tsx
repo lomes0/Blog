@@ -62,12 +62,11 @@ const CommandPalette = () => {
 
   const posts = useSelector(selectAllPosts);
   const series = useSelector((state: RootState) => state.series);
-  const copilotOpen = useSelector((state: RootState) => state.ui.copilot.open);
-
   // Layout column widths (same source the grid in AppLayoutContent uses), so the
   // palette can center over the main content column instead of the viewport.
   const { getEffectiveWidth } = useSidebarWidth();
-  const { railMode, railWidth, copilotWidth } = useLayoutMode();
+  const { railMode, railWidth, copilotOpen, setCopilotOpen, copilotWidth } =
+    useLayoutMode();
 
   // Current document id from the URL (edit/view routes), used by the mode switch.
   const segments = pathname.split("/").filter(Boolean);
@@ -137,7 +136,7 @@ const CommandPalette = () => {
         label: copilotOpen ? "Hide AI assistant" : "Show AI assistant",
         hint: "AI",
         icon: <Sparkles size={ICON_SIZE.dense} />,
-        run: () => dispatch(actions.setCopilotOpen(!copilotOpen)),
+        run: () => setCopilotOpen(!copilotOpen),
       },
       {
         id: "cmd:new",
@@ -167,6 +166,7 @@ const CommandPalette = () => {
   }, [
     effectiveMode,
     copilotOpen,
+    setCopilotOpen,
     currentDocId,
     routeMode,
     setMode,

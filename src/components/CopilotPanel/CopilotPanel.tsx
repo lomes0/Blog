@@ -10,10 +10,11 @@ import {
   Typography,
 } from "@mui/material";
 import { History, Plus, X } from "lucide-react";
-import { actions, postsSelectors, useDispatch, useSelector } from "@/store";
+import { postsSelectors, useSelector } from "@/store";
 import { AI_MODELS } from "@/lib/ai/models";
 import { useAIModel } from "@/contexts/AIModelContext";
 import { useLayoutMode } from "@/contexts/LayoutModeContext";
+import ResizeGripper from "@/components/Layout/ResizeGripper";
 import CopilotChat from "./CopilotChat";
 import {
   archiveThread,
@@ -41,10 +42,9 @@ function formatRelativeTime(ts: number): string {
 }
 
 const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
-  const dispatch = useDispatch();
-
   const { llm: llmConfig, setLlm: setLlmConfig } = useAIModel();
-  const { startCopilotResize, isCopilotResizing } = useLayoutMode();
+  const { startCopilotResize, isCopilotResizing, setCopilotOpen } =
+    useLayoutMode();
 
   const [chatKey, setChatKey] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
@@ -100,21 +100,10 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
       }}
     >
       {/* Drag handle on the left edge — dragging widens the panel */}
-      <Box
+      <ResizeGripper
+        isResizing={isCopilotResizing}
         onMouseDown={startCopilotResize}
-        sx={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          bottom: 0,
-          width: 4,
-          cursor: "col-resize",
-          backgroundColor: isCopilotResizing ? "primary.main" : "transparent",
-          transition: isCopilotResizing ? "none" : "background-color 0.2s",
-          "&:hover": { backgroundColor: "primary.main", opacity: 0.5 },
-          "&:active": { backgroundColor: "primary.main", opacity: 1 },
-          zIndex: 1300,
-        }}
+        label="Resize Copilot panel"
       />
 
       {/* Header */}
@@ -183,7 +172,7 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
         </Tooltip>
         <IconButton
           size="small"
-          onClick={() => dispatch(actions.setCopilotOpen(false))}
+          onClick={() => setCopilotOpen(false)}
           aria-label="Close Copilot"
         >
           <X size={ICON_SIZE.dense} />

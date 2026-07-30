@@ -1,15 +1,13 @@
 "use client";
 import React from "react";
-import { Box, useMediaQuery } from "@mui/material";
+import { useMediaQuery } from "@mui/material";
 import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
+import ResizeGripper, { GRIPPER_W } from "../ResizeGripper";
 import {
   ACTIVITY_RAIL_W,
   SIDEBAR_EDGE_TRANSITION,
   SIDEBAR_GRAB_STRIP_W,
 } from "./constants";
-
-/** Resting thickness of the edge handle. */
-const HANDLE_W = 4;
 
 /**
  * The sidebar's drag edge, for all three modes.
@@ -19,6 +17,10 @@ const HANDLE_W = 4;
  * nothing to hang on. Living in the layout shell means one element covers
  * full → compact → hidden and back out again, which is what makes the drag
  * symmetric — you can drag the panel shut and drag it back open.
+ *
+ * That is also why this one is `position: fixed` while the rail's and Copilot's
+ * grippers sit inside their panels: only the state ladder is shared
+ * (`ResizeGripper`), not the placement.
  *
  * Position is driven off the live effective width, so it tracks the cursor
  * during a drag and rides the settle spring afterwards. The CSS transition is
@@ -43,30 +45,21 @@ const SidebarResizeHandle: React.FC = () => {
   const closed = w <= 0;
 
   return (
-    <Box
-      role="separator"
-      aria-orientation="vertical"
-      aria-label={closed
+    <ResizeGripper
+      isResizing={isResizing}
+      onMouseDown={startResize}
+      label={closed
         ? "Show sidebar (drag right)"
         : "Resize sidebar (drag to collapse)"}
-      onMouseDown={startResize}
+      transition={isAnimating || reducedMotion
+        ? "none"
+        : SIDEBAR_EDGE_TRANSITION}
       sx={{
         position: "fixed",
-        top: 0,
-        bottom: 0,
         // When closed the strip sits flush against the rail and extends right,
         // so there is something to grab at 0 width.
-        left: ACTIVITY_RAIL_W + Math.max(0, w - HANDLE_W),
-        width: closed ? SIDEBAR_GRAB_STRIP_W : HANDLE_W,
-        cursor: "col-resize",
-        zIndex: 1300,
-        displayPrint: "none",
-        backgroundColor: isResizing ? "primary.main" : "transparent",
-        transition: isResizing || isAnimating || reducedMotion
-          ? "none"
-          : SIDEBAR_EDGE_TRANSITION,
-        "&:hover": { backgroundColor: "primary.main", opacity: 0.5 },
-        "&:active": { backgroundColor: "primary.main", opacity: 1 },
+        left: ACTIVITY_RAIL_W + Math.max(0, w - GRIPPER_W),
+        width: closed ? SIDEBAR_GRAB_STRIP_W : GRIPPER_W,
       }}
     />
   );

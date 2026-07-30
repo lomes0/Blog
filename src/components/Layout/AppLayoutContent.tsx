@@ -36,10 +36,10 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
     railMode,
     railWidth,
     isRailResizing,
+    copilotOpen,
     copilotWidth,
     isCopilotResizing,
   } = useLayoutMode();
-  const copilotOpen = useSelector((state: RootState) => state.ui.copilot.open);
   const activeTabId = useSelector(
     (state: RootState) => state.ui.tabs.activeTabId,
   );

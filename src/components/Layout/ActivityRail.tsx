@@ -9,6 +9,7 @@ import { actions, type RootState, useDispatch, useSelector } from "@/store";
 import type { SidebarView } from "@/types";
 import { ICON_SIZE } from "@/theme/icons";
 import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
+import { useLayoutMode } from "@/contexts/LayoutModeContext";
 import { ACTIVITY_RAIL_W } from "./SideBar/constants";
 import { FOCUS_RING, MOTION } from "@/theme/tokens";
 
@@ -104,9 +105,9 @@ const ActivityRail: React.FC = () => {
   const router = useRouter();
   const pathname = usePathname();
   const sidebarView = useSelector((state: RootState) => state.ui.sidebarView);
-  const copilotOpen = useSelector((state: RootState) => state.ui.copilot.open);
   const user = useSelector((state: RootState) => state.user);
   const { sidebarOpen, sidebarMode, setSidebarMode } = useSidebarWidth();
+  const { copilotOpen, setCopilotOpen } = useLayoutMode();
 
   // A view button both selects its view and toggles the sidebar: clicking the
   // already-active view while fully open collapses the sidebar; clicking any
@@ -213,7 +214,7 @@ const ActivityRail: React.FC = () => {
       <RailButton
         label={copilotOpen ? "Hide AI assistant" : "Show AI assistant"}
         active={copilotOpen}
-        onClick={() => dispatch(actions.setCopilotOpen(!copilotOpen))}
+        onClick={() => setCopilotOpen(!copilotOpen)}
       >
         <Sparkles size={ICON_SIZE.dense} strokeWidth={1.9} />
       </RailButton>

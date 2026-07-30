@@ -148,9 +148,6 @@ const initialState: AppState = {
       activeTabId: null,
       dirtyTabIds: [],
     },
-    copilot: {
-      open: false,
-    },
     sidebarView: "explorer",
   },
 };
@@ -301,9 +298,6 @@ export const appSlice = createSlice({
     },
     clearAttachmentModified: (state) => {
       state.ui.attachmentModified = null;
-    },
-    setCopilotOpen: (state, action: PayloadAction<boolean>) => {
-      state.ui.copilot.open = action.payload;
     },
     setSidebarView: (state, action: PayloadAction<SidebarView>) => {
       state.ui.sidebarView = action.payload;

@@ -15,8 +15,9 @@ import {
 import SettingsPanel from "./SettingsPanel";
 import { openCommandPalette } from "@/components/CommandPalette/CommandPalette";
 import { usePathname } from "next/navigation";
-import { actions, useDispatch, useSelector } from "@/store";
+import { useSelector } from "@/store";
 import { type RailMode, useLayoutMode } from "@/contexts/LayoutModeContext";
+import ResizeGripper from "../ResizeGripper";
 import OutlineSection from "./OutlineSection";
 import PropertiesSection from "./PropertiesSection";
 import RevisionsSection from "./RevisionsSection";
@@ -35,9 +36,9 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
     toggleRail,
     isRailResizing,
     startRailResize,
+    copilotOpen,
+    setCopilotOpen,
   } = useLayoutMode();
-  const dispatch = useDispatch();
-  const copilotOpen = useSelector((state) => state.ui.copilot.open);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean);
@@ -63,8 +64,6 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
     }
   }, [railMode]);
 
-  if (railMode === "hidden") return null;
-
   return (
     <Box
       component="aside"
@@ -75,21 +74,10 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
       {showPanel && (
         <>
           {/* Drag handle on the left edge of the full panel */}
-          <Box
+          <ResizeGripper
+            isResizing={isRailResizing}
             onMouseDown={startRailResize}
-            sx={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              bottom: 0,
-              width: 4,
-              cursor: "col-resize",
-              backgroundColor: isRailResizing ? "primary.main" : "transparent",
-              transition: isRailResizing ? "none" : "background-color 0.2s",
-              "&:hover": { backgroundColor: "primary.main", opacity: 0.5 },
-              "&:active": { backgroundColor: "primary.main", opacity: 1 },
-              zIndex: 1300,
-            }}
+            label="Resize document information rail"
           />
           <Box
             sx={{
@@ -180,7 +168,7 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
           <IconButton
             size="small"
             color={copilotOpen ? "primary" : "default"}
-            onClick={() => dispatch(actions.setCopilotOpen(!copilotOpen))}
+            onClick={() => setCopilotOpen(!copilotOpen)}
             aria-label="Toggle Copilot"
           >
             <Sparkles size={ICON_SIZE.dense} />

@@ -667,6 +667,13 @@ prose and five files answered them independently. They are now `sx` fragments in
 > `chromeFocusRingSx` matches what ships. Reconciling the two forms is the same
 > kind of accessibility-visible call as the `inset` question.
 
+**Panel drag edges are codified too.** The sidebar, the right rail and the
+Copilot panel are all resizable, and each drew its own 4px gripper — invisible at
+rest, `primary.main` at 50% on hover, full `primary.main` while held. That ladder
+now lives in `components/Layout/ResizeGripper.tsx` (`GRIPPER_W` = 4); pass
+`isResizing` + a `label` and override only placement via `sx`. The drag mechanics
+behind it are `hooks/useResizablePanel.ts`.
+
 ### 17.4 Radius & density
 
 | Element                        | Radius                | Height / metric        |
