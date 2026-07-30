@@ -13,15 +13,12 @@ import { NOTE_COLORS, NoteColorKey } from "@/components/NotesCanvas/noteColors";
 export const CANVAS_NODE_TYPE = "canvas";
 
 /**
- * Board geometry, shared with the standalone `/notes` board so a canvas looks
- * the same in both places. Re-exported here because this module is what the
- * `CanvasNode` side already imports from.
+ * Board geometry, shared with the standalone `/notes` board. Re-exported here
+ * because this module is what the `CanvasNode` side already imports from. The
+ * virtual canvas size is deliberately not among them: this board is sized by
+ * the document column it sits in, not by a fixed viewport.
  */
-export {
-  CANVAS_GROW_MARGIN,
-  VIRTUAL_CANVAS_HEIGHT,
-  VIRTUAL_CANVAS_WIDTH,
-} from "@/components/NotesCanvas/canvasGeometry";
+export { CANVAS_GROW_MARGIN } from "@/components/NotesCanvas/canvasGeometry";
 
 /**
  * A document is a scrolling column, so the board gets a fixed viewport height

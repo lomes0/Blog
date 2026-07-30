@@ -30,8 +30,6 @@ import {
   NOTE_DEFAULT_HEIGHT,
   NOTE_DEFAULT_WIDTH,
   serializeNoteContent,
-  VIRTUAL_CANVAS_HEIGHT,
-  VIRTUAL_CANVAS_WIDTH,
 } from "./utils";
 
 interface CanvasComponentProps {
@@ -127,9 +125,11 @@ export default function CanvasComponent(
   const handleAdd = useCallback(
     (color: NoteColorKey) => {
       // Place the new note at the centre of what the author is looking at.
+      // The fallback is the board's own origin, not the middle of a virtual
+      // canvas — this board is only as wide as the document column.
       const el = scrollContainerRef.current;
-      let x = VIRTUAL_CANVAS_WIDTH / 2 - NOTE_DEFAULT_WIDTH / 2;
-      let y = VIRTUAL_CANVAS_HEIGHT / 2 - NOTE_DEFAULT_HEIGHT / 2;
+      let x = 0;
+      let y = 0;
       if (el) {
         x = (el.scrollLeft + el.clientWidth / 2) / scale -
           NOTE_DEFAULT_WIDTH / 2;
@@ -193,8 +193,6 @@ export default function CanvasComponent(
     });
   }, [editor, nodeKey]);
 
-  // The board grows to cover its viewport and to keep a margin beyond the
-  // furthest note, so drags are never clamped at a visible edge.
   const extent = notes.reduce(
     (max, n) => ({
       x: Math.max(max.x, n.position.x + n.size.width),
@@ -202,16 +200,22 @@ export default function CanvasComponent(
     }),
     { x: 0, y: 0 },
   );
-  const boardWidth = Math.max(
-    VIRTUAL_CANVAS_WIDTH,
-    Math.ceil(containerSize.width / scale),
-    Math.ceil(extent.x + CANVAS_GROW_MARGIN),
-  );
-  const boardHeight = Math.max(
-    VIRTUAL_CANVAS_HEIGHT,
-    Math.ceil(containerSize.height / scale),
-    Math.ceil(extent.y + CANVAS_GROW_MARGIN),
-  );
+
+  /**
+   * The board is a frame in a document column, so it is exactly as big as what
+   * the reader can see: `/notes`' 1920x1080 virtual floor left a fresh board
+   * scrolling sideways over ~1100px of empty grid, with anything placed near
+   * the virtual centre sitting past the document's right edge.
+   *
+   * It stretches only to cover notes that already lie beyond the frame — a clip
+   * pasted from the full-screen board, or a board narrowed by the sidebar —
+   * and then keeps the usual margin past them, since `bounds="parent"` clamps a
+   * drag to the board and those notes would otherwise be stuck where they are.
+   */
+  const fit = (visible: number, far: number) =>
+    far > visible ? Math.ceil(far + CANVAS_GROW_MARGIN) : visible;
+  const boardWidth = fit(Math.ceil(containerSize.width / scale), extent.x);
+  const boardHeight = fit(Math.ceil(containerSize.height / scale), extent.y);
 
   const liveHeight = useCanvasResize(nodeKey, height, editor);
 
