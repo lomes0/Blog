@@ -64,8 +64,9 @@ const groupId = (item: SeriesGroupItem): string =>
   item.type === "series" ? (item.series?.id ?? "") : (item.posts[0]?.id ?? "");
 
 /**
- * Order standalone posts and series in one shared rank space (ascending),
- * matching the interleaved root list on /posts (see PostsListView). Unranked
+ * Order standalone posts and series in one shared rank space (ascending) — the
+ * same space /posts ranks them in (see PostsListView), so the two surfaces agree
+ * on order even though each splits the result into its own sections. Unranked
  * groups sort last; ties break by id so the result is total and stable.
  */
 const compareGroupsByRank = (

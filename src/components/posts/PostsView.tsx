@@ -84,9 +84,10 @@ const PostsGrid: React.FC<{ posts: Post[]; user?: User }> = (
  * Series mode    – `series` prop provided. Posts come from the series object,
  *                 supports time-edit mode (compact view) for re-ordering by date.
  * All-posts mode – no `series` prop. Grid view splits into two sections:
- *                 series first, then standalone posts (matches the sidebar's
- *                 series-first ordering). Compact view uses PostsListView, which
- *                 interleaves series and posts in one shared rank space.
+ *                 series first, then standalone posts. Compact view uses
+ *                 PostsListView, which renders standalone posts above series
+ *                 (matching the sidebar's Notes-then-Projects split) while
+ *                 ranking both in one shared space.
  */
 const PostsView: React.FC<PostsViewProps> = ({ series, user: serverUser }) => {
   const isSeries = !!series;

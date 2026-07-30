@@ -45,10 +45,23 @@ interface PostsListViewProps {
   density: ListDensity;
 }
 
-// A single entry in the interleaved root list: a standalone post or a series.
-type RootItem =
-  | { kind: "post"; id: string; rank: string | null; post: Post }
-  | { kind: "series"; id: string; rank: string | null; series: Series };
+// A single entry in the root list: a standalone post or a series. Both live in
+// one shared rank space; the two are rendered as separate sections (posts above
+// series) but ranked against each other, so a drag across the boundary is one
+// ordinary move.
+type PostRootItem = {
+  kind: "post";
+  id: string;
+  rank: string | null;
+  post: Post;
+};
+type SeriesRootItem = {
+  kind: "series";
+  id: string;
+  rank: string | null;
+  series: Series;
+};
+type RootItem = PostRootItem | SeriesRootItem;
 
 // Rank ascending; unranked entries sort last; ties broken by id (total/stable).
 // Delegates to the shared primitive so /posts and the sidebar agree on order.
@@ -95,11 +108,10 @@ export function PostsListView({
     return map;
   }, [series]);
 
-  // The root list: standalone posts and series interleaved in one shared rank
-  // space (the user's chosen free-interleave model). The order here is also the
-  // source of the neighbour ranks that bracket a reorder (see
-  // handleReorderRoot / handleReorderDrop), so it must stay rank-monotonic —
-  // don't group or re-sort it for presentation.
+  // The root list: standalone posts and series in one shared rank space. This is
+  // the source of the neighbour ranks that bracket a reorder (see
+  // handleReorderRoot) and of the sibling lists the drag engine indexes, so it
+  // must stay rank-monotonic — don't group or re-sort it for presentation.
   const rootItems = useMemo((): RootItem[] => {
     const items: RootItem[] = [
       ...posts.map((p) => ({
@@ -118,17 +130,38 @@ export function PostsListView({
     return items.sort(compareByRank);
   }, [posts, series]);
 
-  // Flat ordered list of all visible IDs for range selection (render order).
+  // Split the rank-ordered root list into the two rendered sections — standalone
+  // posts above, series below — matching the sidebar, which renders the same
+  // tree as "Notes" then "Projects". The rank space stays shared (so a drag
+  // between the sections is still a single well-ordered move); each section is
+  // just a rank-sorted subset of it.
+  const postItems = useMemo(
+    () =>
+      rootItems.filter((item): item is PostRootItem => item.kind === "post"),
+    [rootItems],
+  );
+  const seriesItems = useMemo(
+    () =>
+      rootItems.filter((item): item is SeriesRootItem =>
+        item.kind === "series"
+      ),
+    [rootItems],
+  );
+
+  // Flat ordered list of all visible IDs for range selection, in *visual* order
+  // (posts section, then the series section with each expanded series' posts) —
+  // it drives Shift-range and Select-All, so it must match what the user sees.
   const allVisibleIds = useMemo(() => {
     const ids: string[] = [];
-    for (const item of rootItems) {
+    for (const item of postItems) ids.push(item.id);
+    for (const item of seriesItems) {
       ids.push(item.id);
-      if (item.kind === "series" && expandedSeries.has(item.id)) {
+      if (expandedSeries.has(item.id)) {
         (seriesPostsById.get(item.id) ?? []).forEach((p) => ids.push(p.id));
       }
     }
     return ids;
-  }, [rootItems, expandedSeries, seriesPostsById]);
+  }, [postItems, seriesItems, expandedSeries, seriesPostsById]);
 
   const selection = useRowSelection(allVisibleIds, "toggle");
 
@@ -303,18 +336,25 @@ export function PostsListView({
     [dispatch, router],
   );
 
-  // Reposition a root-level item (a standalone post or a whole series) within
-  // the interleaved root list. Posts move via movePost, series via
-  // moveSeries — both re-rank in the shared root space.
+  // Reposition a root-level item within its own rendered section — `section` is
+  // the posts list or the series list, both rank-ordered subsets of the shared
+  // root rank space. Bracketing against the *section* (rather than the whole
+  // root list) is what makes "move down" land where the user sees the row go: a
+  // rank drawn between two posts is still between them when a series' rank sits
+  // in the gap. Posts move via movePost, series via moveSeries.
   const handleReorderRoot = useCallback(
-    async (index: number, direction: ReorderDirection) => {
+    async (
+      section: RootItem[],
+      index: number,
+      direction: ReorderDirection,
+    ) => {
       const between = ranksBracketing(
-        rootItems.map((r) => r.rank),
+        section.map((r) => r.rank),
         index,
         direction,
       );
       if (!between) return;
-      const item = rootItems[index];
+      const item = section[index];
       if (item.kind === "post") {
         await dispatch(
           actions.movePost({ id: item.id, destination: container, between }),
@@ -324,7 +364,7 @@ export function PostsListView({
       }
       router.refresh();
     },
-    [rootItems, dispatch, router, container],
+    [dispatch, router, container],
   );
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
@@ -366,70 +406,79 @@ export function PostsListView({
 
   return (
     <Box sx={{ width: "100%", position: "relative" }}>
-      {/* Unified root list: standalone posts and series interleaved by rank. */}
-      <Box sx={{ mb: 1 }}>
-        {rootItems.map((item, i) =>
-          item.kind === "post"
-            ? (
-              <PostRow
-                key={item.id}
-                post={item.post}
-                density={density}
-                isSelected={selection.isSelected(item.id)}
-                rename={postRename}
-                onToggleSelect={selection.handleSelectClick}
-                onDelete={handleDeletePost}
-                onDragStart={dnd.onPostDragStart}
-                onDragEnd={dnd.onDragEnd}
-                onReorder={(direction) => handleReorderRoot(i, direction)}
-                canMoveUp={i > 0}
-                canMoveDown={i < rootItems.length - 1}
-                onReorderDragOver={dnd.onReorderDragOver}
-                onReorderDrop={dnd.onReorderDrop}
-                dropIndicator={dnd.dropTarget?.id === item.id
-                  ? dnd.dropTarget.position
-                  : null}
-                availableSeries={hasSeries ? series : undefined}
-                onMoveToSeries={hasSeries
-                  ? (seriesId) => handleMoveToSeries(item.id, seriesId)
-                  : undefined}
-              />
-            )
-            : (
-              <SeriesRow
-                key={item.id}
-                series={item.series}
-                posts={seriesPostsById.get(item.id) ?? []}
-                onReorderPost={handleReorderPost}
-                onReorder={(direction) => handleReorderRoot(i, direction)}
-                canMoveUp={i > 0}
-                canMoveDown={i < rootItems.length - 1}
-                density={density}
-                isSelected={selection.isSelected(item.id)}
-                isPostSelected={selection.isSelected}
-                isExpanded={expandedSeries.has(item.id)}
-                onToggleExpand={toggleSeries}
-                onToggleSelect={selection.handleSelectClick}
-                seriesRename={seriesRename}
-                postRename={postRename}
-                onDeleteSeries={handleDeleteSeries}
-                onDeletePost={handleDeletePost}
-                onPostDragStart={dnd.onPostDragStart}
-                onSeriesDragStart={dnd.onSeriesDragStart}
-                onDragEnd={dnd.onDragEnd}
-                onReorderDragOver={dnd.onReorderDragOver}
-                onReorderDrop={dnd.onReorderDrop}
-                onDragLeaveRow={dnd.onDragLeaveRow}
-                isDragOver={dnd.dragOverSeriesId === item.id}
-                dropIndicator={dnd.dropTarget?.id === item.id
-                  ? dnd.dropTarget.position
-                  : null}
-                availableSeries={series.filter((other) => other.id !== item.id)}
-                onMovePost={handleMoveToSeries}
-              />
-            )
-        )}
-      </Box>
+      {/* Standalone posts, above the series — the sidebar's "Notes" section.
+          Each section is skipped when empty so it contributes no stray margin
+          (series mode renders posts only; a fresh account, series only). */}
+      {postItems.length > 0 && (
+        <Box sx={{ mb: 1 }}>
+          {postItems.map((item, i) => (
+            <PostRow
+              key={item.id}
+              post={item.post}
+              density={density}
+              isSelected={selection.isSelected(item.id)}
+              rename={postRename}
+              onToggleSelect={selection.handleSelectClick}
+              onDelete={handleDeletePost}
+              onDragStart={dnd.onPostDragStart}
+              onDragEnd={dnd.onDragEnd}
+              onReorder={(direction) =>
+                handleReorderRoot(postItems, i, direction)}
+              canMoveUp={i > 0}
+              canMoveDown={i < postItems.length - 1}
+              onReorderDragOver={dnd.onReorderDragOver}
+              onReorderDrop={dnd.onReorderDrop}
+              dropIndicator={dnd.dropTarget?.id === item.id
+                ? dnd.dropTarget.position
+                : null}
+              availableSeries={hasSeries ? series : undefined}
+              onMoveToSeries={hasSeries
+                ? (seriesId) => handleMoveToSeries(item.id, seriesId)
+                : undefined}
+            />
+          ))}
+        </Box>
+      )}
+
+      {/* Series, below the standalone posts. */}
+      {seriesItems.length > 0 && (
+        <Box sx={{ mb: 1 }}>
+          {seriesItems.map((item, i) => (
+            <SeriesRow
+              key={item.id}
+              series={item.series}
+              posts={seriesPostsById.get(item.id) ?? []}
+              onReorderPost={handleReorderPost}
+              onReorder={(direction) =>
+                handleReorderRoot(seriesItems, i, direction)}
+              canMoveUp={i > 0}
+              canMoveDown={i < seriesItems.length - 1}
+              density={density}
+              isSelected={selection.isSelected(item.id)}
+              isPostSelected={selection.isSelected}
+              isExpanded={expandedSeries.has(item.id)}
+              onToggleExpand={toggleSeries}
+              onToggleSelect={selection.handleSelectClick}
+              seriesRename={seriesRename}
+              postRename={postRename}
+              onDeleteSeries={handleDeleteSeries}
+              onDeletePost={handleDeletePost}
+              onPostDragStart={dnd.onPostDragStart}
+              onSeriesDragStart={dnd.onSeriesDragStart}
+              onDragEnd={dnd.onDragEnd}
+              onReorderDragOver={dnd.onReorderDragOver}
+              onReorderDrop={dnd.onReorderDrop}
+              onDragLeaveRow={dnd.onDragLeaveRow}
+              isDragOver={dnd.dragOverSeriesId === item.id}
+              dropIndicator={dnd.dropTarget?.id === item.id
+                ? dnd.dropTarget.position
+                : null}
+              availableSeries={series.filter((other) => other.id !== item.id)}
+              onMovePost={handleMoveToSeries}
+            />
+          ))}
+        </Box>
+      )}
 
       {/* Bulk action bar */}
       <BulkActionBar

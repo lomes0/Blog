@@ -15,8 +15,7 @@ interface SeriesSectionProps {
  * collapsible SeriesGroupCard per series, started expanded.
  *
  * Compact view never reaches here — `PostsView` hands the whole page to
- * `PostsListView`, which interleaves series and standalone posts in one shared
- * rank space instead of splitting them into sections.
+ * `PostsListView`, which draws its own posts-then-series split as flat rows.
  */
 const SeriesSection: React.FC<SeriesSectionProps> = ({ series, user }) => {
   // Track which series are collapsed (series default to expanded).
