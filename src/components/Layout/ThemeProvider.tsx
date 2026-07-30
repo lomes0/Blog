@@ -115,7 +115,11 @@ const theme = createTheme({
           paper: "#f8fafc",
           rail: "#eceef2",
           sidebar: "#f8fafc",
-          panel: "#fbfcfe",
+          // Bookends the activity rail rather than sitting a hair off white:
+          // at #fbfcfe the right rail was ~1% from the canvas and read as
+          // canvas-with-a-border. Matching `rail` frames the app left and
+          // right and leaves white to mean "editing surface" alone.
+          panel: "#eceef2",
           input: "#ffffff",
         },
         text: {

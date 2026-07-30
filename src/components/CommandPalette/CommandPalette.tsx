@@ -280,7 +280,7 @@ const CommandPalette = () => {
           transform: `translateX(${contentOffsetX}px)`,
           display: "flex",
           flexDirection: "column",
-          bgcolor: "background.panel",
+          bgcolor: "background.paper",
           border: 1,
           borderColor: "divider",
           borderRadius: 3,

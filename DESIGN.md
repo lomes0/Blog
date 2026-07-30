@@ -118,12 +118,15 @@ exposed as MUI CSS variables (`var(--mui-palette-*)`).
 | Surface / paper | `--mui-palette-background-paper`   | `#f8fafc` | `#303849` |
 | Activity rail   | `--mui-palette-background-rail`    | `#eceef2` | `#1b202c` |
 | Sidebar / nav   | `--mui-palette-background-sidebar` | `#f8fafc` | `#202634` |
-| Panel (Copilot) | `--mui-palette-background-panel`   | `#fbfcfe` | `#2a3141` |
+| Panel (Copilot) | `--mui-palette-background-panel`   | `#eceef2` | `#2a3141` |
 | Input field     | `--mui-palette-background-input`   | `#ffffff` | `#363f52` |
 | Divider         | `--mui-palette-divider`            | `#e2e8f0` | `#465166` |
 
 > **Chrome surfaces** (`sidebar`/`panel`/`input`) are recessed/lifted variants
 > of `paper`, added by augmenting MUI's `TypeBackground` in `ThemeProvider.tsx`.
+> In light mode `panel` **equals** `rail`: the two rails bookend the app, the
+> sidebar is the lightest chrome, and `background.default` white is reserved for
+> the editing canvas. Dark mode still steps `rail` → `sidebar` → `panel`.
 > Use them for the left nav (`AppDrawer`/`SideBar`), the right Copilot panel /
 > `RightRail`, and prompt/search fields — **not** raw hexes. There is **no**
 > `chip` or `accent-weak` token: selected rows, count pills, and hover fills use
@@ -589,7 +592,7 @@ no ad-hoc `fontSize`, `rgba()`, or radius literals in chrome.
 | Editor top bar                | `background.default`               | `1px solid divider` (bottom)    |
 | Editor body / canvas          | `background.default`               | none                            |
 | Command palette overlay       | `background.paper`                 | `1px solid divider`, elev. shadow |
-| Copilot / AI panel + RightRail| `background.panel`                 | `1px solid divider` (left)      |
+| Copilot / AI panel + RightRail| `background.panel` (= `rail` in light) | `1px solid divider` (left)  |
 | Status bar (bottom, 26px)     | `background.sidebar`               | `1px solid divider` (top)       |
 | Inputs (search, palette field)| `background.input`                 | `1px solid divider`             |
 
