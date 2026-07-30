@@ -4,7 +4,14 @@ import React from "react";
 import RouterLink from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Avatar, Box, Tooltip } from "@mui/material";
-import { Code, Files, Search, Sparkles, StickyNote } from "lucide-react";
+import {
+  Code,
+  Files,
+  Newspaper,
+  Search,
+  Sparkles,
+  StickyNote,
+} from "lucide-react";
 import { actions, type RootState, useDispatch, useSelector } from "@/store";
 import type { SidebarView } from "@/types";
 import { ICON_SIZE } from "@/theme/icons";
@@ -122,6 +129,7 @@ const ActivityRail: React.FC = () => {
     }
   };
 
+  const postsActive = pathname.startsWith("/posts");
   const notesActive = pathname.startsWith("/notes");
 
   return (
@@ -203,6 +211,13 @@ const ActivityRail: React.FC = () => {
         onClick={() => handleViewClick("search")}
       >
         <Search size={ICON_SIZE.dense} strokeWidth={1.9} />
+      </RailButton>
+      <RailButton
+        label="Posts"
+        active={postsActive}
+        onClick={() => router.push("/posts")}
+      >
+        <Newspaper size={ICON_SIZE.dense} strokeWidth={1.9} />
       </RailButton>
       <RailButton
         label="Notes"
