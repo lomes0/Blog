@@ -53,7 +53,9 @@ export const LoadingCard: React.FC<LoadingCardProps> = ({ sx }) => {
         height: "100%",
         minHeight: cardTheme.minHeight.post,
         width: "100%",
-        borderRadius: cardTheme.borderRadius + 4,
+        // Must match CardBase's own radius — this is the card's stand-in while
+        // it loads, so any difference pops the moment the real card swaps in.
+        borderRadius: 2,
         backgroundColor: cardTheme.colors.cardBackground,
         border: `1px solid ${alpha(theme.palette.divider, 0.5)}`,
         overflow: "hidden",
@@ -134,7 +136,7 @@ const ContentSkeleton: React.FC<SkeletonProps> = ({ shimmerStyles }) => (
         sx={{
           alignSelf: "center",
           ...shimmerStyles,
-          borderRadius: 4,
+          borderRadius: 1,
         }}
       />
 
@@ -143,19 +145,19 @@ const ContentSkeleton: React.FC<SkeletonProps> = ({ shimmerStyles }) => (
         variant="text"
         width="90%"
         height={18}
-        sx={{ ...shimmerStyles, borderRadius: 3 }}
+        sx={{ ...shimmerStyles, borderRadius: 1 }}
       />
       <Skeleton
         variant="text"
         width="75%"
         height={18}
-        sx={{ ...shimmerStyles, borderRadius: 3 }}
+        sx={{ ...shimmerStyles, borderRadius: 1 }}
       />
       <Skeleton
         variant="text"
         width="85%"
         height={18}
-        sx={{ ...shimmerStyles, borderRadius: 3 }}
+        sx={{ ...shimmerStyles, borderRadius: 1 }}
       />
 
       {/* Optional content block (table, image, etc.) */}
@@ -165,7 +167,7 @@ const ContentSkeleton: React.FC<SkeletonProps> = ({ shimmerStyles }) => (
         height={70}
         sx={{
           mt: 1,
-          borderRadius: 6,
+          borderRadius: 1,
           ...shimmerStyles,
         }}
       />
@@ -192,7 +194,9 @@ const MetaSkeleton: React.FC<SkeletonProps> = ({ shimmerStyles }) => (
         width={75}
         height={26}
         sx={{
-          borderRadius: 13,
+          // Chips are 6px (MuiChip), not pills — the `13` here was half of the
+          // 26px height, i.e. px intent fed to an sx multiple.
+          borderRadius: 1.5,
           ...shimmerStyles,
         }}
       />
@@ -202,7 +206,7 @@ const MetaSkeleton: React.FC<SkeletonProps> = ({ shimmerStyles }) => (
         width={95}
         height={26}
         sx={{
-          borderRadius: 13,
+          borderRadius: 1.5,
           ...shimmerStyles,
         }}
       />
@@ -212,7 +216,7 @@ const MetaSkeleton: React.FC<SkeletonProps> = ({ shimmerStyles }) => (
         width={115}
         height={26}
         sx={{
-          borderRadius: 13,
+          borderRadius: 1.5,
           ...shimmerStyles,
         }}
       />

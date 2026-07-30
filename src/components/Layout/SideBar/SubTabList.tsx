@@ -53,7 +53,7 @@ interface SubTabListProps {
 const dotSx = {
   width: 6,
   height: 6,
-  borderRadius: "2px",
+  borderRadius: 0.5,
   flexShrink: 0,
   bgcolor: "text.disabled",
 } as const;

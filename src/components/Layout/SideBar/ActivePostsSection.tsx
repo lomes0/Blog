@@ -268,7 +268,7 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
             px: "10px",
             py: "6px",
             border: "1px solid transparent",
-            borderRadius: "12px",
+            borderRadius: 3,
             bgcolor: "action.hover",
             fontSize: SB_FONT.meta,
             transition:

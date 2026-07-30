@@ -466,10 +466,10 @@ const CopilotChat: React.FC<CopilotChatProps> = (
           sx={{
             "& .MuiOutlinedInput-root": {
               borderRadius: 2,
-              fontSize: "0.8rem",
+              typography: "dense",
               bgcolor: "background.input",
             },
-            "& .MuiOutlinedInput-input::placeholder": { fontSize: "0.8rem" },
+            "& .MuiOutlinedInput-input::placeholder": { typography: "dense" },
           }}
         />
 
@@ -501,7 +501,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
               sx={{
                 width: 10,
                 height: 10,
-                borderRadius: "2px",
+                borderRadius: 0.5,
                 bgcolor: providerColor,
                 flexShrink: 0,
                 display: "inline-block",
@@ -536,7 +536,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
                   sx={{
                     width: 10,
                     height: 10,
-                    borderRadius: "2px",
+                    borderRadius: 0.5,
                     bgcolor: PROVIDER_COLOR[m.provider] ?? "#888",
                     mr: 1,
                     flexShrink: 0,

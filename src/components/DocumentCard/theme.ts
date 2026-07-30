@@ -14,7 +14,10 @@ import { FOCUS_RING, SHADOW } from "@/theme/tokens";
  */
 export const createCardTheme = (theme: Theme) => ({
   // Layout - modern blog proportions with better aspect ratios
-  borderRadius: 6, // Reduced from 12px for less rounded appearance
+  // (`borderRadius: 6` used to live here. Its sole reader, LoadingCard, added 4
+  // and passed the result to `sx`, where multiples are ×4 — so a card meant to
+  // be ~10px rendered at 40px against the real card's 8px. Card radius belongs
+  // to `MuiCard`/`CardBase`, not to a per-component token; DESIGN.md §5.)
   minHeight: {
     post: "380px", // Slightly taller for better content display
   },

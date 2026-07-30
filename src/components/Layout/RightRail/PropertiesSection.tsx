@@ -11,6 +11,7 @@ import { countWords } from "@/utils/editorContent";
 import { seriesPositionOf } from "@/utils/posts/seriesGrouping";
 import RailSection from "./RailSection";
 import { ICON_SIZE } from "@/theme/icons";
+import { MONO_FONT } from "@/components/Layout/SideBar/constants";
 
 interface PropertiesSectionProps {
   rootId: string;
@@ -175,7 +176,7 @@ export default function PropertiesSection({
             v={
               <Box
                 component="span"
-                sx={{ fontFamily: "monospace", fontSize: "0.72rem" }}
+                sx={{ fontFamily: MONO_FONT, typography: "micro" }}
               >
                 {cloudDoc?.handle ?? localDoc?.handle}
               </Box>

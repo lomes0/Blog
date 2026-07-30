@@ -290,7 +290,6 @@ Do **not** introduce arbitrary pixel values when an MUI spacing unit exists.
 | Chip                        | `6px`                                              | `MuiChip` override                           |
 | Circular / avatar           | `"50%"`                                            | avatar-like elements                         |
 | Image within cards          | `4px` (`borderRadius: 4` as a raw px value)        | `cardTheme.image.borderRadius` — **unread**  |
-| Fine-grained card border    | `6` (MUI units)                                    | `createCardTheme`                            |
 
 > **`sx` multiples are ×4, not ×8.** There is **no `shape.borderRadius`
 > override**, so MUI's default `4px` base applies: `borderRadius: 1` → **4px**,
@@ -300,6 +299,15 @@ Do **not** introduce arbitrary pixel values when an MUI spacing unit exists.
 > overlays `2.5`–`3` (10–12px), images `1` (4px), pills/circular `"50%"`.
 
 **Never use values outside this set** without a strong reason.
+
+> **The ×4 trap is not hypothetical.** `createCardTheme` used to carry its own
+> `borderRadius: 6`, written as pixels; its only reader, `LoadingCard`, added 4
+> and handed the result to `sx`, so the loading skeleton rendered a 40px radius
+> in front of the 8px card it stands in for — and every skeleton bar and chip
+> inside it was off by the same factor. A per-component radius token is what
+> made that invisible, so there is no longer one: card radius comes from
+> `MuiCard`/`CardBase`. If you write a bare number for `borderRadius`, it is a
+> **multiple of 4**, never a pixel count.
 
 ---
 
