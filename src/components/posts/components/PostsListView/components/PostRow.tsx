@@ -2,19 +2,17 @@
 import React, { useCallback, useRef } from "react";
 import { Box, Checkbox, InputBase, Typography } from "@mui/material";
 import { GripVertical } from "lucide-react";
-import { Series, User, Post } from "@/types";
+import { Series, Post } from "@/types";
 import { useRouter } from "next/navigation";
 import { formatRelativeDate } from "@/utils/dateFormat";
-import { ListDensity, TagStyle } from "../types";
+import { ListDensity } from "../types";
 import { PostRowContextMenu } from "./PostRowContextMenu";
 import { ICON_SIZE } from "@/theme/icons";
 import type { InlineRenameResult } from "@/hooks/useInlineRename";
 
 interface PostRowProps {
   post: Post;
-  user?: User;
   density: ListDensity;
-  tagStyle: TagStyle;
   isSelected: boolean;
   /** Shared rename machine — one row across the whole list is open at a time. */
   rename: InlineRenameResult<undefined>;
@@ -44,9 +42,7 @@ interface PostRowProps {
 
 export const PostRow = React.memo(function PostRow({
   post,
-  user: _user,
   density,
-  tagStyle: _tagStyle,
   isSelected,
   rename,
   onToggleSelect,
@@ -236,7 +232,7 @@ export const PostRow = React.memo(function PostRow({
             )}
         </Box>
 
-        {/* Tags placeholder — renders when tags exist */}
+        {/* Spacer holding the gap between the title and the date. */}
         <Box
           sx={{
             display: "flex",

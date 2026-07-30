@@ -8,7 +8,7 @@ import React, {
 } from "react";
 import { Box } from "@mui/material";
 import { v4 as uuid } from "uuid";
-import { Series, User, Post } from "@/types";
+import { Series, Post } from "@/types";
 import { actions, useDispatch } from "@/store";
 import { useRouter } from "next/navigation";
 import { useExpandedState } from "@/hooks/useExpandedState";
@@ -19,7 +19,7 @@ import {
   type ReorderDirection,
 } from "@/lib/documentOrder";
 import { compareRankThenId } from "@/lib/ordering";
-import { ListDensity, TagStyle } from "./types";
+import { ListDensity } from "./types";
 import { PostRow } from "./components/PostRow";
 import { SeriesRow } from "./components/SeriesRow";
 import { BulkActionBar } from "./components/BulkActionBar";
@@ -37,9 +37,7 @@ interface PostsListViewProps {
    * series to move posts into.
    */
   moveTargetSeries?: Series[];
-  user?: User;
   density: ListDensity;
-  tagStyle: TagStyle;
 }
 
 // A single entry in the interleaved root list: a standalone post or a series.
@@ -56,9 +54,7 @@ export function PostsListView({
   posts,
   series,
   moveTargetSeries,
-  user: _user,
   density,
-  tagStyle,
 }: PostsListViewProps) {
   const dispatch = useDispatch();
   const router = useRouter();
@@ -496,7 +492,6 @@ export function PostsListView({
                 key={item.id}
                 post={item.post}
                 density={density}
-                tagStyle={tagStyle}
                 isSelected={selection.isSelected(item.id)}
                 rename={postRename}
                 onToggleSelect={selection.toggle}
@@ -527,7 +522,6 @@ export function PostsListView({
                 canMoveUp={i > 0}
                 canMoveDown={i < rootItems.length - 1}
                 density={density}
-                tagStyle={tagStyle}
                 isSelected={selection.isSelected(item.id)}
                 isPostSelected={selection.isSelected}
                 isExpanded={expandedSeries.has(item.id)}

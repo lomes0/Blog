@@ -9,9 +9,9 @@ import {
   Typography,
 } from "@mui/material";
 import { ChevronRight } from "lucide-react";
-import { Series, User, Post } from "@/types";
+import { Series, Post } from "@/types";
 import { formatRelativeDate } from "@/utils/dateFormat";
-import { ListDensity, TagStyle } from "../types";
+import { ListDensity } from "../types";
 import { PostRow } from "./PostRow";
 import { PostRowContextMenu } from "./PostRowContextMenu";
 import type { InlineRenameResult } from "@/hooks/useInlineRename";
@@ -22,9 +22,7 @@ const SERIES_PREVIEW_COUNT = 3;
 interface SeriesRowProps {
   series: Series;
   posts: Post[];
-  user?: User;
   density: ListDensity;
-  tagStyle: TagStyle;
   isSelected: boolean;
   /** Whether a given child post is part of the current selection. */
   isPostSelected: (id: string) => boolean;
@@ -60,9 +58,7 @@ interface SeriesRowProps {
 export const SeriesRow = React.memo(function SeriesRow({
   series,
   posts,
-  user: _user,
   density,
-  tagStyle,
   isSelected,
   isPostSelected,
   isExpanded,
@@ -341,7 +337,6 @@ export const SeriesRow = React.memo(function SeriesRow({
                 key={p.id}
                 post={p}
                 density={density}
-                tagStyle={tagStyle}
                 isSelected={isPostSelected(p.id)}
                 rename={postRename}
                 onToggleSelect={onToggleSelect}

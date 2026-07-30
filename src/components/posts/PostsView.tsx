@@ -14,11 +14,7 @@ import { ViewToggle, type ViewType } from "@/components/shared/ViewToggle";
 import { EmptyState } from "@/components/shared/EmptyState";
 import DocumentCard from "@/components/DocumentCard";
 import { PostsCompactListView } from "./components/PostsCompactListView";
-import {
-  type ListDensity,
-  PostsListView,
-  type TagStyle,
-} from "./components/PostsListView";
+import { type ListDensity, PostsListView } from "./components/PostsListView";
 import { NewPostSplitButton } from "./components/NewPostSplitButton";
 
 // Controls
@@ -106,12 +102,11 @@ const PostsView: React.FC<PostsViewProps> = ({ series, user: serverUser }) => {
     "grid",
   );
 
-  // List-view display preferences (persistent, shared across both modes).
+  // List-view display preference (persistent, shared across both modes).
   const [density] = useLocalStorage<ListDensity>(
     "postsListDensity",
     "comfortable",
   );
-  const [tagStyle] = useLocalStorage<TagStyle>("postsListTagStyle", "filled");
 
   // ── Drawer / dialog state ─────────────────────────────────────────────────
   const [createPostDrawerOpen, setCreatePostDrawerOpen] = useState(false);
@@ -272,9 +267,7 @@ const PostsView: React.FC<PostsViewProps> = ({ series, user: serverUser }) => {
                     moveTargetSeries={seriesList.filter((s) =>
                       s.id !== series!.id
                     )}
-                    user={user}
                     density={density}
-                    tagStyle={tagStyle}
                   />
                 )
             )
@@ -308,9 +301,7 @@ const PostsView: React.FC<PostsViewProps> = ({ series, user: serverUser }) => {
             <PostsListView
               posts={sortedStandalonePosts}
               series={seriesList}
-              user={user}
               density={density}
-              tagStyle={tagStyle}
             />
           );
         }
