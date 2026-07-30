@@ -1,7 +1,6 @@
 "use client";
 import React, { useCallback, useEffect, useMemo } from "react";
 import { Box } from "@mui/material";
-import { v4 as uuid } from "uuid";
 import { Post, type PostContainer, Series } from "@/types";
 import { actions, useDispatch } from "@/store";
 import { useRouter } from "next/navigation";
@@ -21,6 +20,8 @@ import { SeriesRow } from "./components/SeriesRow";
 import { BulkActionBar } from "./components/BulkActionBar";
 import { useRowSelection } from "@/hooks/useRowSelection";
 import { useInlineRename } from "@/hooks/useInlineRename";
+import { useBulkPostActions } from "@/hooks/useBulkPostActions";
+import { useConfirm } from "@/hooks/useConfirm";
 
 interface PostsListViewProps {
   /** Standalone posts (not in any series). */
@@ -63,6 +64,7 @@ export function PostsListView({
 }: PostsListViewProps) {
   const dispatch = useDispatch();
   const router = useRouter();
+  const confirm = useConfirm();
 
   // Pinned to the two ids rather than the prop's identity: callers pass this
   // inline, and the reorder handlers below are React.memo'd row props — a fresh
@@ -167,154 +169,44 @@ export function PostsListView({
   // ── Delete handlers ───────────────────────────────────────────────────────
   const handleDeletePost = useCallback(async (post: Post) => {
     const name = post.name || "This post";
-    const alertPayload = {
+    const confirmed = await confirm({
       title: "Delete Post",
       content: `Delete "${name}"? This cannot be undone.`,
-      actions: [
-        { label: "Cancel", id: uuid() },
-        { label: "Delete", id: uuid() },
-      ],
-    };
-    const response = await dispatch(actions.alert(alertPayload));
-    if (response.payload === alertPayload.actions[1].id) {
-      await dispatch(actions.deletePost(post.id));
-      router.refresh();
-    }
-  }, [dispatch, router]);
+      confirmLabel: "Delete",
+    });
+    if (!confirmed) return;
+    await dispatch(actions.deletePost(post.id));
+    router.refresh();
+  }, [confirm, dispatch, router]);
 
   const handleDeleteSeries = useCallback(
     async (seriesId: string, seriesTitle: string) => {
-      const alertPayload = {
+      const confirmed = await confirm({
         title: "Delete Series",
         content: `Delete "${seriesTitle}"? Posts will not be deleted.`,
-        actions: [
-          { label: "Cancel", id: uuid() },
-          { label: "Delete", id: uuid() },
-        ],
-      };
-      const response = await dispatch(actions.alert(alertPayload));
-      if (response.payload === alertPayload.actions[1].id) {
-        await dispatch(actions.deleteSeries(seriesId));
-        router.refresh();
-      }
-    },
-    [dispatch, router],
-  );
-
-  // Map series IDs for O(1) lookup during bulk delete
-  const seriesIdSet = useMemo(() => new Set(series.map((s) => s.id)), [series]);
-
-  // Flat map of all post UserDocuments for bulk operations
-  const allPostsMap = useMemo(() => {
-    const map = new Map<string, Post>();
-    posts.forEach((p) => map.set(p.id, p));
-    series.forEach((s) => s.posts.forEach((p) => map.set(p.id, p)));
-    return map;
-  }, [posts, series]);
-
-  const handleBulkDelete = useCallback(async () => {
-    const count = selection.selectedIds.size;
-    if (count === 0) return;
-    const alertPayload = {
-      title: "Delete Selected",
-      content: `Delete ${count} item${
-        count !== 1 ? "s" : ""
-      }? This cannot be undone.`,
-      actions: [
-        { label: "Cancel", id: uuid() },
-        { label: "Delete", id: uuid() },
-      ],
-    };
-    const response = await dispatch(actions.alert(alertPayload));
-    if (response.payload === alertPayload.actions[1].id) {
-      for (const id of selection.selectedIds) {
-        if (seriesIdSet.has(id)) {
-          await dispatch(actions.deleteSeries(id));
-        } else {
-          const post = allPostsMap.get(id);
-          if (post) {
-            await dispatch(actions.deletePost(post.id));
-          }
-        }
-      }
-      selection.clear();
-      router.refresh();
-    }
-  }, [dispatch, router, selection, seriesIdSet, allPostsMap]);
-
-  // ── Merge into tabbed post ────────────────────────────────────────────────
-  // Selected posts (excluding series headers) in list order. The first becomes
-  // the container; the rest are merged in as tabs.
-  const selectedMergeablePosts = useMemo(() => {
-    return allVisibleIds
-      .filter((id) =>
-        selection.selectedIds.has(id) && !seriesIdSet.has(id) &&
-        allPostsMap.has(id)
-      )
-      .map((id) => allPostsMap.get(id)!)
-      .filter((p): p is Post => !!p);
-  }, [allVisibleIds, selection.selectedIds, seriesIdSet, allPostsMap]);
-
-  // Merging needs at least two posts, none of them a series.
-  const canMerge = selectedMergeablePosts.length >= 2 &&
-    selectedMergeablePosts.length === selection.selectedIds.size;
-
-  const handleBulkMerge = useCallback(async () => {
-    if (!canMerge) return;
-    const [target, ...sources] = selectedMergeablePosts;
-    const targetName = target.name || "this post";
-    const alertPayload = {
-      title: "Merge into tabs",
-      content: `Merge ${
-        sources.length + 1
-      } posts into "${targetName}"? The other ${sources.length} post${
-        sources.length !== 1 ? "s" : ""
-      } will be moved into tabs and permanently deleted. This cannot be undone.`,
-      actions: [
-        { label: "Cancel", id: uuid() },
-        { label: "Merge", id: uuid() },
-      ],
-    };
-    const response = await dispatch(actions.alert(alertPayload));
-    if (response.payload !== alertPayload.actions[1].id) return;
-
-    await dispatch(
-      actions.mergePostsIntoTabs({
-        targetId: target.id,
-        sourceIds: sources.map((p) => p.id),
-      }),
-    );
-    selection.clear();
-    router.refresh();
-  }, [canMerge, selectedMergeablePosts, dispatch, selection, router]);
-
-  // ── Bulk move to series ───────────────────────────────────────────────────
-  // Non-series selected posts. Series membership is cloud-only, so move is
-  // disabled when any local-only post is in the selection (same rule as merge).
-  const selectedMovablePosts = useMemo(() => {
-    return Array.from(selection.selectedIds)
-      .filter((id) => !seriesIdSet.has(id) && allPostsMap.has(id))
-      .map((id) => allPostsMap.get(id)!);
-  }, [selection.selectedIds, seriesIdSet, allPostsMap]);
-
-  const canMove = selectedMovablePosts.length > 0;
-
-  const handleBulkMove = useCallback(
-    async (seriesId: string | null) => {
-      if (selectedMovablePosts.length === 0) return;
-      for (const post of selectedMovablePosts) {
-        await dispatch(
-          actions.movePost({
-            id: post.id,
-            destination: seriesId ? { seriesId } : {},
-          }),
-        );
-      }
-      selection.clear();
+        confirmLabel: "Delete",
+      });
+      if (!confirmed) return;
+      await dispatch(actions.deleteSeries(seriesId));
       router.refresh();
     },
-    [selectedMovablePosts, dispatch, selection, router],
+    [confirm, dispatch, router],
   );
+
+  // ── Bulk actions ──────────────────────────────────────────────────────────
+  // Delete / move-to-series / merge-into-tabs, shared with the sidebar's
+  // right-click bulk menu. Only the chrome differs here: a persistent bar.
+  // `renameablePosts` is already every post a row can name — the standalone rows
+  // plus each series' children — which is exactly what a selected id can resolve
+  // to. `projects` is left off: this surface has no project rows.
+  const bulk = useBulkPostActions({
+    selectedIds: selection.selectedIds,
+    orderedIds: allVisibleIds,
+    clearSelection: selection.clear,
+    posts: renameablePosts,
+    series,
+  });
+  const { handleBulkDelete } = bulk;
 
   // ── Drag and drop ─────────────────────────────────────────────────────────
   // The rendered tree, as the shared engine indexes it: the root list, with each
@@ -541,14 +433,14 @@ export function PostsListView({
 
       {/* Bulk action bar */}
       <BulkActionBar
-        count={selection.selectedIds.size}
-        onDelete={handleBulkDelete}
+        count={bulk.selectedCount}
+        onDelete={bulk.handleBulkDelete}
         onClear={selection.clear}
-        onMerge={handleBulkMerge}
-        canMerge={canMerge}
+        onMerge={bulk.handleBulkMerge}
+        canMerge={bulk.canMerge}
         availableSeries={moveTargetSeries ?? series}
-        onMove={handleBulkMove}
-        canMove={canMove}
+        onMove={bulk.handleBulkMove}
+        canMove={bulk.canMove}
       />
     </Box>
   );

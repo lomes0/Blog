@@ -1,31 +1,30 @@
 "use client";
-import { useCallback, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { v4 as uuid } from "uuid";
+import { useCallback, useState } from "react";
+import { postsSelectors, type RootState, useSelector } from "@/store";
 import {
-  actions,
-  postsSelectors,
-  type RootState,
-  useDispatch,
-  useSelector,
-} from "@/store";
-import type { Series, Post } from "@/types";
+  type BulkPostActionsResult,
+  useBulkPostActions,
+} from "@/hooks/useBulkPostActions";
+import type { Series } from "@/types";
 
 export interface BulkMenuState {
   mouseX: number;
   mouseY: number;
 }
 
-export interface SidebarBulkActionsResult {
+export interface SidebarBulkActionsResult extends
+  Pick<
+    BulkPostActionsResult,
+    | "selectedCount"
+    | "canMerge"
+    | "handleBulkDelete"
+    | "handleBulkMove"
+    | "handleBulkMerge"
+  > {
   menu: BulkMenuState | null;
   openMenu: (event: React.MouseEvent) => void;
   closeMenu: () => void;
-  selectedCount: number;
   availableSeries: Series[];
-  canMerge: boolean;
-  handleBulkDelete: () => Promise<void>;
-  handleBulkMove: (seriesId: string | null) => Promise<void>;
-  handleBulkMerge: () => Promise<void>;
 }
 
 interface UseSidebarBulkActionsArgs {
@@ -38,19 +37,20 @@ interface UseSidebarBulkActionsArgs {
 }
 
 /**
- * Bulk operations for a sidebar multi-selection, mirroring the posts page
- * `BulkActionBar`: delete, move-to-series (or out to root), and merge into tabs.
- * Series membership and merge are cloud-only, matching the thunks' constraints.
+ * The sidebar's presentation of {@link useBulkPostActions}: a right-click menu
+ * anchored at the pointer, over rows sourced from the store. The operations
+ * themselves — delete, move-to-series, merge into tabs, and both confirm
+ * dialogs — are shared with the /posts action bar and live in that hook; only
+ * the menu anchor and the store reads are sidebar-specific.
  */
 export function useSidebarBulkActions(
   { selectedIds, orderedIds, clearSelection }: UseSidebarBulkActionsArgs,
 ): SidebarBulkActionsResult {
-  const dispatch = useDispatch();
-  const router = useRouter();
-  const documents = useSelector((state: RootState) =>
+  const posts = useSelector((state: RootState) =>
     postsSelectors.selectAll(state)
   );
   const series = useSelector((state: RootState) => state.series);
+  const projects = useSelector((state: RootState) => state.projects);
 
   const [menu, setMenu] = useState<BulkMenuState | null>(null);
 
@@ -60,129 +60,43 @@ export function useSidebarBulkActions(
   }, []);
   const closeMenu = useCallback(() => setMenu(null), []);
 
-  const seriesIdSet = useMemo(
-    () => new Set(series.map((s) => s.id)),
-    [series],
-  );
-  const docsById = useMemo(() => {
-    const map = new Map<string, Post>();
-    for (const d of documents) map.set(d.id, d);
-    return map;
-  }, [documents]);
-
-  // Selected posts (series rows excluded), in render order.
-  const selectedPosts = useMemo(
-    () =>
-      orderedIds
-        .filter((id) => selectedIds.has(id) && !seriesIdSet.has(id))
-        .map((id) => docsById.get(id))
-        .filter((d): d is Post => Boolean(d)),
-    [orderedIds, selectedIds, seriesIdSet, docsById],
-  );
-
-  // Merging needs ≥2 posts and no series in the selection.
-  const canMerge = selectedPosts.length >= 2 &&
-    selectedPosts.length === selectedIds.size;
-
-  const handleBulkDelete = useCallback(async () => {
-    closeMenu();
-    const count = selectedIds.size;
-    if (count === 0) return;
-    const cancelId = uuid();
-    const confirmId = uuid();
-    const response = await dispatch(
-      actions.alert({
-        title: "Delete Selected",
-        content: `Delete ${count} item${
-          count !== 1 ? "s" : ""
-        }? This cannot be undone.`,
-        actions: [
-          { label: "Cancel", id: cancelId },
-          { label: "Delete", id: confirmId },
-        ],
-      }),
-    );
-    if (response.payload !== confirmId) return;
-    for (const id of selectedIds) {
-      if (seriesIdSet.has(id)) {
-        await dispatch(actions.deleteSeries(id));
-      } else {
-        const doc = docsById.get(id);
-        if (!doc) continue;
-        await dispatch(actions.deletePost(id));
-      }
-    }
-    clearSelection();
-    router.refresh();
-  }, [
-    dispatch,
-    router,
-    closeMenu,
-    clearSelection,
+  const bulk = useBulkPostActions({
     selectedIds,
-    seriesIdSet,
-    docsById,
-  ]);
+    orderedIds,
+    clearSelection,
+    posts,
+    series,
+    projects,
+  });
 
-  const handleBulkMove = useCallback(
-    async (seriesId: string | null) => {
-      closeMenu();
-      if (selectedPosts.length === 0) return;
-      for (const post of selectedPosts) {
-        await dispatch(
-          actions.movePost({
-            id: post.id,
-            destination: seriesId ? { seriesId } : {},
-          }),
-        );
-      }
-      clearSelection();
-      router.refresh();
-    },
-    [dispatch, router, closeMenu, clearSelection, selectedPosts],
-  );
-
-  const handleBulkMerge = useCallback(async () => {
+  // The menu has to be dismissed before the operation's confirm dialog opens,
+  // or it stays up behind it.
+  const { handleBulkDelete, handleBulkMove, handleBulkMerge } = bulk;
+  const deleteSelected = useCallback(() => {
     closeMenu();
-    if (!canMerge) return;
-    const [target, ...sources] = selectedPosts;
-    const targetName = target.name || "this post";
-    const cancelId = uuid();
-    const confirmId = uuid();
-    const response = await dispatch(
-      actions.alert({
-        title: "Merge into tabs",
-        content: `Merge ${sources.length + 1} posts into "${targetName}"? ` +
-          `The other ${sources.length} post${
-            sources.length !== 1 ? "s" : ""
-          } will be moved into tabs and permanently deleted. ` +
-          `This cannot be undone.`,
-        actions: [
-          { label: "Cancel", id: cancelId },
-          { label: "Merge", id: confirmId },
-        ],
-      }),
-    );
-    if (response.payload !== confirmId) return;
-    await dispatch(
-      actions.mergePostsIntoTabs({
-        targetId: target.id,
-        sourceIds: sources.map((p) => p.id),
-      }),
-    );
-    clearSelection();
-    router.refresh();
-  }, [dispatch, router, closeMenu, clearSelection, canMerge, selectedPosts]);
+    return handleBulkDelete();
+  }, [closeMenu, handleBulkDelete]);
+  const moveSelected = useCallback(
+    (seriesId: string | null) => {
+      closeMenu();
+      return handleBulkMove(seriesId);
+    },
+    [closeMenu, handleBulkMove],
+  );
+  const mergeSelected = useCallback(() => {
+    closeMenu();
+    return handleBulkMerge();
+  }, [closeMenu, handleBulkMerge]);
 
   return {
     menu,
     openMenu,
     closeMenu,
-    selectedCount: selectedIds.size,
+    selectedCount: bulk.selectedCount,
     availableSeries: series,
-    canMerge,
-    handleBulkDelete,
-    handleBulkMove,
-    handleBulkMerge,
+    canMerge: bulk.canMerge,
+    handleBulkDelete: deleteSelected,
+    handleBulkMove: moveSelected,
+    handleBulkMerge: mergeSelected,
   };
 }
