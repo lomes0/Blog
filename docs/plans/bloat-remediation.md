@@ -1,6 +1,22 @@
 # Bloat & layout remediation plan
 
-Baseline: `c366f438`, working tree clean. 71,354 LOC / 451 files.
+**Status as of 2026-07-30 (re-verified against `main` @ `7f6bce1d`): steps 1–6
+are done or effectively done; only step 7 remains, and it is still blocked on
+the same product question.** Each step below carries its own `STATUS` line —
+read it before acting on the step body, which describes the state at the time
+the plan was written.
+
+| Step | Status                                                                      |
+| ---- | --------------------------------------------------------------------------- |
+| 1    | Done bar the doubtful pair — `knip` now reports **no** unused dependencies  |
+| 2    | Done — `PostsCompactListView` and `PostCompactListItem` no longer exist     |
+| 3    | Partly done — ~30 unused exported types remain (see `npm run check:unused`) |
+| 4    | Done — `hooks/useResizablePanel.ts` + `Layout/ResizeGripper.tsx` landed     |
+| 5    | Done — `LoadingState.tsx` gone, `DocumentCard/theme.ts` 149 → 72            |
+| 6    | Done — [tree-model-brief.md](./tree-model-brief.md)                         |
+| 7    | **Open and blocked** — partly pre-empted by the shared drag engine          |
+
+Baseline when written: `c366f438`, 71,354 LOC / 451 files. Now 69,777 LOC.
 
 Execution model: **one subagent per step, run sequentially.** Each subagent is
 given the observed state and the evidence trail, and must **re-verify it before
@@ -47,6 +63,11 @@ is last and explicitly gated.
 
 ## Step 1 — Unused dependencies
 
+> **STATUS: DONE bar the doubtful pair.** `@hello-pangea/dnd` and
+> `@fontsource/roboto` are out of `package.json`, and `knip` now reports no
+> unused dependencies at all. `workbox-webpack-plugin` / `workbox-window` remain
+> — the two the plan said to leave unless `next-pwa`'s peer needs were proven.
+
 **State.** `knip` reports 2 unused deps and 7 unused devDeps. Spot-checks:
 `@hello-pangea/dnd` has zero imports anywhere in `src/` or `mcp/` (all drag in
 this app is hand-rolled HTML5 via `src/lib/dragDrop.ts`); `@fontsource/roboto`
@@ -67,6 +88,9 @@ is the thing at risk.
 ---
 
 ## Step 2 — `PostsCompactListView`'s unreachable mode
+
+> **STATUS: DONE.** Neither `PostsCompactListView` nor `PostCompactListItem`
+> exists any more. `SeriesSection.tsx` survives.
 
 **State.** Roughly 290 of 560 LOC across two files appear unreachable, via this
 chain:
@@ -104,6 +128,14 @@ any orphaned imports (`SeriesGroupItem`, `uuid`, `Collapse`).
 
 ## Step 3 — Dead type surface
 
+> **STATUS: PARTLY DONE.** The `*Response` cluster is gone, but `knip` still
+> lists ~30 unused exported types spread thin across `src/hooks`, `src/lib`,
+> `src/indexeddb`, `src/repositories` and `src/store` — one or two per file, so
+> this is now a triage pass, not a deletion. Two genuinely dead files remain:
+> `Layout/SideBar/hooks/useSidebarDnd.ts` and its
+> `__tests__/dragGeometry.test.ts`, both orphaned by step 7's drag-engine
+> extraction.
+
 **State.** `knip` lists ~16 unused `*Response` interfaces (9 in `src/types.ts`,
 7 in `src/api/types.ts`), 12 files exporting the same symbol both named and
 default, and `src/api/client.ts:464-483` re-exporting ~20 types a second time.
@@ -122,6 +154,13 @@ Re-run `npm run check:unused` at the end and note the before/after counts.
 ---
 
 ## Step 4 — Panel geometry unification _(needs eyes)_
+
+> **STATUS: DONE.** The seam the step asked for exists:
+> `src/hooks/useResizablePanel.ts` and
+> `src/components/Layout/ResizeGripper.tsx`, consumed by the copilot panel among
+> others. `SidebarWidthContext` is 342 → 301 and `LayoutModeContext` 206 → 145.
+> `SidebarResizeHandle.tsx` survives (moved under `Layout/SideBar/`), which is
+> consistent with the "do not flatten the detent and spring" instruction.
 
 **State.** The app has three resizable, mode-switching panels and each one's
 geometry is implemented independently:
@@ -168,6 +207,11 @@ animation still clips gradually (`AppLayoutContent.tsx:66-74`).
 
 ## Step 5 — Loading/skeleton audit _(investigation first)_
 
+> **STATUS: DONE.** `shared/LoadingState.tsx` (and with it `SuspenseWrapper` /
+> `AsyncComponentWrapper`) is gone; `EditorSkeleton` and
+> `DocumentBrowserSkeleton` remain, which matches the step's own "these may be
+> genuinely different shapes" outcome. `DocumentCard/theme.ts` is 149 → 72.
+
 **State.** Four skeleton systems coexist, ~860 LOC: `shared/LoadingState.tsx`
 (204, exports `LoadingState` + `SuspenseWrapper` + `AsyncComponentWrapper`),
 `shared/EditorSkeleton.tsx` (397), `DocumentCard/components/LoadingCard.tsx`
@@ -188,6 +232,10 @@ bare number in `sx` is ×4, so the card skeleton rendered 40px against
 ---
 
 ## Step 6 — Tree-model decision brief _(no code)_
+
+> **STATUS: DONE** — delivered as [tree-model-brief.md](./tree-model-brief.md).
+> The product question it raises is still unanswered, which is what blocks
+> step 7.
 
 **State.** The sidebar and `/posts` each render root ⊃ series ⊃ posts from
 scratch — ~3,400 LOC:
@@ -222,6 +270,16 @@ The user answers before step 7 runs.
 ---
 
 ## Step 7 — Tree-model unification _(blocked)_
+
+> **STATUS: OPEN, and partly pre-empted.** The _drag engine_ was unified ahead
+> of the decision — `src/lib/tree/model.ts` (152) + `src/lib/tree/useTreeDnd.ts`
+> (434), landed in `6f0317c7` / `dc61c6c0` and consumed by both surfaces
+> (`PostsListView`, `ActivePostsSection`, `SeriesGroup`, `ProjectGroup`,
+> `seriesGrouping`). What remains open is exactly the _data model_:
+> `PostsListView.tsx:52-64` still declares its own flat
+> `PostRootItem | SeriesRootItem` union alongside `seriesGrouping.ts`'s nested
+> tree. So the brief's question still gates the same work, on a smaller diff
+> than originally scoped. Clean up `useSidebarDnd.ts` (step 3) as part of it.
 
 Do not launch until step 6's brief is answered. Fill this prompt in from the
 chosen option. Expect this to be the largest diff of the plan; it should be

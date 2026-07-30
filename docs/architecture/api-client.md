@@ -100,7 +100,8 @@ import { ApiClientError } from "@/api";
 
 ## Adding a new route
 
-1. **Add a method** to the appropriate namespace in `src/api/client.ts`:
+1. **Add a method** to the appropriate namespace in `src/api/client.ts`. The
+   route below is illustrative — it does not exist:
 
    ```ts
    documents: {

@@ -22,9 +22,8 @@ Each documents a specific failure mode and its fix.
 | File                                                                     | Description                                                           |
 | ------------------------------------------------------------------------ | --------------------------------------------------------------------- |
 | [guides/hydration.md](./guides/hydration.md)                             | Diagnosing and fixing React hydration errors                          |
-| [guides/date-formatting.md](./guides/date-formatting.md)                 | Consistent date rendering to prevent hydration mismatches             |
+| [guides/date-formatting.md](./guides/date-formatting.md)                 | The two date seams, and which is safe where                           |
 | [guides/nextauth-ssr.md](./guides/nextauth-ssr.md)                       | Session handling in server components with NextAuth                   |
-| [guides/const-tdz.md](./guides/const-tdz.md)                             | `const` TDZ ReferenceError: cause, diagnosis, and fix                 |
 | [guides/notes-indexeddb-origins.md](./guides/notes-indexeddb-origins.md) | Why notes "vanish" between `dev` and `start`: IndexedDB is per-origin |
 
 ## Architecture
@@ -44,3 +43,7 @@ describe intended or observed states, not necessarily the current one.
 | ------------------------------------ | ----------------------------------------------- |
 | [plans/README.md](./plans/README.md) | Index of the content-model & ordering proposals |
 | [reviews/](./reviews/)               | Point-in-time code reviews, dated               |
+
+Findings in `reviews/` carry a per-finding `STATUS` line stating whether they
+are still open. Re-verify before acting on one — a review body describes the
+code as it was on the date at its top.

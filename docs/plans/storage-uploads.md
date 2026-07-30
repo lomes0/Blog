@@ -1,7 +1,9 @@
 # Storage Support: moving uploads off the container filesystem
 
 Status: **proposal**, not yet implemented. Decided 2026-07-30 during production
-readiness work.
+readiness work. Revised 2026-07-30 — re-checked against the tree after the
+`UPLOADS_DIR` split landed; migration and security sections corrected, scope
+boundary made explicit (§What stays in Postgres).
 
 ## Problem
 
@@ -10,14 +12,16 @@ string is persisted to Postgres. The two have different lifetimes, and neither
 is shared between machines.
 
 ```ts
-// src/app/api/documents/[id]/attachments/route.ts:50
-const uploadDir = path.join(process.cwd(), "public/uploads/attachments");
-await mkdir(uploadDir, { recursive: true });
+// src/app/api/documents/[id]/attachments/route.ts:58
+await mkdir(ATTACHMENTS_DIR, { recursive: true });
 await writeFile(filePath, buffer); // bytes → this container
 const fileUrl = `/api/attachments/${fileName}`; // string → the database
 ```
 
-`process.cwd()` is `/app` inside the image. Two consequences:
+Both roots resolve under `process.cwd()`, which is `/app` inside the image —
+`ATTACHMENTS_DIR` defaults to `<cwd>/var/uploads/attachments` and
+`BACKGROUNDS_DIR` is `<cwd>/public/uploads/directories` (`src/lib/uploads.ts`).
+Two consequences:
 
 1. **Redeploys destroy data.** `fly deploy` builds a fresh image and discards
    the old one. Every uploaded file is gone; the DB rows survive and still point
@@ -28,7 +32,10 @@ const fileUrl = `/api/attachments/${fileName}`; // string → the database
    request round-robins to machine B, which has no such file. This must be fixed
    _before_ scaling out, not after.
 
-There are currently **19MB across 80 files** in `public/uploads`.
+Currently on disk: **19MB across 70 files** in `public/uploads/directories`
+(backgrounds) and **180KB across 11 files** in `var/uploads/attachments`. The
+volume is almost entirely backgrounds; the durability risk is spread across
+both.
 
 ## Constraints
 
@@ -68,17 +75,28 @@ Rejected, with reasons:
 ### Why two buckets
 
 R2 grants public access per _bucket_, not per prefix, and the two asset classes
-already have different access rules today:
+already have different access rules today. **The split exists in the code
+already** — `src/lib/uploads.ts` separates them onto two roots precisely because
+one is authorization-gated and the other is not, and its header comment records
+why (attachments under `public/` were readable with no session at all, filename
+as the only secret):
 
-- **Backgrounds** are written to `public/uploads/directories/` and referenced as
-  `/uploads/directories/…`, served as plain Next.js static assets. **Already
-  unauthenticated.** Making them public-bucket URLs changes nothing about who
-  can read them, and buys full CDN cacheability.
-- **Attachments** are gated: `GET /api/attachments/[filename]` calls
-  `requireAttachmentRead(filename, user)` before serving. That check must
-  survive.
+- **Backgrounds** → `BACKGROUNDS_DIR` (`public/uploads/directories/`),
+  referenced as `/uploads/directories/…` and served as plain Next.js static
+  assets. **Already unauthenticated.** Making them public-bucket URLs changes
+  nothing about who can read them, and buys full CDN cacheability.
+- **Attachments** → `ATTACHMENTS_DIR` (outside the static tree), gated:
+  `GET /api/attachments/[filename]` calls `requireAttachmentRead` before serving.
+  That check must survive.
 
-So: `blog-public` (backgrounds) and `blog-private` (attachments).
+So: `blog-public` (backgrounds) and `blog-private` (attachments) — a 1:1 mapping
+onto the two constants that already exist. `src/lib/uploads.ts` is the seam this
+work swaps, which is why the route table below is short.
+
+One cleanup first: `documents/[id]/background/route.ts:52` re-derives
+`public/uploads/directories` by hand instead of importing `BACKGROUNDS_DIR`.
+Make it import the constant, and the seam is total — after that, no route names
+a storage location.
 
 ### The caching tradeoff
 
@@ -137,13 +155,13 @@ leaves exports silently empty.
 
 | File                                        | Current               | Change                                                                                                                             |
 | ------------------------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `documents/[id]/attachments/route.ts:50-57` | `mkdir` + `writeFile` | After `requireDocument(…, "own")`, return a presigned PUT + final URL. No bytes through Node.                                      |
-| `documents/[id]/background/route.ts:51-60`  | `mkdir` + `writeFile` | Same, **plus a confirm step** — this route writes `background_image` to the DB, so the row updates only after the upload succeeds. |
+| `documents/[id]/attachments/route.ts:58,64` | `mkdir` + `writeFile` | After `requireDocument(…, "own")`, return a presigned PUT + final URL. No bytes through Node.                                      |
+| `documents/[id]/background/route.ts:54,60`  | `mkdir` + `writeFile` | Same, **plus a confirm step** — this route writes `background_image` to the DB, so the row updates only after the upload succeeds. |
 | `attachments/[filename]/route.ts:110` (GET) | `readFile`            | Keep `requireAttachmentRead`, then 302 to a presigned GET.                                                                         |
 | `attachments/[filename]/route.ts:168` (PUT) | `writeFile`           | In-place text edits stay server-side (`getObject`/`putObject`) — small, already parsed, not worth a round trip.                    |
-| `attachments/access.ts:26`                  | `process.cwd()` path  | Becomes key derivation, not a filesystem path.                                                                                     |
-| `import/route.ts:253-277`                   | `mkdir` + `writeFile` | Server already holds the zip bytes; swap to `putObject`.                                                                           |
-| `export/route.ts:125,140`                   | `readFile`            | Swap to `getObject`.                                                                                                               |
+| `attachments/access.ts:36`                  | `resolveWithin` path  | Becomes key derivation — but keeps `assertSafeFilename`, see below.                                                                |
+| `import/route.ts:251-275`                   | `mkdir` + `writeFile` | Server already holds the zip bytes; swap to `putObject`.                                                                           |
+| `export/route.ts:121,136`                   | `readFile`            | Swap to `getObject`.                                                                                                               |
 
 Route wrappers (`userRoute` / `optionalUserRoute`) and the `src/lib/access.ts`
 authorization helpers are unchanged — this proposal moves _where bytes live_,
@@ -152,7 +170,7 @@ not who may reach them.
 ## Security note: presigning moves validation
 
 Once the app stops seeing the bytes, it can no longer inspect them. A naive
-presigned URL accepts any content of any size. Mitigations, both required:
+presigned URL accepts any content of any size. Mitigations, all three required:
 
 1. **Bound the signature.** Set a content-length range and content-type
    condition in the presign policy, so an oversized or wrong-typed PUT is
@@ -160,10 +178,22 @@ presigned URL accepts any content of any size. Mitigations, both required:
 2. **Re-validate on confirm.** For backgrounds, the confirm step should `HEAD`
    the object and check size and content-type before writing `background_image`
    to the DB.
+3. **Port the traversal check, do not drop it.** Keys for _writes_ are derived
+   server-side, but the read path is not: `GET /api/attachments/[filename]`
+   takes its filename from the URL. Today the boundary is a filesystem one —
+   `assertSafeFilename` rejects `..` and separators, then
+   `resolveWithin(ATTACHMENTS_DIR, filename)` proves the resolved path stayed
+   inside the directory (`attachments/access.ts:24-36`). An S3 key space has no
+   equivalent of "resolved outside the directory": `a/../../b` is just a key, so
+   `resolveWithin` has nothing to assert and its half of the defence silently
+   evaporates. `assertSafeFilename` must therefore become a **validating key
+   constructor** — reject anything that is not a bare `attach_<uuid>_…` basename
+   — rather than being deleted along with the path join it fed.
 
 The existing extension sanitising (`/^\w{1,16}$/` on the extension,
-`resolveWithin`/`safeBasename` for zip entries) carries over to key construction
-— keys are still derived server-side, never client-supplied.
+`SAFE_ATTACHMENT_EXTENSIONS` mapping unknown types to `.bin`,
+`resolveWithin`/`safeBasename` for zip entries) carries over to key
+construction.
 
 Note that the `bodySizeLimit: "2mb"` in `next.config.ts` applies to server
 actions, not these route handlers; presigned uploads bypass request-size
@@ -173,15 +203,75 @@ ceilings entirely regardless.
 
 `scripts/migrate-uploads-to-s3.ts`:
 
-- Walks `public/uploads`, routing `directories/` → `blog-public` and
-  `attachments/` → `blog-private`.
-- **Filenames become keys unchanged**, so every existing DB path
-  (`/uploads/directories/dir_….png`, `/api/attachments/attach_….png`) keeps
-  resolving with no data backfill.
+- Walks **both roots** — `BACKGROUNDS_DIR` → `blog-public` and `ATTACHMENTS_DIR`
+  → `blog-private`. (An earlier draft walked only `public/uploads`, which
+  predates the `UPLOADS_DIR` split and would have missed every attachment.)
+- **Filenames become keys unchanged**, one bucket each, no prefix.
 - Idempotent — skips objects that already exist.
 
-At 19MB / 80 files this runs in seconds. Verify object count against file count,
+At 19MB / 81 files this runs in seconds. Verify object count against file count,
 then deploy the code that reads from the bucket.
+
+### Attachments need no backfill; backgrounds do
+
+These two are **not** symmetric, and an earlier draft claiming "no data
+backfill" was wrong about the second:
+
+- **Attachments** are reached through `/api/attachments/<filename>` — a route.
+  It keeps its URL and changes only what it does internally, so the stored
+  strings keep resolving untouched.
+- **Backgrounds** are not. `background_image` stores an app-relative path
+  (`/uploads/directories/<name>`, written at `background/route.ts:63`) that is
+  rendered straight into HTML and served by Next off the static tree. **There is
+  no route in front of it to repoint.** Deleting the local files without
+  addressing this 404s all 70 images.
+
+Pick one, and state it in the migration commit:
+
+1. **Backfill the column** — rewrite `background_image` to the absolute
+   `S3_PUBLIC_URL/<name>`. One `UPDATE` with a prefix replace; correct, but the
+   bucket's public hostname is then baked into rows and moving it later needs
+   another backfill.
+2. **Keep the path, add a rewrite** — a `next.config.ts` redirect from
+   `/uploads/directories/:name` to the public bucket. No data change, and the
+   hostname stays in env where it belongs. Costs one redirect hop per image,
+   cached by the CDN.
+
+Option 2 is preferred: it keeps the stored value a stable identifier rather than
+a location, which is the same reason attachments do not need a backfill at all.
+
+## What stays in Postgres — a scope boundary, not an omission
+
+This plan moves **two** asset classes. Those are not where most of the app's
+image bytes live, so the boundary is worth stating as a decision rather than
+leaving it to read as an oversight.
+
+**Editor images are not files.** Inserting an image runs `mediaFileReader` and
+puts the resulting **data URI directly into the node's `src`**
+(`ToolbarPlugin/Dialogs/ImageDialog.tsx:100-121`). Sketches do the same with an
+inline SVG data URI (`nodes/SketchNode/index.tsx:188`), as do graphs. That
+string is serialized into the Lexical state, stored as `Revision.data Json`
+(`prisma/schema.prisma:135`) — so the bytes land in Postgres, base64-encoded at
+~1.37×, **duplicated in full in every revision** of every document containing
+them.
+
+Only `AttachmentDialog.tsx:87,142` (`apiClient.documents.uploadAttachment`) ever
+reaches the uploads directory. Paste, drag-drop and insert-image do not.
+
+Left as-is deliberately, for now:
+
+- The durability problem this plan exists to solve **does not apply** to editor
+  images. They are in Postgres, which survives redeploy and is shared between
+  machines. They are safe; they are merely expensive.
+- Routing them through the same presigned-PUT path is a real option, and the
+  storage layer built here is its prerequisite. But it changes the document
+  format — a node's `src` stops being self-contained — with consequences for
+  export bundles, fork, revision diffing and offline rendering. That is a
+  content-model change, not a hosting change.
+
+**Do not treat this plan as having solved image storage.** Revision-table growth
+from embedded base64 is a separate, live problem; measure it against the real
+database before deciding whether it needs its own plan.
 
 ## Rollout
 
@@ -198,9 +288,14 @@ path this work rules out.
 
 ## Open questions
 
-- **Thumbnails** (`/api/thumbnails/*`) and OG images (`/api/og`) were not
-  audited for filesystem writes. Worth a pass before implementation.
 - **Backup story for self-hosted MinIO** — cloud R2 is replicated by the vendor;
   a self-hosted MinIO volume is not. Self-hosters need a documented backup path.
 - **Signed URL expiry** for attachments is unset. A short window (5 min) limits
   leak damage; a longer one survives slow connections on large downloads.
+
+Closed since the first draft:
+
+- ~~Thumbnails and OG images were not audited for filesystem writes.~~ Audited:
+  `/api/thumbnails/[id]` renders on demand and `/api/og` runs on the edge
+  runtime. Neither contains a `writeFile`, `mkdir` or `readFile`. Nothing to
+  migrate.

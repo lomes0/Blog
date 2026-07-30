@@ -3,16 +3,15 @@
 Proposals and in-flight work. **Each file states its own status at the top —
 read that first.** A plan describes an intended state, not the current one.
 
-| Plan                                                       | Status                                                                                                                                     |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| [bloat-remediation.md](./bloat-remediation.md)             | Partly executed — shared row primitives, `theme/treeRow`, and dead-code tier 1 landed; the tree-model steps are blocked on the brief below |
-| [tree-model-brief.md](./tree-model-brief.md)               | Decision brief — awaits one product call: does `/posts` render projects?                                                                   |
-| [ide-redesign.md](./ide-redesign.md)                       | In progress — ⌘K command palette landed; status bar and Explorer restyle pending                                                           |
-| [storage-uploads.md](./storage-uploads.md)                 | Proposal — move uploads off the container filesystem to R2/MinIO                                                                           |
-| [storage-model.md](./storage-model.md)                     | Proposal — collapse the local/cloud read model (untracked, local scratch)                                                                  |
-| [ordering-simplification.md](./ordering-simplification.md) | Proposal — see below                                                                                                                       |
-| [schema-organization.md](./schema-organization.md)         | Proposal — see below                                                                                                                       |
-| [series-as-node.md](./series-as-node.md)                   | Proposal — see below                                                                                                                       |
+| Plan                                                       | Status                                                                                         |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| [bloat-remediation.md](./bloat-remediation.md)             | Steps 1–6 done (re-verified 2026-07-30); only step 7 is left, still blocked on the brief below |
+| [tree-model-brief.md](./tree-model-brief.md)               | Decision brief — awaits one product call: does `/posts` render projects?                       |
+| [ide-redesign.md](./ide-redesign.md)                       | In progress — ⌘K command palette landed; status bar and Explorer restyle pending               |
+| [storage-uploads.md](./storage-uploads.md)                 | Proposal — move uploads off the container filesystem to R2/MinIO                               |
+| [ordering-simplification.md](./ordering-simplification.md) | Proposal — see below                                                                           |
+| [schema-organization.md](./schema-organization.md)         | Proposal — see below                                                                           |
+| [series-as-node.md](./series-as-node.md)                   | Proposal — see below                                                                           |
 
 ---
 

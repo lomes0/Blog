@@ -35,6 +35,19 @@ claim below carries a status:
 
 The original numbering is noted per finding so prior discussion still maps.
 
+### Re-verified 2026-07-30 (later the same day, against `main` @ `7f6bce1d`)
+
+Every finding was re-checked against the source. **2 of 17 are fixed; 15 remain
+open.** Each finding now carries a `STATUS` line under its heading — read that
+before acting on the body, which describes the state at the time of review.
+
+| Fixed | Open                                                 |
+| ----- | ---------------------------------------------------- |
+| §2 §7 | §1 §3 §4 §5 §6 §8 §9 §10 §11 §12 §13 §14 §15 §16 §17 |
+
+Both fixes were from the "Now" list. §1 (anonymous draft disclosure), §3 (stored
+XSS) and §17 (one `git rm`) are still outstanding from that same list.
+
 **Base state.** The validation refactor the first draft described as "in flight
 in the working tree" landed as `831d4b85` + `2a53d0d4`. There is no
 committed-vs-working-tree split; everything below applies to `2a53d0d4`.
@@ -47,6 +60,10 @@ committed-vs-working-tree split; everything below applies to `2a53d0d4`.
 ## 1. `/view`, `/embed`, `/pdf`, `/docx` serve unpublished drafts to anyone
 
 **NEW — highest severity in this review.**
+
+> **STATUS 2026-07-30: OPEN.** All eight sites still test `document.private`
+> alone — `view/[id]/page.tsx:42,123,140`, `embed/[id]/page.tsx:40,83`,
+> `pdf/[id]/route.ts:16`, `docx/[id]/route.ts:11`.
 
 `src/app/(appLayout)/view/[id]/page.tsx:120-134` checks `private` and never
 consults `published`:
@@ -111,6 +128,12 @@ about `requireOwner`. Do the minimal fix first, then the refactor.
 ---
 
 ## 2. Attachments are served unauthenticated from `public/`
+
+> **STATUS 2026-07-30: FIXED.** `ATTACHMENTS_DIR` now comes from
+> `src/lib/uploads.ts`, which resolves `UPLOADS_DIR` (default
+> `<cwd>/var/uploads/attachments`) — outside `public/`. The defence-in-depth
+> extension allowlist landed too, as `SAFE_ATTACHMENT_EXTENSIONS`. Only
+> `BACKGROUNDS_DIR` remains under `public/`, which is deliberate and documented.
 
 **NEW.** `src/app/api/attachments/access.ts:25-28`:
 
@@ -181,6 +204,10 @@ depth:
 ---
 
 ## 3. Stored XSS through the Lexical HTML export
+
+> **STATUS 2026-07-30: OPEN.** `KanbanNode/index.tsx:183` still assigns
+> `element.innerHTML`, and there is still no sanitizer dependency. The
+> concurrent-globals note is open too — `editor/utils/generateDocx.ts:21-31`.
 
 **Was §8 — UPGRADED.** The first draft said `/api/embed` was "an unauthenticated
 compute sink" and that "any XSS sink in the Lexical serializer is directly
@@ -310,6 +337,9 @@ unrelated concurrent SSR.
 
 **Was §1 — CONFIRMED and slightly upgraded.**
 
+> **STATUS 2026-07-30: OPEN.** `document.ts:273-278` still filters `published`
+> only; `findUser` is still a bare `findUnique`.
+
 `findPublishedDocumentsByAuthorId` (`src/repositories/document.ts:275-291`)
 filters `published: true` at `:279` but **not** `private: false`. Its sibling
 `findPublishedDocuments` (`:127-144`) checks both and carries a docstring four
@@ -399,6 +429,9 @@ viewer _is_ the user and seeing their own email may have been intended — gate 
 
 **Was §2 — CONFIRMED, one claim corrected.**
 
+> **STATUS 2026-07-30: OPEN.** `email: true` is still at `document.ts:21`, `:29`
+> and in both inline blocks at `:169`, `:183`.
+
 `document.ts:21` and `:29` define `authorSelect` and `revisionAuthorSelect`,
 both carrying `email: true` — and they are **byte-for-byte identical**, two
 names for one shape. Because `revisionsSelect` (`:47-56`) is embedded in every
@@ -459,6 +492,9 @@ difference is that `/` and `/user/[id]` stop shipping two addresses per card.
 
 ## 6. `/posts` calls an owner-scoped selector with an unvalidated URL segment
 
+> **STATUS 2026-07-30: OPEN.** Still `findSeriesById` — now at two sites, `:28`
+> and `:50`. The dead `role` prop is still at `:62`.
+
 **NEW.** `src/app/(appLayout)/posts/[[...id]]/page.tsx:50`:
 
 ```ts
@@ -497,6 +533,9 @@ and should be updated with it.
 
 ## 7. `GET /api/usage` queries a table that does not exist
 
+> **STATUS 2026-07-30: FIXED.** The raw SQL now reads `"Document" d`
+> (`document.ts:426`) and `GET /api/usage` serves.
+
 **NEW.** `src/repositories/document.ts:428`, inside
 `findCloudStorageUsageByAuthorId`:
 
@@ -524,6 +563,9 @@ on, and this is the failure mode.
 ## 8. `DELETE /api/revisions/[id]` can make a post permanently undeletable
 
 **NEW — this is the root cause behind §10.**
+
+> **STATUS 2026-07-30: OPEN.** `repositories/revision.ts:74-78` is still a bare
+> `prisma.revision.delete` that never repoints `head`.
 
 `Document.head` is `String? @db.Uuid` (`prisma/schema.prisma:76`) with **no
 foreign key**, so the database cannot enforce that it names a live revision.
@@ -581,6 +623,9 @@ An FK on `Document.head` is the real fix and is already scoped as Phase B of
 ## 9. The "who may see this" predicate exists in fifteen places
 
 **Was §3 — CONFIRMED in direction, table corrected, count more than doubled.**
+
+> **STATUS 2026-07-30: OPEN.** No `src/lib/visibility.ts` exists; every site in
+> the tables below is unchanged.
 
 The first draft listed six sites and got one wrong. The real picture:
 
@@ -675,6 +720,9 @@ standard.
 ## 10. `findDocument` writes to the database on a read
 
 **Was §6 — CONFIRMED, undercounted, and one characterisation corrected.**
+
+> **STATUS 2026-07-30: OPEN.** Both write-on-read sites remain —
+> `document.ts:213` in `findDocument` and `:390` in `findEditorDocument`.
 
 The write is at `src/repositories/document.ts:213-216` (the draft cited `:205`;
 the line moved, the finding stands). The two "route around it" comments are real
@@ -775,6 +823,11 @@ still true. Leave the argument — it is also a real perf choice.
 ---
 
 ## 11. Attachment ownership is inferred from the filename
+
+> **STATUS 2026-07-30: OPEN**, though §2's fix removes the outright static
+> bypass that made it acute. `attachments/access.ts:21` still recovers the
+> document id by regex (`ATTACHMENT_NAME`), and `prisma/schema.prisma` still has
+> no `Attachment` model. The importer still writes zip-supplied filenames.
 
 **Was §9 — CONFIRMED and UPGRADED.** The draft called this latent: "any _future_
 upload path that names a file differently becomes unauthorizable". That future
@@ -880,6 +933,10 @@ exist.
 
 **Was §4 — CONFIRMED, with the severity inverted from how it was framed.**
 
+> **STATUS 2026-07-30: OPEN.** `user.role !== "admin"` is still inlined at
+> `users/[id]/route.ts:97` and `revalidate/route.ts:11`; no `requireAdmin`
+> exists in `access.ts` and the schema has no `UserRole` enum.
+
 `api/revalidate/route.ts:11` and `api/users/[id]/route.ts:97` both inline
 `if (user.role !== "admin")`, and that is the complete set. `role` is
 `String @default("user")` (`schema.prisma:157`) with no enum, and `auth.ts:117`
@@ -975,6 +1032,11 @@ than cascading them away; delete the dead `createUser`.
 ## 13. Two AI routes take unvalidated bodies — and there is no rate limit anywhere
 
 **Was §5a — CONFIRMED as fact, CORRECTED as impact.**
+
+> **STATUS 2026-07-30: OPEN, in full.** `completion/route.ts:19` is still a bare
+> `await req.json()`; there is still no rate limiting anywhere in `src`; and the
+> ESLint selector at `eslint.config.mjs:119` is still pinned to
+> `callee.object.name='request'`, so both AI routes remain exempt by naming.
 
 `api/completion/route.ts:19-20` and `api/copilot/route.ts:72-85` still do a bare
 `await req.json()`. Both are `userRoute`, and neither was touched by the
@@ -1085,6 +1147,9 @@ Also delete the dead `background` route, in the same spirit as §17.
 **Was §5b — CONFIRMED as a defect, but the premise and the recommendation were
 both wrong.**
 
+> **STATUS 2026-07-30: OPEN.** Both nested `connectOrCreate` blocks remain —
+> `documents/route.ts:122` and `documents/[id]/route.ts:106`.
+
 `documents/route.ts:104-133` feeds user-supplied emails to a nested
 `connectOrCreate` on `User`. **A second copy the draft missed:**
 `documents/[id]/route.ts:83-115` does the same inside an `upsert`. Any fix must
@@ -1160,6 +1225,9 @@ it write access become the same request.
 
 **Was §10 — the duplication is real, the proposed fix is NOT SAFE.**
 
+> **STATUS 2026-07-30: OPEN.** 23 `.rejected` cases, zero `addMatcher` calls in
+> `src/store/app.ts`.
+
 23 `.rejected` cases in `src/store/app.ts:333-534` (not ~25), of which 21 are
 the plain shape. `builder.addMatcher(isRejected, …)` would break three ways:
 
@@ -1216,6 +1284,10 @@ refactor.
 ## 16. Swallowed exceptions
 
 **Was §11 — CORRECTED. Thirteen, not thirty-nine.**
+
+> **STATUS 2026-07-30: OPEN.** Spot-checked four of the eight —
+> `TabbedDocumentEditor.tsx:85-86`, `BacklinksSection.tsx:32`,
+> `Download.tsx:30,38` — all unchanged.
 
 The "39" summed three different classes. The actual counts: **13 comment-only
 `catch` blocks** (zero are literally `catch {}` — every one carries an
@@ -1291,6 +1363,9 @@ forcing every catch to log or carry an explicit marker, and a
 
 **Was §7 — CONFIRMED, and the recommendation is stronger than stated.**
 
+> **STATUS 2026-07-30: OPEN.** `src/app/api/documents/[id]/status/route.ts` is
+> still present, still in the `publicRoute` inventory (11 matches today).
+
 `GET /api/documents/[id]/status` is `publicRoute` and returns
 `{ message: "Status endpoint reached", id }`. It reads nothing, so it is not a
 leak — but the codebase stakes its review process on
@@ -1343,11 +1418,10 @@ codebase** — which §13 (LLM proxy), §3 (JSDOM-per-request compute sink) and 
 
 **Now — under a day, and nearly all the risk reduction:**
 
-1. **§2** — move `ATTACHMENTS_DIR` out of `public/`. One constant; closes a live
-   unauthenticated read and a stored-XSS bypass.
+1. ~~**§2** — move `ATTACHMENTS_DIR` out of `public/`.~~ **DONE.**
 2. **§1** — the `published` check on `/view`, `/embed`, `/pdf`, `/docx`. Confirm
-   the draft-sharing question first.
-3. **§7** — `"Post"` → `"Document"`. One word; `GET /api/usage` is broken today.
+   the draft-sharing question first. ← **now the top open item**
+3. ~~**§7** — `"Post"` → `"Document"`.~~ **DONE.**
 4. **§3 Tier 0** — `KanbanNode.exportDOM` via `createElement`/`textContent`, and
    sanitize the Graph/Sketch SVG. Then Tier 1's four response headers.
 5. **§17** — `git rm` the status route. One command, zero risk.
