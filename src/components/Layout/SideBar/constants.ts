@@ -128,8 +128,17 @@ export const SIDEBAR_EASING = MOTION.easing;
 /** Container width slide between open and hidden states */
 export const SIDEBAR_WIDTH_TRANSITION =
   `width ${MOTION.layout}ms ${SIDEBAR_EASING}`;
-/** Full/compact layer cross-fade duration (s) */
-export const LAYER_FADE_DURATION = MOTION.base / 1000;
+/**
+ * The rail/tree push. Sliding one track sideways by `COMPACT_WIDTH` swaps which
+ * pane occupies the panel; nothing fades, so both panes stay fully opaque and
+ * the swap reads as a filmstrip advancing.
+ *
+ * Deliberately `MOTION.base` (200ms) and not `MOTION.layout` (340ms): the panes
+ * travel 62px while the panel itself travels up to ~54px on its spring, and a
+ * push that outlasts the width move it belongs to reads as two separate events.
+ */
+export const SIDEBAR_LAYER_TRANSITION =
+  `transform ${MOTION.base}ms ${SIDEBAR_EASING}`;
 /**
  * The drag edge's slide, for programmatic mode changes only (rail click, Cmd+\).
  * Matches `SIDEBAR_WIDTH_TRANSITION` so the handle and the panel it belongs to

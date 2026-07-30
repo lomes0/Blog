@@ -32,8 +32,6 @@ export const SidebarResizeHandle: React.FC = () => {
     isAnimating,
     startResize,
     isMobile,
-    dragZone,
-    sidebarMode,
   } = useSidebarWidth();
   const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 
@@ -43,7 +41,6 @@ export const SidebarResizeHandle: React.FC = () => {
 
   const w = getEffectiveWidth();
   const closed = w <= 0;
-  const zone = dragZone ?? sidebarMode;
 
   return (
     <Box
@@ -65,9 +62,6 @@ export const SidebarResizeHandle: React.FC = () => {
         zIndex: 1300,
         displayPrint: "none",
         backgroundColor: isResizing ? "primary.main" : "transparent",
-        // While the panel is being dragged toward hidden, dim the handle with it
-        // so the whole edge reads as "about to let go".
-        opacity: isResizing && zone === "hidden" ? 0.6 : 1,
         transition: isResizing || isAnimating || reducedMotion
           ? "none"
           : SIDEBAR_EDGE_TRANSITION,

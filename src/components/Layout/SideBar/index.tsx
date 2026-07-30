@@ -24,8 +24,7 @@ import {
 import {
   ACTIVITY_RAIL_W,
   COMPACT_WIDTH,
-  LAYER_FADE_DURATION,
-  SIDEBAR_EASING,
+  SIDEBAR_LAYER_TRANSITION,
   SIDEBAR_MIN_WIDTH,
   SIDEBAR_WIDTH_TRANSITION,
 } from "./constants";
@@ -50,7 +49,6 @@ const SideBar: React.FC = () => {
     width,
     sidebarMode,
     dragZone,
-    panelOpacity,
     sidebarOpen: open,
     toggleSidebar,
     isMobile,
@@ -64,10 +62,6 @@ const SideBar: React.FC = () => {
   // by the time you let go of it.
   const shownMode = dragZone ?? sidebarMode;
   const isExpanded = shownMode === "full";
-  // The hidden zone keeps showing the compact rail and fades the whole surface
-  // out instead — an emptied panel mid-drag reads as a glitch, a dimming one
-  // reads as "let go and it's gone".
-  const showCompactRail = shownMode === "compact" || shownMode === "hidden";
   const { sidebarFontSize } = useSidebarFontSize();
   const {
     postActions,
@@ -78,24 +72,30 @@ const SideBar: React.FC = () => {
     projectMenu,
   } = useSidebarActions();
 
-  // Honor the OS "reduce motion" setting: drop the width slide and cross-fade.
+  // Honor the OS "reduce motion" setting: drop the width slide and the push.
   const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
-  const fade = reducedMotion ? 0 : LAYER_FADE_DURATION;
 
-  // Full and compact contents are stacked as two absolutely-positioned,
-  // fixed-width layers that cross-fade. The outgoing layer keeps its own width
-  // so nothing reflows/squishes while the container width animates; the hidden
-  // layer is inert (opacity 0 + pointer-events none) and clipped by the
-  // narrower container.
-  const layerSx = (layerWidth: number, visible: boolean) => ({
-    position: "absolute" as const,
-    inset: 0,
-    width: layerWidth,
+  // Rail and tree are laid out side by side in one horizontal track, rail first:
+  //
+  //   [ rail 62px ][ tree ≥130px ]
+  //
+  // Sliding the track left by exactly COMPACT_WIDTH swaps which one occupies the
+  // panel — the tree travels 0 → -62px as the rail travels -62px → 0, so they
+  // move together as a filmstrip rather than dissolving into each other. Both
+  // stay fully opaque at every moment; the panel's own overflow does the hiding.
+  //
+  // A single transform on the track is what makes them move in lockstep. Two
+  // independent translates would have to travel different distances (the tree is
+  // wider than the rail) and would visibly drift apart mid-push.
+  const trackShift = isExpanded ? -COMPACT_WIDTH : 0;
+  // Each pane keeps its own fixed width so nothing reflows or squishes while the
+  // container width animates underneath it.
+  const paneSx = (paneWidth: number) => ({
+    width: paneWidth,
+    flexShrink: 0,
     display: "flex",
     flexDirection: "column" as const,
-    opacity: visible ? 1 : 0,
-    pointerEvents: visible ? ("auto" as const) : ("none" as const),
-    transition: `opacity ${fade}s ${SIDEBAR_EASING}`,
+    minHeight: 0,
   });
 
   useKeyboardShortcuts({ onToggleSidebar: toggleSidebar, enabled: true });
@@ -147,7 +147,6 @@ const SideBar: React.FC = () => {
           transition: isResizing || isAnimating || reducedMotion
             ? "none"
             : SIDEBAR_WIDTH_TRANSITION,
-          opacity: panelOpacity,
           overflowX: "hidden",
           overscrollBehavior: "contain",
           display: "flex",
@@ -161,46 +160,69 @@ const SideBar: React.FC = () => {
       <Box
         sx={{ position: "relative", flex: 1, minHeight: 0, overflow: "hidden" }}
       >
-        {/* Full layer — pinned to at least the resting width so it clips
-            cleanly (rather than squishing) while the paper animates/drags. */}
-        <Box sx={layerSx(Math.max(width, SIDEBAR_MIN_WIDTH), isExpanded)}>
-          {/* Workspace identity chip (Refined-Explorer header). Visual
-              placeholder for now — switch behavior is wired later. */}
-          <Box sx={{ px: 2, pt: 1.5, pb: 1, flexShrink: 0 }}>
-            <WorkspaceSwitcher />
-          </Box>
-          {/* The view-title header is only needed for the search view now — in
-              the explorer the tree's own "Notes"/"Projects" section headers label
-              the content and carry the create ("+") affordances. */}
-          {sidebarView === "search" && (
-            <SidebarHeader
-              view={sidebarView}
-              onNewPost={handleNewPost}
-              onNewSeries={can.series ? handleNewSeries : undefined}
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            transform: `translateX(${trackShift}px)`,
+            transition: reducedMotion ? "none" : SIDEBAR_LAYER_TRANSITION,
+            willChange: "transform",
+          }}
+        >
+          {
+            /* Compact rail — first in the track, so the panel shows it when the
+              track sits at 0 and the tree has been pushed off to the right. */
+          }
+          <Box sx={paneSx(COMPACT_WIDTH)} inert={isExpanded || undefined}>
+            <CollapsedRail
+              groupedActivePosts={flatGroups}
+              pathname={pathname}
             />
-          )}
-          {sidebarView === "search"
-            ? <SidebarSearchView pathname={pathname} />
-            : hasContent
-            ? (
-              <ActivePostsSection
-                rootItems={groupedRootItems}
-                sidebarOpen
-                pathname={pathname}
-                itemActions={postActions}
-                seriesActions={seriesActions}
-                projectActions={projectActions}
-              />
-            )
-            : <Box sx={{ flex: "1 1 auto", minHeight: 0 }} />}
-        </Box>
+          </Box>
 
-        {/* Compact layer — fixed icon strip shown when dragged shut. */}
-        <Box sx={layerSx(COMPACT_WIDTH, showCompactRail)}>
-          <CollapsedRail
-            groupedActivePosts={flatGroups}
-            pathname={pathname}
-          />
+          {
+            /* Full tree — pinned to at least the resting width so it clips
+              cleanly (rather than squishing) while the paper animates/drags. */
+          }
+          <Box
+            sx={paneSx(Math.max(width, SIDEBAR_MIN_WIDTH))}
+            inert={!isExpanded || undefined}
+          >
+            {
+              /* Workspace identity chip (Refined-Explorer header). Visual
+              placeholder for now — switch behavior is wired later. */
+            }
+            <Box sx={{ px: 2, pt: 1.5, pb: 1, flexShrink: 0 }}>
+              <WorkspaceSwitcher />
+            </Box>
+            {
+              /* The view-title header is only needed for the search view now — in
+              the explorer the tree's own "Notes"/"Projects" section headers label
+              the content and carry the create ("+") affordances. */
+            }
+            {sidebarView === "search" && (
+              <SidebarHeader
+                view={sidebarView}
+                onNewPost={handleNewPost}
+                onNewSeries={can.series ? handleNewSeries : undefined}
+              />
+            )}
+            {sidebarView === "search"
+              ? <SidebarSearchView pathname={pathname} />
+              : hasContent
+              ? (
+                <ActivePostsSection
+                  rootItems={groupedRootItems}
+                  sidebarOpen
+                  pathname={pathname}
+                  itemActions={postActions}
+                  seriesActions={seriesActions}
+                  projectActions={projectActions}
+                />
+              )
+              : <Box sx={{ flex: "1 1 auto", minHeight: 0 }} />}
+          </Box>
         </Box>
       </Box>
 

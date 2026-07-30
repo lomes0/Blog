@@ -59,12 +59,6 @@ const applyDetent = (raw: number, zone: SidebarMode): number => {
   return raw - delta * pull * SIDEBAR_DETENT_STRENGTH;
 };
 
-/** Panel fade as it approaches 0 — "let go and it's gone". */
-const hiddenOpacity = (w: number): number => {
-  const t = Math.max(0, Math.min(1, w / SIDEBAR_HIDE_BREAK));
-  return 0.25 + 0.75 * t * t;
-};
-
 interface SidebarWidthContextType {
   /** The user's preferred expanded width (persisted to localStorage) */
   width: number;
@@ -85,8 +79,6 @@ interface SidebarWidthContextType {
   /** Mode a release would land in, while dragging; null otherwise. Drives the
    * live content preview so the drag is WYSIWYG. */
   dragZone: SidebarMode | null;
-  /** Opacity for the sidebar surface (< 1 only when collapsing to hidden) */
-  panelOpacity: number;
   /** Set sidebar mode directly */
   setSidebarMode: (mode: SidebarMode) => void;
   /** Toggle hidden ↔ full (open/close) */
@@ -323,14 +315,9 @@ export const SidebarWidthProvider: React.FC<{ children: React.ReactNode }> = ({
     [effectiveWidth],
   );
 
-  // Fade only when the collapse is driven by the drag or its settle spring. A
-  // programmatic hide (rail click, Cmd+\) has no spring to fade along with, so
-  // it would read as an instant dim followed by a slide.
-  const collapsingToHidden = dragZone === "hidden" ||
-    (animWidth !== null && sidebarMode === "hidden");
-  const panelOpacity = collapsingToHidden
-    ? hiddenOpacity(effectiveWidth)
-    : 1;
+  // Collapsing to hidden is a pure width collapse: the content stays fully
+  // opaque and is clipped off by the panel edge as it travels. Nothing dims —
+  // the break-loose pop already marks the moment the panel commits to closing.
 
   return (
     <SidebarWidthContext.Provider
@@ -343,7 +330,6 @@ export const SidebarWidthProvider: React.FC<{ children: React.ReactNode }> = ({
         getEffectiveWidth,
         sidebarMode,
         dragZone,
-        panelOpacity,
         setSidebarMode,
         toggleSidebar,
         sidebarOpen: sidebarMode !== "hidden",
