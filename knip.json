@@ -15,5 +15,19 @@
   // finding to re-litigate.
   "ignore": [
     "src/lib/__tests__/**"
+  ],
+  // All five are `require`d by the vendored `next-pwa/` in the repo root, which
+  // is outside `project` and so invisible to knip's resolver: `index.js` pulls
+  // clean-webpack-plugin + workbox-webpack-plugin, `build-{custom,fallback}-worker.js`
+  // pull babel-loader + terser-webpack-plugin, and `register.js` (injected into
+  // the webpack `main` entries) pulls workbox-window. Verified against a
+  // production build — removing any of them breaks PWA output. Two separate
+  // sweeps have now reported these as unused; this list is the standing answer.
+  "ignoreDependencies": [
+    "babel-loader",
+    "clean-webpack-plugin",
+    "terser-webpack-plugin",
+    "workbox-webpack-plugin",
+    "workbox-window"
   ]
 }
