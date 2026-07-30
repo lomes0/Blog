@@ -19,10 +19,7 @@ import {
 } from "@mui/material";
 import { ChevronDown, Send, Sparkles, Square } from "lucide-react";
 import { ActiveEditorContext } from "@/contexts/ActiveEditorContext";
-import {
-  applyWrite,
-  runReadTool,
-} from "@/editor/utils/copilotAgentExecutors";
+import { applyWrite, runReadTool } from "@/editor/utils/copilotAgentExecutors";
 import { isReadTool, isWriteTool } from "@/lib/ai/copilotAgentTools";
 import { postsSelectors, useSelector } from "@/store";
 import { AI_MODELS } from "@/lib/ai/models";
@@ -347,8 +344,8 @@ const CopilotChat: React.FC<CopilotChatProps> = (
                 color="text.secondary"
                 sx={{ maxWidth: 260, mx: "auto" }}
               >
-                I can read and search across all your posts and edit them.
-                Every change is shown as a preview you approve first.
+                I can read and search across all your posts and edit them. Every
+                change is shown as a preview you approve first.
               </Typography>
             </Box>
           </Box>

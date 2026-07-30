@@ -110,4 +110,3 @@ export const attachmentContentDB = getStore<AttachmentContentCache>(
   "attachmentContent",
 );
 export const pendingSaveDB = getStore<PendingSave>("pendingSaves");
-

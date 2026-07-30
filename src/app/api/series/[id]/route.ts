@@ -25,7 +25,10 @@ const seriesUpdateSchema = z.object({
   description: z.string(),
   createdAt: z
     .string()
-    .refine((value) => !Number.isNaN(Date.parse(value)), "must be a valid date"),
+    .refine(
+      (value) => !Number.isNaN(Date.parse(value)),
+      "must be a valid date",
+    ),
 }).partial().strict();
 
 export const GET = optionalUserRoute<{ id: string }>(

@@ -259,9 +259,7 @@ const findDocumentsByAuthorId = async (
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     // One extra row is a cheaper "is there more?" than a second count query.
     take: take + 1,
-    ...(options.cursor
-      ? { cursor: { id: options.cursor }, skip: 1 }
-      : {}),
+    ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
   });
 
   const hasMore = docs.length > take;

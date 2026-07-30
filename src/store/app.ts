@@ -89,8 +89,9 @@ function applyPost(
     const kept = existing.revisions;
     Object.assign(existing, post, {
       data: post.data ?? existing.data,
-      revisions:
-        incoming && incoming.length >= (kept?.length ?? 0) ? incoming : kept,
+      revisions: incoming && incoming.length >= (kept?.length ?? 0)
+        ? incoming
+        : kept,
     });
   }
 
@@ -312,7 +313,6 @@ export const appSlice = createSlice({
       .addCase(load.fulfilled, (state) => {
         state.ui.initialized = true;
       })
-
       // ── Posts ──
       .addCase(loadPosts.pending, (state) => {
         state.ui.postsLoading = true;
@@ -378,7 +378,6 @@ export const appSlice = createSlice({
       .addCase(importGuestDrafts.rejected, (state, action) => {
         announceFailure(state, action.payload);
       })
-
       // ── Revisions ──
       .addCase(createRevision.fulfilled, (state, action) => {
         const revision = action.payload;
@@ -407,7 +406,6 @@ export const appSlice = createSlice({
       .addCase(deleteRevision.rejected, (state, action) => {
         announceFailure(state, action.payload);
       })
-
       // ── User ──
       .addCase(updateUser.fulfilled, (state, action) => {
         state.user = action.payload;
@@ -425,7 +423,6 @@ export const appSlice = createSlice({
         state.ui.alerts.shift();
         announceFailure(state, action.payload);
       })
-
       // ── Series ──
       .addCase(loadSeries.fulfilled, (state, action) => {
         state.series = action.payload || [];
@@ -478,7 +475,6 @@ export const appSlice = createSlice({
       .addCase(deleteSeries.rejected, (state, action) => {
         announceFailure(state, action.payload);
       })
-
       // ── Projects ──
       .addCase(loadProjects.fulfilled, (state, action) => {
         state.projects = action.payload || [];

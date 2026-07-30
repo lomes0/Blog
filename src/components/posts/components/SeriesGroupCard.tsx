@@ -12,7 +12,7 @@ import {
 import { useTheme } from "@mui/material/styles";
 import { MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { SxProps, Theme } from "@mui/material/styles";
-import { Series, User, Post } from "@/types";
+import { Post, Series, User } from "@/types";
 import { createCardTheme } from "@/components/DocumentCard/theme";
 import { SHADOW } from "@/theme/tokens";
 import { formatFullDate } from "@/utils/dateFormat";

@@ -186,8 +186,7 @@ export const useSidebarBounds = (
   const [max, setMax] = useState(SIDEBAR_MAX_OPEN_FALLBACK);
 
   useEffect(() => {
-    const remeasure = () =>
-      setMin(measureMinOpenWidth(baseFontPx, fontFamily));
+    const remeasure = () => setMin(measureMinOpenWidth(baseFontPx, fontFamily));
     remeasure();
     // A webfont swapping in changes every metric this was computed from.
     document.fonts?.ready.then(remeasure).catch(() => {});

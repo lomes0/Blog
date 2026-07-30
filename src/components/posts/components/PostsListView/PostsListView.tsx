@@ -406,9 +406,11 @@ export function PostsListView({
 
   return (
     <Box sx={{ width: "100%", position: "relative" }}>
-      {/* Standalone posts, above the series — the sidebar's "Notes" section.
+      {
+        /* Standalone posts, above the series — the sidebar's "Notes" section.
           Each section is skipped when empty so it contributes no stray margin
-          (series mode renders posts only; a fresh account, series only). */}
+          (series mode renders posts only; a fresh account, series only). */
+      }
       {postItems.length > 0 && (
         <Box sx={{ mb: 1 }}>
           {postItems.map((item, i) => (

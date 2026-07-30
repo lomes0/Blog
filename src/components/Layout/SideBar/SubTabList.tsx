@@ -14,10 +14,7 @@ import { ICON_SIZE } from "@/theme/icons";
 import { useContextMenu } from "@/hooks/useContextMenu";
 import { SafeNavigationLink } from "./SafeNavigationLink";
 import { MONO_FONT, SB_FONT, SB_ITEM_RADIUS } from "./constants";
-import type {
-  PostItemActions,
-  RenameField,
-} from "./hooks/useSidebarActions";
+import type { PostItemActions, RenameField } from "./hooks/useSidebarActions";
 
 export interface SubTabEntry {
   id: string;

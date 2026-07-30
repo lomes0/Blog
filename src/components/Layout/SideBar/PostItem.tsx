@@ -269,43 +269,44 @@ export const PostItem = memo(
                 rename.start(post.id, "name");
               }
             }}
-            sx={[{
-              minHeight: inSeries ? 26 : 30,
-              justifyContent: sidebarOpen ? "initial" : "center",
-              overflow: "hidden",
-              position: "relative",
-              ...(dropIndicator && dropIndicatorSx(dropIndicator)),
-              // Rounded "pill" select shared with sub-tabs and series rows.
-              borderRadius: SB_ITEM_RADIUS,
-              // Top-level rows use the same left padding as a SeriesGroup row
-              // (px: 2) so the post icon lines up under the series chevron;
-              // in-series rows trim it since they're already nested.
-              ...(inSeries ? { pl: 0.75, pr: 2 } : { pl: 2, pr: 2 }),
-              py: inSeries ? 0.25 : 0.375,
-              "&:hover": { bgcolor: "action.hover" },
-              // Selected = soft filled pill only: no accent bar, no weight bump —
-              // the same low-chrome treatment the sub-tabs use.
-              "&.Mui-selected": {
-                bgcolor: "action.selected",
+            sx={[
+              {
+                minHeight: inSeries ? 26 : 30,
+                justifyContent: sidebarOpen ? "initial" : "center",
+                overflow: "hidden",
+                position: "relative",
+                ...(dropIndicator && dropIndicatorSx(dropIndicator)),
+                // Rounded "pill" select shared with sub-tabs and series rows.
+                borderRadius: SB_ITEM_RADIUS,
+                // Top-level rows use the same left padding as a SeriesGroup row
+                // (px: 2) so the post icon lines up under the series chevron;
+                // in-series rows trim it since they're already nested.
+                ...(inSeries ? { pl: 0.75, pr: 2 } : { pl: 2, pr: 2 }),
+                py: inSeries ? 0.25 : 0.375,
                 "&:hover": { bgcolor: "action.hover" },
-              },
-              // The open document keeps its fill under focus; every other row
-              // trades MUI's grey `action.focus` fill for the ring.
-              ...chromeFocusRingSx(".Mui-selected"),
-              // Wins over both the base and `.Mui-selected` fills so a row that
-              // is open *and* multi-selected still shows the selection tint.
-              ...(isMultiSelected && multiSelectSx("&.Mui-selected")),
-            },
-            // The selected pill picks up the accent tint. Skipped for
-            // multi-selected rows so their primary-tint wins.
-            !isMultiSelected
-              ? {
+                // Selected = soft filled pill only: no accent bar, no weight bump —
+                // the same low-chrome treatment the sub-tabs use.
                 "&.Mui-selected": {
-                  backgroundColor: "accent.tint",
-                  "&:hover": { backgroundColor: "accent.tint" },
+                  bgcolor: "action.selected",
+                  "&:hover": { bgcolor: "action.hover" },
                 },
-              }
-              : {},
+                // The open document keeps its fill under focus; every other row
+                // trades MUI's grey `action.focus` fill for the ring.
+                ...chromeFocusRingSx(".Mui-selected"),
+                // Wins over both the base and `.Mui-selected` fills so a row that
+                // is open *and* multi-selected still shows the selection tint.
+                ...(isMultiSelected && multiSelectSx("&.Mui-selected")),
+              },
+              // The selected pill picks up the accent tint. Skipped for
+              // multi-selected rows so their primary-tint wins.
+              !isMultiSelected
+                ? {
+                  "&.Mui-selected": {
+                    backgroundColor: "accent.tint",
+                    "&:hover": { backgroundColor: "accent.tint" },
+                  },
+                }
+                : {},
             ]}
           >
             <ListItemIcon

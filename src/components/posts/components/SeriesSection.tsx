@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import Grid from "@mui/material/Grid2";
-import { Series, User, Post } from "@/types";
+import { Post, Series, User } from "@/types";
 import SeriesGroupCard from "./SeriesGroupCard";
 import { useExpandedState } from "@/hooks/useExpandedState";
 

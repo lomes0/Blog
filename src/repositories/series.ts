@@ -1,10 +1,6 @@
 import { DocumentType as PrismaDocumentType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import {
-  movePost,
-  rankForAppend,
-  reRankIntoRoot,
-} from "./ordering";
+import { movePost, rankForAppend, reRankIntoRoot } from "./ordering";
 import {
   CloudPost,
   RevisionMeta,

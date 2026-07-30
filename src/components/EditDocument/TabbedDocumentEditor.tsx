@@ -46,9 +46,7 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
   );
 
   // All root-level posts for the "Move to other post" picker.
-  const allDocuments = useSelector((state) =>
-    postsSelectors.selectAll(state)
-  );
+  const allDocuments = useSelector((state) => postsSelectors.selectAll(state));
   const availablePosts = allDocuments.filter((doc) => {
     const d = doc;
     return d?.type === "DOCUMENT" && !d?.parentId && doc.id !== rootId;

@@ -1,4 +1,9 @@
-import { ApiError, optionalUserRoute, requireOwner, userRoute } from "@/lib/api-utils";
+import {
+  ApiError,
+  optionalUserRoute,
+  requireOwner,
+  userRoute,
+} from "@/lib/api-utils";
 import { requireRevision } from "@/lib/access";
 import { deleteRevision, findRevisionAuthorId } from "@/repositories/revision";
 import { NextResponse } from "next/server";

@@ -3,7 +3,7 @@ import React from "react";
 import { Box, IconButton } from "@mui/material";
 import { MoreVertical, Share2 } from "lucide-react";
 
-import { User, Post } from "@/types";
+import { Post, User } from "@/types";
 import PostActionMenu from "../PostActionMenu";
 
 /**

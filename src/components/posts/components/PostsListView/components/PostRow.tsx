@@ -2,7 +2,7 @@
 import React, { useCallback, useRef } from "react";
 import { Box, Checkbox, InputBase, Typography } from "@mui/material";
 import { GripVertical } from "lucide-react";
-import { Series, Post } from "@/types";
+import { Post, Series } from "@/types";
 import { useRouter } from "next/navigation";
 import { type DropPosition, dropPositionFromEvent } from "@/lib/dragDrop";
 import { formatRelativeDate } from "@/utils/dateFormat";
@@ -105,11 +105,14 @@ export const PostRow = React.memo(function PostRow({
     onToggleSelect(post.id, e);
   }, [post.id, onToggleSelect]);
 
-  const handleReorderDragOver = useCallback((e: React.DragEvent<HTMLElement>) => {
-    if (!onReorderDragOver) return;
-    e.preventDefault();
-    onReorderDragOver(post.id, dropPositionFromEvent(e));
-  }, [onReorderDragOver, post.id]);
+  const handleReorderDragOver = useCallback(
+    (e: React.DragEvent<HTMLElement>) => {
+      if (!onReorderDragOver) return;
+      e.preventDefault();
+      onReorderDragOver(post.id, dropPositionFromEvent(e));
+    },
+    [onReorderDragOver, post.id],
+  );
   const handleReorderDrop = useCallback((e: React.DragEvent<HTMLElement>) => {
     if (!onReorderDrop) return;
     e.preventDefault();

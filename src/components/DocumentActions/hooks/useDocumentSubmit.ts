@@ -1,6 +1,6 @@
 "use client";
 import { actions, useDispatch } from "@/store";
-import { DocumentStatus, PostUpdateInput, Post } from "@/types";
+import { DocumentStatus, Post, PostUpdateInput } from "@/types";
 
 export function useDocumentSubmit(
   post: Post,

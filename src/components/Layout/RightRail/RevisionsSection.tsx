@@ -6,7 +6,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import { postsSelectors, useSelector } from "@/store";
 import type { RootState } from "@/store";
 import { DateDisplay } from "@/components/shared/DateDisplay";
-import type { RevisionMeta, Revision } from "@/types";
+import type { Revision, RevisionMeta } from "@/types";
 import RailSection from "./RailSection";
 import { ICON_SIZE } from "@/theme/icons";
 
@@ -42,8 +42,7 @@ export default function RevisionsSection({
             list: (RevisionMeta | Revision)[],
           ) =>
             [...list].sort(
-              (a, b) =>
-                new Date(b.createdAt).getTime() -
+              (a, b) => new Date(b.createdAt).getTime() -
                 new Date(a.createdAt).getTime(),
             );
 

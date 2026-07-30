@@ -116,7 +116,8 @@ const ViewDocument: React.FC<
   }, [tabs, activeTabId, rootId]);
 
   const router = useRouter();
-  const authorLabel = cloudDocument.author?.handle ?? cloudDocument.author?.name;
+  const authorLabel = cloudDocument.author?.handle ??
+    cloudDocument.author?.name;
   const updatedDate = cloudDocument.updatedAt
     ? format(new Date(cloudDocument.updatedAt), "MMM d, yyyy")
     : null;

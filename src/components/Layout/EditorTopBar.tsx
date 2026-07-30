@@ -118,9 +118,7 @@ const EditorTopBar: React.FC = () => {
     docSeriesTitle,
   } = useSelector(
     (state: RootState) => {
-      const doc = docId
-        ? postsSelectors.selectById(state, docId)
-        : undefined;
+      const doc = docId ? postsSelectors.selectById(state, docId) : undefined;
       const dSeriesId = doc?.seriesId;
 
       return {
@@ -160,7 +158,9 @@ const EditorTopBar: React.FC = () => {
           items.push({
             label: seriesTitle || "Series",
             href: `/series/${segments[1]}`,
-            icon: <Library size={ICON_SIZE.inline} style={{ marginRight: 4 }} />,
+            icon: (
+              <Library size={ICON_SIZE.inline} style={{ marginRight: 4 }} />
+            ),
           });
         }
         break;
@@ -177,14 +177,18 @@ const EditorTopBar: React.FC = () => {
             items.push({
               label: seriesTitle || "Series",
               href: `/series/${sId}`,
-              icon: <Library size={ICON_SIZE.inline} style={{ marginRight: 4 }} />,
+              icon: (
+                <Library size={ICON_SIZE.inline} style={{ marginRight: 4 }} />
+              ),
             });
             items.push({ label: "Edit", href: `/series/${sId}/edit` });
           } else {
             items.push({
               label: seriesTitle || "Series",
               href: `/series/${sId}`,
-              icon: <Library size={ICON_SIZE.inline} style={{ marginRight: 4 }} />,
+              icon: (
+                <Library size={ICON_SIZE.inline} style={{ marginRight: 4 }} />
+              ),
             });
           }
         }
@@ -194,7 +198,12 @@ const EditorTopBar: React.FC = () => {
         items.push({
           label: "Dashboard",
           href: "/dashboard",
-          icon: <LayoutDashboard size={ICON_SIZE.inline} style={{ marginRight: 4 }} />,
+          icon: (
+            <LayoutDashboard
+              size={ICON_SIZE.inline}
+              style={{ marginRight: 4 }}
+            />
+          ),
         });
         break;
 
@@ -222,7 +231,9 @@ const EditorTopBar: React.FC = () => {
           items.push({
             label: docSeriesTitle || "Series",
             href: `/series/${docSeriesId}`,
-            icon: <Library size={ICON_SIZE.inline} style={{ marginRight: 4 }} />,
+            icon: (
+              <Library size={ICON_SIZE.inline} style={{ marginRight: 4 }} />
+            ),
           });
         }
         items.push({
@@ -243,7 +254,9 @@ const EditorTopBar: React.FC = () => {
         items.push({
           label: "Notes",
           href: "/notes",
-          icon: <StickyNote size={ICON_SIZE.inline} style={{ marginRight: 4 }} />,
+          icon: (
+            <StickyNote size={ICON_SIZE.inline} style={{ marginRight: 4 }} />
+          ),
         });
         break;
 
@@ -682,7 +695,6 @@ const EditorTopBar: React.FC = () => {
 
       {/* Centering spacer (right of search) */}
       <Box sx={{ flex: 1, minWidth: 8 }} />
-
     </Box>
   );
 };

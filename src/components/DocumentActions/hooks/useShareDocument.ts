@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
 import { actions, useDispatch, useSelector } from "@/store";
-import { PostUpdateInput, User, Post } from "@/types";
+import { Post, PostUpdateInput, User } from "@/types";
 import { useSearchParams } from "next/navigation";
 
 export function useShareDocument(post: Post) {

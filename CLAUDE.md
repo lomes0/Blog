@@ -83,8 +83,8 @@ The two are hidden behind one seam rather than branched on per call site. The
 `PostBackend` interface (`src/store/backend/index.ts`) has two implementations —
 `cloudBackend` (PostgreSQL via `/api/*`) and `localBackend` (IndexedDB) — and
 `backendFor(user)` picks one from the session alone. Thunks call the interface,
-so there are no paired `createLocal*` / `createCloud*` variants; everything above
-the seam is written once.
+so there are no paired `createLocal*` / `createCloud*` variants; everything
+above the seam is written once.
 
 ### State Management (Redux Toolkit)
 
@@ -182,20 +182,21 @@ Two ESLint rules in `eslint.config.mjs` keep this total, because the whole value
 of the scheme is that a missing declaration is impossible rather than merely
 discouraged: `no-restricted-syntax` rejects a handler exported without a
 wrapper, and `no-restricted-imports` bars `getServerSession` and `authOptions`
-from `src/app/api/**`. Exemptions are `api/auth/**` (it *is* the auth handler)
+from `src/app/api/**`. Exemptions are `api/auth/**` (it _is_ the auth handler)
 and `api/og` (edge runtime, reads nothing).
 
-Request bodies are validated, not cast. `(await request.json()) as SomeType` is a
-compile-time fiction over attacker-controlled JSON, and a third
-`no-restricted-syntax` rule bans `request.json()` under `src/app/api/**` for that
-reason. Read a body with `parseBody(request, schema)` from `src/lib/api-utils.ts`,
-which 400s with the offending field path. (`request.formData()` and `.text()` are
-untouched — the upload and export routes need them.)
+Request bodies are validated, not cast. `(await request.json()) as SomeType` is
+a compile-time fiction over attacker-controlled JSON, and a third
+`no-restricted-syntax` rule bans `request.json()` under `src/app/api/**` for
+that reason. Read a body with `parseBody(request, schema)` from
+`src/lib/api-utils.ts`, which 400s with the offending field path.
+(`request.formData()` and `.text()` are untouched — the upload and export routes
+need them.)
 
-Prefer `.strict()` on update schemas. A field you did not mean to expose is then a
-400 naming it rather than a silent write: that is what keeps `parentId` /
-`seriesId` / `rank` out of `PATCH /api/documents/[id]`, where passing one used to
-reparent a document into any other post with no check on the destination.
+Prefer `.strict()` on update schemas. A field you did not mean to expose is then
+a 400 naming it rather than a silent write: that is what keeps `parentId` /
+`seriesId` / `rank` out of `PATCH /api/documents/[id]`, where passing one used
+to reparent a document into any other post with no check on the destination.
 Container changes belong to the `/move` routes, which authorize the destination,
 refuse parent cycles and mint a rank — and `PostUpdateInput` omits those three
 fields so the client cannot express the mistake either. Document schemas live in
@@ -215,7 +216,7 @@ the check is a missing variable rather than a missing line:
 - `requireCanvas` / `requireOwnedNote` — a note's owner lives on its canvas.
 - `requireOwnedSeries` / `requireOwnedProject`.
 
-For ids arriving in a request *body*, a batch must be checked as a whole — see
+For ids arriving in a request _body_, a batch must be checked as a whole — see
 `findUnownedDocumentIds`, which answers for every id in one query so that
 checking only the first is not an available mistake.
 

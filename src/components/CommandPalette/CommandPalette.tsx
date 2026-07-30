@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Box, InputBase, Modal, Typography } from "@mui/material";
 import { useColorScheme } from "@mui/material/styles";
 import { usePathname, useRouter } from "next/navigation";
@@ -71,8 +65,9 @@ const CommandPalette = () => {
   // Current document id from the URL (edit/view routes), used by the mode switch.
   const segments = pathname.split("/").filter(Boolean);
   const routeMode = segments[0];
-  const currentDocId =
-    routeMode === "edit" || routeMode === "view" ? segments[1] ?? null : null;
+  const currentDocId = routeMode === "edit" || routeMode === "view"
+    ? segments[1] ?? null
+    : null;
 
   const close = useCallback(() => {
     setOpen(false);
@@ -157,8 +152,7 @@ const CommandPalette = () => {
         icon: toRead
           ? <Eye size={ICON_SIZE.dense} />
           : <Pencil size={ICON_SIZE.dense} />,
-        run: () =>
-          router.push(`/${toRead ? "view" : "edit"}/${currentDocId}`),
+        run: () => router.push(`/${toRead ? "view" : "edit"}/${currentDocId}`),
       });
     }
 
@@ -197,8 +191,7 @@ const CommandPalette = () => {
   const results: PaletteItem[] = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [...commands, ...postItems.slice(0, 5)];
-    const matches = (item: PaletteItem) =>
-      item.label.toLowerCase().includes(q);
+    const matches = (item: PaletteItem) => item.label.toLowerCase().includes(q);
     return [...commands.filter(matches), ...postItems.filter(matches)];
   }, [query, commands, postItems]);
 
@@ -257,7 +250,8 @@ const CommandPalette = () => {
       slotProps={{
         backdrop: {
           sx: {
-            backgroundColor: "rgba(var(--mui-palette-common-blackChannel) / 0.5)",
+            backgroundColor:
+              "rgba(var(--mui-palette-common-blackChannel) / 0.5)",
             backdropFilter: "blur(2px)",
           },
         },
@@ -402,9 +396,7 @@ const CommandPalette = () => {
                         component="span"
                         sx={{
                           color: "text.secondary",
-                          fontFamily: item.mono
-                            ? "monospace"
-                            : undefined,
+                          fontFamily: item.mono ? "monospace" : undefined,
                           flexShrink: 0,
                         }}
                       >

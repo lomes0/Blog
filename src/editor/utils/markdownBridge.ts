@@ -22,10 +22,7 @@
  * browser-only deps like MathLive. That keeps the bridge light and runnable
  * anywhere (browser or server).
  */
-import type {
-  SerializedEditorState,
-  SerializedLexicalNode,
-} from "lexical";
+import type { SerializedEditorState, SerializedLexicalNode } from "lexical";
 import { createHeadlessEditor } from "@lexical/headless";
 import {
   $convertFromMarkdownString,
@@ -160,8 +157,10 @@ function restoreCustomNodes(
 
     if (el.children) {
       out.push(
-        { ...el, children: restoreCustomNodes(el.children) } as
-          SerializedLexicalNode,
+        {
+          ...el,
+          children: restoreCustomNodes(el.children),
+        } as SerializedLexicalNode,
       );
       continue;
     }
@@ -179,8 +178,10 @@ function splitInlineTokens(textNode: SerializedText): SerializedLexicalNode[] {
   while ((m = TOKEN_RE.exec(text)) !== null) {
     if (m.index > last) {
       parts.push(
-        { ...textNode, text: text.slice(last, m.index) } as
-          SerializedLexicalNode,
+        {
+          ...textNode,
+          text: text.slice(last, m.index),
+        } as SerializedLexicalNode,
       );
     }
     parts.push(JSON.parse(b64decode(m[1])) as SerializedLexicalNode);

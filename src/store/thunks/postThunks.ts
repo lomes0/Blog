@@ -66,8 +66,7 @@ export const updatePost = createApiThunk(
 
 export const deletePost = createApiThunk(
   "app/deletePost",
-  async (id: string, thunkAPI) =>
-    await backendOf(thunkAPI.getState).delete(id),
+  async (id: string, thunkAPI) => await backendOf(thunkAPI.getState).delete(id),
 );
 
 /**

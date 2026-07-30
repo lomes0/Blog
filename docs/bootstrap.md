@@ -26,7 +26,8 @@ A `docker-compose.yml` is included at the repo root. Start Postgres with:
 docker compose up -d
 ```
 
-- Stop it with `docker compose stop`; start it again with `docker compose start`.
+- Stop it with `docker compose stop`; start it again with
+  `docker compose start`.
 - Data persists in the `blog-postgres-data` volume across restarts.
 - Tear it down (⚠️ deletes the volume/data) with `docker compose down -v`.
 
@@ -127,7 +128,8 @@ PUBLIC_URL="http://localhost:3000"
 # GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET if you want OAuth sign-in
 ```
 
-> `DATABASE_URL` in `.env` is **ignored** here — the prod compose overrides it to
+> `DATABASE_URL` in `.env` is **ignored** here — the prod compose overrides it
+> to
 > `postgresql://blog:blog@postgres:5432/blog?connection_limit=10&schema=public`
 > so the app targets the compose Postgres service instead of `localhost`.
 

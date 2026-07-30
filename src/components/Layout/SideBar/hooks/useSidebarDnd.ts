@@ -402,7 +402,11 @@ export function useSidebarDnd(
         } else if (kind === "series") {
           // Reorder at root moves the series out of any project.
           dispatch(
-            actions.moveSeries({ id, destination: { projectId: null }, between }),
+            actions.moveSeries({
+              id,
+              destination: { projectId: null },
+              between,
+            }),
           );
         } else if (kind === "project") {
           dispatch(actions.moveProject({ id, between }));

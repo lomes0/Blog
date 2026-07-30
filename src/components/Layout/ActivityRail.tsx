@@ -159,8 +159,10 @@ const ActivityRail: React.FC = () => {
         zIndex: (theme) => theme.zIndex.drawer + 1,
       }}
     >
-      {/* Home / brand — the Refined-Explorer `</>` code glyph, in the same
-          rounded chip as the view buttons. Links home. */}
+      {
+        /* Home / brand — the Refined-Explorer `</>` code glyph, in the same
+          rounded chip as the view buttons. Links home. */
+      }
       <Tooltip title="Blog · Home" placement="right">
         <Box
           component={RouterLink}

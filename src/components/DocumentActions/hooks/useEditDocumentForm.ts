@@ -1,12 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useSelector } from "@/store";
-import {
-  DocumentStatus,
-  PostUpdateInput,
-  User,
-  Post,
-} from "@/types";
+import { DocumentStatus, Post, PostUpdateInput, User } from "@/types";
 import { useHandleValidation } from "@/hooks/useHandleValidation";
 import { useDocumentSubmit } from "./useDocumentSubmit";
 
@@ -89,7 +84,9 @@ export function useEditDocumentForm(post: Post) {
   ]);
 
   const updateCoauthors = (users: (User | string)[]) => {
-    const coauthors = users.flatMap((u) => typeof u === "string" ? [u] : u.email ? [u.email] : []);
+    const coauthors = users.flatMap((u) =>
+      typeof u === "string" ? [u] : u.email ? [u.email] : []
+    );
     updateInput({ coauthors });
   };
 

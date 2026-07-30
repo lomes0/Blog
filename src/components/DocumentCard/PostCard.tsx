@@ -2,7 +2,7 @@
 import * as React from "react";
 import { memo } from "react";
 import { SxProps, Theme } from "@mui/material/styles";
-import { User, Post } from "@/types";
+import { Post, User } from "@/types";
 import CardBase from "./CardBase";
 import { usePostState } from "./hooks/usePostState";
 import PostContent from "./components/PostContent";

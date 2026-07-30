@@ -2,20 +2,20 @@
 
 Three related proposals to simplify how content is modeled and ordered,
 optimizing for **less code and easier maintenance under a single-user blog**.
-They started from one question — "is the `rank`-based reordering the best way?" —
-and fanned out into the schema underneath it.
+They started from one question — "is the `rank`-based reordering the best way?"
+— and fanned out into the schema underneath it.
 
 Read them in this order:
 
-| # | Plan | Owns | Churn |
-|---|---|---|---|
-| 1 | [ordering-simplification.md](./ordering-simplification.md) | Replace fractional `rank` with an ordered id array per container | Low–moderate |
-| 2 | [schema-organization.md](./schema-organization.md) | Idiomatic schema cleanup (timestamptz, real FKs, enums, dead-field/index removal, renames) | Low–moderate |
-| 3 | [series-as-node.md](./series-as-node.md) | Fold `Series` into the `Document` node tree so ordering is one `childOrder` mechanism | High |
+| # | Plan                                                       | Owns                                                                                       | Churn        |
+| - | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ------------ |
+| 1 | [ordering-simplification.md](./ordering-simplification.md) | Replace fractional `rank` with an ordered id array per container                           | Low–moderate |
+| 2 | [schema-organization.md](./schema-organization.md)         | Idiomatic schema cleanup (timestamptz, real FKs, enums, dead-field/index removal, renames) | Low–moderate |
+| 3 | [series-as-node.md](./series-as-node.md)                   | Fold `Series` into the `Document` node tree so ordering is one `childOrder` mechanism      | High         |
 
-Plans 1 and 2 are complementary and largely independent. Plan 3 is the
-*unifying end state* that subsumes parts of both — take it only if you want the
-cleanest possible model and will spend the refactor once.
+Plans 1 and 2 are complementary and largely independent. Plan 3 is the _unifying
+end state_ that subsumes parts of both — take it only if you want the cleanest
+possible model and will spend the refactor once.
 
 ---
 
@@ -25,22 +25,22 @@ cleanest possible model and will spend the refactor once.
   indexing, one array per container) at low blast radius — but leave a
   permanently **polymorphic root array** (document + series ids across two
   tables) and the whole `Series` subsystem in place.
-- **Plan 3** designs the two-table root problem *out* (everything is one node,
-  root order is homogeneous, one `moveNode`, one `childOrder`) — at the cost of a
-  genuine domain refactor (`Series` spans 56 files, a 459-line repo, 5 API
+- **Plan 3** designs the two-table root problem _out_ (everything is one node,
+  root order is homogeneous, one `moveNode`, one `childOrder`) — at the cost of
+  a genuine domain refactor (`Series` spans 56 files, a 459-line repo, 5 API
   routes, its own Redux slice).
 
 ## Recommended sequencing
 
-Land the small, safe work first; sequence the high-churn unification **last**, on
-top of an already-simplified base — never all at once.
+Land the small, safe work first; sequence the high-churn unification **last**,
+on top of an already-simplified base — never all at once.
 
 1. **Schema Phase A — the safe sweep** (from Plan 2): `timestamptz` everywhere,
    drop OAuth1 columns, drop redundant `[authorId]` indexes, `role` → enum. Pure
    DB / no app-logic change. Ship it independently.
 
-2. **Ordering, Phases 1–3** (from Plan 1): add order-array columns, backfill from
-   `rank`, switch *reads* to the arrays + tolerant `orderBy`. Order is now
+2. **Ordering, Phases 1–3** (from Plan 1): add order-array columns, backfill
+   from `rank`, switch _reads_ to the arrays + tolerant `orderBy`. Order is now
    array-driven for reads while writes still go through `rank` — safe cutover
    point. This also fixes the latent bug where grouped/time views still sort by
    `createdAt`.
@@ -77,8 +77,8 @@ top of an already-simplified base — never all at once.
 
 ## Open decisions
 
-- **Drop `DocumentCoauthors` + `collab` entirely?** Recommended — already stubbed
-  to `[]` and meaningless single-user. (Plan 2 §5.)
-- **Commit to Plan 3 (Series-as-node)?** The high-churn unification — do it last,
-  or not at all if blast radius matters more than a fully uniform model.
+- **Drop `DocumentCoauthors` + `collab` entirely?** Recommended — already
+  stubbed to `[]` and meaningless single-user. (Plan 2 §5.)
+- **Commit to Plan 3 (Series-as-node)?** The high-churn unification — do it
+  last, or not at all if blast radius matters more than a fully uniform model.
 - `timestamptz` backfill assumes stored values are UTC; confirm before the cast.

@@ -116,9 +116,9 @@ describe("sidebar drag geometry", () => {
 
     it("resizes continuously with no zones and no animation", () => {
       expect(frames.every((f) => f.mode === "full" && f.ease === 0)).toBe(true);
-      expect(frames.filter((f) => f.raw >= geom.min).every((f) =>
-        f.width === f.raw
-      )).toBe(true);
+      expect(
+        frames.filter((f) => f.raw >= geom.min).every((f) => f.width === f.raw),
+      ).toBe(true);
     });
 
     it("still floors at the minimum open width", () => {

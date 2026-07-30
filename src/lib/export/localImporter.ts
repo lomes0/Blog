@@ -20,11 +20,7 @@ import {
   type ImportSummary,
   validateManifest,
 } from "@/lib/export/manifest";
-import {
-  DocumentStatus,
-  type Post,
-  type Revision,
-} from "@/types";
+import { DocumentStatus, type Post, type Revision } from "@/types";
 import { filenameToAttachmentUrl } from "@/lib/export/lexicalAssetRewriter";
 
 /**

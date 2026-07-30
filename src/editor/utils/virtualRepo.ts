@@ -40,12 +40,9 @@ export interface RepoSearchHit {
 }
 
 const pathOf = (doc: Post): string => `${doc.id}.md`;
-const titleOf = (doc: Post): string =>
-  doc.name ?? "Untitled";
-const seriesOf = (doc: Post): string | null =>
-  doc.seriesId ?? null;
-const dataOf = (doc: Post): SerializedEditorState | undefined =>
-  doc.data;
+const titleOf = (doc: Post): string => doc.name ?? "Untitled";
+const seriesOf = (doc: Post): string | null => doc.seriesId ?? null;
+const dataOf = (doc: Post): SerializedEditorState | undefined => doc.data;
 
 const findByPath = (
   docs: Post[],

@@ -20,14 +20,13 @@ const agentTools = {
     inputSchema: z.object({}),
   }),
   search_documents: tool({
-    description:
-      "Grep across post titles and locally-available bodies for a " +
+    description: "Grep across post titles and locally-available bodies for a " +
       "case-insensitive substring. Returns per-line hits with their path.",
     inputSchema: z.object({ query: z.string() }),
   }),
   read_document: tool({
     description:
-      "Read one post's body as Markdown by its path (e.g. \"<id>.md\"). " +
+      'Read one post\'s body as Markdown by its path (e.g. "<id>.md"). ' +
       "Rich elements appear as opaque [[lexblk:...]] tokens — never edit their " +
       "contents.",
     inputSchema: z.object({ path: z.string() }),

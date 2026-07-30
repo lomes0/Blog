@@ -86,7 +86,8 @@ export const components: ThemeOptions["components"] = {
         // `primaryTypographyProps={{ variant: "body2" }}` on every menu row.
         // Matching `body1` specifically restates the *default*: a row that
         // asks for another variant renders a different class and is left alone.
-        "& .MuiListItemText-primary.MuiTypography-body1": theme.typography.body2,
+        "& .MuiListItemText-primary.MuiTypography-body1":
+          theme.typography.body2,
       }),
     },
   },

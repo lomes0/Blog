@@ -72,7 +72,8 @@ const StorageChart: React.FC = () => {
   const theme = useTheme();
 
   const label = user ? "Cloud Storage" : "Local Storage";
-  const isPending = storageUsage.loading || (!initialized && !storageUsage.usage);
+  const isPending = storageUsage.loading ||
+    (!initialized && !storageUsage.usage);
 
   return (
     <Grid container spacing={2}>

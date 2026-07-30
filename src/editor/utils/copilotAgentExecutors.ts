@@ -16,7 +16,7 @@ import { v4 as uuidv4 } from "uuid";
 import { apiClient } from "@/api";
 import { postsSelectors, store } from "@/store";
 import { createPost, updatePost } from "@/store/app";
-import type { PostCreateInput, Post } from "@/types";
+import type { Post, PostCreateInput } from "@/types";
 import {
   markdownToSerializedState,
   serializedStateToMarkdown,
@@ -28,8 +28,7 @@ import {
   searchDocuments,
 } from "./virtualRepo";
 
-const getDocs = (): Post[] =>
-  postsSelectors.selectAll(store.getState());
+const getDocs = (): Post[] => postsSelectors.selectAll(store.getState());
 
 const currentMarkdown = (editor: LexicalEditor | null): string => {
   if (!editor) return "";

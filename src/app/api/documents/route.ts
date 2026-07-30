@@ -27,7 +27,11 @@ export const GET = userRoute(async (request, { user }) => {
     parsedLimit !== undefined &&
     (!Number.isInteger(parsedLimit) || parsedLimit < 1)
   ) {
-    throw new ApiError(400, "Bad Request", "`limit` must be a positive integer");
+    throw new ApiError(
+      400,
+      "Bad Request",
+      "`limit` must be a positive integer",
+    );
   }
   const cursor = searchParams.get("cursor") ?? undefined;
 

@@ -9,10 +9,7 @@ import {
   useSelector,
 } from "@/store";
 import type { Post, Project, Series } from "@/types";
-import {
-  type ContextMenuState,
-  useContextMenu,
-} from "@/hooks/useContextMenu";
+import { type ContextMenuState, useContextMenu } from "@/hooks/useContextMenu";
 import {
   type InlineRenameResult,
   useInlineRename,

@@ -383,7 +383,10 @@ export const apiClient = {
       id: string,
       data: { title?: string; description?: string; createdAt?: string },
     ): Promise<Project | undefined> =>
-      request<Project>(`/api/projects/${id}`, { method: "PATCH", ...json(data) }),
+      request<Project>(`/api/projects/${id}`, {
+        method: "PATCH",
+        ...json(data),
+      }),
 
     /** DELETE /api/projects/:id */
     delete: (id: string): Promise<string | undefined> =>

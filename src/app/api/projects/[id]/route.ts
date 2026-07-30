@@ -14,7 +14,10 @@ const projectUpdateSchema = z.object({
   description: z.string(),
   createdAt: z
     .string()
-    .refine((value) => !Number.isNaN(Date.parse(value)), "must be a valid date"),
+    .refine(
+      (value) => !Number.isNaN(Date.parse(value)),
+      "must be a valid date",
+    ),
 }).partial().strict();
 
 // Projects are an authoring/organization concept, not public content — the same

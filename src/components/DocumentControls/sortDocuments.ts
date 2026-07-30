@@ -40,7 +40,7 @@ export const sortDocuments = (
   sortDirection: string,
 ) => {
   const data = documents.map((d) => {
-    const docData = (d)!;
+    const docData = d!;
     return { ...docData, id: d.id };
   });
 

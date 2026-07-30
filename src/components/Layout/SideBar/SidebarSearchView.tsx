@@ -45,7 +45,12 @@ export const SidebarSearchView: React.FC<SidebarSearchViewProps> = (
 
   return (
     <Box
-      sx={{ flex: "1 1 auto", minHeight: 0, display: "flex", flexDirection: "column" }}
+      sx={{
+        flex: "1 1 auto",
+        minHeight: 0,
+        display: "flex",
+        flexDirection: "column",
+      }}
     >
       {/* Search input */}
       <Box sx={{ px: 1.5, pt: 0.5, pb: 1, flexShrink: 0 }}>
@@ -65,7 +70,10 @@ export const SidebarSearchView: React.FC<SidebarSearchViewProps> = (
         >
           <Search
             size={ICON_SIZE.inline}
-            style={{ color: "var(--mui-palette-text-secondary)", flexShrink: 0 }}
+            style={{
+              color: "var(--mui-palette-text-secondary)",
+              flexShrink: 0,
+            }}
           />
           <InputBase
             autoFocus
@@ -92,7 +100,12 @@ export const SidebarSearchView: React.FC<SidebarSearchViewProps> = (
             <Typography
               variant="dense"
               component="p"
-              sx={{ px: 1, py: 2, color: "text.secondary", textAlign: "center" }}
+              sx={{
+                px: 1,
+                py: 2,
+                color: "text.secondary",
+                textAlign: "center",
+              }}
             >
               No posts match “{query}”.
             </Typography>
@@ -117,7 +130,9 @@ export const SidebarSearchView: React.FC<SidebarSearchViewProps> = (
                     "&:hover": { bgcolor: "action.hover" },
                   }}
                 >
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                  <Box
+                    sx={{ display: "flex", alignItems: "center", gap: 0.75 }}
+                  >
                     <FileText
                       size={ICON_SIZE.inline}
                       style={{
@@ -128,7 +143,11 @@ export const SidebarSearchView: React.FC<SidebarSearchViewProps> = (
                     <Typography
                       variant="dense"
                       noWrap
-                      sx={{ fontWeight: 500, color: "text.primary", minWidth: 0 }}
+                      sx={{
+                        fontWeight: 500,
+                        color: "text.primary",
+                        minWidth: 0,
+                      }}
                     >
                       {r.name}
                     </Typography>

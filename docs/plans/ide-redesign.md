@@ -7,10 +7,10 @@ Applying the **Blog IDE** proposal
 
 - **Strategy:** converge the existing shell in place — no new `/workspace`
   route, no rewrite. The app already implements ~70% of the proposal's skeleton.
-- **Aesthetic:** adopt the IDE _structure & cues_ (mono filenames, `.md`
-  naming, caret folders, accent bars, denser chrome) but keep our **DESIGN.md
-  tokens** (indigo/slate, Public Sans). No new palette. This is what the
-  proposal itself asks for ("map to your own system").
+- **Aesthetic:** adopt the IDE _structure & cues_ (mono filenames, `.md` naming,
+  caret folders, accent bars, denser chrome) but keep our **DESIGN.md tokens**
+  (indigo/slate, Public Sans). No new palette. This is what the proposal itself
+  asks for ("map to your own system").
 - **Read/Edit:** keep separate `/edit/:id` and `/view/:id` routes; the segmented
   switch just navigates between them. No routing refactor.
 - **Regions in scope this pass:** (1) title-bar search entry, (2) Explorer
@@ -53,9 +53,9 @@ Applying the **Blog IDE** proposal
 
 ## Gap analysis
 
-| Proposal region        | Status in app                          | Work                    |
-| ---------------------- | -------------------------------------- | ----------------------- |
-| ⌘K command palette     | ✅ shipped (Phase 0)                   | done                    |
+| Proposal region        | Status in app                           | Work                    |
+| ---------------------- | --------------------------------------- | ----------------------- |
+| ⌘K command palette     | ✅ shipped (Phase 0)                    | done                    |
 | Title-bar search entry | ❌ none                                 | **Phase 1**             |
 | Explorer file tree     | ⚠️ exists (`SeriesGroup`), not IDE look | **Phase 2** (restyle)   |
 | Activity rail + views  | ❌ none (only sidebar width mode)       | **Phase 3** (new)       |
@@ -81,18 +81,19 @@ Smaller blast radius, still visible on every editor/view page.
   command…" + `⌘K` chip. `onClick → openCommandPalette()`. Style with
   `background.input`, 8px radius, `text.secondary`.
 - Add the Read/Edit segmented control (right side of the breadcrumb row) — MUI
-  `ToggleButtonGroup`, Eye/Pencil icons. Active = accent-filled. `onChange →
-  router.push('/edit|view/:id')`. Only shown on doc pages (mode already detected
-  at `EditorTopBar.tsx:93`).
+  `ToggleButtonGroup`, Eye/Pencil icons. Active = accent-filled.
+  `onChange →
+  router.push('/edit|view/:id')`. Only shown on doc pages (mode
+  already detected at `EditorTopBar.tsx:93`).
 - **Resolve the ⌘K conflict:** the Lexical editor binds ⌘K to _insert link_
   (`TextFormatToggles.tsx:166`). Scope the palette shortcut to fire only when
   focus is **outside** the editor (mirror how ⌘B is gated), so inside the editor
   ⌘K stays "insert link". The title-bar pill remains the always-available entry.
 
 **Files:** `EditorTopBar.tsx`, `CommandPalette.tsx` (shortcut gating).
-**State:** none.
-**Acceptance:** pill visible on posts/edit/view; click opens palette; ⌘K opens
-palette everywhere except inside the editor; Read/Edit toggle navigates.
+**State:** none. **Acceptance:** pill visible on posts/edit/view; click opens
+palette; ⌘K opens palette everywhere except inside the editor; Read/Edit toggle
+navigates.
 
 ---
 
@@ -112,9 +113,8 @@ tree, using our tokens.
 - Keep all existing behavior: context menus, drag-reorder (rank order),
   navigation, rename. This is CSS/markup only.
 
-**Files:** `SeriesGroup.tsx`, `PostItem.tsx`, `ActivePostsSection.tsx`,
-possibly `SidebarHeader.tsx` (EXPLORER label + add/collapse icons).
-**State:** none.
+**Files:** `SeriesGroup.tsx`, `PostItem.tsx`, `ActivePostsSection.tsx`, possibly
+`SidebarHeader.tsx` (EXPLORER label + add/collapse icons). **State:** none.
 **Acceptance:** tree reads as `.md` files under caret folders; dirty dots +
 active accent bar present; reduced-motion respected; no behavior regressions.
 
@@ -139,17 +139,17 @@ active accent bar present; reduced-motion respected; no behavior regressions.
   - **Search:** new view — text input + result count + flat list of posts
     filtered by title, each showing mono `folder/name.md`. Reuse
     `selectAllPosts`. Clicking opens `/edit/:id`.
-  - **Notes:** either embed the existing notes surface or link to `/notes`
-    (see Open Decisions #3).
+  - **Notes:** either embed the existing notes surface or link to `/notes` (see
+    Open Decisions #3).
 - Reconcile with existing `SidebarNav` (Posts/Notes): the activity rail replaces
   its role; remove `SidebarNav` from the expanded layer or repoint it.
 
 **Files:** new `ActivityRail/`, new `SidebarSearchView`, `AppLayoutContent.tsx`
-(grid column), `SideBar/index.tsx`, `store/app.ts`, `store/index.ts`.
-**State:** `ui.sidebarView` (+ optional `searchQuery`).
-**Acceptance:** rail switches Explorer/Search/Notes; active item shows accent
-bar; AI button toggles Copilot; Search filters posts and opens them; keyboard
-accessible (aria-labels on icon buttons).
+(grid column), `SideBar/index.tsx`, `store/app.ts`, `store/index.ts`. **State:**
+`ui.sidebarView` (+ optional `searchQuery`). **Acceptance:** rail switches
+Explorer/Search/Notes; active item shows accent bar; AI button toggles Copilot;
+Search filters posts and opens them; keyboard accessible (aria-labels on icon
+buttons).
 
 ---
 
@@ -175,12 +175,12 @@ accessible (aria-labels on icon buttons).
    proposal, larger structural change). Can promote later.
 2. **Activity rail vs. sidebar-compact mode:** the current 54px _compact
    sidebar_ and the new 54px _activity rail_ both want the far-left ~54px.
-   **Recommended:** activity rail becomes the permanent far-left column;
-   sidebar collapse hides the wider sidebar _next to_ it (rail always visible),
-   matching the proposal.
+   **Recommended:** activity rail becomes the permanent far-left column; sidebar
+   collapse hides the wider sidebar _next to_ it (rail always visible), matching
+   the proposal.
 3. **Notes view:** embed notes in the sidebar vs. keep `/notes` route and have
-   the rail's Notes button navigate there. **Recommended:** navigate to
-   `/notes` first (cheap), embed later if desired.
+   the rail's Notes button navigate there. **Recommended:** navigate to `/notes`
+   first (cheap), embed later if desired.
 4. **Search shortcut gating:** gate ⌘K to outside-editor (**recommended**) vs.
    let palette `stopPropagation` and win everywhere (would break editor's
    insert-link). Go with gating.
@@ -190,8 +190,8 @@ accessible (aria-labels on icon buttons).
 - Activity-rail refactor touches the shared shell (`AppLayoutContent`,
   `SideBar`) — most regression-prone phase; land it last and behind the other
   two visible wins.
-- Explorer restyle must preserve drag-reorder (rank ordering) and context
-  menus — verify no regressions.
+- Explorer restyle must preserve drag-reorder (rank ordering) and context menus
+  — verify no regressions.
 - `useColorScheme`/theme already wired; no theme changes needed.
 
 ## Suggested order

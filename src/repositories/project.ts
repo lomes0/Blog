@@ -1,10 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { rankForAppend, reRankSeriesIntoRoot } from "./ordering";
-import {
-  Project,
-  ProjectCreateInput,
-  ProjectUpdateInput,
-} from "@/types";
+import { Project, ProjectCreateInput, ProjectUpdateInput } from "@/types";
 
 // Standard author selection for consistency (matches series repository).
 const authorSelect = {

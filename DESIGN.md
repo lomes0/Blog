@@ -16,8 +16,9 @@ For these, the value lives in exactly one place in code and this file points at
 it. **Do not restate a value here that the code owns** — a number written in two
 places is a second source of truth, and the copy in Markdown is the one nothing
 validates. Where a table below still lists concrete values (the palette hexes,
-the type scale) it is a *rendering* of the theme for humans reading in one
-place; if it disagrees with the theme, the theme is right and this file is a bug.
+the type scale) it is a _rendering_ of the theme for humans reading in one
+place; if it disagrees with the theme, the theme is right and this file is a
+bug.
 
 **Checklist sections — no machine enforces these; a reviewer does.** §1 library
 choice · §8 naming · §9 required states · §10 accessibility · §17.5/.6 process
@@ -28,14 +29,14 @@ for it — they are just enforced by reading.
 
 ### Where a value lives
 
-| Home                            | What belongs there                                     |
-| ------------------------------- | ------------------------------------------------------ |
-| `ThemeProvider.tsx`             | Palette (incl. `accent`), typography scale             |
-| `src/theme/components.ts`       | Anything MUI can apply as a component default          |
-| `src/theme/tokens.ts`           | Motion, shadows, focus rings, touch target             |
-| `src/theme/icons.ts`            | lucide `size` values (`ICON_SIZE`)                     |
-| `src/app/globals.css`           | Global CSS: scrollbars, print, selection, reduced-motion |
-| `sx` at the call site           | Only what is genuinely local to that one component     |
+| Home                      | What belongs there                                       |
+| ------------------------- | -------------------------------------------------------- |
+| `ThemeProvider.tsx`       | Palette (incl. `accent`), typography scale               |
+| `src/theme/components.ts` | Anything MUI can apply as a component default            |
+| `src/theme/tokens.ts`     | Motion, shadows, focus rings, touch target               |
+| `src/theme/icons.ts`      | lucide `size` values (`ICON_SIZE`)                       |
+| `src/app/globals.css`     | Global CSS: scrollbars, print, selection, reduced-motion |
+| `sx` at the call site     | Only what is genuinely local to that one component       |
 
 Section numbers are cited from code comments, so they are stable: a retired
 section's number is not reused. (There is no §15 — the cheat sheet that held
@@ -68,11 +69,11 @@ Icon sizes: `src/theme/icons.ts` (`ICON_SIZE`) — lucide bypasses the theme, so
 that map is the only way to reach the scale in §16.
 
 > **Where a rule belongs.** If the same style literal appears in more than one
-> file, it is a default that was never set — move it to `src/theme/components.ts`
-> rather than pasting it a third time. A `!important` in an `sx` is the same
-> signal: it means a component's own rule outranks the call site, which the
-> theme can restate at equal specificity instead. Reserve `sx` for what is
-> genuinely local to one component.
+> file, it is a default that was never set — move it to
+> `src/theme/components.ts` rather than pasting it a third time. A `!important`
+> in an `sx` is the same signal: it means a component's own rule outranks the
+> call site, which the theme can restate at equal specificity instead. Reserve
+> `sx` for what is genuinely local to one component.
 
 MUI CSS variables are enabled with
 `cssVariables: { colorSchemeSelector: "class" }` — dark mode is applied via an
@@ -126,8 +127,8 @@ exposed as MUI CSS variables (`var(--mui-palette-*)`).
 > of `paper`, added by augmenting MUI's `TypeBackground` in `ThemeProvider.tsx`.
 > In light mode `panel` **equals** `rail`: the two rails bookend the app, the
 > sidebar is the lightest chrome, and `background.default` white is reserved for
-> the editing canvas. Dark mode still steps `rail` → `sidebar` → `panel`.
-> Use them for the left nav (`AppDrawer`/`SideBar`), the right Copilot panel /
+> the editing canvas. Dark mode still steps `rail` → `sidebar` → `panel`. Use
+> them for the left nav (`AppDrawer`/`SideBar`), the right Copilot panel /
 > `RightRail`, and prompt/search fields — **not** raw hexes. There is **no**
 > `chip` or `accent-weak` token: selected rows, count pills, and hover fills use
 > MUI's built-in `action.selected` / `action.hover`. | Text primary |
@@ -138,23 +139,24 @@ exposed as MUI CSS variables (`var(--mui-palette-*)`).
 ### Explorer Accent (`palette.accent`)
 
 A slightly more violet take on `primary`, used by the activity rail, file tree
-and count pills. Reach it like any palette entry — `sx={{ color: "accent.main" }}`
-— which resolves to a scheme-aware `var(--mui-palette-accent-*)`.
+and count pills. Reach it like any palette entry —
+`sx={{ color: "accent.main" }}` — which resolves to a scheme-aware
+`var(--mui-palette-accent-*)`.
 
-| Key              | Light                                | Dark                       |
-| ---------------- | ------------------------------------ | -------------------------- |
-| `main`           | `#6d5cf5`                            | `primary.main`             |
-| `hover`          | `#5d4ce8`                            | `primary.dark`             |
-| `tint`           | `#eeecfe`                            | `action.selected`          |
-| `activeText`     | `#4338ca`                            | `primary.main`             |
-| `pillBg`         | `#f4f4f6`                            | `action.hover`             |
-| `pillText`       | `#a1a1aa`                            | `text.disabled`            |
-| `pillActiveBg`   | `#dfdcff`                            | `action.selected`          |
-| `avatarGradient` | `linear-gradient(135deg,#8b7bff,#6d5cf5)` | primary light → main  |
+| Key              | Light                                     | Dark                 |
+| ---------------- | ----------------------------------------- | -------------------- |
+| `main`           | `#6d5cf5`                                 | `primary.main`       |
+| `hover`          | `#5d4ce8`                                 | `primary.dark`       |
+| `tint`           | `#eeecfe`                                 | `action.selected`    |
+| `activeText`     | `#4338ca`                                 | `primary.main`       |
+| `pillBg`         | `#f4f4f6`                                 | `action.hover`       |
+| `pillText`       | `#a1a1aa`                                 | `text.disabled`      |
+| `pillActiveBg`   | `#dfdcff`                                 | `action.selected`    |
+| `avatarGradient` | `linear-gradient(135deg,#8b7bff,#6d5cf5)` | primary light → main |
 
 The dark column is written as references, not fresh hexes: the accent's dark
-form *is* the lifted brand indigo plus the neutral action tints. `avatarGradient`
-is a gradient rather than a colour, so it is read as
+form _is_ the lifted brand indigo plus the neutral action tints.
+`avatarGradient` is a gradient rather than a colour, so it is read as
 `var(--mui-palette-accent-avatarGradient)` rather than through an `sx` palette
 path.
 
@@ -329,7 +331,7 @@ genuinely required, take it from **`SHADOW` in `src/theme/tokens.ts`**:
 `createCardTheme` re-exposes `shadow.default`/`hover`/`focus` from these tokens
 so existing card call sites keep working; new code should reach for the tokens.
 
-> These used to be defined *in* `createCardTheme`, i.e. a global rule living
+> These used to be defined _in_ `createCardTheme`, i.e. a global rule living
 > inside one component's folder. `shadow.default` and `shadow.focus` had zero
 > readers as a result, while unrelated surfaces hand-rolled their own — two
 > competing "default shadow" definitions and six spellings of one transition.
@@ -438,14 +440,14 @@ Target: **WCAG AA minimum**.
 
 Durations and easing come from **`MOTION` in `src/theme/tokens.ts`**:
 
-| Token           | Value                          | Use                                    |
-| --------------- | ------------------------------ | -------------------------------------- |
-| `MOTION.fast`   | 150ms (MUI `duration.shortest`) | hover, opacity, colour                 |
-| `MOTION.base`   | 200ms (MUI `duration.shorter`)  | the ceiling for a micro-interaction    |
-| `MOTION.layout` | 340ms                          | container moves (sidebar width slide)  |
-| `MOTION.easing` | `cubic-bezier(0.4, 0, 0.2, 1)` (MUI `easing.easeInOut`) | everything |
+| Token           | Value                                                   | Use                                   |
+| --------------- | ------------------------------------------------------- | ------------------------------------- |
+| `MOTION.fast`   | 150ms (MUI `duration.shortest`)                         | hover, opacity, colour                |
+| `MOTION.base`   | 200ms (MUI `duration.shorter`)                          | the ceiling for a micro-interaction   |
+| `MOTION.layout` | 340ms                                                   | container moves (sidebar width slide) |
+| `MOTION.easing` | `cubic-bezier(0.4, 0, 0.2, 1)` (MUI `easing.easeInOut`) | everything                            |
 
-These *are* MUI's own values, named. Prefer `theme.transitions.create()`; reach
+These _are_ MUI's own values, named. Prefer `theme.transitions.create()`; reach
 for `MOTION` when writing a raw CSS transition string. Do not invent a duration
 — the codebase had converged on 150/200ms by hand, just spelled six ways.
 
@@ -577,39 +579,39 @@ has been removed; `@mui/material` stays.
 ## 17. IDE Surface Spec (chrome conformance map)
 
 The app shell is an IDE: **activity rail · sidebar · editor top bar · tabs ·
-command palette · status bar · Copilot panel**. These surfaces must read as **one
-system**. This section pins the exact token for every chrome element so the
-whole-app consistency sweep has a single, unambiguous target. Sections 2–6 define
-the tokens; this section says **which token goes where**. Conform code to this —
-no ad-hoc `fontSize`, `rgba()`, or radius literals in chrome.
+command palette · status bar · Copilot panel**. These surfaces must read as
+**one system**. This section pins the exact token for every chrome element so
+the whole-app consistency sweep has a single, unambiguous target. Sections 2–6
+define the tokens; this section says **which token goes where**. Conform code to
+this — no ad-hoc `fontSize`, `rgba()`, or radius literals in chrome.
 
 ### 17.1 Region surfaces & borders
 
-| Region                        | Background token                   | Border                          |
-| ----------------------------- | ---------------------------------- | ------------------------------- |
-| Activity rail (far left, 54px)| `background.rail` (recessed/darker)| `1px solid divider` (right)     |
-| Sidebar / Explorer / Search   | `background.sidebar`               | `1px solid divider` (right)     |
-| Editor top bar                | `background.default`               | `1px solid divider` (bottom)    |
-| Editor body / canvas          | `background.default`               | none                            |
-| Command palette overlay       | `background.paper`                 | `1px solid divider`, elev. shadow |
-| Copilot / AI panel + RightRail| `background.panel` (= `rail` in light) | `1px solid divider` (left)  |
-| Status bar (bottom, 26px)     | `background.sidebar`               | `1px solid divider` (top)       |
-| Inputs (search, palette field)| `background.input`                 | `1px solid divider`             |
+| Region                         | Background token                       | Border                            |
+| ------------------------------ | -------------------------------------- | --------------------------------- |
+| Activity rail (far left, 54px) | `background.rail` (recessed/darker)    | `1px solid divider` (right)       |
+| Sidebar / Explorer / Search    | `background.sidebar`                   | `1px solid divider` (right)       |
+| Editor top bar                 | `background.default`                   | `1px solid divider` (bottom)      |
+| Editor body / canvas           | `background.default`                   | none                              |
+| Command palette overlay        | `background.paper`                     | `1px solid divider`, elev. shadow |
+| Copilot / AI panel + RightRail | `background.panel` (= `rail` in light) | `1px solid divider` (left)        |
+| Status bar (bottom, 26px)      | `background.sidebar`                   | `1px solid divider` (top)         |
+| Inputs (search, palette field) | `background.input`                     | `1px solid divider`               |
 
 ### 17.2 Typography per element (no hard-coded sizes)
 
 Reach the scale via `<Typography variant>` or `sx={{ typography: "…" }}` — never
 a literal `fontSize`.
 
-| Element                                   | Variant     | Notes                              |
-| ----------------------------------------- | ----------- | ---------------------------------- |
-| Section headers ("EXPLORER", "AI ASSISTANT")| `overline`| uppercase, tracked, `text.disabled`|
-| File/tree rows, tab labels, search results| `dense`     | mono stack for `*.md` names        |
-| Breadcrumb, top-bar controls              | `dense`     |                                    |
-| Status-bar items, counts, meta chips, dirty-dot labels | `micro` | 11px                     |
-| Palette command labels                    | `body2`     |                                    |
-| Palette shortcut hints / `esc` chip       | `micro`     | mono                               |
-| Post title (front-matter / doc)           | `h4`/`h5`   | per existing scale                 |
+| Element                                                | Variant    | Notes                               |
+| ------------------------------------------------------ | ---------- | ----------------------------------- |
+| Section headers ("EXPLORER", "AI ASSISTANT")           | `overline` | uppercase, tracked, `text.disabled` |
+| File/tree rows, tab labels, search results             | `dense`    | mono stack for `*.md` names         |
+| Breadcrumb, top-bar controls                           | `dense`    |                                     |
+| Status-bar items, counts, meta chips, dirty-dot labels | `micro`    | 11px                                |
+| Palette command labels                                 | `body2`    |                                     |
+| Palette shortcut hints / `esc` chip                    | `micro`    | mono                                |
+| Post title (front-matter / doc)                        | `h4`/`h5`  | per existing scale                  |
 
 Colours for these surfaces come from `palette.accent` (§2), not from a
 sidebar-local constant.
@@ -633,15 +635,15 @@ palette shortcuts, front-matter. Never for prose or generic labels.
 No hand-mixed `rgba()`. Every rail button, tree row, tab, menu item, and list
 result uses the same states:
 
-| State          | Token / pattern                                              |
-| -------------- | ------------------------------------------------------------ |
-| Rest           | `transparent`                                                |
-| Hover          | `action.hover`                                               |
-| Selected / active row | `action.selected`                                     |
-| Active accent bar (rail item, active tab, active file) | 2px `primary.main` inset bar via `::before` |
-| Scheme-aware accent tint (when a literal is unavoidable) | `rgba(var(--mui-palette-primary-mainChannel) / <a>)` |
-| Explorer accent surfaces | `accent.main` / `accent.tint` / `accent.activeText` (§2) |
-| Focus ring     | `FOCUS_RING.chrome` for dense chrome; `FOCUS_RING.card(theme)` for cards (§10) |
+| State                                                    | Token / pattern                                                                |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Rest                                                     | `transparent`                                                                  |
+| Hover                                                    | `action.hover`                                                                 |
+| Selected / active row                                    | `action.selected`                                                              |
+| Active accent bar (rail item, active tab, active file)   | 2px `primary.main` inset bar via `::before`                                    |
+| Scheme-aware accent tint (when a literal is unavoidable) | `rgba(var(--mui-palette-primary-mainChannel) / <a>)`                           |
+| Explorer accent surfaces                                 | `accent.main` / `accent.tint` / `accent.activeText` (§2)                       |
+| Focus ring                                               | `FOCUS_RING.chrome` for dense chrome; `FOCUS_RING.card(theme)` for cards (§10) |
 
 > **Open question — `FOCUS_RING.chrome` is not `inset`.** This table used to
 > specify an inset ring for dense chrome, but the only implementation of it
@@ -654,15 +656,15 @@ MUI slot (a tree row is a plain `Box`/`ListItemButton`), so they lived only as
 prose and five files answered them independently. They are now `sx` fragments in
 `src/theme/treeRow.ts`; compose those rather than writing the literal:
 
-| State                          | Fragment                                    |
-| ------------------------------ | ------------------------------------------- |
-| Reorder insertion line         | `dropIndicatorSx(position)` (needs `position: relative`) |
-| Drop-into-container fill       | `dropIntoSx()` — add your own outline/rule on top |
-| Multi-selection pill           | `multiSelectSx(alsoWhen?)`                  |
-| Keyboard focus                 | `chromeFocusRingSx(keepFillWhen?)`          |
-| Hover-revealed row controls    | `rowHoverRevealSx`                          |
-| Row radius (§17.4)             | `TREE_ROW_RADIUS`                           |
-| Row state transition (§11)     | `ROW_TRANSITION`                            |
+| State                       | Fragment                                                 |
+| --------------------------- | -------------------------------------------------------- |
+| Reorder insertion line      | `dropIndicatorSx(position)` (needs `position: relative`) |
+| Drop-into-container fill    | `dropIntoSx()` — add your own outline/rule on top        |
+| Multi-selection pill        | `multiSelectSx(alsoWhen?)`                               |
+| Keyboard focus              | `chromeFocusRingSx(keepFillWhen?)`                       |
+| Hover-revealed row controls | `rowHoverRevealSx`                                       |
+| Row radius (§17.4)          | `TREE_ROW_RADIUS`                                        |
+| Row state transition (§11)  | `ROW_TRANSITION`                                         |
 
 > **Second open question — the tree-row focus ring is an `outline`, not
 > `FOCUS_RING.chrome`.** The table above names that token, but every shipped
@@ -671,23 +673,23 @@ prose and five files answered them independently. They are now `sx` fragments in
 > kind of accessibility-visible call as the `inset` question.
 
 **Panel drag edges are codified too.** The sidebar, the right rail and the
-Copilot panel are all resizable, and each drew its own 4px gripper — invisible at
-rest, `primary.main` at 50% on hover, full `primary.main` while held. That ladder
-now lives in `components/Layout/ResizeGripper.tsx` (`GRIPPER_W` = 4); pass
-`isResizing` + a `label` and override only placement via `sx`. The drag mechanics
-behind it are `hooks/useResizablePanel.ts`.
+Copilot panel are all resizable, and each drew its own 4px gripper — invisible
+at rest, `primary.main` at 50% on hover, full `primary.main` while held. That
+ladder now lives in `components/Layout/ResizeGripper.tsx` (`GRIPPER_W` = 4);
+pass `isResizing` + a `label` and override only placement via `sx`. The drag
+mechanics behind it are `hooks/useResizablePanel.ts`.
 
 ### 17.4 Radius & density
 
-| Element                        | Radius                | Height / metric        |
-| ------------------------------ | --------------------- | ---------------------- |
-| Rail icon button               | none (full-bleed)     | 44px tall, full width; tint spans full width, 2px accent bar on left edge |
-| Tree / list / result row       | `1.5` (6px)           | ~28–32px               |
-| Tab                            | `1.5` (6px) top only  | matches top-bar height |
-| Top-bar search pill, inputs    | `1.5` (6px)           | ~32px                  |
-| Palette overlay                | `3` (12px)            | —                      |
-| Floating menus (block/align)   | `2.5` (10px)          | —                      |
-| Buttons / cards / panels       | `2` (8px)             | —                      |
+| Element                      | Radius               | Height / metric                                                           |
+| ---------------------------- | -------------------- | ------------------------------------------------------------------------- |
+| Rail icon button             | none (full-bleed)    | 44px tall, full width; tint spans full width, 2px accent bar on left edge |
+| Tree / list / result row     | `1.5` (6px)          | ~28–32px                                                                  |
+| Tab                          | `1.5` (6px) top only | matches top-bar height                                                    |
+| Top-bar search pill, inputs  | `1.5` (6px)          | ~32px                                                                     |
+| Palette overlay              | `3` (12px)           | —                                                                         |
+| Floating menus (block/align) | `2.5` (10px)         | —                                                                         |
+| Buttons / cards / panels     | `2` (8px)            | —                                                                         |
 
 Menus are a solved case: `MuiMenu`/`MuiMenuItem` in `src/theme/components.ts`
 set the surface (translucent paper + `blur(8px)` + elevation 2) and the row
@@ -703,21 +705,22 @@ that number at zero rather than letting it drift back.
 
 ### 17.5 Sweep rule
 
-When touching any chrome file: replace every hard-coded `fontSize` with a variant
-(17.2), every `rgba()` state fill with a token (17.3), and every off-scale
-`borderRadius` with the canonical value (17.4 / §5). If a needed size is missing,
-**add a theme variant** — do not inline a literal (§3.1).
+When touching any chrome file: replace every hard-coded `fontSize` with a
+variant (17.2), every `rgba()` state fill with a token (17.3), and every
+off-scale `borderRadius` with the canonical value (17.4 / §5). If a needed size
+is missing, **add a theme variant** — do not inline a literal (§3.1).
 
 ### 17.6 Scope — chrome only
 
 §17 governs the **IDE chrome** (17.1's regions). Application **content** is not
 chrome and keeps its own typographic intent — do **not** force-conform it. The
 following are deliberate, not drift: sticky-note styling (`NotesCanvas`, colored
-paper + fixed dark ink), home **preview miniatures** (`*PreviewCard`, `KanbanBoard`
-intentional 10–14px), raw `<pre>` **code viewers** (§3.3 exception, syntax-theme
-colors), **avatar** initial sizing, bespoke card/list labels that pair a base
-variant with custom weight/tracking (e.g. `-0.01em`/`0.08em`), and idiomatic
-`boxShadow: … rgba(0,0,0,x)` (§6). Tune these per-component on their own merits.
+paper + fixed dark ink), home **preview miniatures** (`*PreviewCard`,
+`KanbanBoard` intentional 10–14px), raw `<pre>` **code viewers** (§3.3
+exception, syntax-theme colors), **avatar** initial sizing, bespoke card/list
+labels that pair a base variant with custom weight/tracking (e.g.
+`-0.01em`/`0.08em`), and idiomatic `boxShadow: … rgba(0,0,0,x)` (§6). Tune these
+per-component on their own merits.
 
 ---
 

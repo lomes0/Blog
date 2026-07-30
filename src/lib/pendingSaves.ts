@@ -1,4 +1,4 @@
-import { pendingSaveDB, type PendingSave } from "@/indexeddb";
+import { type PendingSave, pendingSaveDB } from "@/indexeddb";
 import type { SerializedEditorState } from "lexical";
 
 /**

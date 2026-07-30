@@ -69,9 +69,7 @@ async function maxRank(
   container: Container,
   excludeDocIds: string[] = [],
 ): Promise<string | null> {
-  const notSelf = excludeDocIds.length
-    ? { id: { notIn: excludeDocIds } }
-    : {};
+  const notSelf = excludeDocIds.length ? { id: { notIn: excludeDocIds } } : {};
 
   if (container.seriesId) {
     const top = await db.document.findFirst({

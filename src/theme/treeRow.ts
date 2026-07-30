@@ -110,7 +110,8 @@ export const multiSelectSx = (alsoWhen?: string) => {
   const hover = alsoWhen ? `&:hover, ${alsoWhen}:hover` : "&:hover";
   return {
     [rest]: {
-      bgcolor: (t: Theme) => alpha(t.palette.primary.main, ROW_TINT.multiSelect),
+      bgcolor: (t: Theme) =>
+        alpha(t.palette.primary.main, ROW_TINT.multiSelect),
     },
     [hover]: {
       bgcolor: (t: Theme) =>

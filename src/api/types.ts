@@ -101,4 +101,3 @@ export interface CreateNoteInput {
   color: string;
   zIndex: number;
 }
-

@@ -2,7 +2,7 @@
 import React from "react";
 import { Box, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
-import { User, Post } from "@/types";
+import { Post, User } from "@/types";
 import { formatFullDate as formatDate } from "@/utils/dateFormat";
 
 /**

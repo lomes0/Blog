@@ -124,7 +124,9 @@ const CopilotMessage: React.FC<CopilotMessageProps> = (
     >
       {/* Agent activity trace (read tools) */}
       {!isUser && readParts.length > 0 && (
-        <Box sx={{ mb: textContent || pendingParts.length ? 0.75 : 0, ml: 0.5 }}>
+        <Box
+          sx={{ mb: textContent || pendingParts.length ? 0.75 : 0, ml: 0.5 }}
+        >
           {readParts.map((p) => (
             <Box
               key={p.toolCallId}
@@ -248,7 +250,9 @@ const CopilotMessage: React.FC<CopilotMessageProps> = (
                 aria-label="Copy message"
                 sx={{ color: "text.secondary", p: 0.5 }}
               >
-                {copied ? <Check size={ICON_SIZE.inline} /> : <Copy size={ICON_SIZE.inline} />}
+                {copied
+                  ? <Check size={ICON_SIZE.inline} />
+                  : <Copy size={ICON_SIZE.inline} />}
               </IconButton>
             </Tooltip>
           )}

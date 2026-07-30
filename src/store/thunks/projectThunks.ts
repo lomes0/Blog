@@ -26,7 +26,10 @@ export const createProject = createApiThunk(
 export const updateProject = createApiThunk(
   "app/updateProject",
   async (
-    { id, data }: { id: string; data: { title?: string; description?: string } },
+    { id, data }: {
+      id: string;
+      data: { title?: string; description?: string };
+    },
   ) => await apiClient.projects.update(id, data),
 );
 

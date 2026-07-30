@@ -120,43 +120,47 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
                 rename.start(seriesId);
               }
             }}
-            sx={[{
-              minHeight: 26,
-              justifyContent: sidebarOpen ? "initial" : "center",
-              px: 2,
-              py: 0.25,
-              borderRadius: SB_ITEM_RADIUS,
-              position: "relative",
-              ...(isSeriesActive && { bgcolor: "action.selected" }),
-              "&:hover": { bgcolor: "action.hover" },
-              // Drop-a-post-into-series: the shared fill, plus a pill outline
-              // that marks the header as a container (ProjectGroup uses a rule
-              // instead — see its band treatment).
-              ...(isDropInto && {
-                ...dropIntoSx(),
-                outline: "1.5px solid",
-                outlineColor: "primary.main",
-                outlineOffset: "-1px",
-              }),
-              // Reorder line when a series is dragged over this header.
-              ...(headerDropIndicator && dropIndicatorSx(headerDropIndicator)),
-              // The series row has no "selected" state of its own, so nothing
-              // here needs its fill preserved under focus.
-              ...chromeFocusRingSx(),
-              ...(isMultiSelected && multiSelectSx()),
-            },
-            // Active series row takes the accent tint. Skipped when
-            // multi-selected so the primary-tint pill wins.
-            isSeriesActive && !isMultiSelected
-              ? { "&, &:hover": { backgroundColor: "accent.tint" } }
-              : {},
+            sx={[
+              {
+                minHeight: 26,
+                justifyContent: sidebarOpen ? "initial" : "center",
+                px: 2,
+                py: 0.25,
+                borderRadius: SB_ITEM_RADIUS,
+                position: "relative",
+                ...(isSeriesActive && { bgcolor: "action.selected" }),
+                "&:hover": { bgcolor: "action.hover" },
+                // Drop-a-post-into-series: the shared fill, plus a pill outline
+                // that marks the header as a container (ProjectGroup uses a rule
+                // instead — see its band treatment).
+                ...(isDropInto && {
+                  ...dropIntoSx(),
+                  outline: "1.5px solid",
+                  outlineColor: "primary.main",
+                  outlineOffset: "-1px",
+                }),
+                // Reorder line when a series is dragged over this header.
+                ...(headerDropIndicator &&
+                  dropIndicatorSx(headerDropIndicator)),
+                // The series row has no "selected" state of its own, so nothing
+                // here needs its fill preserved under focus.
+                ...chromeFocusRingSx(),
+                ...(isMultiSelected && multiSelectSx()),
+              },
+              // Active series row takes the accent tint. Skipped when
+              // multi-selected so the primary-tint pill wins.
+              isSeriesActive && !isMultiSelected
+                ? { "&, &:hover": { backgroundColor: "accent.tint" } }
+                : {},
             ]}
           >
-            {/* The open/closed folder glyph is the sole expand indicator now —
+            {
+              /* The open/closed folder glyph is the sole expand indicator now —
                 the redundant tree chevron was dropped, so the folder both marks
                 the row as a container and shows its state (VS Code folder rows).
                 It leads the row where the chevron used to, so the guide-line and
-                child-indent math below are unchanged. */}
+                child-indent math below are unchanged. */
+            }
             <ListItemIcon
               sx={{
                 minWidth: 0,

@@ -6,18 +6,17 @@ against the source in a separate worktree. Sorted by severity, with a fix for
 each.
 
 The route-wrapper and `requireDocument` design is genuinely good: making an
-unauthorized fetch *unrepresentable* rather than merely discouraged is the right
+unauthorized fetch _unrepresentable_ rather than merely discouraged is the right
 instinct, and the ESLint rules that keep the scheme total are the reason it will
 stay true. Verification confirmed it holds — **every `DELETE` and batch write
 under `src/app/api` is authorized, and no route is missing a check.**
 
-The gap is the one the first draft named, and it is wider than it estimated:
-the same rigor was applied to **authorization** (who may act on a row) but not
-to **visibility** (which rows are public at all), and the **server-rendered
-pages under `src/app` were brought under neither**. Four separate instances of
-that one gap are now confirmed — §1, §2, §4, §6 — and three of them are more
-serious than anything in the original draft. It is the top structural finding,
-not §9.
+The gap is the one the first draft named, and it is wider than it estimated: the
+same rigor was applied to **authorization** (who may act on a row) but not to
+**visibility** (which rows are public at all), and the **server-rendered pages
+under `src/app` were brought under neither**. Four separate instances of that
+one gap are now confirmed — §1, §2, §4, §6 — and three of them are more serious
+than anything in the original draft. It is the top structural finding, not §9.
 
 ### What the revision changed
 
@@ -26,13 +25,13 @@ also found seven issues the first draft did not have, including the two most
 serious ones and one endpoint that is broken in production right now. Every
 claim below carries a status:
 
-| | |
-| --- | --- |
+|               |                                                                      |
+| ------------- | -------------------------------------------------------------------- |
 | **CONFIRMED** | verified against source, references corrected where they had drifted |
-| **UPGRADED** | real, and worse than first stated |
-| **CORRECTED** | real, but the stated impact or mechanism was wrong |
-| **REFUTED** | not a defect |
-| **NEW** | not in the first draft |
+| **UPGRADED**  | real, and worse than first stated                                    |
+| **CORRECTED** | real, but the stated impact or mechanism was wrong                   |
+| **REFUTED**   | not a defect                                                         |
+| **NEW**       | not in the first draft                                               |
 
 The original numbering is noted per finding so prior discussion still maps.
 
@@ -65,14 +64,16 @@ if (!session) {
 Same omission at `:42` (`generateMetadata`) and `:140` (signed-in non-author
 branch), and in `src/app/embed/[id]/page.tsx:40`, `:83`,
 `src/app/pdf/[id]/route.ts:16`, `src/app/docx/[id]/route.ts:11`. All four routes
-are reachable anonymously; the page fetches through `findDocument`, which applies
-no visibility filter, and bypasses `src/lib/access.ts` entirely.
+are reachable anonymously; the page fetches through `findDocument`, which
+applies no visibility filter, and bypasses `src/lib/access.ts` entirely.
 
 **An anonymous visitor who knows an id receives the fully rendered body of any
 unpublished draft.** The API path for the same document is correctly refused —
-`GET /api/revisions/[id]` routes through `requireRevision → requireDocument →
-permitsDocument` (`access.ts:55`), which checks both flags. This is §4's
-API/page asymmetry on four more routes with a much worse payload.
+`GET /api/revisions/[id]` routes through
+`requireRevision → requireDocument →
+permitsDocument` (`access.ts:55`), which
+checks both flags. This is §4's API/page asymmetry on four more routes with a
+much worse payload.
 
 ### How to address
 
@@ -133,12 +134,13 @@ hardening**. The entire read-authorization model in §11 is decorative — the
 filename is the only secret, and filenames leak through revision JSON, forks and
 export bundles.
 
-It also defeats the API's deliberate hardening. `attachments/[filename]/route.ts:110-137`
-maps unknown extensions (including `html` and `svg`) to `application/octet-stream`
-and forces `Content-Disposition: attachment`, so a malicious `.html` fetched
-*through the API* is inert. Fetched at the static path it is served inline as
-`text/html` from the app's origin — **same-origin stored XSS** — and the upload
-route explicitly permits that extension (`/^\w{1,16}$/`, no MIME allowlist).
+It also defeats the API's deliberate hardening.
+`attachments/[filename]/route.ts:110-137` maps unknown extensions (including
+`html` and `svg`) to `application/octet-stream` and forces
+`Content-Disposition: attachment`, so a malicious `.html` fetched _through the
+API_ is inert. Fetched at the static path it is served inline as `text/html`
+from the app's origin — **same-origin stored XSS** — and the upload route
+explicitly permits that extension (`/^\w{1,16}$/`, no MIME allowlist).
 
 Two honest caveats: Next's production server enumerates `public/` at boot, so a
 file uploaded after boot may not be statically served until a restart (immediate
@@ -200,7 +202,7 @@ anywhere in the project** (no `dompurify`, `sanitize-html`, `xss`).
   `innerHTML`; `importJSON` (`:58-90`) validates nothing. Only `<style>` is
   stripped afterward, so `<svg onload>` and `<img onerror>` survive.
 - **`SketchNode/index.tsx:104-111`** is the same code without even Graph's
-  `data:image/svg+xml` guard, so *any* `__src` containing a comma is decoded.
+  `data:image/svg+xml` guard, so _any_ `__src` containing a comma is decoded.
 
 Secondary: `IFrameNode:137-160` emits an unfiltered `iframe src` with no
 `sandbox` (the YouTube regex is a rewrite convenience, not a filter);
@@ -231,8 +233,8 @@ default. Injected script cannot read the token — but it runs same-origin and c
 call every `userRoute` endpoint with the victim's cookie attached.
 
 The Zod migration did not change this: `editorStateSchema`
-(`documents/schemas.ts:40-43`) is `.passthrough()` at both levels, asserting only
-that `root` is an object. It renamed the check without tightening it.
+(`documents/schemas.ts:40-43`) is `.passthrough()` at both levels, asserting
+only that `root` is an object. It renamed the check without tightening it.
 
 ### How to address
 
@@ -245,7 +247,7 @@ structural:
 ```ts
 for (const task of this.__tasks.filter((t) => t.stage === stageIndex)) {
   const li = document.createElement("li");
-  li.textContent = task.name;   // escaping is now structural
+  li.textContent = task.name; // escaping is now structural
   ul.append(li);
 }
 ```
@@ -285,8 +287,8 @@ none — `bodySizeLimit: "2mb"` at `next.config.ts:163` is Server-Actions-only),
 ```
 
 `CSP: sandbox` is the highest-leverage line — it makes delivery path 2
-non-exploitable even with the serializer unfixed, by rendering the response in an
-opaque origin. It does nothing for path 1.
+non-exploitable even with the serializer unfixed, by rendering the response in
+an opaque origin. It does nothing for path 1.
 
 **Do not require a session on `/api/embed`.** `src/app/api/utils.ts:16,80` calls
 it over loopback with no cookies, backing `/`, `/view/[id]`, `/user/[id]`,
@@ -296,8 +298,8 @@ The better move is for those two callers to invoke `generateServerHtml` directly
 on its own terms.
 
 **Also worth its own ticket:** `generateServerHtml:36-51` assigns
-`global.window` / `global.document` / `global.Element` for the duration of a call
-and restores them in `finally`. Node serves requests concurrently, so two
+`global.window` / `global.document` / `global.Element` for the duration of a
+call and restores them in `finally`. Node serves requests concurrently, so two
 overlapping requests clobber each other's globals and the first to finish tears
 them out from under the second. Unauthenticated-triggerable, and it can corrupt
 unrelated concurrent SSR.
@@ -333,11 +335,11 @@ entitled to it" — and this call site defeats it by passing a wider object than
 the interface describes.
 
 The asymmetry the draft named is real: `GET /api/users/[id]` was deliberately
-hardened for this case (`route.ts:44`, with a comment recording that walking user
-ids used to harvest every address). The API was fixed; the page reading the same
-repository function was not.
+hardened for this case (`route.ts:44`, with a comment recording that walking
+user ids used to harvest every address). The API was fixed; the page reading the
+same repository function was not.
 
-Not amplified: the leaked `head` revision ids are *not* redeemable, because
+Not amplified: the leaked `head` revision ids are _not_ redeemable, because
 `GET /api/revisions/[id]` checks both flags. So §4 leaks metadata, not bodies.
 Bodies leak through §1.
 
@@ -372,7 +374,13 @@ availability):
 const findPublicUser = async (handle: string) =>
   prisma.user.findUnique({
     where: validate(handle) ? { id: handle } : { handle: handle.toLowerCase() },
-    select: { id: true, handle: true, name: true, image: true, createdAt: true },
+    select: {
+      id: true,
+      handle: true,
+      name: true,
+      image: true,
+      createdAt: true,
+    },
   });
 ```
 
@@ -382,7 +390,7 @@ const findPublicUser = async (handle: string) =>
 ⚠️ **Changes public output** twice: private posts disappear from `/user/[id]`
 (the intent), and the profile subtitle changes from email to handle. Note
 `UserCard` is also used at `Dashboard.tsx:19` with `showActions`, where the
-viewer *is* the user and seeing their own email may have been intended — gate on
+viewer _is_ the user and seeing their own email may have been intended — gate on
 `showActions` if so. Product call.
 
 ---
@@ -391,21 +399,21 @@ viewer *is* the user and seeing their own email may have been intended — gate 
 
 **Was §2 — CONFIRMED, one claim corrected.**
 
-`document.ts:21` and `:29` define `authorSelect` and `revisionAuthorSelect`, both
-carrying `email: true` — and they are **byte-for-byte identical**, two names for
-one shape. Because `revisionsSelect` (`:47-56`) is embedded in every list query,
-each public listing carries **two** emails per row: the document author's and the
-head revision author's.
+`document.ts:21` and `:29` define `authorSelect` and `revisionAuthorSelect`,
+both carrying `email: true` — and they are **byte-for-byte identical**, two
+names for one shape. Because `revisionsSelect` (`:47-56`) is embedded in every
+list query, each public listing carries **two** emails per row: the document
+author's and the head revision author's.
 
 Both reach the client. `page.tsx:37` passes them into `<Home>` (`"use client"`),
-and `user/[id]/page.tsx:85` into `<UserDocuments>` (also client). They also reach
-`/view/[id]` and `/embed/[id]` through two inline re-spellings inside
+and `user/[id]/page.tsx:85` into `<UserDocuments>` (also client). They also
+reach `/view/[id]` and `/embed/[id]` through two inline re-spellings inside
 `findDocument` (`:169`, `:183`).
 
 `series.ts` is the contrast the draft invoked, and it holds up: `:18-24`
 `authorSelect` (owner-scoped, with a comment saying the caller is the author) vs
-`:26-33` `publicAuthorSelect` (no email, commented *"a public series listing must
-not become an address-harvesting endpoint"*). `document.ts` contradicts a
+`:26-33` `publicAuthorSelect` (no email, commented _"a public series listing
+must not become an address-harvesting endpoint"_). `document.ts` contradicts a
 convention its sibling states in a comment.
 
 **Corrected:** the sitemap claim was overstated. `sitemap.ts:10` calls
@@ -418,7 +426,12 @@ every author row and head revision, all discarded), not a disclosure.
 Split the shape, and make the emailless version the default:
 
 ```ts
-const publicAuthorSelect = { id: true, handle: true, name: true, image: true } as const;
+const publicAuthorSelect = {
+  id: true,
+  handle: true,
+  name: true,
+  image: true,
+} as const;
 const authorSelectWithEmail = { ...publicAuthorSelect, email: true } as const;
 ```
 
@@ -426,7 +439,8 @@ const authorSelectWithEmail = { ...publicAuthorSelect, email: true } as const;
   list queries; the owner listing loses nothing it displays)
 - `findPublishedDocuments` (`:137`) → `publicAuthorSelect`
 - `findDocumentsByAuthorId` (`:257`) → `authorSelectWithEmail`
-- the two inline blocks in `findDocument` (`:169`, `:183`) → `publicAuthorSelect`
+- the two inline blocks in `findDocument` (`:169`, `:183`) →
+  `publicAuthorSelect`
 
 Then delete the now-dead fallback at
 `DocumentCard/components/PostContent.tsx:103`:
@@ -448,11 +462,11 @@ difference is that `/` and `/user/[id]` stop shipping two addresses per card.
 **NEW.** `src/app/(appLayout)/posts/[[...id]]/page.tsx:50`:
 
 ```ts
-seriesId ? findSeriesById(seriesId) : Promise.resolve(undefined)
+seriesId ? findSeriesById(seriesId) : Promise.resolve(undefined);
 ```
 
-`findSeriesById` is the owner-scoped selector. `src/lib/access.ts:169-172` states
-the rule outright:
+`findSeriesById` is the owner-scoped selector. `src/lib/access.ts:169-172`
+states the rule outright:
 
 > `findSeriesById` returns member posts unfiltered, so it must only ever reach a
 > proven author — anonymous and third-party reads go through
@@ -493,16 +507,17 @@ FROM
 
 The model is `Document` (`prisma/schema.prisma:64`) with **no `@@map`**, and no
 migration ever created a `"Post"` table. So the endpoint
-(`src/app/api/usage/route.ts:11`) fails at runtime with `relation "Post" does not
-exist`. Left over from the `2ccea65e` posts/documents rename, which updated the
-Prisma model but not the raw SQL — invisible to both `tsc` and
-`prisma generate`, which is why it survived.
+(`src/app/api/usage/route.ts:11`) fails at runtime with
+`relation "Post" does not
+exist`. Left over from the `2ccea65e` posts/documents
+rename, which updated the Prisma model but not the raw SQL — invisible to both
+`tsc` and `prisma generate`, which is why it survived.
 
 ### How to address
 
-One word: `"Post"` → `"Document"`. Then consider whether any other
-`$queryRaw` exists in the codebase — raw SQL is outside every type check the
-project relies on, and this is the failure mode.
+One word: `"Post"` → `"Document"`. Then consider whether any other `$queryRaw`
+exists in the codebase — raw SQL is outside every type check the project relies
+on, and this is the failure mode.
 
 ---
 
@@ -518,10 +533,10 @@ foreign key**, so the database cannot enforce that it names a live revision.
 `post.head` untouched, so the in-memory post keeps a head absent from its own
 list.
 
-Delete a post's **only** revision and it is worse than dangling: the document has
-zero revisions, `findDocument` returns `null` (`document.ts:212`), and the post
-then 404s on `PATCH`, `DELETE`, `move`, `background` and `attachments` — **it can
-no longer be deleted through the API.**
+Delete a post's **only** revision and it is worse than dangling: the document
+has zero revisions, `findDocument` returns `null` (`document.ts:212`), and the
+post then 404s on `PATCH`, `DELETE`, `move`, `background` and `attachments` —
+**it can no longer be deleted through the API.**
 
 Reachability: the route is live and authenticated, `apiClient.revisions.delete`
 exists (`src/api/client.ts:306-312`) and the thunk is wired
@@ -553,8 +568,8 @@ const deleteRevision = async (id: string) =>
 
 Mirror it in the reducer so the in-memory post stays consistent. Add the `id`
 tiebreaker to the two existing `orderBy: { createdAt: "desc" }` clauses
-(`document.ts:174`, `:387`) so "newest revision" is a total order —
-`createdAt` is client-supplied (`revisions/route.ts:45`) and not unique.
+(`document.ts:174`, `:387`) so "newest revision" is a total order — `createdAt`
+is client-supplied (`revisions/route.ts:45`) and not unique.
 
 An FK on `Document.head` is the real fix and is already scoped as Phase B of
 `docs/plans/schema-organization.md`.
@@ -571,11 +586,11 @@ The first draft listed six sites and got one wrong. The real picture:
 
 **Both flags checked (correct) — 3 sites**
 
-| Location | Form |
-| --- | --- |
-| `src/lib/access.ts:55` | `!!doc.published && !doc.private` — the canonical TS predicate |
-| `src/repositories/document.ts:130-131` | inline literals in `findPublishedDocuments` |
-| `src/repositories/series.ts:87-91` | `publiclyVisiblePosts` — the only reusable constant in the repo |
+| Location                               | Form                                                            |
+| -------------------------------------- | --------------------------------------------------------------- |
+| `src/lib/access.ts:55`                 | `!!doc.published && !doc.private` — the canonical TS predicate  |
+| `src/repositories/document.ts:130-131` | inline literals in `findPublishedDocuments`                     |
+| `src/repositories/series.ts:87-91`     | `publiclyVisiblePosts` — the only reusable constant in the repo |
 
 **`published` only — private posts pass — 4 sites**
 
@@ -592,11 +607,12 @@ Seven of the eight are anonymous — this is §1.
 **Two corrections to the original table.** `series.ts:52` was a misread:
 `published: true, private: true` there are **`select` keys**, not a where-clause
 — they request the columns and filter nothing. And the two Kanban helpers are
-**REFUTED as instances of this bug**: they split the *owner's own* documents into
-Drafts and Published columns, where `published`-alone is the correct predicate.
-Converting them would misfile every private post as a draft on the author's own
-board. What they actually are is a duplicated helper (`getDocumentPublished` is
-defined identically in both files) — a code-quality item, not a visibility one.
+**REFUTED as instances of this bug**: they split the _owner's own_ documents
+into Drafts and Published columns, where `published`-alone is the correct
+predicate. Converting them would misfile every private post as a draft on the
+author's own board. What they actually are is a duplicated helper
+(`getDocumentPublished` is defined identically in both files) — a code-quality
+item, not a visibility one.
 
 ### How to address
 
@@ -605,9 +621,9 @@ a single Prisma fragment — **cannot reach the largest sub-family.** Eight of t
 fifteen sites are TypeScript boolean tests on an already-fetched row, and a
 `where` object cannot serve those. That is precisely where the worst bug lives.
 
-New file `src/lib/visibility.ts` — in `src/lib` because both `access.ts` and page
-components under `src/app` must import it, and importing a repository from a page
-to get a constant would invert the layering. **Three exports, not one:**
+New file `src/lib/visibility.ts` — in `src/lib` because both `access.ts` and
+page components under `src/app` must import it, and importing a repository from
+a page to get a constant would invert the layering. **Three exports, not one:**
 
 ```ts
 export const PUBLICLY_VISIBLE = {
@@ -637,11 +653,12 @@ compile error rather than an ignored extra key.
    Adding the filter hides every draft from its author's own sidebar. **This is
    the one a find-and-replace breaks**: it sits eight lines from the query that
    does need it, with a near-identical shape.
-2. `findDocument` (`document.ts:150-188`) — visibility here is `requireDocument`'s
-   job, applied after the fetch and parameterised by `own`/`write`/`read`.
-   Filtering in the query would stop an author opening their own draft and turn
-   every 403 into a 404.
-3. `findEditorDocument` (`document.ts:369-416`) — by definition operates on drafts.
+2. `findDocument` (`document.ts:150-188`) — visibility here is
+   `requireDocument`'s job, applied after the fetch and parameterised by
+   `own`/`write`/`read`. Filtering in the query would stop an author opening
+   their own draft and turn every 403 into a 404.
+3. `findEditorDocument` (`document.ts:369-416`) — by definition operates on
+   drafts.
 4. `series.ts:219-221` / `:263-265` — documented owner views.
 
 The rule worth writing down: **`PUBLICLY_VISIBLE` answers "may a stranger see
@@ -670,33 +687,34 @@ escape hatch**, so it writes on every editor open of a broken document. It is
 called from `GET /api/documents/[id]`. Any fix must cover both or the
 inconsistency just moves.
 
-**The blast radius is 12 of 17 `requireDocument` call sites, not two.** The draft
-said "callers know and route around it"; most do not. Two consequences follow:
+**The blast radius is 12 of 17 `requireDocument` call sites, not two.** The
+draft said "callers know and route around it"; most do not. Two consequences
+follow:
 
 - **An anonymous request can cause a database write.**
   `api/thumbnails/[id]/route.ts:13-15` is `optionalUserRoute` with `read` and no
-  `"all"`, as are anonymous `GET /pdf/<id>` and `/docx/<id>`. "Read endpoints are
-  read-only" is not currently true, and it defeats any future read-replica
+  `"all"`, as are anonymous `GET /pdf/<id>` and `/docx/<id>`. "Read endpoints
+  are read-only" is not currently true, and it defeats any future read-replica
   routing.
 - **Three call sites use a revision-filtering finder as an existence check** —
   `validateHandle` (`documents/utils.ts:23`), the duplicate-id guard
-  (`documents/route.ts:47`) and the `baseId` lookup (`:141`). They get a write on
-  a document the caller may not own, plus a **wrong answer** for any document
-  with zero revisions: `findDocument` returns `null`, `validateHandle` reports the
-  handle as free, and the create then trips the unique constraint and 500s.
+  (`documents/route.ts:47`) and the `baseId` lookup (`:141`). They get a write
+  on a document the caller may not own, plus a **wrong answer** for any document
+  with zero revisions: `findDocument` returns `null`, `validateHandle` reports
+  the handle as free, and the create then trips the unique constraint and 500s.
 
-**"Racy" — CORRECTED.** Repair-versus-repair is benign: both readers pick a valid
-revision of the correct document, last write wins, nothing corrupts. The hazard
-is repair-versus-*save*. The `UPDATE` is unconditional with no compare-and-swap,
-so a repair racing a concurrent save can roll `head` **backwards** to an older
-revision — the user's just-saved content silently stops being the head. Keep the
-line, restate the mechanism.
+**"Racy" — CORRECTED.** Repair-versus-repair is benign: both readers pick a
+valid revision of the correct document, last write wins, nothing corrupts. The
+hazard is repair-versus-_save_. The `UPDATE` is unconditional with no
+compare-and-swap, so a repair racing a concurrent save can roll `head`
+**backwards** to an older revision — the user's just-saved content silently
+stops being the head. Keep the line, restate the mechanism.
 
 **"Unusable in a read-only transaction" — true for the wrong reason.**
 `findDocument` closes over the module-level `prisma` client and accepts no `tx`
-handle, so it cannot join *any* interactive transaction. The `UPDATE` is not what
-excludes it; the missing parameter is. Compare `repositories/ordering.ts`, which
-does thread `tx`.
+handle, so it cannot join _any_ interactive transaction. The `UPDATE` is not
+what excludes it; the missing parameter is. Compare `repositories/ordering.ts`,
+which does thread `tx`.
 
 ### How to address
 
@@ -704,7 +722,7 @@ Order matters — §8 first, because it is what creates the broken state the rep
 exists for.
 
 **Do not delete the recovery, only the write.** Both repair branches sit
-immediately before a `return null`, so removing the *fallback* turns a document
+immediately before a `return null`, so removing the _fallback_ turns a document
 with a broken head into a 404 for its own author on every route lacking
 `revisions: "all"` — including `DELETE`, making the post undeletable. Keep the
 fallback, drop the `prisma.document.update`, in **both** finders.
@@ -723,7 +741,7 @@ export const repairDocumentHead = async (
   });
   if (!latest) return null;
   await prisma.document.updateMany({
-    where: { id, head: expectedHead },   // guard, not lookup
+    where: { id, head: expectedHead }, // guard, not lookup
     data: { head: latest.id },
   });
   return latest.id;
@@ -739,7 +757,7 @@ write or return a false negative. This alone fixes the `validateHandle` 500.
 
 Two remaining producers of broken state, both worth closing:
 `POST /api/import:198-208` trusts the bundle's `head` even when it names a
-revision the bundle does not contain (fall back on *dangling*, not merely
+revision the bundle does not contain (fall back on _dangling_, not merely
 absent); and `head` is optional on create, so `createDocument` (`:314`) triggers
 its own repair on the create path — derive the head from the revision it creates
 instead.
@@ -747,8 +765,8 @@ instead.
 Note one defect this mechanism can never see: `useSave.ts:129-142` issues the
 revision create and the `head` update as two non-atomic requests, so a partial
 failure leaves a **stale-but-valid** head that resolves fine and is never
-repaired. The clean fix is for `POST /api/revisions` to advance `head` in the same
-transaction, which also lets `useSave` drop its second request.
+repaired. The clean fix is for `POST /api/revisions` to advance `head` in the
+same transaction, which also lets `useSave` drop its second request.
 
 When the writes are gone, **delete the `revisions: "all"` comments** at
 `access.ts:118-121` and `attachments/access.ts:79-93` or they will be read as
@@ -758,7 +776,7 @@ still true. Leave the argument — it is also a real perf choice.
 
 ## 11. Attachment ownership is inferred from the filename
 
-**Was §9 — CONFIRMED and UPGRADED.** The draft called this latent: "any *future*
+**Was §9 — CONFIRMED and UPGRADED.** The draft called this latent: "any _future_
 upload path that names a file differently becomes unauthorizable". That future
 already arrived.
 
@@ -770,11 +788,11 @@ filename on disk is the only record that a file exists.
 
 The legitimate upload path is sound: `documents/[id]/attachments/route.ts`
 authorizes the route param as `own` and appends a 128-bit CSPRNG suffix, so a
-user cannot bind a file to a document they do not own *through that route*.
+user cannot bind a file to a document they do not own _through that route_.
 
 **But `POST /api/import:236-258` lets them.** It writes files under names taken
 from inside the uploaded zip. `resolveWithin` (`safePath.ts:44-51`) blocks
-traversal but deliberately does not constrain the *shape* of a name, so any
+traversal but deliberately does not constrain the _shape_ of a name, so any
 signed-in user can plant `attach_<victimDocumentId>_<anything>.<ext>` in the
 shared directory. The `existsSync` guard makes this planting rather than
 overwriting — but planting is enough, because the filename namespace **is** the
@@ -782,26 +800,27 @@ authorization namespace.
 
 Compounding it, import creates documents with `id: docExport.id` straight from
 the zip — **an importer chooses primary keys.** Combined with hard deletes and
-the fact that `grep -rn "unlink" src` returns nothing (no code in this repository
-ever deletes a file), that gives a resurrection chain: after a document is
-deleted its files remain and its uuid is free, so an attacker can import a bundle
-asserting that id and re-authorize the orphaned files to themselves. They need
-the random filenames, which are not secret — they are preserved in any fork,
-in any export bundle, and listed verbatim in `referencedAssets`.
+the fact that `grep -rn "unlink" src` returns nothing (no code in this
+repository ever deletes a file), that gives a resurrection chain: after a
+document is deleted its files remain and its uuid is free, so an attacker can
+import a bundle asserting that id and re-authorize the orphaned files to
+themselves. They need the random filenames, which are not secret — they are
+preserved in any fork, in any export bundle, and listed verbatim in
+`referencedAssets`.
 
 Fork and duplicate never rewrite references: `rewriteAttachmentUrls`
-(`lexicalAssetRewriter.ts:88-120`) exists but is only called by the export/import
-bundler. So a copy's Lexical nodes still point at the original's files, and
-`GET /api/export` (`export/route.ts:116-131`) reads attachments by filename with
-no per-file ownership check — it will bundle another user's bytes into the
-forker's zip.
+(`lexicalAssetRewriter.ts:88-120`) exists but is only called by the
+export/import bundler. So a copy's Lexical nodes still point at the original's
+files, and `GET /api/export` (`export/route.ts:116-131`) reads attachments by
+filename with no per-file ownership check — it will bundle another user's bytes
+into the forker's zip.
 
 ### How to address
 
 **Tier 1 — cheap.** §2 (move the directory) is the single highest-value change
 and closes the outright bypass. Then stop the importer forging names: re-mint
-them against the document the import actually created, and rewrite the references
-with the helper that already exists —
+them against the document the import actually created, and rewrite the
+references with the helper that already exists —
 
 ```diff
 -  const destPath = resolveWithin(destDir, filename);
@@ -873,22 +892,23 @@ is `.strict()` so `role` in a body is a 400; there is no seed, no script, and no
 migration that sets a value; `createUser` is exported with zero call sites.
 **`role` can only become `"admin"` through a manual `psql` or Prisma Studio
 edit.** So the one path that exists is a human typing a string into an
-unconstrained `TEXT` column, and a mistyped `'Admin'` produces an account that is
-silently not an admin, with no feedback anywhere — `role` is rendered in no UI
-and returned by no endpoint. It fails closed, so it is an operability trap rather
-than a hole. The inverse (a typo that *grants* access) is impossible.
+unconstrained `TEXT` column, and a mistyped `'Admin'` produces an account that
+is silently not an admin, with no feedback anywhere — `role` is rendered in no
+UI and returned by no endpoint. It fails closed, so it is an operability trap
+rather than a hole. The inverse (a typo that _grants_ access) is impossible.
 
 **What the finding brushed past matters more.** `DELETE /api/users/[id]` is a
 real hard delete with a wide cascade, and `Revision.author` is
 `onDelete: Cascade` while revisions **can** be authored cross-user — `collab`
 grants `write` (`access.ts:50`), and `revisions/route.ts:43` stamps
 `authorId: user.id`. So **deleting user B destroys revisions out of user A's
-document history**, and since `Document.head` has no FK it can leave A's document
-pointing at a deleted row, which then trips §10's repair. Uploaded files are
-never cleaned up (see §11). There is no self-delete guard — and since `role` has
-no application write path, deleting the last admin makes the capability
-unrecoverable without database access. Meanwhile `User.disabled`, the reversible
-tool the app already enforces in three places, is exposed by no endpoint at all.
+document history**, and since `Document.head` has no FK it can leave A's
+document pointing at a deleted row, which then trips §10's repair. Uploaded
+files are never cleaned up (see §11). There is no self-delete guard — and since
+`role` has no application write path, deleting the last admin makes the
+capability unrecoverable without database access. Meanwhile `User.disabled`, the
+reversible tool the app already enforces in three places, is exposed by no
+endpoint at all.
 
 Minor: `revalidate/route.ts:14` throws 403 under the title `"Unauthorized"`; the
 users route correctly says `"Forbidden"`. A helper fixes that by construction,
@@ -908,9 +928,9 @@ inconsistency, and moving it across is a separate mechanical cleanup.)
 Signature notes: take `SessionUser` non-null (callers reach it only from
 `userRoute`); require the `subtitle` as every other `require*` does; return
 `void`, not a boolean, so it cannot be written as a forgettable `if`. Unlike
-`requireDocument` there is no row to hand back — the capability is on the caller,
-not a target — so this one is legitimately an assertion; say so in the doc
-comment, so the asymmetry reads as deliberate.
+`requireDocument` there is no row to hand back — the capability is on the
+caller, not a target — so this one is legitimately an assertion; say so in the
+doc comment, so the asymmetry reads as deliberate.
 
 Then the enum. The repo **already committed to this name** in
 `docs/plans/schema-organization.md:120,133` — use `UserRole { USER ADMIN }`
@@ -933,10 +953,11 @@ ALTER TABLE "users"
 ```
 
 `DROP DEFAULT` before the type change is required — Postgres cannot cast the
-existing `'user'::text` default in place. **Run `SELECT DISTINCT role FROM
-"users";` first**: `lower(btrim(...))` rescues `'Admin'`, but `'administrator'`
-silently becomes `USER`, and the whole premise of this finding is that someone
-may have typed exactly that.
+existing `'user'::text` default in place. **Run
+`SELECT DISTINCT role FROM
+"users";` first**: `lower(btrim(...))` rescues
+`'Admin'`, but `'administrator'` silently becomes `USER`, and the whole premise
+of this finding is that someone may have typed exactly that.
 
 **Ship the migration one deploy ahead of the code.** Both orderings fail closed
 here, so the worst case at any instant is "an admin gets a 403 for a few
@@ -946,7 +967,7 @@ and would not be once an admin UI exists.
 
 Follow-ups worth doing at the same time: add a self-delete guard; expose
 `disabled` as the reversible action operators actually want; decide what user
-deletion should do with revisions authored on *other people's* documents rather
+deletion should do with revisions authored on _other people's_ documents rather
 than cascading them away; delete the dead `createUser`.
 
 ---
@@ -959,23 +980,23 @@ than cascading them away; delete the dead `createUser`.
 `await req.json()`. Both are `userRoute`, and neither was touched by the
 validation refactor.
 
-**The stated impact was wrong in the safe direction.** `model` is *already*
+**The stated impact was wrong in the safe direction.** `model` is _already_
 allowlisted — both routes call `getModelById` against a fixed 7-element
-`AI_MODELS` and 404 on a miss, then pass the *looked-up* value, never the raw
+`AI_MODELS` and 404 on a miss, then pass the _looked-up_ value, never the raw
 string. `provider` is a closed 4-arm switch whose every key and base URL comes
 from `process.env`. A caller cannot name an arbitrary model, reach an arbitrary
-endpoint, or steer a credential. (This also closes the Azure path-injection angle
-— the model is interpolated into a URL path, but only ever one of seven
+endpoint, or steer a credential. (This also closes the Azure path-injection
+angle — the model is interpolated into a URL path, but only ever one of seven
 constants.)
 
 **The real exposure is different, and Zod alone does not fix it:**
 
-1. `tone` is interpolated **raw into the system prompt** (`prompts.ts:28-30`), so
-   with `option: "tone"` a caller supplies an arbitrary, unbounded system
+1. `tone` is interpolated **raw into the system prompt** (`prompts.ts:28-30`),
+   so with `option: "tone"` a caller supplies an arbitrary, unbounded system
    message. `documentTitle` and `currentPath` are the same shape in the copilot
    agent prompt.
-2. **No rate limit exists anywhere in the codebase.** The only `throttle` is a UI
-   helper. `bodySizeLimit: "2mb"` is Server-Actions-only.
+2. **No rate limit exists anywhere in the codebase.** The only `throttle` is a
+   UI helper. `bodySizeLimit: "2mb"` is Server-Actions-only.
 3. `copilot:111` sets `stopWhen: stepCountIs(40)` — up to 40 model round-trips
    per HTTP request.
 4. Registration is open, so "authenticated" is one OAuth sign-in away from
@@ -1005,10 +1026,11 @@ behind an unconditional 400**; `import` is properly guarded).
 
 ### How to address
 
-A shared `src/app/api/ai/schemas.ts` with `model` as a `z.enum` over `AI_MODELS`,
-`tone` as an enum (**this is the load-bearing part** — it is a system-prompt
-segment, not user content), caps on every free-text field, and `provider`
-**dropped rather than validated**, since the model already names its provider:
+A shared `src/app/api/ai/schemas.ts` with `model` as a `z.enum` over
+`AI_MODELS`, `tone` as an enum (**this is the load-bearing part** — it is a
+system-prompt segment, not user content), caps on every free-text field, and
+`provider` **dropped rather than validated**, since the model already names its
+provider:
 
 ```ts
 const modelId = z.enum(AI_MODELS.map((m) => m.id) as [string, ...string[]]);
@@ -1016,10 +1038,24 @@ const promptText = z.string().max(20_000);
 
 export const completionSchema = z.object({
   model: modelId,
-  option: z.enum(["improve","continue","shorter","longer","zap","summarize","tone"]),
+  option: z.enum([
+    "improve",
+    "continue",
+    "shorter",
+    "longer",
+    "zap",
+    "summarize",
+    "tone",
+  ]),
   prompt: promptText,
   command: promptText.optional(),
-  tone: z.enum(["professional","casual","straightforward","confident","friendly"]).optional(),
+  tone: z.enum([
+    "professional",
+    "casual",
+    "straightforward",
+    "confident",
+    "friendly",
+  ]).optional(),
 }).strict();
 ```
 
@@ -1059,15 +1095,17 @@ and a hand-rolled email regex, both unreachable behind
 **REFUTED — "a write path with no read".** `findDocument` really does hardcode
 `coauthors: []`, but `series.ts:64-67` reads the real rows, and the **public**
 series queries surface them at `:120-123`. Any post in a series has a live
-coauthor read path, unauthenticated for a published series. The draft's basis for
-"drop the block entirely" is false on the facts.
+coauthor read path, unauthenticated for a published series. The draft's basis
+for "drop the block entirely" is false on the facts.
 
-**REFUTED — "poisons the OAuth sign-in path".** `allowDangerousEmailAccountLinking:
-true` is set on both providers (`auth.ts:42`, `:52`). In NextAuth v4 that flag
-governs exactly this case: the new `Account` is **linked** to the existing `User`
-by verified email. No `OAuthAccountNotLinked`, and no duplicate is possible since
-`email` is unique. The lockout is *latent* — it would materialise only if that
-flag were removed, which is a plausible future hardening pass.
+**REFUTED — "poisons the OAuth sign-in path".**
+`allowDangerousEmailAccountLinking:
+true` is set on both providers
+(`auth.ts:42`, `:52`). In NextAuth v4 that flag governs exactly this case: the
+new `Account` is **linked** to the existing `User` by verified email. No
+`OAuthAccountNotLinked`, and no duplicate is possible since `email` is unique.
+The lockout is _latent_ — it would materialise only if that flag were removed,
+which is a plausible future hardening pass.
 
 **No privilege escalation either.** `access.ts:41-47` consults coauthors for
 `write`/`read`, but `requireDocument` fetches through `findDocument`, so
@@ -1086,7 +1124,7 @@ the user table" is worth removing on principle.
 **Harden, do not delete.** The feature is fully modelled, typed, gated
 (`capabilities.ts:44`), surfaced in four UI components, and carries a deliberate
 `access.ts` branch. The defect is one nested `connectOrCreate`, separable in
-about six lines. Coauthoring is a link between *existing* accounts:
+about six lines. Coauthoring is a link between _existing_ accounts:
 
 ```diff
      input.coauthors = {
@@ -1102,16 +1140,17 @@ about six lines. Coauthoring is a link between *existing* accounts:
 
 with an existence pre-check above it that 400s on an unknown address —
 **deliberately without naming which one**, or the response becomes an oracle for
-"does this email have an account here?". Bound the array (`.max(20)`), delete the
-dead regex and cast, and factor the two now-identical blocks into one helper.
-Two copies of an authorization-adjacent write is the shape that produced §9.
+"does this email have an account here?". Bound the array (`.max(20)`), delete
+the dead regex and cast, and factor the two now-identical blocks into one
+helper. Two copies of an authorization-adjacent write is the shape that produced
+§9.
 
 **Then, separately, close the read.** Since the feature stays, `findDocument`'s
-hardcoded `coauthors: []` is the actual bug from a user's point of view — you set
-coauthors and they vanish. Adding the include that `series.ts` already uses makes
-the `access.ts` branch live. **Ordering matters: `connect`-only first, the read
-second, never the reverse** — otherwise minting a `User` row and granting it
-write access become the same request.
+hardcoded `coauthors: []` is the actual bug from a user's point of view — you
+set coauthors and they vanish. Adding the include that `series.ts` already uses
+makes the `access.ts` branch live. **Ordering matters: `connect`-only first, the
+read second, never the reverse** — otherwise minting a `User` row and granting
+it write access become the same request.
 
 ---
 
@@ -1121,19 +1160,20 @@ write access become the same request.
 
 **Was §10 — the duplication is real, the proposed fix is NOT SAFE.**
 
-23 `.rejected` cases in `src/store/app.ts:333-534` (not ~25), of which 21 are the
-plain shape. `builder.addMatcher(isRejected, …)` would break three ways:
+23 `.rejected` cases in `src/store/app.ts:333-534` (not ~25), of which 21 are
+the plain shape. `builder.addMatcher(isRejected, …)` would break three ways:
 
 1. **Two cases do extra work.** `loadPosts.rejected:333` resets
-   `ui.postsLoading` — dropping it strands the posts list in its loading skeleton
-   forever. `alert.rejected:430` shifts `ui.alerts` — dropping it leaves the alert
-   dialog permanently open. (No optimistic rollback exists anywhere; all three
-   move thunks carry an explicit "no rollback by design" comment.)
+   `ui.postsLoading` — dropping it strands the posts list in its loading
+   skeleton forever. `alert.rejected:430` shifts `ui.alerts` — dropping it
+   leaves the alert dialog permanently open. (No optimistic rollback exists
+   anywhere; all three move thunks carry an explicit "no rollback by design"
+   comment.)
 2. **It over-matches 12 thunks.** Four are 404-is-normal (`getPost`,
    `getPostById`, `getPostChildren`, `getPostThumbnail`) — and
    `TabbedDocumentEditor.tsx:87-88` already normalises those to `undefined`/`[]`
-   by hand, so a matcher would toast on a path whose author went out of their way
-   to silence it. Four more (export/import) are already rendered inline by
+   by hand, so a matcher would toast on a path whose author went out of their
+   way to silence it. Four more (export/import) are already rendered inline by
    `useExportImportActions`, so a matcher double-reports.
 3. **The decisive one.** `isRejected` also matches payload-less rejections,
    pushing `{ message: undefined }`. `Announcer.tsx:38` early-returns `null` on
@@ -1164,11 +1204,12 @@ purpose.
 
 One honest weakness, worth noting against this codebase's own philosophy: an
 allow-list means **a newly added thunk silently gets no alert**. The fail-loud
-inversion is a `SILENT_REJECTIONS` deny-set. That variant newly announces `load`,
-`loadSession`, `getStorageUsage` and `mergePostsIntoTabs` — three are
-improvements (`mergePostsIntoTabs` is a destructive user-initiated operation that
-currently fails with no feedback at all), and `loadSession` should probably join
-the silent set. Treat it as a follow-up, not part of the mechanical refactor.
+inversion is a `SILENT_REJECTIONS` deny-set. That variant newly announces
+`load`, `loadSession`, `getStorageUsage` and `mergePostsIntoTabs` — three are
+improvements (`mergePostsIntoTabs` is a destructive user-initiated operation
+that currently fails with no feedback at all), and `loadSession` should probably
+join the silent set. Treat it as a follow-up, not part of the mechanical
+refactor.
 
 ---
 
@@ -1182,23 +1223,23 @@ explanation), ~10 `.catch(() => {})`, and ~16 return-only bodies that are mostly
 intentional predicates.
 
 Two flagged areas came back **clean**: `src/indexeddb/` has no swallowed errors
-at all, and `useSave.ts:152` is a model of correct handling — transient errors to
-a backoff retry, everything else to an error status plus an announcement.
+at all, and `useSave.ts:152` is a model of correct handling — transient errors
+to a backoff retry, everything else to an error status plus an announcement.
 
 **The structural insight: §15 and §16 intersect.** Most swallowed catches sit on
-`.unwrap()` of a thunk that *already has* a `.rejected` case, so the reducer
+`.unwrap()` of a thunk that _already has_ a `.rejected` case, so the reducer
 announced a generic snackbar before `.unwrap()` rethrew into the empty catch —
 noisy, not silent. The genuinely dangerous ones are precisely those on the four
-thunks with **no** `.rejected` case, plus raw fetch and IndexedDB paths that never
-touch Redux. Nothing announces there, so the swallow is total.
+thunks with **no** `.rejected` case, plus raw fetch and IndexedDB paths that
+never touch Redux. Nothing announces there, so the swallow is total.
 
 **Eight real bugs, worst first:**
 
 - **`useAttachmentContent.ts:178`** — save succeeds, IndexedDB cache
   invalidation fails and is discarded, reopening renders the **pre-edit
-  content**. The user sees a confirmed save and then their edit gone, which reads
-  as server-side data loss. It is not: only the local cache is stale. The most
-  expensive kind of bug, because the user re-does work that was never lost.
+  content**. The user sees a confirmed save and then their edit gone, which
+  reads as server-side data loss. It is not: only the local cache is stale. The
+  most expensive kind of bug, because the user re-does work that was never lost.
 - **`TabbedDocumentEditor.tsx:87-88`** — a 5-tab post opens titled `"Document"`
   with every tab but the first missing and no error at all. Verified as display
   only — nothing here writes — but indistinguishable from deletion.
@@ -1214,7 +1255,7 @@ touch Redux. Nothing announces there, so the swallow is total.
   `BacklinksSection.tsx:32` (failed request renders as "no backlinks"),
   `localImporter.ts:63` (import reports zero warnings while dropping series),
   `api/utils.ts:98` (runtime embed outage indistinguishable from the expected
-  build-time one; the *outer* catch logs, this one does not).
+  build-time one; the _outer_ catch logs, this one does not).
 
 `src/api/client.ts:85/121` — the one the draft called legitimate — is indeed
 safe: it still throws, losing only the server's specific message. A
@@ -1230,18 +1271,19 @@ reach a write branch.
 
 `usePostLoader.ts:63` is the one worth doing carefully: `getPost` already
 distinguishes a true miss (`fail("post not found")`) from a transport error, so
-match on the rejected action instead of catching. Comparing on the literal string
-is fragile — better is a `code` discriminator on `Failure`, a small change to
-`createApiThunk` that pays off anywhere else this distinction is needed.
+match on the rejected action instead of catching. Comparing on the literal
+string is fragile — better is a `code` discriminator on `Failure`, a small
+change to `createApiThunk` that pays off anywhere else this distinction is
+needed.
 
 **On preventing recurrence.** Every one of the 13 carries an explanation, so the
-authors were deliberate. The failure mode is that a *correct* judgement ("the
+authors were deliberate. The failure mode is that a _correct_ judgement ("the
 thunk announces this") silently decays when the reducer changes — and §15's
 allow-list makes that decay easier, since dropping a thunk from the list
 falsifies comments 500 lines away. Two cheap guards, in the spirit of the
-`publicRoute` convention: a `no-empty` rule with `allowEmptyCatch: false` forcing
-every catch to log or carry an explicit marker, and a `no-restricted-syntax` ban
-on the bare `.catch(() => {})` shape.
+`publicRoute` convention: a `no-empty` rule with `allowEmptyCatch: false`
+forcing every catch to log or carry an explicit marker, and a
+`no-restricted-syntax` ban on the bare `.catch(() => {})` shape.
 
 ---
 
@@ -1252,17 +1294,18 @@ on the bare `.catch(() => {})` shape.
 `GET /api/documents/[id]/status` is `publicRoute` and returns
 `{ message: "Status endpoint reached", id }`. It reads nothing, so it is not a
 leak — but the codebase stakes its review process on
-`grep -rn "publicRoute" src/app/api` being the complete and *meaningful* list of
+`grep -rn "publicRoute" src/app/api` being the complete and _meaningful_ list of
 unauthenticated surfaces, and a stub in that list costs a reviewer time on every
 audit.
 
 **Definitively dead.** No `/status` URL string anywhere; `src/api/client.ts` has
 no `status` method; nothing in `mcp/` or `scripts/`; no rewrites or route
-manifest; and a history-wide pickaxe (`git log --all -S'/status'`) returns **zero
-commits** — with a control search for `}/move` correctly returning three, so the
-search works. It was born as a placeholder in `ec70ddbf` (2025-09-09) and has
-been *maintained* for ten months and *called* never. The two most recent commits
-touching it added auth declarations and a Zod schema to unreachable code.
+manifest; and a history-wide pickaxe (`git log --all -S'/status'`) returns
+**zero commits** — with a control search for `}/move` correctly returning three,
+so the search works. It was born as a placeholder in `ec70ddbf` (2025-09-09) and
+has been _maintained_ for ten months and _called_ never. The two most recent
+commits touching it added auth declarations and a Zod schema to unreachable
+code.
 
 **Correction:** the file's `PATCH` is dead too. It is a complete, correctly
 authorized, now Zod-validated duplicate of what `PATCH /api/documents/[id]`
@@ -1275,11 +1318,11 @@ original set.
 git rm -r "src/app/api/documents/[id]/status"
 ```
 
-Nothing imports it; no client method, doc or test references it. That removes one
-entry from the `publicRoute` inventory *and* deletes a divergent second write
-path for `status` before someone finds it and wires it up. Afterwards, re-read
-`grep -rn "publicRoute" src/app/api` and confirm the remaining five are all
-genuine — that is the invariant this finding protects, and it is worth two
+Nothing imports it; no client method, doc or test references it. That removes
+one entry from the `publicRoute` inventory _and_ deletes a divergent second
+write path for `status` before someone finds it and wires it up. Afterwards,
+re-read `grep -rn "publicRoute" src/app/api` and confirm the remaining five are
+all genuine — that is the invariant this finding protects, and it is worth two
 minutes to bank.
 
 ---
@@ -1321,7 +1364,7 @@ codebase** — which §13 (LLM proxy), §3 (JSDOM-per-request compute sink) and 
 
 **Then, in rough order of value:**
 
-10. **§13** — the AI schemas *and* the ESLint selector fix; separately, a rate
+10. **§13** — the AI schemas _and_ the ESLint selector fix; separately, a rate
     limit, which is the actual exposure.
 11. **§12** — `requireAdmin` in `access.ts` plus the `UserRole` enum, migration
     one deploy ahead.

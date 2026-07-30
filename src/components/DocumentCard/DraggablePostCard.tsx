@@ -1,6 +1,6 @@
 "use client";
 import React, { useCallback, useContext, useRef, useState } from "react";
-import { User, Post } from "@/types";
+import { Post, User } from "@/types";
 import { Box, SxProps, useMediaQuery } from "@mui/material";
 import { Theme, useTheme } from "@mui/material/styles";
 import PostCard from "./PostCard";

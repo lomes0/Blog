@@ -6,7 +6,13 @@ import {
   Menu,
   MenuItem,
 } from "@mui/material";
-import { ChevronRight, FolderInput, FolderMinus, Layers, Trash2 } from "lucide-react";
+import {
+  ChevronRight,
+  FolderInput,
+  FolderMinus,
+  Layers,
+  Trash2,
+} from "lucide-react";
 import type { Series } from "@/types";
 import { ICON_SIZE } from "@/theme/icons";
 import type { BulkMenuState } from "./hooks/useSidebarBulkActions";

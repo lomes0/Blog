@@ -3,7 +3,7 @@ import Grid from "@mui/material/Grid2";
 import Box from "@mui/material/Box";
 import { useTheme } from "@mui/material/styles";
 import { useMediaQuery } from "@mui/material";
-import { User, Post } from "@/types";
+import { Post, User } from "@/types";
 import DraggableDocumentCard from "../DocumentCard/DraggablePostCard";
 import SkeletonCard from "../DocumentCard/components/LoadingCard";
 import { SxProps, Theme } from "@mui/material/styles";

@@ -41,9 +41,7 @@ function DocumentActionMenu(
 
   return (
     <>
-      {options.includes("edit") && (
-        <EditDocumentDialog post={post} />
-      )}
+      {options.includes("edit") && <EditDocumentDialog post={post} />}
       <IconButton
         id={`${id}-action-button`}
         aria-controls={open ? `${id}-action-menu` : undefined}

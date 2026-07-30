@@ -1,6 +1,9 @@
 import { ApiError, parseBody, userRoute } from "@/lib/api-utils";
 import { requireDocument } from "@/lib/access";
-import { createRevision, findRevisionDocumentId } from "@/repositories/revision";
+import {
+  createRevision,
+  findRevisionDocumentId,
+} from "@/repositories/revision";
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
@@ -15,7 +18,10 @@ const revisionSchema = z.object({
   documentId: z.string().uuid(),
   createdAt: z
     .string()
-    .refine((value) => !Number.isNaN(Date.parse(value)), "must be a valid date"),
+    .refine(
+      (value) => !Number.isNaN(Date.parse(value)),
+      "must be a valid date",
+    ),
   data: editorStateSchema,
 }).strict();
 

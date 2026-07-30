@@ -2,9 +2,10 @@
 
 **Goal:** make the Prisma schema idiomatic and clear, optimizing for
 maintainability under a **single-user** blog. Companion to
-[`ordering-simplification.md`](./ordering-simplification.md) — that plan owns the
-`rank` → order-array change; this plan owns everything else. Where they touch the
-same models, this doc omits the ordering columns to avoid double-specifying.
+[`ordering-simplification.md`](./ordering-simplification.md) — that plan owns
+the `rank` → order-array change; this plan owns everything else. Where they
+touch the same models, this doc omits the ordering columns to avoid
+double-specifying.
 
 Status: proposal. Nothing implemented.
 
@@ -13,7 +14,7 @@ Status: proposal. Nothing implemented.
 - **Content model:** keep the single self-referential `Document` table, but give
   it a clean identity — drop the vestigial `type` discriminator, treat
   `parent`/`children` as the real tab hierarchy, keep `base`/`forks` as a
-  relation. *Not* splitting posts/tabs into separate tables.
+  relation. _Not_ splitting posts/tabs into separate tables.
 - **Mechanical cleanup:** all of — `timestamptz` everywhere · `head` → real FK ·
   `role`/status as enums · delete dead fields · drop redundant indexes.
 - **Naming:** rename for consistency — `Document.name → title`,
@@ -24,21 +25,22 @@ Status: proposal. Nothing implemented.
 
 ## New finding: coauthors are already dead
 
-`repositories/document.ts` returns `coauthors: []` with comments *"Remove
-coauthor logic for simple blog structure"* / *"Remove coauthor complexity"*, and
-`api/revisions/route.ts` says *"Remove coauthor logic."* So `DocumentCoauthors`
+`repositories/document.ts` returns `coauthors: []` with comments _"Remove
+coauthor logic for simple blog structure"_ / _"Remove coauthor complexity"_, and
+`api/revisions/route.ts` says _"Remove coauthor logic."_ So `DocumentCoauthors`
 (and `Document.collab`, `User.coauthored`) is vestigial under single-user.
 
 **Recommendation:** drop `DocumentCoauthors`, `Document.coauthors`,
 `User.coauthored`, and `Document.collab` entirely. This is the single biggest
-simplification available and it matches the single-user assumption. Flagged as an
-open decision in §5 since it wasn't explicitly approved.
+simplification available and it matches the single-user assumption. Flagged as
+an open decision in §5 since it wasn't explicitly approved.
 
 ---
 
 ## Target schema (affected models, before → after)
 
 ### Document
+
 ```prisma
 model Document {
   id          String   @id @default(uuid()) @db.Uuid
@@ -82,11 +84,14 @@ model Document {
   @@index([parentId])
 }
 ```
+
 Removed: `type DocumentType` + the enum, `collab` (see §5 coauthors), `head`
 loose UUID, the `DocumentType` "directories" comment. Ordering columns/indexes
-(`rank`, `tabOrder`, the three `*, rank` indexes) are owned by the ordering plan.
+(`rank`, `tabOrder`, the three `*, rank` indexes) are owned by the ordering
+plan.
 
 ### Revision
+
 ```prisma
 model Revision {
   id         String   @id @default(uuid()) @db.Uuid
@@ -105,6 +110,7 @@ model Revision {
 ```
 
 ### User
+
 ```prisma
 model User {
   id            String    @id @default(uuid()) @db.Uuid
@@ -132,9 +138,11 @@ model User {
 
 enum UserRole { USER ADMIN }
 ```
+
 Removed: `coauthored` (see §5).
 
 ### Series
+
 ```prisma
 model Series {
   id          String   @id @default(uuid()) @db.Uuid
@@ -151,18 +159,22 @@ model Series {
   @@index([title])
 }
 ```
+
 Removed: standalone `@@index([authorId])` (redundant with the composite),
 `rank` + its index (ordering plan).
 
 ### Account
+
 ```prisma
 // Drop OAuth1 leftovers — never referenced in src, unused with Google OAuth2:
 //   oauth_token_secret, oauth_token
 ```
+
 Keep the rest as-is (NextAuth adapter dictates its snake_case field names — do
 **not** rename those).
 
 ### DocumentCoauthors
+
 See §5 — recommended for deletion.
 
 ---
@@ -170,41 +182,46 @@ See §5 — recommended for deletion.
 ## Migration phases (each independently shippable)
 
 **Phase A — safe sweep (no app-logic change).**
+
 - `timestamptz`: alter every bare `DateTime` column to `timestamptz`
   (`Document`, `Revision`, `User`, and `User.emailVerified/lastLogin`).
   `ALTER COLUMN ... TYPE timestamptz USING ...` — assumes stored values are UTC
   (they are; app writes UTC). Verify before running.
 - Drop `Account.oauth_token`, `oauth_token_secret`.
-- Drop redundant indexes: `Series @@index([authorId])`, `Document @@index([authorId])`.
-- `User.role String → UserRole` enum: create enum, backfill
-  `'user'→USER`, `'admin'→ADMIN` (case-insensitive), then alter column.
+- Drop redundant indexes: `Series @@index([authorId])`,
+  `Document @@index([authorId])`.
+- `User.role String → UserRole` enum: create enum, backfill `'user'→USER`,
+  `'admin'→ADMIN` (case-insensitive), then alter column.
 
-**Phase B — `head` → real FK (the one non-trivial step).**
-`head` is currently a client-generated UUID (`head: uuidv4()`) set *before* the
-revision exists, with no referential integrity. To make it a real FK:
+**Phase B — `head` → real FK (the one non-trivial step).** `head` is currently a
+client-generated UUID (`head: uuidv4()`) set _before_ the revision exists, with
+no referential integrity. To make it a real FK:
+
 1. Add nullable `headRevisionId`; backfill `= head` **only where a `Revision`
    with that id exists**, else null.
-2. Ensure the create flow persists the initial `Revision` *before/with* setting
+2. Ensure the create flow persists the initial `Revision` _before/with_ setting
    `headRevisionId` (audit `NewDocument.tsx`, `CreatePostDrawer.tsx`,
    `localImporter.ts` — they mint `head` up front).
 3. Add the FK constraint (`onDelete: SetNull`), drop the old `head` column.
-Risk: any code reading `.head` as a bare string (`types.ts:67`,
-`repositories/series.ts`, export manifest) must switch to `headRevisionId`.
+   Risk: any code reading `.head` as a bare string (`types.ts:67`,
+   `repositories/series.ts`, export manifest) must switch to `headRevisionId`.
 
 **Phase C — renames (scoped, typed pass).**
+
 - `background_image → backgroundImage` with `@map("background_image")` → no data
   migration, ~27 code sites.
 - `Document.name → title`: `.name` appears in ~92 files but is heavily
-  overloaded (User.name, series, DOM, etc.). **Do not blind-replace.** Rename the
-  Prisma field, let TypeScript surface the exact `Document`/post call sites, fix
-  those only. Keep `User.name` (person's name — legitimately different from a
-  post title).
+  overloaded (User.name, series, DOM, etc.). **Do not blind-replace.** Rename
+  the Prisma field, let TypeScript surface the exact `Document`/post call sites,
+  fix those only. Keep `User.name` (person's name — legitimately different from
+  a post title).
 
 **Phase D — node identity + coauthor removal.**
+
 - Drop `DocumentType` enum + `Document.type` + the `[published, type]` index
   (replaced by `[published]`); delete the "directories" comment.
-- If approved: drop `DocumentCoauthors`, `Document.coauthors`, `Document.collab`,
-  `User.coauthored` and their reads (already return `[]`).
+- If approved: drop `DocumentCoauthors`, `Document.coauthors`,
+  `Document.collab`, `User.coauthored` and their reads (already return `[]`).
 
 Order note: Phase A is pure DB/no-logic and lands first. B, C, D each carry code
 changes and can land independently. Coordinate the `rank` removal from the
