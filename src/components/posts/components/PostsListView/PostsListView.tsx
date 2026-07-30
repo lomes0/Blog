@@ -523,11 +523,15 @@ export function PostsListView({
                 onDeleteSeries={handleDeleteSeries}
                 onDeletePost={handleDeletePost}
                 onPostDragStart={dnd.onPostDragStart}
+                onSeriesDragStart={dnd.onSeriesDragStart}
                 onDragEnd={dnd.onDragEnd}
                 onReorderDragOver={dnd.onReorderDragOver}
                 onReorderDrop={dnd.onReorderDrop}
                 onDragLeaveRow={dnd.onDragLeaveRow}
                 isDragOver={dnd.dragOverSeriesId === item.id}
+                dropIndicator={dnd.dropTarget?.id === item.id
+                  ? dnd.dropTarget.position
+                  : null}
                 availableSeries={series.filter((other) => other.id !== item.id)}
                 onMovePost={handleMoveToSeries}
               />

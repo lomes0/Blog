@@ -22,6 +22,7 @@ import { PostRowContextMenu } from "./PostRowContextMenu";
 import type { InlineRenameResult } from "@/hooks/useInlineRename";
 import { ICON_SIZE } from "@/theme/icons";
 import {
+  dropIndicatorSx,
   dropIntoSx,
   ROW_TRANSITION,
   rowHoverRevealSx,
@@ -49,6 +50,8 @@ interface SeriesRowProps {
   onDeletePost: (post: Post) => void;
   /** Drag source for the child post rows. */
   onPostDragStart: (e: React.DragEvent, postId: string) => void;
+  /** Drag source for this header: the series reorders in the root list. */
+  onSeriesDragStart: (e: React.DragEvent, seriesId: string) => void;
   onDragEnd: () => void;
   /**
    * Header drag handlers, from the shared tree engine. It decides from the
@@ -68,6 +71,8 @@ interface SeriesRowProps {
   onDragLeaveRow: () => void;
   /** This header is the drop-into target: posts would land in this series. */
   isDragOver: boolean;
+  /** Insertion line to draw on this header when a series is dragged over it. */
+  dropIndicator: DropPosition | null;
   /** Reposition a post within this series (menu / keyboard). */
   onReorderPost?: (
     siblings: Post[],
@@ -100,16 +105,19 @@ export const SeriesRow = React.memo(function SeriesRow({
   canMoveDown,
   onDeletePost,
   onPostDragStart,
+  onSeriesDragStart,
   onDragEnd,
   onReorderDragOver,
   onReorderDrop,
   onDragLeaveRow,
   isDragOver,
+  dropIndicator,
   onReorderPost,
   availableSeries,
   onMovePost,
 }: SeriesRowProps) {
   const postCount = posts.length;
+  const isRenaming = seriesRename.renamingId === series.id;
 
   const mostRecentDate = posts.reduce<string | undefined>((latest, p) => {
     const d = p.updatedAt || p.createdAt;
@@ -146,6 +154,10 @@ export const SeriesRow = React.memo(function SeriesRow({
     onReorderDrop(series.id, dropPositionFromEvent(e), e);
   }, [series.id, onReorderDrop]);
 
+  const handleDragStart = useCallback((e: React.DragEvent<HTMLElement>) => {
+    onSeriesDragStart(e, series.id);
+  }, [series.id, onSeriesDragStart]);
+
   // Determine which child posts to show
   const inlineAll = postCount <= SERIES_INLINE_LIMIT;
   const visiblePosts = inlineAll ? posts : [...posts]
@@ -166,6 +178,12 @@ export const SeriesRow = React.memo(function SeriesRow({
       <Box
         className="post-list-row series-row"
         onClick={handleRowClick}
+        // The whole header is the grip — the gutter holds only a checkbox, and
+        // the sidebar's series row drags the same way. Suspended while the title
+        // is being renamed so the input keeps its text selection.
+        draggable={!isRenaming}
+        onDragStart={handleDragStart}
+        onDragEnd={onDragEnd}
         onDragOver={handleDragOver}
         onDragLeave={onDragLeaveRow}
         onDrop={handleDrop}
@@ -195,6 +213,10 @@ export const SeriesRow = React.memo(function SeriesRow({
             outlineColor: "primary.main",
             outlineOffset: "-1px",
           }),
+          // Reorder line, when it is a *series* being dragged over this header.
+          // The two states are mutually exclusive — the engine picks one from
+          // the dragged row's kind.
+          ...(dropIndicator && dropIndicatorSx(dropIndicator)),
         }}
       >
         {/* Gutter — 22px, checkbox only, no drag handle for series */}
@@ -239,7 +261,7 @@ export const SeriesRow = React.memo(function SeriesRow({
             gap: 1,
           }}
         >
-          {seriesRename.renamingId === series.id
+          {isRenaming
             ? (
               <InputBase
                 inputRef={seriesRename.inputRef}
