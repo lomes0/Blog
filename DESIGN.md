@@ -19,7 +19,20 @@ library.
 @emotion/styled     ^11.14.1
 ```
 
-Theme provider: `src/components/Layout/ThemeProvider.tsx`\
+Theme provider: `src/components/Layout/ThemeProvider.tsx` — palette, typography
+scale, and wiring.\
+Component defaults: `src/theme/components.ts` — the rules below expressed as MUI
+`defaultProps`/`styleOverrides`, so they apply without a call site opting in.\
+Icon sizes: `src/theme/icons.ts` (`ICON_SIZE`) — lucide bypasses the theme, so
+that map is the only way to reach the scale in §16.
+
+> **Where a rule belongs.** If the same style literal appears in more than one
+> file, it is a default that was never set — move it to `src/theme/components.ts`
+> rather than pasting it a third time. A `!important` in an `sx` is the same
+> signal: it means a component's own rule outranks the call site, which the
+> theme can restate at equal specificity instead. Reserve `sx` for what is
+> genuinely local to one component.
+
 MUI CSS variables are enabled with
 `cssVariables: { colorSchemeSelector: "class" }` — dark mode is applied via an
 `html.dark` class injected by `InitColorSchemeScript`.
@@ -533,6 +546,12 @@ result uses the same states:
 | Palette overlay                | `3` (12px)            | —                      |
 | Floating menus (block/align)   | `2.5` (10px)          | —                      |
 | Buttons / cards / panels       | `2` (8px)             | —                      |
+
+Menus are a solved case: `MuiMenu`/`MuiMenuItem` in `src/theme/components.ts`
+set the surface (translucent paper + `blur(8px)` + elevation 2) and the row
+density (`body2`, 6px/14px padding, icon hugging its label). A menu needs no
+`slotProps.paper` blob, no `menuItemSx`, and no `primaryTypographyProps` — pass
+`divider` for a separator rule and `sx` only for what is unique to that menu.
 
 Icon sizes come from `ICON_SIZE` (§16): rail = `default` (24), dense chrome
 (tree/tabs/toolbar) = `dense` (18), inline-with-text = `inline` (14),
