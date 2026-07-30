@@ -1,4 +1,4 @@
-import { ApiError, requireUser, withApiHandler } from "@/lib/api-utils";
+import { ApiError, userRoute } from "@/lib/api-utils";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { validate } from "uuid";
@@ -14,13 +14,11 @@ export const dynamic = "force-dynamic";
  * account. Backlinks are only meaningful within one author's own writing
  * anyway.
  */
-export const GET = withApiHandler(
-  async (_request, props: { params: Promise<{ id: string }> }) => {
-    const params = await props.params;
+export const GET = userRoute<{ id: string }>(
+  async (_request, { params, user }) => {
     if (!validate(params.id)) {
       throw new ApiError(400, "Bad Request", "Invalid id");
     }
-    const user = await requireUser();
 
     const documentId = params.id;
 

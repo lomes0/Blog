@@ -1,8 +1,10 @@
-import { ApiError, withApiHandler } from "@/lib/api-utils";
+import { ApiError, publicRoute } from "@/lib/api-utils";
 import { generateServerHtml } from "@/editor/utils/generateServerHtml";
 
-export const POST = withApiHandler(
-  async (request: Request) => {
+// Public: this renders editor state supplied in the request body and touches no
+// stored data, so there is nothing here to authorize against.
+export const POST = publicRoute(
+  async (request) => {
     const body = await request.json().catch(() => {
       return null;
     });
@@ -40,5 +42,5 @@ export const POST = withApiHandler(
       },
     });
   },
-  { context: "Embed API error" },
+  { errorLabel: "Embed API error" },
 );

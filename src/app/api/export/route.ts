@@ -13,10 +13,8 @@
  *  (none — always exports the full account)
  */
 
-import { authOptions } from "@/lib/auth";
-import { ApiError, withApiHandler } from "@/lib/api-utils";
+import { userRoute } from "@/lib/api-utils";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
 import { readFile } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
@@ -35,20 +33,7 @@ export const dynamic = "force-dynamic";
 // Root of the Next.js public directory
 const PUBLIC_DIR = path.join(process.cwd(), "public");
 
-export const GET = withApiHandler(async (_request: Request) => {
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    throw new ApiError(
-      401,
-      "Unauthorized",
-      "Please sign in to export your data",
-    );
-  }
-  const { user } = session;
-  if (user.disabled) {
-    throw new ApiError(403, "Account Disabled", "Account is disabled");
-  }
-
+export const GET = userRoute(async (_request, { user }) => {
   // ── 1. Fetch all documents + revisions (with Lexical data) ──────────────
   const rawDocs = await prisma.document.findMany({
     where: { authorId: user.id },
@@ -213,4 +198,4 @@ export const GET = withApiHandler(async (_request: Request) => {
       "Cache-Control": "no-store",
     },
   });
-});
+}, { signInMessage: "Please sign in to export your data" });

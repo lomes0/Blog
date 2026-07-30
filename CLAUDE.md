@@ -160,19 +160,48 @@ Server actions have a 2MB body size limit (configured in `next.config.ts`).
 
 #### Route conventions
 
-Handlers wrap in `withApiHandler` (`src/lib/api-utils.ts`), which turns a thrown
-`ApiError` into a `{ error: { title, subtitle } }` response and anything else
-into a 500. Authorization uses the helpers from the same module rather than
-hand-rolled session checks:
+Every handler is wrapped in one of three route wrappers from
+`src/lib/api-utils.ts`. The wrapper both handles errors — a thrown `ApiError`
+becomes a `{ error: { title, subtitle } }` response, anything else a 500 — and
+resolves the session, so `context.user` is only in scope if the route asked for
+it:
 
-- `requireUser(subtitle?)` — the signed-in, non-disabled user, or throws
-- `optionalUser()` — the user or `null`, for routes with a public branch
-- `requireOwner(ownerId, user, subtitle)` — throws unless `ownerId` is the user
+- `userRoute` — requires a signed-in, non-disabled user; `context.user` is a
+  `SessionUser`. 401 when absent, 403 when the account is disabled.
+- `optionalUserRoute` — `context.user` is `SessionUser | null`, for routes with
+  both a public and a signed-in branch. A disabled account is still rejected.
+- `publicRoute` — no auth. **`grep -rn "publicRoute" src/app/api` is the
+  complete list of unauthenticated surfaces**, which is the reason this is a
+  separate name rather than the absence of a call.
 
-Authenticating is not authorizing. Every route that takes an id must also prove
-the caller owns (or may read) *that* record — including ids in a request body,
-where a batch must be checked as a whole (see `findUnownedDocumentIds`). Several
-routes previously authenticated and then acted on any id passed to them.
+`context.params` is already awaited. Pass the shape as the type argument:
+`userRoute<{ id: string }>(async (request, { params, user }) => …)`. Options go
+last: `{ errorLabel, signInMessage }`.
+
+Two ESLint rules in `eslint.config.mjs` keep this total, because the whole value
+of the scheme is that a missing declaration is impossible rather than merely
+discouraged: `no-restricted-syntax` rejects a handler exported without a
+wrapper, and `no-restricted-imports` bars `getServerSession` and `authOptions`
+from `src/app/api/**`. Exemptions are `api/auth/**` (it *is* the auth handler)
+and `api/og` (edge runtime, reads nothing).
+
+Authenticating is not authorizing. Do not call a `find…` function and then
+compare author ids by hand — use the authorized fetches in `src/lib/access.ts`,
+which return the row only after proving the caller may have it, so forgetting
+the check is a missing variable rather than a missing line:
+
+- `requireDocument(id, user, access)` where access is `own` (acts on the
+  document: rename, delete, attach, move), `write` (edits content: editor, save
+  a revision, status) or `read` (published-and-not-private, thumbnails, forks).
+  The full rule per mode is a single table in that file.
+- `requireRevision(id, user, access)` — follows the parent document. A revision
+  id is not a bearer token.
+- `requireCanvas` / `requireOwnedNote` — a note's owner lives on its canvas.
+- `requireOwnedSeries` / `requireOwnedProject`.
+
+For ids arriving in a request *body*, a batch must be checked as a whole — see
+`findUnownedDocumentIds`, which answers for every id in one query so that
+checking only the first is not an available mistake.
 
 Filenames from outside the app — URL segments, entries inside an uploaded zip —
 go through `resolveWithin`/`safeBasename` (`src/lib/safePath.ts`) before they

@@ -8,16 +8,14 @@ import {
   getSystemPrompt,
   getToneSystemPrompt,
 } from "@/lib/ai";
-import { ApiError, requireUser, withApiHandler } from "@/lib/api-utils";
+import { ApiError, userRoute } from "@/lib/api-utils";
 
-// Node runtime (not edge): `requireUser` reads the session through the Prisma
+// Node runtime (not edge): `userRoute` reads the session through the Prisma
 // adapter, which cannot run on edge. `/api/copilot` is on Node for the same
 // reason. Leaving this open on edge meant anyone who found the route could spend
 // the deployment's model credits without signing in.
 
-export const POST = withApiHandler(async (req: Request) => {
-  await requireUser("Please sign in to use AI assistance");
-
+export const POST = userRoute(async (req) => {
   const body = await req.json();
   const { provider, model: modelId, prompt, option, command, tone } = body;
 
@@ -73,4 +71,7 @@ export const POST = withApiHandler(async (req: Request) => {
   });
 
   return result.toTextStreamResponse();
-}, { context: "AI Completion error" });
+}, {
+  errorLabel: "AI Completion error",
+  signInMessage: "Please sign in to use AI assistance",
+});

@@ -12,10 +12,8 @@
  * Returns JSON: ImportSummary
  */
 
-import { authOptions } from "@/lib/auth";
-import { ApiError, withApiHandler } from "@/lib/api-utils";
+import { ApiError, userRoute } from "@/lib/api-utils";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { mkdir, writeFile } from "fs/promises";
 import { existsSync } from "fs";
@@ -35,16 +33,7 @@ export const dynamic = "force-dynamic";
 
 const PUBLIC_DIR = path.join(process.cwd(), "public");
 
-export const POST = withApiHandler(async (request: Request) => {
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    throw new ApiError(401, "Unauthorized", "Please sign in to import data");
-  }
-  const { user } = session;
-  if (user.disabled) {
-    throw new ApiError(403, "Account Disabled", "Account is disabled");
-  }
-
+export const POST = userRoute(async (request, { user }) => {
   // ── 1. Parse multipart form data ─────────────────────────────────────────
   const formData = await request.formData();
   const file = formData.get("file");
@@ -305,4 +294,4 @@ export const POST = withApiHandler(async (request: Request) => {
   revalidatePath("/series");
 
   return NextResponse.json({ data: summary });
-});
+}, { signInMessage: "Please sign in to import data" });

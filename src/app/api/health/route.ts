@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { publicRoute } from "@/lib/api-utils";
 import { prisma } from "@/lib/prisma";
 
 // Liveness/readiness probe for container orchestrators. Confirms the app is
@@ -7,7 +8,7 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function GET() {
+export const GET = publicRoute(async () => {
   try {
     await prisma.$queryRaw`SELECT 1`;
     return NextResponse.json({ status: "ok", db: "up" });
@@ -15,4 +16,4 @@ export async function GET() {
     console.error("Health check failed:", error);
     return NextResponse.json({ status: "error", db: "down" }, { status: 503 });
   }
-}
+});

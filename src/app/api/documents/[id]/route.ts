@@ -1,13 +1,11 @@
-import { authOptions } from "@/lib/auth";
-import { ApiError, withApiHandler } from "@/lib/api-utils";
+import { ApiError, optionalUserRoute, userRoute } from "@/lib/api-utils";
+import { requireDocument } from "@/lib/access";
 import {
   deleteDocument,
-  findDocument,
   findEditorDocument,
   updateDocument,
 } from "@/repositories/document";
 import { PostUpdateInput } from "@/types";
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { validate } from "uuid";
@@ -16,43 +14,15 @@ import { validateHandle } from "../utils";
 
 export const dynamic = "force-dynamic";
 
-export const GET = withApiHandler(
-  async (request, props: { params: Promise<{ id: string }> }) => {
-    const params = await props.params;
-    const session = await getServerSession(authOptions);
-    const userPost = await findDocument(params.id, "all");
-    if (!userPost) {
-      throw new ApiError(404, "Document not found");
-    }
-    const isCollab = userPost.collab;
-    if (!session && !isCollab) {
-      throw new ApiError(
-        401,
-        "This document is private",
-        "Please sign in to Edit it",
-      );
-    }
-    if (session) {
-      const { user } = session;
-      if (user.disabled) {
-        throw new ApiError(
-          403,
-          "Account Disabled",
-          "Account is disabled for violating terms of service",
-        );
-      }
-      const isAuthor = user.id === userPost.author.id;
-      const isCoauthor = userPost.coauthors.some(
-        (coauthor: { id: string }) => coauthor.id === user.id,
-      );
-      if (!isAuthor && !isCoauthor && !isCollab) {
-        throw new ApiError(
-          403,
-          "This document is private",
-          "You are not authorized to Edit this document",
-        );
-      }
-    }
+export const GET = optionalUserRoute<{ id: string }>(
+  async (request, { params, user }) => {
+    // "write" rather than "read": this returns the editable document, so a
+    // published-but-not-collab post is not readable here just because it is
+    // public — that is what the render routes are for.
+    const userPost = await requireDocument(params.id, user, "write", {
+      revisions: "all",
+      subtitle: "You are not authorized to Edit this document",
+    });
     const editorPost = await findEditorDocument(params.id);
     if (!editorPost) {
       throw new ApiError(404, "Document not found");
@@ -63,39 +33,14 @@ export const GET = withApiHandler(
   },
 );
 
-export const PATCH = withApiHandler(
-  async (request, props: { params: Promise<{ id: string }> }) => {
-    const params = await props.params;
+export const PATCH = userRoute<{ id: string }>(
+  async (request, { params, user }) => {
     if (!validate(params.id)) {
       throw new ApiError(400, "Bad Request", "Invalid id");
     }
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      throw new ApiError(
-        401,
-        "This document is private",
-        "Please sign in to Edit it",
-      );
-    }
-    const { user } = session;
-    if (user.disabled) {
-      throw new ApiError(
-        403,
-        "Account Disabled",
-        "Account is disabled for violating terms of service",
-      );
-    }
-    const userPost = await findDocument(params.id);
-    if (!userPost) {
-      throw new ApiError(404, "Document not found");
-    }
-    if (user.id !== userPost.author.id) {
-      throw new ApiError(
-        403,
-        "This document is private",
-        "You are not authorized to Edit this document",
-      );
-    }
+    const userPost = await requireDocument(params.id, user, "own", {
+      subtitle: "You are not authorized to Edit this document",
+    });
 
     const body: PostUpdateInput = await request.json();
     if (!body) {
@@ -193,41 +138,17 @@ export const PATCH = withApiHandler(
 
     return NextResponse.json({ data });
   },
+  { signInMessage: "Please sign in to Edit it" },
 );
 
-export const DELETE = withApiHandler(
-  async (request, props: { params: Promise<{ id: string }> }) => {
-    const params = await props.params;
+export const DELETE = userRoute<{ id: string }>(
+  async (request, { params, user }) => {
     if (!validate(params.id)) {
       throw new ApiError(400, "Bad Request", "Invalid id");
     }
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      throw new ApiError(
-        401,
-        "This document is private",
-        "Please sign in to delete it",
-      );
-    }
-    const { user } = session;
-    if (user.disabled) {
-      throw new ApiError(
-        403,
-        "Account Disabled",
-        "Account is disabled for violating terms of service",
-      );
-    }
-    const userPost = await findDocument(params.id);
-    if (!userPost) {
-      throw new ApiError(404, "Document not found");
-    }
-    if (user.id !== userPost.author.id) {
-      throw new ApiError(
-        403,
-        "This document is private",
-        "You are not authorized to delete this document",
-      );
-    }
+    const userPost = await requireDocument(params.id, user, "own", {
+      subtitle: "You are not authorized to delete this document",
+    });
 
     // Delete post using transaction for consistency
     await deleteDocument(params.id);
@@ -243,4 +164,5 @@ export const DELETE = withApiHandler(
 
     return NextResponse.json({ data: params.id });
   },
+  { signInMessage: "Please sign in to delete it" },
 );

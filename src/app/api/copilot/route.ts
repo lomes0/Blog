@@ -1,10 +1,8 @@
 import { convertToModelMessages, stepCountIs, streamText, tool } from "ai";
 import type { UIMessage } from "ai";
-import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { type AIProviderType, createProvider, getModelById } from "@/lib/ai";
-import { ApiError, withApiHandler } from "@/lib/api-utils";
-import { authOptions } from "@/lib/auth";
+import { ApiError, userRoute } from "@/lib/api-utils";
 import { COPILOT_AGENT_SYSTEM_PROMPT } from "@/lib/ai/prompts";
 
 // Node runtime (not edge): auth uses the Prisma adapter, which cannot run on edge.
@@ -70,12 +68,7 @@ const agentTools = {
   }),
 };
 
-export const POST = withApiHandler(async (req: Request) => {
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    throw new ApiError(401, "Unauthorized", "Please sign in to use Copilot");
-  }
-
+export const POST = userRoute(async (req) => {
   const body = await req.json();
   const {
     messages,
@@ -119,4 +112,7 @@ export const POST = withApiHandler(async (req: Request) => {
   });
 
   return result.toUIMessageStreamResponse();
-}, { context: "Copilot error" });
+}, {
+  errorLabel: "Copilot error",
+  signInMessage: "Please sign in to use Copilot",
+});

@@ -1,4 +1,4 @@
-import { ApiError, withApiHandler } from "@/lib/api-utils";
+import { ApiError, optionalUserRoute, userRoute } from "@/lib/api-utils";
 import {
   attachmentPath,
   requireAttachmentRead,
@@ -84,15 +84,14 @@ function isEditableFile(filename: string): boolean {
   return configFiles.includes(baseName);
 }
 
-export const GET = withApiHandler(async (
-  request,
-  props: { params: Promise<{ filename: string }> },
+export const GET = optionalUserRoute<{ filename: string }>(async (
+  _request,
+  { params, user },
 ) => {
-  const params = await props.params;
   const { filename } = params;
 
   const filePath = attachmentPath(filename);
-  await requireAttachmentRead(filename);
+  await requireAttachmentRead(filename, user);
 
   // Check if file exists
   if (!existsSync(filePath)) {
@@ -134,17 +133,16 @@ export const GET = withApiHandler(async (
       "Cache-Control": "public, max-age=31536000, immutable",
     },
   });
-}, { context: "Error serving attachment" });
+}, { errorLabel: "Error serving attachment" });
 
-export const PUT = withApiHandler(async (
+export const PUT = userRoute<{ filename: string }>(async (
   request,
-  props: { params: Promise<{ filename: string }> },
+  { params, user },
 ) => {
-  const params = await props.params;
   const { filename } = params;
 
   const filePath = attachmentPath(filename);
-  await requireAttachmentWrite(filename);
+  await requireAttachmentWrite(filename, user);
 
   // Check if file is editable
   if (!isEditableFile(filename)) {
@@ -176,4 +174,7 @@ export const PUT = withApiHandler(async (
     size: newSize,
     filename,
   });
-}, { context: "Error updating attachment" });
+}, {
+  errorLabel: "Error updating attachment",
+  signInMessage: "Please sign in to edit attachments",
+});

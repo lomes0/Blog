@@ -1,5 +1,5 @@
-import { ApiError, optionalUser, requireUser } from "@/lib/api-utils";
-import { findDocument } from "@/repositories/document";
+import { ApiError, type SessionUser } from "@/lib/api-utils";
+import { requireDocument } from "@/lib/access";
 import { resolveWithin } from "@/lib/safePath";
 import path from "path";
 import { validate as isUuid } from "uuid";
@@ -55,11 +55,11 @@ function documentIdOf(filename: string): string | null {
 }
 
 /**
- * The document an attachment belongs to, or a thrown `ApiError` when the name
+ * The document id an attachment belongs to, or a thrown `ApiError` when the name
  * does not encode one. An unaddressable file cannot be authorized, so it is
  * refused rather than served on the assumption that it is harmless.
  */
-async function documentFor(filename: string) {
+function requireDocumentIdOf(filename: string): string {
   const documentId = documentIdOf(filename);
   if (!documentId) {
     throw new ApiError(
@@ -68,43 +68,29 @@ async function documentFor(filename: string) {
       "This attachment is not associated with a document",
     );
   }
-  // "all" so an authorization check never takes findDocument's head-repair
-  // write path.
-  const document = await findDocument(documentId, "all");
-  if (!document) {
-    throw new ApiError(404, "File not found");
-  }
-  return document;
+  return documentId;
 }
 
 /** Allow reading `filename`: author, coauthor, or a publicly readable document. */
-export async function requireAttachmentRead(filename: string): Promise<void> {
-  const document = await documentFor(filename);
-  const user = await optionalUser();
-
-  const isAuthor = !!user && user.id === document.author.id;
-  const isCoauthor = !!user &&
-    document.coauthors.some((coauthor) => coauthor.id === user.id);
-  const isPublic = (document.published && !document.private) || document.collab;
-
-  if (!isAuthor && !isCoauthor && !isPublic) {
-    throw new ApiError(
-      403,
-      "Forbidden",
-      "You are not authorized to view this attachment",
-    );
-  }
+export async function requireAttachmentRead(
+  filename: string,
+  user: SessionUser | null,
+): Promise<void> {
+  // "all" so an authorization check never takes findDocument's head-repair
+  // write path.
+  await requireDocument(requireDocumentIdOf(filename), user, "read", {
+    revisions: "all",
+    subtitle: "You are not authorized to view this attachment",
+  });
 }
 
 /** Allow overwriting `filename`: the document's author only. */
-export async function requireAttachmentWrite(filename: string): Promise<void> {
-  const document = await documentFor(filename);
-  const user = await requireUser("Please sign in to edit attachments");
-  if (user.id !== document.author.id) {
-    throw new ApiError(
-      403,
-      "Forbidden",
-      "You are not authorized to edit this attachment",
-    );
-  }
+export async function requireAttachmentWrite(
+  filename: string,
+  user: SessionUser,
+): Promise<void> {
+  await requireDocument(requireDocumentIdOf(filename), user, "own", {
+    revisions: "all",
+    subtitle: "You are not authorized to edit this attachment",
+  });
 }

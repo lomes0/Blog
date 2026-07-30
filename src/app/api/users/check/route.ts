@@ -1,8 +1,8 @@
-import { ApiError, withApiHandler } from "@/lib/api-utils";
+import { ApiError, publicRoute } from "@/lib/api-utils";
 import { NextResponse } from "next/server";
 import { validateHandle } from "../utils";
 
-export const GET = withApiHandler(async (request: Request) => {
+export const GET = publicRoute(async (request) => {
   const { searchParams } = new URL(request.url);
   const handle = searchParams.get("handle");
   if (!handle) {

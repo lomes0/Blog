@@ -1,7 +1,5 @@
-import { ApiError, withApiHandler } from "@/lib/api-utils";
-import { authOptions } from "@/lib/auth";
+import { ApiError, optionalUserRoute, userRoute } from "@/lib/api-utils";
 import { createProject, findProjectsByAuthorId } from "@/repositories/project";
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { v4 as uuidv4 } from "uuid";
@@ -13,46 +11,16 @@ interface ProjectCreateInput {
   description?: string;
 }
 
-export const GET = withApiHandler(async () => {
-  const session = await getServerSession(authOptions);
-  // Projects are an authoring/organization concept, not public content, so
-  // unauthenticated callers get an empty list rather than every user's projects.
-  if (!session) {
-    return NextResponse.json({ data: [] });
-  }
-
-  const { user } = session;
-  if (user.disabled) {
-    throw new ApiError(
-      403,
-      "Account Disabled",
-      "Account is disabled for violating terms of service",
-    );
-  }
+// Projects are an authoring/organization concept, not public content, so
+// unauthenticated callers get an empty list rather than every user's projects.
+export const GET = optionalUserRoute(async (_request, { user }) => {
+  if (!user) return NextResponse.json({ data: [] });
 
   const projects = await findProjectsByAuthorId(user.id);
   return NextResponse.json({ data: projects });
 });
 
-export const POST = withApiHandler(async (request) => {
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    throw new ApiError(
-      401,
-      "Unauthorized",
-      "Please sign in to create a project",
-    );
-  }
-
-  const { user } = session;
-  if (user.disabled) {
-    throw new ApiError(
-      403,
-      "Account Disabled",
-      "Account is disabled for violating terms of service",
-    );
-  }
-
+export const POST = userRoute(async (request, { user }) => {
   const body = (await request.json()) as ProjectCreateInput;
   if (!body || !body.title) {
     throw new ApiError(400, "Bad Request", "Project title is required");
@@ -69,4 +37,4 @@ export const POST = withApiHandler(async (request) => {
   revalidatePath("/");
 
   return NextResponse.json({ data });
-});
+}, { signInMessage: "Please sign in to create a project" });

@@ -1,12 +1,10 @@
-import { authOptions } from "@/lib/auth";
-import { ApiError, withApiHandler } from "@/lib/api-utils";
+import { ApiError, userRoute } from "@/lib/api-utils";
 import {
   createDocument,
   findDocument,
   findDocumentsByAuthorId,
 } from "@/repositories/document";
 import { PostCreateInput } from "@/types";
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
@@ -14,7 +12,13 @@ import { validateHandle } from "./utils";
 
 export const dynamic = "force-dynamic";
 
-export const GET = withApiHandler(async (request) => {
+// This route serves the signed-in author their own library. It used to fall back
+// to `findAllDocuments`, which filters on neither `published` nor `private` and
+// selects author emails — so an anonymous caller could read every draft in the
+// database. Public listings are rendered server-side from
+// `findPublishedDocuments` instead; there is no anonymous read here, which is
+// why this is a `userRoute` and not an `optionalUserRoute`.
+export const GET = userRoute(async (request, { user }) => {
   const { searchParams } = new URL(request.url);
   const rawLimit = searchParams.get("limit");
   const parsedLimit = rawLimit === null ? undefined : Number(rawLimit);
@@ -26,27 +30,6 @@ export const GET = withApiHandler(async (request) => {
   }
   const cursor = searchParams.get("cursor") ?? undefined;
 
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    // This route serves the signed-in author their own library. It used to fall
-    // back to `findAllDocuments`, which filters on neither `published` nor
-    // `private` and selects author emails — so an anonymous caller could read
-    // every draft in the database. Public listings are rendered server-side
-    // from `findPublishedDocuments` instead; there is no anonymous read here.
-    throw new ApiError(
-      401,
-      "Unauthorized",
-      "Please sign in to list your documents",
-    );
-  }
-  const { user } = session;
-  if (user.disabled) {
-    throw new ApiError(
-      403,
-      "Account Disabled",
-      "Account is disabled for violating terms of service",
-    );
-  }
   // Paged: the repository caps `take`, so an author with thousands of posts can
   // no longer force one unbounded scan. Callers that want the whole list follow
   // `nextCursor` until it comes back null.
@@ -55,25 +38,9 @@ export const GET = withApiHandler(async (request) => {
     take: parsedLimit,
   });
   return NextResponse.json({ data: { documents, nextCursor } });
-});
+}, { signInMessage: "Please sign in to list your documents" });
 
-export const POST = withApiHandler(async (request) => {
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    throw new ApiError(
-      401,
-      "Unauthorized",
-      "Please sign in to save your document to the cloud",
-    );
-  }
-  const { user } = session;
-  if (user.disabled) {
-    throw new ApiError(
-      403,
-      "Account Disabled",
-      "Account is disabled for violating terms of service",
-    );
-  }
+export const POST = userRoute(async (request, { user }) => {
   const body = (await request.json()) as PostCreateInput;
   if (!body) {
     throw new ApiError(400, "Bad Request", "No document provided");
@@ -164,4 +131,4 @@ export const POST = withApiHandler(async (request) => {
   }
 
   return NextResponse.json({ data });
-});
+}, { signInMessage: "Please sign in to save your document to the cloud" });

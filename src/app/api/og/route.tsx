@@ -18,6 +18,17 @@ export interface OgMetadata {
   };
 }
 
+/**
+ * The one route handler not wrapped in `publicRoute` / `userRoute` /
+ * `optionalUserRoute`, and the reason is `runtime = "edge"` above: those wrappers
+ * import the NextAuth session helpers, which read through the Prisma adapter and
+ * cannot be bundled for edge.
+ *
+ * Safe to leave unauthenticated because it reads nothing: every value rendered
+ * below arrives in the query string, so the caller can only show themselves what
+ * they already sent. The lint rule that requires a wrapper exempts this file by
+ * path — keep that exemption honest by never adding a database read here.
+ */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);

@@ -1,4 +1,4 @@
-import { ApiError, optionalUser, requireUser, withApiHandler } from "@/lib/api-utils";
+import { ApiError, optionalUserRoute, userRoute } from "@/lib/api-utils";
 import {
   createSeries,
   findAllSeries,
@@ -15,8 +15,7 @@ interface SeriesCreateInput {
   description?: string;
 }
 
-export const GET = withApiHandler(async () => {
-  const user = await optionalUser();
+export const GET = optionalUserRoute(async (_request, { user }) => {
   if (!user) {
     // Anonymous callers get the public listing: published, non-private posts
     // only, no author emails. `findAllSeries` used to be unfiltered, so this
@@ -31,9 +30,7 @@ export const GET = withApiHandler(async () => {
   return NextResponse.json({ data: userSeries });
 });
 
-export const POST = withApiHandler(async (request) => {
-  const user = await requireUser("Please sign in to create a series");
-
+export const POST = userRoute(async (request, { user }) => {
   const body = (await request.json()) as SeriesCreateInput;
   if (!body || !body.title) {
     throw new ApiError(400, "Bad Request", "Series title is required");
@@ -53,4 +50,4 @@ export const POST = withApiHandler(async (request) => {
   revalidatePath("/");
 
   return NextResponse.json({ data });
-});
+}, { signInMessage: "Please sign in to create a series" });

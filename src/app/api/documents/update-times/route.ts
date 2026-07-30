@@ -1,6 +1,4 @@
-import { ApiError, withApiHandler } from "@/lib/api-utils";
-import { authOptions } from "@/lib/auth";
-import { getServerSession } from "next-auth";
+import { ApiError, userRoute } from "@/lib/api-utils";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -20,17 +18,7 @@ interface UpdateTimesRequest {
  * Update creation times for multiple documents
  * Only the author can update their documents' times
  */
-export const POST = withApiHandler(async (request) => {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user) {
-    throw new ApiError(
-      401,
-      "Unauthorized",
-      "Please sign in to update documents",
-    );
-  }
-
+export const POST = userRoute(async (request, { user }) => {
   const body: UpdateTimesRequest = await request.json();
   const { updates } = body;
 
@@ -38,7 +26,7 @@ export const POST = withApiHandler(async (request) => {
     throw new ApiError(400, "Invalid request", "No updates provided");
   }
 
-  const userId = session.user.id;
+  const userId = user.id;
 
   // Verify all documents belong to the current user and update them
   const results = await Promise.all(
@@ -85,4 +73,7 @@ export const POST = withApiHandler(async (request) => {
     message: `Updated ${updates.length} document(s)`,
     results,
   });
-}, { context: "Failed to update document times" });
+}, {
+  errorLabel: "Failed to update document times",
+  signInMessage: "Please sign in to update documents",
+});

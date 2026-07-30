@@ -1,4 +1,4 @@
-import { ApiError, withApiHandler } from "@/lib/api-utils";
+import { ApiError, optionalUserRoute } from "@/lib/api-utils";
 import { attachmentPath, requireAttachmentRead } from "../../access";
 import { NextResponse } from "next/server";
 import { readFile } from "fs/promises";
@@ -155,15 +155,14 @@ function getMimeType(filename: string): string {
     : "application/octet-stream";
 }
 
-export const GET = withApiHandler(async (
-  request,
-  props: { params: Promise<{ filename: string }> },
+export const GET = optionalUserRoute<{ filename: string }>(async (
+  _request,
+  { params, user },
 ) => {
-  const params = await props.params;
   const { filename } = params;
 
   const filePath = attachmentPath(filename);
-  await requireAttachmentRead(filename);
+  await requireAttachmentRead(filename, user);
 
   // Check if file exists
   if (!existsSync(filePath)) {
@@ -205,4 +204,4 @@ export const GET = withApiHandler(async (
     size: fileSize,
     mimetype,
   });
-}, { context: "Error reading attachment content" });
+}, { errorLabel: "Error reading attachment content" });

@@ -1,9 +1,7 @@
-import { authOptions } from "@/lib/auth";
-import { ApiError, withApiHandler } from "@/lib/api-utils";
+import { ApiError, userRoute } from "@/lib/api-utils";
+import { requireOwnedProject, requireOwnedSeries } from "@/lib/access";
 import { findSeriesById } from "@/repositories/series";
-import { findProjectById } from "@/repositories/project";
 import { moveSeriesTx } from "@/repositories/ordering";
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { validate } from "uuid";
@@ -29,37 +27,17 @@ const moveSchema = z.object({
 });
 
 // PATCH /api/series/[id]/move → reorder a series within the root list
-export const PATCH = withApiHandler(
-  async (request, props: { params: Promise<{ id: string }> }) => {
-    const params = await props.params;
+export const PATCH = userRoute<{ id: string }>(
+  async (request, { params, user }) => {
     if (!validate(params.id)) {
       throw new ApiError(400, "Bad Request", "Invalid id");
     }
 
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      throw new ApiError(401, "Unauthorized", "Please sign in to reorder");
-    }
-    const { user } = session;
-    if (user.disabled) {
-      throw new ApiError(
-        403,
-        "Account Disabled",
-        "Account is disabled for violating terms of service",
-      );
-    }
-
-    const series = await findSeriesById(params.id);
-    if (!series) {
-      throw new ApiError(404, "Series not found");
-    }
-    if (series.authorId !== user.id) {
-      throw new ApiError(
-        403,
-        "Unauthorized",
-        "You can only reorder your own series",
-      );
-    }
+    await requireOwnedSeries(
+      params.id,
+      user,
+      "You can only reorder your own series",
+    );
 
     const parsed = moveSchema.safeParse(await request.json());
     if (!parsed.success) {
@@ -73,17 +51,11 @@ export const PATCH = withApiHandler(
     // Moving into a project: the destination must be the caller's own project.
     const destProjectId = parsed.data.destination?.projectId;
     if (destProjectId) {
-      const project = await findProjectById(destProjectId);
-      if (!project) {
-        throw new ApiError(404, "Project not found");
-      }
-      if (project.authorId !== user.id) {
-        throw new ApiError(
-          403,
-          "Unauthorized",
-          "You can only move series into your own projects",
-        );
-      }
+      await requireOwnedProject(
+        destProjectId,
+        user,
+        "You can only move series into your own projects",
+      );
     }
 
     await moveSeriesTx({
@@ -99,4 +71,5 @@ export const PATCH = withApiHandler(
     const updated = await findSeriesById(params.id);
     return NextResponse.json({ data: updated });
   },
+  { signInMessage: "Please sign in to reorder" },
 );

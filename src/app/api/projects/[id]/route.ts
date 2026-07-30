@@ -1,14 +1,6 @@
-import {
-  ApiError,
-  requireOwner,
-  requireUser,
-  withApiHandler,
-} from "@/lib/api-utils";
-import {
-  deleteProject,
-  findProjectById,
-  updateProject,
-} from "@/repositories/project";
+import { ApiError, userRoute } from "@/lib/api-utils";
+import { requireOwnedProject } from "@/lib/access";
+import { deleteProject, updateProject } from "@/repositories/project";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 
@@ -23,17 +15,10 @@ interface ProjectUpdateInput {
 // Projects are an authoring/organization concept, not public content — the same
 // reasoning the list route at `/api/projects` already applied to anonymous
 // callers. This one served any project to anyone who knew its id.
-export const GET = withApiHandler(
-  async (request, props: { params: Promise<{ id: string }> }) => {
-    const params = await props.params;
-    const user = await requireUser();
-
-    const project = await findProjectById(params.id);
-    if (!project) {
-      throw new ApiError(404, "Project not found");
-    }
-    requireOwner(
-      project.authorId,
+export const GET = userRoute<{ id: string }>(
+  async (_request, { params, user }) => {
+    const project = await requireOwnedProject(
+      params.id,
       user,
       "You are not authorized to view this project",
     );
@@ -42,17 +27,10 @@ export const GET = withApiHandler(
   },
 );
 
-export const PATCH = withApiHandler(
-  async (request, props: { params: Promise<{ id: string }> }) => {
-    const params = await props.params;
-    const user = await requireUser("Please sign in to update the project");
-
-    const project = await findProjectById(params.id);
-    if (!project) {
-      throw new ApiError(404, "Project not found");
-    }
-    requireOwner(
-      project.authorId,
+export const PATCH = userRoute<{ id: string }>(
+  async (request, { params, user }) => {
+    await requireOwnedProject(
+      params.id,
       user,
       "You are not authorized to update this project",
     );
@@ -69,19 +47,13 @@ export const PATCH = withApiHandler(
 
     return NextResponse.json({ data });
   },
+  { signInMessage: "Please sign in to update the project" },
 );
 
-export const DELETE = withApiHandler(
-  async (request, props: { params: Promise<{ id: string }> }) => {
-    const params = await props.params;
-    const user = await requireUser("Please sign in to delete the project");
-
-    const project = await findProjectById(params.id);
-    if (!project) {
-      throw new ApiError(404, "Project not found");
-    }
-    requireOwner(
-      project.authorId,
+export const DELETE = userRoute<{ id: string }>(
+  async (_request, { params, user }) => {
+    await requireOwnedProject(
+      params.id,
       user,
       "You are not authorized to delete this project",
     );
@@ -93,4 +65,5 @@ export const DELETE = withApiHandler(
 
     return NextResponse.json({ data: params.id });
   },
+  { signInMessage: "Please sign in to delete the project" },
 );

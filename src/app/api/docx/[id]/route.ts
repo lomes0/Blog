@@ -1,8 +1,15 @@
 import { generateDocx } from "@/editor/utils/generateDocx";
-import { ApiError, withApiHandler } from "@/lib/api-utils";
-import { getCachedRevision } from "@/repositories/revision";
+import { ApiError, optionalUserRoute } from "@/lib/api-utils";
+import { requireRevision } from "@/lib/access";
 
-export const GET = withApiHandler(async (request: Request) => {
+/**
+ * A revision rendered as a .docx.
+ *
+ * This route had no authorization at all — a revision id was a bearer token for
+ * a Word export of any document in the database, including unpublished drafts.
+ * It now follows the same `read` rule as `GET /api/revisions/[id]`.
+ */
+export const GET = optionalUserRoute(async (request, { user }) => {
   const url = new URL(request.url);
   const search = url.searchParams;
   const revisionId = search.get("v");
@@ -10,10 +17,13 @@ export const GET = withApiHandler(async (request: Request) => {
     throw new ApiError(400, "Bad Request", "Missing revision id");
   }
 
-  const revision = await getCachedRevision(revisionId);
-  if (!revision) {
-    throw new ApiError(404, "Something went wrong", "Revision not found");
-  }
+  const revision = await requireRevision(
+    revisionId,
+    user,
+    "read",
+    "You are not authorized to export this document",
+  );
+
   const blob = await generateDocx(revision.data);
   return new Response(blob, {
     headers: {

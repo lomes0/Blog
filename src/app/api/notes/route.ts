@@ -1,51 +1,26 @@
-import { ApiError, withApiHandler } from "@/lib/api-utils";
-import { authOptions } from "@/lib/auth";
+import { ApiError, userRoute } from "@/lib/api-utils";
+import { requireCanvas } from "@/lib/access";
 import {
   createNote,
-  findCanvasById,
   findNotesByCanvasId,
   getOrCreateDefaultCanvas,
 } from "@/repositories/notes";
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 // GET /api/notes - Get all notes for user's default canvas
-export const GET = withApiHandler(async () => {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    throw new ApiError(401, "Unauthorized", "Please sign in to access notes");
-  }
-
-  if (session.user.disabled) {
-    throw new ApiError(
-      403,
-      "Account Disabled",
-      "Account is disabled for violating terms of service",
-    );
-  }
-
-  const canvas = await getOrCreateDefaultCanvas(session.user.id);
+export const GET = userRoute(async (_request, { user }) => {
+  const canvas = await getOrCreateDefaultCanvas(user.id);
   const notes = await findNotesByCanvasId(canvas.id);
   return NextResponse.json({ data: notes });
-}, { context: "Error fetching notes" });
+}, {
+  errorLabel: "Error fetching notes",
+  signInMessage: "Please sign in to access notes",
+});
 
 // POST /api/notes - Create new note
-export const POST = withApiHandler(async (request) => {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    throw new ApiError(401, "Unauthorized", "Please sign in to create a note");
-  }
-
-  if (session.user.disabled) {
-    throw new ApiError(
-      403,
-      "Account Disabled",
-      "Account is disabled for violating terms of service",
-    );
-  }
-
+export const POST = userRoute(async (request, { user }) => {
   const body = await request.json();
   const {
     positionX,
@@ -77,21 +52,15 @@ export const POST = withApiHandler(async (request) => {
   // Resolve the target canvas
   let targetCanvasId: string;
   if (canvasId && typeof canvasId === "string") {
-    const canvas = await findCanvasById(canvasId);
-    if (!canvas) {
-      throw new ApiError(404, "Not Found", "Canvas not found");
-    }
-    if (canvas.authorId !== session.user.id) {
-      throw new ApiError(
-        403,
-        "Forbidden",
-        "You don't have permission to add notes to this canvas",
-      );
-    }
+    await requireCanvas(
+      canvasId,
+      user,
+      "You don't have permission to add notes to this canvas",
+    );
     targetCanvasId = canvasId;
   } else {
     // Fall back to the user's default canvas
-    const canvas = await getOrCreateDefaultCanvas(session.user.id);
+    const canvas = await getOrCreateDefaultCanvas(user.id);
     targetCanvasId = canvas.id;
   }
 
@@ -108,4 +77,7 @@ export const POST = withApiHandler(async (request) => {
   });
 
   return NextResponse.json({ data: note }, { status: 201 });
-}, { context: "Error creating note" });
+}, {
+  errorLabel: "Error creating note",
+  signInMessage: "Please sign in to create a note",
+});

@@ -1,7 +1,6 @@
-import { authOptions } from "@/lib/auth";
-import { ApiError, withApiHandler } from "@/lib/api-utils";
-import { findDocument, updateDocument } from "@/repositories/document";
-import { getServerSession } from "next-auth";
+import { ApiError, userRoute } from "@/lib/api-utils";
+import { requireDocument } from "@/lib/access";
+import { updateDocument } from "@/repositories/document";
 import { NextResponse } from "next/server";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
@@ -10,44 +9,15 @@ import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
 
-export const POST = withApiHandler(
-  async (request, props: { params: Promise<{ id: string }> }) => {
-    const params = await props.params;
-
+export const POST = userRoute<{ id: string }>(
+  async (request, { params, user }) => {
     if (!validate(params.id)) {
       throw new ApiError(400, "Bad Request", "Invalid id");
     }
 
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      throw new ApiError(
-        401,
-        "Unauthorized",
-        "Please sign in to upload images",
-      );
-    }
-
-    const { user } = session;
-    if (user.disabled) {
-      throw new ApiError(
-        403,
-        "Account Disabled",
-        "Account is disabled for violating terms of service",
-      );
-    }
-
-    const userDocument = await findDocument(params.id);
-    if (!userDocument) {
-      throw new ApiError(404, "Document not found");
-    }
-
-    if (user.id !== userDocument.author.id) {
-      throw new ApiError(
-        403,
-        "Forbidden",
-        "You are not authorized to modify this document",
-      );
-    }
+    await requireDocument(params.id, user, "own", {
+      subtitle: "You are not authorized to modify this document",
+    });
 
     // Since directories have been removed in blog refactor, reject all background operations
     throw new ApiError(
@@ -119,4 +89,5 @@ export const POST = withApiHandler(
       );
     }
   },
+  { signInMessage: "Please sign in to upload images" },
 );

@@ -1,10 +1,5 @@
-import {
-  ApiError,
-  optionalUser,
-  requireOwner,
-  requireUser,
-  withApiHandler,
-} from "@/lib/api-utils";
+import { ApiError, optionalUserRoute, userRoute } from "@/lib/api-utils";
+import { requireDocument, requireOwnedSeries } from "@/lib/access";
 import {
   addPostToSeries,
   batchUpdateSeriesPosts,
@@ -12,7 +7,7 @@ import {
   findSeriesById,
   removePostFromSeries,
 } from "@/repositories/series";
-import { findDocument, findUnownedDocumentIds } from "@/repositories/document";
+import { findUnownedDocumentIds } from "@/repositories/document";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { validate } from "uuid";
@@ -20,17 +15,14 @@ import { validate } from "uuid";
 export const dynamic = "force-dynamic";
 
 // GET /api/series/[id]/posts → get posts in series (ordered by rank)
-export const GET = withApiHandler(
-  async (request, props: { params: Promise<{ id: string }> }) => {
-    const params = await props.params;
-
+export const GET = optionalUserRoute<{ id: string }>(
+  async (_request, { params, user }) => {
     if (!validate(params.id)) {
       throw new ApiError(400, "Bad Request", "Invalid series id");
     }
 
     // The author gets every post in the series; anyone else gets the published
     // ones. This route used to return the unfiltered list to anonymous callers.
-    const user = await optionalUser();
     const series = await findSeriesById(params.id);
     if (series && user && series.authorId === user.id) {
       return NextResponse.json({ data: series.posts });
@@ -45,22 +37,14 @@ export const GET = withApiHandler(
 );
 
 // POST /api/series/[id]/posts → add post to series
-export const POST = withApiHandler(
-  async (request, props: { params: Promise<{ id: string }> }) => {
-    const params = await props.params;
-
+export const POST = userRoute<{ id: string }>(
+  async (request, { params, user }) => {
     if (!validate(params.id)) {
       throw new ApiError(400, "Bad Request", "Invalid series id");
     }
 
-    const user = await requireUser("Please sign in to add posts to series");
-
-    const series = await findSeriesById(params.id);
-    if (!series) {
-      throw new ApiError(404, "Series not found");
-    }
-    requireOwner(
-      series.authorId,
+    await requireOwnedSeries(
+      params.id,
       user,
       "You can only add posts to your own series",
     );
@@ -76,16 +60,9 @@ export const POST = withApiHandler(
       throw new ApiError(400, "Bad Request", "Invalid post id");
     }
 
-    // Check if post exists and user owns it
-    const post = await findDocument(postId);
-    if (!post) {
-      throw new ApiError(404, "Post not found");
-    }
-    requireOwner(
-      post.author.id,
-      user,
-      "You can only add your own posts to series",
-    );
+    await requireDocument(postId, user, "own", {
+      subtitle: "You can only add your own posts to series",
+    });
 
     // Add post to the series (appended; manual order is set via rank)
     await addPostToSeries(params.id, postId);
@@ -99,25 +76,18 @@ export const POST = withApiHandler(
       data: { seriesId: params.id, postId },
     });
   },
+  { signInMessage: "Please sign in to add posts to series" },
 );
 
 // PATCH /api/series/[id]/posts → batch add/remove posts atomically
-export const PATCH = withApiHandler(
-  async (request, props: { params: Promise<{ id: string }> }) => {
-    const params = await props.params;
-
+export const PATCH = userRoute<{ id: string }>(
+  async (request, { params, user }) => {
     if (!validate(params.id)) {
       throw new ApiError(400, "Bad Request", "Invalid series id");
     }
 
-    const user = await requireUser("Please sign in to update series posts");
-
-    const series = await findSeriesById(params.id);
-    if (!series) {
-      throw new ApiError(404, "Series not found");
-    }
-    requireOwner(
-      series.authorId,
+    await requireOwnedSeries(
+      params.id,
       user,
       "You can only update posts in your own series",
     );
@@ -138,7 +108,8 @@ export const PATCH = withApiHandler(
     // Owning the series is not enough — every post named here must also be the
     // caller's. Without this, a well-formed request could pull another author's
     // posts into your series, or evict theirs from theirs. The single-post POST
-    // above always checked this; the batch path did not.
+    // above always checked this; the batch path did not. One query answers for
+    // the whole batch, so checking only the first is not an available mistake.
     const unowned = await findUnownedDocumentIds(
       [...postsToAdd, ...postsToRemove],
       user.id,
@@ -165,27 +136,18 @@ export const PATCH = withApiHandler(
       },
     });
   },
+  { signInMessage: "Please sign in to update series posts" },
 );
 
 // DELETE /api/series/[id]/posts?postId=<uuid> → remove post from series
-export const DELETE = withApiHandler(
-  async (request, props: { params: Promise<{ id: string }> }) => {
-    const params = await props.params;
-
+export const DELETE = userRoute<{ id: string }>(
+  async (request, { params, user }) => {
     if (!validate(params.id)) {
       throw new ApiError(400, "Bad Request", "Invalid series id");
     }
 
-    const user = await requireUser(
-      "Please sign in to remove posts from series",
-    );
-
-    const series = await findSeriesById(params.id);
-    if (!series) {
-      throw new ApiError(404, "Series not found");
-    }
-    requireOwner(
-      series.authorId,
+    await requireOwnedSeries(
+      params.id,
       user,
       "You can only remove posts from your own series",
     );
@@ -205,17 +167,9 @@ export const DELETE = withApiHandler(
       throw new ApiError(400, "Bad Request", "Invalid post id");
     }
 
-    const post = await findDocument(postId);
-    if (!post) {
-      throw new ApiError(404, "Post not found");
-    }
-    // The comment here used to claim this checked series membership; it checked
-    // only that the post existed, so any post id would be re-homed to root.
-    requireOwner(
-      post.author.id,
-      user,
-      "You can only remove your own posts from a series",
-    );
+    const post = await requireDocument(postId, user, "own", {
+      subtitle: "You can only remove your own posts from a series",
+    });
     if (post.seriesId !== params.id) {
       throw new ApiError(404, "Post is not in this series");
     }
@@ -230,4 +184,5 @@ export const DELETE = withApiHandler(
 
     return NextResponse.json({ data: { postId } });
   },
+  { signInMessage: "Please sign in to remove posts from series" },
 );

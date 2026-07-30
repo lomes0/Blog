@@ -1,10 +1,5 @@
-import {
-  ApiError,
-  optionalUser,
-  requireOwner,
-  requireUser,
-  withApiHandler,
-} from "@/lib/api-utils";
+import { ApiError, optionalUserRoute, userRoute } from "@/lib/api-utils";
+import { requireOwnedSeries } from "@/lib/access";
 import {
   deleteSeries,
   findPublicSeriesById,
@@ -22,11 +17,8 @@ interface SeriesUpdateInput {
   createdAt?: string;
 }
 
-export const GET = withApiHandler(
-  async (request, props: { params: Promise<{ id: string }> }) => {
-    const params = await props.params;
-    const user = await optionalUser();
-
+export const GET = optionalUserRoute<{ id: string }>(
+  async (_request, { params, user }) => {
     // The author sees their series whole; everyone else sees only what is
     // published. This route previously returned the unfiltered record to
     // anonymous callers, exposing every member post's metadata and `head`.
@@ -43,17 +35,10 @@ export const GET = withApiHandler(
   },
 );
 
-export const PATCH = withApiHandler(
-  async (request, props: { params: Promise<{ id: string }> }) => {
-    const params = await props.params;
-    const user = await requireUser("Please sign in to update the series");
-
-    const series = await findSeriesById(params.id);
-    if (!series) {
-      throw new ApiError(404, "Series not found");
-    }
-    requireOwner(
-      series.authorId,
+export const PATCH = userRoute<{ id: string }>(
+  async (request, { params, user }) => {
+    await requireOwnedSeries(
+      params.id,
       user,
       "You are not authorized to update this series",
     );
@@ -74,19 +59,13 @@ export const PATCH = withApiHandler(
 
     return NextResponse.json({ data });
   },
+  { signInMessage: "Please sign in to update the series" },
 );
 
-export const DELETE = withApiHandler(
-  async (request, props: { params: Promise<{ id: string }> }) => {
-    const params = await props.params;
-    const user = await requireUser("Please sign in to delete the series");
-
-    const series = await findSeriesById(params.id);
-    if (!series) {
-      throw new ApiError(404, "Series not found");
-    }
-    requireOwner(
-      series.authorId,
+export const DELETE = userRoute<{ id: string }>(
+  async (_request, { params, user }) => {
+    await requireOwnedSeries(
+      params.id,
       user,
       "You are not authorized to delete this series",
     );
@@ -102,4 +81,5 @@ export const DELETE = withApiHandler(
 
     return NextResponse.json({ data: params.id });
   },
+  { signInMessage: "Please sign in to delete the series" },
 );
