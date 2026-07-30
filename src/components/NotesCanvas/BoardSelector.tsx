@@ -49,7 +49,6 @@ function BoardContextMenu({
       anchorEl={anchorEl}
       open={open}
       onClose={onClose}
-      slotProps={{ paper: { elevation: 2 } }}
     >
       <MenuItem onClick={onRenameClick} dense>
         <FilePen size={16} style={{ marginRight: 8 }} />

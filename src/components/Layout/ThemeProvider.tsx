@@ -5,6 +5,7 @@ import {
   ThemeProvider as MuiThemeProvider,
 } from "@mui/material/styles";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v13-appRouter";
+import { components } from "@/theme/components";
 import "@fontsource/public-sans/300.css";
 import "@fontsource/public-sans/400.css";
 import "@fontsource/public-sans/500.css";
@@ -153,44 +154,7 @@ const theme = createTheme({
     },
     button: { fontWeight: 600, textTransform: "none", letterSpacing: "0.02em" },
   },
-  components: {
-    MuiTypography: {
-      defaultProps: {
-        // Custom variants render inline by default — they're labels, not blocks.
-        // Pass `component="p"/"div"` at the call site when a block is needed.
-        variantMapping: { dense: "span", micro: "span" },
-      },
-    },
-    // Override default container sizes
-    MuiContainer: {
-      styleOverrides: {
-        maxWidthXl: {
-          maxWidth: "2400px !important", // Override the default 'xl' size of 1536px
-        },
-      },
-    },
-    MuiCard: {
-      styleOverrides: {
-        root: { borderRadius: 8 },
-      },
-    },
-    MuiButton: {
-      defaultProps: { disableElevation: true },
-      styleOverrides: {
-        root: { borderRadius: 8, textTransform: "none" },
-      },
-    },
-    MuiChip: {
-      styleOverrides: {
-        root: { borderRadius: 6 },
-      },
-    },
-    MuiPaper: {
-      styleOverrides: {
-        root: { borderRadius: 8 },
-      },
-    },
-  },
+  components,
 });
 
 // Options for the emotion cache

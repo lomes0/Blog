@@ -22,21 +22,7 @@ interface SidebarBulkMenuProps {
   onMerge: () => void;
 }
 
-const menuItemSx = {
-  py: 0.75,
-  px: 1.75,
-  gap: 1.25,
-  typography: "body2",
-  "&:hover": { backgroundColor: "action.hover" },
-};
-
-const paperSx = {
-  minWidth: 150,
-  borderRadius: 2,
-  mt: 0.5,
-  bgcolor: "rgba(var(--mui-palette-background-paperChannel) / 0.95)",
-  backdropFilter: "blur(8px)",
-} as const;
+const paperSx = { minWidth: 150 } as const;
 
 /**
  * Context menu shown when right-clicking a multi-selection in the sidebar tree:
@@ -70,18 +56,16 @@ export const SidebarBulkMenu: React.FC<SidebarBulkMenuProps> = ({
         anchorPosition={menu !== null
           ? { top: menu.mouseY, left: menu.mouseX }
           : undefined}
-        slotProps={{ paper: { elevation: 2, sx: paperSx } }}
+        slotProps={{ paper: { sx: paperSx } }}
       >
         <MenuItem
           onClick={(e) => setSeriesAnchor(e.currentTarget)}
-          sx={{ ...menuItemSx, justifyContent: "space-between" }}
+          sx={{ justifyContent: "space-between" }}
         >
-          <ListItemIcon sx={{ minWidth: "auto !important" }}>
+          <ListItemIcon>
             <FolderInput size={ICON_SIZE.dense} />
           </ListItemIcon>
-          <ListItemText primaryTypographyProps={{ variant: "body2" }}>
-            Move {count} to series
-          </ListItemText>
+          <ListItemText>Move {count} to series</ListItemText>
           <ChevronRight
             size={ICON_SIZE.inline}
             style={{ marginLeft: 8, flexShrink: 0 }}
@@ -89,26 +73,21 @@ export const SidebarBulkMenu: React.FC<SidebarBulkMenuProps> = ({
         </MenuItem>
 
         {canMerge && (
-          <MenuItem onClick={() => onMerge()} sx={menuItemSx}>
-            <ListItemIcon sx={{ minWidth: "auto !important" }}>
+          <MenuItem onClick={() => onMerge()}>
+            <ListItemIcon>
               <Layers size={ICON_SIZE.dense} />
             </ListItemIcon>
-            <ListItemText primaryTypographyProps={{ variant: "body2" }}>
-              Merge into tabs
-            </ListItemText>
+            <ListItemText>Merge into tabs</ListItemText>
           </MenuItem>
         )}
 
         <Divider sx={{ my: 0.5 }} />
 
-        <MenuItem
-          onClick={() => onDelete()}
-          sx={{ ...menuItemSx, color: "error.main" }}
-        >
-          <ListItemIcon sx={{ minWidth: "auto !important", color: "inherit" }}>
+        <MenuItem onClick={() => onDelete()} sx={{ color: "error.main" }}>
+          <ListItemIcon sx={{ color: "inherit" }}>
             <Trash2 size={ICON_SIZE.dense} />
           </ListItemIcon>
-          <ListItemText primaryTypographyProps={{ variant: "body2" }}>
+          <ListItemText>
             Delete {count} item{count !== 1 ? "s" : ""}
           </ListItemText>
         </MenuItem>
@@ -120,21 +99,18 @@ export const SidebarBulkMenu: React.FC<SidebarBulkMenuProps> = ({
         onClose={() => setSeriesAnchor(null)}
         transformOrigin={{ horizontal: "left", vertical: "top" }}
         anchorOrigin={{ horizontal: "right", vertical: "top" }}
-        slotProps={{ paper: { elevation: 2, sx: paperSx } }}
+        slotProps={{ paper: { sx: paperSx } }}
       >
         <MenuItem
           onClick={() => {
             closeAll();
             onMove(null);
           }}
-          sx={menuItemSx}
         >
-          <ListItemIcon sx={{ minWidth: "auto !important" }}>
+          <ListItemIcon>
             <FolderMinus size={ICON_SIZE.dense} />
           </ListItemIcon>
-          <ListItemText primaryTypographyProps={{ variant: "body2" }}>
-            Remove from series
-          </ListItemText>
+          <ListItemText>Remove from series</ListItemText>
         </MenuItem>
         {hasSeries && <Divider sx={{ my: 0.5 }} />}
         {availableSeries.map((s) => (
@@ -144,11 +120,8 @@ export const SidebarBulkMenu: React.FC<SidebarBulkMenuProps> = ({
               closeAll();
               onMove(s.id);
             }}
-            sx={menuItemSx}
           >
-            <ListItemText
-              primaryTypographyProps={{ variant: "body2", noWrap: true }}
-            >
+            <ListItemText primaryTypographyProps={{ noWrap: true }}>
               {s.title}
             </ListItemText>
           </MenuItem>

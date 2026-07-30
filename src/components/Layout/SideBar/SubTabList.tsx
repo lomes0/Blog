@@ -218,35 +218,12 @@ export const SubTabList: React.FC<SubTabListProps> = (
         anchorPosition={menu !== null
           ? { top: menu.mouseY, left: menu.mouseX }
           : undefined}
-        slotProps={{
-          paper: {
-            elevation: 2,
-            sx: {
-              minWidth: 130,
-              borderRadius: 2,
-              mt: 0.5,
-              bgcolor: "rgba(var(--mui-palette-background-paperChannel) / 0.95)",
-              backdropFilter: "blur(8px)",
-            },
-          },
-        }}
       >
-        <MenuItem
-          onClick={handleRenameFromMenu}
-          sx={{
-            py: 0.75,
-            px: 1.75,
-            gap: 1.25,
-            typography: "body2",
-            "&:hover": { backgroundColor: "action.hover" },
-          }}
-        >
-          <ListItemIcon sx={{ minWidth: "auto !important" }}>
+        <MenuItem onClick={handleRenameFromMenu}>
+          <ListItemIcon>
             <FilePen size={ICON_SIZE.dense} />
           </ListItemIcon>
-          <ListItemText primaryTypographyProps={{ variant: "body2" }}>
-            Rename
-          </ListItemText>
+          <ListItemText>Rename</ListItemText>
         </MenuItem>
       </Menu>
     </>

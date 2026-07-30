@@ -362,7 +362,6 @@ export default function DraggableNote({
           open={moreMenuOpen}
           onClose={handleCloseMoreAnchor}
           onClick={handleStopPropagation}
-          slotProps={{ paper: { elevation: 2 } }}
         >
           <MenuItem onClick={handleCut} dense>
             <Scissors size={15} style={{ marginRight: 8 }} />
