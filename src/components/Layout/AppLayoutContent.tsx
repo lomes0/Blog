@@ -6,6 +6,7 @@ import SideBar from "./SideBar";
 import ActivityRail from "./ActivityRail";
 import SidebarResizeHandle from "./SideBar/SidebarResizeHandle";
 import { ACTIVITY_RAIL_W } from "./SideBar/constants";
+import { COLLAPSE_EASING } from "./SideBar/dragGeometry";
 import HydrationManager from "./HydrationManager";
 import EditorTopBar from "./EditorTopBar";
 import RightRail from "./RightRail";
@@ -31,7 +32,7 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
   const { setSlotEl } = useToolbarSlot();
   const dispatch = useDispatch();
   const initialized = useSelector((state: RootState) => state.ui.initialized);
-  const { isResizing, isAnimating, getEffectiveWidth } = useSidebarWidth();
+  const { isResizing, easeMs, getEffectiveWidth } = useSidebarWidth();
   const {
     railMode,
     railWidth,
@@ -97,12 +98,15 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
                 `${ACTIVITY_RAIL_W}px ${sidebarW}px 1fr ${copilotCol}${railW}px`,
               height: "100vh",
               overflow: "hidden",
-              // The sidebar's settle spring drives its column width per frame,
-              // so the grid must not also transition it.
-              transition:
-                isResizing || isAnimating || isRailResizing || isCopilotResizing
-                  ? "none"
-                  : "grid-template-columns 225ms cubic-bezier(0.4, 0, 0.6, 1)",
+              // The sidebar drag drives its column width per frame, so the grid
+              // must not also transition it — except across the one step that
+              // eases, where the content edge has to travel with the panel or
+              // the two visibly come apart.
+              transition: easeMs > 0
+                ? `grid-template-columns ${easeMs}ms ${COLLAPSE_EASING}`
+                : isResizing || isRailResizing || isCopilotResizing
+                ? "none"
+                : "grid-template-columns 225ms cubic-bezier(0.4, 0, 0.6, 1)",
             }}
           >
             <ActivityRail />

@@ -116,17 +116,25 @@ const ActivityRail: React.FC = () => {
   const { sidebarOpen, sidebarMode, setSidebarMode } = useSidebarWidth();
   const { copilotOpen, setCopilotOpen } = useLayoutMode();
 
-  // A view button both selects its view and toggles the sidebar: clicking the
-  // already-active view while fully open collapses the sidebar; clicking any
-  // other view — or any view while collapsed/compact — opens it to full on that
-  // view (so the compact drag-shut strip expands back with one click).
+  // A view button both selects its view and steps the sidebar's mode. Clicking
+  // any *other* view opens the sidebar on it; clicking the one already showing
+  // walks it narrower — full → compact → hidden — and then back open.
+  //
+  // The cycle exists because compact was otherwise unreachable without a drag:
+  // it is a real mode with its own persisted state and its own pane, and a mode
+  // you can only get to by dragging is a mode most users never find. It also
+  // puts hiding one step further from a stray click than it used to be, which
+  // is the same trade the drag geometry makes.
+  //
+  // None of these touch the remembered open width, so whatever route you take
+  // back to `full` returns to the width you chose.
   const handleViewClick = (view: SidebarView) => {
-    if (sidebarMode === "full" && sidebarView === view) {
-      setSidebarMode("hidden");
-    } else {
+    if (sidebarView !== view || sidebarMode === "hidden") {
       dispatch(actions.setSidebarView(view));
       setSidebarMode("full");
+      return;
     }
+    setSidebarMode(sidebarMode === "full" ? "compact" : "hidden");
   };
 
   const postsActive = pathname.startsWith("/posts");

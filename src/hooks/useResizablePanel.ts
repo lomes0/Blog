@@ -9,15 +9,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * three times. Two of those three were the same code with the constants swapped;
  * they use `useResizablePanel` now.
  *
- * The sidebar is genuinely different and is deliberately *not* folded in: its
- * drag crosses three modes through a magnetic detent and lands on an
- * under-damped rAF spring (see `components/Layout/SideBar/constants.ts`, which
- * documents the geometry and the ζ/ω the feel depends on). Expressing that as
- * configuration would mean handing the hook a per-frame `raw → painted` mapper
- * and a release handler — i.e. passing the whole drag loop in as callbacks,
- * which shares nothing but the `for` loop around it. So the sidebar keeps its
- * own loop and shares the two pieces that really are common: `useDragCapture`
- * and `readStoredWidth`.
+ * The sidebar is genuinely different and is deliberately *not* folded in: one
+ * drag of its handle is two behaviours — a discrete mode selector below a
+ * measured threshold, a 1:1 splitter above it, and a dead band between (see
+ * `components/Layout/SideBar/constants.ts`, which documents the geometry).
+ * Expressing that as configuration would mean handing the hook a per-frame
+ * `pointer → painted` mapper and a release handler — i.e. passing the whole drag
+ * loop in as callbacks, which shares nothing but the `for` loop around it. So
+ * the sidebar keeps its own loop and shares the one piece that really is common:
+ * `useDragCapture`. (`readStoredWidth` is the second, though the sidebar reads
+ * its own width directly — its bounds are measured at runtime, so there is no
+ * static range to validate against at read time.)
  */
 
 /**

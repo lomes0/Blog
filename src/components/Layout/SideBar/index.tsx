@@ -23,11 +23,10 @@ import {
 } from "@/utils/posts/seriesGrouping";
 import {
   ACTIVITY_RAIL_W,
-  COMPACT_WIDTH,
   SIDEBAR_LAYER_TRANSITION,
-  SIDEBAR_MIN_WIDTH,
-  SIDEBAR_WIDTH_TRANSITION,
+  SIDEBAR_PANEL_ID,
 } from "./constants";
+import { COMPACT_WIDTH } from "./dragGeometry";
 
 const SideBar: React.FC = () => {
   const pathname = usePathname();
@@ -46,14 +45,13 @@ const SideBar: React.FC = () => {
   }, [dispatch]);
 
   const {
-    width,
+    minOpenWidth,
     sidebarMode,
     dragZone,
     sidebarOpen: open,
     toggleSidebar,
     isMobile,
-    isResizing,
-    isAnimating,
+    widthTransition,
     getEffectiveWidth,
   } = useSidebarWidth();
 
@@ -132,6 +130,8 @@ const SideBar: React.FC = () => {
       variant={isMobile ? "temporary" : "permanent"}
       open={open}
       onClose={toggleSidebar}
+      // The pane the resize handle's `aria-controls` points at.
+      PaperProps={{ id: SIDEBAR_PANEL_ID }}
       sx={{
         width: getEffectiveWidth(),
         flexShrink: 0,
@@ -142,11 +142,10 @@ const SideBar: React.FC = () => {
           left: `${ACTIVITY_RAIL_W}px`,
           width: getEffectiveWidth(),
           boxSizing: "border-box",
-          // The drag and its settle spring both set the width per frame; a CSS
-          // transition on top would lag behind and fight the spring.
-          transition: isResizing || isAnimating || reducedMotion
-            ? "none"
-            : SIDEBAR_WIDTH_TRANSITION,
+          // A drag sets the width per frame and must not be transitioned; the
+          // context has already resolved that against the two moments that do
+          // ease, so this is one value rather than a condition per call site.
+          transition: widthTransition,
           overflowX: "hidden",
           overscrollBehavior: "contain",
           display: "flex",
@@ -182,11 +181,17 @@ const SideBar: React.FC = () => {
           </Box>
 
           {
-            /* Full tree — pinned to at least the resting width so it clips
-              cleanly (rather than squishing) while the paper animates/drags. */
+            /* Full tree. Follows the *live* width, not the remembered one, so a
+              1:1 drag widens the content with the panel instead of dragging the
+              paper out from behind a pane frozen at the old width.
+
+              Floored at the minimum open width — measured off these very labels
+              — so that a drag heading for compact or hidden clips this pane off
+              cleanly rather than squishing it below the point where its own
+              labels truncate. */
           }
           <Box
-            sx={paneSx(Math.max(width, SIDEBAR_MIN_WIDTH))}
+            sx={paneSx(Math.max(getEffectiveWidth(), minOpenWidth))}
             inert={!isExpanded || undefined}
           >
             {

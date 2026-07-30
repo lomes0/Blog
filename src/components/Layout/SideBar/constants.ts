@@ -5,9 +5,6 @@
 import { MOTION } from "@/theme/tokens";
 import { TREE_ROW_RADIUS } from "@/theme/treeRow";
 
-/** Width when sidebar is collapsed (icons only) — legacy value kept for reference */
-export const SIDEBAR_COLLAPSED_WIDTH = 72;
-
 /**
  * Width of the far-left activity rail (icon strip that switches sidebar views).
  * The sidebar Drawer's fixed paper and its resize handle are offset by this so
@@ -15,113 +12,46 @@ export const SIDEBAR_COLLAPSED_WIDTH = 72;
  */
 export const ACTIVITY_RAIL_W = 54;
 
-/**
- * Width of the compact (icon-strip) sidebar mode. Dragging the resize handle
- * shut lands here — a narrow collections rail — rather than fully hidden.
- */
-export const COMPACT_WIDTH = 62;
-
 /** LocalStorage key for persisting sidebar mode (full/compact/hidden) */
 export const SIDEBAR_MODE_KEY = "ui.sidebarMode";
 
-/** Default width when sidebar is expanded; also the minimum resizable width */
-export const SIDEBAR_DEFAULT_WIDTH = 130;
+/** LocalStorage key for persisting the user's preferred *open* width. */
+export const SIDEBAR_STORAGE_KEY = "sidebar-width";
 
 /**
- * Minimum resting width — the sidebar snaps back up to this when released in
- * the full zone.
+ * ── Drag geometry ──────────────────────────────────────────────────────────
  *
- * Deliberately equal to `SIDEBAR_DEFAULT_WIDTH`, not a copy of it: "the width
- * we open at" and "the narrowest a full panel may rest at" are two decisions
- * that happen to agree today, and the detent geometry below reads the second
- * one. `knip` reports this as a duplicate export; it is an alias on purpose.
- */
-export const SIDEBAR_MIN_WIDTH = SIDEBAR_DEFAULT_WIDTH;
-
-/** Maximum width when resizing */
-export const SIDEBAR_MAX_WIDTH = 450;
-
-/**
- * ── Drag detent geometry ───────────────────────────────────────────────────
+ * The thresholds, the hysteresis and the pointer → width mapping all live in
+ * `./dragGeometry`, which has no imports: it is the part of the interaction that
+ * is decidable without a browser, and keeping it free of React and MUI is what
+ * lets it be read and exercised on its own. What stays here is everything the
+ * gesture needs a *layout* answer for.
  *
- * One drag crosses all three modes: full → compact → hidden. Rather than hard
- * thresholds, `COMPACT_WIDTH` is a *magnetic detent* — inside its radius the
- * panel is drawn toward 62px, so the width lags the cursor and you feel the
- * state rather than only seeing it.
- *
- *   raw cursor width:  450 ─────────── 130 ······· 62 ····· 44 ──── 0
- *                          FULL (1:1)   │  detent radius  │  HIDDEN (1:1)
- *                                       └── attraction ───┘
- *
- * The radius' upper edge is `SIDEBAR_MIN_WIDTH`, which makes the mapping
- * continuous there (attraction is 0 at the edge) *and* WYSIWYG: the full zone
- * begins exactly where a full panel is allowed to be narrowest, so a release in
- * it never snaps to a width you weren't already shown.
+ * Neither end of the open range is a constant anywhere — see
+ * `hooks/useSidebarBounds`, which measures the minimum off the nav labels and
+ * takes the maximum off the viewport. Hardcoding either would put a number in
+ * this file that only content can answer.
  */
 
-/** Attraction radius below `SIDEBAR_MIN_WIDTH` where the compact detent pulls. */
-export const SIDEBAR_DETENT_RADIUS = SIDEBAR_MIN_WIDTH - COMPACT_WIDTH;
+/** Open width used before anything is stored; clamped to the measured bounds. */
+export const SIDEBAR_DEFAULT_OPEN_WIDTH = 240;
+
+/** Share of the viewport the open panel may occupy at most. */
+export const SIDEBAR_MAX_FRACTION = 0.45;
 
 /**
- * How hard the detent pulls at its centre (0 = none, 1 = fully pinned to 62px).
- * Below 1 so the panel still tracks the cursor a little inside the detent —
- * pinning it dead still reads as a broken drag rather than a sticky one.
+ * Pre-measurement bounds. Used for the first render (server and client both, so
+ * there is no hydration mismatch) and as the answer if measurement is
+ * impossible — an environment with no canvas, not a browser we ship to.
  */
-export const SIDEBAR_DETENT_STRENGTH = 0.85;
-
-/**
- * Pull the cursor this far past `COMPACT_WIDTH` to break the detent loose into
- * hidden. Crossing it drops the attraction, so the width jumps ~11px to meet the
- * cursor: the "pop" that tells you the panel has let go.
- */
-export const SIDEBAR_DETENT_PULL = 18;
-
-/** Cursor width at which the detent breaks loose and the hidden zone begins. */
-export const SIDEBAR_HIDE_BREAK = COMPACT_WIDTH - SIDEBAR_DETENT_PULL;
-
-/**
- * Re-entry width for compact after breaking loose into hidden. Wider than
- * `SIDEBAR_HIDE_BREAK` on purpose: without this hysteresis gap, jitter at the
- * break point would flip the zone (and so the previewed content) every frame.
- */
-// Equal to `COMPACT_WIDTH` by construction rather than by copy — another
-// deliberate alias `knip` flags as a duplicate export.
-export const SIDEBAR_HIDE_REENTRY = COMPACT_WIDTH;
-
-/**
- * Hysteresis on the full/compact edge, for the same anti-flicker reason. Kept
- * narrow (8px): a release inside this band is still in the full zone, so it
- * springs up to `SIDEBAR_MIN_WIDTH`, and the band is how far that snap can be.
- */
-export const SIDEBAR_FULL_EXIT = SIDEBAR_MIN_WIDTH - 8;
+export const SIDEBAR_MIN_OPEN_FALLBACK = 180;
+export const SIDEBAR_MAX_OPEN_FALLBACK = 450;
 
 /** Width of the invisible strip that drags the panel back out when hidden. */
 export const SIDEBAR_GRAB_STRIP_W = 6;
 
-/**
- * Settle spring, in the usual `v += (k·Δx − c·v)·dt` form with unit mass. A
- * detent drag needs to feel *finished*, which a pure ease-out never quite does,
- * so this is deliberately under-damped.
- *
- * What matters is the damping ratio ζ = c / 2√k = 0.55, and ω = √k = 24.5 rad/s.
- * Together they give ~4px of overshoot and a ~283ms settle on the longest
- * landing the detent geometry can actually produce (a ~54px move: released at
- * the top of the compact zone, springing down to 62px). Overshoot scales with
- * distance, which is safe here only because that distance is bounded — the full
- * zone springs at most across its 8px hysteresis band, never from 450px.
- *
- * Retuning: hold ζ and change k to trade settle time for snap. Raising k alone
- * makes it faster *and* bouncier; c must follow by √ to keep the same feel.
- * `prefers-reduced-motion` skips the spring entirely and jumps to the target.
- */
-export const SIDEBAR_SPRING_STIFFNESS = 600;
-export const SIDEBAR_SPRING_DAMPING = 27;
-
-/** Right padding for content area (space from right edge of viewport) */
-export const CONTENT_RIGHT_PADDING = 75;
-
-/** LocalStorage key for persisting user's preferred width */
-export const SIDEBAR_STORAGE_KEY = "sidebar-width";
+/** Id on the sidebar's Drawer paper, for the handle's `aria-controls`. */
+export const SIDEBAR_PANEL_ID = "app-sidebar";
 
 /**
  * Sidebar motion, derived from the app-wide tokens in `@/theme/tokens`.
@@ -132,10 +62,14 @@ export const SIDEBAR_STORAGE_KEY = "sidebar-width";
  * sidebar constants because call sites want the whole composed transition
  * string, but the numbers come from one place now.
  *
+ * These cover *programmatic* mode changes only — rail click, Cmd+\, keyboard,
+ * double-click. A drag never uses them: it sets the width per frame, and the two
+ * moments it eases use `SIDEBAR_COLLAPSE_*` above.
+ *
  * `prefers-reduced-motion` no longer needs handling per call site — it is
  * enforced globally in `globals.css` (DESIGN.md §11).
  */
-export const SIDEBAR_EASING = MOTION.easing;
+const SIDEBAR_EASING = MOTION.easing;
 /** Container width slide between open and hidden states */
 export const SIDEBAR_WIDTH_TRANSITION =
   `width ${MOTION.layout}ms ${SIDEBAR_EASING}`;
@@ -145,16 +79,16 @@ export const SIDEBAR_WIDTH_TRANSITION =
  * the swap reads as a filmstrip advancing.
  *
  * Deliberately `MOTION.base` (200ms) and not `MOTION.layout` (340ms): the panes
- * travel 62px while the panel itself travels up to ~54px on its spring, and a
- * push that outlasts the width move it belongs to reads as two separate events.
+ * travel `COMPACT_WIDTH` while the panel itself is being dragged, and a push
+ * that outlasts the width move it belongs to reads as two separate events.
  */
 export const SIDEBAR_LAYER_TRANSITION =
   `transform ${MOTION.base}ms ${SIDEBAR_EASING}`;
 /**
- * The drag edge's slide, for programmatic mode changes only (rail click, Cmd+\).
- * Matches `SIDEBAR_WIDTH_TRANSITION` so the handle and the panel it belongs to
- * arrive together; a drag release is driven by the rAF spring instead and turns
- * every transition here off.
+ * The drag edge's slide, for programmatic mode changes only. Matches
+ * `SIDEBAR_WIDTH_TRANSITION` so the handle and the panel it belongs to arrive
+ * together; during a drag the handle is positioned per frame with no transition
+ * at all.
  */
 export const SIDEBAR_EDGE_TRANSITION = [
   `left ${MOTION.layout}ms ${SIDEBAR_EASING}`,
@@ -191,6 +125,9 @@ export const MONO_FONT =
  * scale. This is the single source of truth for those ratios — do not inline
  * `em`/`px`/`rem` font sizes in sidebar rows. Fixed theme variants (dense/micro)
  * would break user resize, so the sidebar is exempt from the fixed-variant rule.
+ *
+ * `useSidebarBounds` measures the minimum open width off these, via
+ * `SB_FONT_SCALE` below, so a change here moves the drag geometry with it.
  */
 export const SB_FONT = {
   /** counts, badges, sub-tab labels, dirty/meta text */
@@ -199,6 +136,21 @@ export const SB_FONT = {
   body: "0.9em",
   /** sidebar wordmark / emphasis */
   emphasis: "1.2em",
+} as const;
+
+/**
+ * The same ladder as multipliers.
+ *
+ * `SB_FONT` is authored as `em` strings because that is what an `sx` call site
+ * wants, but the minimum-open-width measurement needs a number to multiply the
+ * user's base size by. Kept beside its source rather than re-parsed at the
+ * measurement site: a `parseFloat` there would be a second place the ladder is
+ * encoded, and silently wrong the day a value grows a unit.
+ */
+export const SB_FONT_SCALE = {
+  meta: 0.72,
+  body: 0.9,
+  emphasis: 1.2,
 } as const;
 
 /**
