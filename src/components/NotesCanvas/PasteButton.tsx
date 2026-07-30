@@ -2,20 +2,24 @@
 import { Box, Button } from "@mui/material";
 import { ClipboardPaste } from "lucide-react";
 import { useNotesClipboard } from "@/contexts/NotesClipboardContext";
-import type { Note, NotesCanvas as CanvasData } from "@/types/notes";
+import type { NoteFrame } from "@/types/notes";
 import { ICON_SIZE } from "@/theme/icons";
 
 const VIRTUAL_CANVAS_WIDTH = 1920;
 const VIRTUAL_CANVAS_HEIGHT = 1080;
 
-interface PasteButtonProps {
-  addNote: (
-    note: Omit<Note, "id" | "createdAt" | "updatedAt" | "canvasId">,
-  ) => void;
-  canvas: CanvasData | null;
+export interface PastedNote extends Omit<NoteFrame, "id"> {
+  /** Serialized Lexical editor state. */
+  content: string;
 }
 
-export default function PasteButton({ addNote, canvas }: PasteButtonProps) {
+interface PasteButtonProps {
+  addNote: (note: PastedNote) => void;
+  /** Existing notes, read only to place the pasted one on top. */
+  notes: NoteFrame[];
+}
+
+export default function PasteButton({ addNote, notes }: PasteButtonProps) {
   const { clip, clearClip } = useNotesClipboard();
 
   const handlePaste = () => {
@@ -31,9 +35,7 @@ export default function PasteButton({ addNote, canvas }: PasteButtonProps) {
       content: clip.content,
       color: clip.color,
       title: clip.title,
-      zIndex: canvas
-        ? Math.max(...canvas.notes.map((n) => n.zIndex), 0) + 1
-        : 1,
+      zIndex: Math.max(...notes.map((n) => n.zIndex), 0) + 1,
     });
     clearClip();
   };

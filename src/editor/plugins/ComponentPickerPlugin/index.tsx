@@ -42,6 +42,8 @@ import { GraphNode } from "@/editor/nodes/GraphNode";
 import { SketchNode } from "@/editor/nodes/SketchNode";
 import { StickyNode } from "@/editor/nodes/StickyNode";
 import { KanbanNode } from "@/editor/nodes/KanbanNode";
+import { CanvasNode } from "@/editor/nodes/CanvasNode";
+import { INSERT_CANVAS_COMMAND } from "@/editor/plugins/CanvasPlugin";
 import { PageBreakNode } from "@/editor/nodes/PageBreakNode";
 import { INSERT_PAGE_BREAK } from "../PageBreakPlugin";
 import {
@@ -65,6 +67,7 @@ import {
   Globe,
   Image,
   Kanban,
+  LayoutDashboard,
   List,
   ListChecks,
   ListOrdered,
@@ -529,6 +532,28 @@ export default function ComponentPickerMenuPlugin() {
           onSelect: () =>
             editor.dispatchCommand(
               INSERT_KANBAN_COMMAND,
+              undefined,
+            ),
+        }),
+      );
+    }
+
+    if (editor.hasNode(CanvasNode)) {
+      baseOptions.push(
+        new ComponentPickerOption("Notes Canvas", {
+          icon: <LayoutDashboard />,
+          keywords: [
+            "canvas",
+            "notes",
+            "board",
+            "sticky",
+            "whiteboard",
+            "corkboard",
+          ],
+          keyboardShortcut: "/canvas",
+          onSelect: () =>
+            editor.dispatchCommand(
+              INSERT_CANVAS_COMMAND,
               undefined,
             ),
         }),

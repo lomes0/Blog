@@ -26,6 +26,7 @@ import SketchPlugin from "./SketchPlugin";
 import GraphPlugin from "./GraphPlugin";
 import StickyPlugin from "./StickyPlugin";
 import KanbanPlugin from "./KanbanPlugin";
+import CanvasPlugin from "./CanvasPlugin";
 import AttachmentPlugin from "./AttachmentPlugin";
 import ComponentPickerMenuPlugin from "./ComponentPickerPlugin";
 import TabFocusPlugin from "./TabFocusPlugin";
@@ -36,6 +37,7 @@ import { SketchNode } from "../nodes/SketchNode";
 import { GraphNode } from "../nodes/GraphNode";
 import { StickyNode } from "../nodes/StickyNode";
 import { KanbanNode } from "../nodes/KanbanNode";
+import { CanvasNode } from "../nodes/CanvasNode";
 import { AttachmentNode } from "../nodes/AttachmentNode";
 import { TableNode } from "../nodes/TableNode";
 import { PageBreakNode } from "../nodes/PageBreakNode";
@@ -113,6 +115,7 @@ export const EditorPlugins: React.FC<{
       {editor.hasNode(GraphNode) && <GraphPlugin />}
       {editor.hasNode(StickyNode) && <StickyPlugin />}
       {editor.hasNode(KanbanNode) && <KanbanPlugin />}
+      {editor.hasNode(CanvasNode) && <CanvasPlugin />}
       {editor.hasNode(PageBreakNode) && <PageBreakPlugin />}
       {editor.hasNode(IFrameNode) && <IFramePlugin />}
       {editor.hasNode(LayoutContainerNode) && <LayoutPlugin />}

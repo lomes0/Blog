@@ -3,6 +3,11 @@ import { Box, Typography } from "@mui/material";
 import { useNotesStore } from "@/hooks/useNotesStore";
 import { useCanvasZoomShortcuts } from "@/hooks/useCanvasZoomShortcuts";
 import DraggableNote from "./DraggableNote";
+import StandaloneNoteEditor from "./StandaloneNoteEditor";
+import {
+  toClipboardNote,
+  useNotesClipboard,
+} from "@/contexts/NotesClipboardContext";
 import NotesCanvasPreview from "./NotesCanvasPreview";
 import NotesMigrationBanner from "./NotesMigrationBanner";
 import PasteButton from "./PasteButton";
@@ -61,6 +66,7 @@ const NotesCanvas = forwardRef<NotesCanvasHandle, NotesCanvasProps>(
       bringToFront,
       refresh,
     } = useNotesStore(canvasId);
+    const { copyNote } = useNotesClipboard();
 
     const scale = scaleProp ?? NOTES_ZOOM_DEFAULT;
     const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -220,7 +226,7 @@ const NotesCanvas = forwardRef<NotesCanvasHandle, NotesCanvasProps>(
             overflow: "hidden",
           }}
         >
-          <PasteButton addNote={addNote} canvas={canvas} />
+          <PasteButton addNote={addNote} notes={canvas?.notes ?? []} />
 
           <Box
             ref={scrollContainerRef}
@@ -270,7 +276,17 @@ const NotesCanvas = forwardRef<NotesCanvasHandle, NotesCanvasProps>(
                     onDelete={deleteNote}
                     onFocus={bringToFront}
                     scale={scale}
-                  />
+                    onCopy={() => copyNote(toClipboardNote(note, note.content))}
+                    onCut={() => {
+                      copyNote(toClipboardNote(note, note.content));
+                      deleteNote(note.id);
+                    }}
+                  >
+                    <StandaloneNoteEditor
+                      content={note.content}
+                      onChange={(content) => updateNote(note.id, { content })}
+                    />
+                  </DraggableNote>
                 ))}
               </Box>
             </Box>

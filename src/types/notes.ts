@@ -1,6 +1,13 @@
-export interface Note {
+/**
+ * Everything a note needs to be laid out on a board — position, size, chrome.
+ * Deliberately excludes the note's *content*, because the two boards store it
+ * differently: `/notes` keeps a serialized editor state string per row, while
+ * a canvas embedded in a document (`CanvasNode`) holds a live nested
+ * `LexicalEditor`. `DraggableNote` renders the shell from this type alone and
+ * takes the content editor as `children`, so both boards share one component.
+ */
+export interface NoteFrame {
   id: string;
-  canvasId: string;
   position: {
     x: number;
     y: number;
@@ -10,9 +17,14 @@ export interface Note {
     height: number;
   };
   title?: string; // Optional note title
-  content: string; // Serialized Lexical editor state
   color: string;
   zIndex: number;
+}
+
+/** A note persisted as its own row, on a standalone `/notes` board. */
+export interface Note extends NoteFrame {
+  canvasId: string;
+  content: string; // Serialized Lexical editor state
   createdAt: number;
   updatedAt: number;
 }

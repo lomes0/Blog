@@ -13,6 +13,7 @@ import { SketchNode } from "./nodes/SketchNode";
 import { GraphNode } from "./nodes/GraphNode";
 import { StickyNode } from "./nodes/StickyNode";
 import { KanbanNode } from "./nodes/KanbanNode";
+import { CanvasNode } from "./nodes/CanvasNode";
 import { AttachmentNode } from "./nodes/AttachmentNode";
 import theme from "./theme";
 import { PageBreakNode } from "./nodes/PageBreakNode";
@@ -89,6 +90,7 @@ export const editorConfig = {
     GraphNode,
     StickyNode,
     KanbanNode,
+    CanvasNode,
     AttachmentNode,
     PageBreakNode,
     IFrameNode,

@@ -15,6 +15,8 @@ import { SketchNode } from "@/editor/nodes/SketchNode";
 import { ImageNode } from "@/editor/nodes/ImageNode";
 import { TableNode } from "@/editor/nodes/TableNode";
 import { StickyNode } from "@/editor/nodes/StickyNode";
+import { CanvasNode } from "@/editor/nodes/CanvasNode";
+import { INSERT_CANVAS_COMMAND } from "@/editor/plugins/CanvasPlugin";
 import { PageBreakNode } from "@/editor/nodes/PageBreakNode";
 import { INSERT_PAGE_BREAK } from "@/editor/plugins/PageBreakPlugin";
 import {
@@ -32,6 +34,7 @@ import {
   Columns2,
   Globe,
   Image,
+  LayoutDashboard,
   Minus,
   Paperclip,
   Plus,
@@ -291,6 +294,25 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
             <ListItemText>Note</ListItemText>
             <Typography variant="body2" color="text.secondary">
               /note
+            </Typography>
+          </MenuItem>
+        )}
+        {editor.hasNode(CanvasNode) && (
+          <MenuItem
+            onClick={() => {
+              editor.dispatchCommand(
+                INSERT_CANVAS_COMMAND,
+                undefined,
+              );
+              handleClose();
+            }}
+          >
+            <ListItemIcon>
+              <LayoutDashboard size={ICON_SIZE.dense} />
+            </ListItemIcon>
+            <ListItemText>Notes Canvas</ListItemText>
+            <Typography variant="body2" color="text.secondary">
+              /canvas
             </Typography>
           </MenuItem>
         )}

@@ -1,9 +1,7 @@
 "use client";
-import { Note } from "@/types/notes";
+import { NoteFrame } from "@/types/notes";
 import { DraggableData, Rnd, RndDragEvent, RndResizeCallback } from "react-rnd";
-import { EditorState, LexicalEditor } from "lexical";
-import { editorConfig } from "@/editor/config";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { useMenuState } from "@/hooks/useMenuState";
 import {
   Box,
@@ -14,13 +12,9 @@ import {
   Paper,
   Popover,
   TextField,
+  Typography,
 } from "@mui/material";
 import { Copy, MoreHorizontal, Palette, Scissors, Trash2 } from "lucide-react";
-import { useNotesClipboard } from "@/contexts/NotesClipboardContext";
-import { LexicalComposer } from "@lexical/react/LexicalComposer";
-import { ContentEditable } from "@lexical/react/LexicalContentEditable";
-import { EditorPlugins } from "@/editor/plugins";
-import { EditorRefPlugin } from "@lexical/react/LexicalEditorRefPlugin";
 import {
   NOTE_COLOR_LIST,
   NOTE_COLORS,
@@ -29,15 +23,26 @@ import {
 } from "./noteColors";
 import { ICON_SIZE } from "@/theme/icons";
 
-const MIN_NOTE_WIDTH = 160; // px
-const MIN_NOTE_HEIGHT = 120; // px
+export const MIN_NOTE_WIDTH = 160; // px
+export const MIN_NOTE_HEIGHT = 120; // px
 
 interface DraggableNoteProps {
-  note: Note;
-  onUpdate: (id: string, updates: Partial<Note>) => void;
+  note: NoteFrame;
+  onUpdate: (id: string, updates: Partial<NoteFrame>) => void;
   onDelete: (id: string) => void;
   onFocus: (id: string) => void;
   scale?: number;
+  /** Renders the note's content editor. Each board supplies its own. */
+  children?: React.ReactNode;
+  /**
+   * Copy/cut this note to the notes clipboard. Omitted entries drop the
+   * matching menu item — the two boards serialize note content differently, so
+   * neither action can live in this shell.
+   */
+  onCopy?: () => void;
+  onCut?: () => void;
+  /** Locks position, size and chrome. Used when the host editor isn't editable. */
+  readOnly?: boolean;
 }
 
 export default function DraggableNote({
@@ -46,8 +51,11 @@ export default function DraggableNote({
   onDelete,
   onFocus,
   scale = 1,
+  children,
+  onCopy,
+  onCut,
+  readOnly = false,
 }: DraggableNoteProps) {
-  const editorRef = useRef<LexicalEditor | null>(null);
   const [isFocused, setIsFocused] = useState(false);
   const [title, setTitle] = useState(note.title || "");
   const {
@@ -62,20 +70,6 @@ export default function DraggableNote({
     openMenu: openColorMenu,
     closeMenu: closeColorMenu,
   } = useMenuState();
-  const { copyNote, cutNote } = useNotesClipboard();
-
-  const handleEditorChange = useCallback(
-    (editorState: EditorState, _editor: LexicalEditor) => {
-      const serialized = JSON.stringify(editorState);
-      onUpdate(note.id, { content: serialized });
-    },
-    [onUpdate, note.id],
-  );
-
-  const initialConfig = {
-    ...editorConfig,
-    editorState: note.content || undefined,
-  };
 
   const handleDragStop = useCallback(
     (_e: RndDragEvent, d: DraggableData) => {
@@ -113,14 +107,14 @@ export default function DraggableNote({
   );
 
   const handleCut = useCallback(() => {
-    cutNote(note, onDelete);
+    onCut?.();
     closeMoreMenu();
-  }, [cutNote, note, onDelete, closeMoreMenu]);
+  }, [onCut, closeMoreMenu]);
 
   const handleCopy = useCallback(() => {
-    copyNote(note);
+    onCopy?.();
     closeMoreMenu();
-  }, [copyNote, note, closeMoreMenu]);
+  }, [onCopy, closeMoreMenu]);
 
   const handleDelete = useCallback(() => {
     onDelete(note.id);
@@ -171,7 +165,8 @@ export default function DraggableNote({
       dragHandleClassName="drag-handle"
       scale={scale}
       style={{ zIndex: note.zIndex }}
-      enableResizing={{
+      disableDragging={readOnly}
+      enableResizing={readOnly ? false : {
         bottom: true,
         bottomRight: true,
         right: true,
@@ -211,76 +206,102 @@ export default function DraggableNote({
       >
         {/* Header */}
         <Box
-          className="drag-handle"
+          className={readOnly ? undefined : "drag-handle"}
           sx={{
             display: "flex",
             alignItems: "center",
             gap: 1,
             padding: "6px 8px",
             backgroundColor: "rgba(255, 255, 255, 0.25)",
-            cursor: "move",
+            cursor: readOnly ? "default" : "move",
             userSelect: "none",
             borderBottom: "1px solid rgba(0, 0, 0, 0.06)",
             minHeight: "28px",
             transition: "background-color 0.2s ease",
             "&:hover": {
-              backgroundColor: "rgba(255, 255, 255, 0.35)",
+              backgroundColor: readOnly
+                ? "rgba(255, 255, 255, 0.25)"
+                : "rgba(255, 255, 255, 0.35)",
             },
           }}
         >
-          <TextField
-            value={title}
-            onChange={handleTitleChange}
-            placeholder="Untitled"
-            variant="standard"
-            fullWidth
-            onClick={handleStopPropagation}
-            onMouseDown={handleStopPropagation}
-            InputProps={{
-              disableUnderline: true,
-              sx: {
-                typography: "dense",
-                fontWeight: 500,
-                color: "rgba(0, 0, 0, 0.75)",
-                "& input": {
-                  padding: 0,
-                  cursor: "text",
-                  "&::placeholder": {
-                    color: "rgba(0, 0, 0, 0.3)",
-                    opacity: 1,
+          {readOnly
+            ? (
+              <Typography
+                sx={{
+                  typography: "dense",
+                  fontWeight: 500,
+                  color: "rgba(0, 0, 0, 0.75)",
+                  flex: 1,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {note.title}
+              </Typography>
+            )
+            : (
+              <TextField
+                value={title}
+                onChange={handleTitleChange}
+                placeholder="Untitled"
+                variant="standard"
+                fullWidth
+                onClick={handleStopPropagation}
+                onMouseDown={handleStopPropagation}
+                InputProps={{
+                  disableUnderline: true,
+                  sx: {
+                    typography: "dense",
+                    fontWeight: 500,
+                    color: "rgba(0, 0, 0, 0.75)",
+                    "& input": {
+                      padding: 0,
+                      cursor: "text",
+                      "&::placeholder": {
+                        color: "rgba(0, 0, 0, 0.3)",
+                        opacity: 1,
+                      },
+                    },
                   },
-                },
-              },
-            }}
-          />
-          <IconButton
-            size="small"
-            onClick={handleOpenColorMenu}
-            onMouseDown={handleStopPropagation}
-            sx={{
-              padding: "3px",
-              flexShrink: 0,
-              opacity: 0.45,
-              transition: "opacity 0.2s ease",
-              "&:hover": { opacity: 1 },
-            }}
-          >
-            <Palette size={ICON_SIZE.inline} />
-          </IconButton>
-          <IconButton
-            size="small"
-            onClick={handleOpenMoreMenu}
-            onMouseDown={handleStopPropagation}
-            sx={{
-              padding: "3px",
-              flexShrink: 0,
-              opacity: 0.45,
-              transition: "opacity 0.2s ease",
-              "&:hover": { opacity: 1 },
-            }}
-          >
-            <MoreHorizontal size={ICON_SIZE.inline} />
-          </IconButton>
+                }}
+              />
+            )}
+          {!readOnly && (
+            <>
+              <IconButton
+                size="small"
+                onClick={handleOpenColorMenu}
+                onMouseDown={handleStopPropagation}
+                aria-label="Note color"
+                sx={{
+                  padding: "3px",
+                  flexShrink: 0,
+                  opacity: 0.45,
+                  transition: "opacity 0.2s ease",
+                  "&:hover": { opacity: 1 },
+                }}
+              >
+                <Palette size={ICON_SIZE.inline} />
+              </IconButton>
+              <IconButton
+                size="small"
+                onClick={handleOpenMoreMenu}
+                onMouseDown={handleStopPropagation}
+                aria-label="Note actions"
+                sx={{
+                  padding: "3px",
+                  flexShrink: 0,
+                  opacity: 0.45,
+                  transition: "opacity 0.2s ease",
+                  "&:hover": { opacity: 1 },
+                }}
+              >
+                <MoreHorizontal size={ICON_SIZE.inline} />
+              </IconButton>
+            </>
+          )}
         </Box>
 
         {/* Editor Content */}
@@ -290,7 +311,7 @@ export default function DraggableNote({
             overflow: "auto",
             padding: "10px",
             backgroundColor: "rgba(255, 255, 255, 0.3)",
-            "& .editor-input": {
+            "& .editor-input, & .nested-contentEditable": {
               minHeight: "100%",
               outline: "none",
               fontSize: "14px",
@@ -304,18 +325,7 @@ export default function DraggableNote({
           onFocus={handleFocus}
           onBlur={handleBlur}
         >
-          <LexicalComposer initialConfig={initialConfig}>
-            <EditorPlugins
-              onChange={handleEditorChange}
-              contentEditable={
-                <ContentEditable
-                  className="editor-input"
-                  ariaLabel="note editor"
-                />
-              }
-            />
-            <EditorRefPlugin editorRef={editorRef} />
-          </LexicalComposer>
+          {children}
         </Box>
 
         {/* Color picker */}
@@ -335,10 +345,12 @@ export default function DraggableNote({
               gap: 0.75,
             }}
           >
-            {NOTE_COLOR_LIST.map(({ value }) => (
+            {NOTE_COLOR_LIST.map(({ name, value }) => (
               <Box
                 key={value}
                 onClick={() => handleColorChange(value)}
+                role="button"
+                aria-label={name}
                 sx={{
                   width: 22,
                   height: 22,
@@ -363,15 +375,19 @@ export default function DraggableNote({
           onClose={handleCloseMoreAnchor}
           onClick={handleStopPropagation}
         >
-          <MenuItem onClick={handleCut} dense>
-            <Scissors size={ICON_SIZE.dense} style={{ marginRight: 8 }} />
-            Cut
-          </MenuItem>
-          <MenuItem onClick={handleCopy} dense>
-            <Copy size={ICON_SIZE.dense} style={{ marginRight: 8 }} />
-            Copy
-          </MenuItem>
-          <Divider />
+          {onCut && (
+            <MenuItem onClick={handleCut} dense>
+              <Scissors size={ICON_SIZE.dense} style={{ marginRight: 8 }} />
+              Cut
+            </MenuItem>
+          )}
+          {onCopy && (
+            <MenuItem onClick={handleCopy} dense>
+              <Copy size={ICON_SIZE.dense} style={{ marginRight: 8 }} />
+              Copy
+            </MenuItem>
+          )}
+          {(onCut || onCopy) && <Divider />}
           <MenuItem onClick={handleDelete} dense sx={{ color: "error.main" }}>
             <Trash2 size={ICON_SIZE.dense} style={{ marginRight: 8 }} />
             Delete
