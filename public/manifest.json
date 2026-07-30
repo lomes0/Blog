@@ -1,24 +1,16 @@
 {
   "$schema": "http://json.schemastore.org/web-manifest",
-  "id": "matheditor.me",
-  "short_name": "Editor",
-  "name": "Editor",
-  "description": "Editor is a free text editor, with support for LaTeX, Geogebra, Excalidraw and markdown shortcuts. Create, share and print math documents with ease.",
+  "id": "/",
+  "short_name": "Blog",
+  "name": "Blog",
+  "description": "A blog platform with a rich text editor: LaTeX, Geogebra, Excalidraw, sticky notes and markdown shortcuts. Write posts and organize them into series.",
   "dir": "ltr",
   "lang": "en",
-  "related_applications": [
-    {
-      "platform": "play",
-      "url": "https://play.google.com/store/apps/details?id=ml.matheditor.twa",
-      "id": "ml.matheditor.twa"
-    }
-  ],
-  "prefer_related_applications": true,
   "edge_side_panel": {
     "preferred_width": 400
   },
   "categories": [
-    "education"
+    "productivity"
   ],
   "icons": [
     {
@@ -49,46 +41,6 @@
       "purpose": "maskable"
     }
   ],
-  "file_handlers": [
-    {
-      "action": "/",
-      "accept": {
-        "text/x-troff-me": [
-          ".me"
-        ]
-      },
-      "icons": [
-        {
-          "src": "favicon.ico",
-          "sizes": "32x32",
-          "type": "image/x-icon"
-        },
-        {
-          "src": "pwa-64x64.png",
-          "sizes": "24x24",
-          "type": "image/png"
-        },
-        {
-          "src": "pwa-192x192.png",
-          "sizes": "24x24",
-          "type": "image/png"
-        },
-        {
-          "src": "pwa-512x512.png",
-          "sizes": "24x24",
-          "type": "image/png",
-          "purpose": "any"
-        },
-        {
-          "src": "maskable-icon-512x512.png",
-          "sizes": "24x24",
-          "type": "image/png",
-          "purpose": "maskable"
-        }
-      ],
-      "launch_type": "single-client"
-    }
-  ],
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -99,15 +51,6 @@
     "window-controls-overlay"
   ],
   "handle_links": "preferred",
-  "screenshots": [
-    {
-      "src": "feature.png",
-      "sizes": "1024x500",
-      "type": "image/png",
-      "form-factor": "wide",
-      "label": "Editor"
-    }
-  ],
   "launch_handler": {
     "client_mode": "auto"
   }

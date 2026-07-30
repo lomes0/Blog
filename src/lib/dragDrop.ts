@@ -12,7 +12,7 @@ import type { DragEvent } from "react";
  */
 
 /** MIME type carrying a dragged row (or block of rows) between tree surfaces. */
-export const DRAG_MIME = "application/matheditor-document";
+export const DRAG_MIME = "application/blog-simple-document";
 
 /** Which edge of the row under the cursor a drop would land on. */
 export type DropPosition = "before" | "after";

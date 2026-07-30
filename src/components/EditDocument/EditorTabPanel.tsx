@@ -166,7 +166,7 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
           <ConnectedEditor
             document={documentForEditor}
             editorRef={editorRef}
-            namespace={`matheditor-${docId}`}
+            namespace={`blog-simple-${docId}`}
             onChange={handleEditorChange}
             onSave={triggerSave}
             onReset={handleReset}

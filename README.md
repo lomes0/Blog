@@ -1,7 +1,6 @@
 # Blog Editor
 
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/IBastawisi/math-editor/blob/master/LICENSE)
-[![demo](https://img.shields.io/badge/live-demo-blue)](https://matheditor.ml/playground)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 A modern blog platform with rich text editing capabilities, built with Next.js
 and Lexical editor. Featuring advanced mathematical content support, interactive

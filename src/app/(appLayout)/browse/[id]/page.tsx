@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import DocumentBrowser from "@/components/DocumentBrowser";
 
 export const metadata: Metadata = {
-  title: "Blog Posts | MathEditor",
+  title: "Blog Posts",
   description: "Browse and manage your blog posts",
 };
 

@@ -101,12 +101,17 @@ export default function Privacy() {
       <p>
         <strong>Contact Us</strong>
       </p>
+      {/*
+        TODO: this policy is inherited from the upstream project and still needs
+        a real owner. The contact address here was the previous maintainer's
+        personal email and has been removed rather than left pointing at someone
+        who has nothing to do with this deployment. Fill in a contact address —
+        and re-read the rest of the page, which is dated Sept. 2022 and still
+        describes an ad-supported site.
+      */}
       <p>
-        If you have any questions about this privacy policy, please contact us
-        via email at{" "}
-        <a href="mailto:ibastawisi@outlook.com">
-          ibastawisi@outlook.com
-        </a>
+        If you have any questions about this privacy policy, please contact the
+        site owner.
       </p>
     </div>
   );

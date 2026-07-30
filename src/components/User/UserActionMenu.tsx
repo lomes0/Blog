@@ -16,11 +16,13 @@ import {
 } from "@mui/material";
 import { Settings } from "lucide-react";
 import useOnlineStatus from "@/hooks/useOnlineStatus";
+import useOrigin from "@/hooks/useOrigin";
 import { useHandleValidation } from "@/hooks/useHandleValidation";
 
 function UserActionMenu({ user }: { user: User }) {
   const dispatch = useDispatch();
   const isOnline = useOnlineStatus();
+  const origin = useOrigin();
   const router = useRouter();
   const navigate = (path: string) => router.push(path);
   const pathname = usePathname();
@@ -118,7 +120,7 @@ function UserActionMenu({ user }: { user: User }) {
                 ? "Validating..."
                 : validationErrors.handle
                 ? validationErrors.handle
-                : `https://matheditor.me/user/${input.handle || user.id}`}
+                : `${origin}/user/${input.handle || user.id}`}
             />
           </DialogContent>
           <DialogActions>

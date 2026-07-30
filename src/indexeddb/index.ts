@@ -48,6 +48,13 @@ export function getStore<T>(storeName: string) {
 }
 
 const idbConfig = {
+  // Inherited from the project this app was forked from, and deliberately NOT
+  // renamed. The name is the primary key of the browser's IndexedDB store:
+  // changing it does not migrate anything, it silently opens a second, empty
+  // database and strands every guest's local drafts and revisions in the old
+  // one with no path back. Renaming would need an explicit copy-then-delete
+  // migration; until someone writes one, this string stays.
+  // See docs/guides/notes-indexeddb-origins.md.
   databaseName: "matheditor",
   version: 5,
   stores: [

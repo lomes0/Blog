@@ -34,7 +34,10 @@ import {
 } from "./nodes/DetailsNode";
 
 export const editorConfig = {
-  namespace: "matheditor",
+  // Shared verbatim with `nodes/nestedConfig.tsx` and `nodes/ImageNode/config.tsx`.
+  // Lexical only restores rich node state on paste when the source and target
+  // editors report the same namespace, so these three must not drift apart.
+  namespace: "blog-simple",
   // The editor theme
   theme: theme,
   // Handling of errors during update

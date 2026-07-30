@@ -65,6 +65,11 @@ function wrapTableElement(
 export class TableNode extends LexicalTableNode {
   __style: string;
   __id: string;
+  // Inherited name, deliberately NOT renamed. `getType()` is the discriminator
+  // Lexical writes into the `type` field of every serialized node and dispatches
+  // on when reading one back, so this string is baked into every Revision row
+  // that contains a table. Renaming it makes those posts fail to deserialize.
+  // Changing it would need a data migration over the Revision JSON first.
   static getType(): string {
     return "matheditor-table";
   }

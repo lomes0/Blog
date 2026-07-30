@@ -15,14 +15,22 @@ export const fetchCache = "force-cache";
 
 const PUBLIC_URL = process.env.PUBLIC_URL;
 
+const DESCRIPTION =
+  "A blog platform with a rich text editor: LaTeX, Geogebra, Excalidraw, sticky notes and markdown shortcuts. Write posts and organize them into series.";
+
+// No `openGraph.images` on purpose. This used to point at `/feature.png`, the
+// Google Play feature graphic of the project this app was forked from — 1024x500
+// of "Math Editor / Easy as π" over a screenshot of the old Android app. Every
+// link to this site rendered that card. Until there is artwork for *this*
+// product, a text-only card is the honest result; drop a file in and add the
+// `images` key back.
 export const metadata: Metadata = {
-  title: "Editor",
-  description:
-    "Editor is a free text editor, with support for LaTeX, Geogebra, Excalidraw and markdown shortcuts. Create, share and print math documents with ease.",
-  applicationName: "Editor",
+  title: "Blog",
+  description: DESCRIPTION,
+  applicationName: "Blog",
   appleWebApp: {
     capable: true,
-    title: "Editor",
+    title: "Blog",
     statusBarStyle: "default",
   },
   formatDetection: {
@@ -31,8 +39,8 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   icons: "/favicon.ico",
   keywords: [
+    "Blog",
     "Editor",
-    "Online Editor",
     "Latex",
     "Geogebra",
     "Excalidraw",
@@ -40,17 +48,8 @@ export const metadata: Metadata = {
   ],
   metadataBase: PUBLIC_URL ? new URL(PUBLIC_URL) : undefined,
   openGraph: {
-    title: "Editor",
-    description:
-      "Editor is a free text editor, with support for LaTeX, Geogebra, Excalidraw and markdown shortcuts. Create, share and print math documents with ease.",
-    images: [
-      {
-        url: "/feature.png",
-        width: 1024,
-        height: 500,
-        alt: "Editor Feature Image",
-      },
-    ],
+    title: "Blog",
+    description: DESCRIPTION,
   },
 };
 

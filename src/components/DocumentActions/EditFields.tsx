@@ -10,6 +10,7 @@ import {
   Typography,
 } from "@mui/material";
 import { DocumentStatus } from "@/types";
+import useOrigin from "@/hooks/useOrigin";
 import type { ChangeEvent } from "react";
 import type { SelectChangeEvent } from "@mui/material";
 
@@ -61,25 +62,28 @@ export const EditHandleField: React.FC<{
   validating: boolean;
   error: string | undefined;
   disabled: boolean;
-}> = ({ value, onChange, validating, error, disabled }) => (
-  <TextField
-    margin="normal"
-    size="small"
-    fullWidth
-    label="Post Handle"
-    disabled={disabled}
-    value={value}
-    onChange={onChange}
-    error={!validating && !!error}
-    helperText={validating
-      ? "Validating..."
-      : error
-      ? error
-      : value
-      ? `https://matheditor.me/view/${value}`
-      : "This will be used in the URL of your document"}
-  />
-);
+}> = ({ value, onChange, validating, error, disabled }) => {
+  const origin = useOrigin();
+  return (
+    <TextField
+      margin="normal"
+      size="small"
+      fullWidth
+      label="Post Handle"
+      disabled={disabled}
+      value={value}
+      onChange={onChange}
+      error={!validating && !!error}
+      helperText={validating
+        ? "Validating..."
+        : error
+        ? error
+        : value
+        ? `${origin}/view/${value}`
+        : "This will be used in the URL of your post"}
+    />
+  );
+};
 
 export const EditDateFields: React.FC<{
   value: string | Date | null | undefined;

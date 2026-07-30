@@ -36,7 +36,8 @@ import {
  * PageBreakNode are out too — neither means anything at this scale.
  */
 export const nestedEditorConfig = {
-  namespace: "matheditor",
+  // Must match `editor/config.tsx` — see the note there.
+  namespace: "blog-simple",
   // The editor theme
   theme: theme,
   // Handling of errors during update

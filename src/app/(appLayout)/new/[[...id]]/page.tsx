@@ -28,11 +28,11 @@ export async function generateMetadata(
   const { id } = await props.params;
   if (!(id && id[0])) {
     return {
-      title: "New Document",
-      description: "Create a new document on Math Editor",
+      title: "New Post",
+      description: "Create a new post",
     };
   }
-  const metadata: OgMetadata = { id: id[0], title: "Math Editor" };
+  const metadata: OgMetadata = { id: id[0], title: "Blog" };
   const document = await getCachedUserDocument(id[0], searchParams.v);
   if (document) {
     if (document.collab || document.published) {

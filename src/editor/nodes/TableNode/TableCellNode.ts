@@ -35,6 +35,8 @@ export type SerializedTableCellNode = LexicalSerializedTableCellNode & {
 /** @noInheritDoc */
 export class TableCellNode extends LexicalTableCellNode {
   __style: string;
+  // Inherited name, deliberately NOT renamed — see the note on TableNode.
+  // This string is persisted in every serialized table cell.
   static getType(): string {
     return "matheditor-tablecell";
   }

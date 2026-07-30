@@ -7,9 +7,13 @@ Notes appear to be deleted when switching between `npm run dev` and
 
 ## Root Cause
 
-Notes are stored in **IndexedDB** (database name: `matheditor`, version: 4)
+Notes are stored in **IndexedDB** (database name: `matheditor`, version: 5)
 which is origin-specific. Each origin (protocol + hostname + port) maintains a
 separate IndexedDB instance.
+
+The database name is inherited from the project this app was forked from and is
+deliberately not renamed — see the note in `src/indexeddb/index.ts`. Renaming it
+opens a second, empty database rather than migrating the existing one.
 
 - `npm run dev` typically runs on `http://localhost:3000`
 - `npm run build + start` runs on a different port (e.g.,

@@ -10,7 +10,8 @@ import type { CreateEditorArgs } from "lexical";
 import { htmlConfig } from "@/editor/utils/htmlConfig";
 
 export const editorConfig = {
-  namespace: "matheditor",
+  // Must match `editor/config.tsx` — see the note there.
+  namespace: "blog-simple",
   // The editor theme
   theme: theme,
   // Handling of errors during update
