@@ -6,6 +6,7 @@ import SideBar from "./SideBar";
 import ActivityRail from "./ActivityRail";
 import SidebarResizeHandle from "./SideBar/SidebarResizeHandle";
 import { ACTIVITY_RAIL_W } from "./SideBar/constants";
+import { CONTENT_PAD_X } from "./contentInset";
 import { COLLAPSE_EASING } from "./SideBar/dragGeometry";
 import HydrationManager from "./HydrationManager";
 import EditorTopBar from "./EditorTopBar";
@@ -145,14 +146,14 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
                     overflow: "auto",
                     width: "100%",
                     pl: {
-                      xs: 5,
-                      sm: 10,
-                      md: 12,
+                      xs: CONTENT_PAD_X.xs.left,
+                      sm: CONTENT_PAD_X.sm.left,
+                      md: CONTENT_PAD_X.md.left,
                     },
                     pr: {
-                      xs: 4,
-                      sm: 6,
-                      md: 8,
+                      xs: CONTENT_PAD_X.xs.right,
+                      sm: CONTENT_PAD_X.sm.right,
+                      md: CONTENT_PAD_X.md.right,
                     },
                   }}
                 >

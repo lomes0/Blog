@@ -31,6 +31,7 @@ import { useTopBarActions } from "@/contexts/TopBarActionsContext";
 import { useTopBarTabs } from "@/contexts/TopBarTabsContext";
 import { ICON_SIZE } from "@/theme/icons";
 import { openCommandPalette } from "@/components/CommandPalette/CommandPalette";
+import { CONTENT_AXIS_SHIFT } from "./contentInset";
 
 interface BreadcrumbItem {
   label: string;
@@ -670,7 +671,7 @@ const EditorTopBar: React.FC = () => {
             openCommandPalette();
           }
         }}
-        sx={{
+        sx={(theme) => ({
           display: { xs: "none", sm: "flex" },
           alignItems: "center",
           gap: 1,
@@ -678,6 +679,17 @@ const EditorTopBar: React.FC = () => {
           minWidth: 0,
           width: "100%",
           maxWidth: 440,
+          // The flex regions either side center the pill on the *bar*, which is
+          // not where the page's content sits — the container below carries a
+          // wider left gutter than right. Shifting by half that difference puts
+          // the pill on the content axis, so it, the composer beneath it and
+          // the ⌘K dialog that opens out of it all share one vertical line.
+          // A transform rather than a margin: this is a visual correction, and
+          // the two regions should keep splitting the bar evenly.
+          transform: {
+            sm: `translateX(${theme.spacing(CONTENT_AXIS_SHIFT.sm)})`,
+            md: `translateX(${theme.spacing(CONTENT_AXIS_SHIFT.md)})`,
+          },
           px: 1,
           py: 0.375,
           cursor: "pointer",
@@ -693,7 +705,7 @@ const EditorTopBar: React.FC = () => {
             boxShadow:
               "0 0 0 3px rgba(var(--mui-palette-primary-mainChannel) / 0.25)",
           },
-        }}
+        })}
       >
         <Search size={ICON_SIZE.inline} style={{ flexShrink: 0 }} />
         <Typography
