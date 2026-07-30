@@ -1,9 +1,8 @@
 "use client";
 import { useCallback, useState } from "react";
-import { v4 as uuidv4 } from "uuid";
 import { actions, useDispatch, useSelector } from "@/store";
 import type { Post, PostCreateInput, User } from "@/types";
-import { getEditorData } from "@/utils/getEditorData";
+import { buildPostCreateInput } from "@/lib/newPost";
 import { useHandleValidation } from "./useHandleValidation";
 
 /**
@@ -98,22 +97,9 @@ export function useCreatePostForm(
     setError(null);
     setSubmitting(true);
     try {
-      const createdAt = new Date().toISOString();
-      const id = uuidv4();
-      const payload: PostCreateInput = {
-        ...input,
-        id,
-        head: uuidv4(),
-        name: input.name || "Untitled Document",
-        data: input.data ?? getEditorData(),
-        type: "DOCUMENT",
-        parentId,
-        seriesId,
-        createdAt,
-        updatedAt: createdAt,
-      };
+      const payload = buildPostCreateInput({ ...input, parentId, seriesId });
       await dispatch(actions.createPost(payload)).unwrap();
-      return { ok: true, id };
+      return { ok: true, id: payload.id };
     } catch {
       // The thunk announces the failure globally; surfaces with an inline error
       // area read `error` as well.
