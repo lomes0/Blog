@@ -53,10 +53,14 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
     : null;
   const routeDocId = routeMode ? (segments[1] ?? null) : null;
   // A view route is authoritative; the active tab may be stale from a prior
-  // edit session. Edit mode still follows the selected tab.
+  // edit session. Edit mode still follows the selected tab. `null` on every
+  // other route — the Copilot then talks about the library rather than a
+  // document, which is what the home pane's composer opens it for.
   const copilotDocumentId = routeMode === "view"
-    ? routeDocId ?? ""
-    : activeTabId ?? routeDocId ?? "";
+    ? routeDocId
+    : routeMode === "edit"
+    ? activeTabId ?? routeDocId
+    : null;
 
   const [activeEditorRef, setActiveEditorRef] = useState<
     RefObject<LexicalEditor | null>

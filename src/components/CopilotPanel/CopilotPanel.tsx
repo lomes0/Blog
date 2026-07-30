@@ -24,11 +24,13 @@ import {
   loadHistory,
   removeFromHistory,
   saveCurrentThread,
+  WORKSPACE_SCOPE,
 } from "./copilotStorage";
 import { ICON_SIZE } from "@/theme/icons";
 
 interface CopilotPanelProps {
-  documentId: string;
+  /** `null` on a route with no document open — see {@link CopilotChat}. */
+  documentId: string | null;
 }
 
 function formatRelativeTime(ts: number): string {
@@ -53,9 +55,10 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
   const acceptAllRef = useRef<(() => void) | null>(null);
 
   const doc = useSelector((state) =>
-    postsSelectors.selectById(state, documentId)
+    documentId ? postsSelectors.selectById(state, documentId) : undefined
   );
-  const documentTitle = doc.name ?? "Untitled";
+  const documentTitle = doc?.name ?? "Untitled";
+  const scope = documentId ?? WORKSPACE_SCOPE;
   const currentModel = AI_MODELS.find((m) => m.id === llmConfig.model);
 
   const handleAcceptAll = () => {
@@ -64,22 +67,22 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
 
   // Archive the active thread and start fresh.
   const handleNewConversation = () => {
-    archiveThread(documentId, loadCurrentThread(documentId));
-    clearCurrentThread(documentId);
+    archiveThread(scope, loadCurrentThread(scope));
+    clearCurrentThread(scope);
     setChatKey((k) => k + 1);
   };
 
   const openHistory = (e: React.MouseEvent<HTMLElement>) => {
-    setHistory(loadHistory(documentId));
+    setHistory(loadHistory(scope));
     setHistoryAnchor(e.currentTarget);
   };
 
   // Restore a past thread: archive the current one, then make the chosen
   // thread current and remount the chat to load it.
   const handleSelectThread = (thread: CopilotThread) => {
-    archiveThread(documentId, loadCurrentThread(documentId));
-    removeFromHistory(documentId, thread.id);
-    saveCurrentThread(documentId, thread.messages);
+    archiveThread(scope, loadCurrentThread(scope));
+    removeFromHistory(scope, thread.id);
+    saveCurrentThread(scope, thread.messages);
     setHistoryAnchor(null);
     setChatKey((k) => k + 1);
   };
@@ -139,7 +142,9 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
             noWrap
             display="block"
           >
-            Editing &ldquo;{documentTitle}&rdquo; &middot;{" "}
+            {documentId
+              ? <>Editing &ldquo;{documentTitle}&rdquo;</>
+              : "All posts"} &middot;{" "}
             {currentModel?.name ?? llmConfig.model}
           </Typography>
         </Box>

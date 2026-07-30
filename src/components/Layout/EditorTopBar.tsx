@@ -14,6 +14,7 @@ import {
   ArrowLeft,
   BookOpen,
   FileText,
+  House,
   LayoutDashboard,
   Library,
   PenLine,
@@ -137,7 +138,16 @@ const EditorTopBar: React.FC = () => {
 
   const breadcrumbs = React.useMemo((): BreadcrumbItem[] => {
     const items: BreadcrumbItem[] = [];
-    if (segments.length === 0) return items;
+    // The home route is a route like any other and gets the same crumb
+    // treatment, rather than a second header bar of its own inside the page.
+    if (segments.length === 0) {
+      items.push({
+        label: "Home",
+        href: "/",
+        icon: <House size={ICON_SIZE.inline} style={{ marginRight: 4 }} />,
+      });
+      return items;
+    }
 
     switch (segments[0]) {
       case "browse":
@@ -273,8 +283,6 @@ const EditorTopBar: React.FC = () => {
     docSeriesTitle,
     docName,
   ]);
-
-  if (pathname === "/") return null;
 
   const hasTabs = isDocPage && tabBar && tabBar.tabs.length > 1;
 

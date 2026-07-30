@@ -100,8 +100,8 @@ export const POST = userRoute(async (req) => {
   const result = streamText({
     model: modelInstance,
     system: COPILOT_AGENT_SYSTEM_PROMPT(
-      currentPath ?? "current.md",
-      documentTitle ?? "Untitled",
+      currentPath ?? null,
+      documentTitle ?? null,
     ),
     messages: modelMessages,
     tools: agentTools,

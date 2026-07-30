@@ -15,6 +15,14 @@ const HISTORY_PREFIX = "copilot:history:";
 const MAX_HISTORY = 20;
 const TITLE_MAX = 60;
 
+/**
+ * Scope key for a conversation with no document behind it — the one the home
+ * pane's composer starts. Every other scope is a document id (a uuid), so this
+ * cannot collide with one, and a workspace thread persists and archives exactly
+ * like a per-document thread.
+ */
+export const WORKSPACE_SCOPE = "workspace";
+
 export interface CopilotThread {
   id: string;
   title: string;

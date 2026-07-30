@@ -52,13 +52,22 @@ export const COPILOT_SYSTEM_PROMPT = (
  * of Markdown files the agent explores and edits with file-style tools.
  */
 export const COPILOT_AGENT_SYSTEM_PROMPT = (
-  currentPath: string,
-  currentTitle: string,
+  currentPath: string | null,
+  currentTitle: string | null,
 ): string =>
   `You are a coding-style agent working over the author's blog, which is ` +
   `presented to you as a repository of Markdown files — one file per post, ` +
   `addressed as "<id>.md". You have file tools to explore and edit it.\n\n` +
-  `The currently open document is "${currentTitle}" (${currentPath}).\n\n` +
+  // No open document is a real state, not a missing value: the home pane asks
+  // questions of the library as a whole. Saying so keeps the agent from
+  // reaching for read_current_document and reporting an empty document as the
+  // answer.
+  (currentPath
+    ? `The currently open document is "${currentTitle}" (${currentPath}).\n\n`
+    : `No document is open — the user is asking from the home pane, about ` +
+      `their library as a whole. read_current_document and get_selection have ` +
+      `nothing to read; use list_documents, search_documents and ` +
+      `read_document instead.\n\n`) +
   `TOOLS\n` +
   `- list_documents: list every post (metadata only).\n` +
   `- search_documents: grep titles and bodies for a substring.\n` +

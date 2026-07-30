@@ -25,7 +25,12 @@ import { postsSelectors, useSelector } from "@/store";
 import { AI_MODELS } from "@/lib/ai/models";
 import CopilotMessage from "./CopilotMessage";
 import QuickActions from "./QuickActions";
-import { loadCurrentThread, saveCurrentThread } from "./copilotStorage";
+import {
+  loadCurrentThread,
+  saveCurrentThread,
+  WORKSPACE_SCOPE,
+} from "./copilotStorage";
+import { ASK_COPILOT_EVENT, consumePendingPrompt } from "./copilotHandoff";
 import { ICON_SIZE } from "@/theme/icons";
 
 const PROVIDER_COLOR: Record<string, string> = {
@@ -39,6 +44,8 @@ interface SlashCommand {
   command: string;
   description: string;
   prompt: string;
+  /** Acts on the open document — hidden when the conversation has none. */
+  needsDocument: boolean;
 }
 
 const SLASH_COMMANDS: SlashCommand[] = [
@@ -46,27 +53,32 @@ const SLASH_COMMANDS: SlashCommand[] = [
     command: "/summarize",
     description: "Summarize the document",
     prompt: "Summarize the current document in 3 bullet points.",
+    needsDocument: true,
   },
   {
     command: "/fix",
     description: "Fix grammar and spelling",
     prompt: "Fix any grammar and spelling mistakes in the current document.",
+    needsDocument: true,
   },
   {
     command: "/improve",
     description: "Improve clarity and flow",
     prompt: "Improve the clarity and flow of the current document while " +
       "preserving its meaning.",
+    needsDocument: true,
   },
   {
     command: "/section",
     description: "Add a new section",
     prompt: "Suggest and add a new section to the current document.",
+    needsDocument: true,
   },
   {
     command: "/find",
     description: "Search across all posts",
     prompt: "Search my posts for ",
+    needsDocument: false,
   },
 ];
 
@@ -84,7 +96,13 @@ type GenericAddToolOutput = (
 ) => Promise<void>;
 
 interface CopilotChatProps {
-  documentId: string;
+  /**
+   * The document the conversation edits, or `null` on a route with none open
+   * (the home pane). With no document the doc-scoped tools have nothing to act
+   * on, so the slash commands that drive them are hidden and the agent is left
+   * with its library-wide reads.
+   */
+  documentId: string | null;
   llmConfig: { provider: string; model: string };
   setLlmConfig: (config: { provider: string; model: string }) => void;
   onRegisterAcceptAll: (fn: () => void) => void;
@@ -102,9 +120,16 @@ const CopilotChat: React.FC<CopilotChatProps> = (
 ) => {
   const editorRef = useContext(ActiveEditorContext);
   const doc = useSelector((state) =>
-    postsSelectors.selectById(state, documentId)
+    documentId ? postsSelectors.selectById(state, documentId) : undefined
   );
-  const documentTitle = doc.name ?? "Untitled";
+  const documentTitle = doc?.name ?? "Untitled";
+  // Storage is scoped per conversation, and a document-less conversation is
+  // still a conversation worth keeping across a panel close.
+  const scope = documentId ?? WORKSPACE_SCOPE;
+  // What the tool executors call "the open document". They already read the
+  // empty string as "none open" — `read_current_document` returns empty rather
+  // than throwing — so it is the existing spelling of this state, not a new one.
+  const openDocId = documentId ?? "";
 
   const [input, setInput] = useState("");
   const [modelMenuAnchor, setModelMenuAnchor] = useState<null | HTMLElement>(
@@ -126,8 +151,8 @@ const CopilotChat: React.FC<CopilotChatProps> = (
           body: {
             messages,
             ...(body as object | undefined),
-            documentTitle: documentTitleRef.current,
-            currentPath: `${documentId}.md`,
+            documentTitle: documentId ? documentTitleRef.current : undefined,
+            currentPath: documentId ? `${documentId}.md` : undefined,
             provider: llmConfigRef.current.provider,
             model: llmConfigRef.current.model,
           },
@@ -135,10 +160,10 @@ const CopilotChat: React.FC<CopilotChatProps> = (
       }),
   );
 
-  // Seed from the persisted thread for this document. The component is
-  // remounted (keyed on documentId) when the document changes, so reading
-  // once here is correct.
-  const [initialMessages] = useState(() => loadCurrentThread(documentId));
+  // Seed from the persisted thread for this scope. The component is remounted
+  // (keyed on documentId) when the document changes, so reading once here is
+  // correct.
+  const [initialMessages] = useState(() => loadCurrentThread(scope));
 
   // Referenced inside onToolCall (which fires during streaming) but assigned by
   // useChat below — safe because tool calls only resolve after useChat returns.
@@ -173,7 +198,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
             name,
             (toolCall.input ?? {}) as Record<string, unknown>,
             editorRefRef.current.current,
-            documentId,
+            openDocId,
           );
         } catch (e) {
           output = { error: e instanceof Error ? e.message : String(e) };
@@ -193,9 +218,9 @@ const CopilotChat: React.FC<CopilotChatProps> = (
   // Persist the thread once it settles (avoid thrashing during streaming).
   useEffect(() => {
     if (status === "ready" || status === "error") {
-      saveCurrentThread(documentId, messages);
+      saveCurrentThread(scope, messages);
     }
-  }, [messages, status, documentId]);
+  }, [messages, status, scope]);
 
   // The most recent assistant message is the one offered for regeneration.
   const lastAssistantId = [...messages].reverse().find((m) =>
@@ -214,7 +239,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
           getToolName(p),
           ((p as { input?: unknown }).input ?? {}) as Record<string, unknown>,
           editor,
-          documentId,
+          openDocId,
         );
         await addToolOutputRef.current?.({
           tool: getToolName(p),
@@ -223,7 +248,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
         });
       }
     }
-  }, [messages, documentId]);
+  }, [messages, openDocId]);
 
   useEffect(() => {
     onRegisterAcceptAll(acceptAll);
@@ -251,11 +276,29 @@ const CopilotChat: React.FC<CopilotChatProps> = (
     setInput("");
   }, [input, isLoading, sendPrompt]);
 
+  // A prompt handed over from another surface — today the home pane's composer.
+  // Both paths are needed: the event covers an already-mounted panel, the mount
+  // read covers the panel this hand-off just opened. `consumePendingPrompt`
+  // clears the holder, so only one of them ever fires.
+  const sendPromptRef = useRef(sendPrompt);
+  sendPromptRef.current = sendPrompt;
+  useEffect(() => {
+    const deliver = () => {
+      const prompt = consumePendingPrompt();
+      if (prompt) sendPromptRef.current(prompt);
+    };
+    deliver();
+    window.addEventListener(ASK_COPILOT_EVENT, deliver);
+    return () => window.removeEventListener(ASK_COPILOT_EVENT, deliver);
+  }, []);
+
   // Slash-command autocomplete: active while the input is a single "/token".
   const slashQuery = /^\/\S*$/.test(input) ? input.toLowerCase() : null;
   const slashMatches = slashQuery === null
     ? []
-    : SLASH_COMMANDS.filter((c) => c.command.startsWith(slashQuery));
+    : SLASH_COMMANDS
+      .filter((c) => documentId !== null || !c.needsDocument)
+      .filter((c) => c.command.startsWith(slashQuery));
   const slashOpen = slashMatches.length > 0 && !isLoading;
 
   const pickSlashCommand = (cmd: SlashCommand) => {
@@ -366,7 +409,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
                 key={msg.id}
                 message={msg}
                 addToolOutput={genericAddToolOutput}
-                currentDocId={documentId}
+                currentDocId={openDocId}
                 onRegenerate={!isLoading && msg.id === lastAssistantId
                   ? () => regenerate({ messageId: msg.id })
                   : undefined}
@@ -393,8 +436,12 @@ const CopilotChat: React.FC<CopilotChatProps> = (
         </Box>
       )}
 
-      {/* Quick actions — visible only in empty state */}
-      {messages.length === 0 && (
+      {
+        /* Quick actions — empty state only, and only with a document to act
+          on: every one of them is phrased "this document". The home pane
+          offers its own library-wide suggestions instead. */
+      }
+      {messages.length === 0 && documentId !== null && (
         <Box sx={{ px: 1.5, pb: 1, flexShrink: 0 }}>
           <QuickActions onSelect={sendPrompt} />
         </Box>
@@ -453,7 +500,9 @@ const CopilotChat: React.FC<CopilotChatProps> = (
         <TextField
           fullWidth
           size="small"
-          placeholder={`Ask Copilot to edit "${documentTitle}", or / for commands…`}
+          placeholder={documentId
+            ? `Ask Copilot to edit "${documentTitle}", or / for commands…`
+            : "Ask Copilot about your posts, or / for commands…"}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
