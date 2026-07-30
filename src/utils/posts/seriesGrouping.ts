@@ -36,13 +36,6 @@ export interface ProjectGroupItem {
 export type RootItem = ProjectGroupItem | SeriesGroupItem;
 
 /**
- * Get the series ID from a Post
- */
-export const getPostSeriesId = (doc: Post): string | null => {
-  return doc.seriesId ?? null;
-};
-
-/**
  * A post's 1-based position within its series, derived from the manual `rank`
  * ordering of the series' posts (replaces the former stored `seriesOrder`).
  * Returns null if the doc isn't found in the series.
@@ -93,7 +86,7 @@ const compareGroupsByRank = (
 /**
  * Get the creation date timestamp from a Series
  */
-export const getSeriesCreatedAtTime = (series: Series): number => {
+const getSeriesCreatedAtTime = (series: Series): number => {
   return series.createdAt ? new Date(series.createdAt).getTime() : 0;
 };
 
@@ -111,7 +104,7 @@ export const getSeriesCreatedAtTime = (series: Series): number => {
  * @param seriesMap - Map of series ID to Series object (series.posts is the source of truth)
  * @returns Array of SeriesGroupItem sorted by creation time (newest first)
  */
-export const groupPostsBySeries = (
+const groupPostsBySeries = (
   posts: Post[],
   seriesMap: Map<string, Series>,
 ): SeriesGroupItem[] => {
@@ -180,7 +173,7 @@ export const groupPostsBySeries = (
  * rank space (matching the /posts root list), so manual reordering on /posts is
  * reflected here.
  */
-export const groupPostsBySeriesWithEmpty = (
+const groupPostsBySeriesWithEmpty = (
   posts: Post[],
   seriesMap: Map<string, Series>,
 ): SeriesGroupItem[] => {

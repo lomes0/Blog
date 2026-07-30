@@ -111,4 +111,3 @@ export const attachmentContentDB = getStore<AttachmentContentCache>(
 );
 export const pendingSaveDB = getStore<PendingSave>("pendingSaves");
 
-export default documentDB;

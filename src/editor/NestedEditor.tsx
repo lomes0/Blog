@@ -11,7 +11,7 @@ import { LexicalNestedComposer } from "@lexical/react/LexicalNestedComposer";
 import { UPDATE_DOCUMENT_COMMAND } from "./commands";
 import { JSX } from "react";
 
-export const NestedEditor: React.FC<{
+const NestedEditor: React.FC<{
   initialEditor: LexicalEditor;
   initialNodes?: ReadonlyArray<Klass<LexicalNode> | LexicalNodeReplacement>;
   placeholder?: JSX.Element | ((isEditable: boolean) => JSX.Element | null);

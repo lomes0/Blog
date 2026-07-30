@@ -27,7 +27,15 @@ export const SIDEBAR_MODE_KEY = "ui.sidebarMode";
 /** Default width when sidebar is expanded; also the minimum resizable width */
 export const SIDEBAR_DEFAULT_WIDTH = 130;
 
-/** Minimum resting width — the sidebar snaps back up to this when released in the full zone */
+/**
+ * Minimum resting width — the sidebar snaps back up to this when released in
+ * the full zone.
+ *
+ * Deliberately equal to `SIDEBAR_DEFAULT_WIDTH`, not a copy of it: "the width
+ * we open at" and "the narrowest a full panel may rest at" are two decisions
+ * that happen to agree today, and the detent geometry below reads the second
+ * one. `knip` reports this as a duplicate export; it is an alias on purpose.
+ */
 export const SIDEBAR_MIN_WIDTH = SIDEBAR_DEFAULT_WIDTH;
 
 /** Maximum width when resizing */
@@ -76,6 +84,8 @@ export const SIDEBAR_HIDE_BREAK = COMPACT_WIDTH - SIDEBAR_DETENT_PULL;
  * `SIDEBAR_HIDE_BREAK` on purpose: without this hysteresis gap, jitter at the
  * break point would flip the zone (and so the previewed content) every frame.
  */
+// Equal to `COMPACT_WIDTH` by construction rather than by copy — another
+// deliberate alias `knip` flags as a duplicate export.
 export const SIDEBAR_HIDE_REENTRY = COMPACT_WIDTH;
 
 /**

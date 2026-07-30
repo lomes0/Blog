@@ -40,10 +40,13 @@ export type SessionUser = Session["user"];
 /**
  * The signed-in, enabled user — or a thrown `ApiError`.
  *
- * Prefer `userRoute`, which calls this for you. This stays exported for the few
- * non-route modules that need a user outside a request handler.
+ * Module-private on purpose. `userRoute` is the only caller, and that is the
+ * property the scheme rests on: a handler cannot resolve a session except by
+ * declaring which wrapper it wants, so "forgot to check auth" is not a
+ * reachable state. It was exported "for non-route modules that need a user",
+ * but no such module exists — the export was only an unguarded way back in.
  */
-export async function requireUser(subtitle?: string): Promise<SessionUser> {
+async function requireUser(subtitle?: string): Promise<SessionUser> {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     throw new ApiError(401, "Unauthorized", subtitle ?? "Please sign in");
@@ -59,8 +62,12 @@ export async function requireUser(subtitle?: string): Promise<SessionUser> {
   return user;
 }
 
-/** The signed-in user if there is one, else null. Never throws on absence. */
-export async function optionalUser(): Promise<SessionUser | null> {
+/**
+ * The signed-in user if there is one, else null. Never throws on absence.
+ * Module-private for the same reason as `requireUser` — reach it through
+ * `optionalUserRoute`.
+ */
+async function optionalUser(): Promise<SessionUser | null> {
   const session = await getServerSession(authOptions);
   if (!session?.user) return null;
   if (session.user.disabled) {

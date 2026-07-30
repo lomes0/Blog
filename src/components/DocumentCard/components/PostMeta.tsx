@@ -27,7 +27,7 @@ export interface PostMetaProps {
  * @param seriesOrder - The order within the series (if any)
  * @param options - Display options for controlling which chips to show
  */
-export const PostMeta: React.FC<PostMetaProps> = ({
+const PostMeta: React.FC<PostMetaProps> = ({
   postState,
   author,
   series,

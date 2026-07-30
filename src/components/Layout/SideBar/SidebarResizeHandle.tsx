@@ -25,7 +25,7 @@ const HANDLE_W = 4;
  * only for *programmatic* mode changes (activity rail, Cmd+\), where there is no
  * spring to follow and the handle would otherwise jump ahead of the panel.
  */
-export const SidebarResizeHandle: React.FC = () => {
+const SidebarResizeHandle: React.FC = () => {
   const {
     getEffectiveWidth,
     isResizing,

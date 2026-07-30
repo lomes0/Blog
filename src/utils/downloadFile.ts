@@ -38,4 +38,3 @@ export async function downloadFile(
   });
 }
 
-export default downloadFile;

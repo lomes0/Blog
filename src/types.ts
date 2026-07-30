@@ -65,11 +65,6 @@ export interface AppState {
   };
 }
 
-export type CopilotAction = {
-  type: string;
-  params: Record<string, unknown>;
-};
-
 export interface DocumentStorageUsage {
   id: string;
   name: string;
@@ -313,122 +308,10 @@ export interface User {
   image: string | null;
 }
 
+/**
+ * `/api/auth/session` is the one route not wrapped in the `{ data?, error? }`
+ * envelope — NextAuth serves the session object bare — so it is the one
+ * response shape the client still has to name. Everything else is read through
+ * `request<T>()`, which unwraps `data` and gives back the payload type itself.
+ */
 export type GetSessionResponse = Session | null;
-
-export interface GetUsersResponse {
-  data?: User[];
-  error?: { title: string; subtitle?: string };
-}
-
-export interface GetUserResponse {
-  data?: User;
-  error?: { title: string; subtitle?: string };
-}
-
-export type UserUpdateInput = Partial<User>;
-export interface PatchUserResponse {
-  data?: User;
-  error?: { title: string; subtitle?: string };
-}
-
-export interface DeleteUserResponse {
-  data?: string;
-  error?: { title: string; subtitle?: string };
-}
-
-export interface GetDocumentsResponse {
-  data?: Post[];
-  error?: { title: string; subtitle?: string };
-}
-
-export interface GetDocumentStorageUsageResponse {
-  data?: DocumentStorageUsage[];
-  error?: { title: string; subtitle?: string };
-}
-export interface PostDocumentsResponse {
-  data?: Post | null;
-  error?: { title: string; subtitle?: string };
-}
-
-export interface GetPublishedDocumentsResponse {
-  data?: Post[];
-  error?: { title: string; subtitle?: string };
-}
-
-export interface GetDocumentResponse {
-  data?: Post;
-  error?: { title: string; subtitle?: string };
-}
-
-export interface GetDocumentThumbnailResponse {
-  data?: string | null;
-  error?: { title: string; subtitle?: string };
-}
-
-export interface PatchDocumentResponse {
-  data?: Post | null;
-  error?: { title: string; subtitle?: string };
-}
-
-export interface UploadBackgroundImageResponse {
-  data?: {
-    background_image: string;
-    document: Document;
-  };
-  error?: { title: string; subtitle?: string };
-}
-
-export interface DeleteDocumentResponse {
-  data?: string;
-  error?: { title: string; subtitle?: string };
-}
-
-export interface ForkDocumentResponse {
-  data?: Post;
-  error?: { title: string; subtitle?: string };
-}
-
-export interface CheckHandleResponse {
-  data?: boolean;
-  error?: { title: string; subtitle?: string };
-}
-
-export interface GetRevisionResponse {
-  data?: Revision;
-  error?: { title: string; subtitle?: string };
-}
-
-export interface PostRevisionResponse {
-  data?: RevisionMeta;
-  error?: { title: string; subtitle?: string };
-}
-
-export interface DeleteRevisionResponse {
-  data?: { id: string; documentId: string };
-  error?: { title: string; subtitle?: string };
-}
-
-export interface Pix2textResponse {
-  data?: { generated_text: string };
-  error?: { title: string; subtitle?: string };
-}
-
-export interface GetSeriesResponse {
-  data?: Series[];
-  error?: { title: string; subtitle?: string };
-}
-
-export interface PostSeriesResponse {
-  data?: Series;
-  error?: { title: string; subtitle?: string };
-}
-
-export interface GetProjectsResponse {
-  data?: Project[];
-  error?: { title: string; subtitle?: string };
-}
-
-export interface PostProjectResponse {
-  data?: Project;
-  error?: { title: string; subtitle?: string };
-}

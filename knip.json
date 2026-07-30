@@ -2,10 +2,6 @@
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "entry": [
     "src/app/**/{page,layout,route,template,error,loading,not-found,global-error,default,sitemap,robots,opengraph-image,icon,apple-icon,manifest}.{ts,tsx}",
-    "src/middleware.ts",
-    "next.config.ts",
-    "eslint.config.mjs",
-    "mcp/content-server.ts",
     "prisma/**/*.ts",
     "scripts/**/*.mjs"
   ],
@@ -13,12 +9,11 @@
     "src/**/*.{ts,tsx}",
     "mcp/**/*.ts"
   ],
+  // `src/lib/__tests__` is a spec deliberately awaiting a test runner (see
+  // CLAUDE.md § Testing). It has no importer by design, so knip would report it
+  // as an unused file on every sweep; that is a decision already taken, not a
+  // finding to re-litigate.
   "ignore": [
-    "public/**",
-    "next-pwa/**",
-    "claude_design/**"
-  ],
-  "ignoreDependencies": [
-    "patch-package"
+    "src/lib/__tests__/**"
   ]
 }

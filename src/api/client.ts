@@ -10,23 +10,10 @@
 
 import type { SerializedEditorState } from "lexical";
 import type {
-  CheckHandleResponse,
-  DeleteDocumentResponse,
-  DeleteRevisionResponse,
   DocumentStorageUsage,
-  ForkDocumentResponse,
-  GetDocumentStorageUsageResponse,
-  GetDocumentThumbnailResponse,
-  GetRevisionResponse,
-  GetSeriesResponse,
   GetSessionResponse,
-  PatchDocumentResponse,
-  PatchUserResponse,
   Post,
   PostCreateInput,
-  PostDocumentsResponse,
-  PostRevisionResponse,
-  PostSeriesResponse,
   PostUpdateInput,
   Project,
   Revision,
@@ -39,7 +26,6 @@ import type {
   ApiError,
   AttachmentData,
   CreateNoteInput,
-  DeleteSeriesResponse,
   MoveDocumentInput,
   MoveProjectInput,
   MoveSeriesInput,
@@ -459,26 +445,3 @@ export const apiClient = {
       request<unknown>("/api/notes", { method: "POST", ...json(note) }),
   },
 } as const;
-
-// Re-export types consumers may need when catching errors
-export type { ApiError };
-export type {
-  CheckHandleResponse,
-  DeleteDocumentResponse,
-  DeleteRevisionResponse,
-  DeleteSeriesResponse,
-  ForkDocumentResponse,
-  GetDocumentStorageUsageResponse,
-  GetDocumentThumbnailResponse,
-  GetRevisionResponse,
-  GetSeriesResponse,
-  GetSessionResponse,
-  MoveDocumentInput,
-  MoveSeriesInput,
-  PatchDocumentResponse,
-  PatchUserResponse,
-  PostDocumentsResponse,
-  PostRevisionResponse,
-  PostSeriesResponse,
-  UpdateSeriesPostsInput,
-};

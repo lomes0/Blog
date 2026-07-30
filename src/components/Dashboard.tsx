@@ -1,7 +1,7 @@
 "use client";
 import { useSelector } from "@/store";
 import UserCard from "./User/UserCard";
-import { ExportImportPanel } from "./ExportImportPanel";
+import ExportImportPanel from "./ExportImportPanel";
 import { capabilities } from "@/lib/capabilities";
 import Grid from "@mui/material/Grid2";
 import { Box, CircularProgress, Paper, Typography } from "@mui/material";

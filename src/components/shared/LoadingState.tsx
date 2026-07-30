@@ -1,5 +1,5 @@
 "use client";
-import React, { Suspense } from "react";
+import React from "react";
 import { Box, CircularProgress, Skeleton, Typography } from "@mui/material";
 import { SxProps, Theme } from "@mui/material/styles";
 
@@ -148,57 +148,3 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
 
   return renderContent();
 };
-
-interface SuspenseWrapperProps {
-  children: React.ReactNode;
-  fallback?: React.ReactNode;
-  loadingProps?: LoadingStateProps;
-}
-
-/**
- * Suspense wrapper with consistent loading states
- */
-export const SuspenseWrapper: React.FC<SuspenseWrapperProps> = ({
-  children,
-  fallback,
-  loadingProps = {},
-}) => {
-  const defaultFallback = <LoadingState {...loadingProps} />;
-
-  return (
-    <Suspense fallback={fallback || defaultFallback}>
-      {children}
-    </Suspense>
-  );
-};
-
-interface AsyncComponentWrapperProps {
-  children: React.ReactNode;
-  isLoading?: boolean;
-  error?: Error | null;
-  loadingProps?: LoadingStateProps;
-  errorFallback?: React.ReactNode;
-}
-
-/**
- * Complete async component wrapper with loading, error, and success states
- */
-export const AsyncComponentWrapper: React.FC<AsyncComponentWrapperProps> = ({
-  children,
-  isLoading = false,
-  error = null,
-  loadingProps = {},
-  errorFallback,
-}) => {
-  if (error && errorFallback) {
-    return <>{errorFallback}</>;
-  }
-
-  if (isLoading) {
-    return <LoadingState {...loadingProps} />;
-  }
-
-  return <>{children}</>;
-};
-
-export default LoadingState;

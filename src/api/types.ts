@@ -1,6 +1,12 @@
 /**
- * API-layer types that supplement the shared `src/types.ts` definitions.
- * Covers routes whose response shapes are not already represented there.
+ * API-layer types that supplement the shared `src/types.ts` definitions:
+ * request bodies, and the payload shapes for routes whose responses are not
+ * already named there.
+ *
+ * There are no `…Response` envelope types here. `request()` in `client.ts`
+ * unwraps the `{ data?, error? }` envelope and throws on `error`, so a method
+ * returns the payload type itself — an envelope interface would name a shape
+ * no caller ever holds.
  */
 
 export interface ApiError {
@@ -17,14 +23,6 @@ export interface ApiError {
 export interface PaginatedDocuments {
   documents: import("@/types").Post[];
   nextCursor: string | null;
-}
-
-// -----------------------------------------------------------------------
-// Series – single item (GET /api/series/:id)
-// -----------------------------------------------------------------------
-export interface GetOneSeriesResponse {
-  data?: import("@/types").Series;
-  error?: ApiError;
 }
 
 // -----------------------------------------------------------------------
@@ -62,10 +60,6 @@ export interface MoveProjectInput {
   between?: { afterRank?: string | null; beforeRank?: string | null };
 }
 
-export interface UpdateSeriesPostsResponse {
-  error?: ApiError;
-}
-
 // -----------------------------------------------------------------------
 // Document times (POST /api/documents/update-times)
 // -----------------------------------------------------------------------
@@ -88,11 +82,6 @@ export interface AttachmentData {
   size: number;
 }
 
-export interface UploadAttachmentResponse {
-  data?: AttachmentData;
-  error?: ApiError;
-}
-
 // -----------------------------------------------------------------------
 // Notes / canvas (GET /api/notes/canvas, POST /api/notes)
 // -----------------------------------------------------------------------
@@ -100,11 +89,6 @@ export interface NotesCanvas {
   id: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   notes: any[];
-}
-
-export interface GetNotesCanvasResponse {
-  data?: NotesCanvas;
-  error?: ApiError;
 }
 
 export interface CreateNoteInput {
@@ -118,29 +102,3 @@ export interface CreateNoteInput {
   zIndex: number;
 }
 
-export interface CreateNoteResponse {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data?: any;
-  error?: ApiError;
-}
-
-// -----------------------------------------------------------------------
-// Series delete (DELETE /api/series/:id) – inline type in seriesThunks
-// -----------------------------------------------------------------------
-export interface DeleteSeriesResponse {
-  data?: string;
-  error?: ApiError;
-}
-
-// -----------------------------------------------------------------------
-// Project – single item (GET /api/projects/:id) and delete
-// -----------------------------------------------------------------------
-export interface GetOneProjectResponse {
-  data?: import("@/types").Project;
-  error?: ApiError;
-}
-
-export interface DeleteProjectResponse {
-  data?: string;
-  error?: ApiError;
-}

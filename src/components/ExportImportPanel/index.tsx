@@ -38,7 +38,7 @@ function TabPanel({
   );
 }
 
-export const ExportImportPanel: React.FC = () => {
+const ExportImportPanel: React.FC = () => {
   const [tab, setTab] = useState(0);
 
   return (

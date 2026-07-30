@@ -12,7 +12,7 @@ import { EditorPlugins } from "./plugins";
 import { MutableRefObject, RefCallback } from "react";
 import { EditorRefPlugin } from "@lexical/react/LexicalEditorRefPlugin";
 
-export const Editor: React.FC<{
+const Editor: React.FC<{
   initialConfig: Partial<InitialConfigType>;
   editorRef:
     | MutableRefObject<LexicalEditor | null>

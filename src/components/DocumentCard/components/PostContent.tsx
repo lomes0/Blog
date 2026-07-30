@@ -17,7 +17,7 @@ interface PostContentProps {
  * Blog-style PostContent component
  * Follows standard blog UI conventions with title, meta info, and excerpt
  */
-export const PostContent: React.FC<PostContentProps> = ({
+const PostContent: React.FC<PostContentProps> = ({
   post,
   author,
 }) => {

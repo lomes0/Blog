@@ -23,7 +23,7 @@ interface LoadingCardProps {
  * Provides a consistent loading card for all PostCard / DocumentGrid slots.
  * Higher-level page skeletons (Level 3) compose this component directly.
  */
-export const LoadingCard: React.FC<LoadingCardProps> = ({ sx }) => {
+const LoadingCard: React.FC<LoadingCardProps> = ({ sx }) => {
   const theme = useTheme();
   const cardTheme = createCardTheme(theme);
 
