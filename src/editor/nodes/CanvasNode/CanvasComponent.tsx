@@ -5,7 +5,10 @@ import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
 import { Box, IconButton, Tooltip } from "@mui/material";
 import { Trash2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import DraggableNote from "@/components/NotesCanvas/DraggableNote";
+import DraggableNote, {
+  MIN_NOTE_HEIGHT,
+  MIN_NOTE_WIDTH,
+} from "@/components/NotesCanvas/DraggableNote";
 import AddNoteButton from "@/components/NotesCanvas/AddNoteButton";
 import SelectionBar from "@/components/NotesCanvas/SelectionBar";
 import SelectionMarquee from "@/components/NotesCanvas/SelectionMarquee";
@@ -124,25 +127,46 @@ export default function CanvasComponent(
 
   const handleAdd = useCallback(
     (color: NoteColorKey) => {
-      // Place the new note at the centre of what the author is looking at.
+      // Place the new note at the centre of what the author is looking at, and
+      // wholly inside it. The default note is a fixed 240x200, but a document
+      // column is not: in a 300px pane, centring one left it hanging over the
+      // right edge, which grew the board past the frame and so put the note the
+      // author had just asked for behind a horizontal scrollbar. A note that
+      // does not fit the frame is sized down to it instead.
+      //
       // The fallback is the board's own origin, not the middle of a virtual
       // canvas — this board is only as wide as the document column.
       const el = scrollContainerRef.current;
-      let x = 0;
-      let y = 0;
-      if (el) {
-        x = (el.scrollLeft + el.clientWidth / 2) / scale -
-          NOTE_DEFAULT_WIDTH / 2;
-        y = (el.scrollTop + el.clientHeight / 2) / scale -
-          NOTE_DEFAULT_HEIGHT / 2;
-      }
+      const frame = el
+        ? { width: el.clientWidth / scale, height: el.clientHeight / scale }
+        : { width: NOTE_DEFAULT_WIDTH, height: NOTE_DEFAULT_HEIGHT };
+      const size = {
+        width: Math.round(
+          Math.max(MIN_NOTE_WIDTH, Math.min(NOTE_DEFAULT_WIDTH, frame.width)),
+        ),
+        height: Math.round(
+          Math.max(MIN_NOTE_HEIGHT, Math.min(NOTE_DEFAULT_HEIGHT, frame.height)),
+        ),
+      };
       const jitter = () => (Math.random() - 0.5) * 80;
+      /**
+       * Centres `length` in the visible span, jitters it so a second note does
+       * not land exactly on the first, then pulls it back inside the frame —
+       * the jitter is a nicety and must not be what pushes a note out of view.
+       * `max` can fall below `origin` only when the column is narrower than the
+       * minimum note, and then the left edge is the best available answer.
+       */
+      const place = (origin: number, visible: number, length: number) => {
+        const max = Math.max(origin, origin + visible - length);
+        const centred = origin + visible / 2 - length / 2;
+        return Math.max(0, Math.min(max, centred + jitter()));
+      };
       addNote({
         position: {
-          x: Math.max(0, x + jitter()),
-          y: Math.max(0, y + jitter()),
+          x: place(el ? el.scrollLeft / scale : 0, frame.width, size.width),
+          y: place(el ? el.scrollTop / scale : 0, frame.height, size.height),
         },
-        size: { width: NOTE_DEFAULT_WIDTH, height: NOTE_DEFAULT_HEIGHT },
+        size,
         color,
       });
     },
@@ -203,9 +227,10 @@ export default function CanvasComponent(
 
   /**
    * The board is a frame in a document column, so it is exactly as big as what
-   * the reader can see: `/notes`' 1920x1080 virtual floor left a fresh board
-   * scrolling sideways over ~1100px of empty grid, with anything placed near
-   * the virtual centre sitting past the document's right edge.
+   * the reader can see: the 1920x1080 virtual floor a full-screen board uses
+   * left a fresh board scrolling sideways over ~1100px of empty grid, with
+   * anything placed near the virtual centre sitting past the document's right
+   * edge.
    *
    * It stretches only to cover notes that already lie beyond the frame — a clip
    * pasted from the full-screen board, or a board narrowed by the sidebar —
