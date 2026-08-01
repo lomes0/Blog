@@ -1,6 +1,7 @@
 "use client";
 import { Box, Typography } from "@mui/material";
 import { AlertTriangle } from "lucide-react";
+import { commandForTool } from "@/lib/ai/commandTools";
 import { ICON_SIZE } from "@/theme/icons";
 
 interface ActionPreviewProps {
@@ -8,6 +9,14 @@ interface ActionPreviewProps {
   type: string;
   /** Raw tool input arguments. */
   input: Record<string, unknown>;
+  /**
+   * A command's own `preview()` summary, resolved by `CopilotMessage`.
+   *
+   * Only command tools have one: the content tools' arguments *are* the
+   * preview (the old and new text), whereas a command's are ids, which say
+   * nothing on their own.
+   */
+  summary?: string;
   /** Render against a colored (user) bubble — flips text colors. */
   onColoredBg?: boolean;
 }
@@ -27,7 +36,7 @@ const TABLE_LABEL = (input: Record<string, unknown>): string => {
  * see *what* will be inserted before accepting — not just the tool name.
  */
 const ActionPreview: React.FC<ActionPreviewProps> = (
-  { type, input, onColoredBg },
+  { type, input, summary, onColoredBg },
 ) => {
   const labelColor = onColoredBg ? "primary.contrastText" : "text.secondary";
   const bodyColor = onColoredBg ? "primary.contrastText" : "text.primary";
@@ -73,6 +82,19 @@ const ActionPreview: React.FC<ActionPreviewProps> = (
       {text}
     </Typography>
   );
+
+  // Command proposals render from the registry, not from a case per tool —
+  // that is the whole point of generating the tool surface. The command's title
+  // names the action; its `preview()` says what accepting would do.
+  const command = commandForTool(type);
+  if (command) {
+    return (
+      <Box>
+        {label(command.title)}
+        {snippet(summary ?? command.description ?? command.title)}
+      </Box>
+    );
+  }
 
   switch (type) {
     case "insert_heading": {

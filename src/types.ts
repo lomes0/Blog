@@ -1,3 +1,4 @@
+import type { UIMessage } from "ai";
 import type { SerializedEditorState } from "lexical";
 import type { Session } from "next-auth";
 import type { EntityState } from "@reduxjs/toolkit";
@@ -385,3 +386,38 @@ export interface User {
  * `request<T>()`, which unwraps `data` and gives back the payload type itself.
  */
 export type GetSessionResponse = Session | null;
+
+/**
+ * A persisted Copilot conversation.
+ *
+ * Scoped per user and per workspace scope (plan §6.3): the thread is where the
+ * record of what the agent did lives, so it survives a reload and follows its
+ * author rather than the browser it was typed in.
+ *
+ * `messages` is the AI SDK's `UIMessage[]` verbatim. `parts` is an open union
+ * owned by that library, so the shape is carried rather than restated — the
+ * same call already made by the Copilot route's request schema.
+ */
+export interface CopilotThread {
+  id: string;
+  /** A document id, or {@link WORKSPACE_SCOPE} for the document-less thread. */
+  scope: string;
+  title: string;
+  /**
+   * The live thread for its scope. The rest are history, newest first. Exactly
+   * one is current by convention, not by constraint — see the Prisma model.
+   */
+  current: boolean;
+  updatedAt: string;
+  messages: UIMessage[];
+}
+
+/**
+ * The scope of a conversation with no document behind it — the one the home
+ * pane's composer starts. Every other scope is a document id (a uuid), so this
+ * cannot collide with one.
+ */
+export const WORKSPACE_SCOPE = "workspace";
+
+/** A thread as it arrives from a client: everything but ownership. */
+export type CopilotThreadInput = Omit<CopilotThread, "updatedAt">;

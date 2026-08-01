@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { commandOk, defineCommand } from "./types";
+import { commandFailed, commandOk, defineCommand } from "./types";
 
 /**
  * `/edit/[id]` and `/view/[id]` both accept a document id *or* a handle, so
@@ -18,6 +18,10 @@ type DocumentOpenParams = z.infer<typeof openParams>;
 const open = defineCommand<DocumentOpenParams>({
   id: "document.open",
   title: "Open document",
+  description:
+    "Show a post in the workspace, in reading or editing mode. `id` is a " +
+    "document id (the same id used in the '<id>.md' paths of the file tools) " +
+    "or the post's handle.",
   params: openParams,
   effect: "read",
   scopes: ["workspace", "document"],
@@ -38,6 +42,9 @@ const open = defineCommand<DocumentOpenParams>({
 const create = defineCommand<void>({
   id: "document.create",
   title: "New post",
+  description:
+    "Open the 'new post' form. This only navigates — to create a post with " +
+    "content in one step, use the create_document file tool instead.",
   params: z.void(),
   effect: "read",
   scopes: ["workspace"],
@@ -62,6 +69,10 @@ type DocumentForkParams = z.infer<typeof forkParams>;
 const fork = defineCommand<DocumentForkParams>({
   id: "document.fork",
   title: "Fork document",
+  description:
+    "Start a new post as a copy of an existing one, optionally from a past " +
+    "revision. Opens the create form pre-filled; nothing is saved until the " +
+    "user submits it.",
   params: forkParams,
   effect: "read",
   scopes: ["document"],
@@ -72,4 +83,51 @@ const fork = defineCommand<DocumentForkParams>({
   },
 });
 
-export const documentCommands = { open, create, fork } as const;
+const renameParams = z.object({
+  id: documentRef,
+  /** Matches the rename affordances in the UI, which also trim and require one. */
+  name: z.string().trim().min(1, "A post needs a title"),
+});
+type DocumentRenameParams = z.infer<typeof renameParams>;
+
+/**
+ * The first `mutate` command, and the one the preview/accept path is built
+ * around.
+ *
+ * It reaches the store by dynamic import for the reason given in `ui.ts`. The
+ * write itself lands on `PATCH /api/documents/[id]` through `updatePost`, which
+ * authorizes it — withholding the tool, like the route does for the content
+ * write tools, is about not proposing a change that could only fail on accept.
+ */
+const rename = defineCommand<DocumentRenameParams>({
+  id: "document.rename",
+  title: "Rename document",
+  description:
+    "Change a post's title. Proposes the change for the user to accept; " +
+    "nothing is written until they do.",
+  params: renameParams,
+  effect: "mutate",
+  scopes: ["document"],
+  preview: async (_ctx, { id, name }) => {
+    const { postsSelectors, store } = await import("@/store");
+    const post = postsSelectors.selectById(store.getState(), id);
+    return {
+      summary: post
+        ? `Rename “${post.name}” to “${name}”`
+        : `Rename ${id} to “${name}”`,
+      detail: { id, name, previousName: post?.name ?? null },
+    };
+  },
+  run: async (ctx, { id, name }) => {
+    const { actions } = await import("@/store");
+    const result = await ctx.dispatch(
+      actions.updatePost({ id, partial: { name } }),
+    );
+    if (actions.updatePost.rejected.match(result)) {
+      return commandFailed(`Could not rename ${id}.`);
+    }
+    return commandOk(`Renamed to “${name}”.`);
+  },
+});
+
+export const documentCommands = { open, create, fork, rename } as const;

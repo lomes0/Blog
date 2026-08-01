@@ -5,6 +5,10 @@ import { type AIProviderType, createProvider, getModelById } from "@/lib/ai";
 import { ApiError, parseBody, userRoute } from "@/lib/api-utils";
 import { permitsDocument, requireDocument } from "@/lib/access";
 import { COPILOT_AGENT_SYSTEM_PROMPT } from "@/lib/ai/prompts";
+import {
+  buildCommandTools,
+  commandToolsPromptSection,
+} from "@/lib/ai/commandTools";
 
 // Node runtime (not edge): auth uses the Prisma adapter, which cannot run on edge.
 
@@ -12,6 +16,12 @@ import { COPILOT_AGENT_SYSTEM_PROMPT } from "@/lib/ai/prompts";
 // tools auto-run against the Redux store / live editor, write tools surface as
 // reviewable proposals. See src/lib/ai/copilotAgentTools.ts for the read/write
 // split the client enforces.
+//
+// The *content* tools below are hand-written because they act on document
+// bodies through the live Lexical editor, which is not a command. Everything
+// the app can *do* — open, navigate, rename, describe the workspace — arrives
+// via `buildCommandTools()`, generated from the command registry, so adding a
+// command needs no edit to this file (plan §3.1).
 const readTools = {
   // ---- read (auto-executed client-side) ----
   list_documents: tool({
@@ -158,13 +168,19 @@ export const POST = userRoute(async (req, { user }) => {
     system: COPILOT_AGENT_SYSTEM_PROMPT(
       currentPath ?? null,
       documentTitle ?? null,
-      { canWriteDocument },
+      { canWriteDocument, commandTools: commandToolsPromptSection() },
     ),
     messages: modelMessages,
     tools: {
       ...readTools,
       ...libraryWriteTools,
       ...(canWriteDocument ? documentWriteTools : {}),
+      // Not gated on `canWriteDocument`: that flag is about the *open*
+      // document, and a command takes whichever id it is given — withholding
+      // the whole set would block renaming a post the caller does own. The
+      // mutating ones are gated twice regardless: the user accepts the
+      // proposal, and the API route behind it authorizes the write.
+      ...buildCommandTools(),
     },
     // Agentic loop: the model explores with read tools (auto-resolved) and
     // proposes edits over many steps. Writes pause the loop for user approval.

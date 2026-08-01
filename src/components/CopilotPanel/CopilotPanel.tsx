@@ -16,15 +16,12 @@ import { useLayoutMode } from "@/contexts/LayoutModeContext";
 import ResizeGripper from "@/components/Layout/ResizeGripper";
 import CopilotChat from "./CopilotChat";
 import {
-  archiveThread,
-  clearCurrentThread,
-  type CopilotThread,
+  archiveCurrentThread,
   loadCurrentThread,
   loadHistory,
-  removeFromHistory,
-  saveCurrentThread,
-  WORKSPACE_SCOPE,
+  resumeThread,
 } from "./copilotStorage";
+import { type CopilotThread, WORKSPACE_SCOPE } from "@/types";
 import { ICON_SIZE } from "@/theme/icons";
 
 interface CopilotPanelProps {
@@ -32,8 +29,8 @@ interface CopilotPanelProps {
   documentId: string | null;
 }
 
-function formatRelativeTime(ts: number): string {
-  const diff = Date.now() - ts;
+function formatRelativeTime(isoTimestamp: string): string {
+  const diff = Date.now() - Date.parse(isoTimestamp);
   const mins = Math.round(diff / 60000);
   if (mins < 1) return "just now";
   if (mins < 60) return `${mins}m ago`;
@@ -53,6 +50,7 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
   const [history, setHistory] = useState<CopilotThread[]>([]);
   const acceptAllRef = useRef<(() => void) | null>(null);
 
+  const user = useSelector((state) => state.user);
   const doc = useSelector((state) =>
     documentId ? postsSelectors.selectById(state, documentId) : undefined
   );
@@ -63,25 +61,25 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
     acceptAllRef.current?.();
   };
 
-  // Archive the active thread and start fresh.
-  const handleNewConversation = () => {
-    archiveThread(scope, loadCurrentThread(scope));
-    clearCurrentThread(scope);
+  // Archive the active thread and start fresh. Bumping `chatKey` remounts the
+  // chat, whose own load effect then finds no live thread and starts one.
+  const handleNewConversation = async () => {
+    await archiveCurrentThread(user, await loadCurrentThread(user, scope));
     setChatKey((k) => k + 1);
   };
 
-  const openHistory = (e: React.MouseEvent<HTMLElement>) => {
-    setHistory(loadHistory(scope));
+  // Opened on click rather than kept in sync: a menu that is closed has nothing
+  // to be stale about, and this is now a fetch.
+  const openHistory = async (e: React.MouseEvent<HTMLElement>) => {
     setHistoryAnchor(e.currentTarget);
+    setHistory(await loadHistory(user, scope));
   };
 
   // Restore a past thread: archive the current one, then make the chosen
   // thread current and remount the chat to load it.
-  const handleSelectThread = (thread: CopilotThread) => {
-    archiveThread(scope, loadCurrentThread(scope));
-    removeFromHistory(scope, thread.id);
-    saveCurrentThread(scope, thread.messages);
+  const handleSelectThread = async (thread: CopilotThread) => {
     setHistoryAnchor(null);
+    await resumeThread(user, await loadCurrentThread(user, scope), thread);
     setChatKey((k) => k + 1);
   };
 

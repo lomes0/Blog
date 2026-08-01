@@ -108,7 +108,7 @@ model Document {
   type DocumentType
 
   // Relations
-  author    User                  @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author    User                @relation(fields: [authorId], references: [id], onDelete: Cascade)
   coauthors DocumentCoauthors[]
   revisions Revision[]
   series    Series?             @relation("SeriesPosts", fields: [seriesId], references: [id], onDelete: SetNull)
@@ -144,25 +144,26 @@ model Revision {
 }
 
 model User {
-  id            String              @id @default(uuid()) @db.Uuid
-  handle        String?             @unique
-  name          String
-  email         String              @unique
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
-  disabled      Boolean             @default(false)
-  emailVerified DateTime?
-  lastLogin     DateTime?
-  image         String?
-  role          String              @default("user")
-  accounts      Account[]
-  sessions      Session[]
-  revisions     Revision[]
-  documents     Document[] // User's posts  
-  coauthored    DocumentCoauthors[]
-  series        Series[] // User's series for organizing blog posts
-  projects      Project[] // User's projects for grouping series
-  notesCanvases NotesCanvas[] // User's note canvases
+  id             String              @id @default(uuid()) @db.Uuid
+  handle         String?             @unique
+  name           String
+  email          String              @unique
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  disabled       Boolean             @default(false)
+  emailVerified  DateTime?
+  lastLogin      DateTime?
+  image          String?
+  role           String              @default("user")
+  accounts       Account[]
+  sessions       Session[]
+  revisions      Revision[]
+  documents      Document[] // User's posts  
+  coauthored     DocumentCoauthors[]
+  series         Series[] // User's series for organizing blog posts
+  projects       Project[] // User's projects for grouping series
+  notesCanvases  NotesCanvas[] // User's note canvases
+  copilotThreads CopilotThread[] // User's Copilot conversations
 
   @@index([email])
   @@index([handle])
@@ -251,4 +252,38 @@ model Note {
 
   @@index([canvasId])
   @@index([canvasId, zIndex]) // for efficient z-index queries
+}
+
+// A Copilot conversation, persisted per user and per workspace scope.
+//
+// Threads used to live in localStorage, which made them per-browser rather than
+// per-user: two accounts sharing a machine shared their history, and a thread
+// did not follow its author to another device. Once the chatbox is a way to
+// *act* on the library rather than only ask about it, the thread is the audit
+// trail of what was done — see docs/plans/workspace-panes.md §6.3.
+model CopilotThread {
+  id       String  @id @default(uuid()) @db.Uuid
+  authorId String  @db.Uuid
+  // The document the conversation is about, or "workspace" for the one started
+  // from the home pane. Deliberately a plain string, not a Document relation:
+  // a thread outlives the post it discussed, and a deleted post must not take
+  // the record of what was done to it with it.
+  scope    String
+  title    String  @default("Conversation")
+  // Exactly one thread per (author, scope) is the live one; the rest are
+  // history. Not a database constraint — a partial unique index would make an
+  // ordinary "archive then start a new one" a two-statement transaction for no
+  // gain, since the client owns thread ids and writes both in order.
+  current  Boolean @default(false)
+  // UIMessage[] as the AI SDK serializes it. Opaque here on purpose: `parts`
+  // is an open union owned by that library, and restating it in SQL would be a
+  // second source of truth that drifts.
+  messages Json
+
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([authorId, scope, updatedAt])
 }

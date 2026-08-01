@@ -1,5 +1,5 @@
 "use client";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import type { UIMessage } from "ai";
 import { getToolName, isTextUIPart, isToolUIPart } from "ai";
 import {
@@ -12,8 +12,14 @@ import {
 } from "@mui/material";
 import { Check, Copy, RefreshCw, Search } from "lucide-react";
 import { ActiveEditorContext } from "@/contexts/ActiveEditorContext";
-import { applyWrite } from "@/editor/utils/copilotAgentExecutors";
-import { isReadTool } from "@/lib/ai/copilotAgentTools";
+import { applyProposal } from "@/editor/utils/copilotAgentExecutors";
+import {
+  commandForTool,
+  isAutoRunTool,
+  isProposalCommandTool,
+  previewCommandTool,
+} from "@/lib/ai/commandTools";
+import { useCommandContext } from "@/commands/CommandProvider";
 import ActionPreview from "./ActionPreview";
 import MarkdownText from "./MarkdownText";
 import { ICON_SIZE } from "@/theme/icons";
@@ -33,7 +39,7 @@ interface CopilotMessageProps {
 
 const asStr = (v: unknown): string => (typeof v === "string" ? v : "");
 
-/** One-line label for an auto-executed read tool, for the activity trace. */
+/** One-line label for an auto-executed tool, for the activity trace. */
 function readTraceLabel(name: string, input: Record<string, unknown>): string {
   switch (name) {
     case "list_documents":
@@ -47,7 +53,9 @@ function readTraceLabel(name: string, input: Record<string, unknown>): string {
     case "get_selection":
       return "Read the selection";
     default:
-      return name.replace(/_/g, " ");
+      // A command tool: its own title reads better than its wire name, and
+      // there is nothing to hand-maintain here as commands are added.
+      return commandForTool(name)?.title ?? name.replace(/_/g, " ");
   }
 }
 
@@ -58,24 +66,79 @@ const CopilotMessage: React.FC<CopilotMessageProps> = (
   const isUser = message.role === "user";
   const [copied, setCopied] = useState(false);
 
+  const commandContext = useCommandContext();
+  const commandContextRef = useRef(commandContext);
+  commandContextRef.current = commandContext;
+
   const textParts = message.parts.filter(isTextUIPart);
   const toolParts = message.parts.filter(isToolUIPart);
 
-  // Read tools auto-run → shown as a muted trace. Write tools are proposals.
-  const readParts = toolParts.filter((p) => isReadTool(getToolName(p)));
-  const writeParts = toolParts.filter((p) => !isReadTool(getToolName(p)));
+  // Auto-run tools (content reads and `read` commands) show as a muted trace;
+  // everything else is a proposal the user accepts.
+  const readParts = toolParts.filter((p) => isAutoRunTool(getToolName(p)));
+  const writeParts = toolParts.filter((p) => !isAutoRunTool(getToolName(p)));
   const pendingParts = writeParts.filter((p) => p.state === "input-available");
   const appliedParts = writeParts.filter((p) => p.state === "output-available");
 
   const textContent = textParts.map((p) => p.text).join("");
 
+  // A command proposal has nothing to render from its raw arguments — an id and
+  // a new title say nothing about what is being replaced. `preview()` is the
+  // command's own answer to "what would accepting do", resolved here because it
+  // is async and `ActionPreview` is a pure switch.
+  //
+  // Keyed on a serialization of the pending calls rather than the parts array,
+  // so this re-runs when the proposals actually change and not on every render.
+  const [summaries, setSummaries] = useState<Record<string, string>>({});
+  const proposalKey = JSON.stringify(
+    pendingParts
+      .filter((p) => isProposalCommandTool(getToolName(p)))
+      .map((p) => ({
+        id: p.toolCallId,
+        name: getToolName(p),
+        input: (p as { input?: unknown }).input ?? {},
+      })),
+  );
+
+  useEffect(() => {
+    const proposals = JSON.parse(proposalKey) as {
+      id: string;
+      name: string;
+      input: unknown;
+    }[];
+    if (proposals.length === 0) return;
+    let cancelled = false;
+    void (async () => {
+      const next: Record<string, string> = {};
+      for (const proposal of proposals) {
+        try {
+          const change = await previewCommandTool(
+            proposal.name,
+            proposal.input,
+            commandContextRef.current,
+          );
+          if (change) next[proposal.id] = change.summary;
+        } catch (error) {
+          // A preview that cannot be produced falls back to the command's
+          // title, which is still an honest description of the action.
+          console.error("[copilot] preview failed", error);
+        }
+      }
+      if (!cancelled) setSummaries(next);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [proposalKey]);
+
   const handleAccept = async () => {
     for (const part of pendingParts) {
-      const result = await applyWrite(
+      const result = await applyProposal(
         getToolName(part),
         ((part as { input?: unknown }).input ?? {}) as Record<string, unknown>,
         editorRef.current,
         currentDocId,
+        commandContextRef.current,
       );
       await addToolOutput({
         tool: getToolName(part),
@@ -200,6 +263,7 @@ const CopilotMessage: React.FC<CopilotMessageProps> = (
                       string,
                       unknown
                     >}
+                    summary={summaries[p.toolCallId]}
                     onColoredBg={isUser}
                   />
                 ))}

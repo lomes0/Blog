@@ -1,6 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { postsSelectors, type RootState } from "@/store";
 import { comparePostsByRank } from "@/lib/documentOrder";
+import type { PaneDescription } from "@/commands/types";
 import type { PaneMode, Post, WorkspacePane } from "@/types";
 
 /* ------------------------------------------------------------------ */
@@ -54,6 +55,33 @@ export const selectFocusedDocId = (state: RootState): string | null => {
 /** How the focused document is being shown; null when nothing is focused. */
 export const selectFocusedDocMode = (state: RootState): PaneMode | null =>
   selectFocusedPane(state)?.mode ?? null;
+
+/**
+ * The workspace as the Copilot is allowed to see it (plan §6.2) — one row per
+ * pane, already resolved to a document and a title.
+ *
+ * Memoized because it is handed to the command context, which every `run` call
+ * closes over: an array rebuilt on each store read would make that context a new
+ * object on every unrelated dispatch.
+ */
+export const selectPaneDescriptions = createSelector(
+  [
+    (state: RootState) => state.ui.workspace.panes,
+    (state: RootState) => state.ui.workspace.focusedPaneId,
+    (state: RootState) => state.posts.entities,
+  ],
+  (panes, focusedPaneId, entities): PaneDescription[] =>
+    panes.map((pane) => {
+      const docId = pane.activeTabId ?? pane.rootId ?? null;
+      return {
+        id: pane.id,
+        docId,
+        title: (docId ? entities[docId]?.name : null) ?? null,
+        mode: pane.mode,
+        focused: pane.id === focusedPaneId,
+      };
+    }),
+);
 
 /* ------------------------------------------------------------------ */
 /*  SideBar                                                            */

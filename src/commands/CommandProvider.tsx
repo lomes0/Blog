@@ -13,6 +13,7 @@ import { type RootState, useDispatch, useSelector } from "@/store";
 import {
   selectFocusedDocId,
   selectFocusedDocMode,
+  selectPaneDescriptions,
 } from "@/store/selectors/layoutSelectors";
 import { useLayoutMode } from "@/contexts/LayoutModeContext";
 import { type CommandContext, type RunCommand, runCommand } from "./types";
@@ -52,6 +53,9 @@ export const CommandProvider: React.FC<{ children: React.ReactNode }> = (
   // a one-file change. It was — the values move, the context does not.
   const focusedDocumentId = useSelector(selectFocusedDocId);
   const focusedDocumentMode = useSelector(selectFocusedDocMode);
+  // What `workspace.describe` answers with. Memoized in the selector, so this
+  // is a stable reference until a pane actually changes.
+  const panes = useSelector(selectPaneDescriptions);
   const resolvedScheme = mode === "system" ? systemMode : mode;
 
   const context = useMemo<CommandContext>(() => ({
@@ -62,6 +66,7 @@ export const CommandProvider: React.FC<{ children: React.ReactNode }> = (
     focusedDocumentMode,
     theme: { resolved: resolvedScheme, set: setMode },
     copilot: { open: copilotOpen, setOpen: setCopilotOpen },
+    workspace: { panes },
   }), [
     dispatch,
     user,
@@ -72,6 +77,7 @@ export const CommandProvider: React.FC<{ children: React.ReactNode }> = (
     setMode,
     copilotOpen,
     setCopilotOpen,
+    panes,
   ]);
 
   // `run` reads the context through a ref so its own identity can be constant

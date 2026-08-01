@@ -41,6 +41,37 @@ export interface CopilotBridge {
 }
 
 /**
+ * One pane, as the model is allowed to see it (plan §6.2).
+ *
+ * Flattened on purpose: a pane's own shape is `{ rootId, tabIds, activeTabId }`,
+ * and "which document is this pane showing" is a derivation over all three. The
+ * agent gets the answer, not the machinery — otherwise every prompt would have
+ * to re-teach the tab-vs-pane vocabulary of §2.1.
+ */
+export interface PaneDescription {
+  /** Stable for the pane's lifetime. This is the handle the model refers to. */
+  id: string;
+  /** The document the pane is showing, or null before its tabs have loaded. */
+  docId: string | null;
+  /** Its title, or null when the post is not in the store. */
+  title: string | null;
+  mode: DocumentMode;
+  focused: boolean;
+}
+
+/**
+ * What is open, for commands that need to answer questions about it.
+ *
+ * A bridge rather than a store read for the same reason `theme` and `copilot`
+ * are: `src/commands` has no static dependency on `@/store` (see the note in
+ * `ui.ts`), and the Copilot route derives its tool schemas from this module
+ * graph on the server.
+ */
+export interface WorkspaceBridge {
+  panes: readonly PaneDescription[];
+}
+
+/**
  * Everything a command is allowed to reach.
  *
  * This is a **plain object**, not a hook and not a React context value: Phase 3
@@ -70,6 +101,7 @@ export interface CommandContext {
   focusedDocumentMode: DocumentMode | null;
   theme: ThemeBridge;
   copilot: CopilotBridge;
+  workspace: WorkspaceBridge;
 }
 
 /**
@@ -98,16 +130,33 @@ export const commandFailed = (message: string): CommandResult => ({
 });
 
 /**
+ * An `ok` result carrying a payload — what a `read` command answers with when
+ * the caller is the AI tool executor rather than a button. `data` is fed back
+ * into the agent loop as the tool's output, so it must be JSON-serializable.
+ */
+export const commandData = (
+  data: unknown,
+  message?: string,
+): CommandResult => ({
+  status: "ok",
+  data,
+  ...(message === undefined ? {} : { message }),
+});
+
+/**
  * The dry run of a `mutate` command.
  *
- * **Phase 3.** Declared here so `Command` carries the slot from the day the
- * registry exists — a preview flow bolted on later would have to be optional
- * forever. Nothing implements `preview` yet, and nothing calls it.
+ * Every `mutate` command must have a `preview`, because a mutate tool call is
+ * never executed on arrival: it is rendered as a proposal the user accepts.
+ * `preview` is what that proposal says. The invariant is enforced by
+ * `src/commands/__tests__/toolParity.test.ts`, not by the type system — a
+ * required `preview` would also be required of the palette and the buttons,
+ * which have their own copy.
  */
 export interface ProposedChange {
   /** Human-readable summary of what accepting would do. */
   summary: string;
-  /** Structured detail; its shape is a Phase 3 decision. */
+  /** Structured detail, for a richer renderer than a line of text. */
   detail?: unknown;
 }
 
@@ -117,24 +166,38 @@ export interface CommandSpec<P = void> {
   readonly id: string;
   /** Sentence-case label. The palette shows its own copy where it varies by state. */
   readonly title: string;
-  /** Validates params. Becomes JSON Schema for the AI in Phase 3. */
+  /**
+   * What the command does and when to reach for it, written for the model —
+   * this is the tool description the Copilot sees. Falls back to `title`, which
+   * is a label rather than an instruction, so prefer writing one.
+   */
+  readonly description?: string;
+  /** Validates params. Becomes the tool's JSON Schema — see `lib/ai/commandTools.ts`. */
   readonly params: ZodSchema<P>;
   readonly effect: CommandEffect;
   readonly scopes?: readonly CommandScope[];
   /** False when the command cannot apply in the current context. */
   available?(ctx: CommandContext): boolean;
   run(ctx: CommandContext, params: P): Promise<CommandResult>;
-  /** Phase 3 — see {@link ProposedChange}. */
+  /** Required in practice on `mutate` — see {@link ProposedChange}. */
   preview?(ctx: CommandContext, params: P): Promise<ProposedChange>;
 }
 
 export interface Command<P = void> extends CommandSpec<P> {
   /**
    * Type-erased front door: validates unvalidated params against `params` and
-   * then runs. This is what the Phase 3 tool executor calls, since JSON off the
-   * wire is `unknown` no matter what the model claims it sent.
+   * then runs. This is what the AI tool executor calls, since JSON off the wire
+   * is `unknown` no matter what the model claims it sent.
    */
   invoke(ctx: CommandContext, params: unknown): Promise<CommandResult>;
+  /**
+   * Type-erased dry run. Present exactly when {@link CommandSpec.preview} is —
+   * its absence is what the parity spec checks a `mutate` command for.
+   */
+  previewInvoke?(
+    ctx: CommandContext,
+    params: unknown,
+  ): Promise<ProposedChange>;
 }
 
 /**
@@ -144,11 +207,16 @@ export interface Command<P = void> extends CommandSpec<P> {
 export interface ErasedCommand {
   readonly id: string;
   readonly title: string;
+  readonly description?: string;
   readonly params: ZodTypeAny;
   readonly effect: CommandEffect;
   readonly scopes?: readonly CommandScope[];
   available?(ctx: CommandContext): boolean;
   invoke(ctx: CommandContext, params: unknown): Promise<CommandResult>;
+  previewInvoke?(
+    ctx: CommandContext,
+    params: unknown,
+  ): Promise<ProposedChange>;
 }
 
 /**
@@ -169,26 +237,34 @@ export type RunCommand = <P>(
  * Both front doors funnel through here, so an AI-issued call and a button click
  * get identical validation — which is the guarantee the registry exists to make.
  */
+function parseParams<P>(
+  command: CommandSpec<P>,
+  rawParams: unknown,
+): { ok: true; value: P } | { ok: false; message: string } {
+  const parsed = command.params.safeParse(rawParams);
+  if (parsed.success) return { ok: true, value: parsed.data };
+  const issue = parsed.error.issues[0];
+  const path = issue?.path.join(".");
+  return {
+    ok: false,
+    message: `${command.id}: ${path ? `${path} — ` : ""}${
+      issue?.message ?? "invalid parameters"
+    }`,
+  };
+}
+
 async function invokeCommand<P>(
   command: CommandSpec<P>,
   ctx: CommandContext,
   rawParams: unknown,
 ): Promise<CommandResult> {
-  const parsed = command.params.safeParse(rawParams);
-  if (!parsed.success) {
-    const issue = parsed.error.issues[0];
-    const path = issue?.path.join(".");
-    return commandFailed(
-      `${command.id}: ${path ? `${path} — ` : ""}${
-        issue?.message ?? "invalid parameters"
-      }`,
-    );
-  }
+  const parsed = parseParams(command, rawParams);
+  if (!parsed.ok) return commandFailed(parsed.message);
   if (command.available && !command.available(ctx)) {
     return commandFailed(`${command.title} is not available here.`);
   }
   try {
-    return await command.run(ctx, parsed.data);
+    return await command.run(ctx, parsed.value);
   } catch (error) {
     console.error(`[commands] ${command.id} failed`, error);
     return commandFailed(
@@ -213,9 +289,25 @@ export function runCommand<P>(
  * one being inferred from the other.
  */
 export function defineCommand<P>(spec: CommandSpec<P>): Command<P> {
+  const { preview } = spec;
   const command: Command<P> = {
     ...spec,
     invoke: (ctx, params) => invokeCommand(spec, ctx, params),
+    // Mirrors `invoke`, but never swallows a failure into a result: a preview
+    // that cannot be produced must not render as an empty proposal, because the
+    // proposal is the only thing the user sees before accepting a write.
+    ...(preview
+      ? {
+        previewInvoke: async (
+          ctx: CommandContext,
+          params: unknown,
+        ): Promise<ProposedChange> => {
+          const parsed = parseParams(spec, params);
+          if (!parsed.ok) throw new Error(parsed.message);
+          return preview(ctx, parsed.value);
+        },
+      }
+      : {}),
   };
   return command;
 }

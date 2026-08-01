@@ -21,18 +21,25 @@ import {
   Typography,
 } from "@mui/material";
 import { ChevronDown, Send, Sparkles, Square } from "lucide-react";
+import { v4 as uuidv4 } from "uuid";
 import { ActiveEditorContext } from "@/contexts/ActiveEditorContext";
-import { applyWrite, runReadTool } from "@/editor/utils/copilotAgentExecutors";
-import { isReadTool, isWriteTool } from "@/lib/ai/copilotAgentTools";
+import {
+  applyProposal,
+  runReadTool,
+} from "@/editor/utils/copilotAgentExecutors";
+import { isReadTool } from "@/lib/ai/copilotAgentTools";
+import {
+  isAutoRunCommandTool,
+  isProposalTool,
+  runCommandTool,
+} from "@/lib/ai/commandTools";
+import { useCommandContext } from "@/commands/CommandProvider";
 import { postsSelectors, useSelector } from "@/store";
 import { AI_MODELS } from "@/lib/ai/models";
 import CopilotMessage from "./CopilotMessage";
 import QuickActions from "./QuickActions";
-import {
-  loadCurrentThread,
-  saveCurrentThread,
-  WORKSPACE_SCOPE,
-} from "./copilotStorage";
+import { loadCurrentThread, saveCurrentThread } from "./copilotStorage";
+import { WORKSPACE_SCOPE } from "@/types";
 import { ICON_SIZE } from "@/theme/icons";
 import { FOCUS_RING, MOTION } from "@/theme/tokens";
 
@@ -119,7 +126,7 @@ interface CopilotChatProps {
   /**
    * Whether the thread is written to `copilotStorage`. The panel persists; the
    * inline bar is a scratch surface whose thread is in-memory only and dies on
-   * navigation, so the two never write the same key.
+   * navigation, so the two never write the same scope.
    */
   persist?: boolean;
   /** Disables the composer and replaces the model row with this text. */
@@ -152,6 +159,10 @@ const CopilotChat: React.FC<CopilotChatProps> = (
 ) => {
   const isInline = variant === "inline";
   const editorRef = useContext(ActiveEditorContext);
+  // Which storage a thread lands in — IndexedDB for a guest, Postgres for a
+  // signed-in author. Decided inside `threadBackendFor`; this is only the
+  // session it is decided from.
+  const user = useSelector((state) => state.user);
   const doc = useSelector((state) =>
     documentId ? postsSelectors.selectById(state, documentId) : undefined
   );
@@ -171,6 +182,21 @@ const CopilotChat: React.FC<CopilotChatProps> = (
   // State rather than a ref: the slash Popper needs a re-render once the
   // element it anchors to exists.
   const [composerEl, setComposerEl] = useState<HTMLElement | null>(null);
+
+  // What command tools execute against — the same object a button click gets,
+  // which is the whole point of the registry. Held through a ref because
+  // `onToolCall` fires from the streaming loop, outside any render's closure.
+  const commandContext = useCommandContext();
+  const commandContextRef = useRef(commandContext);
+  commandContextRef.current = commandContext;
+
+  // Through a ref, and the effects below key on `userId` instead: the session
+  // object is replaced whenever the session is refetched, and a dependency on
+  // it would re-run the hydrate effect mid-conversation and reset the transcript
+  // to whatever was last saved.
+  const userRef = useRef(user);
+  userRef.current = user;
+  const userId = user?.id;
 
   const editorRefRef = useRef(editorRef);
   editorRefRef.current = editorRef;
@@ -196,12 +222,14 @@ const CopilotChat: React.FC<CopilotChatProps> = (
       }),
   );
 
-  // Seed from the persisted thread for this scope. The component is remounted
-  // (keyed on documentId) when the document changes, so reading once here is
-  // correct. A non-persisting chat starts empty every time by construction.
-  const [initialMessages] = useState(() =>
-    persist ? loadCurrentThread(scope) : []
-  );
+  // The row this chat writes to. A conversation is one row rewritten on every
+  // turn, not one row per message — so the id is minted once per mount and
+  // replaced by the stored thread's own id if hydration finds one.
+  const threadIdRef = useRef(uuidv4());
+  // Nothing may be saved before the stored thread has been read back, or the
+  // empty state this component mounts with would be written over it. A
+  // non-persisting chat is "hydrated" from the start: it has nothing to read.
+  const [hydrated, setHydrated] = useState(!persist);
 
   // Referenced inside onToolCall (which fires during streaming) but assigned by
   // useChat below — safe because tool calls only resolve after useChat returns.
@@ -209,6 +237,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
 
   const {
     messages,
+    setMessages,
     sendMessage,
     stop,
     status,
@@ -217,7 +246,6 @@ const CopilotChat: React.FC<CopilotChatProps> = (
     regenerate,
   } = useChat({
     transport,
-    messages: initialMessages,
     // Resume the agent loop automatically once every tool call in the latest
     // assistant message has a result. Auto-executed read tools satisfy this
     // immediately; write proposals hold the loop until the user accepts (which
@@ -228,16 +256,20 @@ const CopilotChat: React.FC<CopilotChatProps> = (
     // Do NOT await addToolOutput here — awaiting inside onToolCall can deadlock.
     onToolCall: ({ toolCall }) => {
       const name = toolCall.toolName;
-      if (!isReadTool(name)) return;
+      const isCommand = isAutoRunCommandTool(name);
+      if (!isReadTool(name) && !isCommand) return;
       void (async () => {
+        const input = (toolCall.input ?? {}) as Record<string, unknown>;
         let output: unknown;
         try {
-          output = await runReadTool(
-            name,
-            (toolCall.input ?? {}) as Record<string, unknown>,
-            editorRefRef.current.current,
-            openDocId,
-          );
+          output = isCommand
+            ? await runCommandTool(name, input, commandContextRef.current)
+            : await runReadTool(
+              name,
+              input,
+              editorRefRef.current.current,
+              openDocId,
+            );
         } catch (e) {
           output = { error: e instanceof Error ? e.message : String(e) };
         }
@@ -253,13 +285,39 @@ const CopilotChat: React.FC<CopilotChatProps> = (
 
   const isLoading = status === "submitted" || status === "streaming";
 
-  // Persist the thread once it settles (avoid thrashing during streaming).
+  // Restore the live conversation for this scope. Storage is async now (it may
+  // be a network round trip), so this is an effect rather than a `useState`
+  // initializer — and the component is remounted on a scope change, so it runs
+  // exactly once per conversation.
   useEffect(() => {
     if (!persist) return;
+    let cancelled = false;
+    void (async () => {
+      const thread = await loadCurrentThread(userRef.current, scope);
+      if (cancelled) return;
+      if (thread) {
+        threadIdRef.current = thread.id;
+        if (thread.messages.length > 0) setMessages(thread.messages);
+      }
+      setHydrated(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [persist, scope, userId, setMessages]);
+
+  // Persist the thread once it settles (avoid thrashing during streaming).
+  useEffect(() => {
+    if (!persist || !hydrated) return;
     if (status === "ready" || status === "error") {
-      saveCurrentThread(scope, messages);
+      void saveCurrentThread(
+        userRef.current,
+        scope,
+        threadIdRef.current,
+        messages,
+      );
     }
-  }, [messages, status, scope, persist]);
+  }, [messages, status, scope, persist, hydrated]);
 
   useEffect(() => {
     onMessageCountChange?.(messages.length);
@@ -276,13 +334,14 @@ const CopilotChat: React.FC<CopilotChatProps> = (
       const pending = msg.parts
         .filter(isToolUIPart)
         .filter((p) => p.state === "input-available")
-        .filter((p) => isWriteTool(getToolName(p)));
+        .filter((p) => isProposalTool(getToolName(p)));
       for (const p of pending) {
-        const result = await applyWrite(
+        const result = await applyProposal(
           getToolName(p),
           ((p as { input?: unknown }).input ?? {}) as Record<string, unknown>,
           editor,
           openDocId,
+          commandContextRef.current,
         );
         await addToolOutputRef.current?.({
           tool: getToolName(p),
@@ -301,7 +360,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
         msg.parts
           .filter(isToolUIPart)
           .filter((p) =>
-            p.state === "input-available" && isWriteTool(getToolName(p))
+            p.state === "input-available" && isProposalTool(getToolName(p))
           ).length
       );
     }, 0);

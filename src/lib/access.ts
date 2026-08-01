@@ -1,5 +1,6 @@
 import { ApiError, requireOwner, type SessionUser } from "@/lib/api-utils";
 import { findDocument } from "@/repositories/document";
+import { findThreadById } from "@/repositories/copilotThread";
 import { findCanvasById, findNoteById } from "@/repositories/notes";
 import { findProjectById } from "@/repositories/project";
 import { getCachedRevision } from "@/repositories/revision";
@@ -211,4 +212,31 @@ export async function requireOwnedProject(
   }
   requireOwner(project.authorId, user, subtitle);
   return project;
+}
+
+// ─── Copilot threads ─────────────────────────────────────────────────────────
+
+/**
+ * Authorize a thread write, whether or not the thread exists yet.
+ *
+ * The upsert is the one shape the usual `require…` pattern cannot express: the
+ * client mints thread ids, so "no such row" is the ordinary first save of a new
+ * conversation and must not be a 404. What is *not* ordinary is naming an id
+ * that belongs to someone else — that is an attempt to overwrite another user's
+ * history, and it is a 403 whatever the body says.
+ *
+ * Reads and deletes need no helper: their queries are author-scoped, so a
+ * thread belonging to anyone else is simply not in the result.
+ */
+export async function requireWritableCopilotThread(
+  threadId: string,
+  user: SessionUser,
+): Promise<void> {
+  const existing = await findThreadById(threadId);
+  if (!existing) return;
+  requireOwner(
+    existing.authorId,
+    user,
+    "You do not have access to this conversation",
+  );
 }

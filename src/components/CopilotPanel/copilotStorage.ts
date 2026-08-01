@@ -1,72 +1,70 @@
 "use client";
 import type { UIMessage } from "ai";
+import { threadBackendFor } from "@/store/backend/threads";
+import type { CopilotThread, User } from "@/types";
 
 /**
- * Per-document Copilot conversation persistence (localStorage).
+ * Copilot conversations, persisted per user and per scope.
  *
- * - The *current* thread for a document survives panel close/reopen and tab
- *   switches.
- * - Starting a new conversation (or loading a past one) archives the current
- *   thread into a bounded per-document history.
+ * This used to be localStorage, which made a thread a property of the *browser*:
+ * two accounts on one machine shared a history, and a conversation did not
+ * follow its author to another device. Plan §6.3 decided against that — once the
+ * chatbox is a way to act on the library rather than only ask about it, the
+ * thread is the record of what was done.
+ *
+ * Everything here is a thin arrangement over `CopilotThreadBackend`, which is
+ * where the local/cloud choice is made. There is no branch on the session in
+ * this file, deliberately: that is the property the seam exists to give.
+ *
+ * A **scope** is a document id, or {@link WORKSPACE_SCOPE} for the conversation
+ * with no document behind it. Within a scope exactly one thread is `current`
+ * (the live conversation); the rest are history, newest first.
  */
 
-const CURRENT_PREFIX = "copilot:current:";
-const HISTORY_PREFIX = "copilot:history:";
-const MAX_HISTORY = 20;
 const TITLE_MAX = 60;
 
 /**
- * Scope key for a conversation with no document behind it — the one the home
- * pane's composer starts. Every other scope is a document id (a uuid), so this
- * cannot collide with one, and a workspace thread persists and archives exactly
- * like a per-document thread.
+ * Every failure here is swallowed into a benign value.
+ *
+ * A conversation that cannot be loaded should start empty, and one that cannot
+ * be saved should not take the message the user is mid-way through typing with
+ * it. The panel has no repair affordance to offer, and an alert over a chat is
+ * worse than a thread that quietly does not persist.
  */
-export const WORKSPACE_SCOPE = "workspace";
-
-export interface CopilotThread {
-  id: string;
-  title: string;
-  updatedAt: number;
-  messages: UIMessage[];
-}
-
-function read<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
+async function guard<T>(work: Promise<T>, fallback: T): Promise<T> {
   try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
+    return await work;
+  } catch (error) {
+    console.error("[copilot] thread storage", error);
     return fallback;
   }
 }
 
-function write(key: string, value: unknown): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch (error) {
-    console.error(error);
-  }
+/** Every thread in a scope, newest first. */
+async function loadThreads(
+  user: User | undefined,
+  scope: string,
+): Promise<CopilotThread[]> {
+  if (!scope) return [];
+  return guard(threadBackendFor(user).list(scope), []);
 }
 
-export function loadCurrentThread(docId: string): UIMessage[] {
-  if (!docId) return [];
-  return read<UIMessage[]>(CURRENT_PREFIX + docId, []);
+/** The live conversation for a scope, or an empty one. */
+export async function loadCurrentThread(
+  user: User | undefined,
+  scope: string,
+): Promise<CopilotThread | null> {
+  const threads = await loadThreads(user, scope);
+  return threads.find((thread) => thread.current) ?? null;
 }
 
-export function saveCurrentThread(docId: string, messages: UIMessage[]): void {
-  if (!docId) return;
-  write(CURRENT_PREFIX + docId, messages);
-}
-
-export function clearCurrentThread(docId: string): void {
-  if (!docId || typeof window === "undefined") return;
-  window.localStorage.removeItem(CURRENT_PREFIX + docId);
-}
-
-export function loadHistory(docId: string): CopilotThread[] {
-  if (!docId) return [];
-  return read<CopilotThread[]>(HISTORY_PREFIX + docId, []);
+/** Past conversations for a scope, newest first. */
+export async function loadHistory(
+  user: User | undefined,
+  scope: string,
+): Promise<CopilotThread[]> {
+  const threads = await loadThreads(user, scope);
+  return threads.filter((thread) => !thread.current);
 }
 
 function deriveTitle(messages: UIMessage[]): string {
@@ -86,23 +84,73 @@ function deriveTitle(messages: UIMessage[]): string {
   return "Conversation";
 }
 
-/** Archive a thread into the document's history (newest first, bounded). */
-export function archiveThread(docId: string, messages: UIMessage[]): void {
-  if (!docId || messages.length === 0) return;
-  const thread: CopilotThread = {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    title: deriveTitle(messages),
-    updatedAt: Date.now(),
-    messages,
-  };
-  const next = [thread, ...loadHistory(docId)].slice(0, MAX_HISTORY);
-  write(HISTORY_PREFIX + docId, next);
+/**
+ * Write the live conversation for a scope.
+ *
+ * `threadId` is the caller's — a chat holds one for its lifetime, so every turn
+ * of the same conversation overwrites one row rather than accumulating a
+ * hundred. Returns nothing: the caller already has the messages, and awaiting a
+ * round trip to learn its own state would put the composer behind the network.
+ */
+export async function saveCurrentThread(
+  user: User | undefined,
+  scope: string,
+  threadId: string,
+  messages: UIMessage[],
+): Promise<void> {
+  if (!scope || messages.length === 0) return;
+  await guard(
+    threadBackendFor(user).save({
+      id: threadId,
+      scope,
+      title: deriveTitle(messages),
+      current: true,
+      messages,
+    }).then(() => undefined),
+    undefined,
+  );
 }
 
-export function removeFromHistory(docId: string, threadId: string): void {
-  if (!docId) return;
-  write(
-    HISTORY_PREFIX + docId,
-    loadHistory(docId).filter((t) => t.id !== threadId),
+/**
+ * Stand the live conversation down, so the next message starts a new one.
+ *
+ * Archiving is a flag flip rather than a copy: the thread keeps its id, so the
+ * history entry and the conversation the user was just having are the same row.
+ * An empty conversation is dropped instead of archived — there is nothing in it
+ * to come back to.
+ */
+export async function archiveCurrentThread(
+  user: User | undefined,
+  previous: CopilotThread | null,
+): Promise<void> {
+  if (!previous) return;
+  const backend = threadBackendFor(user);
+  await guard(
+    previous.messages.length > 0
+      ? backend.save({ ...previous, current: false }).then(() => undefined)
+      : backend.delete(previous.id).then(() => undefined),
+    undefined,
+  );
+}
+
+/**
+ * Make a past conversation live again, archiving whatever is live now.
+ *
+ * Order matters: the current thread is stood down first, so the two writes can
+ * never leave a scope with two live threads if the second one fails.
+ */
+export async function resumeThread(
+  user: User | undefined,
+  current: CopilotThread | null,
+  thread: CopilotThread,
+): Promise<void> {
+  if (current && current.id !== thread.id) {
+    await archiveCurrentThread(user, current);
+  }
+  await guard(
+    threadBackendFor(user).save({ ...thread, current: true }).then(() =>
+      undefined
+    ),
+    undefined,
   );
 }

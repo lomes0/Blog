@@ -1,13 +1,38 @@
 # Workspace panes, routing, and the AI command surface
 
-**Status: written plan only. No code changed.** Supersedes nothing; sits
-alongside [ide-redesign.md](./ide-redesign.md), which proposed converging the
-app on an IDE shell. That convergence is now ~done at the *chrome* level. This
-plan is about the layer underneath it: what "open" means, and who is allowed to
-say it.
+**Status: Phases 1 and 2 landed (31 Jul 2026). Both gating product questions are
+now decided — see §6.3 and §8.1 — so phases 3–5 are unblocked.** Sits alongside
+[ide-redesign.md](./ide-redesign.md), which proposed converging the app on an
+IDE shell. That convergence is ~done at the *chrome* level. This plan is about
+the layer underneath it: what "open" means, and who is allowed to say it.
 
-Two open product questions are in §8. Phase 1 is unblocked today; Phase 4 is
-blocked on §8.1.
+| Phase | Status | Commit |
+| ----- | ------ | ------ |
+| 1 — command registry | **done** | `986e4a72` |
+| 2 — `ui.workspace` panes | **done** | `3f4545a7` |
+| 3 — generate AI tools + thread persistence | next | — |
+| 4 — route-group split | unblocked | — |
+| 5 — two panes | unblocked | — |
+
+### Corrections found while implementing
+
+- **§2.4's consumer table was missing three**: `EditorTabPanel.tsx` and
+  `components/Diff/index.tsx` both gated on `ui.diff.open`, and
+  `Layout/EditorTopBar.tsx` derived a docId from the pathname for its
+  breadcrumb — a fourth parse site nobody had listed. `RightRail/index.tsx`
+  derived `mode` and `rootId` from the pathname too, not just `activeTabId`.
+- **The diff feature is dead code.** Nothing sets `ui.diff.old`/`.new`, and the
+  only writer of `open` set it to `false`, so `DiffView` has been unreachable.
+  §5.1 #4 treats a dead singleton as a live one. Shape preserved per-pane rather
+  than deleted, since removing a feature was out of Phase 2's scope.
+- **`rootId` can hold a handle rather than an id.** `/edit/[id]` accepts either
+  and the raw URL segment is passed straight through, so `PostItem`'s
+  `rootId === post.id` comparison silently fails on handle URLs. Wants resolving
+  at the deep-link seam in Phase 4.
+- **`EditSeriesForm` pushes `/series` after a delete, which is not a page** —
+  only `/series/[id]` exists, and it 308s to `/posts/[id]`. Deleting a series
+  currently 404s. Left alone as a behaviour change; one-line fix is
+  `workspace.openSection({ section: "library" })`.
 
 ---
 
@@ -409,6 +434,10 @@ started relying on the thread as their history. **Phase 3 is the point of no
 return** — that is when chat stops being an assistant and starts being an
 interface.
 
+> **DECIDED 31 Jul 2026: persist, per-user and per-workspace.** Threads survive
+> reload and live alongside workspace state. Phase 3 must land the storage with
+> the tool surface, not after it.
+
 ---
 
 ## 7. Implementation order
@@ -480,6 +509,11 @@ signed-in author browsing their own published post?**
 *Recommendation:* yes, bare — with an "Open in workspace" button. It keeps the
 public surface fast and makes the shared-link experience identical for everyone.
 But this is a product call and it gates Phase 4.
+
+> **DECIDED 31 Jul 2026: bare, with "Open in workspace".** No Redux store, no
+> sidebar, no Copilot on the public surface. One render path for every visitor —
+> a session-conditional shell would reintroduce exactly the ambiguity this plan
+> exists to remove.
 
 ### 8.2 Should panes persist across sessions?
 

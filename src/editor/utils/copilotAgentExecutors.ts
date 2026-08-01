@@ -16,6 +16,12 @@ import { v4 as uuidv4 } from "uuid";
 import { apiClient } from "@/api";
 import { postsSelectors, store } from "@/store";
 import { createPost, updatePost } from "@/store/app";
+import type { CommandContext } from "@/commands";
+import {
+  isProposalCommandTool,
+  runCommandTool,
+} from "@/lib/ai/commandTools";
+import { isWriteTool } from "@/lib/ai/copilotAgentTools";
 import type { Post, PostCreateInput } from "@/types";
 import {
   markdownToSerializedState,
@@ -36,7 +42,7 @@ const currentMarkdown = (editor: LexicalEditor | null): string => {
   return serializedStateToMarkdown(data);
 };
 
-export interface WriteResult {
+interface WriteResult {
   ok: boolean;
   message: string;
 }
@@ -116,7 +122,7 @@ async function persist(
 }
 
 /** Apply an accepted write proposal. */
-export async function applyWrite(
+async function applyWrite(
   name: string,
   input: Record<string, unknown>,
   editor: LexicalEditor | null,
@@ -172,4 +178,27 @@ export async function applyWrite(
   const data = markdownToSerializedState(nextMd);
   await persist(docId, data, editor, currentDocId);
   return { ok: true, message: `Updated ${path}` };
+}
+
+/**
+ * Apply whatever the user just accepted, whichever family the tool belongs to.
+ *
+ * One entry point on purpose: "Accept" in a message and "Accept all" in the
+ * header used to each carry their own copy of the dispatch, and adding command
+ * proposals to only one of them is the obvious way to get this wrong.
+ */
+export async function applyProposal(
+  name: string,
+  input: Record<string, unknown>,
+  editor: LexicalEditor | null,
+  currentDocId: string,
+  commandContext: CommandContext,
+): Promise<unknown> {
+  if (isWriteTool(name)) {
+    return applyWrite(name, input, editor, currentDocId);
+  }
+  if (isProposalCommandTool(name)) {
+    return runCommandTool(name, input, commandContext);
+  }
+  return { ok: false, message: `Unknown proposal tool: ${name}` };
 }

@@ -1,0 +1,184 @@
+/**
+ * Registry ↔ tool-schema parity (plan §10).
+ *
+ * This is the spec that keeps §3.1's guarantee — "you cannot ship a feature the
+ * AI can't call" — from being a habit. It asserts the properties that make the
+ * derivation total rather than the contents of any one command, so adding a
+ * command never means editing this file, and adding a *broken* one always does.
+ *
+ * DOM-free by construction: importing `@/commands` under `environment: "node"`
+ * is itself part of the test. The registry must not acquire a static edge to
+ * `@/store` (and through it to IndexedDB), because `api/copilot/route.ts`
+ * imports this same graph on the server — see the note in `commands/ui.ts`.
+ */
+import { type CommandContext, commandRegistry } from "@/commands";
+import {
+  buildCommandTools,
+  commandForTool,
+  commandInputSchema,
+  commandToolDescription,
+  isAutoRunTool,
+  isProposalTool,
+  toolNameForCommand,
+} from "@/lib/ai/commandTools";
+import { READ_TOOLS, WRITE_TOOLS } from "@/lib/ai/copilotAgentTools";
+
+/** What every major provider accepts as a tool name. */
+const TOOL_NAME = /^[a-zA-Z0-9_-]{1,128}$/;
+
+describe("command registry", () => {
+  it("is non-empty", () => {
+    expect(commandRegistry.length).toBeGreaterThan(0);
+  });
+
+  it("has unique, namespaced ids", () => {
+    const ids = commandRegistry.map((c) => c.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const id of ids) {
+      expect(id).toMatch(/^[a-z][a-zA-Z]*\.[a-z][a-zA-Z]*$/);
+    }
+  });
+
+  it("declares no URL-shaped command (plan §3.2)", () => {
+    for (const command of commandRegistry) {
+      expect(command.id).not.toMatch(/navigate|goto|url|href|route/i);
+      const properties = Object.keys(
+        (commandInputSchema(command).properties ?? {}) as object,
+      );
+      expect(properties).not.toContain("url");
+      expect(properties).not.toContain("href");
+      expect(properties).not.toContain("path");
+    }
+  });
+});
+
+describe("zod → JSON Schema", () => {
+  it("converts every command's params to an object schema", () => {
+    for (const command of commandRegistry) {
+      const schema = commandInputSchema(command);
+      expect(schema.type, `${command.id} params`).toBe("object");
+      expect(typeof schema.properties).toBe("object");
+    }
+  });
+
+  it("gives a parameterless command an empty object, not a bare {}", () => {
+    // `z.void()` converts to a schema with no `type`, which providers reject
+    // for tool input. `commandInputSchema` normalizes it; this is the case that
+    // would otherwise ship a declaration the model cannot call.
+    const parameterless = commandRegistry.filter(
+      (c) => Object.keys((commandInputSchema(c).properties ?? {}) as object)
+        .length === 0,
+    );
+    expect(parameterless.length).toBeGreaterThan(0);
+    for (const command of parameterless) {
+      expect(commandInputSchema(command)).toEqual({
+        type: "object",
+        properties: {},
+        additionalProperties: false,
+      });
+    }
+  });
+
+  it("keeps required parameters required", () => {
+    // A regression here would let the model omit an id and have the call
+    // validated only by the command's own zod parse, after the round trip.
+    const open = commandRegistry.find((c) => c.id === "document.open");
+    expect(open).toBeDefined();
+    expect(commandInputSchema(open!).required).toEqual(["id"]);
+  });
+});
+
+describe("generated tool list", () => {
+  const tools = buildCommandTools();
+
+  it("contains exactly one tool per registry command", () => {
+    expect(Object.keys(tools).length).toBe(commandRegistry.length);
+    for (const command of commandRegistry) {
+      const name = toolNameForCommand(command.id);
+      expect(tools[name], `${command.id} is missing from the tool list`)
+        .toBeDefined();
+      expect(commandForTool(name)).toBe(command);
+    }
+  });
+
+  it("names tools legally and uniquely", () => {
+    const names = Object.keys(tools);
+    expect(new Set(names).size).toBe(names.length);
+    for (const name of names) expect(name).toMatch(TOOL_NAME);
+  });
+
+  it("never collides with a hand-written content tool", () => {
+    const content = new Set<string>([...READ_TOOLS, ...WRITE_TOOLS]);
+    for (const name of Object.keys(tools)) {
+      expect(content.has(name), `${name} collides with a content tool`)
+        .toBe(false);
+    }
+  });
+
+  it("describes every tool", () => {
+    for (const command of commandRegistry) {
+      expect(commandToolDescription(command).length).toBeGreaterThan(0);
+    }
+  });
+
+  it("routes every tool to exactly one of auto-run or propose", () => {
+    for (const command of commandRegistry) {
+      const name = toolNameForCommand(command.id);
+      expect(isAutoRunTool(name)).toBe(command.effect === "read");
+      expect(isProposalTool(name)).toBe(command.effect === "mutate");
+    }
+  });
+});
+
+describe("mutate commands", () => {
+  it("all have a preview", () => {
+    // The invariant the proposal UI rests on: a `mutate` tool call is never
+    // executed on arrival, so `preview()` is the only thing the user sees
+    // before accepting it. A mutate command without one renders as its title
+    // and nothing else.
+    for (const command of commandRegistry) {
+      if (command.effect !== "mutate") continue;
+      expect(
+        typeof command.previewInvoke,
+        `${command.id} is a mutate command with no preview()`,
+      ).toBe("function");
+    }
+  });
+
+  it("says so in the tool description", () => {
+    for (const command of commandRegistry) {
+      if (command.effect !== "mutate") continue;
+      expect(commandToolDescription(command)).toContain("PROPOSAL");
+    }
+  });
+});
+
+describe("workspace.describe (plan §6.2)", () => {
+  const describeCommand = commandRegistry.find(
+    (c) => c.id === "workspace.describe",
+  );
+
+  it("exists as a read command taking no parameters", () => {
+    expect(describeCommand).toBeDefined();
+    expect(describeCommand!.effect).toBe("read");
+    expect(commandInputSchema(describeCommand!).properties).toEqual({});
+  });
+
+  it("answers with the panes it is given", async () => {
+    const panes = [
+      {
+        id: "pane-1",
+        docId: "doc-a",
+        title: "Left",
+        mode: "write" as const,
+        focused: true,
+      },
+    ];
+    // Only `workspace` is read; the rest of the context is never touched by
+    // this command, and a partial stand-in keeps the spec from having to build
+    // a Redux store and a router to assert a projection.
+    const ctx = { workspace: { panes } } as unknown as CommandContext;
+    const result = await describeCommand!.invoke(ctx, undefined);
+    expect(result).toEqual({ status: "ok", data: { panes } });
+  });
+});

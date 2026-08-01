@@ -10,6 +10,8 @@
 
 import type { SerializedEditorState } from "lexical";
 import type {
+  CopilotThread,
+  CopilotThreadInput,
   DocumentStorageUsage,
   GetSessionResponse,
   Post,
@@ -448,5 +450,29 @@ export const apiClient = {
     /** POST /api/notes */
     create: (note: CreateNoteInput): Promise<unknown> =>
       request<unknown>("/api/notes", { method: "POST", ...json(note) }),
+  },
+
+  // -------------------------------------------------------------------------
+  // Copilot conversations
+  // -------------------------------------------------------------------------
+  copilotThreads: {
+    /** GET /api/copilot/threads?scope=… */
+    list: (scope: string): Promise<CopilotThread[] | undefined> =>
+      request<CopilotThread[]>(
+        `/api/copilot/threads?scope=${encodeURIComponent(scope)}`,
+      ),
+
+    /** PUT /api/copilot/threads — upsert; the client owns the id. */
+    save: (thread: CopilotThreadInput): Promise<CopilotThread | undefined> =>
+      request<CopilotThread>("/api/copilot/threads", {
+        method: "PUT",
+        ...json(thread),
+      }),
+
+    /** DELETE /api/copilot/threads/[id] */
+    delete: (id: string): Promise<{ id: string } | undefined> =>
+      request<{ id: string }>(`/api/copilot/threads/${id}`, {
+        method: "DELETE",
+      }),
   },
 } as const;

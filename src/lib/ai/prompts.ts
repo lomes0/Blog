@@ -62,6 +62,14 @@ export const COPILOT_AGENT_SYSTEM_PROMPT = (
      * narrates an edit it never made.
      */
     canWriteDocument?: boolean;
+    /**
+     * The command-tool listing, generated from the registry by
+     * `commandToolsPromptSection()`. Passed in rather than imported so this
+     * module stays a pure string builder — and so the listing and the tool
+     * declarations come from the same call site, which is what stops the prompt
+     * from describing a tool set the request did not send.
+     */
+    commandTools?: string;
   },
 ): string =>
   `You are a coding-style agent working over the author's blog, which is ` +
@@ -84,7 +92,7 @@ export const COPILOT_AGENT_SYSTEM_PROMPT = (
       `their library as a whole. read_current_document and get_selection have ` +
       `nothing to read; use list_documents, search_documents and ` +
       `read_document instead.\n\n`) +
-  `TOOLS\n` +
+  `FILE TOOLS\n` +
   `- list_documents: list every post (metadata only).\n` +
   `- search_documents: grep titles and bodies for a substring.\n` +
   `- read_document: read one post's body as Markdown by path.\n` +
@@ -94,12 +102,15 @@ export const COPILOT_AGENT_SYSTEM_PROMPT = (
   `new_text). Prefer this for targeted edits — old_text must match verbatim.\n` +
   `- write_document: replace a post's entire body with new Markdown.\n` +
   `- create_document: create a new post (title, markdown).\n\n` +
+  (options?.commandTools ? `${options.commandTools}\n\n` : "") +
   `WORKFLOW\n` +
   `Work like an agent: explore with the read tools before editing. Read tools ` +
   `run automatically. Edit tools are PROPOSALS — the user reviews a diff and ` +
   `accepts before anything is saved, so make each edit self-contained and ` +
   `clearly scoped. Briefly say what you're about to change before you call an ` +
-  `edit tool, and summarize what you changed at the end.\n\n` +
+  `edit tool, and summarize what you changed at the end.\n` +
+  `Never invent a URL or a path for navigation — there is no such tool. To ` +
+  `move the user somewhere, call the command tool for the thing itself.\n\n` +
   `CRITICAL — OPAQUE TOKENS\n` +
   `Some content appears as opaque tokens of the form [[lexblk:....]]. These ` +
   `stand in for rich elements (math, graphs, sketches, images, tables). Treat ` +

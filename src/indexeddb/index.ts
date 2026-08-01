@@ -56,7 +56,10 @@ const idbConfig = {
   // migration; until someone writes one, this string stays.
   // See docs/guides/notes-indexeddb-origins.md.
   databaseName: "matheditor",
-  version: 5,
+  // 6 adds `copilotThreads`. Bumping the version is what runs
+  // `onupgradeneeded`, which creates any store in this list the database does
+  // not already have — existing stores and their contents are untouched.
+  version: 6,
   stores: [
     {
       name: "documents",
@@ -104,6 +107,16 @@ const idbConfig = {
       name: "pendingSaves",
       id: { keyPath: "id" },
       indices: [{ name: "updatedAt", keyPath: "updatedAt" }],
+    },
+    {
+      // Copilot conversations for a signed-out session. The signed-in half
+      // lives in Postgres; `threadBackendFor` picks between them.
+      name: "copilotThreads",
+      id: { keyPath: "id" },
+      indices: [
+        { name: "scope", keyPath: "scope" },
+        { name: "updatedAt", keyPath: "updatedAt" },
+      ],
     },
   ],
 };
