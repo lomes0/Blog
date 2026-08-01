@@ -52,10 +52,11 @@ interface PaneFrameProps {
  * the pane un-focusable.
  *
  * That is the keystone of plan §5.1: "active" used to mean *visible*, which is
- * unanswerable with two panes on screen at once. Everything that must be
- * singular — the toolbar portal, the `<title>`, the `ActiveEditorContext` ref
- * the Copilot writes through — now keys off the focused pane instead, and
- * `EditorTabPanel` is where they are gated.
+ * unanswerable with two panes on screen at once. What must be singular — the
+ * `<title>`, the `ActiveEditorContext` ref the Copilot writes through — keys off
+ * the focused pane instead, and `EditorTabPanel` is where they are gated. The
+ * formatting toolbar is no longer among them: each pane hosts its own in its
+ * header, so the unfocused half of a split stays editable.
  */
 const PaneFrame: React.FC<PaneFrameProps> = ({
   pane,
@@ -102,7 +103,7 @@ const PaneFrame: React.FC<PaneFrameProps> = ({
         /* No header row. The pane's name, its close button and the §17.3 accent
           that marks it focused all used to be drawn here, above a pane whose
           tabs were somewhere else entirely — in the app top bar. They are the
-          tab strip's now (`PaneTabStrip`), which sticks to the top of this
+          header's now (`PaneHeader`), which sticks to the top of this
           scroller and so occupies the same line this row did. */
       }
       <Box sx={{ flex: 1, minHeight: 0, overflow: "auto", px: 1 }}>

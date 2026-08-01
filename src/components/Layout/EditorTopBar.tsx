@@ -408,7 +408,7 @@ const EditorTopBar: React.FC = () => {
         {
           /* Page-level actions slot — right after the document name. The
             sub-doc tabs used to sit between the two; they belong to a pane, not
-            to the window, and live in `PaneTabStrip` now. */
+            to the window, and live in `PaneHeader` now. */
         }
         {actions}
       </Box>

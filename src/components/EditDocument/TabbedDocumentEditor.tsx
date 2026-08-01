@@ -17,7 +17,11 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { actions, postsSelectors, useDispatch, useSelector } from "@/store";
 import { SetActiveEditorContext } from "@/contexts/ActiveEditorContext";
-import PaneTabStrip, { type TabMeta } from "./PaneTabStrip";
+import PaneHeader, { type TabMeta } from "./PaneHeader";
+import {
+  ToolbarSlotProvider,
+  ToolbarSlotTarget,
+} from "@/contexts/ToolbarSlotContext";
 import EditorTabPanel from "./EditorTabPanel";
 import TabContextMenu from "./TabContextMenu";
 import { EMPTY_EDITOR_STATE, type PostCreateInput } from "@/types";
@@ -344,126 +348,136 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     [dispatch, paneId],
   );
 
-  // The strip renders here, inside the pane, rather than being published into
-  // the app-wide top bar through a context. That context could hold **one**
-  // strip for the whole window, so only the focused pane ever filled it — a row
-  // of tabs above, and detached from, the pane whose documents they were.
+  // The header renders here, inside the pane, rather than being published into
+  // the app shell through two contexts. Each could hold **one** thing for the
+  // whole window — one tab strip, one toolbar — so only the focused pane ever
+  // filled them: a row of tabs and a set of formatting controls sitting above,
+  // and detached from, the pane whose document they acted on.
+  //
+  // `ToolbarSlotProvider` is nested rather than reached: the app shell keeps its
+  // own for the routes that mount a lone editor (Playground, Tutorial), and this
+  // one shadows it for everything in this pane, so `ToolbarPlugin`'s portal
+  // finds this header without knowing panes exist. Two panes, two providers,
+  // two live toolbars.
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
-      {orderedTabs.length > 0 && (
-        <PaneTabStrip
-          tabs={orderedTabs}
-          activeTabId={activeTabId}
-          rootTabId={rootId}
-          dirtyTabIds={dirtyDocIds}
-          renamingTabId={renamingTabId}
-          isSplit={isSplit}
-          isFocused={isPaneFocused}
-          onSwitch={handleSwitch}
-          onClose={handleCloseRequest}
-          onAdd={handleAdd}
-          onRename={handleRename}
-          onRenameStarted={handleRenameStarted}
-          onReorder={handleReorder}
-          onContextMenu={handleOpenContextMenu}
-          onClosePane={handleClosePane}
-        />
-      )}
-      <Box sx={{ display: "flex", flex: 1 }}>
-        <Box sx={{ flex: 1 }}>
-          {tabIds.map((tabId) => (
-            <EditorTabPanel
-              key={tabId}
-              paneId={paneId}
-              docId={tabId}
-              rootId={rootId}
-              mode={mode}
-              isActive={tabId === activeTabId}
-              isFocused={isPaneFocused && tabId === activeTabId}
-              onEditorReady={handleEditorReady}
-            />
-          ))}
-        </Box>
-      </Box>
-
-      {/* Context menu */}
-      <TabContextMenu
-        anchorEl={contextMenuAnchor}
-        tabId={contextMenuTabId}
-        isRoot={contextMenuIsRoot}
-        onClose={handleCloseContextMenu}
-        onRename={handleRenameFromMenu}
-        onDuplicate={handleDuplicate}
-        onMove={handleMoveRequest}
-        onSplitOff={handleSplitOff}
-        onDelete={handleCloseRequest}
-      />
-
-      {/* Delete confirmation dialog */}
-      <Dialog
-        open={!!deleteTarget}
-        onClose={() =>
-          setDeleteTarget(null)}
-      >
-        <DialogTitle>Delete tab?</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            {`Delete "${deleteTarget?.name}"? This cannot be undone.`}
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteTarget(null)}>Cancel</Button>
-          <Button color="error" onClick={handleDeleteConfirm}>
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Move to other post dialog */}
-      <Dialog
-        open={!!moveDialogTabId}
-        onClose={() => setMoveDialogTabId(null)}
-        fullWidth
-        maxWidth="xs"
-      >
-        <DialogTitle>Move tab to another post</DialogTitle>
-        <DialogContent sx={{ p: 0 }}>
-          {availablePosts.length === 0
-            ? (
-              <DialogContentText sx={{ p: 3 }}>
-                No other posts available.
-              </DialogContentText>
-            )
-            : (
-              <List dense disablePadding>
-                {availablePosts.map((doc) => {
-                  const d = doc;
-                  const name = d?.name ?? doc.id;
-                  return (
-                    <ListItemButton
-                      key={doc.id}
-                      selected={moveTargetPostId === doc.id}
-                      onClick={() => setMoveTargetPostId(doc.id)}
-                    >
-                      <ListItemText primary={name} />
-                    </ListItemButton>
-                  );
-                })}
-              </List>
-            )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setMoveDialogTabId(null)}>Cancel</Button>
-          <Button
-            variant="contained"
-            disabled={!moveTargetPostId}
-            onClick={handleMoveConfirm}
+    <ToolbarSlotProvider>
+      <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
+        {orderedTabs.length > 0 && (
+          <PaneHeader
+            tabs={orderedTabs}
+            activeTabId={activeTabId}
+            rootTabId={rootId}
+            dirtyTabIds={dirtyDocIds}
+            renamingTabId={renamingTabId}
+            isSplit={isSplit}
+            isFocused={isPaneFocused}
+            onSwitch={handleSwitch}
+            onClose={handleCloseRequest}
+            onAdd={handleAdd}
+            onRename={handleRename}
+            onRenameStarted={handleRenameStarted}
+            onReorder={handleReorder}
+            onContextMenu={handleOpenContextMenu}
+            onClosePane={handleClosePane}
           >
-            Move
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+            <ToolbarSlotTarget />
+          </PaneHeader>
+        )}
+        <Box sx={{ display: "flex", flex: 1 }}>
+          <Box sx={{ flex: 1 }}>
+            {tabIds.map((tabId) => (
+              <EditorTabPanel
+                key={tabId}
+                paneId={paneId}
+                docId={tabId}
+                rootId={rootId}
+                mode={mode}
+                isActive={tabId === activeTabId}
+                isFocused={isPaneFocused && tabId === activeTabId}
+                onEditorReady={handleEditorReady}
+              />
+            ))}
+          </Box>
+        </Box>
+
+        {/* Context menu */}
+        <TabContextMenu
+          anchorEl={contextMenuAnchor}
+          tabId={contextMenuTabId}
+          isRoot={contextMenuIsRoot}
+          onClose={handleCloseContextMenu}
+          onRename={handleRenameFromMenu}
+          onDuplicate={handleDuplicate}
+          onMove={handleMoveRequest}
+          onSplitOff={handleSplitOff}
+          onDelete={handleCloseRequest}
+        />
+
+        {/* Delete confirmation dialog */}
+        <Dialog
+          open={!!deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+        >
+          <DialogTitle>Delete tab?</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              {`Delete "${deleteTarget?.name}"? This cannot be undone.`}
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button color="error" onClick={handleDeleteConfirm}>
+              Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Move to other post dialog */}
+        <Dialog
+          open={!!moveDialogTabId}
+          onClose={() => setMoveDialogTabId(null)}
+          fullWidth
+          maxWidth="xs"
+        >
+          <DialogTitle>Move tab to another post</DialogTitle>
+          <DialogContent sx={{ p: 0 }}>
+            {availablePosts.length === 0
+              ? (
+                <DialogContentText sx={{ p: 3 }}>
+                  No other posts available.
+                </DialogContentText>
+              )
+              : (
+                <List dense disablePadding>
+                  {availablePosts.map((doc) => {
+                    const d = doc;
+                    const name = d?.name ?? doc.id;
+                    return (
+                      <ListItemButton
+                        key={doc.id}
+                        selected={moveTargetPostId === doc.id}
+                        onClick={() => setMoveTargetPostId(doc.id)}
+                      >
+                        <ListItemText primary={name} />
+                      </ListItemButton>
+                    );
+                  })}
+                </List>
+              )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setMoveDialogTabId(null)}>Cancel</Button>
+            <Button
+              variant="contained"
+              disabled={!moveTargetPostId}
+              onClick={handleMoveConfirm}
+            >
+              Move
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
+    </ToolbarSlotProvider>
   );
 };
 

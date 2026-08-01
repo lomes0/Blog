@@ -95,13 +95,14 @@ interface EditorTabPanelProps {
  * "the one being acted on" were the same panel. With two panes they are not,
  * and every singleton in the editor hung off the wrong half of that:
  *
- * - **`isActive`** — the active tab of *this* pane. It gates `display`, and
- *   only that. `display: none` rather than unmounting is what preserves undo
- *   history across a tab switch (§1.1), and split view does not change it.
+ * - **`isActive`** — the active tab of *this* pane. It gates `display` and the
+ *   toolbar portal, both of which are the pane's own business: `display: none`
+ *   rather than unmounting is what preserves undo history across a tab switch
+ *   (§1.1), and each pane now has a header slot for its own toolbar.
  * - **`isFocused`** — the active tab of the *focused* pane, so at most one
- *   panel in the whole app has it. It gates the things that must be singular:
- *   the `ActiveEditorContext` ref (which is what the Copilot writes through),
- *   the toolbar's portal into the top bar's one slot, and the `<title>`.
+ *   panel in the whole app has it. It gates what is genuinely singular: the
+ *   `ActiveEditorContext` ref (which is what the Copilot writes through) and
+ *   the `<title>`.
  */
 const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
   paneId,
@@ -201,10 +202,13 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
             onSave={triggerSave}
             onReset={handleReset}
             editable={mode === "write"}
-            // The toolbar portals into a single slot above the content column,
-            // so exactly one editor may claim it: the focused pane's active
-            // tab, and only while that pane is being written in.
-            isActive={isFocused && mode === "write"}
+            // The toolbar portals into the slot in *this pane's* header, so the
+            // claim is per pane: this pane's active tab, while this pane is
+            // being written in. It used to be `isFocused` — one slot for the
+            // window meant the unfocused half of a split had no toolbar at all,
+            // and clicking a control in it would have been acting on the other
+            // pane's document anyway.
+            isActive={isActive && mode === "write"}
           />
           <EditDocumentInfo />
         </>

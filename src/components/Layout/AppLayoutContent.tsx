@@ -28,13 +28,12 @@ import {
   ActiveEditorContext,
   SetActiveEditorContext,
 } from "@/contexts/ActiveEditorContext";
-import { useToolbarSlot } from "@/contexts/ToolbarSlotContext";
+import { ToolbarSlotTarget } from "@/contexts/ToolbarSlotContext";
 
 // Must match the grid-template-columns transition duration below.
 const COPILOT_TRANSITION_MS = 225;
 
 const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
-  const { setSlotEl } = useToolbarSlot();
   const dispatch = useDispatch();
   const initialized = useSelector((state: RootState) => state.ui.initialized);
   const { isResizing, easeMs, getEffectiveWidth } = useSidebarWidth();
@@ -122,7 +121,13 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
           >
             <Box id="back-to-top-anchor" />
             <EditorTopBar />
-            <Box ref={setSlotEl} sx={{ flexShrink: 0 }} />
+            {
+              /* The shell's toolbar slot, for the routes that mount a lone
+                  editor (Playground, Tutorial). The workspace does not use it:
+                  each pane nests its own provider and puts the toolbar in its
+                  own header, under its own tabs. */
+            }
+            <ToolbarSlotTarget style={{ flexShrink: 0 }} />
             <HydrationManager>
               <Container
                 className="editor-container"

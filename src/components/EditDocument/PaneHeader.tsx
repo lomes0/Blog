@@ -29,7 +29,7 @@ export interface TabMeta {
  */
 const TAB_RADIUS = "6px 6px 0 0";
 
-interface PaneTabStripProps {
+interface PaneHeaderProps {
   tabs: TabMeta[];
   activeTabId: string | null;
   /** The pane's root document — its tab cannot be closed. */
@@ -37,7 +37,9 @@ interface PaneTabStripProps {
   dirtyTabIds: string[];
   /** Set by the context menu's Rename; cleared through `onRenameStarted`. */
   renamingTabId: string | null;
-  /** Two panes on screen: the strip grows a focus accent and a close-pane ✕. */
+  /** The toolbar slot. Rendered under the tabs, inside the sticky block. */
+  children?: React.ReactNode;
+  /** Two panes on screen: the header grows a focus accent and a close-pane ✕. */
   isSplit: boolean;
   isFocused: boolean;
   onSwitch: (tabId: string) => void;
@@ -294,26 +296,33 @@ const TabItem: React.FC<TabItemProps> = ({
 };
 
 /**
- * A pane's tab strip: the tabs of the document open *in this pane*, plus the
- * pane's own controls.
+ * Everything pinned above a pane's document: its tabs, its own controls, and —
+ * as `children` — the slot its editors portal their formatting toolbar into.
  *
- * It used to be published into the app-wide top bar through a context, which
- * meant one strip for the whole window and only the focused pane's tabs in it —
- * a row of tabs sitting above, and detached from, the pane they belonged to.
- * Now each pane renders its own, and the pane title and close button that
- * `WorkspacePanes` drew separately are folded into it.
+ * The tabs used to be published into the app-wide top bar through a context,
+ * which meant one strip for the whole window and only the focused pane's tabs
+ * in it; the toolbar was a second such singleton, one row lower. Both are the
+ * pane's now, which is what makes the two panes of a split independently
+ * editable, and it settles their order: **tabs, then toolbar**. A document is
+ * chosen before it is formatted.
  *
- * `position: sticky` is what keeps it pinned once it is no longer window
- * chrome. Unsplit, the page's padded container is the scroller and the strip
- * cancels its gutters to sit flush with the pane; split, each pane scrolls
- * itself and the same rule holds against `PaneFrame`'s box.
+ * The pane title and close button `WorkspacePanes` drew in a header row of its
+ * own are folded in here too.
+ *
+ * `position: sticky` is what keeps the block pinned once it is no longer window
+ * chrome — one sticky container for both rows rather than two, so the toolbar
+ * needs no hard-coded offset for the strip's height. Unsplit, the page's padded
+ * container is the scroller and the header cancels its gutters to sit flush
+ * with the pane; split, each pane scrolls itself and the same rule holds
+ * against `PaneFrame`'s box.
  */
-const PaneTabStrip: React.FC<PaneTabStripProps> = ({
+const PaneHeader: React.FC<PaneHeaderProps> = ({
   tabs,
   activeTabId,
   rootTabId,
   dirtyTabIds,
   renamingTabId,
+  children,
   isSplit,
   isFocused,
   onSwitch,
@@ -448,15 +457,10 @@ const PaneTabStrip: React.FC<PaneTabStripProps> = ({
         // Above the document, below the editor's floating toolbars.
         zIndex: 3,
         display: "flex",
-        alignItems: "center",
-        gap: `${TAB_GAP}px`,
-        minHeight: 34,
+        flexDirection: "column",
         flexShrink: 0,
-        px: 0.5,
         bgcolor: "background.default",
-        borderBottom: "1px solid",
-        borderColor: "divider",
-        // Cancel the scroller's gutters so the strip spans the pane it belongs
+        // Cancel the scroller's gutters so the header spans the pane it belongs
         // to. Split panes scroll inside `PaneFrame`'s `px: 1` box; unsplit, the
         // page's asymmetric content gutters (`CONTENT_PAD_X`) are the ones to
         // undo.
@@ -483,187 +487,207 @@ const PaneTabStrip: React.FC<PaneTabStripProps> = ({
             height: 2,
             bgcolor: isFocused ? "primary.main" : "transparent",
             transition: `background-color ${MOTION.fast}ms`,
+            zIndex: 1,
           },
         }),
       }}
     >
       <Box
-        ref={rowRef}
-        role="tablist"
-        aria-label="Sub-documents"
-        aria-orientation="horizontal"
         sx={{
-          position: "relative",
           display: "flex",
-          alignItems: "stretch",
+          alignItems: "center",
           gap: `${TAB_GAP}px`,
-          flex: 1,
-          minWidth: 0,
-          minHeight: 30,
-          overflow: "hidden",
+          minHeight: 34,
+          px: 0.5,
+          borderBottom: "1px solid",
+          borderColor: "divider",
         }}
       >
-        {
-          /* Measurement clone. Every tab, always, off-flow: the visible window is
-            computed from these widths, so it must not be computed from them. */
-        }
         <Box
-          aria-hidden
+          ref={rowRef}
+          role="tablist"
+          aria-label="Sub-documents"
+          aria-orientation="horizontal"
           sx={{
-            position: "absolute",
-            top: 0,
-            left: 0,
+            position: "relative",
             display: "flex",
-            visibility: "hidden",
-            pointerEvents: "none",
+            alignItems: "stretch",
+            gap: `${TAB_GAP}px`,
+            flex: 1,
+            minWidth: 0,
+            minHeight: 30,
+            overflow: "hidden",
           }}
         >
-          {tabs.map((tab) => (
+          {
+            /* Measurement clone. Every tab, always, off-flow: the visible window is
+            computed from these widths, so it must not be computed from them. */
+          }
+          <Box
+            aria-hidden
+            sx={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              display: "flex",
+              visibility: "hidden",
+              pointerEvents: "none",
+            }}
+          >
+            {tabs.map((tab) => (
+              <TabItem
+                key={tab.id}
+                tab={tab}
+                isActive={tab.id === activeTabId}
+                isDirty={dirtyTabIds.includes(tab.id)}
+                isRoot={tab.id === rootTabId}
+                measuring
+                innerRef={(el) => {
+                  if (el) measureRefs.current.set(tab.id, el);
+                  else measureRefs.current.delete(tab.id);
+                }}
+              />
+            ))}
+          </Box>
+
+          {visible.map((tab) => (
             <TabItem
               key={tab.id}
               tab={tab}
               isActive={tab.id === activeTabId}
               isDirty={dirtyTabIds.includes(tab.id)}
               isRoot={tab.id === rootTabId}
-              measuring
-              innerRef={(el) => {
-                if (el) measureRefs.current.set(tab.id, el);
-                else measureRefs.current.delete(tab.id);
+              isRenaming={editingTabId === tab.id}
+              dropSide={dropTarget?.id === tab.id ? dropTarget.side : undefined}
+              onSwitch={onSwitch}
+              onClose={onClose}
+              onStartRename={(id) => setEditingTabId(id)}
+              onCommitRename={(name) => commitRename(tab.id, name)}
+              onCancelRename={() => setEditingTabId(null)}
+              onContextMenu={onContextMenu}
+              onKeyDown={handleKeyDown(tabs.indexOf(tab))}
+              onDragStart={() => setDragId(tab.id)}
+              onDragOver={handleDragOver(tab.id)}
+              onDragEnd={() => {
+                setDragId(null);
+                setDropTarget(null);
               }}
+              onDrop={handleDrop}
             />
           ))}
         </Box>
 
-        {visible.map((tab) => (
-          <TabItem
-            key={tab.id}
-            tab={tab}
-            isActive={tab.id === activeTabId}
-            isDirty={dirtyTabIds.includes(tab.id)}
-            isRoot={tab.id === rootTabId}
-            isRenaming={editingTabId === tab.id}
-            dropSide={dropTarget?.id === tab.id ? dropTarget.side : undefined}
-            onSwitch={onSwitch}
-            onClose={onClose}
-            onStartRename={(id) => setEditingTabId(id)}
-            onCommitRename={(name) => commitRename(tab.id, name)}
-            onCancelRename={() => setEditingTabId(null)}
-            onContextMenu={onContextMenu}
-            onKeyDown={handleKeyDown(tabs.indexOf(tab))}
-            onDragStart={() => setDragId(tab.id)}
-            onDragOver={handleDragOver(tab.id)}
-            onDragEnd={() => {
-              setDragId(null);
-              setDropTarget(null);
-            }}
-            onDrop={handleDrop}
-          />
-        ))}
-      </Box>
+        {hidden.length > 0 && (
+          <Tooltip title={`${hidden.length} more`}>
+            <Box
+              role="button"
+              tabIndex={0}
+              aria-label={`Show ${hidden.length} more tabs`}
+              aria-haspopup="menu"
+              onClick={(e) => setOverflowAnchor(e.currentTarget)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setOverflowAnchor(e.currentTarget);
+                }
+              }}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 0.25,
+                px: 0.5,
+                py: 0.25,
+                flexShrink: 0,
+                cursor: "pointer",
+                borderRadius: 1.5,
+                color: "text.secondary",
+                transition: `background-color ${MOTION.fast}ms`,
+                "&:hover": { bgcolor: "action.hover", color: "text.primary" },
+                "&:focus-visible": CHROME_RING,
+              }}
+            >
+              <ChevronsRight size={ICON_SIZE.inline} />
+              <Typography variant="micro">{hidden.length}</Typography>
+            </Box>
+          </Tooltip>
+        )}
 
-      {hidden.length > 0 && (
-        <Tooltip title={`${hidden.length} more`}>
-          <Box
-            role="button"
-            tabIndex={0}
-            aria-label={`Show ${hidden.length} more tabs`}
-            aria-haspopup="menu"
-            onClick={(e) => setOverflowAnchor(e.currentTarget)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                setOverflowAnchor(e.currentTarget);
-              }
-            }}
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 0.25,
-              px: 0.5,
-              py: 0.25,
-              flexShrink: 0,
-              cursor: "pointer",
-              borderRadius: 1.5,
-              color: "text.secondary",
-              transition: `background-color ${MOTION.fast}ms`,
-              "&:hover": { bgcolor: "action.hover", color: "text.primary" },
-              "&:focus-visible": CHROME_RING,
-            }}
-          >
-            <ChevronsRight size={ICON_SIZE.inline} />
-            <Typography variant="micro">{hidden.length}</Typography>
-          </Box>
-        </Tooltip>
-      )}
-
-      <Menu
-        anchorEl={overflowAnchor}
-        open={!!overflowAnchor}
-        onClose={() => setOverflowAnchor(null)}
-      >
-        {hidden.map((tab) => (
-          <MenuItem
-            key={tab.id}
-            onClick={() => {
-              setOverflowAnchor(null);
-              onSwitch(tab.id);
-            }}
-          >
-            <ListItemIcon>
-              <FileText size={ICON_SIZE.dense} />
-            </ListItemIcon>
-            <ListItemText>{tab.name}</ListItemText>
-            {dirtyTabIds.includes(tab.id) && (
-              <Box
-                sx={{
-                  width: 5,
-                  height: 5,
-                  ml: 1,
-                  borderRadius: "50%",
-                  bgcolor: "warning.main",
-                  flexShrink: 0,
-                }}
-              />
-            )}
-          </MenuItem>
-        ))}
-      </Menu>
-
-      <Tooltip title="New sub-doc">
-        <IconButton
-          size="small"
-          onClick={onAdd}
-          aria-label="New sub-doc"
-          sx={{
-            flexShrink: 0,
-            color: "text.secondary",
-            p: 0.5,
-            "&:hover": { color: "primary.main" },
-          }}
+        <Menu
+          anchorEl={overflowAnchor}
+          open={!!overflowAnchor}
+          onClose={() => setOverflowAnchor(null)}
         >
-          <Plus size={ICON_SIZE.dense} />
-        </IconButton>
-      </Tooltip>
+          {hidden.map((tab) => (
+            <MenuItem
+              key={tab.id}
+              onClick={() => {
+                setOverflowAnchor(null);
+                onSwitch(tab.id);
+              }}
+            >
+              <ListItemIcon>
+                <FileText size={ICON_SIZE.dense} />
+              </ListItemIcon>
+              <ListItemText>{tab.name}</ListItemText>
+              {dirtyTabIds.includes(tab.id) && (
+                <Box
+                  sx={{
+                    width: 5,
+                    height: 5,
+                    ml: 1,
+                    borderRadius: "50%",
+                    bgcolor: "warning.main",
+                    flexShrink: 0,
+                  }}
+                />
+              )}
+            </MenuItem>
+          ))}
+        </Menu>
 
-      {isSplit && (
-        <Tooltip title="Close pane">
+        <Tooltip title="New sub-doc">
           <IconButton
             size="small"
-            onClick={onClosePane}
-            aria-label="Close pane"
+            onClick={onAdd}
+            aria-label="New sub-doc"
             sx={{
               flexShrink: 0,
               color: "text.secondary",
               p: 0.5,
-              "&:hover": { color: "text.primary" },
+              "&:hover": { color: "primary.main" },
             }}
           >
-            <X size={ICON_SIZE.dense} />
+            <Plus size={ICON_SIZE.dense} />
           </IconButton>
         </Tooltip>
-      )}
+
+        {isSplit && (
+          <Tooltip title="Close pane">
+            <IconButton
+              size="small"
+              onClick={onClosePane}
+              aria-label="Close pane"
+              sx={{
+                flexShrink: 0,
+                color: "text.secondary",
+                p: 0.5,
+                "&:hover": { color: "text.primary" },
+              }}
+            >
+              <X size={ICON_SIZE.dense} />
+            </IconButton>
+          </Tooltip>
+        )}
+      </Box>
+
+      {
+        /* The pane's formatting toolbar portals in here — below the tabs, and
+          inside the same sticky block so it pins with them. Empty in read mode,
+          which is why the row above owns the divider. */
+      }
+      {children}
     </Box>
   );
 };
 
-export default PaneTabStrip;
+export default PaneHeader;
