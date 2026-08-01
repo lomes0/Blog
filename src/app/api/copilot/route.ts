@@ -2,7 +2,8 @@ import { convertToModelMessages, stepCountIs, streamText, tool } from "ai";
 import type { UIMessage } from "ai";
 import { z } from "zod";
 import { type AIProviderType, createProvider, getModelById } from "@/lib/ai";
-import { ApiError, userRoute } from "@/lib/api-utils";
+import { ApiError, parseBody, userRoute } from "@/lib/api-utils";
+import { permitsDocument, requireDocument } from "@/lib/access";
 import { COPILOT_AGENT_SYSTEM_PROMPT } from "@/lib/ai/prompts";
 
 // Node runtime (not edge): auth uses the Prisma adapter, which cannot run on edge.
@@ -11,7 +12,7 @@ import { COPILOT_AGENT_SYSTEM_PROMPT } from "@/lib/ai/prompts";
 // tools auto-run against the Redux store / live editor, write tools surface as
 // reviewable proposals. See src/lib/ai/copilotAgentTools.ts for the read/write
 // split the client enforces.
-const agentTools = {
+const readTools = {
   // ---- read (auto-executed client-side) ----
   list_documents: tool({
     description:
@@ -42,7 +43,19 @@ const agentTools = {
       "Get the user's current text selection in the open document, if any.",
     inputSchema: z.object({}),
   }),
+};
 
+/**
+ * Write tools that act on the *open* document. Withheld when the caller may
+ * read that document but not write it — a signed-in visitor asking about
+ * someone else's published post gets answers, not edit proposals.
+ *
+ * This is not the security boundary. Writes execute client-side through the
+ * `updatePost` / `createPost` thunks, so they land on `/api/documents/[id]`,
+ * which authorizes them independently. Withholding the tools here stops the
+ * agent from proposing an edit that would only fail on accept.
+ */
+const documentWriteTools = {
   // ---- write (proposed; applied only on user accept) ----
   edit_document: tool({
     description:
@@ -61,30 +74,73 @@ const agentTools = {
       "large rewrites. Preserve any [[lexblk:...]] tokens you want to keep.",
     inputSchema: z.object({ path: z.string(), markdown: z.string() }),
   }),
+};
+
+/**
+ * Creating a post writes to the caller's *own* library, so it survives the
+ * read-only branch: asking about someone else's post and then saying "draft me
+ * one like it" is a reasonable thing to want.
+ */
+const libraryWriteTools = {
   create_document: tool({
     description: "Propose creating a new post with a title and Markdown body.",
     inputSchema: z.object({ title: z.string(), markdown: z.string() }),
   }),
 };
 
-export const POST = userRoute(async (req) => {
-  const body = await req.json();
+/**
+ * Messages are structurally validated and then handed to `convertToModelMessages`
+ * as-is: `parts` is an open union owned by the AI SDK, and restating it here
+ * would be a second source of truth that drifts. The fields this route reads
+ * itself — provider, model, path, title — are validated properly.
+ */
+const messageSchema = z.object({
+  id: z.string(),
+  role: z.enum(["system", "user", "assistant"]),
+  parts: z.array(z.unknown()),
+}).passthrough();
+
+const copilotBodySchema = z.object({
+  messages: z.array(messageSchema).default([]),
+  documentTitle: z.string().optional(),
+  /** `"<documentId>.md"` — the agent addresses posts as Markdown files. */
+  currentPath: z.string().optional(),
+  provider: z.string(),
+  model: z.string().min(1, "Model ID is required"),
+});
+
+export const POST = userRoute(async (req, { user }) => {
   const {
     messages,
     documentTitle,
     currentPath,
     provider,
     model: modelId,
-  } = body as {
-    messages: UIMessage[];
-    documentTitle?: string;
-    currentPath?: string;
-    provider: AIProviderType;
-    model: string;
-  };
+  } = await parseBody(req, copilotBodySchema);
 
-  if (!modelId) {
-    throw new ApiError(400, "Bad Request", "Model ID is required");
+  // An open document is authorized before anything is said about it: reading is
+  // required to talk about it at all, and writing decides whether the agent is
+  // handed edit tools.
+  let canWriteDocument = true;
+  if (currentPath) {
+    try {
+      const doc = await requireDocument(
+        currentPath.replace(/\.md$/, ""),
+        user,
+        "read",
+        { subtitle: "You do not have access to this post" },
+      );
+      canWriteDocument = permitsDocument(doc, user, "write");
+    } catch (error) {
+      // A missing row is not a refusal. A post can be open in the editor before
+      // it has ever been saved, and `read_current_document` reads the live
+      // editor client-side, so there is a real document to talk about even
+      // though the server has nothing to authorize. Writes still land on
+      // `/api/documents/[id]`, which authorizes them on its own.
+      //
+      // 403 is a refusal and stays one.
+      if (!(error instanceof ApiError) || error.status !== 404) throw error;
+    }
   }
 
   const model = getModelById(modelId);
@@ -92,19 +148,24 @@ export const POST = userRoute(async (req) => {
     throw new ApiError(404, "Model not found", `Model '${modelId}' not found`);
   }
 
-  const providerInstance = createProvider(provider);
+  const providerInstance = createProvider(provider as AIProviderType);
   const modelInstance = providerInstance(model.id);
 
-  const modelMessages = await convertToModelMessages(messages ?? []);
+  const modelMessages = await convertToModelMessages(messages as UIMessage[]);
 
   const result = streamText({
     model: modelInstance,
     system: COPILOT_AGENT_SYSTEM_PROMPT(
       currentPath ?? null,
       documentTitle ?? null,
+      { canWriteDocument },
     ),
     messages: modelMessages,
-    tools: agentTools,
+    tools: {
+      ...readTools,
+      ...libraryWriteTools,
+      ...(canWriteDocument ? documentWriteTools : {}),
+    },
     // Agentic loop: the model explores with read tools (auto-resolved) and
     // proposes edits over many steps. Writes pause the loop for user approval.
     stopWhen: stepCountIs(40),

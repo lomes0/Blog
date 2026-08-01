@@ -9,12 +9,15 @@ import {
 } from "ai";
 import {
   Box,
+  Button,
   IconButton,
+  InputBase,
   LinearProgress,
   Menu,
   MenuItem,
   Paper,
-  TextField,
+  Popper,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { ChevronDown, Send, Sparkles, Square } from "lucide-react";
@@ -30,8 +33,8 @@ import {
   saveCurrentThread,
   WORKSPACE_SCOPE,
 } from "./copilotStorage";
-import { ASK_COPILOT_EVENT, consumePendingPrompt } from "./copilotHandoff";
 import { ICON_SIZE } from "@/theme/icons";
+import { FOCUS_RING, MOTION } from "@/theme/tokens";
 
 const PROVIDER_COLOR: Record<string, string> = {
   anthropic: "#D97757",
@@ -107,6 +110,29 @@ interface CopilotChatProps {
   setLlmConfig: (config: { provider: string; model: string }) => void;
   onRegisterAcceptAll: (fn: () => void) => void;
   onPendingCountChange: (n: number) => void;
+  /**
+   * `"panel"` fills a tall column and shows an empty state; `"inline"` is the
+   * floating bar over a document, which starts as nothing but its composer and
+   * grows upward as the conversation does.
+   */
+  variant?: "panel" | "inline";
+  /**
+   * Whether the thread is written to `copilotStorage`. The panel persists; the
+   * inline bar is a scratch surface whose thread is in-memory only and dies on
+   * navigation, so the two never write the same key.
+   */
+  persist?: boolean;
+  /** Disables the composer and replaces the model row with this text. */
+  disabledReason?: string;
+  /** Reported so a container can size itself to a conversation in progress. */
+  onMessageCountChange?: (n: number) => void;
+  inputRef?: React.Ref<HTMLTextAreaElement>;
+  /**
+   * False collapses to the composer alone while keeping the thread mounted —
+   * the inline bar's Escape. Hiding rather than unmounting is the point: the
+   * conversation is still there when it reopens.
+   */
+  showTranscript?: boolean;
 }
 
 const CopilotChat: React.FC<CopilotChatProps> = (
@@ -116,8 +142,15 @@ const CopilotChat: React.FC<CopilotChatProps> = (
     setLlmConfig,
     onRegisterAcceptAll,
     onPendingCountChange,
+    variant = "panel",
+    persist = true,
+    disabledReason,
+    onMessageCountChange,
+    inputRef,
+    showTranscript = true,
   },
 ) => {
+  const isInline = variant === "inline";
   const editorRef = useContext(ActiveEditorContext);
   const doc = useSelector((state) =>
     documentId ? postsSelectors.selectById(state, documentId) : undefined
@@ -135,6 +168,9 @@ const CopilotChat: React.FC<CopilotChatProps> = (
   const [modelMenuAnchor, setModelMenuAnchor] = useState<null | HTMLElement>(
     null,
   );
+  // State rather than a ref: the slash Popper needs a re-render once the
+  // element it anchors to exists.
+  const [composerEl, setComposerEl] = useState<HTMLElement | null>(null);
 
   const editorRefRef = useRef(editorRef);
   editorRefRef.current = editorRef;
@@ -162,8 +198,10 @@ const CopilotChat: React.FC<CopilotChatProps> = (
 
   // Seed from the persisted thread for this scope. The component is remounted
   // (keyed on documentId) when the document changes, so reading once here is
-  // correct.
-  const [initialMessages] = useState(() => loadCurrentThread(scope));
+  // correct. A non-persisting chat starts empty every time by construction.
+  const [initialMessages] = useState(() =>
+    persist ? loadCurrentThread(scope) : []
+  );
 
   // Referenced inside onToolCall (which fires during streaming) but assigned by
   // useChat below — safe because tool calls only resolve after useChat returns.
@@ -217,10 +255,15 @@ const CopilotChat: React.FC<CopilotChatProps> = (
 
   // Persist the thread once it settles (avoid thrashing during streaming).
   useEffect(() => {
+    if (!persist) return;
     if (status === "ready" || status === "error") {
       saveCurrentThread(scope, messages);
     }
-  }, [messages, status, scope]);
+  }, [messages, status, scope, persist]);
+
+  useEffect(() => {
+    onMessageCountChange?.(messages.length);
+  }, [messages.length, onMessageCountChange]);
 
   // The most recent assistant message is the one offered for regeneration.
   const lastAssistantId = [...messages].reverse().find((m) =>
@@ -266,31 +309,15 @@ const CopilotChat: React.FC<CopilotChatProps> = (
   }, [acceptAll, messages, onRegisterAcceptAll, onPendingCountChange]);
 
   const sendPrompt = useCallback((text: string) => {
-    if (!text.trim() || isLoading) return;
+    if (!text.trim() || isLoading || disabledReason) return;
     sendMessage({ text });
-  }, [isLoading, sendMessage]);
+  }, [isLoading, sendMessage, disabledReason]);
 
   const handleSend = useCallback(() => {
     if (!input.trim() || isLoading) return;
     sendPrompt(input);
     setInput("");
   }, [input, isLoading, sendPrompt]);
-
-  // A prompt handed over from another surface — today the home pane's composer.
-  // Both paths are needed: the event covers an already-mounted panel, the mount
-  // read covers the panel this hand-off just opened. `consumePendingPrompt`
-  // clears the holder, so only one of them ever fires.
-  const sendPromptRef = useRef(sendPrompt);
-  sendPromptRef.current = sendPrompt;
-  useEffect(() => {
-    const deliver = () => {
-      const prompt = consumePendingPrompt();
-      if (prompt) sendPromptRef.current(prompt);
-    };
-    deliver();
-    window.addEventListener(ASK_COPILOT_EVENT, deliver);
-    return () => window.removeEventListener(ASK_COPILOT_EVENT, deliver);
-  }, []);
 
   // Slash-command autocomplete: active while the input is a single "/token".
   const slashQuery = /^\/\S*$/.test(input) ? input.toLowerCase() : null;
@@ -314,6 +341,10 @@ const CopilotChat: React.FC<CopilotChatProps> = (
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape" && slashOpen) {
       setInput("");
+      // Dismissing the menu consumes the key. Without this it also reaches the
+      // inline bar, which would collapse the whole conversation on the same
+      // press that was only meant to close an autocomplete.
+      e.stopPropagation();
       return;
     }
     if (e.key === "Enter" && !e.shiftKey) {
@@ -333,6 +364,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
 
   const currentModel = AI_MODELS.find((m) => m.id === llmConfig.model);
   const providerColor = PROVIDER_COLOR[llmConfig.provider] ?? "#888";
+  const canSend = Boolean(input.trim()) && !isLoading && !disabledReason;
 
   const genericAddToolOutput = addToolOutput as unknown as (
     args: { tool: string; toolCallId: string; output: unknown },
@@ -349,9 +381,15 @@ const CopilotChat: React.FC<CopilotChatProps> = (
     >
       {isLoading && <LinearProgress sx={{ flexShrink: 0 }} />}
 
-      {/* Scrollable message / empty-state area */}
-      {messages.length === 0
-        ? (
+      {
+        /* Scrollable message / empty-state area. The inline bar has no empty
+          state: at rest it is its composer and nothing else, so the document
+          behind it stays uncovered until there is something to show. */
+      }
+      {!showTranscript
+        ? null
+        : messages.length === 0
+        ? isInline ? null : (
           <Box
             sx={{
               flex: 1,
@@ -397,6 +435,9 @@ const CopilotChat: React.FC<CopilotChatProps> = (
           <Box
             sx={{
               flex: 1,
+              // `minHeight: 0` is what lets this shrink inside the inline bar's
+              // capped container instead of forcing it past the cap.
+              minHeight: 0,
               overflow: "hidden auto",
               p: 1,
               display: "flex",
@@ -441,191 +482,260 @@ const CopilotChat: React.FC<CopilotChatProps> = (
           on: every one of them is phrased "this document". The home pane
           offers its own library-wide suggestions instead. */
       }
-      {messages.length === 0 && documentId !== null && (
+      {messages.length === 0 && documentId !== null && !isInline && (
         <Box sx={{ px: 1.5, pb: 1, flexShrink: 0 }}>
           <QuickActions onSelect={sendPrompt} />
         </Box>
       )}
 
-      {/* Input area */}
+      {
+        /* Composer.
+         *
+         * One bordered container holding the field and its controls, rather
+         * than an outlined field with a row of controls loose beneath it —
+         * matching the home pane's composer, which is the same affordance.
+         * Nested rounded boxes are what made this read as unfinished.
+         *
+         * Inline, the floating card *is* that container, so the shell drops its
+         * own border rather than drawing a second one 8px inside the first. */
+      }
+      {
+        /* Inline, this wrapper's padding *is* the card's inner padding, since
+          the shell below draws nothing — so it carries the home metrics.
+          In the panel the shell has its own, and this is just inset from the
+          column edges. */
+      }
       <Box
         sx={{
-          px: 1.5,
-          pt: 1,
+          px: isInline ? 2 : 1.5,
+          pt: isInline ? 1.5 : 1,
           pb: 1.5,
-          borderTop: 1,
-          borderColor: "divider",
           flexShrink: 0,
-          position: "relative",
         }}
       >
-        {slashOpen && (
-          <Paper
-            elevation={3}
-            sx={{
-              position: "absolute",
-              bottom: "100%",
-              left: 12,
-              right: 12,
-              mb: 0.5,
-              py: 0.5,
-              maxHeight: 220,
-              overflowY: "auto",
-              zIndex: 1,
-            }}
-          >
-            {slashMatches.map((cmd, idx) => (
-              <Box
-                key={cmd.command}
-                onClick={() => pickSlashCommand(cmd)}
-                sx={{
-                  px: 1.5,
-                  py: 0.75,
-                  cursor: "pointer",
-                  bgcolor: idx === 0 ? "action.hover" : "transparent",
-                  "&:hover": { bgcolor: "action.hover" },
-                }}
-              >
-                <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                  {cmd.command}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {cmd.description}
-                </Typography>
-              </Box>
-            ))}
-          </Paper>
-        )}
-
-        <TextField
-          fullWidth
-          size="small"
-          placeholder={documentId
-            ? `Ask Copilot to edit "${documentTitle}", or / for commands…`
-            : "Ask Copilot about your posts, or / for commands…"}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          multiline
-          maxRows={4}
-          disabled={isLoading}
-          sx={{
-            "& .MuiOutlinedInput-root": {
-              borderRadius: 2,
-              typography: "dense",
-              bgcolor: "background.input",
-            },
-            "& .MuiOutlinedInput-input::placeholder": { typography: "dense" },
-          }}
-        />
-
-        {/* Footer row: model selector · send */}
         <Box
-          sx={{
+          ref={setComposerEl}
+          sx={(theme) => ({
             display: "flex",
-            alignItems: "center",
-            mt: 0.75,
-            gap: 0.25,
-          }}
+            flexDirection: "column",
+            // The home pane's composer metrics, now the only ones: this is a
+            // single control that appears on every route, so it has one size.
+            gap: 1.5,
+            ...(isInline ? {} : {
+              border: "1px solid",
+              borderColor: "divider",
+              borderRadius: 3,
+              bgcolor: "background.input",
+              px: 2,
+              py: 1.5,
+              transition: `border-color ${MOTION.fast}ms, ` +
+                `box-shadow ${MOTION.fast}ms`,
+              "&:focus-within": {
+                borderColor: "primary.main",
+                boxShadow: FOCUS_RING.card(theme),
+              },
+            }),
+          })}
         >
-          <IconButton
-            size="small"
-            onClick={(e) => setModelMenuAnchor(e.currentTarget)}
-            aria-label="Select model"
+          <InputBase
+            inputRef={inputRef}
+            multiline
+            maxRows={6}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={isLoading || Boolean(disabledReason)}
+            placeholder={documentId
+              ? `Ask Copilot to edit "${documentTitle}", or / for commands…`
+              : "Ask Copilot about your posts, or / for commands…"}
+            inputProps={{ "aria-label": "Message Copilot" }}
+            sx={{
+              p: 0,
+              typography: "body2",
+              color: "text.primary",
+              "& textarea::placeholder": {
+                color: "text.secondary",
+                opacity: 1,
+              },
+            }}
+          />
+
+          {
+            /* Anchored to the composer and portalled, so it is not clipped by
+              the inline bar's rounded card the way an absolutely-positioned
+              child was. */
+          }
+          <Popper
+            open={slashOpen}
+            anchorEl={composerEl}
+            placement="top-start"
+            // Portalled to `body`, so it needs a z-index that clears the app
+            // shell rather than one scoped to the composer.
+            sx={(theme) => ({ zIndex: theme.zIndex.modal })}
+            style={{ width: composerEl?.offsetWidth }}
+          >
+            <Paper
+              elevation={3}
+              sx={{ py: 0.5, mb: 0.5, maxHeight: 220, overflowY: "auto" }}
+            >
+              {slashMatches.map((cmd, idx) => (
+                <Box
+                  key={cmd.command}
+                  onClick={() => pickSlashCommand(cmd)}
+                  sx={{
+                    px: 1.5,
+                    py: 0.75,
+                    cursor: "pointer",
+                    bgcolor: idx === 0 ? "action.hover" : "transparent",
+                    "&:hover": { bgcolor: "action.hover" },
+                  }}
+                >
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    {cmd.command}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {cmd.description}
+                  </Typography>
+                </Box>
+              ))}
+            </Paper>
+          </Popper>
+
+          {/* Control row: model selector · send */}
+          <Box
             sx={{
               display: "flex",
               alignItems: "center",
-              gap: 0.5,
-              borderRadius: 1,
-              px: 0.75,
-              color: "text.secondary",
-              typography: "caption",
+              gap: 0.25,
             }}
           >
-            <Box
-              component="span"
-              sx={{
-                width: 10,
-                height: 10,
-                borderRadius: 0.5,
-                bgcolor: providerColor,
-                flexShrink: 0,
-                display: "inline-block",
-              }}
-            />
-            <Typography
-              variant="caption"
-              sx={{ color: "text.secondary", lineHeight: 1 }}
-            >
-              {currentModel?.name ?? llmConfig.model}
-            </Typography>
-            <ChevronDown size={ICON_SIZE.micro} />
-          </IconButton>
-
-          <Menu
-            anchorEl={modelMenuAnchor}
-            open={Boolean(modelMenuAnchor)}
-            onClose={() => setModelMenuAnchor(null)}
-            slotProps={{ paper: { sx: { minWidth: 200 } } }}
-            anchorOrigin={{ vertical: "top", horizontal: "left" }}
-            transformOrigin={{ vertical: "bottom", horizontal: "left" }}
-          >
-            {AI_MODELS.map((m) => (
-              <MenuItem
-                key={m.id}
-                selected={m.id === llmConfig.model}
-                onClick={() => handleModelSelect(m.id, m.provider)}
-                sx={{ typography: "dense" }}
-              >
-                <Box
-                  component="span"
+            {disabledReason
+              ? (
+                <Typography
+                  variant="micro"
+                  color="text.secondary"
+                  sx={{ px: 0.5 }}
+                >
+                  {disabledReason}
+                </Typography>
+              )
+              : (
+                // A labelled control, so a Button rather than an IconButton
+                // wearing a label: it was picking up the circular ripple and
+                // an icon button's square metrics around text.
+                <Button
+                  size="small"
+                  onClick={(e) => setModelMenuAnchor(e.currentTarget)}
+                  aria-haspopup="menu"
+                  aria-label={`Model: ${
+                    currentModel?.name ?? llmConfig.model
+                  }. Change model`}
+                  endIcon={<ChevronDown size={ICON_SIZE.micro} />}
                   sx={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: 0.5,
-                    bgcolor: PROVIDER_COLOR[m.provider] ?? "#888",
-                    mr: 1,
-                    flexShrink: 0,
-                    display: "inline-block",
+                    textTransform: "none",
+                    typography: "micro",
+                    color: "text.secondary",
+                    borderRadius: 1.5,
+                    px: 0.75,
+                    py: 0.25,
+                    minWidth: 0,
+                    "& .MuiButton-endIcon": { ml: 0.25 },
+                    "&:hover": { bgcolor: "action.hover" },
                   }}
-                />
-                {m.name}
-              </MenuItem>
-            ))}
-          </Menu>
+                  startIcon={
+                    <Box
+                      component="span"
+                      sx={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        bgcolor: providerColor,
+                        flexShrink: 0,
+                        display: "inline-block",
+                      }}
+                    />
+                  }
+                >
+                  {currentModel?.name ?? llmConfig.model}
+                </Button>
+              )}
 
-          <Box sx={{ flex: 1 }} />
+            <Menu
+              anchorEl={modelMenuAnchor}
+              open={Boolean(modelMenuAnchor)}
+              onClose={() => setModelMenuAnchor(null)}
+              slotProps={{ paper: { sx: { minWidth: 200 } } }}
+              anchorOrigin={{ vertical: "top", horizontal: "left" }}
+              transformOrigin={{ vertical: "bottom", horizontal: "left" }}
+            >
+              {AI_MODELS.map((m) => (
+                <MenuItem
+                  key={m.id}
+                  selected={m.id === llmConfig.model}
+                  onClick={() => handleModelSelect(m.id, m.provider)}
+                  sx={{ typography: "dense" }}
+                >
+                  <Box
+                    component="span"
+                    sx={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      bgcolor: PROVIDER_COLOR[m.provider] ?? "#888",
+                      mr: 1,
+                      flexShrink: 0,
+                      display: "inline-block",
+                    }}
+                  />
+                  {m.name}
+                </MenuItem>
+              ))}
+            </Menu>
 
-          {isLoading
-            ? (
-              <IconButton onClick={stop} size="small">
-                <Square size={ICON_SIZE.dense} />
-              </IconButton>
-            )
-            : (
-              <IconButton
-                onClick={handleSend}
-                disabled={!input.trim()}
-                size="small"
-                aria-label="Send"
-                sx={{
-                  bgcolor: input.trim()
-                    ? "primary.main"
-                    : "action.disabledBackground",
-                  color: input.trim()
-                    ? "primary.contrastText"
-                    : "action.disabled",
-                  "&:hover": {
-                    bgcolor: input.trim()
-                      ? "primary.dark"
+            <Box sx={{ flex: 1 }} />
+
+            {isLoading
+              ? (
+                <Tooltip title="Stop">
+                  <IconButton
+                    onClick={stop}
+                    size="small"
+                    aria-label="Stop generating"
+                    sx={{ borderRadius: 2 }}
+                  >
+                    <Square size={ICON_SIZE.dense} />
+                  </IconButton>
+                </Tooltip>
+              )
+              : (
+                <IconButton
+                  onClick={handleSend}
+                  disabled={!canSend}
+                  size="small"
+                  aria-label="Send"
+                  sx={{
+                    // Matches the home composer's send button rather than the
+                    // default circle, so the two read as one control.
+                    borderRadius: 2,
+                    bgcolor: canSend
+                      ? "primary.main"
                       : "action.disabledBackground",
-                  },
-                  transition: "background-color 0.15s",
-                }}
-              >
-                <Send size={ICON_SIZE.dense} />
-              </IconButton>
-            )}
+                    color: canSend
+                      ? "primary.contrastText"
+                      : "action.disabled",
+                    "&:hover": {
+                      bgcolor: canSend
+                        ? "primary.dark"
+                        : "action.disabledBackground",
+                    },
+                    "&.Mui-disabled": { color: "action.disabled" },
+                    transition: `background-color ${MOTION.fast}ms`,
+                  }}
+                >
+                  <Send size={ICON_SIZE.dense} />
+                </IconButton>
+              )}
+          </Box>
         </Box>
       </Box>
     </Box>

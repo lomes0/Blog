@@ -11,7 +11,6 @@ import {
 } from "@mui/material";
 import { History, Plus, X } from "lucide-react";
 import { postsSelectors, useSelector } from "@/store";
-import { AI_MODELS } from "@/lib/ai/models";
 import { useAIModel } from "@/contexts/AIModelContext";
 import { useLayoutMode } from "@/contexts/LayoutModeContext";
 import ResizeGripper from "@/components/Layout/ResizeGripper";
@@ -59,7 +58,6 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
   );
   const documentTitle = doc?.name ?? "Untitled";
   const scope = documentId ?? WORKSPACE_SCOPE;
-  const currentModel = AI_MODELS.find((m) => m.id === llmConfig.model);
 
   const handleAcceptAll = () => {
     acceptAllRef.current?.();
@@ -142,10 +140,14 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
             noWrap
             display="block"
           >
+            {
+              /* Scope only. The model now has one home — the button on the
+                composer's edge — and naming it here as well meant changing it
+                in one place and reading it in two. */
+            }
             {documentId
               ? <>Editing &ldquo;{documentTitle}&rdquo;</>
-              : "All posts"} &middot;{" "}
-            {currentModel?.name ?? llmConfig.model}
+              : "All posts"}
           </Typography>
         </Box>
 

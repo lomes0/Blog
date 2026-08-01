@@ -54,6 +54,15 @@ export const COPILOT_SYSTEM_PROMPT = (
 export const COPILOT_AGENT_SYSTEM_PROMPT = (
   currentPath: string | null,
   currentTitle: string | null,
+  options?: {
+    /**
+     * False when the open document belongs to someone else and is merely
+     * readable. The edit tools are withheld from the request in that case; this
+     * says so in words too, because a model that cannot see a tool otherwise
+     * narrates an edit it never made.
+     */
+    canWriteDocument?: boolean;
+  },
 ): string =>
   `You are a coding-style agent working over the author's blog, which is ` +
   `presented to you as a repository of Markdown files — one file per post, ` +
@@ -63,7 +72,14 @@ export const COPILOT_AGENT_SYSTEM_PROMPT = (
   // reaching for read_current_document and reporting an empty document as the
   // answer.
   (currentPath
-    ? `The currently open document is "${currentTitle}" (${currentPath}).\n\n`
+    ? `The currently open document is "${currentTitle}" (${currentPath}).\n\n` +
+      (options?.canWriteDocument === false
+        ? `You are READ-ONLY on this document — it belongs to another author ` +
+          `and the user may only view it. edit_document and write_document ` +
+          `are not available. Answer questions about it and, if the user ` +
+          `wants changes, offer to draft a new post of their own instead of ` +
+          `claiming to have edited this one.\n\n`
+        : "")
     : `No document is open — the user is asking from the home pane, about ` +
       `their library as a whole. read_current_document and get_selection have ` +
       `nothing to read; use list_documents, search_documents and ` +

@@ -12,6 +12,10 @@ import HydrationManager from "./HydrationManager";
 import EditorTopBar from "./EditorTopBar";
 import RightRail from "./RightRail";
 import CopilotPanel from "@/components/CopilotPanel/CopilotPanel";
+import InlineCopilotBar, {
+  hasInlineCopilotBar,
+  INLINE_BAR_CLEARANCE,
+} from "@/components/CopilotPanel/InlineCopilotBar";
 import CommandPalette from "@/components/CommandPalette/CommandPalette";
 import { Box, Container } from "@mui/material";
 import { actions, type RootState, useDispatch, useSelector } from "@/store";
@@ -155,11 +159,23 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
                       sm: CONTENT_PAD_X.sm.right,
                       md: CONTENT_PAD_X.md.right,
                     },
+                    // Room to scroll the end of a document out from under the
+                    // resting Copilot bar.
+                    pb: hasInlineCopilotBar(pathname)
+                      ? `${INLINE_BAR_CLEARANCE}px`
+                      : 0,
                   }}
                 >
                   {children}
                 </Container>
               </HydrationManager>
+              {
+                /* A sibling of the scrolling container, not a child of it: the
+                  bar is anchored to the foot of the pane and must not scroll
+                  away with the document it is asking about. `#app-main` is the
+                  positioned ancestor it hangs from. */
+              }
+              <InlineCopilotBar documentId={copilotDocumentId} />
             </Box>
             {
               /* Always keep a grid item in the copilot slot so the rail stays

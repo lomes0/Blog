@@ -29,7 +29,19 @@ import type { CloudPost } from "@/types";
  */
 export type DocumentAccess = "own" | "write" | "read";
 
-const permitsDocument = (
+/**
+ * The access rule itself, without the fetch.
+ *
+ * Exported for the one shape `requireDocument` cannot express: deciding what a
+ * caller *may* do with a document it has already been authorized to hold, so a
+ * route can offer or withhold a capability instead of throwing. The Copilot
+ * route uses it that way — a reader of someone else's published post gets the
+ * agent's read tools and not its edit tools.
+ *
+ * This is not a way to authorize by hand. It takes a `CloudPost` that an
+ * authorized fetch already returned; obtaining the row is still the check.
+ */
+export const permitsDocument = (
   doc: CloudPost,
   user: SessionUser | null,
   access: DocumentAccess,
