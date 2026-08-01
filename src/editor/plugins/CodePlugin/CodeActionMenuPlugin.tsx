@@ -66,7 +66,18 @@ interface ActiveCaret {
   lineHeight: number;
 }
 
-/** Nearest scrollable ancestor of `el`, or `document.body` if none. */
+/**
+ * Nearest scrollable ancestor of `el`, or `document.body` if none.
+ *
+ * The result is both the portal target and the coordinate space
+ * {@link rectToContainerSpace} measures in, so it has to be the containing
+ * block for the chrome as well — i.e. not `position: static`. A static scroller
+ * silently anchors the chrome to some ancestor further up: it looks right at
+ * rest and slides out from under the code as soon as the scroller moves, since
+ * the thing it is anchored to is not what is scrolling. Correcting the
+ * arithmetic cannot save that case — the chrome has to *live* in the scroller
+ * to ride it — so this asserts the requirement rather than working around it.
+ */
 function findScrollContainer(el: HTMLElement | null): HTMLElement {
   let node = el?.parentElement ?? null;
   while (node && node !== document.body) {
@@ -454,7 +465,23 @@ export default function CodeActionMenuPlugin(
   useEffect(() => {
     if (anchorElem) return;
     return editor.registerRootListener((root) => {
-      setScrollEl(root ? findScrollContainer(root) : null);
+      const found = root ? findScrollContainer(root) : null;
+      // The failure this catches is a drift that only shows up mid-scroll, and
+      // looks like a positioning bug in this file rather than a missing
+      // property on someone else's Box — so it says which element to fix.
+      if (
+        process.env.NODE_ENV !== "production" && found &&
+        found !== document.body &&
+        window.getComputedStyle(found).position === "static"
+      ) {
+        console.warn(
+          "[CodeActionMenuPlugin] The editor's scroll container is " +
+            "position: static, so code-block chrome will drift when it " +
+            "scrolls. Give it position: relative.",
+          found,
+        );
+      }
+      setScrollEl(found);
     });
   }, [editor, anchorElem]);
 

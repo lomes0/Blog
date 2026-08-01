@@ -106,7 +106,20 @@ const PaneFrame: React.FC<PaneFrameProps> = ({
           header's now (`PaneHeader`), which sticks to the top of this
           scroller and so occupies the same line this row did. */
       }
-      <Box sx={{ flex: 1, minHeight: 0, overflow: "auto", px: 1 }}>
+      {
+        /* `position: relative` is load-bearing, not decoration. Editor plugins
+          that portal chrome into the nearest scrollable ancestor position it
+          absolutely in that scroller's coordinate space (see
+          CodeActionMenuPlugin) — which only lands where intended if the
+          scroller is also the containing block. Static, the chrome hung off
+          #editor-main-container instead: right at rest, and drifting away from
+          the code the moment this pane scrolled, because it was anchored to
+          something that does not scroll. Any new scroller around the editor
+          needs this too. */
+      }
+      <Box
+        sx={{ flex: 1, minHeight: 0, overflow: "auto", px: 1, position: "relative" }}
+      >
         {editor}
       </Box>
     </Box>
