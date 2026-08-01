@@ -3,6 +3,8 @@ import {
   TableNode as LexicalTableNode,
 } from "@lexical/table";
 
+import { LEGACY_TABLE_TYPE } from "./legacyTypes";
+
 import type {
   BaseSelection,
   DOMConversionMap,
@@ -216,13 +218,13 @@ export class TableNode extends LexicalTableNode {
 }
 
 /**
- * Read-only alias for `"matheditor-table"`, the type string this node carried
- * before the fork's name was scrubbed.
+ * Read-only alias for {@link LEGACY_TABLE_TYPE}, the type string this node
+ * carried before the fork's name was scrubbed.
  *
  * Every table saved before that rename — in a Revision row, in a guest's
- * IndexedDB, in a `.zip` backup already on someone's disk — still says
- * `"matheditor-table"`, and Lexical throws on a `type` it has no entry for.
- * Registering this alongside `TableNode` gives that string an entry again.
+ * IndexedDB, in a `.zip` backup already on someone's disk — still carries it,
+ * and Lexical throws on a `type` it has no entry for. Registering this
+ * alongside `TableNode` gives that string an entry again.
  *
  * It only ever acts as an import entry point: `importJSON` delegates to
  * `TableNode`, which builds a real `TableNode`, so what lands in the editor is
@@ -237,7 +239,7 @@ export class TableNode extends LexicalTableNode {
  */
 export class LegacyTableNode extends TableNode {
   static getType(): string {
-    return "matheditor-table";
+    return LEGACY_TABLE_TYPE;
   }
 
   static clone(node: TableNode): TableNode {

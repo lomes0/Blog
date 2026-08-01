@@ -59,10 +59,21 @@ dropped, and logged. The failure mode is a retry, never a lost draft.
 
 ## What the rename did *not* remove
 
-`rg matheditor` still returns hits, and they are load-bearing. The Lexical node
-types `matheditor-table` and `matheditor-tablecell` are baked into stored
-content: `Revision` rows in Postgres, documents in IndexedDB, and `.zip` backups
-already on users' disks, which `/api/import` accepts. Lexical throws on a `type`
-it has no class for, so `LegacyTableNode` and `LegacyTableCellNode` stay
-registered as import aliases. Current saves already emit `blog-*`;
-`src/editor/nodes/TableNode/__tests__/legacyTypes.test.ts` guards both spellings.
+Searching the tree for the old name still returns hits, and they are
+load-bearing. Two Lexical node type strings are baked into stored content —
+`Revision` rows in Postgres, documents in IndexedDB, and `.zip` backups already
+on users' disks, which `/api/import` accepts. Lexical throws on a `type` it has
+no class for, so `LegacyTableNode` and `LegacyTableCellNode` stay registered as
+import aliases, and no migration can retire them: it would not reach the
+backups.
+
+Both strings are declared once, in
+`src/editor/nodes/TableNode/legacyTypes.ts`, which is where a search for them
+should land. Current saves already emit `blog-*`, and
+`src/editor/nodes/TableNode/__tests__/legacyTypes.test.ts` imports the constants
+from that module to guard both spellings.
+
+The remaining mentions are this guide and `LEGACY_DATABASE_NAME` in
+`src/indexeddb/migrate.ts`. Those *can* eventually go: once the legacy database
+is drained in practice, deleting `migrate.ts` and `migrationPlan.ts` takes the
+comment in `src/indexeddb/index.ts` and most of this page with it.

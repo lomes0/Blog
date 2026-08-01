@@ -6,13 +6,17 @@ import {
   TableCellNode,
   TableNode,
 } from "..";
+import { LEGACY_TABLE_CELL_TYPE, LEGACY_TABLE_TYPE } from "../legacyTypes";
 
 /**
  * The table nodes carry the app's own `type` strings, which Lexical writes into
- * every serialized table. They were renamed from `matheditor-*` to `blog-*`
- * when the fork's identity was scrubbed; `LegacyTableNode`/`LegacyTableCellNode`
- * are what keep content written before that rename readable — in Revision rows,
- * in a guest's IndexedDB, and in `.zip` backups already on someone's disk.
+ * every serialized table. They were renamed to `blog-*` when the fork's identity
+ * was scrubbed; `LegacyTableNode`/`LegacyTableCellNode` are what keep content
+ * written before that rename readable — in Revision rows, in a guest's
+ * IndexedDB, and in `.zip` backups already on someone's disk.
+ *
+ * The old strings come from `../legacyTypes` rather than being retyped here, so
+ * that a test asserting the aliases still work cannot drift from the aliases.
  *
  * Headless and DOM-free: parsing runs `importJSON`, never `createDOM`.
  */
@@ -95,6 +99,17 @@ const parseToJSON = (state: object) =>
   editor().parseEditorState(JSON.stringify(state)).toJSON() as any;
 
 describe("table node type strings", () => {
+  // The only assertion here that spells the old strings out. Everything else
+  // imports them, which keeps the aliases and their test from drifting apart —
+  // but it also means a typo in `legacyTypes.ts` would move both sides at once
+  // and pass. These are not names that may be corrected: they are values
+  // already written into files this codebase cannot reach, so the constants are
+  // pinned to them literally, once.
+  it("pins the pre-rename strings", () => {
+    expect(LEGACY_TABLE_TYPE).toBe("matheditor-table");
+    expect(LEGACY_TABLE_CELL_TYPE).toBe("matheditor-tablecell");
+  });
+
   it("reads a table stored under the current type strings", () => {
     const json = parseToJSON(oneRowTable("blog-table", "blog-tablecell"));
     expect(json.root.children[0].type).toBe("blog-table");
@@ -105,13 +120,13 @@ describe("table node type strings", () => {
 
   it("reads a table stored under the pre-rename type strings", () => {
     expect(() =>
-      parseToJSON(oneRowTable("matheditor-table", "matheditor-tablecell"))
+      parseToJSON(oneRowTable(LEGACY_TABLE_TYPE, LEGACY_TABLE_CELL_TYPE))
     ).not.toThrow();
   });
 
   it("upgrades pre-rename content in place, losing no cells", () => {
     const json = parseToJSON(
-      oneRowTable("matheditor-table", "matheditor-tablecell"),
+      oneRowTable(LEGACY_TABLE_TYPE, LEGACY_TABLE_CELL_TYPE),
     );
     const table = json.root.children[0];
     const cells = table.children[0].children;
