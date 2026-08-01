@@ -33,29 +33,46 @@ export interface TabMeta {
  * — they sit under the document title, inside the content column, which §17.6
  * exempts. Square is a local call for that position.
  *
- * There is deliberately **no accent bar and no fill** on the active tab: it is
- * marked by weight and ink alone (600 / `text.primary` against 400 /
- * `text.secondary`). This row sits inches under an `h4` title and over the
- * body, where a 2px `primary.main` rule is the loudest thing on the page and
- * competes with the content it is labelling. The weight difference is a
- * non-color cue, so the mark does not rest on hue alone.
+ * Every label in the run carries the **same ink** — active and inactive alike.
+ * The active tab is marked by an underline rule drawn in that same ink, plus
+ * 600 weight. Nothing here changes hue: this row sits inches under an `h4`
+ * title and over the body, where a `primary.main` accent is the loudest thing
+ * on the page and competes with the content it is labelling. Rule-and-weight
+ * are both non-color cues, so the mark does not rest on hue at all.
  */
 const TAB_RADIUS = 0;
 
 /**
- * How far an inactive tab's label is faded toward the surface behind it.
+ * How far every tab label is faded toward the surface behind it.
  *
  * Measured, not picked: it takes `text.secondary` from 7.6:1 to **5.1:1** on
  * white, and on the tightest dark surface (`background.paper`) from 5.8:1 to
- * **4.7:1** — a visible step down that still clears WCAG AA (4.5:1) in both
- * schemes, which a label you are expected to read and click has to.
+ * **4.7:1** — a visible step down from body text that still clears WCAG AA
+ * (4.5:1) in both schemes, which a label you are expected to read and click
+ * has to.
  *
  * It is also the last value that does: at 0.8 that dark surface drops to
  * 4.3:1 while light is still passing at 4.5:1, so dimming further has to come
  * with a palette change, not another decimal here. Hover returns the label to
- * full, which is what makes the resting dim read as a state and not a defect.
+ * full, which is what makes the resting dim read as a state and not a defect —
+ * and since the dim no longer distinguishes active from inactive, hover is free
+ * to lift any tab without erasing the active mark.
  */
 const LABEL_DIM = 0.85;
+
+/**
+ * The active tab's mark: a rule under the whole tab box, in the labels' own ink.
+ *
+ * Full-width rather than label-width — it underlines the *tab*, including the
+ * trailing dirty/close slot, which is what makes it read as the tab owning the
+ * content below rather than as an underlined word. Drawn at full opacity
+ * against the labels' `LABEL_DIM`, so it is a step up in presence without being
+ * a step sideways in hue.
+ *
+ * A child element, not a pseudo-element: `::after` is the separator and
+ * `::before` the drop indicator, and an active tab can be showing either.
+ */
+const ACTIVE_RULE_H = 2;
 
 /**
  * The hairline between two adjacent tabs, centred in `TAB_GAP` so it belongs to
@@ -263,14 +280,13 @@ const DocumentTab: React.FC<DocumentTabProps> = ({
             sx={{
               typography: "dense",
               fontWeight: isActive ? 600 : 400,
-              color: isActive ? "text.primary" : "text.secondary",
-              // With no bar and no fill, the whole active mark is this gap, so
-              // it is widened from the inactive side. Opacity rather than
-              // `text.disabled`, which is a claim the tab is not clickable and
-              // lands at 2.5:1 — below AA for a label you are meant to read and
-              // hit. Fading toward the surface also dims correctly in both
-              // schemes without a second hex (§19).
-              opacity: isActive ? 1 : LABEL_DIM,
+              // One ink for the whole run. Opacity rather than `text.disabled`,
+              // which is a claim the tab is not clickable and lands at 2.5:1 —
+              // below AA for a label you are meant to read and hit. Fading
+              // toward the surface also dims correctly in both schemes without
+              // a second hex (§19).
+              color: "text.secondary",
+              opacity: LABEL_DIM,
               transition: `opacity ${MOTION.fast}ms`,
               flex: 1,
               minWidth: 0,
@@ -334,6 +350,22 @@ const DocumentTab: React.FC<DocumentTabProps> = ({
           </IconButton>
         )}
       </Box>
+      {isActive && (
+        <Box
+          sx={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: ACTIVE_RULE_H,
+            bgcolor: "text.secondary",
+            // Stops at the tab's own edge — it does not reach into `TAB_GAP`,
+            // so the run still reads as separate tabs with one underlined
+            // rather than as a single rule with a break in it.
+            pointerEvents: "none",
+          }}
+        />
+      )}
     </Box>
   );
 };
