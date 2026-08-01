@@ -406,6 +406,14 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
               title="Projects"
               actions={sidebarOpen
                 ? [
+                  ...(can.projects
+                    ? [{
+                      key: "new-project",
+                      label: "New project",
+                      icon: <Plus size={SECTION_ACTION_ICON} strokeWidth={2} />,
+                      onClick: () => projectActions.handleCreateProject(),
+                    }]
+                    : []),
                   ...(can.series
                     ? [{
                       key: "new-series",
@@ -417,14 +425,6 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
                         />
                       ),
                       onClick: () => seriesActions.handleCreateSeries(),
-                    }]
-                    : []),
-                  ...(can.projects
-                    ? [{
-                      key: "new-project",
-                      label: "New project",
-                      icon: <Plus size={SECTION_ACTION_ICON} strokeWidth={2} />,
-                      onClick: () => projectActions.handleCreateProject(),
                     }]
                     : []),
                 ]
