@@ -4,14 +4,7 @@ import React from "react";
 import RouterLink from "next/link";
 import { usePathname } from "next/navigation";
 import { Avatar, Box, Tooltip } from "@mui/material";
-import {
-  Code,
-  Files,
-  Newspaper,
-  Search,
-  Sparkles,
-  StickyNote,
-} from "lucide-react";
+import { Code, Files, Newspaper, Search, Sparkles } from "lucide-react";
 import { actions, type RootState, useDispatch, useSelector } from "@/store";
 import type { SidebarView } from "@/types";
 import { ICON_SIZE } from "@/theme/icons";
@@ -140,7 +133,6 @@ const ActivityRail: React.FC = () => {
   };
 
   const postsActive = pathname.startsWith("/posts");
-  const notesActive = pathname.startsWith("/notes");
 
   return (
     <Box
@@ -230,13 +222,6 @@ const ActivityRail: React.FC = () => {
         onClick={() => run(workspaceCommands.openSection, { section: "library" })}
       >
         <Newspaper size={ICON_SIZE.dense} strokeWidth={1.9} />
-      </RailButton>
-      <RailButton
-        label="Notes"
-        active={notesActive}
-        onClick={() => run(workspaceCommands.openSection, { section: "notes" })}
-      >
-        <StickyNote size={ICON_SIZE.dense} strokeWidth={1.9} />
       </RailButton>
       <RailButton
         label={copilotOpen ? "Hide AI assistant" : "Show AI assistant"}

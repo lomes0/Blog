@@ -8,13 +8,12 @@ import { commandData, commandOk, defineCommand } from "./types";
  * the version of "go there" that survives that.
  */
 const sectionParams = z.object({
-  section: z.enum(["library", "notes", "dashboard"]),
+  section: z.enum(["library", "dashboard"]),
 });
 type WorkspaceSectionParams = z.infer<typeof sectionParams>;
 
 const SECTION_PATH: Record<WorkspaceSectionParams["section"], string> = {
   library: "/posts",
-  notes: "/notes",
   dashboard: "/dashboard",
 };
 
@@ -22,8 +21,8 @@ const openSection = defineCommand<WorkspaceSectionParams>({
   id: "workspace.openSection",
   title: "Go to section",
   description:
-    "Show one of the app's top-level surfaces: the post library, the sticky-" +
-    "note canvas, or the dashboard.",
+    "Show one of the app's top-level surfaces: the post library or the " +
+    "dashboard.",
   params: sectionParams,
   effect: "read",
   scopes: ["workspace"],

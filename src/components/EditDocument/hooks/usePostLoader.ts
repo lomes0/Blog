@@ -66,8 +66,8 @@ export function usePostLoader(
       if (isCancelled()) return;
 
       if (!post) {
-        // `/notes` is a well-known personal post, created on first visit rather
-        // than 404ing.
+        // The `notes` handle is a well-known personal post, created on first
+        // visit rather than 404ing.
         if (id === "notes") {
           try {
             const created = await createNotesPost(dispatch);

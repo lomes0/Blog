@@ -11,11 +11,10 @@ import { VIRTUAL_CANVAS_HEIGHT, VIRTUAL_CANVAS_WIDTH } from "../canvasGeometry";
 /**
  * Selection and clipboard behaviour for a notes board, in one place.
  *
- * Both boards mount this: the standalone `/notes` canvas and the `CanvasNode`
- * canvas embedded in a document. Everything board-specific is a callback —
- * how a note's content is serialized, how notes are added, how they are
- * removed — so the gestures, the keyboard map and the paste placement are
- * defined once and cannot drift between the two.
+ * Everything board-specific is a callback — how a note's content is
+ * serialized, how notes are added, how they are removed — so the gestures, the
+ * keyboard map and the paste placement stay independent of how the board that
+ * mounts this stores its notes.
  */
 
 /** A note about to be created from the clipboard. The board mints the id. */

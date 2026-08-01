@@ -35,8 +35,8 @@ export type SerializedCanvasNode = Spread<
 >;
 
 /**
- * A sticky-note board embedded in a document — the same canvas as the `/notes`
- * route, but owned by the document rather than by rows in the database.
+ * A sticky-note board embedded in a document, owned by the document rather than
+ * by rows in the database.
  *
  * The notes live in this node's serialized state, so they travel with the post:
  * they save through the existing document save, work for guest drafts in

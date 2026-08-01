@@ -16,11 +16,7 @@ interface AddNoteButtonProps {
   compact?: boolean;
 }
 
-/**
- * Toolbar pill that adds a note in a chosen color. Shared by the standalone
- * `/notes` board and the `CanvasNode` board embedded in a document, so both
- * boards offer the same control in the same place.
- */
+/** Toolbar pill that adds a note in a chosen color. */
 export default function AddNoteButton({
   onAdd,
   compact = false,

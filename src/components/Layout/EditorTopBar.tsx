@@ -20,7 +20,6 @@ import {
   PenLine,
   Search,
   SquareSplitHorizontal,
-  StickyNote,
 } from "lucide-react";
 import RouterLink from "next/link";
 import { shallowEqual } from "react-redux";
@@ -247,16 +246,6 @@ const EditorTopBar: React.FC = () => {
         items.push({
           label: "User Profile",
           href: segments[1] ? `/user/${segments[1]}` : "/",
-        });
-        break;
-
-      case "notes":
-        items.push({
-          label: "Notes",
-          href: "/notes",
-          icon: (
-            <StickyNote size={ICON_SIZE.inline} style={{ marginRight: 4 }} />
-          ),
         });
         break;
 

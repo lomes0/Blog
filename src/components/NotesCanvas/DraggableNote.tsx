@@ -84,9 +84,9 @@ export default function DraggableNote({
 
   const handleDragStop = useCallback(
     (_e: RndDragEvent, d: DraggableData) => {
-      // A click on the header is a zero-distance drag. Writing it back costs a
-      // PATCH on `/notes` and an undo step in a document — and a modifier-click
-      // for multi-select lands on the header often.
+      // A click on the header is a zero-distance drag. Writing it back costs an
+      // undo step in the host document — and a modifier-click for multi-select
+      // lands on the header often.
       if (d.x === note.position.x && d.y === note.position.y) return;
       onUpdate(note.id, { position: { x: d.x, y: d.y } });
     },

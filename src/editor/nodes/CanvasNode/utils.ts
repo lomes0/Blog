@@ -13,17 +13,17 @@ import { NOTE_COLORS, NoteColorKey } from "@/components/NotesCanvas/noteColors";
 export const CANVAS_NODE_TYPE = "canvas";
 
 /**
- * Board geometry, shared with the standalone `/notes` board. Re-exported here
- * because this module is what the `CanvasNode` side already imports from. The
- * virtual canvas size is deliberately not among them: this board is sized by
- * the document column it sits in, not by a fixed viewport.
+ * Board geometry. Re-exported here because this module is what the `CanvasNode`
+ * side already imports from. The virtual canvas size is deliberately not among
+ * them: this board is sized by the document column it sits in, not by a fixed
+ * viewport.
  */
 export { CANVAS_GROW_MARGIN } from "@/components/NotesCanvas/canvasGeometry";
 
 /**
  * A document is a scrolling column, so the board gets a fixed viewport height
- * the reader can't grow — unlike `/notes`, which owns the whole screen. The
- * author sets it with the grip on the board's bottom edge.
+ * the reader can't grow. The author sets it with the grip on the board's
+ * bottom edge.
  */
 export const CANVAS_MIN_HEIGHT = 200;
 export const CANVAS_DEFAULT_HEIGHT = 480;
@@ -41,10 +41,11 @@ export function clampCanvasHeight(height: number): number {
 }
 
 /**
- * A note on a canvas embedded in a document. Unlike a `/notes` row, its content
- * is a live child `LexicalEditor` rather than a serialized string — that is
- * what lets the note run the full editor plugin set through `NestedEditor`,
- * and what ties its edits into the host document's save and undo.
+ * A note on a canvas embedded in a document. Unlike a `Note` row in the
+ * database, its content is a live child `LexicalEditor` rather than a
+ * serialized string — that is what lets the note run the full editor plugin set
+ * through `NestedEditor`, and what ties its edits into the host document's save
+ * and undo.
  */
 export interface CanvasNote extends NoteFrame {
   editor: LexicalEditor;

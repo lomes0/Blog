@@ -45,8 +45,6 @@ const MAX_H = "50vh";
 export const INLINE_BAR_CLEARANCE = 116;
 
 const EXCLUDED_ROUTES = [
-  // A drag surface; a floating bar over it competes for the same pixels.
-  "/notes",
   // Reading surfaces with nothing for the agent to act on.
   "/playground",
   "/tutorial",

@@ -6,7 +6,7 @@ import { NoteFrame } from "@/types/notes";
  * The notes clipboard: one cut/copy buffer shared by every board in the app.
  *
  * Deliberately *not* a React context. The point of the feature is that a
- * selection copied on `/notes` can be pasted into a canvas embedded in some
+ * selection copied on one board can be pasted into a canvas embedded in some
  * other document, and reaching that canvas is usually a navigation — often a
  * full page load. A provider's state dies there, so the buffer lives in
  * `localStorage` and the hook is a `useSyncExternalStore` view onto it. That
@@ -48,8 +48,8 @@ export interface NotesClip {
 
 /**
  * Builds a clip from the selected notes plus their content. Content is passed
- * per note because the two boards hold it differently — a `/notes` row stores
- * the serialized string, a `CanvasNode` note a live child editor.
+ * per note because the two storage shapes hold it differently — a `Note` row
+ * stores the serialized string, a `CanvasNode` note a live child editor.
  */
 export function toClip(
   entries: { note: NoteFrame; content: string }[],
