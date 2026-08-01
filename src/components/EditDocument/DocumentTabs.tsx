@@ -490,6 +490,15 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
         alignItems: "center",
         gap: `${TAB_GAP}px`,
         minWidth: 0,
+        // The whole strip is the hover target, not the button — a control you
+        // must already be pointing at to see is one you cannot find.
+        "&:hover .tab-add-btn": { opacity: 1 },
+        // DESIGN.md §9: a hover-revealed control must stay reachable. Tabbing
+        // to the button reveals it, so it is never focused while invisible.
+        "&:focus-within .tab-add-btn": { opacity: 1 },
+        // No hover to give: on touch the button would otherwise be permanently
+        // invisible and permanently tappable, which is the worst of both.
+        "@media (hover: none)": { "& .tab-add-btn": { opacity: 1 } },
       }}
     >
       <Box
@@ -647,10 +656,16 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
         /* Last, and hard against the run rather than at the end of the line:
           "add one more" belongs at the end of the thing it adds to, and the
           overflow chip is part of that thing — it is the tabs that did not
-          fit. `ADD_BTN_W` is what keeps it from being the item that overflows. */
+          fit. `ADD_BTN_W` is what keeps it from being the item that overflows.
+
+          Hover-revealed, and it keeps its slot while hidden: `opacity` rather
+          than `display`, so the tabs do not shift sideways the moment the
+          pointer enters the strip. That also means `ADD_BTN_W` is still owed —
+          the space is reserved whether or not anything is drawn in it. */
       }
       <Tooltip title="New sub-doc">
         <IconButton
+          className="tab-add-btn"
           size="small"
           onClick={onAdd}
           aria-label="New sub-doc"
@@ -658,6 +673,8 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
             flexShrink: 0,
             color: "text.disabled",
             p: 0.375,
+            opacity: 0,
+            transition: `opacity ${MOTION.fast}ms`,
             "&:hover": { color: "primary.main" },
           }}
         >
