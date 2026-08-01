@@ -76,6 +76,12 @@ export async function getConnection(
         reject(request.error?.name ?? "Unknown error");
       };
 
+      // Creates any store in the config the database does not already have.
+      // It does not resolve: `onsuccess` always fires after the upgrade
+      // transaction commits, and resolving here handed the caller a connection
+      // that had just been closed. Nothing noticed, because the only caller on
+      // the creating path is `setupIndexedDB`, which discards the connection —
+      // but the migration does use the one it is given.
       request.onupgradeneeded = (e: IDBVersionChangeEvent) => {
         const db = (e.target as IDBOpenDBRequest).result;
         _config.stores.forEach((s) => {
@@ -86,8 +92,6 @@ export async function getConnection(
             });
           }
         });
-        db.close();
-        resolve(db);
       };
     } else {
       reject("Failed to connect");

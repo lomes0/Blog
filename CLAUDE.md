@@ -56,7 +56,7 @@ the whole run. `src/types/vitest.d.ts` is what gives `tsc` the globals;
 `compilerOptions.types` is deliberately left unset, because setting it would
 restrict resolution to only its entries and drop every other ambient package.
 
-Coverage is seven specs, 142 assertions: `src/lib/__tests__/ordering.test.ts`
+Coverage is eight specs, 158 assertions: `src/lib/__tests__/ordering.test.ts`
 (fractional rank keys), `src/components/Layout/SideBar/__tests__/
 dragGeometry.test.ts` (sidebar drag thresholds — `dragGeometry.ts` is kept
 import-free precisely so it is testable without a browser),
@@ -68,12 +68,18 @@ dirty hoisting, and the URL replayed over a restored layout),
 `src/lib/__tests__/workspaceUrl.test.ts` (when the address bar may be rewritten
 to follow pane focus), `src/commands/__tests__/toolParity.test.ts` (that the
 AI tool surface stays derivable from the command registry — see
-docs/plans/workspace-panes.md §3.1) and
+docs/plans/workspace-panes.md §3.1),
 `src/components/EditDocument/__tests__/tabFit.test.ts` (which pane tabs fit the
-strip and which fall into the overflow menu).
+strip and which fall into the overflow menu) and
+`src/indexeddb/__tests__/migrationPlan.test.ts` (the key arithmetic behind the
+copy out of the fork's old IndexedDB database — that a finished migration
+re-copies nothing, and that a record is only released from the old database once
+the new one holds it).
 
-The last four follow the same rule as `dragGeometry.ts`: the logic lives in an
-import-free module so it can be exercised without mounting anything.
+The last five follow the same rule as `dragGeometry.ts`: the logic lives in an
+import-free module so it can be exercised without mounting anything. The IDB
+half that needs a real browser is `src/indexeddb/migrate.ts`, and it is not
+covered — verify it against a profile that has the old database.
 
 **No automated check covers API authorization.** Verify behaviour changes by
 running the app against the local Postgres and exercising the routes directly.

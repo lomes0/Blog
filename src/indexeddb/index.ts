@@ -2,6 +2,7 @@
 import { IDB_KEY } from "./constants";
 import { getActions, getConnection } from "./idb";
 import { IndexedDBConfig } from "./interfaces";
+import { migrateLegacyDatabase } from "./migrate";
 import { Post, Revision } from "@/types";
 import type { SerializedEditorState } from "lexical";
 
@@ -48,14 +49,12 @@ export function getStore<T>(storeName: string) {
 }
 
 const idbConfig = {
-  // Inherited from the project this app was forked from, and deliberately NOT
-  // renamed. The name is the primary key of the browser's IndexedDB store:
-  // changing it does not migrate anything, it silently opens a second, empty
-  // database and strands every guest's local drafts and revisions in the old
-  // one with no path back. Renaming would need an explicit copy-then-delete
-  // migration; until someone writes one, this string stays.
-  // See docs/guides/notes-indexeddb-origins.md.
-  databaseName: "matheditor",
+  // The name is the handle for the browser's IndexedDB store, so changing it
+  // migrates nothing on its own — it opens a second, empty database. The old
+  // name is `"matheditor"`, inherited from the project this app was forked
+  // from, and `migrateLegacyDatabase` below is what carries the contents over.
+  // Renaming again would need the same treatment.
+  databaseName: "blog-simple",
   // 7 adds `workspaces`; 6 added `copilotThreads`. Bumping the version is what
   // runs `onupgradeneeded`, which creates any store in this list the database
   // does not already have — existing stores and their contents are untouched.
@@ -86,15 +85,10 @@ const idbConfig = {
         { name: "createdAt", keyPath: "createdAt" },
       ],
     },
-    {
-      name: "notesCanvas",
-      id: { keyPath: "id" },
-      indices: [
-        { name: "name", keyPath: "name" },
-        { name: "createdAt", keyPath: "createdAt" },
-        { name: "updatedAt", keyPath: "updatedAt" },
-      ],
-    },
+    // No `notesCanvas`: notes live in Postgres (`prisma.notesCanvas`,
+    // `/api/notes/*`) and nothing has read the local store since that move, so
+    // the new database does not recreate it. Whatever the legacy database holds
+    // is left there — see `MIGRATED_STORES`.
     {
       name: "attachmentContent",
       id: { keyPath: "id" },
@@ -129,8 +123,14 @@ const idbConfig = {
   ],
 };
 
+// The migration runs before `setupIndexedDB`, and that ordering is the whole
+// guard: every store action waits on the `window[IDB_KEY]` flag that
+// `setupIndexedDB` sets, so nothing can read or write until the copy is done.
+// A failed migration still lets the app start — see `migrateLegacyDatabase`.
 if (typeof window !== "undefined") {
-  setupIndexedDB(idbConfig).catch(console.error);
+  migrateLegacyDatabase(idbConfig)
+    .catch(console.error)
+    .finally(() => setupIndexedDB(idbConfig).catch(console.error));
 }
 export const documentDB = getStore<Post>("documents");
 export const revisionDB = getStore<Revision>("revisions");
