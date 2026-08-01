@@ -43,6 +43,21 @@ export interface TabMeta {
 const TAB_RADIUS = 0;
 
 /**
+ * How far an inactive tab's label is faded toward the surface behind it.
+ *
+ * Measured, not picked: it takes `text.secondary` from 7.6:1 to **5.1:1** on
+ * white, and on the tightest dark surface (`background.paper`) from 5.8:1 to
+ * **4.7:1** — a visible step down that still clears WCAG AA (4.5:1) in both
+ * schemes, which a label you are expected to read and click has to.
+ *
+ * It is also the last value that does: at 0.8 that dark surface drops to
+ * 4.3:1 while light is still passing at 4.5:1, so dimming further has to come
+ * with a palette change, not another decimal here. Hover returns the label to
+ * full, which is what makes the resting dim read as a state and not a defect.
+ */
+const LABEL_DIM = 0.85;
+
+/**
  * The hairline between two adjacent tabs, centred in `TAB_GAP` so it belongs to
  * the channel rather than to either tab. Inset top and bottom: a rule the full
  * height of the row would box each label in, which is the chip read again.
@@ -199,6 +214,7 @@ const DocumentTab: React.FC<DocumentTabProps> = ({
         borderRadius: TAB_RADIUS,
         transition: `background-color ${MOTION.fast}ms`,
         "&:hover": { bgcolor: "action.hover" },
+        "&:hover .tab-label": { opacity: 1 },
         "&:hover .tab-close-btn": { opacity: 1 },
         "&:hover .tab-dirty-dot": { opacity: 0 },
         "&:focus-visible": CHROME_RING,
@@ -239,6 +255,7 @@ const DocumentTab: React.FC<DocumentTabProps> = ({
         : (
           <Typography
             noWrap
+            className="tab-label"
             onDoubleClick={(e) => {
               e.stopPropagation();
               onStartRename?.(tab.id, tab.name);
@@ -247,6 +264,14 @@ const DocumentTab: React.FC<DocumentTabProps> = ({
               typography: "dense",
               fontWeight: isActive ? 600 : 400,
               color: isActive ? "text.primary" : "text.secondary",
+              // With no bar and no fill, the whole active mark is this gap, so
+              // it is widened from the inactive side. Opacity rather than
+              // `text.disabled`, which is a claim the tab is not clickable and
+              // lands at 2.5:1 — below AA for a label you are meant to read and
+              // hit. Fading toward the surface also dims correctly in both
+              // schemes without a second hex (§19).
+              opacity: isActive ? 1 : LABEL_DIM,
+              transition: `opacity ${MOTION.fast}ms`,
               flex: 1,
               minWidth: 0,
             }}
