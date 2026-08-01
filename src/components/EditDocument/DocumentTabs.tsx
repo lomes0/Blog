@@ -72,7 +72,7 @@ const LABEL_DIM = 0.85;
  * A child element, not a pseudo-element: `::after` is the separator and
  * `::before` the drop indicator, and an active tab can be showing either.
  */
-const ACTIVE_RULE_H = 2;
+const ACTIVE_RULE_H = "1px";
 
 /**
  * The hairline between two adjacent tabs, centred in `TAB_GAP` so it belongs to
