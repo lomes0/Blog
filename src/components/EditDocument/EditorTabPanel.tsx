@@ -18,6 +18,7 @@ import { selectPaneById } from "@/store/selectors/layoutSelectors";
 import { useDirtyTracking } from "./hooks/useDirtyTracking";
 import { usePostLoader } from "./hooks/usePostLoader";
 import { useSave } from "./hooks/useSave";
+import { useScrollMemory } from "./hooks/useScrollMemory";
 import type { PaneMode, Post } from "@/types";
 import DocumentHeader from "./DocumentHeader";
 import PaneSkeleton from "./PaneSkeleton";
@@ -176,6 +177,12 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
     [loadedPost?.id],
   );
 
+  // Return the document to where it was left. Gated on `documentForEditor`
+  // rather than on the panel mounting: before it there is nothing in the
+  // scroller to scroll to, so a restore would assign into a one-screen-tall box
+  // and clamp to the top.
+  const scrollAnchorRef = useScrollMemory(docId, isActive, !!documentForEditor);
+
   // Deliver content recovered from the unconfirmed-save buffer.
   //
   // The loader restores it but cannot save it — at that point the editor has not
@@ -193,7 +200,7 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
   }, [restoredFromPending, documentForEditor, save]);
 
   return (
-    <Box sx={{ display: isActive ? "block" : "none" }}>
+    <Box ref={scrollAnchorRef} sx={{ display: isActive ? "block" : "none" }}>
       {error && <SplashScreen title={error.title} subtitle={error.subtitle} />}
       {
         /* No toolbar band: `PaneHeader` is mounted above this and is already

@@ -24,6 +24,7 @@ import {
 } from "@/types";
 import {
   flushWorkspaceWrite,
+  primeScrollMemory,
   readStoredWorkspace,
   readWorkspaceKeyHint,
 } from "@/store/workspacePersistence";
@@ -176,6 +177,10 @@ const WorkspacePanes: React.FC<WorkspacePanesProps> = ({ rootId }) => {
     const key = readWorkspaceKeyHint();
     void readStoredWorkspace(key).then((stored) => {
       if (cancelled) return;
+      // Scroll offsets ride in the same record, so they are seeded from this
+      // read rather than costing a second one on the way to first paint. Before
+      // the dispatch, so a pane that mounts on this commit already has them.
+      primeScrollMemory(stored);
       dispatch(actions.restoreWorkspace({ key, stored }));
     });
     return () => {

@@ -1,6 +1,12 @@
 import type { Middleware } from "@reduxjs/toolkit";
 import { getStore } from "@/indexeddb";
 import { workspaceKeyFor } from "@/lib/workspaceRestore";
+import {
+  capScrollTops,
+  sanitizeScrollTops,
+  type ScrollTops,
+  shouldRecord,
+} from "@/lib/scrollMemory";
 import type { AppState, WorkspaceState } from "@/types";
 import { appSlice } from "./app";
 
@@ -35,6 +41,15 @@ const WRITE_DEBOUNCE_MS = 400;
 interface StoredWorkspace extends WorkspaceState {
   /** A user id, or `"guest"`. */
   id: string;
+  /**
+   * Where each document was last left. Part of the layout record rather than a
+   * store of its own: a scroll offset is the same kind of fact as a split
+   * ratio — device-local, per document, worthless to another browser — and
+   * giving it a second record would mean a second read on the critical path
+   * and two lifetimes to keep in step. Optional because records written before
+   * this existed do not carry it.
+   */
+  scrollTops?: ScrollTops;
   updatedAt: string;
 }
 
@@ -147,9 +162,80 @@ const schedule = (key: string, workspace: WorkspaceState) => {
     })),
     focusedPaneId: workspace.focusedPaneId,
     splitRatio: workspace.splitRatio,
+    scrollTops: { ...scrollTops },
     updatedAt: new Date().toISOString(),
   };
   if (timer === null) timer = setTimeout(write, WRITE_DEBOUNCE_MS);
+};
+
+// ── Scroll positions ─────────────────────────────────────────────────────────
+
+/**
+ * Where each open document was last left.
+ *
+ * Module state rather than Redux, deliberately. A scroll listener fires per
+ * frame, and routing that through the store would re-render every subscriber of
+ * `ui.workspace` — the pane row, both headers, every tab — sixty times a second
+ * for a fact no component renders. Nothing reads this during a render; the one
+ * consumer is an effect that assigns `scrollTop`.
+ *
+ * It still shares the workspace's *record*, so it inherits the debounce and the
+ * `visibilitychange` flush that already exist to survive a reload.
+ */
+let scrollTops: ScrollTops = {};
+
+/**
+ * The last layout worth attaching a scroll write to.
+ *
+ * A scroll changes no Redux state, so it cannot ride the middleware's own write
+ * path — it has to schedule one itself, and a scheduled record has to carry a
+ * layout. Held from the last non-empty workspace seen, which also means a
+ * scroll landing in the beat after `closeAllPanes` records the layout the user
+ * actually had rather than the empty one on the way out.
+ */
+let lastKey: string | null = null;
+let lastWorkspace: WorkspaceState | null = null;
+
+/**
+ * Seed the map from a record just read back.
+ *
+ * Called by `WorkspacePanes` with the same object it hands `restoreWorkspace`,
+ * so the read stays single: the layout and the offsets come out of one record
+ * on one trip, and the editor's first paint waits on neither a second one.
+ */
+export const primeScrollMemory = (stored: unknown) => {
+  const record = stored as { scrollTops?: unknown } | undefined;
+  scrollTops = sanitizeScrollTops(record?.scrollTops);
+};
+
+/** Where `docId` was last left, or `undefined` if it is not remembered. */
+export const readScroll = (docId: string): number | undefined =>
+  scrollTops[docId];
+
+/**
+ * Record where `docId` is now.
+ *
+ * Cheap to call per frame: {@link shouldRecord} drops the repeats and the
+ * sub-threshold moves, and a scroll that survives that only mutates the map and
+ * the already-scheduled record. Rebuilding the pane array is reserved for the
+ * case where no write is pending yet.
+ */
+export const rememberScroll = (docId: string, top: number) => {
+  if (!docId) return;
+  const next = Math.max(0, Math.round(top));
+  if (!shouldRecord(scrollTops[docId], next)) return;
+  // Delete before setting so the key moves to the end: `capScrollTops` evicts
+  // in insertion order, and that is only least-recently-used if a rewrite
+  // counts as a use.
+  delete scrollTops[docId];
+  scrollTops[docId] = next;
+  scrollTops = capScrollTops(scrollTops);
+
+  if (pending) {
+    pending.scrollTops = { ...scrollTops };
+    return;
+  }
+  if (lastKey && lastWorkspace) schedule(lastKey, lastWorkspace);
 };
 
 // ── The middleware ───────────────────────────────────────────────────────────
@@ -200,11 +286,16 @@ export const workspacePersistenceMiddleware: Middleware =
     }
 
     if (
-      workspaceHydrated && workspaceKey !== null &&
-      workspace !== lastSeen && workspace.panes.length > 0
+      workspaceHydrated && workspaceKey !== null && workspace.panes.length > 0
     ) {
-      lastSeen = workspace;
-      schedule(workspaceKey, workspace);
+      // Held even when the layout itself has not changed, because this is what
+      // a scroll write attaches itself to and a scroll is not a store change.
+      lastKey = workspaceKey;
+      lastWorkspace = workspace;
+      if (workspace !== lastSeen) {
+        lastSeen = workspace;
+        schedule(workspaceKey, workspace);
+      }
     }
 
     return result;
