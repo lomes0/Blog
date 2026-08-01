@@ -1,8 +1,7 @@
 "use client";
 import React from "react";
 import { Box, Typography } from "@mui/material";
-import { workspaceCommands } from "@/commands";
-import { useCommandRun } from "@/commands/CommandProvider";
+import { useRouter } from "next/navigation";
 import { Post, User } from "@/types";
 import { formatFullDate as formatDate } from "@/utils/dateFormat";
 
@@ -22,7 +21,12 @@ const PostContent: React.FC<PostContentProps> = ({
   post,
   author,
 }) => {
-  const run = useCommandRun();
+  // Raw router, and it has to be: this card renders on `/user/[id]`, which is
+  // in the `(public)` route group and mounts no store — so there is no command
+  // registry to route through (it is built from the store, see
+  // `CommandProvider`). Same exemption `UserDocuments` already takes for its
+  // own query-string pushes.
+  const router = useRouter();
   const document = post;
   const title = document?.name || "Untitled Post";
   const createdAt = document?.createdAt;
@@ -87,9 +91,11 @@ const PostContent: React.FC<PostContentProps> = ({
             <Box
               component="span"
               onClick={(e: React.MouseEvent) => {
+                // `preventDefault`/`stopPropagation` rather than an <a>: the
+                // whole card is already a link, and nesting anchors is invalid.
                 e.preventDefault();
                 e.stopPropagation();
-                run(workspaceCommands.openSection, { section: "dashboard" });
+                router.push(`/user/${author.handle || author.id}`);
               }}
               sx={{
                 color: "text.secondary",

@@ -1,6 +1,7 @@
 import {
   useDispatch as useReduxDispatch,
   useSelector as useReduxSelector,
+  useStore as useReduxStore,
 } from "react-redux";
 import {
   alert,
@@ -38,6 +39,7 @@ import {
 } from "./app";
 import { Action, configureStore, ThunkAction } from "@reduxjs/toolkit";
 import { nprogressMiddleware } from "./nprogressMiddleware";
+import { workspacePersistenceMiddleware } from "./workspacePersistence";
 
 export const actions = {
   ...appSlice.actions,
@@ -83,7 +85,10 @@ export const actions = {
 export const store = configureStore({
   reducer: appSlice.reducer,
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware().concat(nprogressMiddleware),
+    getDefaultMiddleware().concat(
+      nprogressMiddleware,
+      workspacePersistenceMiddleware,
+    ),
 });
 
 export type AppDispatch = typeof store.dispatch;
@@ -109,3 +114,16 @@ export const useSelector: <T>(
   selector: (state: RootState) => T,
   equalityFn?: (left: T, right: T) => boolean,
 ) => T = useReduxSelector;
+
+/**
+ * The store itself, for the rare effect that must read state at the moment it
+ * acts rather than at the render it was scheduled from.
+ *
+ * `useSelector` gives you the value as of a render, and effects in one commit
+ * all see that same snapshot — so an effect cannot observe a dispatch made by a
+ * sibling effect beside it. Anything that *projects* current state outwards
+ * (the workspace URL) has to read it fresh, or it will write an answer that was
+ * already stale before it ran.
+ */
+export const useStore: () => AppStore = useReduxStore;
+export type AppStore = typeof store;

@@ -39,13 +39,14 @@ const DocumentBrowser: React.FC<DocumentBrowserProps> = () => {
 
   const { createDocument } = useDocumentNavigation({});
 
-  // Function to get the correct URL for a blog post
+  // Where a result leads. `/edit`, not `/view`: this browser lists
+  // `postsSelectors.selectAll`, and the store only ever holds the session's own
+  // posts — so it is a private view of your own library, and a result should
+  // open in the workspace like every other row in the app. Pointing it at the
+  // public page was harmless until Phase 4 moved that route to `(public)`,
+  // where it boots no store and no sidebar and drops any pane layout.
   const getDocumentUrl = useMemo(() => {
-    return (doc: Post) => {
-      const docId = doc.id;
-      // In blog structure, all posts use the same URL pattern
-      return `/view/${docId}`;
-    };
+    return (doc: Post) => `/edit/${doc.id}`;
   }, []);
 
   const sortedDocuments = useMemo(

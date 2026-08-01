@@ -56,19 +56,37 @@ the whole run. `src/types/vitest.d.ts` is what gives `tsc` the globals;
 `compilerOptions.types` is deliberately left unset, because setting it would
 restrict resolution to only its entries and drop every other ambient package.
 
-Coverage is three specs, 32 assertions: `src/lib/__tests__/ordering.test.ts`
+Coverage is six specs, 126 assertions: `src/lib/__tests__/ordering.test.ts`
 (fractional rank keys), `src/components/Layout/SideBar/__tests__/
 dragGeometry.test.ts` (sidebar drag thresholds — `dragGeometry.ts` is kept
-import-free precisely so it is testable without a browser) and
+import-free precisely so it is testable without a browser),
 `src/editor/nodes/TableNode/__tests__/legacyTypes.test.ts` (that stored tables
 still parse under both their current and pre-rename `type` strings — it builds a
-headless editor, so it stays DOM-free).
+headless editor, so it stays DOM-free), `src/store/__tests__/workspace.test.ts`
+(the `ui.workspace` reducers — pane focus, the one-document-one-pane invariant,
+dirty hoisting, and the URL replayed over a restored layout),
+`src/lib/__tests__/workspaceUrl.test.ts` (when the address bar may be rewritten
+to follow pane focus) and `src/commands/__tests__/toolParity.test.ts` (that the
+AI tool surface stays derivable from the command registry — see
+docs/plans/workspace-panes.md §3.1).
+
+The last three follow the same rule as `dragGeometry.ts`: the logic lives in an
+import-free module so it can be exercised without mounting anything.
 
 **No automated check covers API authorization.** Verify behaviour changes by
-running the app against the local Postgres (`docker compose up -d`) and
-exercising the routes directly. Type-check and lint with `npx tsc --noEmit` and
-`npm run lint`. For UI changes also run `npm run check:theme`, which catches
-colors that do not respond to the light/dark toggle (DESIGN.md §19).
+running the app against the local Postgres and exercising the routes directly.
+
+> **Check what is already serving `5432` before starting anything.** This repo's
+> `docker-compose.yml` defines `blog-postgres` (postgres:16) on that port, but a
+> different container may already be there holding the real dev data — running
+> `docker compose up -d` then collides and **kills the running one**. `docker ps`
+> and `pg_isready -h localhost -p 5432` first; if a server answers, use it. A
+> system PostgreSQL cluster may also be running, on a *different* port
+> (`pg_lsclusters`), and is not the one the app talks to.
+
+Type-check and lint with `npx tsc --noEmit` and `npm run lint`. For UI changes
+also run `npm run check:theme`, which catches colors that do not respond to the
+light/dark toggle (DESIGN.md §19).
 
 ## Architecture
 

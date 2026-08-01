@@ -9,8 +9,7 @@ import {
   TextField,
 } from "@mui/material";
 import { FilePen } from "lucide-react";
-import { actions, useDispatch, useSelector } from "@/store";
-import { selectFocusedPaneId } from "@/store/selectors/layoutSelectors";
+import { actions, useDispatch } from "@/store";
 import { ICON_SIZE } from "@/theme/icons";
 import { useContextMenu } from "@/hooks/useContextMenu";
 import { SafeNavigationLink } from "./SafeNavigationLink";
@@ -40,6 +39,12 @@ interface SubTabListProps {
    */
   rootTabId: string;
   /**
+   * The pane this post is open in, or null when it is not open. Switching a
+   * sub-tab acts on *that* pane — the focused one may be showing a different
+   * post entirely.
+   */
+  paneId: string | null;
+  /**
    * Shared rename machinery from `useSidebarActions`. Sub-tabs are regular
    * documents, so the same id-keyed rename flow used for posts renames them too
    * (double-click or right-click → Rename to start; Enter/blur commits, Escape
@@ -57,18 +62,19 @@ const dotSx = {
 } as const;
 
 export const SubTabList: React.FC<SubTabListProps> = (
-  { tabs, activeTabId, isOpenRoot, rootTabId, itemActions },
+  { tabs, activeTabId, isOpenRoot, rootTabId, paneId, itemActions },
 ) => {
   const dispatch = useDispatch();
-  // A sidebar row owns no pane of its own; switching tabs acts on whichever
-  // pane has focus. `isOpenRoot` is already the assertion that that pane is
-  // rooted at this post.
-  const focusedPaneId = useSelector(selectFocusedPaneId);
   const { rename } = itemActions;
 
+  // Switching a sub-tab also focuses the pane holding it: the click is an act
+  // of attention, and leaving focus on the other pane would point the toolbar,
+  // the rail and the Copilot at a document the user has just navigated away
+  // from.
   const switchTo = (tabId: string) => {
-    if (!focusedPaneId) return;
-    dispatch(actions.setActiveTab({ paneId: focusedPaneId, tabId }));
+    if (!paneId) return;
+    dispatch(actions.focusPane(paneId));
+    dispatch(actions.setActiveTab({ paneId, tabId }));
   };
 
   // The first (root) tab renames its own `tabLabel`; the rest rename `name`.
@@ -152,8 +158,12 @@ export const SubTabList: React.FC<SubTabListProps> = (
               },
             }
             : {
+              // This branch is a tab of a post no pane holds, so there is no
+              // pane to switch within — the link opens it. `/edit`, because
+              // Phase 4 made `/view/[id]` the store-free public page and a
+              // sidebar row must not send the user out of the workspace.
               component: SafeNavigationLink,
-              href: `/view/${tab.id}`,
+              href: `/edit/${tab.id}`,
             };
           return (
             <Box

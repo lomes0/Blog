@@ -9,13 +9,13 @@ import {
   useDispatch,
   useSelector,
 } from "@/store";
-import type { Post, Project, Series } from "@/types";
+import { MAX_PANES, type Post, type Project, type Series } from "@/types";
 import { type ContextMenuState, useContextMenu } from "@/hooks/useContextMenu";
 import {
   type InlineRenameResult,
   useInlineRename,
 } from "@/hooks/useInlineRename";
-import { documentCommands, seriesCommands } from "@/commands";
+import { documentCommands, paneCommands, seriesCommands } from "@/commands";
 import { useCommandRun } from "@/commands/CommandProvider";
 
 /**
@@ -80,6 +80,14 @@ export interface EditableRowContextMenu extends RowContextMenu {
   onEdit: (id: string) => void;
 }
 
+/**
+ * A post's menu can also open it beside whatever is already open. Absent when
+ * the workspace has no room for a second pane — see `MAX_PANES`.
+ */
+export interface PostRowContextMenu extends EditableRowContextMenu {
+  onOpenToSide?: (postId: string) => void;
+}
+
 /** A series' menu can also create a post inside it. */
 export interface SeriesRowContextMenu extends EditableRowContextMenu {
   onNewPost: (seriesId: string) => void;
@@ -94,7 +102,7 @@ export interface SidebarActionsResult {
   postActions: PostItemActions;
   seriesActions: SeriesItemActions;
   projectActions: ProjectItemActions;
-  postMenu: EditableRowContextMenu;
+  postMenu: PostRowContextMenu;
   seriesMenu: SeriesRowContextMenu;
   /** Projects have no detail page, so no "Edit". */
   projectMenu: ProjectRowContextMenu;
@@ -197,6 +205,23 @@ export function useSidebarActions(): SidebarActionsResult {
     (postId: string) => {
       closePostMenu();
       run(documentCommands.open, { id: postId });
+    },
+    [run, closePostMenu],
+  );
+
+  // Splitting needs a workspace to split: panes exist only while the editor is
+  // mounted, and there is room for exactly one more. The command refuses either
+  // way; hiding the item is so the menu never offers a dead end.
+  const canSplit = useSelector(
+    (state: RootState) =>
+      state.ui.workspace.panes.length > 0 &&
+      state.ui.workspace.panes.length < MAX_PANES,
+  );
+
+  const handleOpenPostToSide = useCallback(
+    (postId: string) => {
+      closePostMenu();
+      run(paneCommands.split, { id: postId });
     },
     [run, closePostMenu],
   );
@@ -429,6 +454,7 @@ export function useSidebarActions(): SidebarActionsResult {
       contextMenu: postContextMenu,
       close: closePostMenu,
       onEdit: handleEditPost,
+      onOpenToSide: canSplit ? handleOpenPostToSide : undefined,
       onRename: handleRenamePostFromMenu,
       onDelete: handleDeletePost,
     },

@@ -25,6 +25,20 @@ export interface CommandRouter {
   push(href: string): void;
   replace(href: string): void;
   refresh(): void;
+  /**
+   * Point the address bar somewhere without navigating.
+   *
+   * `push`/`replace` go through the router, which on a `force-dynamic` route
+   * means a server round trip. `rewrite` goes through `history.replaceState`,
+   * which Next patches into an `ACTION_RESTORE` — `canonicalUrl` moves,
+   * `usePathname()` moves with it, and the page is not re-requested. See the
+   * note in `lib/workspaceUrl.ts`.
+   *
+   * For when the URL is a *projection* of state that has already changed, which
+   * is the workspace's whole model (plan §0). Not for navigation: it adds no
+   * history entry, so the user cannot go back through it.
+   */
+  rewrite(href: string): void;
 }
 
 /** The active color scheme, as a thing a command can read and set. */

@@ -1,136 +1,95 @@
 "use client";
 import { Post } from "@/types";
 import { seriesPositionOf } from "@/utils/posts/seriesGrouping";
-import dynamic from "next/dynamic";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import ViewAttachmentEnhancer from "./ViewAttachmentEnhancer";
 import ViewCodeEnhancer from "./ViewCodeEnhancer";
-import ChildDocumentView from "./ChildDocumentView";
-import { useTopBarTabs } from "@/contexts/TopBarTabsContext";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import ListItemText from "@mui/material/ListItemText";
 import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import Snackbar from "@mui/material/Snackbar";
+import Tab from "@mui/material/Tab";
+import Tabs from "@mui/material/Tabs";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import { MoreHorizontal, Pencil } from "lucide-react";
+import RouterLink from "next/link";
+import {
+  Copy,
+  FileText,
+  Link2,
+  MoreHorizontal,
+  Printer,
+  SquarePen,
+} from "lucide-react";
 import { format } from "date-fns";
-import { apiClient } from "@/api";
-import { actions, useDispatch, useSelector } from "@/store";
-import { selectPaneById } from "@/store/selectors/layoutSelectors";
-import { v4 as uuidv4 } from "uuid";
-import { documentCommands } from "@/commands";
-import { useCommandRun } from "@/commands/CommandProvider";
-import type { TabMeta } from "@/contexts/TopBarTabsContext";
-import ShareDocument from "@/components/DocumentActions/Share";
-import DownloadDocument from "@/components/DocumentActions/Download";
-import ForkDocument from "@/components/DocumentActions/Fork";
 import { ICON_SIZE } from "@/theme/icons";
 
-const ViewDocumentInfo = dynamic(
-  () => import("./ViewDocumentInfo"),
-  { ssr: false },
-);
+/** One entry in the post's tab strip — the root post plus its child tabs. */
+export interface ViewTab {
+  id: string;
+  name: string;
+}
 
-const ViewDocument: React.FC<
-  { cloudDocument: Post; cloudHtml: string }
-> = ({ cloudDocument, cloudHtml }) => {
+interface ViewDocumentProps {
+  /** The document being shown. May be a child tab of `tabs[0]`. */
+  cloudDocument: Post;
+  /** Stored revision HTML for `cloudDocument`, rendered by the server. */
+  cloudHtml: string;
+  /** Root post first, then its child tabs, in rank order. */
+  tabs: ViewTab[];
+  /** True when the session owns this post — gates "Open in workspace". */
+  isAuthor: boolean;
+  /** True for any signed-in session — gates forking. */
+  isSignedIn: boolean;
+  /** The `?v=` currently pinned, when it is not the head revision. */
+  pinnedRevisionId?: string;
+}
+
+/**
+ * The published post, as anyone may read it.
+ *
+ * **This component has no store.** Until Phase 4 it minted a pane id and drove
+ * `ui.workspace` (openPane / setPaneTabs / closePane) so the workspace shell
+ * around it could tell what was open. The shell is gone — `/view/[id]` renders
+ * in `(public)` now — and every one of those reads resolved to one of two
+ * things (plan §4.3):
+ *
+ *  - **A prop.** The tab strip, the active tab, whether the viewer is the
+ *    author: all of it is known to the server that already fetched the
+ *    document, and none of it needs a live editor. `activeTabId` in particular
+ *    was pane state standing in for "which document did you ask for" — which
+ *    the URL already answers.
+ *  - **A workspace concern.** Publishing the tab list to the top bar, and the
+ *    command-registry actions (open/fork), belong to the shell. What survives
+ *    here is the one affordance §4.4 calls for: *Open in workspace*.
+ *
+ * Tabs are links, not client-side switches. The old in-page switch fetched the
+ * child through `/api/documents/[id]`, which is `write`-gated — so it only ever
+ * worked for the author, and silently showed a spinner to everyone else. A
+ * navigation re-enters this same page, which authorizes and renders the child
+ * server-side.
+ */
+const ViewDocument: React.FC<ViewDocumentProps> = ({
+  cloudDocument,
+  cloudHtml,
+  tabs,
+  isAuthor,
+  isSignedIn,
+  pinnedRevisionId,
+}) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const dispatch = useDispatch();
-
-  // Determine root: this doc is root when it has no parent.
-  const isChild = !!cloudDocument.parentId;
-  const rootId = isChild ? cloudDocument.parentId! : cloudDocument.id;
-
-  const [tabs, setTabs] = useState<TabMeta[]>([]);
   const [moreAnchor, setMoreAnchor] = useState<null | HTMLElement>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
-  // This view owns a read-mode pane, the same way the editor owns a write-mode
-  // one. Phase 4 (plan §4.3) is where the public `/view/[id]` stops being a
-  // workspace surface at all; until then it keeps driving workspace state, and
-  // doing so through its own pane id is what makes that split possible to see.
-  const [paneId] = useState(() => uuidv4());
+  const activeTabId = cloudDocument.id;
+  const slug = cloudDocument.handle || cloudDocument.id;
+  const query = pinnedRevisionId ? `?v=${pinnedRevisionId}` : "";
 
-  // Active tab comes from the pane, so selecting a sub-doc from the sidebar (or
-  // the top bar) updates the viewed content. Seeded with the requested document
-  // so `/view/<childId>` shows the child rather than flashing its parent.
-  const activeTabId = useSelector((state) =>
-    selectPaneById(state, paneId)?.activeTabId ?? cloudDocument.id
-  );
-
-  useEffect(() => {
-    dispatch(
-      actions.openPane({
-        paneId,
-        rootId,
-        mode: "read",
-        activeTabId: cloudDocument.id,
-      }),
-    );
-    return () => {
-      dispatch(actions.closePane(paneId));
-    };
-  }, [dispatch, paneId, rootId, cloudDocument.id]);
-
-  // Heading reflects the active tab, not the post. The post's unique `name`
-  // stays reserved for the URL/series/SEO (see generateMetadata); the visible
-  // <h1> shows whichever tab is open. For a single-tab post the only tab's
-  // label falls back to the post name, so this naturally shows the post name.
-  const activeTabName = tabs.find((t) => t.id === activeTabId)?.name ??
-    cloudDocument.name;
-
-  const { setTabBar } = useTopBarTabs();
-
-  // Fetch root metadata + all children to populate the tab strip.
-  useEffect(() => {
-    let cancelled = false;
-
-    Promise.all([
-      apiClient.documents.get(rootId),
-      apiClient.documents.children(rootId),
-    ]).then(([rootDoc, childDocs]) => {
-      if (cancelled) return;
-      const childIds = (childDocs ?? []).map((c) => c.id);
-      const metas: TabMeta[] = [
-        // The root tab can carry its own label (`tabLabel`) distinct from the
-        // post title; fall back to the post name when it isn't set.
-        { id: rootId, name: rootDoc?.tabLabel ?? rootDoc?.name ?? "Post" },
-        ...(childDocs ?? []).map((c) => ({ id: c.id, name: c.name })),
-      ];
-      setTabs(metas);
-      // Publish tabs to the pane (sidebar + top bar read from here). The active
-      // tab stays whatever was requested — `/view/<childId>` opens on the child.
-      dispatch(
-        actions.setPaneTabs({
-          paneId,
-          tabIds: [rootId, ...childIds],
-          activeTabId: cloudDocument.id,
-        }),
-      );
-    }).catch(() => {});
-
-    return () => {
-      cancelled = true;
-    };
-  }, [rootId, cloudDocument.id, dispatch, paneId]);
-
-  const handleTabSwitch = (tabId: string) =>
-    dispatch(actions.setActiveTab({ paneId, tabId }));
-
-  // Register tabs with the top bar context.
-  useEffect(() => {
-    if (tabs.length === 0) return;
-    setTabBar({
-      tabs,
-      activeTabId,
-      rootTabId: rootId,
-      onSwitch: handleTabSwitch,
-    });
-    return () => setTabBar(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tabs, activeTabId, rootId]);
-
-  const run = useCommandRun();
   const authorLabel = cloudDocument.author?.handle ??
     cloudDocument.author?.name;
   const updatedDate = cloudDocument.updatedAt
@@ -140,13 +99,25 @@ const ViewDocument: React.FC<
   const seriesOrder = seriesPositionOf(cloudDocument.series, cloudDocument.id);
   const seriesTotal = cloudDocument.series?.posts?.length;
 
+  const closeMenu = () => setMoreAnchor(null);
+
+  const copyLink = async () => {
+    closeMenu();
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setNotice("Link copied to clipboard");
+    } catch {
+      setNotice("Failed to copy link to clipboard");
+    }
+  };
+
   return (
-    <Box sx={{ minHeight: "100vh" }}>
+    <Box>
       <Box sx={{ px: { xs: 1, sm: 2, md: 2 } }}>
         {/* Post header */}
         <Box sx={{ pt: 2, pb: 0 }}>
           <Typography variant="h4" component="h1" fontWeight={700} gutterBottom>
-            {activeTabName}
+            {cloudDocument.name}
           </Typography>
           <Box
             sx={{
@@ -185,72 +156,141 @@ const ViewDocument: React.FC<
                 </Typography>
               </>
             )}
-            <Tooltip title="Edit">
-              <IconButton
-                size="small"
-                onClick={() =>
-                  run(documentCommands.open, { id: cloudDocument.id })}
-                aria-label="Edit document"
-                sx={{ color: "text.secondary", ml: 0.5 }}
-              >
-                <Pencil size={ICON_SIZE.inline} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="More options">
-              <IconButton
-                size="small"
-                onClick={(e) => setMoreAnchor(e.currentTarget)}
-                aria-label="More options"
-                sx={{ color: "text.secondary" }}
-              >
-                <MoreHorizontal size={ICON_SIZE.inline} />
-              </IconButton>
-            </Tooltip>
+            <Box
+              sx={{
+                ml: "auto",
+                display: "flex",
+                alignItems: "center",
+                gap: 0.5,
+                displayPrint: "none",
+              }}
+            >
+              {
+                /* Plan §4.4: the author arriving from a shared link gets a way
+                  into the editor, not a silent redirect — the URL has to keep
+                  meaning "the published thing" for it to be safe to share. */
+              }
+              {isAuthor && (
+                <Button
+                  component={RouterLink}
+                  href={`/edit/${slug}`}
+                  prefetch={false}
+                  size="small"
+                  variant="outlined"
+                  startIcon={<SquarePen size={ICON_SIZE.inline} />}
+                  sx={{ typography: "dense" }}
+                >
+                  Open in workspace
+                </Button>
+              )}
+              <Tooltip title="More options">
+                <IconButton
+                  size="small"
+                  onClick={(e) => setMoreAnchor(e.currentTarget)}
+                  aria-label="More options"
+                  sx={{ color: "text.secondary" }}
+                >
+                  <MoreHorizontal size={ICON_SIZE.dense} />
+                </IconButton>
+              </Tooltip>
+            </Box>
             <Menu
               anchorEl={moreAnchor}
               open={Boolean(moreAnchor)}
-              onClose={() => setMoreAnchor(null)}
+              onClose={closeMenu}
             >
-              <ShareDocument
-                post={cloudDocument}
-                variant="menuitem"
-                closeMenu={() => setMoreAnchor(null)}
-              />
-              <DownloadDocument
-                post={cloudDocument}
-                variant="menuitem"
-                closeMenu={() => setMoreAnchor(null)}
-              />
-              <ForkDocument
-                post={cloudDocument}
-                variant="menuitem"
-                closeMenu={() => setMoreAnchor(null)}
-              />
+              <MenuItem onClick={copyLink}>
+                <ListItemIcon>
+                  <Link2 size={ICON_SIZE.dense} />
+                </ListItemIcon>
+                <ListItemText>Copy link</ListItemText>
+              </MenuItem>
+              {
+                /* Plain hrefs, not commands: `/pdf/…` and `/docx/…` are export
+                  endpoints outside both route groups, and the registry is the
+                  AI's tool list (plan §3.2) — a download is not a workspace
+                  action to give it. */
+              }
+              <MenuItem
+                component="a"
+                href={`/pdf/${slug}.pdf${query}`}
+                onClick={closeMenu}
+              >
+                <ListItemIcon>
+                  <Printer size={ICON_SIZE.dense} />
+                </ListItemIcon>
+                <ListItemText>Print / PDF</ListItemText>
+              </MenuItem>
+              <MenuItem
+                component="a"
+                href={`/docx/${slug}.docx${query}`}
+                onClick={closeMenu}
+              >
+                <ListItemIcon>
+                  <FileText size={ICON_SIZE.dense} />
+                </ListItemIcon>
+                <ListItemText>Download .docx</ListItemText>
+              </MenuItem>
+              {isSignedIn && (
+                <MenuItem
+                  component={RouterLink}
+                  href={`/new/${slug}${query}`}
+                  prefetch={false}
+                  onClick={closeMenu}
+                >
+                  <ListItemIcon>
+                    <Copy size={ICON_SIZE.dense} />
+                  </ListItemIcon>
+                  <ListItemText>Fork</ListItemText>
+                </MenuItem>
+              )}
             </Menu>
           </Box>
+          {tabs.length > 1 && (
+            <Tabs
+              value={activeTabId}
+              variant="scrollable"
+              scrollButtons="auto"
+              aria-label="Post tabs"
+              sx={{ minHeight: 36, displayPrint: "none" }}
+            >
+              {tabs.map((tab) => (
+                <Tab
+                  key={tab.id}
+                  value={tab.id}
+                  label={tab.name}
+                  component={RouterLink}
+                  href={`/view/${tab.id}${query}`}
+                  prefetch={false}
+                  sx={{
+                    minHeight: 36,
+                    typography: "dense",
+                    textTransform: "none",
+                    borderRadius: "6px 6px 0 0",
+                  }}
+                />
+              ))}
+            </Tabs>
+          )}
           <Divider />
         </Box>
 
         <div className="document-container document-view" ref={containerRef}>
-          {/* Root tab: the server already rendered it. */}
-          {activeTabId === cloudDocument.id && (
-            <div
-              style={{ display: "contents" }}
-              dangerouslySetInnerHTML={{ __html: cloudHtml }}
-            />
-          )}
-
-          {/* Child tabs: fetch content client-side */}
-          {activeTabId !== cloudDocument.id && (
-            <ChildDocumentView key={activeTabId} docId={activeTabId} />
-          )}
+          <div
+            style={{ display: "contents" }}
+            dangerouslySetInnerHTML={{ __html: cloudHtml }}
+          />
 
           <ViewAttachmentEnhancer containerRef={containerRef} />
           <ViewCodeEnhancer containerRef={containerRef} />
         </div>
-
-        <ViewDocumentInfo cloudDocument={cloudDocument} />
       </Box>
+      <Snackbar
+        open={notice !== null}
+        autoHideDuration={4000}
+        onClose={() => setNotice(null)}
+        message={notice}
+      />
     </Box>
   );
 };

@@ -25,11 +25,37 @@ export interface AttachmentPreviewState {
 }
 
 /**
- * How a pane is showing its document — the state that replaces the `/view` vs
- * `/edit` route split in Phase 5 of docs/plans/workspace-panes.md. Nothing
- * *decides* anything on it yet; it is set correctly and read for labels.
+ * How a pane is showing its document — the state that replaced the `/view` vs
+ * `/edit` route split in Phase 5 of docs/plans/workspace-panes.md. Flipping it
+ * is a state change, not a navigation: same pane, same Lexical instance, same
+ * scroll position, `editor.setEditable(false)`.
  */
 export type PaneMode = "read" | "write";
+
+/**
+ * How many panes may be open at once (plan §5.3).
+ *
+ * Two, side by side — deliberately not a recursive grid. The singleton work
+ * behind split view costs the same for N as for 2, but nested splits multiply
+ * the layout, resize and drag surface for very little gain in an authoring
+ * tool. The cap lives here rather than in the reducer that enforces it so the
+ * command layer can refuse a third split with a message instead of watching a
+ * dispatch quietly do nothing.
+ */
+export const MAX_PANES = 2;
+
+/**
+ * How far the splitter may travel, as the left pane's share of the row.
+ *
+ * These live beside {@link MAX_PANES} rather than in `WorkspacePanes.tsx`
+ * because the *reducer* clamps: `splitRatio` is persisted (plan §8.2), so a
+ * stored record is attacker-adjacent input in the same sense a request body is,
+ * and a component-local constant is not reachable from the place that has to
+ * refuse a ratio of `-4`.
+ */
+export const MIN_PANE_RATIO = 0.2;
+export const MAX_PANE_RATIO = 0.8;
+export const DEFAULT_PANE_RATIO = 0.5;
 
 /**
  * A viewport onto a document.
@@ -62,13 +88,33 @@ export interface WorkspacePane {
 /**
  * What is open, as state rather than as a path string.
  *
- * Exactly one pane exists today; the array is the point. Deliberately **not**
- * persisted — whether panes survive a browser restart is plan §8.2, still
- * unanswered.
+ * Up to {@link MAX_PANES} panes, left to right in array order.
+ *
+ * **This object is the persisted record** (plan §8.2, answered 31 Jul 2026):
+ * it is written to IndexedDB under the session's user id — or `"guest"` — and
+ * read back on entering the workspace, so a reload gives you the same two
+ * documents at the same split. It is stored per *device* and not in the cloud
+ * on purpose: a ratio that fits a desktop does not fit a laptop, and a guest
+ * with no account still deserves their layout back. `src/lib/workspaceRestore.ts`
+ * is what turns a stored record back into a value of this type, and it does not
+ * trust it.
+ *
+ * One document may be open in at most one pane. That is a reducer invariant,
+ * not a convention: `saveRegistry` is keyed by document id, so a second live
+ * editor for the same document would silently overwrite the first one's save
+ * callback and stop persisting it (plan §5.2). Restoring has to honour the same
+ * rule — a stored record can name one document twice, and nothing downstream
+ * would notice.
  */
 export interface WorkspaceState {
   panes: WorkspacePane[];
   focusedPaneId: string | null;
+  /**
+   * The left pane's share of the row, in
+   * [{@link MIN_PANE_RATIO}, {@link MAX_PANE_RATIO}]. Meaningless with one
+   * pane, but kept anyway so a split re-opens where it was left.
+   */
+  splitRatio: number;
 }
 
 /** Which view the left sidebar renders, switched from the activity rail. */
@@ -105,6 +151,27 @@ export interface AppState {
     attachmentPreview: AttachmentPreviewState | null;
     attachmentModified: { url: string; timestamp: number } | null;
     workspace: WorkspaceState;
+    /**
+     * Whether {@link workspace} has been read back from storage yet.
+     *
+     * Deliberately **not** `initialized`. The deep-link seam has to wait for
+     * this before replaying the URL as an `openPane`, or the restore and the
+     * URL clobber each other — but `initialized` is set at the end of the
+     * `load` bootstrap, which awaits the session, the guest-draft import, the
+     * posts and the series over the network. An IndexedDB read is a
+     * millisecond; gating the editor's first paint on the other thing would be
+     * a visible regression. Two flags because they answer two questions.
+     *
+     * Reset by `closeAllPanes`, so re-entering the workspace restores again.
+     */
+    workspaceHydrated: boolean;
+    /**
+     * Whose layout {@link workspace} currently is — a user id, or `"guest"`.
+     * Null until the first restore. The persistence middleware writes under
+     * this key and re-hydrates when the resolved session disagrees with it, so
+     * two accounts sharing a browser cannot inherit each other's panes.
+     */
+    workspaceKey: string | null;
     /**
      * Documents with unsaved editor content, keyed by document id.
      *

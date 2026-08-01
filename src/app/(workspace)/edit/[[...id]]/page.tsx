@@ -1,5 +1,4 @@
 import type { OgMetadata } from "@/app/api/og/route";
-import EditDocument from "@/components/EditDocument";
 import { findDocument } from "@/repositories/document";
 import type { Metadata } from "next";
 import { format } from "date-fns";
@@ -52,6 +51,12 @@ export async function generateMetadata(
 
 export const dynamic = "force-dynamic";
 
-const page = () => <EditDocument />;
+/**
+ * Renders nothing. The workspace's pane tree is mounted by `../layout.tsx`,
+ * above this segment, so that navigating between documents does not remount it
+ * — see the note there. What has to stay on this segment is everything keyed to
+ * *which* document: `generateMetadata` above, and `force-dynamic`.
+ */
+const page = () => null;
 
 export default page;

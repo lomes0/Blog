@@ -1,7 +1,6 @@
 # Workspace panes, routing, and the AI command surface
 
-**Status: Phases 1 and 2 landed (31 Jul 2026). Both gating product questions are
-now decided — see §6.3 and §8.1 — so phases 3–5 are unblocked.** Sits alongside
+**Status: all five phases landed, plus §8.2 (31 Jul 2026).** Sits alongside
 [ide-redesign.md](./ide-redesign.md), which proposed converging the app on an
 IDE shell. That convergence is ~done at the *chrome* level. This plan is about
 the layer underneath it: what "open" means, and who is allowed to say it.
@@ -10,9 +9,32 @@ the layer underneath it: what "open" means, and who is allowed to say it.
 | ----- | ------ | ------ |
 | 1 — command registry | **done** | `986e4a72` |
 | 2 — `ui.workspace` panes | **done** | `3f4545a7` |
-| 3 — generate AI tools + thread persistence | next | — |
-| 4 — route-group split | unblocked | — |
-| 5 — two panes | unblocked | — |
+| 3 — generate AI tools + thread persistence | **done** | `29394d5c` |
+| 4 — route-group split | **done** | `dd51f137` |
+| 5 — two panes | **done** | `5ced4505` |
+| §8.2 — persist panes | **done** | `b77ab65b` |
+| URL follows focus | **done** | `972b58e3` |
+| pane tree above the `[[...id]]` segment | **done** | *1 Aug 2026* |
+
+**Partly verified in a browser (31 Jul – 1 Aug 2026).** Sign-in is OAuth, so the
+authenticated UI is still unreachable — but the workspace runs for a **guest**
+against IndexedDB, and a two-pane layout seeded into the `workspaces` store
+(§8.2's own record) restores through the ordinary path. Driven headless over
+CDP, that confirms: two `ConnectedEditor`s render side by side, the focused
+pane's accent bar tracks a real click, focus-follows-click works, the URL
+follows focus, and a reload comes back focused on the pane last clicked.
+
+Extended 1 Aug: `pane.split` holds its second pane across the navigation it
+issues, a document-to-document change keeps both panes and both live editors,
+and leaving `/edit` closes the panes without touching the stored layout. That
+run is what caught the segment-remount bug below — **the earlier session's "not
+observed" list was load-bearing, and `pane.split` was on it.**
+
+Still not observed: anything cloud-backed, the resize drag, read mode, undo
+history across a tab switch, and the sidebar's own context menu (the guest
+sidebar tree renders no rows for seeded posts — a fixture gap, not a known app
+bug, but it means the split was driven through `openPane` + a real `router.push`
+rather than through the menu item).
 
 ### Corrections found while implementing
 
@@ -33,6 +55,198 @@ the layer underneath it: what "open" means, and who is allowed to say it.
   only `/series/[id]` exists, and it 308s to `/posts/[id]`. Deleting a series
   currently 404s. Left alone as a behaviour change; one-line fix is
   `workspace.openSection({ section: "library" })`.
+- **`getConnection`'s `onupgradeneeded` can resolve a closed database**
+  (`src/indexeddb/index.ts`) — it calls `db.close()` then `resolve(db)`. Masked
+  today because the first open after a version bump is `setupIndexedDB`'s, which
+  discards the value. One refactor away from losing a guest's drafts on upgrade.
+
+### Corrections found in phase 5
+
+- **`document.open` had to stop being a `router.push`.** With two panes, opening
+  a post the *other* pane already holds must move focus — and a push of the path
+  the address bar already holds is a no-op, so the click did nothing. It now
+  dispatches `openPane` (which owns the §5.2 invariant) and pushes second.
+- **`openPane`'s contract changed shape.** An omitted `paneId` used to mint a
+  pane; it now means "retarget the focused one", which is what a sidebar click,
+  the palette and a deep link all mean. Naming a `paneId` is the "*new*
+  viewport" form, and is what `pane.split` uses.
+- **Three singletons the §5.1 table missed**, all found the same way — by asking
+  what breaks when two of something exist:
+  - **The top bar's tab strip** (`TopBarTabsContext`). One strip, two panes with
+    tab groups. Only the focused pane publishes; the handover is a `setTabBar`
+    effect *cleanup* rather than an unmount-only clear.
+  - **`PostItem`'s "is this post open?"** was `selectFocusedPane(state).rootId
+    === post.id`, so with two panes only one of the two open posts was marked.
+    Now `selectPaneRootedAt`.
+  - **`SubTabList`'s tab switch** dispatched `setActiveTab` at the *focused*
+    pane while the row it was drawn under might belong to the other one — it
+    would have set a pane's active tab to a document that pane does not hold.
+    It takes the owning `paneId` as a prop now.
+- **Read mode is `editor.setEditable(false)`, not a second component tree.**
+  `/view/[id]` is the public page and is no longer reachable from
+  `document.open` at all; the workspace's own read mode is the same pane, the
+  same Lexical instance and the same scroll offset.
+- **`usePostLoader`'s `setDiffOpen(false)` still targets the focused pane**, not
+  its own. Harmless while the diff feature is dead code (see above), wrong the
+  day it is not.
+
+### Corrections found while implementing §8.2
+
+- **The key cannot be known when the restore has to run.** Gating the deep-link
+  seam on the session — a network call — is the regression §8.2 was told not to
+  ship, so the restore guesses the user from a `localStorage` note of who was
+  signed in last and the middleware corrects it (`workspaceKeyChanged`) if the
+  session disagrees. Without the correction, a normal sign-out writes the
+  previous account's layout into the guest record and the next account inherits
+  it — which is exactly the failure keying by user was supposed to prevent.
+- **`closeAllPanes` on unmount is a delete, once panes are persisted.** It fires
+  on every navigation out of `/edit`, so a persist-on-change middleware would
+  erase the layout on the way out the door. The writer refuses an empty
+  workspace, which is safe because the deep-link seam opens a pane the moment
+  the route mounts — "zero panes" is a transient, not a state a user sits in.
+- ~~**`pane.split` does not push the URL**~~ — **fixed.** It pushes
+  `/edit/<rootId>` after the dispatch, as `document.open` does, so the address
+  bar names the pane that was just split off and is now focused. It pushes the
+  *resolved* id rather than the caller's reference, which also keeps clear of
+  the unresolved-handle path that remounts the pane tree and would destroy the
+  split.
+- **The restore had to be bounded.** `getConnection` waits ten seconds for
+  `setupIndexedDB`, and the seam is downstream of the read — a browser with no
+  usable IndexedDB would have shown a blank editor for that long. Two seconds,
+  then open without a layout.
+- **Deleted documents are deliberately not validated.** Posts are not loaded
+  when the restore runs, and a pane may legitimately hold a document absent from
+  the session's list — a fork source, or the well-known `notes` post, which is
+  created on first open. `usePostLoader` already ends at "Post Not Found" inside
+  the pane, without touching its neighbour.
+
+### Open after phase 5
+
+- ~~**The URL does not follow focus**~~ — **closed** (*uncommitted*). The
+  premise that kept it open was wrong: rewriting the URL on a focus change is
+  **not** a server round trip. Next 15 patches `window.history.replaceState`
+  (`client/components/app-router.js`) to dispatch `ACTION_RESTORE`, and
+  `restoreReducer` only re-points `canonicalUrl` — it reuses the existing router
+  cache and tree and does not reference `fetchServerResponse` at all, unlike
+  `navigateReducer`. So `usePathname()` follows the address bar and the
+  `force-dynamic` page is never re-requested. Verified in a real browser as well
+  as in the source: four clicks between two panes produced **zero** `?_rsc=`
+  requests and **zero** new history entries.
+
+  `WorkspacePanes` now projects `selectFocusedDocId` — *not* the pane's
+  `rootId`, which would reset `activeTabId` and make a click between panes
+  silently switch tabs — back onto the URL, in the same effect as the deep-link
+  replay and immediately after it. Three guards, all in `lib/workspaceUrl.ts`
+  and unit-tested: only once `workspaceHydrated`, only on `/edit`, and only
+  while the URL names a document some pane already holds. The last one is the
+  subtle one — until then the URL is still an *input* (an unreplayed deep link,
+  or a `document.open` push that has not landed), and overwriting it would make
+  `HistoryUpdater` skip the pending push and drop the entry the user came from.
+
+  Two consequences worth stating. A **handle** URL (`/edit/my-post`) survives
+  until focus actually moves, and is then rewritten to the canonical id, because
+  panes are keyed by id and no other spelling can name the focused one.
+  And **closing a pane** is the one deliberate way to reach the state that last
+  guard refuses — the URL naming a document no pane holds — so the projection
+  cannot repair it and `pane.close` owns its own rewrite, as `pane.split` and
+  `document.open` own their pushes. It targets the surviving pane's focused
+  document, read back from the store after the dispatch rather than predicted,
+  so `closePane`'s focus rule is not copied out. It uses `rewrite`
+  (`history.replaceState`) rather than `push`: the survivor is not somewhere the
+  user navigated to, and a history entry naming it would send Back to a URL
+  whose pane is gone — which the deep-link seam would then replay, silently
+  retargeting the survivor instead of restoring anything.
+
+  With that, **every** way focus moves keeps the URL honest: opening pushes,
+  splitting pushes, clicking projects, closing rewrites.
+- **Clicking a post title in `/posts` now opens it in the workspace in read
+  mode** rather than navigating to the public `/view/[id]`. That follows §4.4,
+  but it is a visible product change rather than a refactor.
+- ~~**Navigating to a handle URL for a post not in the store** unmounts the pane
+  tree for a beat, destroying a split~~ — **the diagnosis was too narrow, and the
+  bug was much worse than it reads. Fixed 1 Aug 2026.**
+
+  It is not the handle path. `/edit/[[...id]]` is a catch-all and Next keys a
+  router segment by its *param value*, so `/edit/<a>` and `/edit/<b>` are
+  different segment nodes: **every** document-to-document navigation unmounted
+  everything `page.tsx` rendered, id or handle. `WorkspacePanes` dispatches
+  `closeAllPanes` from its unmount cleanup, so the workspace was wiped each time.
+  With one pane the result is indistinguishable — you get one pane either way,
+  which is why this shipped — but with two it destroys the split. And
+  `pane.split` pushes such a URL itself, so **a split tore itself down about a
+  second after appearing**, which is how it was finally reported.
+
+  There was a second defect behind it, and that one lost data. On the remount the
+  new `WorkspacePanes` renders while `hydrated` is still `true` from the outgoing
+  instance, so its restore effect returns early and never reads storage, while
+  the deep-link seam mints a fresh single pane. By the time the restore effect
+  re-runs, `restoreWorkspace`'s "do not overwrite what is already open" guard
+  sees that minted pane and declines — and the persistence middleware then writes
+  the one-pane layout over the stored two-pane record. **The saved split was
+  destroyed, not merely hidden.** Observed directly: stored `[left@a, right@b]`
+  became `[<fresh uuid>@b]`.
+
+  **Fixed by hoisting the pane tree into `(workspace)/edit/layout.tsx`.** A
+  layout is not re-keyed by a child segment's params, so a document change is now
+  a prop change — which the deep-link seam already handles by dispatching
+  `openPane` — and nothing unmounts. `page.tsx` renders `null` and keeps only
+  what is genuinely per-document: `generateMetadata` and `force-dynamic`.
+  Leaving `/edit` still unmounts the layout, so `closeAllPanes` keeps its
+  meaning.
+
+  Verified over CDP against a dev build, both directions. Before: two panes
+  became `dom=0 → 1` and storage was clobbered. After: `/edit/a → /edit/b` holds
+  two panes and two live editors with focus handing to the pane that holds `b`,
+  the stored record is untouched, `pane.split` stays split for at least ten
+  seconds, and navigating out to `/posts` still closes the panes while preserving
+  what was stored.
+
+  The restore-ordering fragility above is now unreachable — the only remaining
+  remounts are entering and leaving `/edit`, and `closeAllPanes` sets `hydrated`
+  false on the way out, so the next mount reads storage properly. It is still
+  latent, and worth hardening if `WorkspacePanes` ever remounts for another
+  reason: the guard cannot currently tell a restored pane from one the seam just
+  minted.
+- **`FloatingToolbar` in read mode** was not verified to suppress itself when
+  the editor is not editable.
+
+### §5.2 had a second half, in the tab list
+
+`openPane` stops a pane being **rooted** at a document another pane holds, and
+that was taken to be the whole invariant. It is not: a pane's `tabIds` arrive
+later, from a fetch. Open a child document in one pane, then open its parent
+post in the other, and the parent's children come back naming a document the
+first pane is already showing.
+
+The consequence is the one §5.2 exists to prevent, not a cosmetic one.
+`TabbedDocumentEditor` renders `tabIds.map(…)` — an `EditorTabPanel` **per
+entry, unconditionally** — and each panel registers a save callback in
+`saveRegistry` under its document id. The second to mount replaces the first,
+and one pane stops persisting with no error.
+
+Fixed in the reducer, beside the invariant it belongs to: `setPaneTabs` admits
+only tab ids no other pane holds (a pane always keeps its own root, or it would
+have nothing to render), and `addTab` refuses one outright. The derived list
+yields to the explicit one — a pane rooted at a document got there because
+someone asked for it.
+
+**Related, not fixed:** `TabbedDocumentEditor`'s `_mountedTabIds` is written and
+never read, so the "lazy-mount pattern" its comment describes does not happen —
+*every* tab of a tabbed post mounts a full editor with the whole plugin set
+(MathLive, Excalidraw, Geogebra). That makes §5.4's performance note worse than
+it assumed, and it is why the collision above bites immediately rather than only
+once a user visits the tab. Changing it touches undo-history retention, so it
+wants its own pass.
+
+### Carried forward from phase 3
+
+- `InlineCopilotBar` still does not persist (`persist={false}`). It remounts per
+  `pathname:documentId` and auto-expands when a thread is non-empty, so
+  persisting it as-is would resurrect old conversations over the document on
+  every navigation. A UX call, not plumbing.
+- Thread scope is a document id or the literal `"workspace"`. Faithful while
+  there is one workspace per user; revisit if phase 5 gives panes independent
+  conversations.
 
 ---
 
@@ -289,11 +503,28 @@ move plus an untangling.
 | Route                    | Purpose                    |
 | ------------------------ | -------------------------- |
 | `/view/[id]`             | canonical shareable post   |
-| `/browse`, `/browse/[id]`| discovery                  |
 | `/user/[id]`             | author profile             |
-| `/privacy`, `/tutorial`  | static                     |
+| `/privacy`               | static                     |
 
 (`/embed/[id]` and `/offline` are already outside the group — leave them.)
+
+**Corrected 31 Jul 2026.** This table originally also listed `/browse`,
+`/browse/[id]` and `/tutorial` as public. All three actually landed in
+`(workspace)`, and the discrepancy sat unnoticed under a "phase 4 done" mark.
+The two are not the same mistake:
+
+- **`/browse` belongs in `(workspace)` — the table was wrong.**
+  `DocumentBrowser` reads `postsSelectors.selectAll` and `state.user`
+  (`index.tsx:25-26`), and the store only ever holds the session's *own* posts.
+  So it is a private view of your own library, not discovery. Making it public
+  would be a feature, not a file move. Listed under `(workspace)` below.
+- **`/tutorial` is genuinely undecided, and is left in `(workspace)` for now.**
+  Unlike `/browse` it would move cleanly: the page is a server component that
+  reads the well-known `tutorial` document and renders stored revision HTML
+  (`(workspace)/tutorial/page.tsx`), touching no session and no store. It is a
+  candidate for `(public)` on the §8.1 reasoning — one render path, cacheable —
+  but that is a product call about whether the tutorial is a marketing surface
+  or an in-app help page, so it is recorded here rather than guessed at.
 
 **`(workspace)`** — session required, five-column shell:
 
@@ -304,7 +535,9 @@ move plus an untangling.
 | `/new/[[...id]]`     | create; the id is a **fork source**|
 | `/posts/[[...id]]`   | library, optionally series-scoped  |
 | `/series/[id]/edit`  | series settings                    |
+| `/browse`, `/browse/[id]` | your own library, searchable  |
 | `/notes`, `/playground`, `/dashboard` | tools             |
+| `/tutorial`          | help — see the note above          |
 
 The win: `/view/[id]` stops booting a Redux store, a sidebar, and a Copilot
 panel it never uses. That is the crawled, shared, cacheable surface.
@@ -424,10 +657,11 @@ drafts," "pull the intro from the left into the right."
 
 ### 6.3 Thread persistence — decide before Phase 3
 
-The inline copilot thread is **ephemeral by design**
-(`CopilotPanel/copilotStorage.ts`). If the chatbox becomes the primary way to
-act, that thread is the audit log and the undo trail. It needs to be persisted,
-per-user and per-workspace.
+~~The inline copilot thread is **ephemeral by design**.~~ **Corrected during
+implementation:** the panel already persisted to `localStorage`. The real
+defects were that storage is *per-browser* rather than per-user, and does not
+sync across devices. If the chatbox becomes the primary way to act, that thread
+is the audit log and the undo trail, so it has to follow the user.
 
 This is a schema decision. It is cheap now and expensive after users have
 started relying on the thread as their history. **Phase 3 is the point of no
@@ -520,6 +754,24 @@ But this is a product call and it gates Phase 4.
 If a user closes the tab with two panes open, do they come back? *Recommendation:
 yes, per-user in IndexedDB* — it is what makes panes feel like a workspace rather
 than a transient layout. Adds a hydration path to Phase 2 worth ~half a day.
+
+> **DECIDED 31 Jul 2026: yes — IndexedDB, keyed per user, device-scoped.** The
+> record is `{ panes, focusedPaneId, splitRatio }` in a `workspaces` store, id =
+> the user's id or `"guest"`. Not the cloud: a split that fits a desktop does
+> not fit a laptop, and a guest with no account still has documents and so still
+> has a workspace. The split ratio moved out of `WorkspacePanes`' `useState` and
+> into `ui.workspace` rather than getting a second storage path.
+>
+> Written by a debounced Redux middleware (`store/workspacePersistence.ts`),
+> read back on entering the workspace, and gated on `ui.workspaceHydrated` —
+> **not** `ui.initialized`, which is the end of a bootstrap that awaits the
+> session, the posts and the series over the network. The seam then replays the
+> URL through the ordinary `openPane`, so the reload case and the deep-link case
+> are the Phase 5 reducer's decision and not a second code path's.
+>
+> A stored record is treated as untrusted (`lib/workspaceRestore.ts`): clamped
+> to `MAX_PANES`, deduped so §5.2 survives a restore, focus re-pointed at a
+> surviving pane, ratio clamped.
 
 ---
 

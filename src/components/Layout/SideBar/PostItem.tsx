@@ -14,7 +14,7 @@ import { File, Pencil, Save } from "lucide-react";
 import { type RootState, useSelector } from "@/store";
 import {
   selectChildPostsByParent,
-  selectFocusedPane,
+  selectPaneRootedAt,
 } from "@/store/selectors/layoutSelectors";
 import type { Post } from "@/types";
 import { SafeNavigationLink } from "./SafeNavigationLink";
@@ -95,30 +95,40 @@ export const PostItem = memo(
     const children = childMap.get(post.id) ?? EMPTY_CHILDREN;
     const hasTabs = children.length > 0;
 
-    // When this post is what the focused pane is rooted at, that pane carries
-    // the live active tab; unsaved state is global and keyed by document.
+    // The pane this post is open in — *any* pane, not just the focused one.
+    // With two panes, asking only about focus marks one of the two open posts
+    // and leaves the other looking closed, and it makes a sub-tab click
+    // ambiguous (see `selectPaneRootedAt`).
     //
     // `openDirtyIds` stays null for every other post rather than being read
     // unconditionally: a stable null keeps the whole sidebar off the re-render
     // path of every keystroke in the open editor.
-    const isOpenRoot = useSelector(
-      (state: RootState) => selectFocusedPane(state)?.rootId === post.id,
+    const openPaneId = useSelector(
+      (state: RootState) => selectPaneRootedAt(state, post.id)?.id ?? null,
     );
-    const activeTabId = useSelector((state: RootState) => {
-      const pane = selectFocusedPane(state);
-      return pane?.rootId === post.id ? pane.activeTabId : null;
-    });
+    const isOpenRoot = openPaneId !== null;
+    const activeTabId = useSelector(
+      (state: RootState) =>
+        selectPaneRootedAt(state, post.id)?.activeTabId ?? null,
+    );
     const openDirtyIds = useSelector((state: RootState) =>
-      selectFocusedPane(state)?.rootId === post.id ? state.ui.dirtyDocIds : null
+      selectPaneRootedAt(state, post.id) ? state.ui.dirtyDocIds : null
     );
 
     const doc = post;
     const docName = doc?.name || "Untitled";
     // The first tab's label can differ from the post title; fall back to it.
     const rootTabLabel = doc?.tabLabel ?? docName;
-    const isViewing = pathname === `/view/${post.id}`;
+    // "Open in a pane", not "named by the address bar": with two panes the URL
+    // can only name one of them, so `ui.workspace` is the only thing that can
+    // answer for both. The `/edit` check stays as a fallback for the beat
+    // between a navigation landing and the deep-link seam dispatching
+    // `openPane`, when no pane is rooted here yet and the row would otherwise
+    // flash unselected. There is no `/view` fallback any more: after Phase 4
+    // that route left the workspace group entirely, and a sidebar row must
+    // never send the user to it.
     const isEditing = pathname === `/edit/${post.id}`;
-    const isSelected = isViewing || isEditing;
+    const isSelected = isOpenRoot || isEditing;
     // The post row renames the post title (`name`); the first sub-tab (same id)
     // renames `tabLabel`. Disambiguate by field so only one input shows.
     const isRenaming = rename.renamingId === post.id &&
@@ -197,17 +207,31 @@ export const PostItem = memo(
     }, [run, post.id]);
 
     // Modifier-only selection: Ctrl/Cmd or Shift click selects this row and
-    // suppresses navigation; a plain click clears any selection and navigates.
+    // suppresses navigation; a plain click opens the post in the workspace.
+    //
+    // The open goes through `document.open` rather than being left to the href,
+    // and the difference is not cosmetic: the command dispatches `openPane`
+    // *before* it pushes, so the duplicate-open guard gets to decide. Opening a
+    // post the other pane already holds then moves focus — whereas a bare
+    // navigation to a path the address bar may already hold can be a no-op, and
+    // the click would do nothing. It also states the mode instead of inheriting
+    // whatever the focused pane was last left in.
     const handleRowClick = useCallback(
       (e: React.MouseEvent) => {
-        if (!onSelectClick) return;
-        const consumed = onSelectClick(post.id, e);
-        if (consumed) {
+        if (onSelectClick?.(post.id, e)) {
           e.preventDefault();
           e.stopPropagation();
+          return;
         }
+        // A modified or non-primary click is the browser's to handle — new tab,
+        // new window, "copy link" — against the href above.
+        if (
+          e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey
+        ) return;
+        e.preventDefault();
+        run(documentCommands.open, { id: post.id, mode: "write" });
       },
-      [onSelectClick, post.id],
+      [onSelectClick, post.id, run],
     );
 
     // Native drag reorder: report before/after based on the cursor's position
@@ -230,9 +254,15 @@ export const PostItem = memo(
       [onReorderDrop, post.id],
     );
 
+    // Still an anchor, so middle-click and "open in new window" work and the
+    // row announces where it leads — but it leads into the workspace now.
+    // Pointing it at `/view/[id]` used to be harmless, because that route
+    // rendered inside the same five-column shell; Phase 4 moved it to
+    // `(public)`, which boots no store and no sidebar, so the old href quietly
+    // became "leave the app, discarding both panes".
     const linkProps = isRenaming ? {} : {
       component: SafeNavigationLink,
-      href: isEditing ? `/edit/${post.id}` : `/view/${post.id}`,
+      href: `/edit/${post.id}`,
     };
 
     const showSubTabs = sidebarOpen && hasTabs && isExpanded;
@@ -453,6 +483,7 @@ export const PostItem = memo(
             tabs={tabEntries}
             activeTabId={activeTabId}
             isOpenRoot={isOpenRoot}
+            paneId={openPaneId}
             rootTabId={post.id}
             itemActions={itemActions}
           />

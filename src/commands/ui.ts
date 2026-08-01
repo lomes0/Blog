@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { commandFailed, commandOk, defineCommand } from "./types";
-import { documentCommands } from "./document";
+import { paneCommands } from "./pane";
 
 /**
  * The store, reached by dynamic import rather than a top-level one.
@@ -70,27 +70,29 @@ type UiModeParams = z.infer<typeof modeParams>;
 /**
  * Read/edit switch for whatever is currently focused.
  *
- * Distinct from `document.open({ id, mode })` because it takes no id: it is the
- * ⌘E affordance, whose whole meaning is "this one, the other way". Today that
- * resolves to a navigation between `/view` and `/edit`; in Phase 5 it becomes
- * `pane.setMode` and stops navigating at all (plan §4.4). Call sites that go
- * through here need no edit when that happens.
+ * Distinct from `pane.setMode` because it takes no pane: it is the ⌘E
+ * affordance, whose whole meaning is "this one, the other way".
+ *
+ * Phase 1 said this "resolves to a navigation between `/view` and `/edit`; in
+ * Phase 5 it becomes `pane.setMode` and stops navigating at all", and that every
+ * call site would need no edit when it did. That is what happened — the change
+ * is the two lines below. `CommandPalette.tsx`, which owned the
+ * `router.push('/view'|'/edit')` this whole plan set out to kill, was already
+ * going through here and did not move.
  */
 const setMode = defineCommand<UiModeParams>({
   id: "ui.setMode",
   title: "Switch read/edit mode",
   description:
-    "Show the document that is currently open in reading or editing mode. " +
-    "Acts on whatever is focused; use document.open to switch mode on a " +
-    "specific post.",
+    "Show the document that is currently open for reading or for editing. " +
+    "Acts on whatever pane is focused; use pane.setMode to name a pane.",
   params: modeParams,
   effect: "read",
   scopes: ["workspace", "document"],
   available: (ctx) => ctx.focusedDocumentId !== null,
   run: async (ctx, { mode }) => {
-    const id = ctx.focusedDocumentId;
-    if (!id) return commandFailed("No document is open.");
-    return documentCommands.open.run(ctx, { id, mode });
+    if (!ctx.focusedDocumentId) return commandFailed("No document is open.");
+    return paneCommands.setMode.run(ctx, { mode });
   },
 });
 

@@ -12,13 +12,20 @@
  *    Phase 3 tool executor can call exactly what a button calls.
  */
 import { documentCommands } from "./document";
+import { paneCommands } from "./pane";
 import { seriesCommands } from "./series";
 import { uiCommands } from "./ui";
 import { workspaceCommands } from "./workspace";
 import type { ErasedCommand } from "./types";
 
 export * from "./types";
-export { documentCommands, seriesCommands, uiCommands, workspaceCommands };
+export {
+  documentCommands,
+  paneCommands,
+  seriesCommands,
+  uiCommands,
+  workspaceCommands,
+};
 
 /**
  * Every command, type-erased so they fit in one list.
@@ -29,6 +36,7 @@ export { documentCommands, seriesCommands, uiCommands, workspaceCommands };
  */
 export const commandRegistry: readonly ErasedCommand[] = [
   ...Object.values(documentCommands),
+  ...Object.values(paneCommands),
   ...Object.values(seriesCommands),
   ...Object.values(uiCommands),
   ...Object.values(workspaceCommands),

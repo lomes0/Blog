@@ -26,6 +26,12 @@ import { useAsyncEffect } from "@/hooks/useAsyncEffect";
 import { selectPaneById } from "@/store/selectors/layoutSelectors";
 
 interface TabbedDocumentEditorProps {
+  /**
+   * The pane this editor renders. Owned by `ui.workspace` and passed in — it
+   * used to be minted here, which made "one pane per mounted editor" true by
+   * construction and therefore made a second pane impossible to express.
+   */
+  paneId: string;
   rootId: string;
 }
 
@@ -33,30 +39,19 @@ interface TabbedDocumentEditorProps {
 const EMPTY_TAB_IDS: string[] = [];
 
 const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
+  paneId,
   rootId,
 }) => {
   const dispatch = useDispatch();
-  // This editor owns one pane for its whole lifetime. The id is minted here
-  // rather than in the reducer so the component can address its own pane
-  // without reading focus back out of the store — which is what stops the
-  // sidebar and the rail from having to guess which viewport they mean.
-  const [paneId] = useState(() => uuidv4());
   const pane = useSelector((state) => selectPaneById(state, paneId));
   const tabIds = pane?.tabIds ?? EMPTY_TAB_IDS;
   const activeTabId = pane?.activeTabId ?? null;
+  const mode = pane?.mode ?? "write";
+  const isPaneFocused = useSelector(
+    (state) => state.ui.workspace.focusedPaneId === paneId,
+  );
   const dirtyDocIds = useSelector((state) => state.ui.dirtyDocIds);
   const user = useSelector((state) => state.user);
-
-  // Open the pane in the same commit as the route, before the tab fetch below.
-  // `tabIds` stays empty until that fetch lands, exactly as `clearTabs()` left
-  // it — but the rail and the Copilot now know which document is focused
-  // immediately instead of parsing it back out of the URL.
-  useEffect(() => {
-    dispatch(actions.openPane({ paneId, rootId, mode: "write" }));
-    return () => {
-      dispatch(actions.closePane(paneId));
-    };
-  }, [dispatch, paneId, rootId]);
 
   const setActiveEditorRef = useContext(SetActiveEditorContext);
   const { setTabBar } = useTopBarTabs();
@@ -344,8 +339,15 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
   );
 
   // Sync tab state into the top bar context whenever it changes.
+  //
+  // The top bar holds **one** strip, so only the focused pane publishes into it
+  // — the same rule as the toolbar and the `<title>` (plan §5.1). Clearing on
+  // cleanup rather than only on unmount is what hands the strip over cleanly:
+  // React runs every cleanup in a commit before every effect, so when focus
+  // moves the losing pane's `null` lands first and the winning pane's strip
+  // second, in one batch.
   useEffect(() => {
-    if (orderedTabs.length === 0) return;
+    if (!isPaneFocused || orderedTabs.length === 0) return;
     setTabBar({
       tabs: orderedTabs,
       activeTabId,
@@ -360,7 +362,9 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
       onReorder: handleReorder,
       onContextMenu: handleOpenContextMenu,
     });
+    return () => setTabBar(null);
   }, [
+    isPaneFocused,
     orderedTabs,
     activeTabId,
     dirtyDocIds,
@@ -376,9 +380,6 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     handleOpenContextMenu,
   ]);
 
-  // Clear the top bar tab context on unmount only.
-  useEffect(() => () => setTabBar(null), [setTabBar]);
-
   return (
     <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
       <Box sx={{ display: "flex", flex: 1 }}>
@@ -386,12 +387,13 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
           {tabIds.map((tabId) => (
             <EditorTabPanel
               key={tabId}
+              paneId={paneId}
               docId={tabId}
               rootId={rootId}
+              mode={mode}
               isActive={tabId === activeTabId}
-              onEditorReady={tabId === activeTabId
-                ? handleEditorReady
-                : undefined}
+              isFocused={isPaneFocused && tabId === activeTabId}
+              onEditorReady={handleEditorReady}
             />
           ))}
         </Box>

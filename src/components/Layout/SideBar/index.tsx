@@ -225,6 +225,7 @@ const SideBar: React.FC = () => {
         contextMenu={postMenu.contextMenu}
         onClose={postMenu.close}
         onEdit={postMenu.onEdit}
+        onOpenToSide={postMenu.onOpenToSide}
         onRename={postMenu.onRename}
         onDelete={postMenu.onDelete}
       />

@@ -11,15 +11,17 @@ import {
   Typography,
 } from "@mui/material";
 import {
-  ArrowLeft,
   BookOpen,
+  Eye,
   FileText,
   House,
   LayoutDashboard,
   Library,
   PenLine,
+  Pencil,
   Plus,
   Search,
+  SquareSplitHorizontal,
   StickyNote,
   X,
 } from "lucide-react";
@@ -28,6 +30,8 @@ import { shallowEqual } from "react-redux";
 import { postsSelectors, useSelector } from "@/store";
 import type { RootState } from "@/store";
 import { selectFocusedPane } from "@/store/selectors/layoutSelectors";
+import { paneCommands, uiCommands } from "@/commands";
+import { useCommandRun } from "@/commands/CommandProvider";
 import { useTopBarActions } from "@/contexts/TopBarActionsContext";
 import { useTopBarTabs } from "@/contexts/TopBarTabsContext";
 import { ICON_SIZE } from "@/theme/icons";
@@ -99,16 +103,31 @@ const EditorTopBar: React.FC = () => {
     [pathname],
   );
 
+  // One flag, not three. `isViewPage`/`isDocPage` distinguished the two halves
+  // of a view/edit split that this bar can no longer see: `/view/[id]` moved to
+  // `(public)` in Phase 4 and renders `PublicShell`, which does not mount this
+  // component — so `segments[0] === "view"` was permanently false and
+  // `isDocPage` was an alias for `isEditPage` that read as if it weren't.
   const isEditPage = segments[0] === "edit";
-  const isViewPage = segments[0] === "view";
-  const isDocPage = isEditPage || isViewPage;
   // Which crumbs to draw is a property of the route; *which document* they name
   // is not — that comes from the focused pane, so a second pane would move the
   // breadcrumb with focus rather than with the address bar (plan §2.3).
   const focusedRootId = useSelector(
     (state: RootState) => selectFocusedPane(state)?.rootId ?? null,
   );
-  const docId = isDocPage ? focusedRootId ?? undefined : undefined;
+  const docId = isEditPage ? focusedRootId ?? undefined : undefined;
+
+  // The pane controls: read/write and the split. Both act on the focused pane,
+  // which is why neither reads the pathname — with two panes open the address
+  // bar cannot say which one is meant (plan §4.4).
+  const run = useCommandRun();
+  const focusedMode = useSelector(
+    (state: RootState) => selectFocusedPane(state)?.mode ?? null,
+  );
+  const paneCount = useSelector(
+    (state: RootState) => state.ui.workspace.panes.length,
+  );
+  const isReading = focusedMode === "read";
 
   const urlSeriesId = React.useMemo(() => {
     if (
@@ -238,8 +257,14 @@ const EditorTopBar: React.FC = () => {
         });
         break;
 
-      case "view": {
-        const viewId = segments[1];
+      // Was `case "view"`, and that was the bug: this bar only ever mounts
+      // inside the workspace shell (`AppLayoutContent`), so once Phase 4 moved
+      // `/view/[id]` into `(public)` the branch became unreachable — while
+      // `/edit`, the route the user is on most of the time, had no case at all
+      // and fell through to `default:` for a single crumb reading "edit".
+      // The block was written for the editor throughout; only its label was
+      // wrong. Its last crumb pointed at `/view/[id]`, which now leaves the app.
+      case "edit": {
         items.push({
           label: "Posts",
           href: "/posts",
@@ -254,9 +279,13 @@ const EditorTopBar: React.FC = () => {
             ),
           });
         }
+        // `docId`, not `segments[1]`: every other value here is read off the
+        // focused pane (see the note by `docId`), so taking the href off the
+        // address bar instead would name a different document than the label
+        // beside it for as long as the URL projection is catching up.
         items.push({
-          label: viewId ? docName || "Post" : "Post",
-          href: viewId ? `/view/${viewId}` : "/posts",
+          label: docName || "Post",
+          href: docId ? `/edit/${docId}` : "/posts",
         });
         break;
       }
@@ -290,9 +319,10 @@ const EditorTopBar: React.FC = () => {
     docSeriesId,
     docSeriesTitle,
     docName,
+    docId,
   ]);
 
-  const hasTabs = isDocPage && tabBar && tabBar.tabs.length > 1;
+  const hasTabs = isEditPage && tabBar && tabBar.tabs.length > 1;
 
   return (
     <Box
@@ -328,23 +358,15 @@ const EditorTopBar: React.FC = () => {
           minWidth: 0,
         }}
       >
-        {/* Edit pages: back-to-view button (view pages have their own Edit btn) */}
-        {isEditPage && docId && (
-          <Tooltip title="Back to view">
-            <IconButton
-              size="small"
-              component={RouterLink}
-              href={`/view/${docId}`}
-              aria-label="Back to view"
-              sx={{ flexShrink: 0, color: "text.secondary", mr: 0.25 }}
-            >
-              <ArrowLeft size={ICON_SIZE.dense} strokeWidth={2} />
-            </IconButton>
-          </Tooltip>
-        )}
+        {/* No back-to-view button. It was the last survivor of view/edit being
+            a *route* decision: it navigated to `/view/[id]`, which since Phase 4
+            leaves the workspace and discards the pane layout on the way out.
+            Read mode is a property of the focused pane now, and the toggle for
+            it is in this bar's right region — see `pane.setMode` and plan §4.4.
+            The public page is still reachable, by the share link that names it. */}
 
-        {/* Edit/view pages: compact document name */}
-        {isDocPage
+        {/* Doc pages: compact document name */}
+        {isEditPage
           ? (
             <Box
               sx={{
@@ -740,8 +762,61 @@ const EditorTopBar: React.FC = () => {
         </Box>
       </Box>
 
-      {/* Right region — empty, and the same share as the left one. */}
-      <Box sx={{ flex: "1 1 0", minWidth: 0 }} />
+      {
+        /* Right region — the focused pane's own controls, and the same share as
+          the left one so the search pill stays centred. */
+      }
+      <Box
+        sx={{
+          flex: "1 1 0",
+          minWidth: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          gap: 0.25,
+        }}
+      >
+        {isEditPage && focusedMode && (
+          <Tooltip
+            title={isReading ? "Edit this post" : "Read this post"}
+          >
+            <IconButton
+              size="small"
+              aria-label={isReading ? "Switch to editing" : "Switch to reading"}
+              aria-pressed={isReading}
+              onClick={() =>
+                run(uiCommands.setMode, {
+                  mode: isReading ? "write" : "read",
+                })}
+              sx={{
+                flexShrink: 0,
+                color: isReading ? "primary.main" : "text.secondary",
+                "&:hover": { color: "primary.main" },
+              }}
+            >
+              {isReading
+                ? <Pencil size={ICON_SIZE.dense} />
+                : <Eye size={ICON_SIZE.dense} />}
+            </IconButton>
+          </Tooltip>
+        )}
+        {isEditPage && paneCount > 1 && (
+          <Tooltip title="Close the focused pane">
+            <IconButton
+              size="small"
+              aria-label="Close the focused pane"
+              onClick={() => run(paneCommands.close, {})}
+              sx={{
+                flexShrink: 0,
+                color: "text.secondary",
+                "&:hover": { color: "primary.main" },
+              }}
+            >
+              <SquareSplitHorizontal size={ICON_SIZE.dense} />
+            </IconButton>
+          </Tooltip>
+        )}
+      </Box>
     </Box>
   );
 };

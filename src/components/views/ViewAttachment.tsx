@@ -23,8 +23,6 @@ import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
-import { actions, useDispatch } from "@/store";
-import { useErrorAnnounce } from "@/hooks/useErrorAnnounce";
 import { ICON_SIZE } from "@/theme/icons";
 
 interface ViewAttachmentProps {
@@ -50,8 +48,6 @@ const ViewAttachment: React.FC<ViewAttachmentProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [truncated, setTruncated] = useState(false);
-  const dispatch = useDispatch();
-  const errorAnnounce = useErrorAnnounce();
 
   const canPreview = isTextFile(mimetype) && size < 1024 * 1024; // 1MB max
   const language = detectLanguageFromFilename(filename);
@@ -88,12 +84,15 @@ const ViewAttachment: React.FC<ViewAttachmentProps> = ({
 
       setContent(text);
     } catch (err) {
-      errorAnnounce("Failed to fetch attachment content", err);
+      // No `useErrorAnnounce` here: the announcement queue is Redux, and this
+      // renders on the store-free public surface (plan §8.1). The inline error
+      // below is the whole feedback path.
+      console.error("Failed to fetch attachment content", err);
       setError("Failed to load preview");
     } finally {
       setLoading(false);
     }
-  }, [url, canPreview, errorAnnounce]);
+  }, [url, canPreview]);
 
   useEffect(() => {
     if (expanded && content === null && !loading && !error) {
@@ -108,20 +107,21 @@ const ViewAttachment: React.FC<ViewAttachmentProps> = ({
   const handleDownload = (e: React.MouseEvent) => {
     e.stopPropagation();
     downloadFile(url, filename).catch((err) => {
-      errorAnnounce("Download failed", err);
+      console.error("Download failed", err);
+      setError("Download failed");
     });
   };
 
-  const handleOpenInSidebar = (e: React.MouseEvent) => {
+  /**
+   * Was `openAttachmentPreview`, which opened the store-backed
+   * `AttachmentDrawer`. That drawer is workspace chrome and the public surface
+   * has no store, so the file opens in its own tab instead — the same content,
+   * without a Redux slice behind it. The editor's own `AttachmentNode` still
+   * uses the drawer.
+   */
+  const handleOpenInTab = (e: React.MouseEvent) => {
     e.stopPropagation();
-    dispatch(
-      actions.openAttachmentPreview({
-        url,
-        filename,
-        mimetype,
-        nodeKey: null,
-      }),
-    );
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const highlightedContent = React.useMemo(() => {
@@ -181,13 +181,15 @@ const ViewAttachment: React.FC<ViewAttachmentProps> = ({
             <Download size={ICON_SIZE.dense} />
           </IconButton>
         </Tooltip>
-        {canPreview && (
-          <Tooltip title="Open in sidebar">
-            <IconButton size="small" onClick={handleOpenInSidebar}>
-              <ExternalLink size={ICON_SIZE.dense} />
-            </IconButton>
-          </Tooltip>
-        )}
+        <Tooltip title="Open in new tab">
+          <IconButton
+            size="small"
+            aria-label={`Open ${filename} in a new tab`}
+            onClick={handleOpenInTab}
+          >
+            <ExternalLink size={ICON_SIZE.dense} />
+          </IconButton>
+        </Tooltip>
         {canPreview && (
           <Tooltip title={expanded ? "Collapse" : "Expand"}>
             <IconButton size="small">

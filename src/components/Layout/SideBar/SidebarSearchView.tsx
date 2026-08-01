@@ -112,13 +112,12 @@ export const SidebarSearchView: React.FC<SidebarSearchViewProps> = (
           )
           : (
             results.map((r) => {
-              const active = pathname === `/edit/${r.id}` ||
-                pathname === `/view/${r.id}`;
+              const active = pathname === `/edit/${r.id}`;
               return (
                 <Box
                   key={r.id}
                   component={SafeNavigationLink}
-                  href={`/view/${r.id}`}
+                  href={`/edit/${r.id}`}
                   sx={{
                     display: "block",
                     textDecoration: "none",

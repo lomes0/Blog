@@ -1,33 +1,34 @@
 "use client";
 import { User } from "@/types";
-import { actions, useDispatch, useSelector } from "@/store";
 import RouterLink from "next/link";
-import { memo } from "react";
-import { signOut } from "next-auth/react";
+import { memo, useState } from "react";
 import UserActionMenu from "./UserActionMenu";
-import LoginButtons from "./LoginButtons";
+import UserSessionActions from "./UserSessionActions";
 import {
   Avatar,
   Box,
-  Button,
   Card,
   CardActionArea,
   CardActions,
   CardContent,
   IconButton,
   Skeleton,
+  Snackbar,
   Typography,
 } from "@mui/material";
 import { Share2 } from "lucide-react";
 import { ICON_SIZE } from "@/theme/icons";
 
+/**
+ * Store-free on purpose: this renders on `/user/[id]`, which is in the
+ * `(public)` group and boots no Redux store (plan §8.1). The two reads it used
+ * to have are gone — `initialized` moved into {@link UserSessionActions}, which
+ * only mounts under `showActions`, and the copy-link announcement is a local
+ * snackbar rather than the global announcement queue.
+ */
 const UserCard: React.FC<{ user?: User; showActions?: boolean }> = memo(
   ({ user, showActions }) => {
-    const dispatch = useDispatch();
-    const logout = () => signOut();
-    const initialized = useSelector((state) => state.ui.initialized);
-    const showLogout = showActions && user;
-    const showLogin = showActions && initialized && !user;
+    const [notice, setNotice] = useState<string | null>(null);
 
     const handleShare = async () => {
       const shareData = {
@@ -38,12 +39,12 @@ const UserCard: React.FC<{ user?: User; showActions?: boolean }> = memo(
       try {
         await navigator.share(shareData);
       } catch {
-        navigator.clipboard.writeText(shareData.url);
-        dispatch(
-          actions.announce({
-            message: { title: "Link copied to clipboard" },
-          }),
-        );
+        try {
+          await navigator.clipboard.writeText(shareData.url);
+          setNotice("Link copied to clipboard");
+        } catch {
+          setNotice("Failed to copy link to clipboard");
+        }
       }
     };
 
@@ -101,12 +102,7 @@ const UserCard: React.FC<{ user?: User; showActions?: boolean }> = memo(
             </CardContent>
           </CardActionArea>
           <CardActions sx={{ height: 50 }}>
-            {showLogout && (
-              <Button size="small" onClick={logout}>
-                Logout
-              </Button>
-            )}
-            {showLogin && <LoginButtons size="small" />}
+            {showActions && <UserSessionActions user={user} />}
             <Box sx={{ ml: "auto !important" }}>
               {showActions && user && <UserActionMenu user={user} />}
               {user && (
@@ -154,9 +150,17 @@ const UserCard: React.FC<{ user?: User; showActions?: boolean }> = memo(
               />
             )}
         </CardActionArea>
+        <Snackbar
+          open={notice !== null}
+          autoHideDuration={4000}
+          onClose={() => setNotice(null)}
+          message={notice}
+        />
       </Card>
     );
   },
 );
+
+UserCard.displayName = "UserCard";
 
 export default UserCard;

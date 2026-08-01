@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react";
 import { documentCommands } from "@/commands";
 import { useCommandRun } from "@/commands/CommandProvider";
 import { Post, Series, User } from "@/types";
+import { DocumentURLProvider } from "@/contexts/DocumentURLContext";
 import { useSelector } from "@/store";
 import { selectStandalonePosts } from "@/store/selectors/postsSelectors";
 import { comparePostsByRank } from "@/lib/documentOrder";
@@ -91,7 +92,9 @@ const PostsGrid: React.FC<{ posts: Post[]; user?: User }> = (
  *                 (matching the sidebar's Notes-then-Projects split) while
  *                 ranking both in one shared space.
  */
-const PostsView: React.FC<PostsViewProps> = ({ series, user: serverUser }) => {
+const PostsViewContent: React.FC<PostsViewProps> = (
+  { series, user: serverUser },
+) => {
   const isSeries = !!series;
   // Kept for `refresh()` only — navigation goes through the command registry.
   const router = useRouter();
@@ -353,5 +356,35 @@ const PostsView: React.FC<PostsViewProps> = ({ series, user: serverUser }) => {
     </Box>
   );
 };
+
+/**
+ * Every card below this point links into the **workspace**, not to the public
+ * page.
+ *
+ * `DocumentURLContext`'s default is `/view/[id]`, and that default is right
+ * where it is still used: `User/UserDocuments` renders the same `DocumentCard`
+ * on `/user/[id]`, which is a `(public)` route showing someone's published
+ * posts. It was wrong here. `/posts` lists `postsSelectors` — the session's own
+ * library — so a card is a door into the editor, and after Phase 4 sending it to
+ * `/view/[id]` left the workspace shell entirely.
+ *
+ * Provided here rather than in `PostsGrid` because the same cards render through
+ * two other paths on this route (`SeriesSection` → `SeriesGroupCard`, and the
+ * list views), and one provider at the top of the route covers all of them —
+ * whereas a per-grid provider is one more place to forget.
+ *
+ * The href alone is enough, with no `document.open` alongside it: there are no
+ * panes to disambiguate on `/posts`. `closeAllPanes` fires when the editor
+ * unmounts, so the workspace is empty here and the deep-link seam mints the
+ * first pane from the URL. The pane then keeps whatever mode it is given, which
+ * is the same bargain the sidebar's rail items strike.
+ */
+const workspaceDocumentUrl = (doc: Post) => `/edit/${doc.id}`;
+
+const PostsView: React.FC<PostsViewProps> = (props) => (
+  <DocumentURLProvider getDocumentUrl={workspaceDocumentUrl}>
+    <PostsViewContent {...props} />
+  </DocumentURLProvider>
+);
 
 export default PostsView;

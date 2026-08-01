@@ -128,9 +128,11 @@ export const CollapsedRail: React.FC<CollapsedRailProps> = ({
         if (!post) return null;
         const doc = post;
         const name = doc?.name || "Untitled";
-        const href = `/view/${post.id}`;
-        const selected = pathname === href ||
-          pathname === `/edit/${post.id}`;
+        // `/edit`, not `/view`: the rail is workspace chrome, and since Phase 4
+        // `/view/[id]` is the store-free public page — a rail item pointing
+        // there would close the panes the rail is drawn beside.
+        const href = `/edit/${post.id}`;
+        const selected = pathname === href;
         return (
           <RailItem
             key={`post-${post.id}`}

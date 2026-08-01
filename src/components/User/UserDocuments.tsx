@@ -92,7 +92,12 @@ const UserDocuments: React.FC<{ documents?: Post[]; pages?: number }> = (
                   key={document.id}
                   size={{ xs: 12, sm: 6, md: 4 }}
                 >
-                  <DocumentCard post={document} />
+                  {
+                    /* No owner action menu: this profile is public and renders
+                      without a store, and with no session the menu was empty
+                      anyway. */
+                  }
+                  <DocumentCard post={document} showActions={false} />
                 </Grid>
               ))}
             </Grid>

@@ -1,4 +1,5 @@
 import { DocumentType as PrismaDocumentType } from "@prisma/client";
+import { validate } from "uuid";
 import { prisma } from "@/lib/prisma";
 import { movePost, rankForAppendSeries, reRankIntoRoot } from "./ordering";
 import {
@@ -149,6 +150,7 @@ export async function findAllSeries(): Promise<Series[]> {
 export async function findPublicSeriesById(
   id: string,
 ): Promise<Series | null> {
+  if (!validate(id)) return null;
   const series = await prisma.series.findFirst({
     where: { id, posts: { some: publiclyVisiblePosts } },
     select: {
@@ -194,8 +196,13 @@ export async function findPublicSeriesById(
  * Unfiltered: it returns unpublished and private posts. Never hand the result
  * to a caller who has not been proved to be `series.authorId` — use
  * {@link findPublicSeriesById} for that.
+ *
+ * A malformed id is `null`, not a throw. `Series.id` is a Postgres `uuid`, so
+ * handing Prisma `/posts/nonsense` raised `Error creating UUID` from inside the
+ * query — a 500 out of the page's `notFound()` branch, before it could run.
  */
 export async function findSeriesById(id: string): Promise<Series | null> {
+  if (!validate(id)) return null;
   const series = await prisma.series.findUnique({
     where: { id },
     select: {

@@ -16,7 +16,12 @@ import {
   selectPaneDescriptions,
 } from "@/store/selectors/layoutSelectors";
 import { useLayoutMode } from "@/contexts/LayoutModeContext";
-import { type CommandContext, type RunCommand, runCommand } from "./types";
+import {
+  type CommandContext,
+  type CommandRouter,
+  type RunCommand,
+  runCommand,
+} from "./types";
 
 /**
  * Two contexts, not one, and the split is the point.
@@ -58,10 +63,25 @@ export const CommandProvider: React.FC<{ children: React.ReactNode }> = (
   const panes = useSelector(selectPaneDescriptions);
   const resolvedScheme = mode === "system" ? systemMode : mode;
 
+  // Next's router plus `rewrite`, which it has no equivalent of: a URL change
+  // that is not a navigation. Wrapping rather than passing `router` through also
+  // means a command sees exactly the four methods `CommandRouter` declares.
+  const commandRouter = useMemo<CommandRouter>(() => ({
+    push: (href) => router.push(href),
+    replace: (href) => router.replace(href),
+    refresh: () => router.refresh(),
+    rewrite: (href) => {
+      // Guarded because commands are callable from the Copilot's executor, and
+      // nothing structurally stops that running where there is no history.
+      if (typeof window === "undefined") return;
+      window.history.replaceState(null, "", href);
+    },
+  }), [router]);
+
   const context = useMemo<CommandContext>(() => ({
     dispatch,
     user,
-    router,
+    router: commandRouter,
     focusedDocumentId,
     focusedDocumentMode,
     theme: { resolved: resolvedScheme, set: setMode },
@@ -70,7 +90,7 @@ export const CommandProvider: React.FC<{ children: React.ReactNode }> = (
   }), [
     dispatch,
     user,
-    router,
+    commandRouter,
     focusedDocumentId,
     focusedDocumentMode,
     resolvedScheme,

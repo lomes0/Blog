@@ -15,18 +15,43 @@ const openParams = z.object({
 });
 type DocumentOpenParams = z.infer<typeof openParams>;
 
+/**
+ * Since Phase 5 this drives **workspace state first** and the URL second.
+ *
+ * Before, it only pushed a path and let the routing seam replay it as a pane.
+ * That stopped working once a second pane existed: opening a post that the
+ * *other* pane is already showing has to move focus, and `router.push` of a
+ * path the address bar already holds is a no-op — so the click did nothing. The
+ * dispatch is what actually decides (`openPane` holds the duplicate-open
+ * invariant of plan §5.2); the push only keeps the address bar honest, and
+ * remains the cold-load path for a handle whose post is not in the store yet.
+ *
+ * `mode` is a pane mode now, not a route. `/view/[id]` is the public page and is
+ * reached by links, never by this command — see plan §4.4.
+ */
 const open = defineCommand<DocumentOpenParams>({
   id: "document.open",
   title: "Open document",
   description:
-    "Show a post in the workspace, in reading or editing mode. `id` is a " +
+    "Show a post in the workspace, for reading or for editing. `id` is a " +
     "document id (the same id used in the '<id>.md' paths of the file tools) " +
-    "or the post's handle.",
+    "or the post's handle. A post already open in a pane is focused rather " +
+    "than opened twice.",
   params: openParams,
   effect: "read",
   scopes: ["workspace", "document"],
   run: async (ctx, { id, mode = "write" }) => {
-    ctx.router.push(mode === "read" ? `/view/${id}` : `/edit/${id}`);
+    const { actions, postsSelectors, store } = await import("@/store");
+    // Panes are keyed by document id, so a handle has to be resolved before it
+    // can become one. An unresolvable handle is left to the routing seam, which
+    // fetches it after the navigation below.
+    const lowered = id.toLowerCase();
+    const rootId = postsSelectors.selectById(store.getState(), id)?.id ??
+      postsSelectors.selectAll(store.getState()).find(
+        (post) => post.handle?.toLowerCase() === lowered,
+      )?.id;
+    if (rootId) ctx.dispatch(actions.openPane({ rootId, mode }));
+    ctx.router.push(`/edit/${id}`);
     return commandOk();
   },
 });

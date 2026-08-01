@@ -13,6 +13,8 @@ interface PostActionsProps {
   post?: Post;
   user?: User;
   isLoading?: boolean;
+  /** See `PostCard`'s `showActions`. */
+  showActions?: boolean;
 }
 
 /**
@@ -37,7 +39,12 @@ const PostActions: React.FC<PostActionsProps> = ({
   post,
   user,
   isLoading = false,
+  showActions = true,
 }) => {
+  // Nothing at all, not a skeleton: the caller has said this surface has no
+  // owner actions, so a placeholder would just be a hole in the card.
+  if (!showActions) return null;
+
   // Show skeleton during loading or when no document is available
   if (isLoading || !post) {
     return <ActionsSkeleton />;

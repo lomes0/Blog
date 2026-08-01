@@ -9,8 +9,28 @@ import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import ToolbarPlugin from "./plugins/ToolbarPlugin";
 import { editorConfig } from "./config";
 import { EditorPlugins } from "./plugins";
-import { MutableRefObject, RefCallback } from "react";
+import { MutableRefObject, RefCallback, useEffect } from "react";
 import { EditorRefPlugin } from "@lexical/react/LexicalEditorRefPlugin";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+
+/**
+ * Read mode, as a property of the live editor rather than of the route.
+ *
+ * `pane.mode` used to be `/view/[id]` vs `/edit/[id]` — a navigation, a second
+ * component tree and a remount, which threw away scroll position and undo
+ * history every time an author glanced at their own post (plan §4.4). Toggling
+ * `editable` on the mounted editor costs none of that.
+ *
+ * The initial value is also passed through `initialConfig` below, so the first
+ * paint is already correct and this only handles later flips.
+ */
+const EditableSync: React.FC<{ editable: boolean }> = ({ editable }) => {
+  const [editor] = useLexicalComposerContext();
+  useEffect(() => {
+    editor.setEditable(editable);
+  }, [editor, editable]);
+  return null;
+};
 
 const Editor: React.FC<{
   initialConfig: Partial<InitialConfigType>;
@@ -26,6 +46,7 @@ const Editor: React.FC<{
   onSave?: () => void | Promise<unknown>;
   onReset?: () => void;
   isActive?: boolean;
+  editable?: boolean;
 }> = (
   {
     initialConfig,
@@ -35,11 +56,15 @@ const Editor: React.FC<{
     onSave,
     onReset,
     isActive,
+    editable = true,
   },
 ) => {
   return (
-    <LexicalComposer initialConfig={{ ...editorConfig, ...initialConfig }}>
+    <LexicalComposer
+      initialConfig={{ ...editorConfig, ...initialConfig, editable }}
+    >
       <SharedHistoryContext>
+        <EditableSync editable={editable} />
         <ToolbarPlugin
           isActive={isActive}
           onReset={onReset}

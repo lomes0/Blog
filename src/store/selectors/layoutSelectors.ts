@@ -1,5 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { postsSelectors, type RootState } from "@/store";
+import { paneShowing } from "@/store/app";
 import { comparePostsByRank } from "@/lib/documentOrder";
 import type { PaneDescription } from "@/commands/types";
 import type { PaneMode, Post, WorkspacePane } from "@/types";
@@ -37,6 +38,39 @@ export const selectPaneById = (
   if (!paneId) return null;
   return state.ui.workspace.panes.find((pane) => pane.id === paneId) ?? null;
 };
+
+/**
+ * The pane rooted at a post, in **any** pane — "is this post open?", which is
+ * what the sidebar asks of every row it draws.
+ *
+ * Deliberately not "the focused pane, if it happens to be this post". With two
+ * panes that answer marks only one of the two open posts, and it makes a
+ * sidebar sub-tab click ambiguous: the row would switch the *focused* pane's
+ * active tab to a document that pane does not hold. Answering with the pane
+ * itself is what lets the caller act on the right one.
+ *
+ * At most one pane can match — one document, one pane (plan §5.2).
+ */
+export const selectPaneRootedAt = (
+  state: RootState,
+  postId: string,
+): WorkspacePane | null =>
+  state.ui.workspace.panes.find((pane) => pane.rootId === postId) ?? null;
+
+/**
+ * The pane showing a document as its root **or as one of its tabs** — "does the
+ * workspace hold this at all?".
+ *
+ * The wider question than {@link selectPaneRootedAt}, and the one the URL
+ * projection asks: the address bar can legitimately name a child tab, and a pane
+ * holding it is still a pane holding it. Delegates to the same predicate the
+ * duplicate-open guard uses, so there is one definition of "showing".
+ */
+export const selectPaneShowingDoc = (
+  state: RootState,
+  docId: string | null,
+): WorkspacePane | null =>
+  (docId ? paneShowing(state, docId) : undefined) ?? null;
 
 /**
  * The document the workspace is focused on — the active tab, falling back to

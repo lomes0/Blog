@@ -56,10 +56,10 @@ const idbConfig = {
   // migration; until someone writes one, this string stays.
   // See docs/guides/notes-indexeddb-origins.md.
   databaseName: "matheditor",
-  // 6 adds `copilotThreads`. Bumping the version is what runs
-  // `onupgradeneeded`, which creates any store in this list the database does
-  // not already have — existing stores and their contents are untouched.
-  version: 6,
+  // 7 adds `workspaces`; 6 added `copilotThreads`. Bumping the version is what
+  // runs `onupgradeneeded`, which creates any store in this list the database
+  // does not already have — existing stores and their contents are untouched.
+  version: 7,
   stores: [
     {
       name: "documents",
@@ -117,6 +117,14 @@ const idbConfig = {
         { name: "scope", keyPath: "scope" },
         { name: "updatedAt", keyPath: "updatedAt" },
       ],
+    },
+    {
+      // What is open, per user (plan §8.2). One record, id = the user's id or
+      // `"guest"` — a layout is a fact about a device, so unlike posts and
+      // threads this one has no cloud half to sync with.
+      name: "workspaces",
+      id: { keyPath: "id" },
+      indices: [{ name: "updatedAt", keyPath: "updatedAt" }],
     },
   ],
 };

@@ -14,11 +14,11 @@ import SplashScreen from "@/components/shared/SplashScreen";
 import DiffView from "@/components/Diff";
 import { postsSelectors, useSelector } from "@/store";
 import type { RootState } from "@/store";
-import { selectFocusedPane } from "@/store/selectors/layoutSelectors";
+import { selectPaneById } from "@/store/selectors/layoutSelectors";
 import { useDirtyTracking } from "./hooks/useDirtyTracking";
 import { usePostLoader } from "./hooks/usePostLoader";
 import { useSave } from "./hooks/useSave";
-import type { Post } from "@/types";
+import type { PaneMode, Post } from "@/types";
 import DocumentHeader from "./DocumentHeader";
 import { triggerSave } from "./saveRegistry";
 
@@ -70,9 +70,16 @@ function ensureValidDocumentData(doc: Post): Post {
 }
 
 interface EditorTabPanelProps {
+  /** The pane this panel belongs to — its own `diffOpen`, not the focused one's. */
+  paneId: string;
   docId: string;
   rootId: string;
+  /** How this pane is showing its document. `read` makes Lexical non-editable. */
+  mode: PaneMode;
+  /** The active tab **within this pane**. Drives `display`, nothing else. */
   isActive: boolean;
+  /** The active tab of the *focused* pane. Drives everything singular. */
+  isFocused: boolean;
   onEditorReady?: (ref: React.RefObject<LexicalEditor | null>) => void;
 }
 
@@ -81,22 +88,39 @@ interface EditorTabPanelProps {
  * render) and hides via CSS when inactive so undo history is preserved across
  * tab switches. Each panel registers its own save callback in saveRegistry so
  * triggerSave() can save all open tabs at once.
+ *
+ * ## `isActive` vs `isFocused` (plan §5.1)
+ *
+ * This used to be one flag, because with a single pane "the visible one" and
+ * "the one being acted on" were the same panel. With two panes they are not,
+ * and every singleton in the editor hung off the wrong half of that:
+ *
+ * - **`isActive`** — the active tab of *this* pane. It gates `display`, and
+ *   only that. `display: none` rather than unmounting is what preserves undo
+ *   history across a tab switch (§1.1), and split view does not change it.
+ * - **`isFocused`** — the active tab of the *focused* pane, so at most one
+ *   panel in the whole app has it. It gates the things that must be singular:
+ *   the `ActiveEditorContext` ref (which is what the Copilot writes through),
+ *   the toolbar's portal into the top bar's one slot, and the `<title>`.
  */
 const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
+  paneId,
   docId,
   rootId,
+  mode,
   isActive,
+  isFocused,
   onEditorReady,
 }) => {
   const editorRef = useRef<LexicalEditor>(null);
 
   useEffect(() => {
-    if (isActive) onEditorReady?.(editorRef);
-  }, [isActive, onEditorReady]);
-  // Per-pane from Phase 2 on: two panes must be able to disagree about
-  // whether a diff is showing. One pane today, so this is the focused one.
+    if (isFocused) onEditorReady?.(editorRef);
+  }, [isFocused, onEditorReady]);
+  // This pane's diff, not the focused pane's: two panes must be able to
+  // disagree about whether a revision comparison is showing.
   const showDiff = useSelector((state) =>
-    selectFocusedPane(state)?.diffOpen ?? false
+    selectPaneById(state, paneId)?.diffOpen ?? false
   );
 
   // Stable reference so the save hook isn't rebuilt on every unrelated change.
@@ -165,7 +189,8 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
       {isLoading && !documentForEditor && <SplashScreen title="Loading…" />}
       {documentForEditor && (
         <>
-          {isActive && <title>{documentForEditor.name}</title>}
+          {/* One tab in one pane names the page. */}
+          {isFocused && <title>{documentForEditor.name}</title>}
           <DocumentHeader docId={docId} rootId={rootId} />
           {showDiff && isActive && <DiffView />}
           <ConnectedEditor
@@ -175,7 +200,11 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
             onChange={handleEditorChange}
             onSave={triggerSave}
             onReset={handleReset}
-            isActive={isActive}
+            editable={mode === "write"}
+            // The toolbar portals into a single slot above the content column,
+            // so exactly one editor may claim it: the focused pane's active
+            // tab, and only while that pane is being written in.
+            isActive={isFocused && mode === "write"}
           />
           <EditDocumentInfo />
         </>

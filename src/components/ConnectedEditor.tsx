@@ -25,6 +25,8 @@ const ConnectedEditor: React.FC<{
   onReset?: () => void;
   namespace?: string;
   isActive?: boolean;
+  /** False puts Lexical in read-only mode. See `PaneMode` / plan §4.4. */
+  editable?: boolean;
 }> = (
   {
     document,
@@ -35,6 +37,7 @@ const ConnectedEditor: React.FC<{
     onReset,
     namespace,
     isActive,
+    editable,
   },
 ) => {
   const dispatch = useDispatch();
@@ -121,6 +124,7 @@ const ConnectedEditor: React.FC<{
       onSave={onSave}
       onReset={onReset}
       isActive={isActive}
+      editable={editable}
     />
   );
 };

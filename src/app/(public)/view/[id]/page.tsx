@@ -1,6 +1,6 @@
 import type { OgMetadata } from "@/app/api/og/route";
-import { findDocument } from "@/repositories/document";
-import ViewDocument from "@/components/views/ViewDocument";
+import { findDocument, findDocumentChildren } from "@/repositories/document";
+import ViewDocument, { type ViewTab } from "@/components/views/ViewDocument";
 import { Metadata } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -8,6 +8,7 @@ import SplashScreen from "@/components/shared/SplashScreen";
 import { cache } from "react";
 import { findRevisionHtml } from "@/app/api/utils";
 import { format } from "date-fns";
+import type { Post } from "@/types";
 
 // Mark this page as dynamic since it uses searchParams
 export const dynamic = "force-dynamic";
@@ -16,6 +17,27 @@ const getCachedUserDocument = cache(async (id: string, revisions?: string) =>
   await findDocument(id, revisions)
 );
 const getCachedSession = cache(async () => await getServerSession(authOptions));
+
+/**
+ * The post's tab strip, resolved on the server.
+ *
+ * Was a client-side `apiClient.documents.get` + `.children` pair inside
+ * `ViewDocument`, which needed the store-free public surface to talk to two
+ * `write`-gated endpoints. Both answers are already in the database the page
+ * just queried (plan §4.3: "a prop passed down from the server page").
+ */
+const getTabs = async (document: Post): Promise<ViewTab[]> => {
+  const rootId = document.parentId ?? document.id;
+  const root = document.parentId
+    ? await getCachedUserDocument(document.parentId)
+    : document;
+  const children = await findDocumentChildren(rootId);
+  return [
+    // The root tab can carry its own label distinct from the post title.
+    { id: rootId, name: root?.tabLabel ?? root?.name ?? "Post" },
+    ...children.map((child) => ({ id: child.id, name: child.name })),
+  ];
+};
 
 export async function generateMetadata(
   props: {
@@ -162,7 +184,17 @@ export default async function Page(
         />
       );
     }
-    return <ViewDocument cloudDocument={document} cloudHtml={html} />;
+    const tabs = await getTabs(document);
+    return (
+      <ViewDocument
+        cloudDocument={document}
+        cloudHtml={html}
+        tabs={tabs}
+        isAuthor={!!user && user.id === document.author.id}
+        isSignedIn={!!user}
+        pinnedRevisionId={revisionId !== document.head ? revisionId : undefined}
+      />
+    );
   } catch (error) {
     console.error(error);
     return (

@@ -8,6 +8,8 @@ import { v4 as uuidv4 } from "uuid";
 import {
   Announcement,
   AppState,
+  DEFAULT_PANE_RATIO,
+  MAX_PANES,
   PaneMode,
   Post,
   SaveStatus,
@@ -15,6 +17,11 @@ import {
   SidebarView,
   WorkspacePane,
 } from "../types";
+import {
+  clampPaneRatio,
+  emptyWorkspace,
+  sanitizeWorkspace,
+} from "../lib/workspaceRestore";
 
 // ── Domain thunks (split into separate files for maintainability) ────────────
 import { loadSession } from "./thunks/sessionThunks";
@@ -140,6 +147,56 @@ const focusedPaneOf = (state: AppState): WorkspacePane | undefined => {
   return focusedPaneId ? paneOf(state, focusedPaneId) : undefined;
 };
 
+/**
+ * The pane already showing `docId`, as its root or as one of its tabs.
+ *
+ * This is the lookup behind the duplicate-open invariant (plan §5.2). It has to
+ * consider `tabIds` and not just `rootId`, because the thing that breaks is a
+ * second **`EditorTabPanel`** for one document — and a pane mounts one per tab.
+ * A post opened as a root while it is already a tab of the pane next door is the
+ * same collision as opening it twice at the top level.
+ *
+ * Exported so `selectPaneShowingDoc` can answer the same question for readers
+ * outside the slice — the URL projection asks it of the document the address bar
+ * names — rather than the invariant getting a second, drifting definition.
+ */
+export const paneShowing = (
+  state: AppState,
+  docId: string,
+): WorkspacePane | undefined =>
+  state.ui.workspace.panes.find(
+    (pane) => pane.rootId === docId || pane.tabIds.includes(docId),
+  );
+
+/**
+ * Is `docId` held by some pane *other* than `paneId`?
+ *
+ * The other half of §5.2. `openPane` keeps a pane from being **rooted** at a
+ * document another pane holds, but a pane's tab list arrives later, from a
+ * fetch: open a child document in one pane, then open its parent post in the
+ * other, and the parent's children come back containing a document the first
+ * pane is already showing.
+ *
+ * That is not cosmetic. `TabbedDocumentEditor` renders an `EditorTabPanel` for
+ * every entry in `tabIds`, and each panel registers a save callback in
+ * `saveRegistry` under its document id — so the second one to mount silently
+ * replaces the first, and one pane stops persisting with no error. Which is the
+ * exact failure the duplicate-open invariant exists to prevent.
+ *
+ * The derived list yields to the explicit one: a pane rooted at a document, or
+ * already showing it, got there because someone asked for it.
+ */
+const heldElsewhere = (
+  state: AppState,
+  paneId: string,
+  docId: string,
+): boolean =>
+  state.ui.workspace.panes.some(
+    (pane) =>
+      pane.id !== paneId &&
+      (pane.rootId === docId || pane.tabIds.includes(docId)),
+  );
+
 /** Push a thunk's `rejectWithValue` payload onto the announcement queue. */
 const announceFailure = (state: AppState, payload: unknown) => {
   state.ui.announcements.push({ message: payload as Failure });
@@ -163,7 +220,10 @@ const initialState: AppState = {
     workspace: {
       panes: [],
       focusedPaneId: null,
+      splitRatio: DEFAULT_PANE_RATIO,
     },
+    workspaceHydrated: false,
+    workspaceKey: null,
     dirtyDocIds: [],
     sidebarView: "explorer",
   },
@@ -237,54 +297,90 @@ export const appSlice = createSlice({
     // what lets Phase 5 add the second without another migration.
 
     /**
-     * Point a pane at a document and focus it, minting the pane if the id is
-     * new. Idempotent per id, so a component may own one pane for its lifetime
-     * and re-open it whenever its route changes.
+     * Show a document in the workspace. The one door in.
      *
-     * `tabIds` starts empty: the children are a fetch away, and every consumer
-     * falls back to `rootId` until they land. That is exactly what the old
-     * `clearTabs()`-then-`initTabs()` pair did, minus the window in which
-     * nothing at all was open.
+     * Three cases, in this order:
+     *
+     * 1. **The document is already open somewhere.** Focus that pane and, if the
+     *    document is one of its tabs, make it the active one. Nothing else
+     *    moves. This is the duplicate-open guard of plan §5.2, and it lives here
+     *    rather than in `commands/document.ts` on purpose: `saveRegistry` is a
+     *    `Map` keyed by document id, so a second live editor for one document
+     *    overwrites the first one's save callback and that pane silently stops
+     *    persisting. A reducer invariant is the only version of that rule an
+     *    AI-issued command cannot route around.
+     * 2. **A `paneId` was supplied.** Retarget that pane, or mint it if it does
+     *    not exist yet and the workspace is under {@link MAX_PANES}. This is
+     *    what `pane.split` uses — "a *new* viewport", stated by naming one.
+     * 3. **No `paneId`.** Retarget the focused pane, minting the first one if
+     *    the workspace is empty. This is what opening a post from the sidebar,
+     *    the palette or a deep link means: show it where I am looking.
+     *
+     * `tabIds` starts empty on a retarget: the children are a fetch away, and
+     * every consumer falls back to `rootId` until they land.
      */
     openPane: {
       reducer: (
         state,
         action: PayloadAction<{
-          paneId: string;
+          paneId: string | null;
           rootId: string;
-          mode: PaneMode;
+          mode: PaneMode | null;
           activeTabId: string | null;
         }>,
       ) => {
         const { paneId, rootId, mode, activeTabId } = action.payload;
-        const pane: WorkspacePane = {
-          id: paneId,
+
+        // (1) Already open — focus, never duplicate.
+        const existing = paneShowing(state, rootId);
+        if (existing && existing.id !== paneId) {
+          state.ui.workspace.focusedPaneId = existing.id;
+          if (existing.tabIds.includes(rootId)) existing.activeTabId = rootId;
+          if (mode) existing.mode = mode;
+          return;
+        }
+
+        // (2)/(3) Which viewport is being retargeted.
+        const target = paneId ? paneOf(state, paneId) : focusedPaneOf(state);
+        if (target) {
+          target.rootId = rootId;
+          target.tabIds = [];
+          target.activeTabId = activeTabId;
+          // An omitted mode means "however this pane is already being read".
+          if (mode) target.mode = mode;
+          target.diffOpen = false;
+          state.ui.workspace.focusedPaneId = target.id;
+          return;
+        }
+
+        if (state.ui.workspace.panes.length >= MAX_PANES) return;
+        const id = paneId ?? uuidv4();
+        state.ui.workspace.panes.push({
+          id,
           rootId,
           tabIds: [],
           activeTabId,
-          mode,
+          mode: mode ?? "write",
           diffOpen: false,
-        };
-        const idx = state.ui.workspace.panes.findIndex((p) => p.id === paneId);
-        if (idx === -1) state.ui.workspace.panes.push(pane);
-        else state.ui.workspace.panes[idx] = pane;
-        state.ui.workspace.focusedPaneId = paneId;
+        });
+        state.ui.workspace.focusedPaneId = id;
       },
       prepare: (input: {
         rootId: string;
-        mode: PaneMode;
-        /** Supply one to keep a pane across re-opens; omit for a fresh pane. */
+        /** Omit to retarget the focused pane; name one to create/retarget it. */
         paneId?: string;
+        /** Omit to keep the pane's current mode; `write` on a fresh pane. */
+        mode?: PaneMode;
         /**
-         * Seeds the active tab before the tab list is known — `/view/<childId>`
-         * needs the child, not the root it belongs to.
+         * Seeds the active tab before the tab list is known — a deep link to a
+         * child tab needs the child, not the root it belongs to.
          */
         activeTabId?: string | null;
       }) => ({
         payload: {
-          paneId: input.paneId ?? uuidv4(),
+          paneId: input.paneId ?? null,
           rootId: input.rootId,
-          mode: input.mode,
+          mode: input.mode ?? null,
           activeTabId: input.activeTabId ?? null,
         },
       }),
@@ -298,10 +394,79 @@ export const appSlice = createSlice({
         state.ui.workspace.focusedPaneId = panes[panes.length - 1]?.id ?? null;
       }
     },
+    /**
+     * Leaving the workspace editor entirely. Nothing is open any more.
+     *
+     * Also drops the hydrated flag, so re-entering the workspace reads the
+     * layout back rather than starting from one pane. The stored record is not
+     * touched — the persistence middleware refuses to write an empty workspace
+     * precisely so that this unmount, which fires on every navigation out of
+     * `/edit`, cannot erase what it is supposed to be preserving.
+     */
+    closeAllPanes: (state) => {
+      state.ui.workspace = emptyWorkspace();
+      state.ui.workspaceHydrated = false;
+    },
+    /**
+     * Install a layout read back from storage (plan §8.2).
+     *
+     * The payload is `unknown` and stays that way until {@link
+     * sanitizeWorkspace} has had it. Typing it as a `WorkspaceState` would be
+     * the same compile-time fiction `parseBody` exists to refuse for request
+     * bodies: nothing about a record that has been sitting in a browser since
+     * an older build makes it one.
+     *
+     * Two things it will not do:
+     *
+     * - **Restore twice.** `workspaceHydrated` gates it, so a second read
+     *   landing late cannot replace a layout the user has since changed.
+     * - **Overwrite what is already open.** The flag is still set — the caller
+     *   asked and got an answer — but the panes are left alone. The IndexedDB
+     *   read is asynchronous, and a click on a sidebar row in that window is a
+     *   deliberate act; a stored record from last Tuesday is not.
+     */
+    restoreWorkspace: (
+      state,
+      action: PayloadAction<{ key: string; stored: unknown }>,
+    ) => {
+      if (state.ui.workspaceHydrated) return;
+      state.ui.workspaceKey = action.payload.key;
+      state.ui.workspaceHydrated = true;
+      if (state.ui.workspace.panes.length > 0) return;
+      state.ui.workspace = sanitizeWorkspace(action.payload.stored);
+    },
+    /**
+     * The session turned out to belong to someone else than the layout does.
+     *
+     * The restore has to guess a key before the session has resolved — that is
+     * the whole point of not gating on `initialized` — and it guesses from a
+     * device-local note of who was signed in last. Usually right; wrong across
+     * an expired cookie, or when a second account signs in on a shared
+     * browser. Clearing back to un-hydrated is what makes that self-correcting:
+     * the restore runs again under the right key, and the deep-link seam
+     * replays the URL on top of it exactly as it did the first time.
+     */
+    workspaceKeyChanged: (state, action: PayloadAction<string>) => {
+      if (state.ui.workspaceKey === action.payload) return;
+      state.ui.workspaceKey = action.payload;
+      state.ui.workspaceHydrated = false;
+      state.ui.workspace = emptyWorkspace();
+    },
     focusPane: (state, action: PayloadAction<string>) => {
       if (paneOf(state, action.payload)) {
         state.ui.workspace.focusedPaneId = action.payload;
       }
+    },
+    /**
+     * Where the splitter sits, as the left pane's share of the row.
+     *
+     * In the store rather than in `WorkspacePanes`' `useState` because it is
+     * part of the layout being persisted, and a second storage path for one
+     * concept is how the two drift apart.
+     */
+    setSplitRatio: (state, action: PayloadAction<number>) => {
+      if (!Number.isFinite(action.payload)) return;
+      state.ui.workspace.splitRatio = clampPaneRatio(action.payload);
     },
     setPaneMode: (
       state,
@@ -327,10 +492,18 @@ export const appSlice = createSlice({
         activeTabId: string;
       }>,
     ) => {
-      const pane = paneOf(state, action.payload.paneId);
+      const { paneId, tabIds, activeTabId } = action.payload;
+      const pane = paneOf(state, paneId);
       if (!pane) return;
-      pane.tabIds = action.payload.tabIds;
-      pane.activeTabId = action.payload.activeTabId;
+      // A pane always renders what it is rooted at; everything else yields to a
+      // pane already showing it. See `heldElsewhere`.
+      const admissible = tabIds.filter(
+        (id) => id === pane.rootId || !heldElsewhere(state, paneId, id),
+      );
+      pane.tabIds = admissible;
+      pane.activeTabId = admissible.includes(activeTabId)
+        ? activeTabId
+        : admissible[0] ?? null;
     },
     setActiveTab: (
       state,
@@ -343,12 +516,15 @@ export const appSlice = createSlice({
       state,
       action: PayloadAction<{ paneId: string; tabId: string }>,
     ) => {
-      const pane = paneOf(state, action.payload.paneId);
+      const { paneId, tabId } = action.payload;
+      const pane = paneOf(state, paneId);
       if (!pane) return;
-      if (!pane.tabIds.includes(action.payload.tabId)) {
-        pane.tabIds.push(action.payload.tabId);
-      }
-      pane.activeTabId = action.payload.tabId;
+      // Same invariant as `setPaneTabs`: adding a tab for a document another
+      // pane is showing would mount a second editor for it and clobber its save
+      // callback. Refuse rather than admit it.
+      if (heldElsewhere(state, paneId, tabId)) return;
+      if (!pane.tabIds.includes(tabId)) pane.tabIds.push(tabId);
+      pane.activeTabId = tabId;
     },
     removeTab: (
       state,

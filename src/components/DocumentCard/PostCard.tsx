@@ -17,6 +17,14 @@ interface PostCardProps {
   post?: Post;
   user?: User;
   sx?: SxProps<Theme>;
+  /**
+   * Whether to render the owner action menu (share / download / delete / edit).
+   *
+   * Off on the public author profile, which lives in the `(public)` route group
+   * and mounts no store — the menu is built from the command registry and the
+   * store thunks, and with no session it rendered an empty popup anyway.
+   */
+  showActions?: boolean;
 }
 
 /**
@@ -30,6 +38,7 @@ const PostCard: React.FC<PostCardProps> = memo(({
   post,
   user,
   sx,
+  showActions = true,
 }) => {
   // Use consolidated state management hook
   const { author, postState, href, seriesInfo, ariaLabel, status } =
@@ -68,6 +77,7 @@ const PostCard: React.FC<PostCardProps> = memo(({
         <PostActions
           post={post}
           user={user}
+          showActions={showActions}
         />
       }
       ariaLabel={ariaLabel}

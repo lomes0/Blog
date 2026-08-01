@@ -1,6 +1,13 @@
 import React from "react";
 import { ListItemIcon, ListItemText, Menu, MenuItem } from "@mui/material";
-import { FilePen, FilePlus, FolderPlus, Pencil, Trash2 } from "lucide-react";
+import {
+  FilePen,
+  FilePlus,
+  FolderPlus,
+  Pencil,
+  SquareSplitHorizontal,
+  Trash2,
+} from "lucide-react";
 import { ICON_SIZE } from "@/theme/icons";
 import type { ContextMenuState } from "@/hooks/useContextMenu";
 
@@ -16,6 +23,11 @@ interface SidebarContextMenuProps {
    * section header offers only Rename and Delete.
    */
   onEdit?: (targetId: string) => void;
+  /**
+   * Open the target in the second pane. Posts only, and only while the
+   * workspace has room for another one — see `MAX_PANES`.
+   */
+  onOpenToSide?: (targetId: string) => void;
   onRename: (targetId: string) => void;
   onDelete: (targetId: string) => void;
 }
@@ -32,6 +44,7 @@ export const SidebarContextMenu: React.FC<SidebarContextMenuProps> = ({
   onNewPost,
   onNewSeries,
   onEdit,
+  onOpenToSide,
   onRename,
   onDelete,
 }) => {
@@ -45,6 +58,12 @@ export const SidebarContextMenu: React.FC<SidebarContextMenuProps> = ({
       handler: onNewSeries,
     },
     { key: "edit", label: "Edit", Icon: Pencil, handler: onEdit },
+    {
+      key: "open-to-side",
+      label: "Open to the side",
+      Icon: SquareSplitHorizontal,
+      handler: onOpenToSide,
+    },
     { key: "rename", label: "Rename", Icon: FilePen, handler: onRename },
     { key: "delete", label: "Delete", Icon: Trash2, handler: onDelete },
   ].filter((item) => item.handler !== undefined);
