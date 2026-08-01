@@ -31,9 +31,10 @@ export default function DocumentHeader({
     shallowEqual,
   );
 
-  // pb keeps the editor's first line clear of the divider — `.editor-input` has
-  // no top padding and the first paragraph no top margin, so without it the
-  // caret sits flush against the rule and reads as part of the title.
+  // pb keeps the editor's first line clear of whatever this block ends on —
+  // `.editor-input` has no top padding and the first paragraph no top margin,
+  // so without it the caret sits flush against the rule (or the tabs) and reads
+  // as part of the header.
   return (
     <Box sx={{ pt: 2, pb: 3 }}>
       <Typography
@@ -43,8 +44,13 @@ export default function DocumentHeader({
       >
         {name}
       </Typography>
-      {children && <Box sx={{ mb: 1.5 }}>{children}</Box>}
       <Divider />
+      {
+        /* Below the rule, not above it: the rule closes the title, and the tabs
+          are a control over the content that follows rather than part of the
+          heading. */
+      }
+      {children && <Box sx={{ mt: 1.5 }}>{children}</Box>}
     </Box>
   );
 }
