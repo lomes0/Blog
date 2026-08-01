@@ -1,7 +1,6 @@
 "use client";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { Box, IconButton, Tooltip, Typography } from "@mui/material";
-import { X } from "lucide-react";
+import { Box } from "@mui/material";
 import {
   actions,
   postsSelectors,
@@ -17,8 +16,6 @@ import {
 import { workspaceUrlForFocus } from "@/lib/workspaceUrl";
 import { useDragCapture } from "@/hooks/useResizablePanel";
 import ResizeGripper, { GRIPPER_W } from "@/components/Layout/ResizeGripper";
-import { ICON_SIZE } from "@/theme/icons";
-import { MOTION } from "@/theme/tokens";
 import {
   DEFAULT_PANE_RATIO,
   MAX_PANE_RATIO,
@@ -101,61 +98,13 @@ const PaneFrame: React.FC<PaneFrameProps> = ({
         overflow: "hidden",
       }}
     >
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 0.5,
-          px: 1,
-          py: 0.25,
-          minHeight: 28,
-          flexShrink: 0,
-          borderBottom: "1px solid",
-          borderColor: "divider",
-          bgcolor: "background.default",
-          // DESIGN.md §17.3 — the active-surface accent bar, drawn on the top
-          // edge so the focused pane reads as selected without tinting a whole
-          // document's worth of background.
-          position: "relative",
-          "&::before": {
-            content: '""',
-            position: "absolute",
-            insetInline: 0,
-            top: 0,
-            height: 2,
-            bgcolor: isFocused ? "primary.main" : "transparent",
-            transition: `background-color ${MOTION.fast}ms`,
-          },
-        }}
-      >
-        <Typography
-          noWrap
-          variant="dense"
-          sx={{
-            flex: 1,
-            minWidth: 0,
-            fontWeight: isFocused ? 600 : 400,
-            color: isFocused ? "text.primary" : "text.secondary",
-          }}
-        >
-          {title}
-        </Typography>
-        <Tooltip title="Close pane">
-          <IconButton
-            size="small"
-            aria-label={`Close ${title} pane`}
-            onClick={() => dispatch(actions.closePane(pane.id))}
-            sx={{
-              flexShrink: 0,
-              p: 0.25,
-              color: "text.secondary",
-              "&:hover": { color: "text.primary" },
-            }}
-          >
-            <X size={ICON_SIZE.micro} />
-          </IconButton>
-        </Tooltip>
-      </Box>
+      {
+        /* No header row. The pane's name, its close button and the §17.3 accent
+          that marks it focused all used to be drawn here, above a pane whose
+          tabs were somewhere else entirely — in the app top bar. They are the
+          tab strip's now (`PaneTabStrip`), which sticks to the top of this
+          scroller and so occupies the same line this row did. */
+      }
       <Box sx={{ flex: 1, minHeight: 0, overflow: "auto", px: 1 }}>
         {editor}
       </Box>

@@ -56,7 +56,7 @@ the whole run. `src/types/vitest.d.ts` is what gives `tsc` the globals;
 `compilerOptions.types` is deliberately left unset, because setting it would
 restrict resolution to only its entries and drop every other ambient package.
 
-Coverage is six specs, 126 assertions: `src/lib/__tests__/ordering.test.ts`
+Coverage is seven specs, 142 assertions: `src/lib/__tests__/ordering.test.ts`
 (fractional rank keys), `src/components/Layout/SideBar/__tests__/
 dragGeometry.test.ts` (sidebar drag thresholds — `dragGeometry.ts` is kept
 import-free precisely so it is testable without a browser),
@@ -66,11 +66,13 @@ headless editor, so it stays DOM-free), `src/store/__tests__/workspace.test.ts`
 (the `ui.workspace` reducers — pane focus, the one-document-one-pane invariant,
 dirty hoisting, and the URL replayed over a restored layout),
 `src/lib/__tests__/workspaceUrl.test.ts` (when the address bar may be rewritten
-to follow pane focus) and `src/commands/__tests__/toolParity.test.ts` (that the
+to follow pane focus), `src/commands/__tests__/toolParity.test.ts` (that the
 AI tool surface stays derivable from the command registry — see
-docs/plans/workspace-panes.md §3.1).
+docs/plans/workspace-panes.md §3.1) and
+`src/components/EditDocument/__tests__/tabFit.test.ts` (which pane tabs fit the
+strip and which fall into the overflow menu).
 
-The last three follow the same rule as `dragGeometry.ts`: the logic lives in an
+The last four follow the same rule as `dragGeometry.ts`: the logic lives in an
 import-free module so it can be exercised without mounting anything.
 
 **No automated check covers API authorization.** Verify behaviour changes by

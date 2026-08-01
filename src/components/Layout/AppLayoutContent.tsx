@@ -28,7 +28,6 @@ import {
   ActiveEditorContext,
   SetActiveEditorContext,
 } from "@/contexts/ActiveEditorContext";
-import { TopBarTabsProvider } from "@/contexts/TopBarTabsContext";
 import { useToolbarSlot } from "@/contexts/ToolbarSlotContext";
 
 // Must match the grid-template-columns transition duration below.
@@ -88,106 +87,104 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
   const copilotCol = `${copilotOpen ? copilotWidth : 0}px `;
 
   return (
-    <TopBarTabsProvider>
-      <SetActiveEditorContext.Provider value={setActiveEditorRef}>
-        <ActiveEditorContext.Provider value={activeEditorRef}>
+    <SetActiveEditorContext.Provider value={setActiveEditorRef}>
+      <ActiveEditorContext.Provider value={activeEditorRef}>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns:
+              `${ACTIVITY_RAIL_W}px ${sidebarW}px 1fr ${copilotCol}${railW}px`,
+            height: "100vh",
+            overflow: "hidden",
+            // The sidebar drag drives its column width per frame, so the grid
+            // must not also transition it — except across the one step that
+            // eases, where the content edge has to travel with the panel or
+            // the two visibly come apart.
+            transition: easeMs > 0
+              ? `grid-template-columns ${easeMs}ms ${COLLAPSE_EASING}`
+              : isResizing || isRailResizing || isCopilotResizing
+              ? "none"
+              : "grid-template-columns 225ms cubic-bezier(0.4, 0, 0.6, 1)",
+          }}
+        >
+          <ActivityRail />
+          <SideBar />
           <Box
+            id="app-main"
+            component="main"
             sx={{
-              display: "grid",
-              gridTemplateColumns:
-                `${ACTIVITY_RAIL_W}px ${sidebarW}px 1fr ${copilotCol}${railW}px`,
-              height: "100vh",
+              minWidth: 0,
+              display: "flex",
+              flexDirection: "column",
               overflow: "hidden",
-              // The sidebar drag drives its column width per frame, so the grid
-              // must not also transition it — except across the one step that
-              // eases, where the content edge has to travel with the panel or
-              // the two visibly come apart.
-              transition: easeMs > 0
-                ? `grid-template-columns ${easeMs}ms ${COLLAPSE_EASING}`
-                : isResizing || isRailResizing || isCopilotResizing
-                ? "none"
-                : "grid-template-columns 225ms cubic-bezier(0.4, 0, 0.6, 1)",
+              position: "relative",
             }}
           >
-            <ActivityRail />
-            <SideBar />
-            <Box
-              id="app-main"
-              component="main"
-              sx={{
-                minWidth: 0,
-                display: "flex",
-                flexDirection: "column",
-                overflow: "hidden",
-                position: "relative",
-              }}
-            >
-              <Box id="back-to-top-anchor" />
-              <EditorTopBar />
-              <Box ref={setSlotEl} sx={{ flexShrink: 0 }} />
-              <HydrationManager>
-                <Container
-                  className="editor-container"
-                  id="editor-main-container"
-                  maxWidth={false}
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    mx: 0,
-                    my: 2,
-                    flex: 1,
-                    minHeight: 0,
-                    position: "relative",
-                    overflow: "auto",
-                    width: "100%",
-                    pl: {
-                      xs: CONTENT_PAD_X.xs.left,
-                      sm: CONTENT_PAD_X.sm.left,
-                      md: CONTENT_PAD_X.md.left,
-                    },
-                    pr: {
-                      xs: CONTENT_PAD_X.xs.right,
-                      sm: CONTENT_PAD_X.sm.right,
-                      md: CONTENT_PAD_X.md.right,
-                    },
-                    // Room to scroll the end of a document out from under the
-                    // resting Copilot bar.
-                    pb: hasInlineCopilotBar(pathname)
-                      ? `${INLINE_BAR_CLEARANCE}px`
-                      : 0,
-                  }}
-                >
-                  {children}
-                </Container>
-              </HydrationManager>
-              {
-                /* A sibling of the scrolling container, not a child of it: the
+            <Box id="back-to-top-anchor" />
+            <EditorTopBar />
+            <Box ref={setSlotEl} sx={{ flexShrink: 0 }} />
+            <HydrationManager>
+              <Container
+                className="editor-container"
+                id="editor-main-container"
+                maxWidth={false}
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  mx: 0,
+                  my: 2,
+                  flex: 1,
+                  minHeight: 0,
+                  position: "relative",
+                  overflow: "auto",
+                  width: "100%",
+                  pl: {
+                    xs: CONTENT_PAD_X.xs.left,
+                    sm: CONTENT_PAD_X.sm.left,
+                    md: CONTENT_PAD_X.md.left,
+                  },
+                  pr: {
+                    xs: CONTENT_PAD_X.xs.right,
+                    sm: CONTENT_PAD_X.sm.right,
+                    md: CONTENT_PAD_X.md.right,
+                  },
+                  // Room to scroll the end of a document out from under the
+                  // resting Copilot bar.
+                  pb: hasInlineCopilotBar(pathname)
+                    ? `${INLINE_BAR_CLEARANCE}px`
+                    : 0,
+                }}
+              >
+                {children}
+              </Container>
+            </HydrationManager>
+            {
+              /* A sibling of the scrolling container, not a child of it: the
                   bar is anchored to the foot of the pane and must not scroll
                   away with the document it is asking about. `#app-main` is the
                   positioned ancestor it hangs from. */
-              }
-              <InlineCopilotBar documentId={copilotDocumentId} />
-            </Box>
-            {
-              /* Always keep a grid item in the copilot slot so the rail stays
-                pinned in the last column. When the panel is closed the slot is
-                an empty placeholder; the column itself animates to 0px. */
             }
-            {showCopilot
-              ? <CopilotPanel documentId={copilotDocumentId} />
-              : <Box />}
-            <RightRail railMode={railMode} />
+            <InlineCopilotBar documentId={copilotDocumentId} />
           </Box>
           {
-            /* Outside the grid on purpose: it is `position: fixed` and owns its
+            /* Always keep a grid item in the copilot slot so the rail stays
+                pinned in the last column. When the panel is closed the slot is
+                an empty placeholder; the column itself animates to 0px. */
+          }
+          {showCopilot
+            ? <CopilotPanel documentId={copilotDocumentId} />
+            : <Box />}
+          <RightRail railMode={railMode} />
+        </Box>
+        {
+          /* Outside the grid on purpose: it is `position: fixed` and owns its
               own offset, and a child of the grid container — even an
               out-of-flow one — invites miscounting the five tracks above. */
-          }
-          <SidebarResizeHandle />
-          <CommandPalette />
-        </ActiveEditorContext.Provider>
-      </SetActiveEditorContext.Provider>
-    </TopBarTabsProvider>
+        }
+        <SidebarResizeHandle />
+        <CommandPalette />
+      </ActiveEditorContext.Provider>
+    </SetActiveEditorContext.Provider>
   );
 };
 

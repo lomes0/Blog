@@ -121,6 +121,19 @@ export const multiSelectSx = (alsoWhen?: string) => {
 };
 
 /**
+ * The ring itself, for chrome that is not a `ButtonBase` and so never carries
+ * `.Mui-focusVisible` — a pane tab is a plain `Box` and keys the same ring off
+ * `&:focus-visible`. Compose `chromeFocusRingSx` below wherever the MUI class
+ * *is* available; this exists so the second form is the same two pixels rather
+ * than a re-derivation.
+ */
+export const CHROME_RING = {
+  outline: "2px solid",
+  outlineColor: "primary.main",
+  outlineOffset: "-2px",
+} as const;
+
+/**
  * Keyboard focus ring for tree rows.
  *
  * Two things at once, both load-bearing. MUI's default `.Mui-focusVisible`
@@ -144,11 +157,7 @@ export const multiSelectSx = (alsoWhen?: string) => {
  * clearing it would make the focused row look closed.
  */
 export const chromeFocusRingSx = (keepFillWhen?: string) => {
-  const ring = {
-    outline: "2px solid",
-    outlineColor: "primary.main",
-    outlineOffset: "-2px",
-  };
+  const ring = CHROME_RING;
   // The two branches must not both emit a plain `&.Mui-focusVisible` key: in one
   // object literal the second would overwrite the first and drop the fill reset.
   return keepFillWhen

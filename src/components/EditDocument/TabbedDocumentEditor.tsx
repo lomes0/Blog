@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useMemo, useState } from "react";
 import React from "react";
 import type { LexicalEditor } from "lexical";
 import {
@@ -17,8 +17,7 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { actions, postsSelectors, useDispatch, useSelector } from "@/store";
 import { SetActiveEditorContext } from "@/contexts/ActiveEditorContext";
-import { type TabMeta } from "@/contexts/TopBarTabsContext";
-import { useTopBarTabs } from "@/contexts/TopBarTabsContext";
+import PaneTabStrip, { type TabMeta } from "./PaneTabStrip";
 import EditorTabPanel from "./EditorTabPanel";
 import TabContextMenu from "./TabContextMenu";
 import { EMPTY_EDITOR_STATE, type PostCreateInput } from "@/types";
@@ -50,11 +49,13 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
   const isPaneFocused = useSelector(
     (state) => state.ui.workspace.focusedPaneId === paneId,
   );
+  const isSplit = useSelector(
+    (state) => state.ui.workspace.panes.length > 1,
+  );
   const dirtyDocIds = useSelector((state) => state.ui.dirtyDocIds);
   const user = useSelector((state) => state.user);
 
   const setActiveEditorRef = useContext(SetActiveEditorContext);
-  const { setTabBar } = useTopBarTabs();
 
   const handleEditorReady = useCallback(
     (ref: React.RefObject<LexicalEditor | null>) => {
@@ -338,50 +339,36 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     [tabIds, tabMetas],
   );
 
-  // Sync tab state into the top bar context whenever it changes.
-  //
-  // The top bar holds **one** strip, so only the focused pane publishes into it
-  // — the same rule as the toolbar and the `<title>` (plan §5.1). Clearing on
-  // cleanup rather than only on unmount is what hands the strip over cleanly:
-  // React runs every cleanup in a commit before every effect, so when focus
-  // moves the losing pane's `null` lands first and the winning pane's strip
-  // second, in one batch.
-  useEffect(() => {
-    if (!isPaneFocused || orderedTabs.length === 0) return;
-    setTabBar({
-      tabs: orderedTabs,
-      activeTabId,
-      dirtyTabIds: dirtyDocIds,
-      rootTabId: rootId,
-      renamingTabId: renamingTabId,
-      onSwitch: handleSwitch,
-      onClose: handleCloseRequest,
-      onAdd: handleAdd,
-      onRename: handleRename,
-      onRenameStarted: handleRenameStarted,
-      onReorder: handleReorder,
-      onContextMenu: handleOpenContextMenu,
-    });
-    return () => setTabBar(null);
-  }, [
-    isPaneFocused,
-    orderedTabs,
-    activeTabId,
-    dirtyDocIds,
-    rootId,
-    renamingTabId,
-    setTabBar,
-    handleSwitch,
-    handleCloseRequest,
-    handleAdd,
-    handleRename,
-    handleRenameStarted,
-    handleReorder,
-    handleOpenContextMenu,
-  ]);
+  const handleClosePane = useCallback(
+    () => void dispatch(actions.closePane(paneId)),
+    [dispatch, paneId],
+  );
 
+  // The strip renders here, inside the pane, rather than being published into
+  // the app-wide top bar through a context. That context could hold **one**
+  // strip for the whole window, so only the focused pane ever filled it — a row
+  // of tabs above, and detached from, the pane whose documents they were.
   return (
     <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
+      {orderedTabs.length > 0 && (
+        <PaneTabStrip
+          tabs={orderedTabs}
+          activeTabId={activeTabId}
+          rootTabId={rootId}
+          dirtyTabIds={dirtyDocIds}
+          renamingTabId={renamingTabId}
+          isSplit={isSplit}
+          isFocused={isPaneFocused}
+          onSwitch={handleSwitch}
+          onClose={handleCloseRequest}
+          onAdd={handleAdd}
+          onRename={handleRename}
+          onRenameStarted={handleRenameStarted}
+          onReorder={handleReorder}
+          onContextMenu={handleOpenContextMenu}
+          onClosePane={handleClosePane}
+        />
+      )}
       <Box sx={{ display: "flex", flex: 1 }}>
         <Box sx={{ flex: 1 }}>
           {tabIds.map((tabId) => (

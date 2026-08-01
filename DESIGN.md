@@ -674,6 +674,13 @@ prose and five files answered them independently. They are now `sx` fragments in
 > `chromeFocusRingSx` matches what ships. Reconciling the two forms is the same
 > kind of accessibility-visible call as the `inset` question.
 
+> **Tabs draw the accent bar on their bottom edge.** The table says "2px
+> `primary.main` inset bar via `::before`" without naming a side, and a rail
+> item's is on the left. A pane tab's is on the edge where it meets the document
+> it opens, because the strip's _top_ edge already carries the focused-pane
+> accent in split view and two primary bars stacked there read as one thick bar
+> on the wrong element. Same token, same 2px; `PaneTabStrip` is the only user.
+
 **Panel drag edges are codified too.** The sidebar, the right rail and the
 Copilot panel are all resizable, and each drew its own 4px gripper — invisible
 at rest, `primary.main` at 50% on hover, full `primary.main` while held. That
