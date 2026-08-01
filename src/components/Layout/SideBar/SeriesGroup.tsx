@@ -9,7 +9,7 @@ import {
   TextField,
   Tooltip,
 } from "@mui/material";
-import { FilePlus, Folder, FolderOpen } from "lucide-react";
+import { Folder, FolderOpen } from "lucide-react";
 import type { Series } from "@/types";
 import type { SeriesGroupItem } from "@/utils/posts/seriesGrouping";
 import type {
@@ -21,7 +21,6 @@ import type { TreeDndResult } from "@/lib/tree/useTreeDnd";
 import { DRAG_MIME, dropPositionFromEvent } from "@/lib/dragDrop";
 import { PostItem } from "./PostItem";
 import { CountPill } from "./CountPill";
-import { RowCreateButton } from "./RowCreateButton";
 import { SB_FONT, SB_ITEM_RADIUS } from "./constants";
 import {
   chromeFocusRingSx,
@@ -222,13 +221,6 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
             )}
             {sidebarOpen && !isRenaming && group.posts.length > 0 && (
               <CountPill count={group.posts.length} active={isSeriesActive} />
-            )}
-            {sidebarOpen && !isRenaming && (
-              <RowCreateButton
-                label="New post in series"
-                icon={<FilePlus size={ICON_SIZE.micro} strokeWidth={2} />}
-                onClick={() => itemActions.handleCreatePost(seriesId)}
-              />
             )}
           </ListItemButton>
         </Tooltip>
