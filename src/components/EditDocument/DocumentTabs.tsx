@@ -7,7 +7,6 @@ import {
   ListItemText,
   Menu,
   MenuItem,
-  type Theme,
   Tooltip,
   Typography,
 } from "@mui/material";
@@ -27,14 +26,19 @@ export interface TabMeta {
  *
  * The fully-rounded filled pill this replaced read as a *value* — something
  * assigned and dismissible — rather than as a switcher between parts of one
- * document. Square corners, a hairline between neighbours and a 2px bar under
- * the active one are what make a row of labels read as tabs.
+ * document. Square corners and a hairline between neighbours are what make a
+ * row of labels read as tabs.
  *
  * §17.4's `1.5` top-only radius is the *chrome* tab's, and these are not chrome
  * — they sit under the document title, inside the content column, which §17.6
- * exempts. Square is a local call for that position. The accent is not local:
- * it is §17.3's 2px `primary.main` bar, on the bottom edge for the same reason
- * `PaneTabStrip` puts it there — the edge where the tab meets what it opens.
+ * exempts. Square is a local call for that position.
+ *
+ * There is deliberately **no accent bar and no fill** on the active tab: it is
+ * marked by weight and ink alone (600 / `text.primary` against 400 /
+ * `text.secondary`). This row sits inches under an `h4` title and over the
+ * body, where a 2px `primary.main` rule is the loudest thing on the page and
+ * competes with the content it is labelling. The weight difference is a
+ * non-color cue, so the mark does not rest on hue alone.
  */
 const TAB_RADIUS = 0;
 
@@ -193,11 +197,6 @@ const DocumentTab: React.FC<DocumentTabProps> = ({
         cursor: "pointer",
         userSelect: "none",
         borderRadius: TAB_RADIUS,
-        // The active mark is an edge, not a fill. Drawn as an inset shadow so
-        // it costs no layout and cannot widen the box the fit math measures;
-        // `CHROME_RING` is an `outline`, so focus and active can both show.
-        boxShadow: (theme: Theme) =>
-          isActive ? `inset 0 -2px 0 ${theme.palette.primary.main}` : "none",
         transition: `background-color ${MOTION.fast}ms`,
         "&:hover": { bgcolor: "action.hover" },
         "&:hover .tab-close-btn": { opacity: 1 },
@@ -460,6 +459,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
 
   return (
     <Box
+      ref={rowRef}
       sx={{
         display: "flex",
         alignItems: "center",
@@ -468,7 +468,6 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
       }}
     >
       <Box
-        ref={rowRef}
         role="tablist"
         aria-label="Sub-documents"
         aria-orientation="horizontal"
@@ -477,8 +476,15 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
           display: "flex",
           alignItems: "center",
           gap: `${TAB_GAP}px`,
-          flex: 1,
+          // Content-sized, so the trailing controls follow the last tab instead
+          // of being pushed to the end of the line. It must NOT be the measured
+          // element: `fitWindow` reads the width available to the run, and a box
+          // that shrinks to the tabs it was just told to show would report its
+          // own answer back as the question — each pass dropping one more tab.
+          flex: "0 1 auto",
           minWidth: 0,
+          // Shrinks before the controls do (they are `flexShrink: 0`), so an
+          // undersized row clips a tab rather than the "+".
           overflow: "hidden",
         }}
       >
@@ -612,6 +618,12 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
         ))}
       </Menu>
 
+      {
+        /* Last, and hard against the run rather than at the end of the line:
+          "add one more" belongs at the end of the thing it adds to, and the
+          overflow chip is part of that thing — it is the tabs that did not
+          fit. `ADD_BTN_W` is what keeps it from being the item that overflows. */
+      }
       <Tooltip title="New sub-doc">
         <IconButton
           size="small"

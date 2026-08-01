@@ -31,6 +31,13 @@ export const TAB_GAP = 8;
 /** Width the trailing "»N" control needs, so the fit math can reserve it. */
 export const OVERFLOW_CHIP_W = 44;
 
+/**
+ * Width the trailing "+" needs, gap included. Unlike the overflow chip this is
+ * reserved *unconditionally* — the button follows the last tab rather than
+ * sitting at the end of the line, so it is always in the run's way.
+ */
+export const ADD_BTN_W = 28;
+
 interface TabWindow {
   start: number;
   /** Exclusive, so `tabs.slice(start, end)` is the visible run. */
@@ -60,11 +67,15 @@ export const fitWindow = (
     return { start: 0, end: widths.length };
   }
 
+  // The "+" is always there, immediately after the last tab, so it comes off
+  // the top before anything is asked to fit.
+  const line = avail - ADD_BTN_W;
+
   const total = widths.reduce((sum, w) => sum + w + TAB_GAP, 0);
-  if (total <= avail) return { start: 0, end: widths.length };
+  if (total <= line) return { start: 0, end: widths.length };
 
   // Something will overflow, so the chip is showing and owns part of the row.
-  const room = avail - OVERFLOW_CHIP_W;
+  const room = line - OVERFLOW_CHIP_W;
 
   // Forward from the first tab.
   let used = 0;

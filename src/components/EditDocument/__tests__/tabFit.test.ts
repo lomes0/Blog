@@ -1,11 +1,21 @@
-import { fitWindow, OVERFLOW_CHIP_W, TAB_GAP, TAB_MIN_W } from "../tabFit";
+import {
+  ADD_BTN_W,
+  fitWindow,
+  OVERFLOW_CHIP_W,
+  TAB_GAP,
+  TAB_MIN_W,
+} from "../tabFit";
 
 /** Every tab the same width, so the arithmetic in each case is legible. */
 const even = (count: number, width = 100) => Array<number>(count).fill(width);
 
-/** Room for exactly `n` tabs of `width`, plus the overflow chip. */
+/**
+ * Room for exactly `n` tabs of `width`, plus the trailing controls. The "+"
+ * is unconditional — it follows the last tab — so it is in every figure here;
+ * the overflow chip only shows when something is hidden.
+ */
 const roomFor = (n: number, width = 100, withChip = true) =>
-  n * (width + TAB_GAP) + (withChip ? OVERFLOW_CHIP_W : 0);
+  n * (width + TAB_GAP) + ADD_BTN_W + (withChip ? OVERFLOW_CHIP_W : 0);
 
 describe("fitWindow", () => {
   it("shows every tab when they all fit", () => {
@@ -18,6 +28,18 @@ describe("fitWindow", () => {
     // only exists because a tab is hidden.
     const avail = roomFor(3, 100, false);
     expect(fitWindow(even(3), avail, 0)).toEqual({ start: 0, end: 3 });
+  });
+
+  it("always reserves the new-tab button, overflow or not", () => {
+    // The "+" sits after the last tab rather than at the end of the line, so
+    // it is in the run's way even when every tab fits. Exactly three tabs'
+    // worth of room is therefore room for two and the button.
+    const avail = 3 * (100 + TAB_GAP);
+    expect(fitWindow(even(3), avail, 0).end).toBeLessThan(3);
+    expect(fitWindow(even(3), avail + ADD_BTN_W, 0)).toEqual({
+      start: 0,
+      end: 3,
+    });
   });
 
   it("reserves room for the chip once anything overflows", () => {
@@ -61,7 +83,7 @@ describe("fitWindow", () => {
     // The old strip gave every tab `width: 95`. Mixed widths are the point of
     // the change: three short labels fit where two wide ones did.
     const widths = [TAB_MIN_W, TAB_MIN_W, TAB_MIN_W, 160];
-    const avail = 3 * (TAB_MIN_W + TAB_GAP) + OVERFLOW_CHIP_W;
+    const avail = 3 * (TAB_MIN_W + TAB_GAP) + OVERFLOW_CHIP_W + ADD_BTN_W;
     expect(fitWindow(widths, avail, 0)).toEqual({ start: 0, end: 3 });
   });
 });
