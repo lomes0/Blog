@@ -32,6 +32,7 @@ import {
   createCanvasNote,
   NOTE_DEFAULT_HEIGHT,
   NOTE_DEFAULT_WIDTH,
+  NOTE_GUTTER,
   serializeNoteContent,
 } from "./utils";
 
@@ -140,26 +141,25 @@ export default function CanvasComponent(
       const frame = el
         ? { width: el.clientWidth / scale, height: el.clientHeight / scale }
         : { width: NOTE_DEFAULT_WIDTH, height: NOTE_DEFAULT_HEIGHT };
+      const fitToFrame = (want: number, min: number, available: number) =>
+        Math.round(Math.max(min, Math.min(want, available - 2 * NOTE_GUTTER)));
       const size = {
-        width: Math.round(
-          Math.max(MIN_NOTE_WIDTH, Math.min(NOTE_DEFAULT_WIDTH, frame.width)),
-        ),
-        height: Math.round(
-          Math.max(MIN_NOTE_HEIGHT, Math.min(NOTE_DEFAULT_HEIGHT, frame.height)),
-        ),
+        width: fitToFrame(NOTE_DEFAULT_WIDTH, MIN_NOTE_WIDTH, frame.width),
+        height: fitToFrame(NOTE_DEFAULT_HEIGHT, MIN_NOTE_HEIGHT, frame.height),
       };
       const jitter = () => (Math.random() - 0.5) * 80;
       /**
        * Centres `length` in the visible span, jitters it so a second note does
        * not land exactly on the first, then pulls it back inside the frame —
        * the jitter is a nicety and must not be what pushes a note out of view.
-       * `max` can fall below `origin` only when the column is narrower than the
-       * minimum note, and then the left edge is the best available answer.
+       * `max` can fall below `min` only when the column is narrower than the
+       * smallest note, and then the frame's own edge is the best answer left.
        */
       const place = (origin: number, visible: number, length: number) => {
-        const max = Math.max(origin, origin + visible - length);
+        const min = origin + NOTE_GUTTER;
+        const max = Math.max(min, origin + visible - length - NOTE_GUTTER);
         const centred = origin + visible / 2 - length / 2;
-        return Math.max(0, Math.min(max, centred + jitter()));
+        return Math.max(0, Math.min(max, Math.max(min, centred + jitter())));
       };
       addNote({
         position: {

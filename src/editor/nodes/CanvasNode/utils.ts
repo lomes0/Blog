@@ -31,6 +31,13 @@ export const CANVAS_MAX_HEIGHT = 1600;
 
 export const NOTE_DEFAULT_WIDTH = 240;
 export const NOTE_DEFAULT_HEIGHT = 200;
+
+/**
+ * Kept clear between a new note and the edge of the frame. `react-rnd` draws
+ * its resize handles *outside* the note — 5px on the edges, 10px at the corners
+ * — so a note sized flush to a narrow board still earns it a scrollbar.
+ */
+export const NOTE_GUTTER = 10;
 export const DEFAULT_NOTE_COLOR: NoteColorKey = "yellow";
 
 /** Used when a note carries a color that is no longer in the palette. */
