@@ -153,6 +153,19 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
                   minHeight: 0,
                   position: "relative",
                   overflow: "auto",
+                  // A stacking context, so that every z-index raised *inside*
+                  // the document stays inside it. `position: relative` alone
+                  // does not make one (z-index stays `auto`), and neither does
+                  // `overflow` — so plugin chrome that portals out of the
+                  // Lexical subtree and asserts a z-index used to resolve as a
+                  // sibling of the Copilot bar in the root stacking context and
+                  // paint straight over it. The code block's header/footer
+                  // (z-index 24) and language menu (30) beat the bar's 3 and
+                  // sliced across the chat card. Isolating here fixes the whole
+                  // class rather than that one pair, which is why it is not a
+                  // larger number on the bar: content passes *under* the bar,
+                  // and that has to hold for the next plugin too.
+                  isolation: "isolate",
                   width: "100%",
                   pl: {
                     xs: CONTENT_PAD_X.xs.left,
