@@ -17,7 +17,8 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { actions, postsSelectors, useDispatch, useSelector } from "@/store";
 import { SetActiveEditorContext } from "@/contexts/ActiveEditorContext";
-import PaneHeader, { type TabMeta } from "./PaneHeader";
+import PaneHeader from "./PaneHeader";
+import DocumentTabs, { type TabMeta } from "./DocumentTabs";
 import {
   ToolbarSlotProvider,
   ToolbarSlotTarget,
@@ -348,41 +349,47 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     [dispatch, paneId],
   );
 
-  // The header renders here, inside the pane, rather than being published into
-  // the app shell through two contexts. Each could hold **one** thing for the
-  // whole window — one tab strip, one toolbar — so only the focused pane ever
-  // filled them: a row of tabs and a set of formatting controls sitting above,
-  // and detached from, the pane whose document they acted on.
-  //
+  // Built once and handed down rather than rendered here: its place is under
+  // the active document's *title*, which is inside the panel. Only the visible
+  // panel renders it (`EditorTabPanel`).
+  const tabSwitcher = orderedTabs.length > 0
+    ? (
+      <DocumentTabs
+        tabs={orderedTabs}
+        activeTabId={activeTabId}
+        rootTabId={rootId}
+        dirtyTabIds={dirtyDocIds}
+        renamingTabId={renamingTabId}
+        onSwitch={handleSwitch}
+        onClose={handleCloseRequest}
+        onAdd={handleAdd}
+        onRename={handleRename}
+        onRenameStarted={handleRenameStarted}
+        onReorder={handleReorder}
+        onContextMenu={handleOpenContextMenu}
+      />
+    )
+    : null;
+
+  const paneTitle = orderedTabs.find((t) => t.id === activeTabId)?.name ??
+    "Untitled";
+
   // `ToolbarSlotProvider` is nested rather than reached: the app shell keeps its
   // own for the routes that mount a lone editor (Playground, Tutorial), and this
   // one shadows it for everything in this pane, so `ToolbarPlugin`'s portal
-  // finds this header without knowing panes exist. Two panes, two providers,
-  // two live toolbars.
+  // finds this pane's header without knowing panes exist. Two panes, two
+  // providers, two live toolbars.
   return (
     <ToolbarSlotProvider>
       <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
-        {orderedTabs.length > 0 && (
-          <PaneHeader
-            tabs={orderedTabs}
-            activeTabId={activeTabId}
-            rootTabId={rootId}
-            dirtyTabIds={dirtyDocIds}
-            renamingTabId={renamingTabId}
-            isSplit={isSplit}
-            isFocused={isPaneFocused}
-            onSwitch={handleSwitch}
-            onClose={handleCloseRequest}
-            onAdd={handleAdd}
-            onRename={handleRename}
-            onRenameStarted={handleRenameStarted}
-            onReorder={handleReorder}
-            onContextMenu={handleOpenContextMenu}
-            onClosePane={handleClosePane}
-          >
-            <ToolbarSlotTarget />
-          </PaneHeader>
-        )}
+        <PaneHeader
+          title={paneTitle}
+          isSplit={isSplit}
+          isFocused={isPaneFocused}
+          onClosePane={handleClosePane}
+        >
+          <ToolbarSlotTarget />
+        </PaneHeader>
         <Box sx={{ display: "flex", flex: 1 }}>
           <Box sx={{ flex: 1 }}>
             {tabIds.map((tabId) => (
@@ -394,6 +401,7 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
                 mode={mode}
                 isActive={tabId === activeTabId}
                 isFocused={isPaneFocused && tabId === activeTabId}
+                tabs={tabSwitcher}
                 onEditorReady={handleEditorReady}
               />
             ))}

@@ -80,6 +80,12 @@ interface EditorTabPanelProps {
   isActive: boolean;
   /** The active tab of the *focused* pane. Drives everything singular. */
   isFocused: boolean;
+  /**
+   * The pane's sub-document switcher. Handed to every panel and rendered by the
+   * active one, because its place is under *this* document's title — the panel
+   * is the only component that knows where that is.
+   */
+  tabs?: React.ReactNode;
   onEditorReady?: (ref: React.RefObject<LexicalEditor | null>) => void;
 }
 
@@ -111,6 +117,7 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
   mode,
   isActive,
   isFocused,
+  tabs,
   onEditorReady,
 }) => {
   const editorRef = useRef<LexicalEditor>(null);
@@ -192,7 +199,13 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
         <>
           {/* One tab in one pane names the page. */}
           {isFocused && <title>{documentForEditor.name}</title>}
-          <DocumentHeader docId={docId} rootId={rootId} />
+          <DocumentHeader docId={docId} rootId={rootId}>
+            {
+              /* Only the visible panel draws them — the others are `display:
+                none`, and one row of tabs per hidden tab is still N rows. */
+            }
+            {isActive && tabs}
+          </DocumentHeader>
           {showDiff && isActive && <DiffView />}
           <ConnectedEditor
             document={documentForEditor}

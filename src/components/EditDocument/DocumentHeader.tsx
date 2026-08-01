@@ -7,10 +7,17 @@ import { shallowEqual } from "react-redux";
 interface DocumentHeaderProps {
   docId: string;
   rootId: string;
+  /**
+   * The sub-document switcher (`DocumentTabs`), rendered between the title and
+   * the rule. It belongs to the post rather than to the window, so it sits in
+   * the document's own header block and scrolls with it.
+   */
+  children?: React.ReactNode;
 }
 
 export default function DocumentHeader({
   docId,
+  children,
 }: DocumentHeaderProps) {
   const { name } = useSelector(
     (state: RootState) => {
@@ -36,6 +43,7 @@ export default function DocumentHeader({
       >
         {name}
       </Typography>
+      {children && <Box sx={{ mb: 1.5 }}>{children}</Box>}
       <Divider />
     </Box>
   );

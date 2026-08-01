@@ -8,15 +8,21 @@
  */
 
 /**
- * Label width bounds. Tabs size to their label between these — the strip used to
- * give every tab a flat `width: 95`, which truncated "Introduction" and wasted
- * half a tab on "Q3".
+ * `TAB_MAX_W` is the ceiling a label ellipsises at; below it a tab is as wide as
+ * its own text, where the strip used to give every one a flat `width: 95` —
+ * which truncated "Introduction" and wasted half a tab on "Q3".
+ *
+ * `TAB_MIN_W` is the assumed width of a tab that has not been measured yet, so
+ * the first pass errs toward showing fewer rather than overflowing the row.
  */
 export const TAB_MIN_W = 72;
 export const TAB_MAX_W = 168;
 
-/** Column gap between tabs, in px — mirrors `gap: 0.25` and feeds the fit math. */
-export const TAB_GAP = 2;
+/**
+ * Column gap between tabs, in px — the row applies this same constant as its
+ * CSS `gap`, so the fit math cannot drift from the layout it is predicting.
+ */
+export const TAB_GAP = 4;
 
 /** Width the trailing "»N" control needs, so the fit math can reserve it. */
 export const OVERFLOW_CHIP_W = 44;
