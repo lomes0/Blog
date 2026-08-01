@@ -1,7 +1,8 @@
 "use client";
 import React from "react";
 import { Box, Typography } from "@mui/material";
-import { useRouter } from "next/navigation";
+import { workspaceCommands } from "@/commands";
+import { useCommandRun } from "@/commands/CommandProvider";
 import { Post, User } from "@/types";
 import { formatFullDate as formatDate } from "@/utils/dateFormat";
 
@@ -21,7 +22,7 @@ const PostContent: React.FC<PostContentProps> = ({
   post,
   author,
 }) => {
-  const router = useRouter();
+  const run = useCommandRun();
   const document = post;
   const title = document?.name || "Untitled Post";
   const createdAt = document?.createdAt;
@@ -88,7 +89,7 @@ const PostContent: React.FC<PostContentProps> = ({
               onClick={(e: React.MouseEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
-                router.push("/dashboard");
+                run(workspaceCommands.openSection, { section: "dashboard" });
               }}
               sx={{
                 color: "text.secondary",

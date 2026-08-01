@@ -3,7 +3,6 @@ import React, { useCallback, useRef } from "react";
 import { Box, Checkbox, InputBase, Typography } from "@mui/material";
 import { GripVertical } from "lucide-react";
 import { Post, Series } from "@/types";
-import { useRouter } from "next/navigation";
 import { type DropPosition, dropPositionFromEvent } from "@/lib/dragDrop";
 import { formatRelativeDate } from "@/utils/dateFormat";
 import { ListDensity } from "../types";
@@ -16,6 +15,8 @@ import {
   TREE_ROW_RADIUS,
 } from "@/theme/treeRow";
 import type { InlineRenameResult } from "@/hooks/useInlineRename";
+import { documentCommands } from "@/commands";
+import { useCommandRun } from "@/commands/CommandProvider";
 
 interface PostRowProps {
   post: Post;
@@ -67,7 +68,7 @@ export const PostRow = React.memo(function PostRow({
   availableSeries,
   onMoveToSeries,
 }: PostRowProps) {
-  const router = useRouter();
+  const run = useCommandRun();
   const document = post;
   const name = document?.name || "Untitled";
   const date = document?.updatedAt || document?.createdAt;
@@ -89,9 +90,11 @@ export const PostRow = React.memo(function PostRow({
     }
     singleClickTimer.current = setTimeout(() => {
       singleClickTimer.current = null;
-      if (document?.id) router.push(`/view/${document.id}`);
+      if (document?.id) {
+        run(documentCommands.open, { id: document.id, mode: "read" });
+      }
     }, 200);
-  }, [post.id, document?.id, router, startRename]);
+  }, [post.id, document?.id, run, startRename]);
 
   const handleRowClick = useCallback((e: React.MouseEvent) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey) {

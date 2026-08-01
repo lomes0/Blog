@@ -4,13 +4,16 @@ import {
   EntityState,
   PayloadAction,
 } from "@reduxjs/toolkit";
+import { v4 as uuidv4 } from "uuid";
 import {
   Announcement,
   AppState,
+  PaneMode,
   Post,
   SaveStatus,
   Series,
   SidebarView,
+  WorkspacePane,
 } from "../types";
 
 // ── Domain thunks (split into separate files for maintainability) ────────────
@@ -121,6 +124,22 @@ function removePost(state: AppState, id: string) {
   }
 }
 
+/**
+ * The pane a pane-scoped reducer is acting on, or `undefined`.
+ *
+ * Every workspace reducer below is a no-op on an unknown id rather than a
+ * throw: panes are closed by React effect cleanups, so a late dispatch from a
+ * debounced handler or a resolved promise is ordinary rather than a bug.
+ */
+const paneOf = (state: AppState, paneId: string): WorkspacePane | undefined =>
+  state.ui.workspace.panes.find((pane) => pane.id === paneId);
+
+/** The focused pane, for the reducers whose callers have no pane in hand. */
+const focusedPaneOf = (state: AppState): WorkspacePane | undefined => {
+  const { focusedPaneId } = state.ui.workspace;
+  return focusedPaneId ? paneOf(state, focusedPaneId) : undefined;
+};
+
 /** Push a thunk's `rejectWithValue` payload onto the announcement queue. */
 const announceFailure = (state: AppState, payload: unknown) => {
   state.ui.announcements.push({ message: payload as Failure });
@@ -138,17 +157,14 @@ const initialState: AppState = {
     saveStatus: {},
     drawer: false,
     page: 1,
-    diff: {
-      open: false,
-    },
+    diff: {},
     attachmentPreview: null,
     attachmentModified: null,
-    tabs: {
-      rootId: null,
-      tabIds: [],
-      activeTabId: null,
-      dirtyTabIds: [],
+    workspace: {
+      panes: [],
+      focusedPaneId: null,
     },
+    dirtyDocIds: [],
     sidebarView: "explorer",
   },
 };
@@ -207,66 +223,169 @@ export const appSlice = createSlice({
     setPage: (state, action: PayloadAction<number>) => {
       state.ui.page = action.payload;
     },
-    setDiff: (
+    setDiffRevisions: (
       state,
-      action: PayloadAction<Partial<AppState["ui"]["diff"]>>,
+      action: PayloadAction<{ old?: string; new?: string }>,
     ) => {
       state.ui.diff = { ...state.ui.diff, ...action.payload };
     },
-    initTabs: (
+
+    // ── Workspace: panes ──────────────────────────────────────────────────
+    //
+    // A pane is a viewport onto a document; `tabIds` inside it are the root
+    // post's child documents (plan §2.1). One pane exists today — the array is
+    // what lets Phase 5 add the second without another migration.
+
+    /**
+     * Point a pane at a document and focus it, minting the pane if the id is
+     * new. Idempotent per id, so a component may own one pane for its lifetime
+     * and re-open it whenever its route changes.
+     *
+     * `tabIds` starts empty: the children are a fetch away, and every consumer
+     * falls back to `rootId` until they land. That is exactly what the old
+     * `clearTabs()`-then-`initTabs()` pair did, minus the window in which
+     * nothing at all was open.
+     */
+    openPane: {
+      reducer: (
+        state,
+        action: PayloadAction<{
+          paneId: string;
+          rootId: string;
+          mode: PaneMode;
+          activeTabId: string | null;
+        }>,
+      ) => {
+        const { paneId, rootId, mode, activeTabId } = action.payload;
+        const pane: WorkspacePane = {
+          id: paneId,
+          rootId,
+          tabIds: [],
+          activeTabId,
+          mode,
+          diffOpen: false,
+        };
+        const idx = state.ui.workspace.panes.findIndex((p) => p.id === paneId);
+        if (idx === -1) state.ui.workspace.panes.push(pane);
+        else state.ui.workspace.panes[idx] = pane;
+        state.ui.workspace.focusedPaneId = paneId;
+      },
+      prepare: (input: {
+        rootId: string;
+        mode: PaneMode;
+        /** Supply one to keep a pane across re-opens; omit for a fresh pane. */
+        paneId?: string;
+        /**
+         * Seeds the active tab before the tab list is known — `/view/<childId>`
+         * needs the child, not the root it belongs to.
+         */
+        activeTabId?: string | null;
+      }) => ({
+        payload: {
+          paneId: input.paneId ?? uuidv4(),
+          rootId: input.rootId,
+          mode: input.mode,
+          activeTabId: input.activeTabId ?? null,
+        },
+      }),
+    },
+    closePane: (state, action: PayloadAction<string>) => {
+      const panes = state.ui.workspace.panes.filter(
+        (pane) => pane.id !== action.payload,
+      );
+      state.ui.workspace.panes = panes;
+      if (state.ui.workspace.focusedPaneId === action.payload) {
+        state.ui.workspace.focusedPaneId = panes[panes.length - 1]?.id ?? null;
+      }
+    },
+    focusPane: (state, action: PayloadAction<string>) => {
+      if (paneOf(state, action.payload)) {
+        state.ui.workspace.focusedPaneId = action.payload;
+      }
+    },
+    setPaneMode: (
       state,
-      action: PayloadAction<{ rootId: string; childIds: string[] }>,
+      action: PayloadAction<{ paneId: string; mode: PaneMode }>,
     ) => {
-      const { rootId, childIds } = action.payload;
-      state.ui.tabs = {
-        rootId,
-        tabIds: [rootId, ...childIds],
-        activeTabId: rootId,
-        dirtyTabIds: [],
-      };
+      const pane = paneOf(state, action.payload.paneId);
+      if (pane) pane.mode = action.payload.mode;
     },
-    setActiveTab: (state, action: PayloadAction<string>) => {
-      state.ui.tabs.activeTabId = action.payload;
+    /** Whether the *focused* pane shows a revision diff. */
+    setDiffOpen: (state, action: PayloadAction<boolean>) => {
+      const pane = focusedPaneOf(state);
+      if (pane) pane.diffOpen = action.payload;
     },
-    addTab: (state, action: PayloadAction<string>) => {
-      if (!state.ui.tabs.tabIds.includes(action.payload)) {
-        state.ui.tabs.tabIds.push(action.payload);
+
+    // ── Workspace: the tab group inside a pane ────────────────────────────
+
+    /** Publish the fetched tab list. Replaces the old `initTabs`. */
+    setPaneTabs: (
+      state,
+      action: PayloadAction<{
+        paneId: string;
+        tabIds: string[];
+        activeTabId: string;
+      }>,
+    ) => {
+      const pane = paneOf(state, action.payload.paneId);
+      if (!pane) return;
+      pane.tabIds = action.payload.tabIds;
+      pane.activeTabId = action.payload.activeTabId;
+    },
+    setActiveTab: (
+      state,
+      action: PayloadAction<{ paneId: string; tabId: string }>,
+    ) => {
+      const pane = paneOf(state, action.payload.paneId);
+      if (pane) pane.activeTabId = action.payload.tabId;
+    },
+    addTab: (
+      state,
+      action: PayloadAction<{ paneId: string; tabId: string }>,
+    ) => {
+      const pane = paneOf(state, action.payload.paneId);
+      if (!pane) return;
+      if (!pane.tabIds.includes(action.payload.tabId)) {
+        pane.tabIds.push(action.payload.tabId);
       }
-      state.ui.tabs.activeTabId = action.payload;
+      pane.activeTabId = action.payload.tabId;
     },
-    removeTab: (state, action: PayloadAction<string>) => {
-      const idx = state.ui.tabs.tabIds.indexOf(action.payload);
-      state.ui.tabs.tabIds = state.ui.tabs.tabIds.filter(
+    removeTab: (
+      state,
+      action: PayloadAction<{ paneId: string; tabId: string }>,
+    ) => {
+      const { paneId, tabId } = action.payload;
+      const pane = paneOf(state, paneId);
+      if (!pane) return;
+      const idx = pane.tabIds.indexOf(tabId);
+      pane.tabIds = pane.tabIds.filter((id) => id !== tabId);
+      // The tab is gone from every viewport, so its unsaved-content flag goes
+      // with it — nothing can save it now.
+      state.ui.dirtyDocIds = state.ui.dirtyDocIds.filter((id) => id !== tabId);
+      if (pane.activeTabId === tabId) {
+        const newIdx = Math.min(idx, pane.tabIds.length - 1);
+        pane.activeTabId = pane.tabIds[newIdx] ?? null;
+      }
+    },
+    reorderTabs: (
+      state,
+      action: PayloadAction<{ paneId: string; tabIds: string[] }>,
+    ) => {
+      const pane = paneOf(state, action.payload.paneId);
+      if (pane) pane.tabIds = action.payload.tabIds;
+    },
+
+    // ── Workspace: unsaved content, keyed by document ─────────────────────
+
+    markDocDirty: (state, action: PayloadAction<string>) => {
+      if (!state.ui.dirtyDocIds.includes(action.payload)) {
+        state.ui.dirtyDocIds.push(action.payload);
+      }
+    },
+    markDocClean: (state, action: PayloadAction<string>) => {
+      state.ui.dirtyDocIds = state.ui.dirtyDocIds.filter(
         (id) => id !== action.payload,
       );
-      state.ui.tabs.dirtyTabIds = state.ui.tabs.dirtyTabIds.filter(
-        (id) => id !== action.payload,
-      );
-      if (state.ui.tabs.activeTabId === action.payload) {
-        const newIdx = Math.min(idx, state.ui.tabs.tabIds.length - 1);
-        state.ui.tabs.activeTabId = state.ui.tabs.tabIds[newIdx] ?? null;
-      }
-    },
-    reorderTabs: (state, action: PayloadAction<string[]>) => {
-      state.ui.tabs.tabIds = action.payload;
-    },
-    markTabDirty: (state, action: PayloadAction<string>) => {
-      if (!state.ui.tabs.dirtyTabIds.includes(action.payload)) {
-        state.ui.tabs.dirtyTabIds.push(action.payload);
-      }
-    },
-    markTabClean: (state, action: PayloadAction<string>) => {
-      state.ui.tabs.dirtyTabIds = state.ui.tabs.dirtyTabIds.filter(
-        (id) => id !== action.payload,
-      );
-    },
-    clearTabs: (state) => {
-      state.ui.tabs = {
-        rootId: null,
-        tabIds: [],
-        activeTabId: null,
-        dirtyTabIds: [],
-      };
     },
     openAttachmentPreview: (
       state,

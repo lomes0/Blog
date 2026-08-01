@@ -11,6 +11,11 @@ function Announcer() {
   const announcement = useSelector((state) => state.ui.announcements[0]);
   const dispatch = useDispatch();
   const router = useRouter();
+  // Raw router, and it has to be: `navigate` is injected into an announcement's
+  // serialized `onClick` body (see `handleConfirm` below), which is a string
+  // authored wherever the announcement was raised. The destination is opaque
+  // here, so there is no command to route it through — and inventing a
+  // `navigate(url)` command to cover it is exactly what plan §3.2 forbids.
   const navigate = (path: string) => router.push(path);
   // No provider argument: this is handed to announcement actions as a zero-arg
   // callback, so it routes to NextAuth's own sign-in page, which lists exactly

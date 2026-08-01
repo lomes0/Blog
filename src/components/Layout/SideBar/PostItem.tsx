@@ -1,6 +1,5 @@
 "use client";
 import React, { memo, useCallback, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import {
   Box,
   IconButton,
@@ -13,10 +12,15 @@ import {
 } from "@mui/material";
 import { File, Pencil, Save } from "lucide-react";
 import { type RootState, useSelector } from "@/store";
-import { selectChildPostsByParent } from "@/store/selectors/layoutSelectors";
+import {
+  selectChildPostsByParent,
+  selectFocusedPane,
+} from "@/store/selectors/layoutSelectors";
 import type { Post } from "@/types";
 import { SafeNavigationLink } from "./SafeNavigationLink";
 import type { PostItemActions } from "./hooks/useSidebarActions";
+import { documentCommands } from "@/commands";
+import { useCommandRun } from "@/commands/CommandProvider";
 import {
   DRAG_MIME,
   type DropPosition,
@@ -81,26 +85,31 @@ export const PostItem = memo(
       dropIndicator = null,
     }: PostItemProps,
   ) => {
-    const router = useRouter();
+    const run = useCommandRun();
     const { rename } = itemActions;
 
     // A tabbed post is a root document with one child per extra tab. Derive the
-    // tabs from the store so they render regardless of which doc is open — the
-    // live `ui.tabs` slice only tracks the currently-open document.
+    // tabs from the store so they render regardless of which doc is open —
+    // `ui.workspace` only tracks the documents that are actually open.
     const childMap = useSelector(selectChildPostsByParent);
     const children = childMap.get(post.id) ?? EMPTY_CHILDREN;
     const hasTabs = children.length > 0;
 
-    // When this post is the open document, `ui.tabs` carries the live active
-    // tab and per-tab unsaved (dirty) state.
+    // When this post is what the focused pane is rooted at, that pane carries
+    // the live active tab; unsaved state is global and keyed by document.
+    //
+    // `openDirtyIds` stays null for every other post rather than being read
+    // unconditionally: a stable null keeps the whole sidebar off the re-render
+    // path of every keystroke in the open editor.
     const isOpenRoot = useSelector(
-      (state: RootState) => state.ui.tabs.rootId === post.id,
+      (state: RootState) => selectFocusedPane(state)?.rootId === post.id,
     );
-    const activeTabId = useSelector((state: RootState) =>
-      state.ui.tabs.rootId === post.id ? state.ui.tabs.activeTabId : null
-    );
+    const activeTabId = useSelector((state: RootState) => {
+      const pane = selectFocusedPane(state);
+      return pane?.rootId === post.id ? pane.activeTabId : null;
+    });
     const openDirtyIds = useSelector((state: RootState) =>
-      state.ui.tabs.rootId === post.id ? state.ui.tabs.dirtyTabIds : null
+      selectFocusedPane(state)?.rootId === post.id ? state.ui.dirtyDocIds : null
     );
 
     const doc = post;
@@ -116,7 +125,7 @@ export const PostItem = memo(
       rename.context === "name";
 
     // The post has unsaved live edits if it's the open document and any tab is
-    // dirty. Driven by the same Redux `dirtyTabIds` the Save button uses, so the
+    // dirty. Driven by the same `ui.dirtyDocIds` the Save button uses, so the
     // sidebar updates live as the user types (and clears on save/reset).
     const isDirty = isOpenRoot && (openDirtyIds?.length ?? 0) > 0;
     // Tab entries: the root itself is the first tab, then each child. A tab is
@@ -184,8 +193,8 @@ export const PostItem = memo(
     const handleEdit = useCallback((e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      router.push(`/edit/${post.id}`);
-    }, [router, post.id]);
+      run(documentCommands.open, { id: post.id });
+    }, [run, post.id]);
 
     // Modifier-only selection: Ctrl/Cmd or Shift click selects this row and
     // suppresses navigation; a plain click clears any selection and navigates.

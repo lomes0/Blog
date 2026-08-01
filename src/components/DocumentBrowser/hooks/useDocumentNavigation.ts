@@ -1,6 +1,7 @@
 "use client";
-import { useRouter } from "next/navigation";
 import { useCallback } from "react";
+import { documentCommands } from "@/commands";
+import { useCommandRun } from "@/commands/CommandProvider";
 
 type UseDocumentNavigationProps = Record<string, never>;
 
@@ -11,11 +12,11 @@ type UseDocumentNavigationProps = Record<string, never>;
 export const useDocumentNavigation = (
   {}: UseDocumentNavigationProps = {},
 ) => {
-  const router = useRouter();
+  const run = useCommandRun();
 
   const createDocument = useCallback(() => {
-    router.push("/new");
-  }, [router]);
+    run(documentCommands.create);
+  }, [run]);
 
   return { createDocument };
 };

@@ -1,7 +1,8 @@
 "use client";
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { comparePostsByRank } from "@/lib/documentOrder";
+import { seriesCommands } from "@/commands";
+import { useCommandRun } from "@/commands/CommandProvider";
 import { Post } from "@/types";
 
 export function useSeriesGroupState(
@@ -11,7 +12,7 @@ export function useSeriesGroupState(
   onExpand?: () => void,
   onCollapse?: () => void,
 ) {
-  const router = useRouter();
+  const run = useCommandRun();
   const [isCollapsed, setIsCollapsed] = useState(!defaultExpanded);
 
   const sortedPosts = useMemo(
@@ -33,7 +34,7 @@ export function useSeriesGroupState(
     const target = e.target as HTMLElement;
     const isLinkClick = target.closest("a");
     if (!isLinkClick) {
-      router.push(`/series/${seriesId}`);
+      run(seriesCommands.open, { id: seriesId });
     }
   };
 

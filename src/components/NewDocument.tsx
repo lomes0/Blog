@@ -7,6 +7,8 @@ import DocumentCard from "./DocumentCard";
 import { Avatar, Box, Button, Container, Typography } from "@mui/material";
 import { FileText, Plus } from "lucide-react";
 import { useCreatePostForm } from "@/hooks/useCreatePostForm";
+import { documentCommands } from "@/commands";
+import { useCommandRun } from "@/commands/CommandProvider";
 import PostFormFields from "./DocumentActions/PostFormFields";
 
 const NewDocument: React.FC<{ cloudDocument?: Post }> = (
@@ -35,13 +37,14 @@ const NewDocument: React.FC<{ cloudDocument?: Post }> = (
   }, [baseId, revisionId, seedFrom]);
 
   const router = useRouter();
+  const run = useCommandRun();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const result = await form.submit();
     if (!result.ok) return;
     router.refresh();
-    router.push(`/edit/${result.id}`);
+    run(documentCommands.open, { id: result.id });
   };
 
   return (

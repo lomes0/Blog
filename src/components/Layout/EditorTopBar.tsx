@@ -27,6 +27,7 @@ import RouterLink from "next/link";
 import { shallowEqual } from "react-redux";
 import { postsSelectors, useSelector } from "@/store";
 import type { RootState } from "@/store";
+import { selectFocusedPane } from "@/store/selectors/layoutSelectors";
 import { useTopBarActions } from "@/contexts/TopBarActionsContext";
 import { useTopBarTabs } from "@/contexts/TopBarTabsContext";
 import { ICON_SIZE } from "@/theme/icons";
@@ -101,7 +102,13 @@ const EditorTopBar: React.FC = () => {
   const isEditPage = segments[0] === "edit";
   const isViewPage = segments[0] === "view";
   const isDocPage = isEditPage || isViewPage;
-  const docId = isDocPage ? segments[1] : undefined;
+  // Which crumbs to draw is a property of the route; *which document* they name
+  // is not — that comes from the focused pane, so a second pane would move the
+  // breadcrumb with focus rather than with the address bar (plan §2.3).
+  const focusedRootId = useSelector(
+    (state: RootState) => selectFocusedPane(state)?.rootId ?? null,
+  );
+  const docId = isDocPage ? focusedRootId ?? undefined : undefined;
 
   const urlSeriesId = React.useMemo(() => {
     if (

@@ -12,6 +12,8 @@ import {
 import { Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCreatePostForm } from "@/hooks/useCreatePostForm";
+import { documentCommands } from "@/commands";
+import { useCommandRun } from "@/commands/CommandProvider";
 import PostFormFields from "../DocumentActions/PostFormFields";
 
 interface CreatePostDrawerProps {
@@ -30,6 +32,7 @@ const CreatePostDrawer: React.FC<CreatePostDrawerProps> = ({
   onSuccess,
 }) => {
   const router = useRouter();
+  const run = useCommandRun();
   const form = useCreatePostForm({ seriesId });
   const { reset, submitting } = form;
 
@@ -49,7 +52,7 @@ const CreatePostDrawer: React.FC<CreatePostDrawerProps> = ({
     onSuccess?.();
     onClose();
     router.refresh();
-    router.push(`/edit/${result.id}`);
+    run(documentCommands.open, { id: result.id });
   };
 
   return (

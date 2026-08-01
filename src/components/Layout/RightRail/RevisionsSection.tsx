@@ -8,9 +8,13 @@ import type { RootState } from "@/store";
 import { DateDisplay } from "@/components/shared/DateDisplay";
 import type { Revision, RevisionMeta } from "@/types";
 import RailSection from "./RailSection";
+import { selectFocusedPane } from "@/store/selectors/layoutSelectors";
 import { ICON_SIZE } from "@/theme/icons";
 
 const COLLAPSE_AT = 3;
+
+/** Stable identity so the memoised selector below doesn't recompute forever. */
+const EMPTY_TAB_IDS: string[] = [];
 
 interface RevisionsSectionProps {
   rootId: string;
@@ -31,7 +35,10 @@ export default function RevisionsSection({
   const selectRevisions = useMemo(
     () =>
       createSelector(
-        (state: RootState) => isEditMode ? state.ui.tabs.tabIds : rootIdArray,
+        (state: RootState) =>
+          isEditMode
+            ? selectFocusedPane(state)?.tabIds ?? EMPTY_TAB_IDS
+            : rootIdArray,
         (state: RootState) => state.posts.entities,
         (state: RootState) =>
           activeDocId

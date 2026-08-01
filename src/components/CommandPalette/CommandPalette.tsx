@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Box, InputBase, Modal, Typography } from "@mui/material";
-import { useColorScheme } from "@mui/material/styles";
-import { usePathname, useRouter } from "next/navigation";
 import {
   Eye,
   FilePlus,
@@ -15,10 +13,14 @@ import {
   Sparkles,
   Sun,
 } from "lucide-react";
-import { actions, type RootState, useDispatch, useSelector } from "@/store";
+import { type RootState, useSelector } from "@/store";
 import { selectAllPosts } from "@/store/selectors/postsSelectors";
 import { ICON_SIZE } from "@/theme/icons";
-import { useLayoutMode } from "@/contexts/LayoutModeContext";
+import {
+  useCommandContext,
+  useCommandRun,
+} from "@/commands/CommandProvider";
+import { documentCommands, uiCommands } from "@/commands";
 
 /**
  * Custom window event other entry points (title-bar search, activity rail,
@@ -48,21 +50,17 @@ const CommandPalette = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  const dispatch = useDispatch();
-  const router = useRouter();
-  const pathname = usePathname();
-  const { mode, systemMode, setMode } = useColorScheme();
+  // Every entry here runs a registered command; the palette only supplies the
+  // copy and the icon. `context` is read (never written) for the labels that
+  // depend on current state — which document is open, and in which mode.
+  const run = useCommandRun();
+  const context = useCommandContext();
 
   const posts = useSelector(selectAllPosts);
   const series = useSelector((state: RootState) => state.series);
-  const { copilotOpen, setCopilotOpen } = useLayoutMode();
 
-  // Current document id from the URL (edit/view routes), used by the mode switch.
-  const segments = pathname.split("/").filter(Boolean);
-  const routeMode = segments[0];
-  const currentDocId = routeMode === "edit" || routeMode === "view"
-    ? segments[1] ?? null
-    : null;
+  const currentDocId = context.focusedDocumentId;
+  const copilotOpen = context.copilot.open;
 
   const close = useCallback(() => {
     setOpen(false);
@@ -151,7 +149,8 @@ const CommandPalette = () => {
     return map;
   }, [series]);
 
-  const effectiveMode = mode === "system" ? systemMode : mode;
+  const effectiveMode = context.theme.resolved;
+  const focusedMode = context.focusedDocumentMode;
 
   const commands: PaletteItem[] = useMemo(() => {
     const items: PaletteItem[] = [
@@ -162,34 +161,37 @@ const CommandPalette = () => {
         icon: effectiveMode === "dark"
           ? <Sun size={ICON_SIZE.dense} />
           : <Moon size={ICON_SIZE.dense} />,
-        run: () => setMode(effectiveMode === "dark" ? "light" : "dark"),
+        run: () =>
+          run(uiCommands.setTheme, {
+            mode: effectiveMode === "dark" ? "light" : "dark",
+          }),
       },
       {
         id: "cmd:sidebar",
         label: "Toggle sidebar",
         hint: "⌘B",
         icon: <PanelLeft size={ICON_SIZE.dense} />,
-        run: () => dispatch(actions.toggleDrawer()),
+        run: () => run(uiCommands.toggleSidebar),
       },
       {
         id: "cmd:ai",
         label: copilotOpen ? "Hide AI assistant" : "Show AI assistant",
         hint: "AI",
         icon: <Sparkles size={ICON_SIZE.dense} />,
-        run: () => setCopilotOpen(!copilotOpen),
+        run: () => run(uiCommands.toggleCopilot),
       },
       {
         id: "cmd:new",
         label: "New post",
         hint: "Create",
         icon: <FilePlus size={ICON_SIZE.dense} />,
-        run: () => router.push("/new"),
+        run: () => run(documentCommands.create),
       },
     ];
 
     // Read/Edit mode switch only makes sense when a document is open.
     if (currentDocId) {
-      const toRead = routeMode === "edit";
+      const toRead = focusedMode === "write";
       items.splice(3, 0, {
         id: "cmd:mode",
         label: toRead ? "Switch to Read mode" : "Switch to Edit mode",
@@ -197,21 +199,13 @@ const CommandPalette = () => {
         icon: toRead
           ? <Eye size={ICON_SIZE.dense} />
           : <Pencil size={ICON_SIZE.dense} />,
-        run: () => router.push(`/${toRead ? "view" : "edit"}/${currentDocId}`),
+        run: () =>
+          run(uiCommands.setMode, { mode: toRead ? "read" : "write" }),
       });
     }
 
     return items;
-  }, [
-    effectiveMode,
-    copilotOpen,
-    setCopilotOpen,
-    currentDocId,
-    routeMode,
-    setMode,
-    dispatch,
-    router,
-  ]);
+  }, [effectiveMode, copilotOpen, currentDocId, focusedMode, run]);
 
   const postItems: PaletteItem[] = useMemo(
     () =>
@@ -225,10 +219,10 @@ const CommandPalette = () => {
           hint: `${folder}/${name}.md`,
           mono: true,
           icon: <FileText size={ICON_SIZE.dense} />,
-          run: () => router.push(`/edit/${post.id}`),
+          run: () => run(documentCommands.open, { id: post.id }),
         };
       }),
-    [posts, seriesByPostId, router],
+    [posts, seriesByPostId, run],
   );
 
   // Filter: commands by label, posts by title; empty query shows commands + a

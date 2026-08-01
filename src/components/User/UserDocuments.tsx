@@ -19,6 +19,11 @@ const UserDocuments: React.FC<{ documents?: Post[]; pages?: number }> = (
   const showLoading = !documents;
   const showEmpty = !showLoading && !documents.length;
 
+  // Both handlers below stay on the raw router on purpose. They rewrite this
+  // page's own query string (page / sort) rather than opening anything, so
+  // there is no entity for a command to name — and plan §3.2 rules out a
+  // `navigate(url)` command that would absorb them, since the registry becomes
+  // the AI's tool list in Phase 3.
   const handlePageChange = (_: React.ChangeEvent<unknown>, value: number) => {
     const params = new URLSearchParams(searchParams.toString());
     if (value === 1) params.delete("page");

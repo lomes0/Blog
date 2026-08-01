@@ -3,7 +3,6 @@ import { Post } from "@/types";
 import { seriesPositionOf } from "@/utils/posts/seriesGrouping";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import ViewAttachmentEnhancer from "./ViewAttachmentEnhancer";
 import ViewCodeEnhancer from "./ViewCodeEnhancer";
 import ChildDocumentView from "./ChildDocumentView";
@@ -18,6 +17,10 @@ import { MoreHorizontal, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { apiClient } from "@/api";
 import { actions, useDispatch, useSelector } from "@/store";
+import { selectPaneById } from "@/store/selectors/layoutSelectors";
+import { v4 as uuidv4 } from "uuid";
+import { documentCommands } from "@/commands";
+import { useCommandRun } from "@/commands/CommandProvider";
 import type { TabMeta } from "@/contexts/TopBarTabsContext";
 import ShareDocument from "@/components/DocumentActions/Share";
 import DownloadDocument from "@/components/DocumentActions/Download";
@@ -42,15 +45,32 @@ const ViewDocument: React.FC<
   const [tabs, setTabs] = useState<TabMeta[]>([]);
   const [moreAnchor, setMoreAnchor] = useState<null | HTMLElement>(null);
 
-  // Active tab is driven by the shared Redux tabs store so that selecting a
-  // sub-doc from the sidebar (or the top bar) updates the viewed content.
-  // Until this view's tabs are initialised, fall back to the URL document.
-  const activeTabId = useSelector((state) => {
-    const t = state.ui.tabs;
-    return t.rootId === rootId && t.activeTabId
-      ? t.activeTabId
-      : cloudDocument.id;
-  });
+  // This view owns a read-mode pane, the same way the editor owns a write-mode
+  // one. Phase 4 (plan §4.3) is where the public `/view/[id]` stops being a
+  // workspace surface at all; until then it keeps driving workspace state, and
+  // doing so through its own pane id is what makes that split possible to see.
+  const [paneId] = useState(() => uuidv4());
+
+  // Active tab comes from the pane, so selecting a sub-doc from the sidebar (or
+  // the top bar) updates the viewed content. Seeded with the requested document
+  // so `/view/<childId>` shows the child rather than flashing its parent.
+  const activeTabId = useSelector((state) =>
+    selectPaneById(state, paneId)?.activeTabId ?? cloudDocument.id
+  );
+
+  useEffect(() => {
+    dispatch(
+      actions.openPane({
+        paneId,
+        rootId,
+        mode: "read",
+        activeTabId: cloudDocument.id,
+      }),
+    );
+    return () => {
+      dispatch(actions.closePane(paneId));
+    };
+  }, [dispatch, paneId, rootId, cloudDocument.id]);
 
   // Heading reflects the active tab, not the post. The post's unique `name`
   // stays reserved for the URL/series/SEO (see generateMetadata); the visible
@@ -78,29 +98,24 @@ const ViewDocument: React.FC<
         ...(childDocs ?? []).map((c) => ({ id: c.id, name: c.name })),
       ];
       setTabs(metas);
-      // Publish tabs to the shared store (sidebar + top bar read from here).
-      dispatch(actions.initTabs({ rootId, childIds }));
-      // Preserve direct child views (/view/childId): initTabs activates the
-      // root, so re-activate the document that was actually requested.
-      if (cloudDocument.id !== rootId) {
-        dispatch(actions.setActiveTab(cloudDocument.id));
-      }
+      // Publish tabs to the pane (sidebar + top bar read from here). The active
+      // tab stays whatever was requested — `/view/<childId>` opens on the child.
+      dispatch(
+        actions.setPaneTabs({
+          paneId,
+          tabIds: [rootId, ...childIds],
+          activeTabId: cloudDocument.id,
+        }),
+      );
     }).catch(() => {});
 
     return () => {
       cancelled = true;
     };
-  }, [rootId, cloudDocument.id, dispatch]);
-
-  // Clear the shared tabs store when leaving the view.
-  useEffect(() => {
-    return () => {
-      dispatch(actions.clearTabs());
-    };
-  }, [dispatch]);
+  }, [rootId, cloudDocument.id, dispatch, paneId]);
 
   const handleTabSwitch = (tabId: string) =>
-    dispatch(actions.setActiveTab(tabId));
+    dispatch(actions.setActiveTab({ paneId, tabId }));
 
   // Register tabs with the top bar context.
   useEffect(() => {
@@ -115,7 +130,7 @@ const ViewDocument: React.FC<
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabs, activeTabId, rootId]);
 
-  const router = useRouter();
+  const run = useCommandRun();
   const authorLabel = cloudDocument.author?.handle ??
     cloudDocument.author?.name;
   const updatedDate = cloudDocument.updatedAt
@@ -173,7 +188,8 @@ const ViewDocument: React.FC<
             <Tooltip title="Edit">
               <IconButton
                 size="small"
-                onClick={() => router.push(`/edit/${cloudDocument.id}`)}
+                onClick={() =>
+                  run(documentCommands.open, { id: cloudDocument.id })}
                 aria-label="Edit document"
                 sx={{ color: "text.secondary", ml: 0.5 }}
               >

@@ -18,6 +18,8 @@ import { SHADOW } from "@/theme/tokens";
 import { formatFullDate } from "@/utils/dateFormat";
 import { useRouter } from "next/navigation";
 import { actions, useDispatch } from "@/store";
+import { seriesCommands } from "@/commands";
+import { useCommandRun } from "@/commands/CommandProvider";
 import { v4 as uuid } from "uuid";
 import { useMenuState } from "@/hooks/useMenuState";
 import DocItem from "./DocItem";
@@ -37,7 +39,9 @@ interface SeriesGroupCardProps {
 }
 
 function useSeriesGroupActions(series: Series | null | undefined) {
+  // Kept for `refresh()` only — navigation goes through the command registry.
   const router = useRouter();
+  const run = useCommandRun();
   const dispatch = useDispatch();
   const { anchorEl, menuOpen, openMenu, closeMenu } = useMenuState();
 
@@ -49,7 +53,7 @@ function useSeriesGroupActions(series: Series | null | undefined) {
 
   const handleEdit = () => {
     closeMenu();
-    if (series) router.push(`/series/${series.id}/edit`);
+    if (series) run(seriesCommands.edit, { id: series.id });
   };
 
   const handleDelete = async () => {
@@ -71,7 +75,7 @@ function useSeriesGroupActions(series: Series | null | undefined) {
   };
 
   const handleNavigate = () => {
-    if (series) router.push(`/posts/${series.id}`);
+    if (series) run(seriesCommands.open, { id: series.id });
   };
 
   return {

@@ -14,8 +14,11 @@ import {
 } from "lucide-react";
 import SettingsPanel from "./SettingsPanel";
 import { openCommandPalette } from "@/components/CommandPalette/CommandPalette";
-import { usePathname } from "next/navigation";
 import { useSelector } from "@/store";
+import {
+  selectFocusedDocId,
+  selectFocusedPane,
+} from "@/store/selectors/layoutSelectors";
 import { type RailMode, useLayoutMode } from "@/contexts/LayoutModeContext";
 import ResizeGripper from "../ResizeGripper";
 import OutlineSection from "./OutlineSection";
@@ -23,6 +26,8 @@ import PropertiesSection from "./PropertiesSection";
 import RevisionsSection from "./RevisionsSection";
 import BacklinksSection from "./BacklinksSection";
 import { ICON_SIZE } from "@/theme/icons";
+import { uiCommands } from "@/commands";
+import { useCommandRun } from "@/commands/CommandProvider";
 
 // Must match the grid-template-columns transition duration in AppLayoutContent.
 const TRANSITION_MS = 225;
@@ -37,20 +42,17 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
     isRailResizing,
     startRailResize,
     copilotOpen,
-    setCopilotOpen,
   } = useLayoutMode();
+  const run = useCommandRun();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const pathname = usePathname();
-  const segments = pathname.split("/").filter(Boolean);
-  const mode = segments[0] === "edit"
-    ? "edit"
-    : segments[0] === "view"
-    ? "view"
-    : null;
-  const rootId = mode ? segments[1] ?? null : null;
 
-  const activeTabId = useSelector((state) => state.ui.tabs.activeTabId);
-  const activeDocId = mode === "edit" ? (activeTabId ?? rootId) : rootId;
+  // The rail describes whatever pane has focus. It used to re-derive that from
+  // the pathname — which meant it could not be told apart from a stale tab, and
+  // could not have been told which of two panes to describe (plan §2.4).
+  const pane = useSelector(selectFocusedPane);
+  const rootId = pane?.rootId ?? null;
+  const isEditMode = pane?.mode === "write";
+  const activeDocId = useSelector(selectFocusedDocId);
 
   // Keep the full panel in the DOM during the close animation so it clips
   // gradually as the grid column shrinks, instead of vanishing instantly.
@@ -116,12 +118,12 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
                   <PropertiesSection
                     rootId={rootId}
                     activeDocId={activeDocId}
-                    isEditMode={mode === "edit"}
+                    isEditMode={isEditMode}
                   />
                   <RevisionsSection
                     rootId={rootId}
                     activeDocId={activeDocId}
-                    isEditMode={mode === "edit"}
+                    isEditMode={isEditMode}
                   />
                   <BacklinksSection rootId={rootId} />
                 </Box>
@@ -168,7 +170,7 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
           <IconButton
             size="small"
             color={copilotOpen ? "primary" : "default"}
-            onClick={() => setCopilotOpen(!copilotOpen)}
+            onClick={() => run(uiCommands.toggleCopilot)}
             aria-label="Toggle Copilot"
           >
             <Sparkles size={ICON_SIZE.dense} />

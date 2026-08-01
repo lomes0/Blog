@@ -23,17 +23,40 @@ import EditorTabPanel from "./EditorTabPanel";
 import TabContextMenu from "./TabContextMenu";
 import { EMPTY_EDITOR_STATE, type PostCreateInput } from "@/types";
 import { useAsyncEffect } from "@/hooks/useAsyncEffect";
+import { selectPaneById } from "@/store/selectors/layoutSelectors";
 
 interface TabbedDocumentEditorProps {
   rootId: string;
 }
 
+/** Stable empty list so a paneless render doesn't churn memoised consumers. */
+const EMPTY_TAB_IDS: string[] = [];
+
 const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
   rootId,
 }) => {
   const dispatch = useDispatch();
-  const tabs = useSelector((state) => state.ui.tabs);
+  // This editor owns one pane for its whole lifetime. The id is minted here
+  // rather than in the reducer so the component can address its own pane
+  // without reading focus back out of the store — which is what stops the
+  // sidebar and the rail from having to guess which viewport they mean.
+  const [paneId] = useState(() => uuidv4());
+  const pane = useSelector((state) => selectPaneById(state, paneId));
+  const tabIds = pane?.tabIds ?? EMPTY_TAB_IDS;
+  const activeTabId = pane?.activeTabId ?? null;
+  const dirtyDocIds = useSelector((state) => state.ui.dirtyDocIds);
   const user = useSelector((state) => state.user);
+
+  // Open the pane in the same commit as the route, before the tab fetch below.
+  // `tabIds` stays empty until that fetch lands, exactly as `clearTabs()` left
+  // it — but the rail and the Copilot now know which document is focused
+  // immediately instead of parsing it back out of the URL.
+  useEffect(() => {
+    dispatch(actions.openPane({ paneId, rootId, mode: "write" }));
+    return () => {
+      dispatch(actions.closePane(paneId));
+    };
+  }, [dispatch, paneId, rootId]);
 
   const setActiveEditorRef = useContext(SetActiveEditorContext);
   const { setTabBar } = useTopBarTabs();
@@ -79,8 +102,6 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
 
   // Load root metadata + children on mount.
   useAsyncEffect(async (isCancelled) => {
-    dispatch(actions.clearTabs());
-
     const [rootDoc, children] = await Promise.all([
       dispatch(actions.getPost(rootId)).unwrap().catch(() => undefined),
       dispatch(actions.getPostChildren(rootId)).unwrap().catch(() => []),
@@ -89,7 +110,13 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     if (isCancelled()) return;
 
     const childIds = (children ?? []).map((c) => c.id);
-    dispatch(actions.initTabs({ rootId, childIds }));
+    dispatch(
+      actions.setPaneTabs({
+        paneId,
+        tabIds: [rootId, ...childIds],
+        activeTabId: rootId,
+      }),
+    );
 
     const metas: TabMeta[] = [
       // The root tab's label is its own `tabLabel` when set, falling back to the
@@ -100,12 +127,12 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     ];
     setTabMetas(metas);
     setMountedTabIds(new Set([rootId]));
-  }, [rootId]);
+  }, [rootId, paneId]);
 
   const handleSwitch = useCallback((tabId: string) => {
     setMountedTabIds((prev) => new Set([...prev, tabId]));
-    dispatch(actions.setActiveTab(tabId));
-  }, [dispatch]);
+    dispatch(actions.setActiveTab({ paneId, tabId }));
+  }, [dispatch, paneId]);
 
   const handleAdd = useCallback(async () => {
     if (!user) return;
@@ -135,11 +162,11 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     const newMeta: TabMeta = { id, name: "Untitled" };
     setTabMetas((prev) => [...prev, newMeta]);
     setMountedTabIds((prev) => new Set([...prev, id]));
-    dispatch(actions.addTab(id));
+    dispatch(actions.addTab({ paneId, tabId: id }));
     // Switch to the new tab (addTab does this) and open inline rename so the
     // user can name it right away.
     setRenamingTabId(id);
-  }, [user, rootId, dispatch]);
+  }, [user, rootId, dispatch, paneId]);
 
   const handleCloseRequest = useCallback((tabId: string) => {
     const meta = tabMetas.find((t) => t.id === tabId);
@@ -159,8 +186,8 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
       next.delete(id);
       return next;
     });
-    dispatch(actions.removeTab(id));
-  }, [deleteTarget, dispatch]);
+    dispatch(actions.removeTab({ paneId, tabId: id }));
+  }, [deleteTarget, dispatch, paneId]);
 
   const handleRename = useCallback(async (tabId: string, newName: string) => {
     const trimmed = newName.trim();
@@ -182,7 +209,7 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
   const handleReorder = useCallback(async (orderedIds: string[]) => {
     const prevOrder = tabMetas.map((t) => t.id);
     if (orderedIds.join() === prevOrder.join()) return;
-    dispatch(actions.reorderTabs(orderedIds));
+    dispatch(actions.reorderTabs({ paneId, tabIds: orderedIds }));
     setTabMetas((prev) => {
       const map = new Map(prev.map((t) => [t.id, t]));
       return orderedIds.map((id) => map.get(id)!).filter(Boolean);
@@ -214,7 +241,7 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
         },
       }),
     );
-  }, [dispatch, tabMetas, allDocuments, rootId]);
+  }, [dispatch, tabMetas, allDocuments, rootId, paneId]);
 
   // ---- Context menu ----
 
@@ -258,8 +285,8 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     const newMeta: TabMeta = { id, name: newName };
     setTabMetas((prev) => [...prev, newMeta]);
     setMountedTabIds((prev) => new Set([...prev, id]));
-    dispatch(actions.addTab(id));
-  }, [allDocuments, dispatch]);
+    dispatch(actions.addTab({ paneId, tabId: id }));
+  }, [allDocuments, dispatch, paneId]);
 
   const handleMoveRequest = useCallback((tabId: string) => {
     setMoveDialogTabId(tabId);
@@ -288,8 +315,8 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
       next.delete(tabId);
       return next;
     });
-    dispatch(actions.removeTab(tabId));
-  }, [moveDialogTabId, moveTargetPostId, dispatch]);
+    dispatch(actions.removeTab({ paneId, tabId }));
+  }, [moveDialogTabId, moveTargetPostId, dispatch, paneId]);
 
   const handleSplitOff = useCallback(async (tabId: string) => {
     // Detach the tab from this post — it becomes a standalone document, which
@@ -304,16 +331,16 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
       next.delete(tabId);
       return next;
     });
-    dispatch(actions.removeTab(tabId));
-  }, [dispatch]);
+    dispatch(actions.removeTab({ paneId, tabId }));
+  }, [dispatch, paneId]);
 
   // Build the ordered tab list from Redux tabIds + local metadata.
   const orderedTabs = useMemo(
     () =>
-      tabs.tabIds
+      tabIds
         .map((id) => tabMetas.find((m) => m.id === id))
         .filter((m): m is TabMeta => !!m),
-    [tabs.tabIds, tabMetas],
+    [tabIds, tabMetas],
   );
 
   // Sync tab state into the top bar context whenever it changes.
@@ -321,8 +348,8 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     if (orderedTabs.length === 0) return;
     setTabBar({
       tabs: orderedTabs,
-      activeTabId: tabs.activeTabId,
-      dirtyTabIds: tabs.dirtyTabIds,
+      activeTabId,
+      dirtyTabIds: dirtyDocIds,
       rootTabId: rootId,
       renamingTabId: renamingTabId,
       onSwitch: handleSwitch,
@@ -335,8 +362,8 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     });
   }, [
     orderedTabs,
-    tabs.activeTabId,
-    tabs.dirtyTabIds,
+    activeTabId,
+    dirtyDocIds,
     rootId,
     renamingTabId,
     setTabBar,
@@ -356,13 +383,13 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
       <Box sx={{ display: "flex", flex: 1 }}>
         <Box sx={{ flex: 1 }}>
-          {tabs.tabIds.map((tabId) => (
+          {tabIds.map((tabId) => (
             <EditorTabPanel
               key={tabId}
               docId={tabId}
               rootId={rootId}
-              isActive={tabId === tabs.activeTabId}
-              onEditorReady={tabId === tabs.activeTabId
+              isActive={tabId === activeTabId}
+              onEditorReady={tabId === activeTabId
                 ? handleEditorReady
                 : undefined}
             />

@@ -8,6 +8,7 @@ read that first.** A plan describes an intended state, not the current one.
 | [bloat-remediation.md](./bloat-remediation.md)             | Steps 1–6 done (re-verified 2026-07-30); only step 7 is left, still blocked on the brief below |
 | [tree-model-brief.md](./tree-model-brief.md)               | Decision brief — awaits one product call: does `/posts` render projects?                       |
 | [ide-redesign.md](./ide-redesign.md)                       | In progress — ⌘K command palette landed; status bar and Explorer restyle pending               |
+| [workspace-panes.md](./workspace-panes.md)                 | Proposal — command registry, `ui.tabs` → `ui.workspace`, public/workspace route split, split view; two product calls open |
 | [storage-uploads.md](./storage-uploads.md)                 | Proposal — move uploads off the container filesystem to R2/MinIO                               |
 | [ordering-simplification.md](./ordering-simplification.md) | Proposal — see below                                                                           |
 | [schema-organization.md](./schema-organization.md)         | Proposal — see below                                                                           |

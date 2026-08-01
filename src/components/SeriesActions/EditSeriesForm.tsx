@@ -11,6 +11,8 @@ import {
 import { useRouter } from "next/navigation";
 import { Series } from "@/types";
 import { actions, useDispatch } from "@/store";
+import { seriesCommands } from "@/commands";
+import { useCommandRun } from "@/commands/CommandProvider";
 
 interface EditSeriesFormProps {
   series: Series;
@@ -32,6 +34,7 @@ export default function EditSeriesForm(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const run = useCommandRun();
   const dispatch = useDispatch();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -54,7 +57,7 @@ export default function EditSeriesForm(
         },
       })).unwrap();
 
-      router.push(`/posts/${series.id}`);
+      run(seriesCommands.open, { id: series.id });
     } catch (err) {
       // The thunk announced the failure globally; this is the inline copy.
       setError(err instanceof Error ? err.message : "Failed to update series");
@@ -86,6 +89,11 @@ export default function EditSeriesForm(
     try {
       await dispatch(actions.deleteSeries(series.id)).unwrap();
 
+      // Left as a raw push: `/series` is a listing that does not exist (only
+      // `/series/[id]`, itself a 308 to `/posts/[id]`), so this is a broken
+      // destination rather than a command. Where a deleted series sends you is
+      // a behaviour question, and Phase 1 changes no behaviour — see
+      // docs/plans/workspace-panes.md §7.
       router.push("/series");
     } catch (err) {
       // The thunk announced the failure globally; this is the inline copy.

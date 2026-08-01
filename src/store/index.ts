@@ -100,8 +100,9 @@ export const postsSelectors = postsAdapter.getSelectors<RootState>(
   (state) => state.posts,
 );
 
+/** Does anything open have unsaved editor content? Keyed by document, not pane. */
 export const selectIsDirty = (state: RootState) =>
-  state.ui.tabs.dirtyTabIds.length > 0;
+  state.ui.dirtyDocIds.length > 0;
 
 export const useDispatch: () => AppDispatch = useReduxDispatch;
 export const useSelector: <T>(

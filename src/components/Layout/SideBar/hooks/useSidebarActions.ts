@@ -15,6 +15,8 @@ import {
   type InlineRenameResult,
   useInlineRename,
 } from "@/hooks/useInlineRename";
+import { documentCommands, seriesCommands } from "@/commands";
+import { useCommandRun } from "@/commands/CommandProvider";
 
 /**
  * Which field a post's inline rename writes to. The root document doubles as the
@@ -108,6 +110,7 @@ function postTitle(post: Post, field: RenameField): string {
 export function useSidebarActions(): SidebarActionsResult {
   const dispatch = useDispatch();
   const router = useRouter();
+  const run = useCommandRun();
   const documents = useSelector((state: RootState) =>
     postsSelectors.selectAll(state)
   );
@@ -182,7 +185,7 @@ export function useSidebarActions(): SidebarActionsResult {
     onEnd: (id) => {
       if (pendingOpenRef.current !== id) return;
       pendingOpenRef.current = null;
-      router.push(`/edit/${id}`);
+      run(documentCommands.open, { id });
     },
   });
   const {
@@ -193,9 +196,9 @@ export function useSidebarActions(): SidebarActionsResult {
   const handleEditPost = useCallback(
     (postId: string) => {
       closePostMenu();
-      router.push(`/edit/${postId}`);
+      run(documentCommands.open, { id: postId });
     },
-    [router, closePostMenu],
+    [run, closePostMenu],
   );
 
   const handleRenamePostFromMenu = useCallback(
@@ -279,9 +282,9 @@ export function useSidebarActions(): SidebarActionsResult {
   const handleEditSeries = useCallback(
     (seriesId: string) => {
       closeSeriesMenu();
-      router.push(`/series/${seriesId}/edit`);
+      run(seriesCommands.edit, { id: seriesId });
     },
-    [router, closeSeriesMenu],
+    [run, closeSeriesMenu],
   );
 
   const handleNewPostFromSeriesMenu = useCallback(

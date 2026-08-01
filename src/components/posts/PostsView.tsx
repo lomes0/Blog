@@ -4,6 +4,8 @@ import { Box, Typography } from "@mui/material";
 import Grid from "@mui/material/Grid2";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { documentCommands } from "@/commands";
+import { useCommandRun } from "@/commands/CommandProvider";
 import { Post, Series, User } from "@/types";
 import { useSelector } from "@/store";
 import { selectStandalonePosts } from "@/store/selectors/postsSelectors";
@@ -91,7 +93,9 @@ const PostsGrid: React.FC<{ posts: Post[]; user?: User }> = (
  */
 const PostsView: React.FC<PostsViewProps> = ({ series, user: serverUser }) => {
   const isSeries = !!series;
+  // Kept for `refresh()` only — navigation goes through the command registry.
   const router = useRouter();
+  const run = useCommandRun();
 
   const { data: session } = useSession();
   const user = serverUser ?? (session?.user as User | undefined);
@@ -222,7 +226,7 @@ const PostsView: React.FC<PostsViewProps> = ({ series, user: serverUser }) => {
             canEdit={canEdit}
             onNewPost={isSeries
               ? () => setCreatePostDrawerOpen(true)
-              : () => router.push("/new")}
+              : () => run(documentCommands.create)}
             onNewSeries={() => setCreateSeriesDrawerOpen(true)}
             onAddRemovePosts={isSeries
               ? () => setAddDialogOpen(true)

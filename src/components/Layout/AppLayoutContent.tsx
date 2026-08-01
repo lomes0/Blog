@@ -19,6 +19,7 @@ import InlineCopilotBar, {
 import CommandPalette from "@/components/CommandPalette/CommandPalette";
 import { Box, Container } from "@mui/material";
 import { actions, type RootState, useDispatch, useSelector } from "@/store";
+import { selectFocusedDocId } from "@/store/selectors/layoutSelectors";
 import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
 import { useLayoutMode } from "@/contexts/LayoutModeContext";
 import { usePathname } from "next/navigation";
@@ -46,26 +47,16 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
     copilotWidth,
     isCopilotResizing,
   } = useLayoutMode();
-  const activeTabId = useSelector(
-    (state: RootState) => state.ui.tabs.activeTabId,
-  );
   const pathname = usePathname();
-  const segments = pathname.split("/").filter(Boolean);
-  const routeMode = segments[0] === "edit"
-    ? "edit"
-    : segments[0] === "view"
-    ? "view"
-    : null;
-  const routeDocId = routeMode ? (segments[1] ?? null) : null;
-  // A view route is authoritative; the active tab may be stale from a prior
-  // edit session. Edit mode still follows the selected tab. `null` on every
-  // other route — the Copilot then talks about the library rather than a
-  // document, which is what the home pane's composer opens it for.
-  const copilotDocumentId = routeMode === "view"
-    ? routeDocId
-    : routeMode === "edit"
-    ? activeTabId ?? routeDocId
-    : null;
+  // What the Copilot is talking about: the focused pane's active document, and
+  // `null` when nothing is open — which is when the Copilot talks about the
+  // library instead, what the home pane's composer opens it for.
+  //
+  // This used to be derived by splitting the pathname, with one rule for
+  // `/view` and another for `/edit`. Workspace state answers it directly now
+  // (plan §2.4), so the two rules collapse into one and the answer is right in
+  // a split view, where no path could name the left pane.
+  const copilotDocumentId = useSelector(selectFocusedDocId);
 
   const [activeEditorRef, setActiveEditorRef] = useState<
     RefObject<LexicalEditor | null>

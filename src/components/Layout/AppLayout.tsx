@@ -8,6 +8,7 @@ import { SidebarWidthProvider } from "@/contexts/SidebarWidthContext";
 import { LayoutModeProvider } from "@/contexts/LayoutModeContext";
 import { TopBarActionsProvider } from "@/contexts/TopBarActionsContext";
 import { ToolbarSlotProvider } from "@/contexts/ToolbarSlotContext";
+import { CommandProvider } from "@/commands/CommandProvider";
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   return (
@@ -20,9 +21,14 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
           <LayoutModeProvider>
             <TopBarActionsProvider>
               <ToolbarSlotProvider>
-                <AppLayoutContent>{children}</AppLayoutContent>
-                <AlertDialog />
-                <Announcer />
+                {/* Innermost: the command context is built from the store, the
+                    color scheme and the layout mode, so it has to sit under all
+                    three. */}
+                <CommandProvider>
+                  <AppLayoutContent>{children}</AppLayoutContent>
+                  <AlertDialog />
+                  <Announcer />
+                </CommandProvider>
               </ToolbarSlotProvider>
             </TopBarActionsProvider>
           </LayoutModeProvider>

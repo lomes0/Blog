@@ -14,12 +14,13 @@ import { Post, User } from "@/types";
 import { capabilities } from "@/lib/capabilities";
 import ShareDocument from "./Share";
 import EditDocumentDialog from "./Edit";
-import { useRouter } from "next/navigation";
+import { documentCommands } from "@/commands";
+import { useCommandRun } from "@/commands/CommandProvider";
 
 function DocumentActionMenu(
   { post, user }: { post: Post; user?: User },
 ) {
-  const router = useRouter();
+  const run = useCommandRun();
   const { anchorEl, menuOpen: open, openMenu, closeMenu } = useMenuState();
 
   const can = capabilities(user);
@@ -71,7 +72,7 @@ function DocumentActionMenu(
         {options.includes("editContent") && (
           <MenuItem
             onClick={() => {
-              router.push(`/edit/${handle}`);
+              run(documentCommands.open, { id: handle });
               closeMenu();
             }}
           >

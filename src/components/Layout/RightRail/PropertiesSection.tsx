@@ -10,8 +10,12 @@ import { DocumentStatus } from "@/types";
 import { countWords } from "@/utils/editorContent";
 import { seriesPositionOf } from "@/utils/posts/seriesGrouping";
 import RailSection from "./RailSection";
+import { selectFocusedPane } from "@/store/selectors/layoutSelectors";
 import { ICON_SIZE } from "@/theme/icons";
 import { MONO_FONT } from "@/components/Layout/SideBar/constants";
+
+/** Stable identity — this selector is compared with `shallowEqual`. */
+const EMPTY_TAB_IDS: string[] = [];
 
 interface PropertiesSectionProps {
   rootId: string;
@@ -43,7 +47,7 @@ export default function PropertiesSection({
   activeDocId,
   isEditMode,
 }: PropertiesSectionProps) {
-  const { localDoc, cloudDoc, series, tabIds, dirtyTabIds } = useSelector(
+  const { localDoc, cloudDoc, series, tabIds, dirtyDocIds } = useSelector(
     (state: RootState) => {
       const rootUserDoc = postsSelectors.selectById(state, rootId);
       const activeUserDoc = activeDocId
@@ -58,15 +62,15 @@ export default function PropertiesSection({
         series: seriesId
           ? state.series.find((s) => s.id === seriesId)
           : undefined,
-        tabIds: state.ui.tabs.tabIds,
-        dirtyTabIds: state.ui.tabs.dirtyTabIds,
+        tabIds: selectFocusedPane(state)?.tabIds ?? EMPTY_TAB_IDS,
+        dirtyDocIds: state.ui.dirtyDocIds,
       };
     },
     shallowEqual,
   );
 
   const hasMultipleTabs = tabIds.length > 1;
-  const isTabDirty = activeDocId ? dirtyTabIds.includes(activeDocId) : false;
+  const isTabDirty = activeDocId ? dirtyDocIds.includes(activeDocId) : false;
 
   const activeLocalDoc = useSelector((state: RootState) =>
     activeDocId ? postsSelectors.selectById(state, activeDocId) : undefined

@@ -24,6 +24,11 @@ function UserActionMenu({ user }: { user: User }) {
   const isOnline = useOnlineStatus();
   const origin = useOrigin();
   const router = useRouter();
+  // Raw router: this navigates to the user's *own* profile after a handle
+  // change, to keep the address bar honest. There is no `user.open` command
+  // because nothing else in the app navigates to a profile programmatically —
+  // every other route there is a plain <Link>. See docs/plans/workspace-panes.md
+  // §3.2 for why a generic `navigate(url)` command is not the answer.
   const navigate = (path: string) => router.push(path);
   const pathname = usePathname();
 

@@ -8,6 +8,8 @@ import NProgress from "nprogress";
 
 const DiffView = () => {
   const dispatch = useDispatch();
+  // Which revisions to compare is global; whether this pane shows the result is
+  // the pane's own `diffOpen`, which is what gates rendering DiffView at all.
   const diff = useSelector((state) => state.ui.diff);
   const [html, setHtml] = useState<string>("");
 
@@ -55,7 +57,6 @@ const DiffView = () => {
     };
   }, [diff, getEditorDocumentRevision]);
 
-  if (!diff.open) return null;
   if (!html) return null;
 
   return <div className="diff-container">{htmr(html)}</div>;

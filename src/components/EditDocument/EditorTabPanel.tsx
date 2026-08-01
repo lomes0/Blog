@@ -14,6 +14,7 @@ import SplashScreen from "@/components/shared/SplashScreen";
 import DiffView from "@/components/Diff";
 import { postsSelectors, useSelector } from "@/store";
 import type { RootState } from "@/store";
+import { selectFocusedPane } from "@/store/selectors/layoutSelectors";
 import { useDirtyTracking } from "./hooks/useDirtyTracking";
 import { usePostLoader } from "./hooks/usePostLoader";
 import { useSave } from "./hooks/useSave";
@@ -92,7 +93,11 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
   useEffect(() => {
     if (isActive) onEditorReady?.(editorRef);
   }, [isActive, onEditorReady]);
-  const showDiff = useSelector((state) => state.ui.diff.open);
+  // Per-pane from Phase 2 on: two panes must be able to disagree about
+  // whether a diff is showing. One pane today, so this is the focused one.
+  const showDiff = useSelector((state) =>
+    selectFocusedPane(state)?.diffOpen ?? false
+  );
 
   // Stable reference so the save hook isn't rebuilt on every unrelated change.
   const reduxPost = useReduxSelector(

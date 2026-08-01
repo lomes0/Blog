@@ -23,11 +23,51 @@ export interface AttachmentPreviewState {
   mimetype: string | null;
 }
 
-export interface TabsState {
-  rootId: string | null;
+/**
+ * How a pane is showing its document — the state that replaces the `/view` vs
+ * `/edit` route split in Phase 5 of docs/plans/workspace-panes.md. Nothing
+ * *decides* anything on it yet; it is set correctly and read for labels.
+ */
+export type PaneMode = "read" | "write";
+
+/**
+ * A viewport onto a document.
+ *
+ * Note the vocabulary (plan §2.1): a **pane** is a viewport; a **tab** is a
+ * child document of a post (`Document.parentId`, `tabLabel`). A pane contains a
+ * tab group, which is what `tabIds` / `activeTabId` are. "Tab" never means
+ * "open document" — that is a pane.
+ *
+ * `id` is stable for the pane's lifetime even though there is only ever one
+ * today: Phase 3 lets the AI name panes, and retrofitting ids after that is
+ * painful.
+ */
+export interface WorkspacePane {
+  id: string;
+  /** The post this pane is rooted at. Its tabs are this post's children. */
+  rootId: string;
+  /**
+   * The root plus its children, in display order. Empty until the children
+   * have been fetched — `activeTabId` may lead it, and callers fall back to
+   * `rootId`.
+   */
   tabIds: string[];
   activeTabId: string | null;
-  dirtyTabIds: string[];
+  mode: PaneMode;
+  /** Was the global `ui.diff.open` (plan §5.1 #4). */
+  diffOpen: boolean;
+}
+
+/**
+ * What is open, as state rather than as a path string.
+ *
+ * Exactly one pane exists today; the array is the point. Deliberately **not**
+ * persisted — whether panes survive a browser restart is plan §8.2, still
+ * unanswered.
+ */
+export interface WorkspaceState {
+  panes: WorkspacePane[];
+  focusedPaneId: string | null;
 }
 
 /** Which view the left sidebar renders, switched from the activity rail. */
@@ -56,10 +96,21 @@ export interface AppState {
     saveStatus: Record<string, SaveStatus>;
     drawer: boolean;
     page: number;
-    diff: { open: boolean; old?: string; new?: string };
+    /**
+     * Which revisions a diff is comparing. Whether a diff is *shown* is
+     * per-pane (`WorkspacePane.diffOpen`), because two panes can disagree.
+     */
+    diff: { old?: string; new?: string };
     attachmentPreview: AttachmentPreviewState | null;
     attachmentModified: { url: string; timestamp: number } | null;
-    tabs: TabsState;
+    workspace: WorkspaceState;
+    /**
+     * Documents with unsaved editor content, keyed by document id.
+     *
+     * Global, not per-pane: dirty is a property of a document, so the same
+     * document open in two panes cannot report two answers (plan §2.3).
+     */
+    dirtyDocIds: string[];
     sidebarView: SidebarView;
   };
 }

@@ -7,7 +7,9 @@ import {
   ListItemText,
   MenuItem,
 } from "@mui/material";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { documentCommands } from "@/commands";
+import { useCommandRun } from "@/commands/CommandProvider";
 
 const ForkDocument: React.FC<
   {
@@ -21,15 +23,16 @@ const ForkDocument: React.FC<
   const head = post.head;
   const searchParams = useSearchParams();
   const revisionId = searchParams.get("v");
-  const router = useRouter();
-  const navigate = (path: string) => router.push(path);
+  const run = useCommandRun();
 
   const handleFork = () => {
     if (closeMenu) closeMenu();
-    const href = `/new/${handle || id}${
-      revisionId && revisionId !== head ? `?v=${revisionId}` : ""
-    }`;
-    navigate(href);
+    run(documentCommands.fork, {
+      id: handle || id,
+      // Only pin a revision when it is not the head — `/new/[id]` forks the
+      // head on its own, and naming it would put a redundant `?v=` in the URL.
+      ...(revisionId && revisionId !== head ? { revisionId } : {}),
+    });
   };
 
   if (variant === "menuitem") {

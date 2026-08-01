@@ -101,7 +101,7 @@ export function usePostLoader(
         // for delivery once the editor is up.
         setLoadedPost({ ...post, data: pending.data });
         setRestoredFromPending(true);
-        dispatch(actions.markTabDirty(post.id));
+        dispatch(actions.markDocDirty(post.id));
         dispatch(actions.setSaveStatus({ id: post.id, status: "retrying" }));
       } else {
         setLoadedPost(post);
@@ -112,8 +112,8 @@ export function usePostLoader(
     await load();
 
     return () => {
-      dispatch(actions.setDiff({ open: false }));
-      if (id) dispatch(actions.markTabClean(id));
+      dispatch(actions.setDiffOpen(false));
+      if (id) dispatch(actions.markDocClean(id));
     };
   }, [dispatch, id]);
 

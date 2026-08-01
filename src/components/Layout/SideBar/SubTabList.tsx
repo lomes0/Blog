@@ -9,7 +9,8 @@ import {
   TextField,
 } from "@mui/material";
 import { FilePen } from "lucide-react";
-import { actions, useDispatch } from "@/store";
+import { actions, useDispatch, useSelector } from "@/store";
+import { selectFocusedPaneId } from "@/store/selectors/layoutSelectors";
 import { ICON_SIZE } from "@/theme/icons";
 import { useContextMenu } from "@/hooks/useContextMenu";
 import { SafeNavigationLink } from "./SafeNavigationLink";
@@ -27,9 +28,9 @@ interface SubTabListProps {
   activeTabId: string | null;
   /**
    * Whether the parent post is the document currently open in the editor/viewer.
-   * When true, clicking a tab switches the active tab in place (driven by the
-   * shared `ui.tabs` store). When false the post isn't open, so a click
-   * navigates to that tab's document instead.
+   * When true, clicking a tab switches the active tab in place (in the focused
+   * pane). When false the post isn't open, so a click navigates to that tab's
+   * document instead.
    */
   isOpenRoot: boolean;
   /**
@@ -59,7 +60,16 @@ export const SubTabList: React.FC<SubTabListProps> = (
   { tabs, activeTabId, isOpenRoot, rootTabId, itemActions },
 ) => {
   const dispatch = useDispatch();
+  // A sidebar row owns no pane of its own; switching tabs acts on whichever
+  // pane has focus. `isOpenRoot` is already the assertion that that pane is
+  // rooted at this post.
+  const focusedPaneId = useSelector(selectFocusedPaneId);
   const { rename } = itemActions;
+
+  const switchTo = (tabId: string) => {
+    if (!focusedPaneId) return;
+    dispatch(actions.setActiveTab({ paneId: focusedPaneId, tabId }));
+  };
 
   // The first (root) tab renames its own `tabLabel`; the rest rename `name`.
   const fieldFor = (tabId: string): RenameField =>
@@ -133,11 +143,11 @@ export const SubTabList: React.FC<SubTabListProps> = (
             ? {
               role: "button",
               tabIndex: 0,
-              onClick: () => dispatch(actions.setActiveTab(tab.id)),
+              onClick: () => switchTo(tab.id),
               onKeyDown: (e: React.KeyboardEvent) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  dispatch(actions.setActiveTab(tab.id));
+                  switchTo(tab.id);
                 }
               },
             }

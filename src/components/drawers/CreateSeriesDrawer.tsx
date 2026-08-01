@@ -14,6 +14,8 @@ import {
 import { Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { actions, useDispatch } from "@/store";
+import { seriesCommands } from "@/commands";
+import { useCommandRun } from "@/commands/CommandProvider";
 
 interface CreateSeriesDrawerProps {
   /** Whether the drawer is open */
@@ -34,6 +36,7 @@ const CreateSeriesDrawer: React.FC<CreateSeriesDrawerProps> = ({
   onSuccess,
 }) => {
   const router = useRouter();
+  const run = useCommandRun();
   const dispatch = useDispatch();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -70,7 +73,7 @@ const CreateSeriesDrawer: React.FC<CreateSeriesDrawerProps> = ({
       // Success - close drawer and navigate or refresh
       onSuccess?.();
       onClose();
-      router.push(`/posts/${series.id}`);
+      run(seriesCommands.open, { id: series.id });
       router.refresh();
     } catch (err) {
       // The thunk announced the failure globally; this is the inline copy.

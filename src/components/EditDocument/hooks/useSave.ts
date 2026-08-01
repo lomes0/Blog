@@ -98,7 +98,7 @@ export function useSave(
       cancelRetry();
       await clearPendingSave(postId);
       dispatch(actions.setSaveStatus({ id: postId, status: "idle" }));
-      dispatch(actions.markTabClean(postId));
+      dispatch(actions.markDocClean(postId));
       return true;
     }
 
@@ -147,7 +147,7 @@ export function useSave(
       savedBaseline.current = serialized;
       attempt.current = 0;
       dispatch(actions.setSaveStatus({ id: postId, status: "idle" }));
-      dispatch(actions.markTabClean(postId));
+      dispatch(actions.markDocClean(postId));
       return true;
     } catch (error) {
       // The content is already in `pendingSaves`, so nothing is lost either way.

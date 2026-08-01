@@ -2,7 +2,7 @@
 
 import React from "react";
 import RouterLink from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { Avatar, Box, Tooltip } from "@mui/material";
 import {
   Code,
@@ -17,6 +17,8 @@ import type { SidebarView } from "@/types";
 import { ICON_SIZE } from "@/theme/icons";
 import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
 import { useLayoutMode } from "@/contexts/LayoutModeContext";
+import { uiCommands, workspaceCommands } from "@/commands";
+import { useCommandRun } from "@/commands/CommandProvider";
 import { ACTIVITY_RAIL_W } from "./SideBar/constants";
 import { FOCUS_RING, MOTION } from "@/theme/tokens";
 
@@ -109,12 +111,12 @@ const RailButton: React.FC<RailButtonProps> = (
  */
 const ActivityRail: React.FC = () => {
   const dispatch = useDispatch();
-  const router = useRouter();
+  const run = useCommandRun();
   const pathname = usePathname();
   const sidebarView = useSelector((state: RootState) => state.ui.sidebarView);
   const user = useSelector((state: RootState) => state.user);
   const { sidebarOpen, sidebarMode, setSidebarMode } = useSidebarWidth();
-  const { copilotOpen, setCopilotOpen } = useLayoutMode();
+  const { copilotOpen } = useLayoutMode();
 
   // A view button both selects its view and steps the sidebar's mode. Clicking
   // any *other* view opens the sidebar on it; clicking the one already showing
@@ -225,21 +227,21 @@ const ActivityRail: React.FC = () => {
       <RailButton
         label="Posts"
         active={postsActive}
-        onClick={() => router.push("/posts")}
+        onClick={() => run(workspaceCommands.openSection, { section: "library" })}
       >
         <Newspaper size={ICON_SIZE.dense} strokeWidth={1.9} />
       </RailButton>
       <RailButton
         label="Notes"
         active={notesActive}
-        onClick={() => router.push("/notes")}
+        onClick={() => run(workspaceCommands.openSection, { section: "notes" })}
       >
         <StickyNote size={ICON_SIZE.dense} strokeWidth={1.9} />
       </RailButton>
       <RailButton
         label={copilotOpen ? "Hide AI assistant" : "Show AI assistant"}
         active={copilotOpen}
-        onClick={() => setCopilotOpen(!copilotOpen)}
+        onClick={() => run(uiCommands.toggleCopilot)}
       >
         <Sparkles size={ICON_SIZE.dense} strokeWidth={1.9} />
       </RailButton>

@@ -7,7 +7,7 @@ import { actions, useDispatch } from "@/store";
 /**
  * Live "unsaved changes" tracking for a single document tab.
  *
- * Keeps Redux `dirtyTabIds` in sync with the editor content so the Save button,
+ * Keeps `ui.dirtyDocIds` in sync with the editor content so the Save button,
  * tab dots, and the save-state indicator all reflect reality while the user
  * types. "Dirty" is computed against the exact same baseline `saveToCloud`
  * uses (`lastSavedCloud`), so a tab is dirty iff a save would actually persist
@@ -35,9 +35,9 @@ export function useDirtyTracking(
         }
         const baseline = savedBaselineRef.current ?? initialBaseline.current;
         if (current === baseline) {
-          dispatch(actions.markTabClean(docId));
+          dispatch(actions.markDocClean(docId));
         } else {
-          dispatch(actions.markTabDirty(docId));
+          dispatch(actions.markDocDirty(docId));
         }
       }, 300),
     [dispatch, docId, savedBaselineRef],
