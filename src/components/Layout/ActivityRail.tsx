@@ -4,13 +4,12 @@ import React from "react";
 import RouterLink from "next/link";
 import { usePathname } from "next/navigation";
 import { Avatar, Box, Tooltip } from "@mui/material";
-import { Code, Files, Newspaper, Search, Sparkles } from "lucide-react";
+import { Code, Files, Newspaper, Search } from "lucide-react";
 import { actions, type RootState, useDispatch, useSelector } from "@/store";
 import type { SidebarView } from "@/types";
 import { ICON_SIZE } from "@/theme/icons";
 import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
-import { useLayoutMode } from "@/contexts/LayoutModeContext";
-import { uiCommands, workspaceCommands } from "@/commands";
+import { workspaceCommands } from "@/commands";
 import { useCommandRun } from "@/commands/CommandProvider";
 import { ACTIVITY_RAIL_W } from "./SideBar/constants";
 import { FOCUS_RING, MOTION } from "@/theme/tokens";
@@ -98,9 +97,9 @@ const RailButton: React.FC<RailButtonProps> = (
 );
 
 /**
- * Far-left activity rail. Switches the sidebar view (Explorer / Search),
- * navigates to the Notes workspace, and toggles the AI panel. Renders as the
- * first grid column in AppLayoutContent.
+ * Far-left activity rail. Switches the sidebar view (Explorer / Search) and
+ * navigates to the Notes workspace. Renders as the first grid column in
+ * AppLayoutContent.
  */
 const ActivityRail: React.FC = () => {
   const dispatch = useDispatch();
@@ -109,7 +108,6 @@ const ActivityRail: React.FC = () => {
   const sidebarView = useSelector((state: RootState) => state.ui.sidebarView);
   const user = useSelector((state: RootState) => state.user);
   const { sidebarOpen, sidebarMode, setSidebarMode } = useSidebarWidth();
-  const { copilotOpen } = useLayoutMode();
 
   // A view button both selects its view and steps the sidebar's mode. Clicking
   // any *other* view opens the sidebar on it; clicking the one already showing
@@ -222,13 +220,6 @@ const ActivityRail: React.FC = () => {
         onClick={() => run(workspaceCommands.openSection, { section: "library" })}
       >
         <Newspaper size={ICON_SIZE.dense} strokeWidth={1.9} />
-      </RailButton>
-      <RailButton
-        label={copilotOpen ? "Hide AI assistant" : "Show AI assistant"}
-        active={copilotOpen}
-        onClick={() => run(uiCommands.toggleCopilot)}
-      >
-        <Sparkles size={ICON_SIZE.dense} strokeWidth={1.9} />
       </RailButton>
 
       {/* Spacer pushes the account button to the bottom */}
