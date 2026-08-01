@@ -387,6 +387,7 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
           isSplit={isSplit}
           isFocused={isPaneFocused}
           onClosePane={handleClosePane}
+          reserveToolbar={mode === "write"}
         >
           <ToolbarSlotTarget />
         </PaneHeader>

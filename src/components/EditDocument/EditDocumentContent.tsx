@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { validate as isUuid } from "uuid";
 import { actions, postsSelectors, useDispatch, useSelector } from "@/store";
 import SplashScreen from "@/components/shared/SplashScreen";
+import PaneSkeleton from "./PaneSkeleton";
 import WorkspacePanes from "./WorkspacePanes";
 
 /**
@@ -65,9 +66,12 @@ const DocumentEditor: React.FC<React.PropsWithChildren> = () => {
 
   const rootId = isId ? segment : resolvedId;
   if (!rootId) {
+    // Not-found is terminal and belongs to the whole route, so it keeps the
+    // splash. Resolving a handle is transient and belongs to the pane about to
+    // appear, so it gets the pane's own stand-in — see `PaneSkeleton`.
     return missingFor === segment
       ? <SplashScreen title="Document Not Found" />
-      : <SplashScreen title="Loading Document" />;
+      : <PaneSkeleton withToolbar />;
   }
 
   return <WorkspacePanes rootId={rootId} />;

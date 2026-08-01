@@ -20,6 +20,7 @@ import { usePostLoader } from "./hooks/usePostLoader";
 import { useSave } from "./hooks/useSave";
 import type { PaneMode, Post } from "@/types";
 import DocumentHeader from "./DocumentHeader";
+import PaneSkeleton from "./PaneSkeleton";
 import { triggerSave } from "./saveRegistry";
 
 const EditDocumentInfo = dynamic(
@@ -194,7 +195,13 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
   return (
     <Box sx={{ display: isActive ? "block" : "none" }}>
       {error && <SplashScreen title={error.title} subtitle={error.subtitle} />}
-      {isLoading && !documentForEditor && <SplashScreen title="Loading…" />}
+      {
+        /* No toolbar band: `PaneHeader` is mounted above this and is already
+          reserving that height. A `SplashScreen` here used to cover the whole
+          application — it is `position: fixed; inset: 0` — while one pane
+          fetched one document. */
+      }
+      {isLoading && !documentForEditor && <PaneSkeleton />}
       {documentForEditor && (
         <>
           {/* One tab in one pane names the page. */}

@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { ICON_SIZE } from "@/theme/icons";
 import { MOTION } from "@/theme/tokens";
 import { CONTENT_PAD_X } from "@/components/Layout/contentInset";
+import { TOOLBAR_H } from "./paneChrome";
 
 interface PaneHeaderProps {
   /** The active document's name — what this pane is showing. Split view only. */
@@ -13,6 +14,19 @@ interface PaneHeaderProps {
   isSplit: boolean;
   isFocused: boolean;
   onClosePane: () => void;
+  /**
+   * Hold {@link TOOLBAR_H} open for a toolbar that has not portalled in yet.
+   *
+   * The toolbar arrives with the editor, which is one document fetch after this
+   * header exists — so without the reservation the document appears and is
+   * immediately shoved 43px down its own scroller by chrome landing above it.
+   * True in write mode, where a toolbar is coming; false in read mode, where
+   * none is and the document should start against nothing.
+   *
+   * Costs nothing once the toolbar is in: it is this tall anyway, so the
+   * `minHeight` stops binding.
+   */
+  reserveToolbar?: boolean;
   /** The toolbar slot this pane's editors portal into. */
   children?: React.ReactNode;
 }
@@ -39,6 +53,7 @@ const PaneHeader: React.FC<PaneHeaderProps> = ({
   isSplit,
   isFocused,
   onClosePane,
+  reserveToolbar = false,
   children,
 }) => (
   <Box
@@ -129,7 +144,9 @@ const PaneHeader: React.FC<PaneHeaderProps> = ({
         in read mode there is no toolbar and no rule, and the document should
         start against nothing. */
     }
-    {children}
+    <Box sx={{ minHeight: reserveToolbar ? `${TOOLBAR_H}px` : 0 }}>
+      {children}
+    </Box>
   </Box>
 );
 
