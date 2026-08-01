@@ -46,6 +46,8 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
     isCopilotResizing,
   } = useLayoutMode();
   const pathname = usePathname();
+  /** The editor route — the only one whose scroller opens on chrome. */
+  const isWorkspace = pathname.startsWith("/edit");
   // What the Copilot is talking about: the focused pane's active document, and
   // `null` when nothing is open — which is when the Copilot talks about the
   // library instead, what the home pane's composer opens it for.
@@ -137,7 +139,16 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
                   display: "flex",
                   flexDirection: "column",
                   mx: 0,
-                  my: 2,
+                  // The workspace gets no top margin: the first thing in its
+                  // scroller is a sticky pane header, and a header is chrome —
+                  // it has to meet the bar above it. This margin used to fall
+                  // *below* the toolbar, which hung outside the scroller in the
+                  // app shell; moving the toolbar into the pane put the same
+                  // 16px above it, as a band of background that never scrolls
+                  // away. Every other route still opens on content, which wants
+                  // the breathing room.
+                  mt: isWorkspace ? 0 : 2,
+                  mb: 2,
                   flex: 1,
                   minHeight: 0,
                   position: "relative",
