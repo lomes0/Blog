@@ -426,22 +426,22 @@ export default function AITools(
         aria-controls={open ? "ai-tools-menu" : undefined}
         aria-haspopup="true"
         aria-expanded={open ? "true" : undefined}
-        variant="contained"
+        variant="outlined"
         onClick={openMenu}
         startIcon={<Sparkles size={ICON_SIZE.inline} />}
         endIcon={isLoading
           ? <CircularProgress size={14} color="inherit" />
           : <ChevronDown size={ICON_SIZE.dense} />}
         // Colors deliberately absent: `#ai-tools-button` in toolbar.css owns
-        // them via the scheme-aware --tb-accent-* tokens, and an id selector
-        // outranks emotion's class anyway. What stood here was
-        // `primary.50/.200/.300/.700` — shades augmentColor never generates, so
-        // they resolved to undefined and dropped even where they did apply.
+        // them via the scheme-aware --tb-* tokens, and an id selector outranks
+        // emotion's class anyway.
         sx={{
           boxShadow: "none",
           border: "1px solid",
+          borderColor: "divider",
+          bgcolor: "transparent",
           textTransform: "none",
-          fontWeight: 600,
+          fontWeight: 500,
           typography: "dense",
           px: 1.5,
           height: 34,
@@ -449,6 +449,8 @@ export default function AITools(
           whiteSpace: "nowrap",
           "&:hover": {
             boxShadow: "none",
+            bgcolor: "action.hover",
+            borderColor: "divider",
           },
           "& .MuiButton-startIcon": { mr: 0.75, ml: 0 },
           "& .MuiButton-endIcon": { ml: 0.5, mr: 0 },
