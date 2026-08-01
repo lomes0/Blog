@@ -7,6 +7,7 @@ import {
   ListItemText,
   Menu,
   MenuItem,
+  type Theme,
   Tooltip,
   Typography,
 } from "@mui/material";
@@ -22,14 +23,37 @@ export interface TabMeta {
 }
 
 /**
- * A pill, not a tab: fully rounded, no accent bar, no rule under the row.
+ * A tab, not a chip.
  *
- * §17.4's `1.5` top-only radius is the *chrome* tab, and these are no longer
- * chrome — they sit under the document title, inside the content column, and
- * §17.6 exempts content from the chrome spec. The filled active pill is still
- * `action.selected` from §17.3's one state vocabulary; only the shape is local.
+ * The fully-rounded filled pill this replaced read as a *value* — something
+ * assigned and dismissible — rather than as a switcher between parts of one
+ * document. Square corners, a hairline between neighbours and a 2px bar under
+ * the active one are what make a row of labels read as tabs.
+ *
+ * §17.4's `1.5` top-only radius is the *chrome* tab's, and these are not chrome
+ * — they sit under the document title, inside the content column, which §17.6
+ * exempts. Square is a local call for that position. The accent is not local:
+ * it is §17.3's 2px `primary.main` bar, on the bottom edge for the same reason
+ * `PaneTabStrip` puts it there — the edge where the tab meets what it opens.
  */
-const PILL_RADIUS = "9999px";
+const TAB_RADIUS = 0;
+
+/**
+ * The hairline between two adjacent tabs, centred in `TAB_GAP` so it belongs to
+ * the channel rather than to either tab. Inset top and bottom: a rule the full
+ * height of the row would box each label in, which is the chip read again.
+ */
+const separatorSx = {
+  "&::after": {
+    content: '""',
+    position: "absolute" as const,
+    top: 4,
+    bottom: 4,
+    right: `-${TAB_GAP / 2 + 0.5}px`,
+    width: "1px",
+    bgcolor: "divider",
+  },
+};
 
 interface DocumentTabsProps {
   tabs: TabMeta[];
@@ -48,18 +72,20 @@ interface DocumentTabsProps {
   onContextMenu: (tabId: string, isRoot: boolean, anchor: HTMLElement) => void;
 }
 
-interface TabPillProps {
+interface DocumentTabProps {
   tab: TabMeta;
   isActive: boolean;
   isDirty: boolean;
   isRoot: boolean;
   /**
    * The off-screen clone the fit math measures. It renders the same box so the
-   * width it reports is the width the real pill would take, and nothing else:
+   * width it reports is the width the real tab would take, and nothing else:
    * no handlers, no tab stop, not announced.
    */
   measuring?: boolean;
   isRenaming?: boolean;
+  /** False on the last tab in the visible run — nothing follows it to divide. */
+  showSeparator?: boolean;
   dropSide?: "left" | "right";
   innerRef?: (el: HTMLDivElement | null) => void;
   onSwitch?: (tabId: string) => void;
@@ -79,7 +105,11 @@ interface TabPillProps {
  * The insertion line for a reorder — §17.3's 2px `primary.main` bar, rotated
  * onto the horizontal axis. `treeRow.dropIndicatorSx` draws the same bar for
  * vertical lists and is hard-coded to `top`/`bottom`, which is the one thing a
- * row of pills cannot reuse.
+ * row of tabs cannot reuse.
+ *
+ * Centred in the same channel as the separator, and 2px over the separator's
+ * 1px, so it lands *on* the crease it is offering to split rather than beside
+ * it. `zIndex` keeps it over the rule it covers.
  */
 const dropIndicatorSx = (side: "left" | "right") => ({
   "&::before": {
@@ -87,21 +117,21 @@ const dropIndicatorSx = (side: "left" | "right") => ({
     position: "absolute" as const,
     top: 2,
     bottom: 2,
-    [side]: -2,
+    [side]: `-${TAB_GAP / 2 + 1}px`,
     width: 2,
-    borderRadius: PILL_RADIUS,
     bgcolor: "primary.main",
     zIndex: 2,
   },
 });
 
-const TabPill: React.FC<TabPillProps> = ({
+const DocumentTab: React.FC<DocumentTabProps> = ({
   tab,
   isActive,
   isDirty,
   isRoot,
   measuring,
   isRenaming,
+  showSeparator,
   dropSide,
   innerRef,
   onSwitch,
@@ -153,7 +183,7 @@ const TabPill: React.FC<TabPillProps> = ({
         alignItems: "center",
         gap: 0.5,
         pl: 1.25,
-        // Room for the trailing slot, which the pill reserves whether or not
+        // Room for the trailing slot, which the tab reserves whether or not
         // anything is in it — a close button that appears on hover must not
         // reflow the row it appears in.
         pr: 0.75,
@@ -162,13 +192,18 @@ const TabPill: React.FC<TabPillProps> = ({
         maxWidth: TAB_MAX_W,
         cursor: "pointer",
         userSelect: "none",
-        borderRadius: PILL_RADIUS,
-        bgcolor: isActive ? "action.selected" : "transparent",
+        borderRadius: TAB_RADIUS,
+        // The active mark is an edge, not a fill. Drawn as an inset shadow so
+        // it costs no layout and cannot widen the box the fit math measures;
+        // `CHROME_RING` is an `outline`, so focus and active can both show.
+        boxShadow: (theme: Theme) =>
+          isActive ? `inset 0 -2px 0 ${theme.palette.primary.main}` : "none",
         transition: `background-color ${MOTION.fast}ms`,
-        "&:hover": { bgcolor: isActive ? "action.selected" : "action.hover" },
+        "&:hover": { bgcolor: "action.hover" },
         "&:hover .tab-close-btn": { opacity: 1 },
         "&:hover .tab-dirty-dot": { opacity: 0 },
         "&:focus-visible": CHROME_RING,
+        ...(showSeparator && separatorSx),
         ...(dropSide && dropIndicatorSx(dropSide)),
       }}
     >
@@ -192,7 +227,7 @@ const TabPill: React.FC<TabPillProps> = ({
               border: "none",
               outline: "1px solid",
               outlineColor: "primary.main",
-              borderRadius: PILL_RADIUS,
+              borderRadius: 0.5,
               bgcolor: "background.paper",
               color: "text.primary",
               typography: "dense",
@@ -222,7 +257,7 @@ const TabPill: React.FC<TabPillProps> = ({
         )}
       {
         /* One 16px slot, shared: the dirty dot rests in it and the close button
-          takes it over on hover, so a pill never changes width mid-interaction. */
+          takes it over on hover, so a tab never changes width mid-interaction. */
       }
       <Box
         sx={{
@@ -260,7 +295,7 @@ const TabPill: React.FC<TabPillProps> = ({
             }}
             sx={{
               position: "absolute",
-              // Hover-only, including on the active pill: the row reads as a
+              // Hover-only, including on the active tab: the row reads as a
               // set of labels at rest, and a delete affordance parked on one of
               // them permanently is the opposite of that. Right-click → Delete
               // is the keyboard-reachable path (§9).
@@ -282,14 +317,15 @@ const TabPill: React.FC<TabPillProps> = ({
 /**
  * The sub-document switcher, in the document rather than above it.
  *
- * It has been three places in three days, and the shape follows the position.
- * As window chrome in the top bar it was a fixed-width file tab; as pane chrome
- * it was the same tab with an accent bar. Here — under the non-editable title,
- * over the content — it is a row of soft pills, because it is no longer telling
- * you what the *window* has open. It is telling you which part of *this post*
- * you are reading, which is a property of the document.
+ * It has been several places, and the shape follows the position. As window
+ * chrome in the top bar it was a fixed-width file tab; as pane chrome it was the
+ * same tab with an accent bar. Here — under the non-editable title, over the
+ * content — it is still a tab, sized to its label: it is no longer telling you
+ * what the *window* has open, but which part of *this post* you are reading, and
+ * that is a switch between siblings, which is what tabs are for. The pill it
+ * briefly was said "dismissible value" instead, which is what chips are for.
  *
- * What survives the move is the behaviour: pills size to their labels, overflow
+ * What survives every move is the behaviour: tabs size to their labels, overflow
  * into a "»N" menu rather than a scrollbar (`tabFit.ts`), reorder by drag, and
  * rename in place.
  */
@@ -325,7 +361,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
   const activeIndex = tabs.findIndex((t) => t.id === activeTabId);
 
   // Remeasure whenever the row resizes or the labels change. Widths are read
-  // off the hidden clone row, which renders *every* pill regardless of what is
+  // off the hidden clone row, which renders *every* tab regardless of what is
   // visible — so the measurement cannot depend on its own result, which is the
   // loop this would otherwise be.
   const remeasure = React.useCallback(() => {
@@ -447,7 +483,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
         }}
       >
         {
-          /* Measurement clone. Every pill, always, off-flow: the visible window
+          /* Measurement clone. Every tab, always, off-flow: the visible window
             is computed from these widths, so it must not be computed from
             them. */
         }
@@ -463,7 +499,7 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
           }}
         >
           {tabs.map((tab) => (
-            <TabPill
+            <DocumentTab
               key={tab.id}
               tab={tab}
               isActive={tab.id === activeTabId}
@@ -478,14 +514,15 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
           ))}
         </Box>
 
-        {visible.map((tab) => (
-          <TabPill
+        {visible.map((tab, i) => (
+          <DocumentTab
             key={tab.id}
             tab={tab}
             isActive={tab.id === activeTabId}
             isDirty={dirtyTabIds.includes(tab.id)}
             isRoot={tab.id === rootTabId}
             isRenaming={editingTabId === tab.id}
+            showSeparator={i < visible.length - 1}
             dropSide={dropTarget?.id === tab.id ? dropTarget.side : undefined}
             onSwitch={onSwitch}
             onClose={onClose}
@@ -527,7 +564,9 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
               py: 0.375,
               flexShrink: 0,
               cursor: "pointer",
-              borderRadius: PILL_RADIUS,
+              // A control, not a tab — a small radius keeps it from reading as
+              // one more (permanently inactive) tab at the end of the run.
+              borderRadius: 0.5,
               color: "text.secondary",
               transition: `background-color ${MOTION.fast}ms`,
               "&:hover": { bgcolor: "action.hover", color: "text.primary" },

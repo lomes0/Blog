@@ -21,8 +21,12 @@ export const TAB_MAX_W = 168;
 /**
  * Column gap between tabs, in px — the row applies this same constant as its
  * CSS `gap`, so the fit math cannot drift from the layout it is predicting.
+ *
+ * It is also the channel the separator rule sits in, centred, which is why it
+ * is 8 and not the 4 the pills used: a hairline with 2px of air either side
+ * reads as a crease between two tabs, not as a thin third tab.
  */
-export const TAB_GAP = 4;
+export const TAB_GAP = 8;
 
 /** Width the trailing "»N" control needs, so the fit math can reserve it. */
 export const OVERFLOW_CHIP_W = 44;
