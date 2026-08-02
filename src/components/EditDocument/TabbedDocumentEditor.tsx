@@ -1,5 +1,12 @@
 "use client";
-import { useCallback, useContext, useMemo, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import React from "react";
 import type { LexicalEditor } from "lexical";
 import {
@@ -57,6 +64,23 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
   const dirtyDocIds = useSelector((state) => state.ui.dirtyDocIds);
   const user = useSelector((state) => state.user);
 
+  // A pane is created with `tabIds: []` — its children are a fetch away. Until
+  // they land, render the root tab alone rather than nothing: `EditorTabPanel`
+  // is what owns `PaneSkeleton`, so an empty list meant the pane showed no
+  // loading state *at all* for the several hundred milliseconds the document
+  // was being fetched, and the root's own content fetch could not begin until
+  // the children's had returned. Panels are keyed by tab id, so when
+  // `setPaneTabs` lands the root panel is reconciled rather than remounted —
+  // its load is not restarted.
+  const awaitingTabs = !!pane && tabIds.length === 0;
+  const renderedTabIds = useMemo(
+    () => (awaitingTabs ? [rootId] : tabIds),
+    [awaitingTabs, rootId, tabIds],
+  );
+  // `activeTabId` is null until `setPaneTabs`; without this the panel above
+  // would mount `display: none` and the pane would still look empty.
+  const shownTabId = awaitingTabs ? rootId : activeTabId;
+
   const setActiveEditorRef = useContext(SetActiveEditorContext);
 
   const handleEditorReady = useCallback(
@@ -98,12 +122,28 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
   const [moveDialogTabId, setMoveDialogTabId] = useState<string | null>(null);
   const [moveTargetPostId, setMoveTargetPostId] = useState<string>("");
 
-  // Load root metadata + children on mount.
+  // The root tab's label is its own `tabLabel` when set, falling back to the
+  // post title (`name`). This lets the first tab be named independently of the
+  // post.
+  //
+  // It is read from the store rather than fetched: `loadPosts` has already put
+  // this metadata there, and the root's *content* is loaded by `usePostLoader`
+  // in the root's own panel. Asking for the whole document here as well meant
+  // every open read the same record — and its revision index — twice.
+  const rootLabel = useSelector((state) => {
+    const doc = postsSelectors.selectById(state, rootId);
+    return doc?.tabLabel ?? doc?.name;
+  });
+  // Read inside the effect below without being a dependency of it: a rename
+  // must not re-run the children fetch.
+  const rootLabelRef = useRef(rootLabel);
+  rootLabelRef.current = rootLabel;
+
+  // Load the child tabs on mount.
   useAsyncEffect(async (isCancelled) => {
-    const [rootDoc, children] = await Promise.all([
-      dispatch(actions.getPost(rootId)).unwrap().catch(() => undefined),
-      dispatch(actions.getPostChildren(rootId)).unwrap().catch(() => []),
-    ]);
+    const children = await dispatch(actions.getPostChildren(rootId))
+      .unwrap()
+      .catch(() => []);
 
     if (isCancelled()) return;
 
@@ -117,15 +157,25 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     );
 
     const metas: TabMeta[] = [
-      // The root tab's label is its own `tabLabel` when set, falling back to the
-      // post title (`name`). This lets the first tab be named independently of
-      // the post.
-      { id: rootId, name: rootDoc?.tabLabel ?? rootDoc?.name ?? "Document" },
+      { id: rootId, name: rootLabelRef.current ?? "Document" },
       ...(children ?? []).map((c) => ({ id: c.id, name: c.name })),
     ];
     setTabMetas(metas);
     setMountedTabIds(new Set([rootId]));
   }, [rootId, paneId]);
+
+  // Keep the root tab following the store. `loadPosts` may land after this pane
+  // mounted, and a rename from elsewhere (the sidebar, the palette) belongs
+  // here too. A rename made *in* this pane already set the meta optimistically,
+  // so the equality guard makes this a no-op when the store catches up.
+  useEffect(() => {
+    if (rootLabel === undefined) return;
+    setTabMetas((prev) =>
+      prev.map((t) =>
+        t.id === rootId && t.name !== rootLabel ? { ...t, name: rootLabel } : t
+      )
+    );
+  }, [rootLabel, rootId]);
 
   const handleSwitch = useCallback((tabId: string) => {
     setMountedTabIds((prev) => new Set([...prev, tabId]));
@@ -389,15 +439,15 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
         }
         <Box sx={{ display: "flex", flex: 1, minWidth: 0 }}>
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            {tabIds.map((tabId) => (
+            {renderedTabIds.map((tabId) => (
               <EditorTabPanel
                 key={tabId}
                 paneId={paneId}
                 docId={tabId}
                 rootId={rootId}
                 mode={mode}
-                isActive={tabId === activeTabId}
-                isFocused={isPaneFocused && tabId === activeTabId}
+                isActive={tabId === shownTabId}
+                isFocused={isPaneFocused && tabId === shownTabId}
                 tabs={tabSwitcher}
                 onEditorReady={handleEditorReady}
               />
