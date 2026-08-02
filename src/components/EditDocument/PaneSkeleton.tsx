@@ -1,7 +1,7 @@
 "use client";
 import { Box, Divider, Skeleton } from "@mui/material";
 import { cancelContentGutters } from "@/components/Layout/contentInset";
-import { TOOLBAR_H } from "./paneChrome";
+import { PANE_PAD_X, TOOLBAR_H } from "./paneChrome";
 
 /**
  * A pane's first paint, before its document has arrived.
@@ -38,8 +38,8 @@ interface PaneSkeletonProps {
   /**
    * Whether this stands in for a pane inside a split. It decides which gutters
    * to cancel, exactly as `PaneHeader` does: split panes scroll inside
-   * `PaneFrame`'s `px: 1` box, unsplit the page's asymmetric `CONTENT_PAD_X`
-   * gutters are the ones to undo.
+   * `PaneFrame`'s {@link PANE_PAD_X} box, unsplit the page's asymmetric
+   * `CONTENT_PAD_X` gutters are the ones to undo.
    */
   isSplit?: boolean;
   /**
@@ -91,7 +91,7 @@ const PaneSkeleton: React.FC<PaneSkeletonProps> = ({
           bgcolor: "background.default",
           borderBottom: 1,
           borderColor: "divider",
-          ...(isSplit ? { mx: -1 } : cancelContentGutters),
+          ...(isSplit ? { mx: -PANE_PAD_X } : cancelContentGutters),
         }}
       >
         {[64, 34, 34, 34, 88, 34, 34].map((w, i) => (

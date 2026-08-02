@@ -71,6 +71,11 @@ export interface PaneDescription {
   title: string | null;
   mode: DocumentMode;
   focused: boolean;
+  /**
+   * Whether this pane is currently filling the row on its own, with the other
+   * hidden behind it. Always false with a single pane.
+   */
+  maximized: boolean;
 }
 
 /**

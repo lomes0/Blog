@@ -104,3 +104,23 @@ export const FOCUS_RING = {
 
 /** Minimum touch target in px — DESIGN.md §10. */
 export const TOUCH_TARGET = 48;
+
+/**
+ * A scroller with no visible scrollbar — DESIGN.md §12's named exception.
+ *
+ * §12 puts thin auto-hiding scrollbars on everything and says not to override
+ * them per component "unless strictly required". The workspace is the case that
+ * qualifies: its scroller is the page itself, so the bar is a permanent 6px rule
+ * down the inside edge of the document — and in a split there are two of them,
+ * one of which lands directly against the splitter it is easy to mistake for.
+ *
+ * Scrolling is untouched: the wheel, the keyboard, the scrollbar-less trackpad
+ * gesture and `scrollTop` (which is how the scroll memory restores a document)
+ * all still work. This hides the *indicator*, which is why it belongs to
+ * full-height chrome that has other edges to say where it ends, and not to a
+ * short overflowing box where the bar is the only clue there is more.
+ */
+export const hiddenScrollbarSx = {
+  scrollbarWidth: "none",
+  "&::-webkit-scrollbar": { display: "none" },
+} as const;

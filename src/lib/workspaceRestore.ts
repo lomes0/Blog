@@ -46,6 +46,7 @@ export const emptyWorkspace = (): WorkspaceState => ({
   panes: [],
   focusedPaneId: null,
   splitRatio: DEFAULT_PANE_RATIO,
+  maximizedPaneId: null,
 });
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -130,6 +131,10 @@ const documentsOf = (pane: WorkspacePane): string[] => [
  *    the same choice `closePane` makes when the focused pane goes away.
  * 4. **`splitRatio` is clamped**, and a non-finite one is discarded rather than
  *    propagated into a `flex-grow` of `NaN`.
+ * 5. **Nothing comes back maximized.** Like `diffOpen`, that is a way of looking
+ *    at the layout rather than part of it — see `WorkspaceState.maximizedPaneId`
+ *    — and a record written by a build that stored one is not a reason to open
+ *    with a pane hidden.
  *
  * Documents that no longer exist are **not** checked here, and cannot be: posts
  * are not loaded when this runs, and a pane may hold a document that is
@@ -167,5 +172,5 @@ export const sanitizeWorkspace = (raw: unknown): WorkspaceState => {
     ? clampPaneRatio(storedRatio)
     : DEFAULT_PANE_RATIO;
 
-  return { panes, focusedPaneId, splitRatio };
+  return { panes, focusedPaneId, splitRatio, maximizedPaneId: null };
 };

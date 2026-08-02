@@ -8,6 +8,25 @@ import { FOCUS_RING, MOTION } from "@/theme/tokens";
 export const GRIPPER_W = 4;
 
 /**
+ * Which of the two drag-edge appearances this gripper wears.
+ *
+ * - `wash` — the strip itself lights up: `primary` at half strength on hover,
+ *   full while held. This is the edge of a *panel*, and it lies against a rail
+ *   or a document on one side only, so painting the whole 4px strip is the only
+ *   way to be seen at all.
+ * - `rule` — the strip stays invisible and draws a 1px rule down its centre,
+ *   which recolours to `primary` on hover and while dragging. This is for an
+ *   edge *between two documents*, where the strip is wide enough to grab
+ *   comfortably and a 12px band of colour landing between two columns of prose
+ *   reads as a third thing on screen rather than as the seam between them.
+ *
+ * Both live here rather than in the call sites for the reason in the component
+ * note below: the rest/hover/active/focus ladder is one vocabulary (§17.3), and
+ * a second appearance is a named member of it, not an override of it.
+ */
+export type GripperVariant = "wash" | "rule";
+
+/**
  * The `separator` half of the ARIA window-splitter pattern. Supply all four
  * together or none: a valued separator with no `aria-valuenow` announces as an
  * ordinary divider, and one that is operable by keyboard must be in the tab
@@ -65,6 +84,16 @@ interface ResizeGripperProps {
   value?: GripperValue;
   onKeyDown?: (e: React.KeyboardEvent) => void;
   onDoubleClick?: (e: React.MouseEvent) => void;
+  /**
+   * How the edge paints itself — see {@link GripperVariant}. Defaults to `wash`,
+   * which is what the three panel edges have always been.
+   *
+   * `rule` also stretches the element across its parent instead of sitting at
+   * `left: 0` with a fixed width: the rule is centred in the grab strip, so the
+   * strip's width belongs to the parent that reserves the space (the pane row's
+   * `SPLITTER_W`) and not to a constant here.
+   */
+  variant?: GripperVariant;
   /** Position/size overrides. The default is the panel's own left edge. */
   sx?: SxProps<Theme>;
 }
@@ -78,6 +107,12 @@ interface ResizeGripperProps {
  * grab is chrome, so the rest/hover/active/dragging ladder lives here rather
  * than in each panel: invisible at rest, a half-strength `primary` wash on
  * hover, full `primary` while held or dragging.
+ *
+ * The ladder has two appearances, `wash` and `rule` — see {@link
+ * GripperVariant}. Same four rungs, same events, same ARIA; what differs is
+ * whether the strip lights up or the hairline in it does. The pane splitter is
+ * the only `rule` today, because it is the only edge with a document on *both*
+ * sides.
  *
  * Focus is the fourth rung and is deliberately *louder* than §17.3's ring alone:
  * a 2px ring around a 4px transparent strip is not a visible focus indicator, so
@@ -97,6 +132,7 @@ const ResizeGripper: React.FC<ResizeGripperProps> = ({
   value,
   onKeyDown,
   onDoubleClick,
+  variant = "wash",
   sx,
 }) => (
   <Box
@@ -147,6 +183,49 @@ const ResizeGripper: React.FC<ResizeGripperProps> = ({
           opacity: 1,
           boxShadow: FOCUS_RING.chrome,
         },
+        // Everything above is the `wash`. The `rule` keeps the same states and
+        // moves them onto a hairline: the strip goes back to being invisible at
+        // every rung, and the 1px rule down its centre is what carries them.
+        // Written as a trailing spread so each key *replaces* the wash's — two
+        // `&:hover` entries in one literal would silently drop the first.
+        ...(variant === "rule" && {
+          // The grab area is the parent's to size; the rule is centred in it.
+          left: 0,
+          right: 0,
+          width: "auto",
+          backgroundColor: "transparent",
+          "&::before": {
+            content: '""',
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "1px",
+            backgroundColor: isResizing ? "primary.main" : "divider",
+            transition: isResizing
+              ? "none"
+              : `background-color ${MOTION.base}ms ${MOTION.easing}`,
+          },
+          "&:hover, &:active": { backgroundColor: "transparent", opacity: 1 },
+          "&:hover::before, &:active::before": {
+            backgroundColor: "primary.main",
+          },
+          "&:focus-visible": {
+            outline: "none",
+            backgroundColor: "transparent",
+            opacity: 1,
+            // Not on the strip: a ring around 12px of nothing is a floating
+            // rectangle. On the rule it reads as the hairline lighting up,
+            // which is also what keeps focus distinguishable from hover — the
+            // two are otherwise the same accent line.
+            boxShadow: "none",
+          },
+          "&:focus-visible::before": {
+            backgroundColor: "primary.main",
+            boxShadow: FOCUS_RING.chrome,
+          },
+        }),
       },
       ...(Array.isArray(sx) ? sx : [sx]),
     ]}

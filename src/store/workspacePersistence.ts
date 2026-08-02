@@ -37,8 +37,15 @@ import { appSlice } from "./app";
 /** Long enough to swallow a resize drag; short enough to beat a reload. */
 const WRITE_DEBOUNCE_MS = 400;
 
-/** One record per user, keyed by the id the layout belongs to. */
-interface StoredWorkspace extends WorkspaceState {
+/**
+ * One record per user, keyed by the id the layout belongs to.
+ *
+ * `maximizedPaneId` is omitted rather than merely unwritten: a maximize is a way
+ * of looking at a layout and not part of one (see the field's own note), and
+ * stating that in the type is what makes leaving it out of `schedule` below a
+ * compile error to undo rather than an omission to notice.
+ */
+interface StoredWorkspace extends Omit<WorkspaceState, "maximizedPaneId"> {
   /** A user id, or `"guest"`. */
   id: string;
   /**

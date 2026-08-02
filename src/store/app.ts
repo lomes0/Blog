@@ -148,6 +148,30 @@ const focusedPaneOf = (state: AppState): WorkspacePane | undefined => {
 };
 
 /**
+ * A maximized pane is the focused pane, and there is a second pane behind it.
+ *
+ * Both halves are load-bearing rather than tidiness. The pane a maximize hides
+ * is `display: none` — it cannot be clicked, so a `focusPane` naming it (from
+ * `pane.focus`, a sidebar row, the Copilot) would leave the focus, the toolbar
+ * and the Copilot's target on a pane nobody can see. And a maximize that
+ * outlived its neighbour would be a lone pane still drawing a "restore" button
+ * for a split that is no longer there.
+ *
+ * Called by every reducer that can move focus or remove a pane, so neither state
+ * is reachable rather than merely unlikely.
+ */
+const enforceMaximizeInvariant = (state: AppState) => {
+  const workspace = state.ui.workspace;
+  if (!workspace.maximizedPaneId) return;
+  if (
+    workspace.panes.length < 2 ||
+    workspace.maximizedPaneId !== workspace.focusedPaneId
+  ) {
+    workspace.maximizedPaneId = null;
+  }
+};
+
+/**
  * The pane already showing `docId`, as its root or as one of its tabs.
  *
  * This is the lookup behind the duplicate-open invariant (plan §5.2). It has to
@@ -221,6 +245,7 @@ const initialState: AppState = {
       panes: [],
       focusedPaneId: null,
       splitRatio: DEFAULT_PANE_RATIO,
+      maximizedPaneId: null,
     },
     workspaceHydrated: false,
     workspaceKey: null,
@@ -337,6 +362,7 @@ export const appSlice = createSlice({
           state.ui.workspace.focusedPaneId = existing.id;
           if (existing.tabIds.includes(rootId)) existing.activeTabId = rootId;
           if (mode) existing.mode = mode;
+          enforceMaximizeInvariant(state);
           return;
         }
 
@@ -350,6 +376,7 @@ export const appSlice = createSlice({
           if (mode) target.mode = mode;
           target.diffOpen = false;
           state.ui.workspace.focusedPaneId = target.id;
+          enforceMaximizeInvariant(state);
           return;
         }
 
@@ -364,6 +391,10 @@ export const appSlice = createSlice({
           diffOpen: false,
         });
         state.ui.workspace.focusedPaneId = id;
+        // The pane that was filling the row is not the new one, so the split is
+        // back — otherwise `pane.split` off a maximized pane would put the new
+        // document straight behind the `display: none`.
+        enforceMaximizeInvariant(state);
       },
       prepare: (input: {
         rootId: string;
@@ -393,6 +424,9 @@ export const appSlice = createSlice({
       if (state.ui.workspace.focusedPaneId === action.payload) {
         state.ui.workspace.focusedPaneId = panes[panes.length - 1]?.id ?? null;
       }
+      // Closing the neighbour of a maximized pane leaves nothing to maximize
+      // over; closing the maximized one leaves a survivor that must be visible.
+      enforceMaximizeInvariant(state);
     },
     /**
      * Leaving the workspace editor entirely. Nothing is open any more.
@@ -455,7 +489,38 @@ export const appSlice = createSlice({
     focusPane: (state, action: PayloadAction<string>) => {
       if (paneOf(state, action.payload)) {
         state.ui.workspace.focusedPaneId = action.payload;
+        // Focusing the pane behind a maximize restores the split rather than
+        // moving the focus somewhere invisible.
+        enforceMaximizeInvariant(state);
       }
+    },
+    /**
+     * Give one pane the whole row, or give the row back.
+     *
+     * A toggle rather than a pair of setters because it is one button (⤢ in the
+     * pane's strip, `pane.maximize`), and because "restore" has no other
+     * meaning: at most one pane can be maximized, so the id is both the thing to
+     * maximize and the thing to check against.
+     *
+     * Maximizing focuses the pane — see {@link enforceMaximizeInvariant}, which
+     * is why that is here rather than left to the click that preceded it. With
+     * one pane it is refused outright: there is nothing to fill the row with
+     * that is not already filling it.
+     */
+    toggleMaximizePane: (state, action: PayloadAction<string>) => {
+      const workspace = state.ui.workspace;
+      if (!paneOf(state, action.payload)) return;
+      if (workspace.maximizedPaneId === action.payload) {
+        workspace.maximizedPaneId = null;
+        return;
+      }
+      if (workspace.panes.length < 2) return;
+      workspace.maximizedPaneId = action.payload;
+      workspace.focusedPaneId = action.payload;
+    },
+    /** Esc, and anything else that means "show me both panes again". */
+    unmaximizePane: (state) => {
+      state.ui.workspace.maximizedPaneId = null;
     },
     /**
      * Where the splitter sits, as the left pane's share of the row.

@@ -102,9 +102,10 @@ export const selectPaneDescriptions = createSelector(
   [
     (state: RootState) => state.ui.workspace.panes,
     (state: RootState) => state.ui.workspace.focusedPaneId,
+    (state: RootState) => state.ui.workspace.maximizedPaneId,
     (state: RootState) => state.posts.entities,
   ],
-  (panes, focusedPaneId, entities): PaneDescription[] =>
+  (panes, focusedPaneId, maximizedPaneId, entities): PaneDescription[] =>
     panes.map((pane) => {
       const docId = pane.activeTabId ?? pane.rootId ?? null;
       return {
@@ -113,9 +114,14 @@ export const selectPaneDescriptions = createSelector(
         title: (docId ? entities[docId]?.name : null) ?? null,
         mode: pane.mode,
         focused: pane.id === focusedPaneId,
+        maximized: pane.id === maximizedPaneId,
       };
     }),
 );
+
+/** Whether one pane is currently filling the row, and which. */
+export const selectMaximizedPaneId = (state: RootState): string | null =>
+  state.ui.workspace.maximizedPaneId;
 
 /* ------------------------------------------------------------------ */
 /*  SideBar                                                            */

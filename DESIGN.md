@@ -491,6 +491,17 @@ The dark scheme has its own thumb (`rgba(255,255,255,0.22)`, keyed off
 Do not override these per-component unless strictly required (e.g. hidden
 scrollbar for a masonry canvas).
 
+**The workspace is the one standing exception**, via `hiddenScrollbarSx`
+(`src/theme/tokens.ts`), applied to `#editor-main-container` on `/edit` and to
+each split pane's scroller. A document's scroller is the page itself, so the bar
+is not a transient indicator over a list — it is a permanent rule down the inside
+edge of the prose, and a split draws two of them, one of which lands against the
+splitter and reads as part of it. Only the indicator is hidden: wheel, keyboard,
+trackpad and `scrollTop` (which is how a document is restored to where it was
+left) are untouched. Reach for it only where full-height chrome already says
+where the region ends — never on a short overflowing box, where the bar is the
+only clue there is more.
+
 ---
 
 ## 13. Print Styles

@@ -23,6 +23,8 @@ import {
 } from "@mui/material";
 import { v4 as uuidv4 } from "uuid";
 import { actions, postsSelectors, useDispatch, useSelector } from "@/store";
+import { useCommandRun } from "@/commands/CommandProvider";
+import { paneCommands } from "@/commands";
 import { SetActiveEditorContext } from "@/contexts/ActiveEditorContext";
 import PaneHeader from "./PaneHeader";
 import DocumentTabs, { type TabMeta } from "./DocumentTabs";
@@ -61,8 +63,30 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
   const isSplit = useSelector(
     (state) => state.ui.workspace.panes.length > 1,
   );
+  const isMaximized = useSelector(
+    (state) => state.ui.workspace.maximizedPaneId === paneId,
+  );
   const dirtyDocIds = useSelector((state) => state.ui.dirtyDocIds);
   const user = useSelector((state) => state.user);
+  // The pane strip names the pane by the document it is showing — the active
+  // tab's label, which is what the pane is actually displaying, rather than the
+  // post it is rooted at.
+  const paneTitle = useSelector((state) => {
+    const doc = postsSelectors.selectById(state, activeTabId ?? rootId);
+    return doc?.tabLabel ?? doc?.name;
+  });
+  const run = useCommandRun();
+
+  const handleToggleMaximize = useCallback(() => {
+    dispatch(actions.toggleMaximizePane(paneId));
+  }, [dispatch, paneId]);
+
+  // Through the command rather than `closePane` directly: closing a pane also
+  // has to repair the address bar, which still names the document that is going
+  // away, and `pane.close` is where that rule lives.
+  const handleClosePane = useCallback(() => {
+    void run(paneCommands.close, { paneId });
+  }, [run, paneId]);
 
   // A pane is created with `tabIds: []` — its children are a fetch away. Until
   // they land, render the root tab alone rather than nothing: `EditorTabPanel`
@@ -425,6 +449,10 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
         <PaneHeader
           isSplit={isSplit}
           isFocused={isPaneFocused}
+          title={paneTitle}
+          isMaximized={isMaximized}
+          onToggleMaximize={handleToggleMaximize}
+          onClose={handleClosePane}
           reserveToolbar={!isSplit && mode === "write"}
         >
           {!isSplit && <ToolbarSlotTarget />}

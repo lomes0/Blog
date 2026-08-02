@@ -15,7 +15,7 @@ import {
 } from "@/store/selectors/layoutSelectors";
 import { workspaceUrlForFocus } from "@/lib/workspaceUrl";
 import { useDragCapture } from "@/hooks/useResizablePanel";
-import ResizeGripper, { GRIPPER_W } from "@/components/Layout/ResizeGripper";
+import ResizeGripper from "@/components/Layout/ResizeGripper";
 import {
   DEFAULT_PANE_RATIO,
   MAX_PANE_RATIO,
@@ -30,6 +30,10 @@ import {
 } from "@/store/workspacePersistence";
 import TabbedDocumentEditor from "./TabbedDocumentEditor";
 import WorkspaceToolbar from "./WorkspaceToolbar";
+import { PANE_ACTION_CLASS } from "./PaneHeader";
+import { PANE_PAD_X, SPLITTER_W } from "./paneChrome";
+import { hiddenScrollbarSx } from "@/theme/tokens";
+import { cancelContentGutters } from "@/components/Layout/contentInset";
 import { ToolbarSlotProvider } from "@/contexts/ToolbarSlotContext";
 
 /** One arrow-key press on the focused splitter. */
@@ -42,6 +46,15 @@ interface PaneFrameProps {
   isSplit: boolean;
   /** Share of the row, as a flex-grow factor. Ignored when not split. */
   grow: number;
+  /**
+   * Hidden behind a maximized neighbour.
+   *
+   * `display: none`, not unmounted — the same choice `EditorTabPanel` makes for
+   * an inactive tab, and for the same reason: the editor keeps its undo history
+   * and its scroll offset, so restoring the split costs nothing and loses
+   * nothing.
+   */
+  isHidden?: boolean;
 }
 
 /**
@@ -65,6 +78,7 @@ const PaneFrame: React.FC<PaneFrameProps> = ({
   isFocused,
   isSplit,
   grow,
+  isHidden = false,
 }) => {
   const dispatch = useDispatch();
   const docId = pane.activeTabId ?? pane.rootId;
@@ -94,11 +108,17 @@ const PaneFrame: React.FC<PaneFrameProps> = ({
       sx={{
         flex: `${grow} 1 0`,
         minWidth: 0,
-        display: "flex",
+        display: isHidden ? "none" : "flex",
         flexDirection: "column",
         // Each pane scrolls its own document. Only reachable while split — see
         // the early return above.
         overflow: "hidden",
+        // The pane owns the reveal, not the strip: the buttons are 24px targets
+        // in a 32px row, and hovering *those* to make them appear is the thing
+        // hover-reveal is supposed to avoid. `focus-within` is what keeps them
+        // reachable by keyboard (DESIGN.md §9).
+        [`&:hover .${PANE_ACTION_CLASS}, &:focus-within .${PANE_ACTION_CLASS}`]:
+          { opacity: 1 },
       }}
     >
       {
@@ -120,7 +140,14 @@ const PaneFrame: React.FC<PaneFrameProps> = ({
           needs this too. */
       }
       <Box
-        sx={{ flex: 1, minHeight: 0, overflow: "auto", px: 1, position: "relative" }}
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          overflow: "auto",
+          px: PANE_PAD_X,
+          position: "relative",
+          ...hiddenScrollbarSx,
+        }}
       >
         {editor}
       </Box>
@@ -158,6 +185,9 @@ const WorkspacePanes: React.FC<WorkspacePanesProps> = ({ rootId }) => {
   );
   const ratio = useSelector(
     (state: RootState) => state.ui.workspace.splitRatio,
+  );
+  const maximizedPaneId = useSelector(
+    (state: RootState) => state.ui.workspace.maximizedPaneId,
   );
   const hydrated = useSelector(
     (state: RootState) => state.ui.workspaceHydrated,
@@ -276,6 +306,20 @@ const WorkspacePanes: React.FC<WorkspacePanesProps> = ({ rootId }) => {
   const onDragEnd = useCallback(() => setIsResizing(false), []);
   useDragCapture(isResizing, onDragMove, onDragEnd);
 
+  // Esc gives the row back, which is the way out of a maximize that does not
+  // need the pointer to find a 24px button again.
+  //
+  // On the row rather than on `window`: the keystroke is only ours while the
+  // focus is inside the workspace, and a bubbling handler sees it after the
+  // editor, a dialog or an open menu has had it — each of which calls
+  // `preventDefault` on the Esc it consumed, so `defaultPrevented` is the test
+  // for "nothing else wanted this".
+  const onRowKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key !== "Escape" || e.defaultPrevented || !maximizedPaneId) return;
+    e.preventDefault();
+    dispatch(actions.unmaximizePane());
+  }, [dispatch, maximizedPaneId]);
+
   const onSplitterKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "ArrowLeft") {
       e.preventDefault();
@@ -332,31 +376,37 @@ const WorkspacePanes: React.FC<WorkspacePanesProps> = ({ rootId }) => {
         />
         <Box
           ref={rowRef}
+          onKeyDown={onRowKeyDown}
           sx={{
             display: "flex",
             alignItems: "stretch",
             flex: 1,
             minHeight: 0,
             minWidth: 0,
+            // Full bleed. Two documents do not want the page's one-column
+            // gutters between them and the window — see `PANE_PAD_X`, which is
+            // what each pane keeps instead.
+            ...cancelContentGutters,
           }}
         >
           {panes.map((pane, index) => (
             <Fragment key={pane.id}>
-              {index > 0 && (
+              {index > 0 && !maximizedPaneId && (
                 <Box
                   sx={{
-                    // The rule is the 1px `divider` of §17.1; the 4px strip
-                    // around it is the grab area, and `ResizeGripper` paints it
-                    // only on hover/drag — the same ladder the other three
-                    // panels use.
+                    // Reserves the grab strip and nothing else. The rule is the
+                    // 1px `divider` of §17.1, but it is drawn *by the gripper*,
+                    // centred (`variant="rule"`), rather than being a border on
+                    // this box — a border would put the whole 11px of slack on
+                    // one side of the line, and the seam between two documents
+                    // has to look the same from both.
                     position: "relative",
-                    width: GRIPPER_W,
+                    width: SPLITTER_W,
                     flexShrink: 0,
-                    borderLeft: "1px solid",
-                    borderColor: "divider",
                   }}
                 >
                   <ResizeGripper
+                    variant="rule"
                     onMouseDown={(e) => {
                       e.preventDefault();
                       setIsResizing(true);
@@ -379,7 +429,15 @@ const WorkspacePanes: React.FC<WorkspacePanesProps> = ({ rootId }) => {
                 pane={pane}
                 isFocused={pane.id === focusedPaneId}
                 isSplit
-                grow={index === 0 ? ratio : 1 - ratio}
+                // A maximized pane takes the row whole; its neighbour keeps a
+                // grow factor it is not using, so restoring is one flag rather
+                // than a second source of truth about the ratio.
+                grow={maximizedPaneId
+                  ? 1
+                  : index === 0
+                  ? ratio
+                  : 1 - ratio}
+                isHidden={!!maximizedPaneId && pane.id !== maximizedPaneId}
               />
             </Fragment>
           ))}

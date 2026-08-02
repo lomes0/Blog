@@ -28,6 +28,7 @@ import {
   SetActiveEditorContext,
 } from "@/contexts/ActiveEditorContext";
 import { ToolbarSlotTarget } from "@/contexts/ToolbarSlotContext";
+import { hiddenScrollbarSx } from "@/theme/tokens";
 
 // Must match the grid-template-columns transition duration below.
 const COPILOT_TRANSITION_MS = 225;
@@ -166,6 +167,13 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
                   // and that has to hold for the next plugin too.
                   isolation: "isolate",
                   width: "100%",
+                  // The editor route alone — DESIGN.md §12's exception. Every
+                  // other route's overflow is a page of cards that wants its
+                  // bar; the workspace's is a document whose scroller *is* the
+                  // page, so the bar is a permanent rule down its inside edge,
+                  // and a split draws two of them, one against the splitter.
+                  // Scrolling is untouched, only the indicator.
+                  ...(isWorkspace ? hiddenScrollbarSx : {}),
                   pl: {
                     xs: CONTENT_PAD_X.xs.left,
                     sm: CONTENT_PAD_X.sm.left,

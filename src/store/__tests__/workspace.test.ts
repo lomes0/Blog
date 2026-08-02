@@ -663,6 +663,20 @@ describe("ui.workspace — restoring a stored layout", () => {
     expect(state.ui.workspaceHydrated).toBe(true);
   });
 
+  it("never comes back with a pane maximized", () => {
+    // A maximize is a way of looking at a layout, not part of one — so it is
+    // left out of the record, and a record that has one anyway (an older build,
+    // a hand-edited store) does not get to open the editor with a pane hidden.
+    const state = restore({
+      panes: [storedPane("p1", "doc-a"), storedPane("p2", "doc-b")],
+      focusedPaneId: "p1",
+      maximizedPaneId: "p1",
+    });
+
+    expect(workspaceOf(state).maximizedPaneId).toBeNull();
+    expect(workspaceOf(state).panes).toHaveLength(2);
+  });
+
   it("clamps to MAX_PANES (plan §5.3 — two, not a grid)", () => {
     const state = restore({
       panes: [
@@ -973,6 +987,102 @@ describe("ui.workspace — the split ratio", () => {
   it("ignores a ratio a zero-width row would produce", () => {
     const state = reducer(initial(), actions.setSplitRatio(Number.NaN));
     expect(workspaceOf(state).splitRatio).toBe(DEFAULT_PANE_RATIO);
+  });
+});
+
+/**
+ * Maximize — one pane filling the row, the other hidden rather than closed.
+ *
+ * The reducer carries two rules the UI cannot be trusted with, because the pane
+ * a maximize hides is `display: none` and therefore unclickable: a maximized
+ * pane is always the focused one, and there is always a second pane behind it.
+ * Every way of reaching either state — focusing the hidden pane by command,
+ * splitting off the maximized one, closing either — is asserted here rather than
+ * left to the component that happens not to do it today.
+ */
+describe("ui.workspace — maximizing a pane", () => {
+  const split = () => openWithTabs(openWithTabs(initial(), "p1", "doc-a"), "p2", "doc-b");
+
+  it("starts with nothing maximized", () => {
+    expect(workspaceOf(initial()).maximizedPaneId).toBeNull();
+  });
+
+  it("gives the row to one pane, and focuses it", () => {
+    let state = split();
+    state = reducer(state, actions.focusPane("p2"));
+
+    state = reducer(state, actions.toggleMaximizePane("p1"));
+
+    expect(workspaceOf(state).maximizedPaneId).toBe("p1");
+    expect(workspaceOf(state).focusedPaneId).toBe("p1");
+    // Hidden, not closed: both panes are still open, with their tabs intact.
+    expect(workspaceOf(state).panes.map((p) => p.id)).toEqual(["p1", "p2"]);
+    expect(paneOf(state, "p2").rootId).toBe("doc-b");
+  });
+
+  it("is a toggle — the same pane again gives the row back", () => {
+    let state = reducer(split(), actions.toggleMaximizePane("p1"));
+    state = reducer(state, actions.toggleMaximizePane("p1"));
+    expect(workspaceOf(state).maximizedPaneId).toBeNull();
+  });
+
+  it("refuses a lone pane, which already fills the row", () => {
+    const state = reducer(
+      openWithTabs(initial(), "p1", "doc-a"),
+      actions.toggleMaximizePane("p1"),
+    );
+    expect(workspaceOf(state).maximizedPaneId).toBeNull();
+  });
+
+  it("ignores an id no pane has", () => {
+    const state = reducer(split(), actions.toggleMaximizePane("nope"));
+    expect(workspaceOf(state).maximizedPaneId).toBeNull();
+  });
+
+  it("gives the row back when the hidden pane is focused", () => {
+    let state = reducer(split(), actions.toggleMaximizePane("p1"));
+    state = reducer(state, actions.focusPane("p2"));
+
+    expect(workspaceOf(state).maximizedPaneId).toBeNull();
+    expect(workspaceOf(state).focusedPaneId).toBe("p2");
+  });
+
+  it("gives the row back when a document opens in the hidden pane", () => {
+    let state = reducer(split(), actions.toggleMaximizePane("p1"));
+    state = reducer(
+      state,
+      actions.openPane({ paneId: "p2", rootId: "doc-c", mode: "write" }),
+    );
+
+    expect(workspaceOf(state).maximizedPaneId).toBeNull();
+    expect(paneOf(state, "p2").rootId).toBe("doc-c");
+  });
+
+  it("survives a document opening in the maximized pane itself", () => {
+    let state = reducer(split(), actions.toggleMaximizePane("p1"));
+    state = reducer(
+      state,
+      actions.openPane({ paneId: "p1", rootId: "doc-c", mode: "write" }),
+    );
+
+    expect(workspaceOf(state).maximizedPaneId).toBe("p1");
+  });
+
+  it("ends when either pane closes — there is nothing left to hide", () => {
+    const maximized = reducer(split(), actions.toggleMaximizePane("p1"));
+
+    expect(
+      workspaceOf(reducer(maximized, actions.closePane("p2"))).maximizedPaneId,
+    ).toBeNull();
+    expect(
+      workspaceOf(reducer(maximized, actions.closePane("p1"))).maximizedPaneId,
+    ).toBeNull();
+  });
+
+  it("unmaximizes without naming a pane — what Esc dispatches", () => {
+    let state = reducer(split(), actions.toggleMaximizePane("p1"));
+    state = reducer(state, actions.unmaximizePane());
+    expect(workspaceOf(state).maximizedPaneId).toBeNull();
   });
 });
 

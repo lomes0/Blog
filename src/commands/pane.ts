@@ -134,6 +134,31 @@ const close = defineCommand<PaneRefParams>({
   },
 });
 
+const maximize = defineCommand<PaneRefParams>({
+  id: "pane.maximize",
+  title: "Maximize pane",
+  description:
+    "Give one pane the whole row, hiding the other without closing it. " +
+    "Defaults to the focused pane. Run it again on a maximized pane — or " +
+    "press Escape — to bring the split back. Nothing is unloaded: the hidden " +
+    "pane keeps its document, its scroll position and its undo history.",
+  params: paneRef,
+  effect: "read",
+  scopes: ["workspace"],
+  // Meaningless with one pane: it already fills the row.
+  available: (ctx) => ctx.workspace.panes.length > 1,
+  run: async (ctx, { paneId }) => {
+    const target = paneId ?? ctx.workspace.panes.find((p) => p.focused)?.id;
+    if (!target) return commandFailed("No pane is focused.");
+    if (!ctx.workspace.panes.some((p) => p.id === target)) {
+      return commandFailed(`No pane ${target} is open.`);
+    }
+    const { actions } = await storeModule();
+    ctx.dispatch(actions.toggleMaximizePane(target));
+    return commandOk();
+  },
+});
+
 const focusParams = z.object({
   paneId: z.string().min(1),
 });
@@ -197,4 +222,10 @@ const setMode = defineCommand<PaneModeParams>({
   },
 });
 
-export const paneCommands = { split, close, focus, setMode } as const;
+export const paneCommands = {
+  split,
+  close,
+  maximize,
+  focus,
+  setMode,
+} as const;

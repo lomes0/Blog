@@ -115,6 +115,22 @@ export interface WorkspaceState {
    * pane, but kept anyway so a split re-opens where it was left.
    */
   splitRatio: number;
+  /**
+   * The pane currently filling the row on its own, if any — the ⤢ button in a
+   * pane's strip, and `pane.maximize`.
+   *
+   * **Not persisted, unlike everything else here.** A maximize is a way of
+   * *looking* at a layout rather than part of one: it is what you do to read one
+   * document closely for a minute, and Esc undoes it. Coming back tomorrow to a
+   * split that says it has one pane — with the other still open, merely hidden —
+   * would be the layout lying about itself. `sanitizeWorkspace` therefore always
+   * returns `null` here, the way it always returns `diffOpen: false`.
+   *
+   * The other pane stays mounted and merely `display: none` (the same choice
+   * `EditorTabPanel` makes for an inactive tab): unmounting it would throw away
+   * its undo stack and its scroll position for the sake of a temporary view.
+   */
+  maximizedPaneId: string | null;
 }
 
 /** Which view the left sidebar renders, switched from the activity rail. */
