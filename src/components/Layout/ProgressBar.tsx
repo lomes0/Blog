@@ -22,10 +22,9 @@ export default memo(function ProgressBar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  useEffect(() => {
-    NProgress.configure({ showSpinner: false });
-  }, []);
-
+  // `done()` keeps its own guard — it is a no-op unless the bar is showing —
+  // so a navigation with nothing in flight does not flash one. How the bar is
+  // configured and driven belongs to `nprogressMiddleware`.
   useEffect(() => {
     NProgress.done();
   }, [pathname, searchParams]);
