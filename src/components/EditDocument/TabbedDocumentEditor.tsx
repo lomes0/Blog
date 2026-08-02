@@ -391,8 +391,16 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
         >
           <ToolbarSlotTarget />
         </PaneHeader>
-        <Box sx={{ display: "flex", flex: 1 }}>
-          <Box sx={{ flex: 1 }}>
+        {
+          /* `minWidth: 0` on both, or the document sets the pane's width
+            instead of the other way round: a flex item's `min-width` defaults
+            to `auto`, which is its content's minimum, so one absolutely-sized
+            thing in the document — a notes board, a wide embed — becomes a
+            floor the pane cannot shrink below. The pane already scrolls
+            (`WorkspacePanes`), so overflowing content stays reachable. */
+        }
+        <Box sx={{ display: "flex", flex: 1, minWidth: 0 }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
             {tabIds.map((tabId) => (
               <EditorTabPanel
                 key={tabId}

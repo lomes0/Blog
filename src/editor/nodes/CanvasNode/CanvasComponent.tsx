@@ -239,8 +239,13 @@ export default function CanvasComponent(
    */
   const fit = (visible: number, far: number) =>
     far > visible ? Math.ceil(far + CANVAS_GROW_MARGIN) : visible;
-  const boardWidth = fit(Math.ceil(containerSize.width / scale), extent.x);
-  const boardHeight = fit(Math.ceil(containerSize.height / scale), extent.y);
+  // The frame is measured in rendered pixels and the board is laid out in
+  // unscaled ones, so the trip out through `scale` has to round *down*: at
+  // 200%, `ceil` handed back a board up to two rendered pixels wider than the
+  // frame it was meant to fill, which is a horizontal scrollbar over an empty
+  // board. `minWidth`/`minHeight: 100%` on the sizing div cover the shortfall.
+  const boardWidth = fit(Math.floor(containerSize.width / scale), extent.x);
+  const boardHeight = fit(Math.floor(containerSize.height / scale), extent.y);
 
   const liveHeight = useCanvasResize(nodeKey, height, editor);
 

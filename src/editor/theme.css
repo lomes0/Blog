@@ -633,6 +633,32 @@ html.dark .code-edit-chrome,
 }
 
 /*
+  A notes board is a frame in a document column: it takes its width from the
+  column, and must never be what sets it.
+
+  Inside the board, `CanvasComponent` sizes the scrolled area in absolute
+  pixels (`boardWidth * scale`). Nothing clips that number on the way up:
+  `overflow` bounds what is *painted*, not what a box contributes to its
+  ancestors' intrinsic width, so those pixels arrive at the pane's flex row as
+  a content-based minimum — a flex item's `min-width: auto` — and hold the
+  column open at the board's width. The board then measures that same column to
+  decide its own width (`containerSize`), which reproduces the number it was
+  already at. The two ratchet: whatever the widest the column has ever been,
+  the board latches there, and narrowing the document — a split pane, the
+  Copilot panel, zooming the page in — could no longer bring either back.
+
+  `contain: inline-size` cuts the loop by computing the board's inline size as
+  if it had no contents, so the column sizes the board rather than the reverse.
+  A table gets the same guarantee a different way: `.LexicalTheme__table` is
+  `width: 100%`, so it has no fixed pixel width to propagate in the first
+  place.
+*/
+.canvas-board {
+  contain: inline-size;
+  max-width: 100%;
+}
+
+/*
   A firefox workaround to allow scrolling of overflowing table cell
   ref: https://bugzilla.mozilla.org/show_bug.cgi?id=1904159
 */
