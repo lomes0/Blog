@@ -19,10 +19,7 @@ import { actions, postsSelectors, useDispatch, useSelector } from "@/store";
 import { SetActiveEditorContext } from "@/contexts/ActiveEditorContext";
 import PaneHeader from "./PaneHeader";
 import DocumentTabs, { type TabMeta } from "./DocumentTabs";
-import {
-  ToolbarSlotProvider,
-  ToolbarSlotTarget,
-} from "@/contexts/ToolbarSlotContext";
+import { ToolbarSlotTarget } from "@/contexts/ToolbarSlotContext";
 import EditorTabPanel from "./EditorTabPanel";
 import TabContextMenu from "./TabContextMenu";
 import { EMPTY_EDITOR_STATE, type PostCreateInput } from "@/types";
@@ -366,20 +363,21 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     )
     : null;
 
-  // `ToolbarSlotProvider` is nested rather than reached: the app shell keeps its
-  // own for the routes that mount a lone editor (Playground, Tutorial), and this
-  // one shadows it for everything in this pane, so `ToolbarPlugin`'s portal
-  // finds this pane's header without knowing panes exist. Two panes, two
-  // providers, two live toolbars.
+  // The toolbar slot is the workspace's, not this pane's: `WorkspacePanes`
+  // holds the one provider, and a pane draws the target for it only while it is
+  // the only pane. Split, the target is above the row (`WorkspaceToolbar`) and
+  // this header is left with the focused-pane accent alone — two targets under
+  // one provider would be two writers to one `slotEl`, and whichever mounted
+  // last would take the toolbar.
   return (
-    <ToolbarSlotProvider>
+    <>
       <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
         <PaneHeader
           isSplit={isSplit}
           isFocused={isPaneFocused}
-          reserveToolbar={mode === "write"}
+          reserveToolbar={!isSplit && mode === "write"}
         >
-          <ToolbarSlotTarget />
+          {!isSplit && <ToolbarSlotTarget />}
         </PaneHeader>
         {
           /* `minWidth: 0` on both, or the document sets the pane's width
@@ -484,7 +482,7 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
           </DialogActions>
         </Dialog>
       </Box>
-    </ToolbarSlotProvider>
+    </>
   );
 };
 

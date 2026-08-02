@@ -2,7 +2,7 @@
 import * as React from "react";
 import { Box } from "@mui/material";
 import { MOTION } from "@/theme/tokens";
-import { CONTENT_PAD_X } from "@/components/Layout/contentInset";
+import { cancelContentGutters } from "@/components/Layout/contentInset";
 import { TOOLBAR_H } from "./paneChrome";
 
 interface PaneHeaderProps {
@@ -27,18 +27,22 @@ interface PaneHeaderProps {
 }
 
 /**
- * What stays pinned above a pane's document: its formatting toolbar, and — in a
- * split — the accent marking which pane is focused.
+ * What stays pinned above a pane's document: the formatting toolbar while this
+ * is the only pane, and — in a split — the accent marking which pane is
+ * focused.
  *
  * The sub-document tabs were here for a day and have moved into the document
  * itself (`DocumentTabs`, under the title); the name-and-✕ strip that named the
  * pane is gone too — the document's own title already says what a pane holds,
- * and closing one is the `pane.close` command. What is left is the chrome that
- * is genuinely about the *pane* rather than the post: the toolbar, whose
- * controls act on whichever pane you are typing in, and the focused-pane
- * accent. Both are per pane rather than per window — that is what makes the two
- * halves of a split independently editable, and it is the whole reason this
- * component exists instead of a slot in the app shell.
+ * and closing one is the `pane.close` command.
+ *
+ * The toolbar was per pane for a while, so that the unfocused half of a split
+ * stayed editable without a click. Two rows of the same controls at two heights
+ * turned out to be worse than the click: a split now has one toolbar above both
+ * panes (`WorkspaceToolbar`), fed by whichever pane has the focus. Unsplit
+ * there is nothing to disambiguate, so the toolbar stays here, where it is
+ * already the top of the only scroller — and the focused-pane accent is all
+ * this header carries in a split.
  *
  * `position: sticky` keeps it pinned now that it is not window chrome. Unsplit,
  * the page's padded container is the scroller and the header cancels its
@@ -63,20 +67,8 @@ const PaneHeader: React.FC<PaneHeaderProps> = ({
       bgcolor: "background.default",
       // Cancel the scroller's gutters so the header spans the pane it belongs
       // to. Split panes scroll inside `PaneFrame`'s `px: 1` box; unsplit, the
-      // page's asymmetric content gutters (`CONTENT_PAD_X`) are the ones to
-      // undo.
-      ...(isSplit ? { mx: -1 } : {
-        ml: {
-          xs: -CONTENT_PAD_X.xs.left,
-          sm: -CONTENT_PAD_X.sm.left,
-          md: -CONTENT_PAD_X.md.left,
-        },
-        mr: {
-          xs: -CONTENT_PAD_X.xs.right,
-          sm: -CONTENT_PAD_X.sm.right,
-          md: -CONTENT_PAD_X.md.right,
-        },
-      }),
+      // page's asymmetric content gutters are the ones to undo.
+      ...(isSplit ? { mx: -1 } : cancelContentGutters),
       // DESIGN.md §17.3 — the focused-pane accent, on the top edge. Only with a
       // second pane to distinguish it from.
       ...(isSplit && {

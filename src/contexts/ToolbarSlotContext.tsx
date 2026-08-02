@@ -25,11 +25,15 @@ export const useToolbarSlot = () => {
  * `ToolbarPlugin`'s portal.
  *
  * A component rather than a bare `ref={setSlotEl}` at each call site because
- * the slot is no longer singular: the app shell keeps one for the routes that
- * mount a lone editor (Playground, Tutorial), and each workspace pane nests its
- * own provider so its editors portal into its own header instead of into the
- * window's. Both do the identical two things, and doing them in one place is
- * what keeps a second slot from being wired up subtly differently.
+ * there is more than one provider: the app shell keeps one for the routes that
+ * mount a lone editor (Playground, Tutorial), and the workspace nests its own
+ * so its editors portal into the editor route's chrome instead of the window's.
+ * Both do the identical two things, and doing them in one place is what keeps a
+ * second slot from being wired up subtly differently.
+ *
+ * Within a provider the slot *is* singular: two targets would both write
+ * `slotEl` and the last to mount would take the toolbar. The workspace draws
+ * exactly one — in the lone pane's header, or above a split's pane row.
  */
 export const ToolbarSlotTarget: React.FC<
   { style?: React.CSSProperties }

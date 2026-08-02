@@ -103,14 +103,13 @@ interface EditorTabPanelProps {
  * "the one being acted on" were the same panel. With two panes they are not,
  * and every singleton in the editor hung off the wrong half of that:
  *
- * - **`isActive`** — the active tab of *this* pane. It gates `display` and the
- *   toolbar portal, both of which are the pane's own business: `display: none`
- *   rather than unmounting is what preserves undo history across a tab switch
- *   (§1.1), and each pane now has a header slot for its own toolbar.
+ * - **`isActive`** — the active tab of *this* pane. It gates `display`, which
+ *   is the pane's own business: `display: none` rather than unmounting is what
+ *   preserves undo history across a tab switch (§1.1).
  * - **`isFocused`** — the active tab of the *focused* pane, so at most one
  *   panel in the whole app has it. It gates what is genuinely singular: the
- *   `ActiveEditorContext` ref (which is what the Copilot writes through) and
- *   the `<title>`.
+ *   `ActiveEditorContext` ref (which is what the Copilot writes through), the
+ *   `<title>`, and — while split — the formatting toolbar.
  */
 const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
   paneId,
@@ -132,6 +131,19 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
   const showDiff = useSelector((state) =>
     selectPaneById(state, paneId)?.diffOpen ?? false
   );
+  const isSplit = useSelector((state) => state.ui.workspace.panes.length > 1);
+
+  // Who portals a toolbar into the workspace's one slot.
+  //
+  // Split, the slot is the band above both panes (`WorkspaceToolbar`), so the
+  // claim has to be singular across the workspace: the focused pane's active
+  // tab. Unsplit, the slot is this pane's own header and the pane is the only
+  // one there is, so the visible tab claims it — deliberately not `isFocused`,
+  // which would also make the toolbar disappear whenever the store's focused
+  // pane is momentarily something other than this one.
+  //
+  // Read mode has no toolbar either way.
+  const ownsToolbar = mode === "write" && (isSplit ? isFocused : isActive);
 
   // Stable reference so the save hook isn't rebuilt on every unrelated change.
   const reduxPost = useReduxSelector(
@@ -229,13 +241,9 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
             onSave={triggerSave}
             onReset={handleReset}
             editable={mode === "write"}
-            // The toolbar portals into the slot in *this pane's* header, so the
-            // claim is per pane: this pane's active tab, while this pane is
-            // being written in. It used to be `isFocused` — one slot for the
-            // window meant the unfocused half of a split had no toolbar at all,
-            // and clicking a control in it would have been acting on the other
-            // pane's document anyway.
-            isActive={isActive && mode === "write"}
+            // Whether this editor's `ToolbarPlugin` portals into the workspace's
+            // toolbar slot — see `ownsToolbar` above.
+            isActive={ownsToolbar}
           />
           <EditDocumentInfo />
         </>

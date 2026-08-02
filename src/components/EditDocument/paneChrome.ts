@@ -7,13 +7,21 @@
 /**
  * `ToolbarPlugin`'s rendered height.
  *
- * A 34px icon button (`toolbar.css`, `.editor-toolbar .MuiIconButton-root`)
- * inside the toolbar's `py: 0.5`, over a 1px `divider` rule: 34 + 8 + 1.
+ * Measured, not derived. It used to be written down as 34 + 8 + 1 — a 34px
+ * icon button (`toolbar.css`, `.editor-toolbar .MuiIconButton-root`) inside the
+ * toolbar's `py: 0.5`, over a 1px `divider` rule — but the toolbar has not been
+ * icon buttons alone for a while: the block-format and font `Select`s are the
+ * tallest things in it, and the real box measures 52px in a browser. The 43 was
+ * a 9px under-reservation, which is exactly the jump you saw when a document
+ * settled and then hopped as its toolbar arrived.
  *
- * Two places need to agree on it. `PaneHeader` reserves it so the document does
- * not jump when the toolbar portals in — the toolbar mounts with the editor,
- * which is well after the pane's box exists — and `PaneSkeleton` draws a band
- * this tall where it stands in for a whole pane. If the toolbar's padding or
- * button size changes, this is the number to change with it.
+ * Three places need to agree on it. `PaneHeader` reserves it so the document
+ * does not jump when the toolbar portals in — the toolbar mounts with the
+ * editor, which is well after the pane's box exists — `WorkspaceToolbar` does
+ * the same for a split's shared band, and `PaneSkeleton` draws a band this tall
+ * where it stands in for a whole pane.
+ *
+ * Re-measure rather than re-derive if the toolbar's controls change:
+ * `document.querySelector(".editor-toolbar").getBoundingClientRect().height`.
  */
-export const TOOLBAR_H = 43;
+export const TOOLBAR_H = 52;

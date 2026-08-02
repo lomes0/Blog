@@ -29,6 +29,8 @@ import {
   readWorkspaceKeyHint,
 } from "@/store/workspacePersistence";
 import TabbedDocumentEditor from "./TabbedDocumentEditor";
+import WorkspaceToolbar from "./WorkspaceToolbar";
+import { ToolbarSlotProvider } from "@/contexts/ToolbarSlotContext";
 
 /** One arrow-key press on the focused splitter. */
 const RATIO_STEP = 0.02;
@@ -54,10 +56,9 @@ interface PaneFrameProps {
  *
  * That is the keystone of plan §5.1: "active" used to mean *visible*, which is
  * unanswerable with two panes on screen at once. What must be singular — the
- * `<title>`, the `ActiveEditorContext` ref the Copilot writes through — keys off
- * the focused pane instead, and `EditorTabPanel` is where they are gated. The
- * formatting toolbar is no longer among them: each pane hosts its own in its
- * header, so the unfocused half of a split stays editable.
+ * `<title>`, the `ActiveEditorContext` ref the Copilot writes through, and the
+ * formatting toolbar — keys off the focused pane instead, and `EditorTabPanel`
+ * is where they are gated.
  */
 const PaneFrame: React.FC<PaneFrameProps> = ({
   pane,
@@ -290,74 +291,101 @@ const WorkspacePanes: React.FC<WorkspacePanesProps> = ({ rootId }) => {
   // One pane renders with no wrapper at all, so the unsplit editor is exactly
   // the tree it was before split view: the page's container is still its
   // scroller, and nothing about its layout is downstream of this component.
+  //
+  // `ToolbarSlotProvider` wraps both branches — one provider for the workspace,
+  // where each pane used to nest its own. It renders no DOM, so the unsplit tree
+  // is unchanged; what it settles is that the workspace has a *single* toolbar
+  // slot, and the two branches differ only in where the target for it is drawn:
+  // inside the lone pane's header when unsplit, above the row when split.
   if (!isSplit) {
     const [pane] = panes;
     return pane
       ? (
-        <PaneFrame
-          pane={pane}
-          isFocused={pane.id === focusedPaneId}
-          isSplit={false}
-          grow={1}
-        />
+        <ToolbarSlotProvider>
+          <PaneFrame
+            pane={pane}
+            isFocused={pane.id === focusedPaneId}
+            isSplit={false}
+            grow={1}
+          />
+        </ToolbarSlotProvider>
       )
       : null;
   }
 
+  const focusedPane = panes.find((pane) => pane.id === focusedPaneId);
+
   return (
-    <Box
-      ref={rowRef}
-      sx={{
-        display: "flex",
-        alignItems: "stretch",
-        flex: 1,
-        minHeight: 0,
-        minWidth: 0,
-      }}
-    >
-      {panes.map((pane, index) => (
-        <Fragment key={pane.id}>
-          {index > 0 && (
-            <Box
-              sx={{
-                // The rule is the 1px `divider` of §17.1; the 4px strip around
-                // it is the grab area, and `ResizeGripper` paints it only on
-                // hover/drag — the same ladder the other three panels use.
-                position: "relative",
-                width: GRIPPER_W,
-                flexShrink: 0,
-                borderLeft: "1px solid",
-                borderColor: "divider",
-              }}
-            >
-              <ResizeGripper
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  setIsResizing(true);
-                }}
-                onDoubleClick={() => setRatio(DEFAULT_PANE_RATIO)}
-                onKeyDown={onSplitterKeyDown}
-                isResizing={isResizing}
-                label="Resize panes"
-                value={{
-                  now: Math.round(ratio * 100),
-                  min: Math.round(MIN_PANE_RATIO * 100),
-                  max: Math.round(MAX_PANE_RATIO * 100),
-                  text: `${Math.round(ratio * 100)}% left pane`,
-                  controls: `pane-${panes[0].id}`,
-                }}
+    <ToolbarSlotProvider>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          minHeight: 0,
+          minWidth: 0,
+        }}
+      >
+        <WorkspaceToolbar
+          hasToolbar={focusedPane?.mode === "write"}
+          reserve={panes.some((pane) => pane.mode === "write")}
+        />
+        <Box
+          ref={rowRef}
+          sx={{
+            display: "flex",
+            alignItems: "stretch",
+            flex: 1,
+            minHeight: 0,
+            minWidth: 0,
+          }}
+        >
+          {panes.map((pane, index) => (
+            <Fragment key={pane.id}>
+              {index > 0 && (
+                <Box
+                  sx={{
+                    // The rule is the 1px `divider` of §17.1; the 4px strip
+                    // around it is the grab area, and `ResizeGripper` paints it
+                    // only on hover/drag — the same ladder the other three
+                    // panels use.
+                    position: "relative",
+                    width: GRIPPER_W,
+                    flexShrink: 0,
+                    borderLeft: "1px solid",
+                    borderColor: "divider",
+                  }}
+                >
+                  <ResizeGripper
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setIsResizing(true);
+                    }}
+                    onDoubleClick={() => setRatio(DEFAULT_PANE_RATIO)}
+                    onKeyDown={onSplitterKeyDown}
+                    isResizing={isResizing}
+                    label="Resize panes"
+                    value={{
+                      now: Math.round(ratio * 100),
+                      min: Math.round(MIN_PANE_RATIO * 100),
+                      max: Math.round(MAX_PANE_RATIO * 100),
+                      text: `${Math.round(ratio * 100)}% left pane`,
+                      controls: `pane-${panes[0].id}`,
+                    }}
+                  />
+                </Box>
+              )}
+              <PaneFrame
+                pane={pane}
+                isFocused={pane.id === focusedPaneId}
+                isSplit
+                grow={index === 0 ? ratio : 1 - ratio}
               />
-            </Box>
-          )}
-          <PaneFrame
-            pane={pane}
-            isFocused={pane.id === focusedPaneId}
-            isSplit
-            grow={index === 0 ? ratio : 1 - ratio}
-          />
-        </Fragment>
-      ))}
-    </Box>
+            </Fragment>
+          ))}
+        </Box>
+      </Box>
+    </ToolbarSlotProvider>
   );
 };
 

@@ -1,6 +1,6 @@
 "use client";
 import { Box, Divider, Skeleton } from "@mui/material";
-import { CONTENT_PAD_X } from "@/components/Layout/contentInset";
+import { cancelContentGutters } from "@/components/Layout/contentInset";
 import { TOOLBAR_H } from "./paneChrome";
 
 /**
@@ -91,18 +91,7 @@ const PaneSkeleton: React.FC<PaneSkeletonProps> = ({
           bgcolor: "background.default",
           borderBottom: 1,
           borderColor: "divider",
-          ...(isSplit ? { mx: -1 } : {
-            ml: {
-              xs: -CONTENT_PAD_X.xs.left,
-              sm: -CONTENT_PAD_X.sm.left,
-              md: -CONTENT_PAD_X.md.left,
-            },
-            mr: {
-              xs: -CONTENT_PAD_X.xs.right,
-              sm: -CONTENT_PAD_X.sm.right,
-              md: -CONTENT_PAD_X.md.right,
-            },
-          }),
+          ...(isSplit ? { mx: -1 } : cancelContentGutters),
         }}
       >
         {[64, 34, 34, 34, 88, 34, 34].map((w, i) => (

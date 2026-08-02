@@ -14,6 +14,28 @@ export const CONTENT_PAD_X = {
 } as const;
 
 /**
+ * Undo the gutters above, for chrome that sits *inside* the padded container
+ * but has to span the whole column: the workspace's toolbar, a pane's sticky
+ * header, and the stand-in drawn where either of them will land.
+ *
+ * Written once because the three have to agree — a rule that stops short of the
+ * column edge on one of them and not the others is the visible symptom, and it
+ * only ever shows up at one breakpoint.
+ */
+export const cancelContentGutters = {
+  ml: {
+    xs: -CONTENT_PAD_X.xs.left,
+    sm: -CONTENT_PAD_X.sm.left,
+    md: -CONTENT_PAD_X.md.left,
+  },
+  mr: {
+    xs: -CONTENT_PAD_X.xs.right,
+    sm: -CONTENT_PAD_X.sm.right,
+    md: -CONTENT_PAD_X.md.right,
+  },
+};
+
+/**
  * How far right of the column's center the content box sits, per breakpoint —
  * half the gutter asymmetry, in the same spacing units.
  *
