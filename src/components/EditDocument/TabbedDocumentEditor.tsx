@@ -344,11 +344,6 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     [tabIds, tabMetas],
   );
 
-  const handleClosePane = useCallback(
-    () => void dispatch(actions.closePane(paneId)),
-    [dispatch, paneId],
-  );
-
   // Built once and handed down rather than rendered here: its place is under
   // the active document's *title*, which is inside the panel. Only the visible
   // panel renders it (`EditorTabPanel`).
@@ -371,9 +366,6 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     )
     : null;
 
-  const paneTitle = orderedTabs.find((t) => t.id === activeTabId)?.name ??
-    "Untitled";
-
   // `ToolbarSlotProvider` is nested rather than reached: the app shell keeps its
   // own for the routes that mount a lone editor (Playground, Tutorial), and this
   // one shadows it for everything in this pane, so `ToolbarPlugin`'s portal
@@ -383,10 +375,8 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     <ToolbarSlotProvider>
       <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
         <PaneHeader
-          title={paneTitle}
           isSplit={isSplit}
           isFocused={isPaneFocused}
-          onClosePane={handleClosePane}
           reserveToolbar={mode === "write"}
         >
           <ToolbarSlotTarget />

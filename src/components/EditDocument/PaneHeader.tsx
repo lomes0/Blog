@@ -1,19 +1,14 @@
 "use client";
 import * as React from "react";
-import { Box, IconButton, Tooltip, Typography } from "@mui/material";
-import { X } from "lucide-react";
-import { ICON_SIZE } from "@/theme/icons";
+import { Box } from "@mui/material";
 import { MOTION } from "@/theme/tokens";
 import { CONTENT_PAD_X } from "@/components/Layout/contentInset";
 import { TOOLBAR_H } from "./paneChrome";
 
 interface PaneHeaderProps {
-  /** The active document's name — what this pane is showing. Split view only. */
-  title: string;
-  /** Two panes on screen: the header grows a focus accent and a close-pane ✕. */
+  /** Two panes on screen: the header grows a focus accent along its top edge. */
   isSplit: boolean;
   isFocused: boolean;
-  onClosePane: () => void;
   /**
    * Hold {@link TOOLBAR_H} open for a toolbar that has not portalled in yet.
    *
@@ -33,15 +28,17 @@ interface PaneHeaderProps {
 
 /**
  * What stays pinned above a pane's document: its formatting toolbar, and — in a
- * split — the strip that says which pane this is.
+ * split — the accent marking which pane is focused.
  *
  * The sub-document tabs were here for a day and have moved into the document
- * itself (`DocumentTabs`, under the title). What is left is the chrome that is
- * genuinely about the *pane* rather than the post: the toolbar, whose controls
- * act on whichever pane you are typing in, and the focused-pane accent. Both
- * are per pane rather than per window — that is what makes the two halves of a
- * split independently editable, and it is the whole reason this component
- * exists instead of a slot in the app shell.
+ * itself (`DocumentTabs`, under the title); the name-and-✕ strip that named the
+ * pane is gone too — the document's own title already says what a pane holds,
+ * and closing one is the `pane.close` command. What is left is the chrome that
+ * is genuinely about the *pane* rather than the post: the toolbar, whose
+ * controls act on whichever pane you are typing in, and the focused-pane
+ * accent. Both are per pane rather than per window — that is what makes the two
+ * halves of a split independently editable, and it is the whole reason this
+ * component exists instead of a slot in the app shell.
  *
  * `position: sticky` keeps it pinned now that it is not window chrome. Unsplit,
  * the page's padded container is the scroller and the header cancels its
@@ -49,10 +46,8 @@ interface PaneHeaderProps {
  * same rule holds against `PaneFrame`'s box.
  */
 const PaneHeader: React.FC<PaneHeaderProps> = ({
-  title,
   isSplit,
   isFocused,
-  onClosePane,
   reserveToolbar = false,
   children,
 }) => (
@@ -98,46 +93,6 @@ const PaneHeader: React.FC<PaneHeaderProps> = ({
       }),
     }}
   >
-    {isSplit && (
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 0.5,
-          px: 1,
-          py: 0.25,
-          minHeight: 28,
-        }}
-      >
-        <Typography
-          noWrap
-          variant="dense"
-          sx={{
-            flex: 1,
-            minWidth: 0,
-            fontWeight: isFocused ? 600 : 400,
-            color: isFocused ? "text.primary" : "text.secondary",
-          }}
-        >
-          {title}
-        </Typography>
-        <Tooltip title="Close pane">
-          <IconButton
-            size="small"
-            aria-label={`Close ${title} pane`}
-            onClick={onClosePane}
-            sx={{
-              flexShrink: 0,
-              p: 0.25,
-              color: "text.secondary",
-              "&:hover": { color: "text.primary" },
-            }}
-          >
-            <X size={ICON_SIZE.micro} />
-          </IconButton>
-        </Tooltip>
-      </Box>
-    )}
     {
       /* The pane's formatting toolbar portals in here. It draws its own bottom
         rule, which is why neither this block nor the row above carries one —
