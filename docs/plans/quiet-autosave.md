@@ -313,27 +313,19 @@ the restored save re-lands on IndexedDB immediately.
 
 ## 6. Open questions
 
-**`ui.dirtyDocIds` is now written but never read.** §2 asserted that `Reset`
-reads it; that was wrong — `Reset` read `selectIsDirty`, which §3.1 ungated and
-§3.5 deleted. So the slice is now in exactly the shape that made `ui.saveStatus`
-a bug in §1.2: six dispatch sites, zero readers.
+**~~`ui.dirtyDocIds` is now written but never read.~~ Resolved — deleted in
+`96b02804`.** §2 asserted that `Reset` reads it; that was wrong — `Reset` read
+`selectIsDirty`, which §3.1 ungated and §3.5 deleted. So the slice was left in
+exactly the shape that made `ui.saveStatus` a bug in §1.2: six dispatch sites,
+zero readers, and a full `JSON.stringify` of the document every 300ms on the
+typing path to maintain it.
 
-It is not free. `useDirtyTracking` runs
-`JSON.stringify(editor.getEditorState().toJSON())` on a 300ms debounce — a full
-serialization of the document, on the typing path, feeding nothing. `useSave`
-does its own at 2s, so this is the second one.
-
-Three ways out, in ascending order of commitment:
-
-1. Delete `useDirtyTracking` and let `usePostLoader` and `useSave` be the only
-   writers. `dirtyDocIds` then means "restored from an unconfirmed save and not
-   yet re-saved" — coherent, useful, and free.
-2. Delete the slice, its reducers and `workspace.test.ts:432-485` outright.
-3. Keep it, on the bet that a close-tab guard will want it. Then it should have
-   a reader soon, or it will rot the same way `saveStatus` did.
-
-Deliberately left as-is: it is a judgement about future intent, not a defect in
-the quiet-autosave change, and the flicker is gone either way.
+Option 2 of the three listed here was taken: the slice, its two reducers, the
+`removeTab` cleanup, the `UIState` field and the six reducer tests are all gone,
+along with `useDirtyTracking` itself. The equality it computed still happens
+where it has a consequence — `useSave` compares `savedBaseline` before deciding
+a save is a no-op — and a future close guard should ask `pendingSaves`, which is
+the durable record rather than a Redux mirror of one.
 
 **Should ⌘S still be bound at all?** §3.4 keeps it as "checkpoint", which is
 honest but is not what ⌘S means to anyone's fingers. The alternative is to leave
