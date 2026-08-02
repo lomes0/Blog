@@ -11,6 +11,17 @@ interface UseCanvasZoomShortcutsOptions {
 /**
  * Attaches ctrl+wheel and ctrl+keyboard (=, -, 0) zoom shortcuts to a
  * scrollable canvas container. Has no effect when `enabled` is false.
+ *
+ * Both listeners hang off the container, never `window`. A window-level keydown
+ * handler answered a Ctrl+= pressed with the caret in the *document*, and
+ * answered it on every board in that document at once: the board scaled up
+ * while the column around it did not, and since the board's scale clamps at
+ * 2.0 (`useNotesZoom`) while the browser's own zoom ladder does not, the same
+ * number of Ctrl+- afterwards did not bring it back — it was left magnified,
+ * persisted, over a column that had returned to its old width.
+ *
+ * The container is `tabIndex=0` and every note editor lives inside it, so a
+ * keydown from the board the author is actually in still bubbles here.
  */
 export function useCanvasZoomShortcuts({
   enabled,
@@ -19,7 +30,6 @@ export function useCanvasZoomShortcuts({
   onZoomOut,
   onResetZoom,
 }: UseCanvasZoomShortcutsOptions) {
-  // Ctrl+wheel
   useEffect(() => {
     if (!enabled) return;
     const el = scrollContainerRef.current;
@@ -35,14 +45,6 @@ export function useCanvasZoomShortcuts({
       }
     };
 
-    el.addEventListener("wheel", handleWheel, { passive: false });
-    return () => el.removeEventListener("wheel", handleWheel);
-  }, [enabled, scrollContainerRef, onZoomIn, onZoomOut]);
-
-  // Ctrl+= / Ctrl+- / Ctrl+0
-  useEffect(() => {
-    if (!enabled) return;
-
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!e.ctrlKey) return;
       if (e.key === "=" || e.key === "+") {
@@ -57,7 +59,11 @@ export function useCanvasZoomShortcuts({
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [enabled, onZoomIn, onZoomOut, onResetZoom]);
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    el.addEventListener("keydown", handleKeyDown);
+    return () => {
+      el.removeEventListener("wheel", handleWheel);
+      el.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [enabled, scrollContainerRef, onZoomIn, onZoomOut, onResetZoom]);
 }
