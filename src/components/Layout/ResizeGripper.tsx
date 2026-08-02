@@ -15,16 +15,38 @@ export const GRIPPER_W = 4;
  *   or a document on one side only, so painting the whole 4px strip is the only
  *   way to be seen at all.
  * - `rule` — the strip stays invisible and draws a 1px rule down its centre,
- *   which recolours to `primary` on hover and while dragging. This is for an
- *   edge *between two documents*, where the strip is wide enough to grab
- *   comfortably and a 12px band of colour landing between two columns of prose
- *   reads as a third thing on screen rather than as the seam between them.
+ *   which recolours to `primary` on hover and while dragging, plus a fainter
+ *   hairline {@link RULE_FLANK_OFFSET}px out on either side. This is for an edge
+ *   *between two documents*, where the strip is wide enough to grab comfortably
+ *   and a band of colour landing between two columns of prose reads as a third
+ *   thing on screen rather than as the seam between them.
+ *
+ *   The flanks are where each pane ends, and they are the flat-surface
+ *   equivalent of the recess this was drawn from: there, the panes were a
+ *   lighter surface than the page, so the gutter read as a channel sunk between
+ *   them and its two edges were the lines you saw. This app has one surface, so
+ *   the same reading is drawn rather than lit — which is also why the flanks do
+ *   *not* answer hover. They say where the panes are; only the middle line is
+ *   the handle.
  *
  * Both live here rather than in the call sites for the reason in the component
  * note below: the rest/hover/active/focus ladder is one vocabulary (§17.3), and
  * a second appearance is a named member of it, not an override of it.
  */
 export type GripperVariant = "wash" | "rule";
+
+/**
+ * How far the `rule` variant's flanking hairlines sit from its centre line, in
+ * px — measured from centre to the flank's own edge, so the clear space between
+ * a flank and the rule is one px less.
+ *
+ * Taken from the reference this was drawn from, where the channel between the
+ * panes measured 5px of gap either side of the rule. The owning strip has to be
+ * at least `2 * (RULE_FLANK_OFFSET + 1)` wide or the flanks are clipped — the
+ * pane row's `SPLITTER_W` carries a couple of px more than that, so the outer
+ * edge of the grab area is still grabbable past the last line.
+ */
+export const RULE_FLANK_OFFSET = 6;
 
 /**
  * The `separator` half of the ARIA window-splitter pattern. Supply all four
@@ -206,6 +228,25 @@ const ResizeGripper: React.FC<ResizeGripperProps> = ({
             transition: isResizing
               ? "none"
               : `background-color ${MOTION.base}ms ${MOTION.easing}`,
+          },
+          // The two flanks, as one element with a border down each side: they
+          // are always the same distance apart, so a single box is the shape
+          // that cannot drift out of symmetry.
+          "&::after": {
+            content: '""',
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: RULE_FLANK_OFFSET * 2 + 1,
+            borderLeft: "1px solid",
+            borderRight: "1px solid",
+            borderColor: "divider",
+            // Below the rule they sit beside — these are the panes' own edges,
+            // not part of the handle.
+            opacity: 0.45,
+            pointerEvents: "none",
           },
           "&:hover, &:active": { backgroundColor: "transparent", opacity: 1 },
           "&:hover::before, &:active::before": {

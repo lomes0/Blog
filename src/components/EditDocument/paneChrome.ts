@@ -47,12 +47,15 @@ export const PANE_PAD_X = 3;
  *
  * Wider than the 4px panel edges (`GRIPPER_W`) and deliberately so: this one is
  * not against a rail, it is between two documents, and it is the only drag edge
- * you reach for while reading rather than while arranging the window. The 1px
- * rule is drawn down its *centre* (`ResizeGripper`'s `rule` variant), so the
- * grab margin is symmetric — 5.5px of nothing on each side — rather than the
- * rule hugging one pane's edge with all the slack on the other.
+ * you reach for while reading rather than while arranging the window.
+ *
+ * `ResizeGripper`'s `rule` variant fills it: a 1px rule down the *centre* — so
+ * the grab margin is symmetric rather than the rule hugging one pane's edge with
+ * all the slack on the other — flanked by a fainter hairline 6px out on each
+ * side, which is where each pane ends. Three lines, and the width is what sets
+ * the 5px of clear space between them.
  */
-export const SPLITTER_W = 12;
+export const SPLITTER_W = 16;
 
 /**
  * The pane strip — the row that names a pane and carries its ⤢ / ✕.
