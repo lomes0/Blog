@@ -188,13 +188,6 @@ export interface AppState {
      * two accounts sharing a browser cannot inherit each other's panes.
      */
     workspaceKey: string | null;
-    /**
-     * Documents with unsaved editor content, keyed by document id.
-     *
-     * Global, not per-pane: dirty is a property of a document, so the same
-     * document open in two panes cannot report two answers (plan §2.3).
-     */
-    dirtyDocIds: string[];
     sidebarView: SidebarView;
   };
 }

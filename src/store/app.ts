@@ -249,7 +249,6 @@ const initialState: AppState = {
     },
     workspaceHydrated: false,
     workspaceKey: null,
-    dirtyDocIds: [],
     sidebarView: "explorer",
   },
 };
@@ -600,9 +599,6 @@ export const appSlice = createSlice({
       if (!pane) return;
       const idx = pane.tabIds.indexOf(tabId);
       pane.tabIds = pane.tabIds.filter((id) => id !== tabId);
-      // The tab is gone from every viewport, so its unsaved-content flag goes
-      // with it — nothing can save it now.
-      state.ui.dirtyDocIds = state.ui.dirtyDocIds.filter((id) => id !== tabId);
       if (pane.activeTabId === tabId) {
         const newIdx = Math.min(idx, pane.tabIds.length - 1);
         pane.activeTabId = pane.tabIds[newIdx] ?? null;
@@ -616,18 +612,6 @@ export const appSlice = createSlice({
       if (pane) pane.tabIds = action.payload.tabIds;
     },
 
-    // ── Workspace: unsaved content, keyed by document ─────────────────────
-
-    markDocDirty: (state, action: PayloadAction<string>) => {
-      if (!state.ui.dirtyDocIds.includes(action.payload)) {
-        state.ui.dirtyDocIds.push(action.payload);
-      }
-    },
-    markDocClean: (state, action: PayloadAction<string>) => {
-      state.ui.dirtyDocIds = state.ui.dirtyDocIds.filter(
-        (id) => id !== action.payload,
-      );
-    },
     openAttachmentPreview: (
       state,
       action: PayloadAction<{

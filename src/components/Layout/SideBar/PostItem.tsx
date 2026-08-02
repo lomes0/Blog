@@ -129,9 +129,9 @@ export const PostItem = memo(
     // Tab entries: the root itself is the first tab, then each child.
     //
     // These deliberately say nothing about unsaved state. Autosave is silent
-    // while it is working, and the sidebar reading `ui.dirtyDocIds` used to put
-    // every row on the re-render path of every keystroke in the open editor —
-    // see docs/plans/quiet-autosave.md.
+    // while it is working, and the sidebar's old dirty subscription put every
+    // row on the re-render path of every keystroke in the open editor — see
+    // docs/plans/quiet-autosave.md.
     const tabEntries = useMemo<SubTabEntry[]>(() => {
       if (!hasTabs) return EMPTY_TAB_ENTRIES;
       const entries: SubTabEntry[] = [

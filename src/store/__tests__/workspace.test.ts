@@ -429,63 +429,6 @@ describe("ui.workspace — the tab group inside a pane", () => {
   });
 });
 
-describe("ui.dirtyDocIds — hoisted out of panes", () => {
-  it("marks and clears by document id", () => {
-    let state = reducer(initial(), actions.markDocDirty("doc-a"));
-    expect(state.ui.dirtyDocIds).toEqual(["doc-a"]);
-
-    state = reducer(state, actions.markDocDirty("doc-b"));
-    expect(state.ui.dirtyDocIds).toEqual(["doc-a", "doc-b"]);
-
-    state = reducer(state, actions.markDocClean("doc-a"));
-    expect(state.ui.dirtyDocIds).toEqual(["doc-b"]);
-  });
-
-  it("marking dirty twice records the document once", () => {
-    let state = reducer(initial(), actions.markDocDirty("doc-a"));
-    state = reducer(state, actions.markDocDirty("doc-a"));
-
-    expect(state.ui.dirtyDocIds).toEqual(["doc-a"]);
-  });
-
-  it("clearing a document that is not dirty changes nothing", () => {
-    const state = reducer(initial(), actions.markDocClean("doc-a"));
-    expect(state.ui.dirtyDocIds).toEqual([]);
-  });
-
-  it("survives closing the pane the document was open in", () => {
-    // Dirty is a property of the document, not of the viewport: the save loop
-    // still owes this content to storage after the pane is gone.
-    let state = openWithTabs(initial(), "p1", "doc-a");
-    state = reducer(state, actions.markDocDirty("doc-a"));
-    state = reducer(state, actions.closePane("p1"));
-
-    expect(state.ui.dirtyDocIds).toEqual(["doc-a"]);
-  });
-
-  it("is keyed by document, so it survives the pane being retargeted", () => {
-    // The Phase 2 version of this asserted "one answer for a document open in
-    // two panes". Phase 5 made that state unreachable — see the duplicate-open
-    // guard below — so what is left to check is the other half of the same
-    // claim: dirty belongs to the document and not to the viewport showing it.
-    let state = openWithTabs(initial(), "p1", "doc-a");
-    state = reducer(state, actions.markDocDirty("doc-a"));
-    state = reducer(state, actions.openPane({ paneId: "p1", rootId: "doc-b" }));
-
-    expect(state.ui.dirtyDocIds).toEqual(["doc-a"]);
-  });
-
-  it("drops the flag when the tab is removed outright", () => {
-    // Closing a tab means deleting or re-homing the document — nothing can
-    // save it from here, so a lingering dirty flag would be permanent.
-    let state = openWithTabs(initial(), "p1", "doc-a", ["c1"]);
-    state = reducer(state, actions.markDocDirty("c1"));
-    state = reducer(state, actions.removeTab({ paneId: "p1", tabId: "c1" }));
-
-    expect(state.ui.dirtyDocIds).toEqual([]);
-  });
-});
-
 /**
  * The invariant Phase 5 rests on (plan §5.2).
  *

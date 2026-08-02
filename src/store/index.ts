@@ -106,14 +106,21 @@ export const postsSelectors = postsAdapter.getSelectors<RootState>(
 );
 
 /*
- * There is deliberately no `selectIsDirty` here any more.
+ * There is deliberately no `selectIsDirty` here, and no `ui.dirtyDocIds` behind
+ * it any more.
  *
- * It read `dirtyDocIds.length > 0` — true whenever *any* open tab was dirty,
- * which is almost never what a per-pane control means; the editor toolbar's
- * Save button enabled itself because a document in the other pane had been
- * typed into. Its last caller went with the quiet-autosave work. If a close
- * guard ever needs the per-document form, write it scoped to an id from the
- * start: `state.ui.dirtyDocIds.includes(id)`.
+ * The selector read `dirtyDocIds.length > 0` — true whenever *any* open tab was
+ * dirty, which is almost never what a per-pane control means; the editor
+ * toolbar's Save button enabled itself because a document in the *other* pane
+ * had been typed into. Once autosave went quiet the slice had six writers and
+ * no readers, and maintaining it cost a full `JSON.stringify` of the document
+ * every 300ms on the typing path.
+ *
+ * What replaced it is narrower and already sufficient: `savedBaseline` in
+ * `useSave` is the exact comparison a save makes, and `selectSaveTrouble` below
+ * answers the only question anything actually asked. A close guard that wants
+ * "does this document have unsent edits" should ask `pendingSaves`, which is
+ * the durable record rather than a mirror of one.
  */
 
 /**

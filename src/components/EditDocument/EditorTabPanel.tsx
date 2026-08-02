@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Box } from "@mui/material";
 import {
   CLEAR_HISTORY_COMMAND,
-  type EditorState,
   type LexicalEditor,
   type SerializedEditorState,
 } from "lexical";
@@ -15,7 +14,6 @@ import DiffView from "@/components/Diff";
 import { postsSelectors, useSelector } from "@/store";
 import type { RootState } from "@/store";
 import { selectPaneById } from "@/store/selectors/layoutSelectors";
-import { useDirtyTracking } from "./hooks/useDirtyTracking";
 import { usePostLoader } from "./hooks/usePostLoader";
 import { useSave } from "./hooks/useSave";
 import { useScrollMemory } from "./hooks/useScrollMemory";
@@ -151,17 +149,9 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
     (a, b) => a?.id === b?.id,
   );
 
-  const { save, savedBaseline, track: trackSave } = useSave(
+  const { save, savedBaseline, track: handleEditorChange } = useSave(
     reduxPost,
     editorRef,
-  );
-  const trackDirty = useDirtyTracking(docId, savedBaseline);
-  const handleEditorChange = useCallback(
-    (editorState: EditorState, editor: LexicalEditor) => {
-      trackDirty(editorState, editor);
-      trackSave(editorState, editor);
-    },
-    [trackDirty, trackSave],
   );
   const { isLoading, error, loadedPost, restoredFromPending } = usePostLoader(
     docId,
