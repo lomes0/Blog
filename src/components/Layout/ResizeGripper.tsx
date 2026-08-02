@@ -24,8 +24,29 @@ export interface GripperValue {
 }
 
 interface ResizeGripperProps {
-  /** Start the drag — pass the owning panel's `startResize`. */
-  onMouseDown: (e: React.MouseEvent) => void;
+  /**
+   * Start the drag — pass the owning panel's `startResize`. Omit it only when
+   * the panel drives the gesture from the pointer handlers below instead.
+   */
+  onMouseDown?: (e: React.MouseEvent) => void;
+  /**
+   * Pointer-event route, for a panel that wants pointer capture — the whole
+   * gesture is then delivered to this element even when the cursor leaves the
+   * 4px strip, so the panel needs no `document` listeners of its own. The
+   * sidebar uses it; the two mouse-driven panels do not, and passing neither
+   * set is not a state worth typing away — a gripper with no handlers is a
+   * divider, which is a legitimate thing to render.
+   *
+   * Do **not** `preventDefault` a `pointerdown` here: that suppresses the
+   * compatibility mouse events, and `onDoubleClick` below is one of them. The
+   * `user-select: none` on this element is what stops a drag from selecting
+   * text, so preventing the default is not needed for it either.
+   */
+  onPointerDown?: (e: React.PointerEvent) => void;
+  onPointerMove?: (e: React.PointerEvent) => void;
+  onPointerUp?: (e: React.PointerEvent) => void;
+  onPointerCancel?: (e: React.PointerEvent) => void;
+  onLostPointerCapture?: (e: React.PointerEvent) => void;
   /** Whether this panel is being dragged right now (drives the lit state). */
   isResizing: boolean;
   /** Announced to assistive tech, e.g. "Resize Copilot panel". */
@@ -65,6 +86,11 @@ interface ResizeGripperProps {
  */
 const ResizeGripper: React.FC<ResizeGripperProps> = ({
   onMouseDown,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerCancel,
+  onLostPointerCapture,
   isResizing,
   label,
   transition,
@@ -86,6 +112,11 @@ const ResizeGripper: React.FC<ResizeGripperProps> = ({
       "aria-controls": value.controls,
     })}
     onMouseDown={onMouseDown}
+    onPointerDown={onPointerDown}
+    onPointerMove={onPointerMove}
+    onPointerUp={onPointerUp}
+    onPointerCancel={onPointerCancel}
+    onLostPointerCapture={onLostPointerCapture}
     onKeyDown={onKeyDown}
     onDoubleClick={onDoubleClick}
     sx={[
@@ -98,6 +129,12 @@ const ResizeGripper: React.FC<ResizeGripperProps> = ({
         cursor: "col-resize",
         zIndex: 1300,
         displayPrint: "none",
+        // A drag edge is never text and never a scroll surface. Both belong on
+        // the shared component rather than on the one panel that noticed:
+        // `user-select` is what lets the pointer route skip `preventDefault`,
+        // and `touch-action` stops a touch drag being taken for a pan.
+        userSelect: "none",
+        touchAction: "none",
         backgroundColor: isResizing ? "primary.main" : "transparent",
         transition: isResizing
           ? "none"

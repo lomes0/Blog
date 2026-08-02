@@ -10,7 +10,6 @@ import React, {
 import { useTheme } from "@mui/material/styles";
 import { useMediaQuery } from "@mui/material";
 import { usePathname } from "next/navigation";
-import { useDragCapture } from "@/hooks/useResizablePanel";
 import { useSidebarBounds } from "@/components/Layout/SideBar/hooks/useSidebarBounds";
 import { useSidebarFontSize } from "@/components/Layout/SideBar/hooks/useSidebarFontSize";
 import {
@@ -21,13 +20,8 @@ import {
 } from "@/components/Layout/SideBar/constants";
 import {
   clamp,
-  COLLAPSE_EASING,
-  COLLAPSE_MS,
   COMPACT_WIDTH,
-  type Geometry,
-  nextPaint,
-  type Paint,
-  restingWidth,
+  type Landing,
   type SidebarMode,
 } from "@/components/Layout/SideBar/dragGeometry";
 
@@ -46,31 +40,27 @@ interface SidebarWidthContextType {
   minOpenWidth: number;
   /** Widest the open panel may go — a share of the viewport. */
   maxOpenWidth: number;
-  /** Current committed sidebar mode. Persisted separately from `openWidth`. */
+  /** Current sidebar mode. Persisted separately from `openWidth`. */
   sidebarMode: SidebarMode;
   /**
-   * Mode a release would land in, while dragging; null otherwise. Drives the
-   * live content preview so the drag is WYSIWYG.
+   * The panel's width, in px. There is no drag-time variant: a drag previews
+   * its destination and does not move the panel, so this changes exactly once
+   * per gesture — on release.
    */
-  dragZone: SidebarMode | null;
-  /** Whether the user is currently dragging the resize handle. */
-  isResizing: boolean;
+  sidebarWidth: number;
   /**
-   * Milliseconds of ease-out owed to the width change happening right now, or 0
-   * for an instant one. Non-zero on exactly two occasions — dropping out of the
-   * free range mid-drag, and closing the release detent's ≤18px gap.
+   * True when the width change happening right now must not animate. Set by a
+   * drag release, whose destination the user has been looking at for the whole
+   * gesture, and by `prefers-reduced-motion`.
    */
-  easeMs: number;
+  noWidthMotion: boolean;
   /** Ready-made `transition` for anything that follows the panel's width. */
   widthTransition: string;
-  /** Sidebar pixel width right now (drag aware). */
-  getEffectiveWidth: () => number;
   /**
-   * Start a resize. The drag begins at the current mode's width, so the same
-   * handle works whether it sits at the open panel's edge, the compact rail's
-   * edge, or flush against the activity rail at 0.
+   * Apply a drag's landing. A no-op when it matches the current mode and width,
+   * so a gesture that ends where it began writes no state and renders nothing.
    */
-  startResize: (e: React.MouseEvent) => void;
+  commitResize: (landing: Landing) => void;
   /** Set sidebar mode directly. Never touches `openWidth`. */
   setSidebarMode: (mode: SidebarMode) => void;
   /** Step one rung along hidden → compact → full. Never touches `openWidth`. */
@@ -120,16 +110,26 @@ export const SidebarWidthProvider: React.FC<{ children: React.ReactNode }> = ({
   );
   const openWidth = clamp(storedWidth, minOpenWidth, maxOpenWidth);
 
-  const [paint, setPaint] = useState<Paint | null>(null);
-  const [isResizing, setIsResizing] = useState(false);
-  const [easeMs, setEaseMs] = useState(0);
+  // ── Whether the *last* width change came from a drag ──────────────────────
+  // A drag release must land with no animation at all, and the width it writes
+  // arrives in the same React update as this flag, so the render that moves the
+  // panel is already the render that says "instantly".
+  //
+  // It is cleared by the programmatic setters rather than by a timer: they are
+  // the only things that change the width afterwards, and each one clears the
+  // flag in the same update as its own change, so *that* move animates. Between
+  // a release and the next mode change nothing moves, so the value in between
+  // is not observable — which is why no rAF or timeout is needed to unwind it.
+  const [committedByDrag, setCommittedByDrag] = useState(false);
 
   const setSidebarMode = useCallback((mode: SidebarMode) => {
+    setCommittedByDrag(false);
     setSidebarModeState(mode);
     localStorage.setItem(SIDEBAR_MODE_KEY, mode);
   }, []);
 
   const stepSidebarMode = useCallback((direction: 1 | -1) => {
+    setCommittedByDrag(false);
     setSidebarModeState((prev) => {
       const next = MODE_LADDER[
         clamp(MODE_LADDER.indexOf(prev) + direction, 0, MODE_LADDER.length - 1)
@@ -140,6 +140,7 @@ export const SidebarWidthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const toggleSidebar = useCallback(() => {
+    setCommittedByDrag(false);
     setSidebarModeState((prev) => {
       const next = prev === "hidden" ? "full" : "hidden";
       localStorage.setItem(SIDEBAR_MODE_KEY, next);
@@ -174,106 +175,49 @@ export const SidebarWidthProvider: React.FC<{ children: React.ReactNode }> = ({
     if (Number.isFinite(saved) && saved > 0) setStoredWidth(saved);
   }, []);
 
-  // ── Easing, which is the exception and not the rule ───────────────────────
-  // Held for exactly its own duration, then cleared, so the transition is
-  // attached to one width change and not to the drag frames around it.
-  const easeTimer = useRef<number | null>(null);
-  const ease = useCallback((ms: number) => {
-    if (reducedMotion) return;
-    if (easeTimer.current !== null) clearTimeout(easeTimer.current);
-    setEaseMs(ms);
-    easeTimer.current = window.setTimeout(() => {
-      easeTimer.current = null;
-      setEaseMs(0);
-    }, ms);
-  }, [reducedMotion]);
-
-  useEffect(() => () => {
-    if (easeTimer.current !== null) clearTimeout(easeTimer.current);
-  }, []);
-
-  // ── Drag ──────────────────────────────────────────────────────────────────
-  // Refs, not state, for everything the move handler reads: `handleMouseMove` is
-  // subscribed once for the gesture, and taking these as dependencies would
-  // re-subscribe the listener on every frame it caused.
-  const startXRef = useRef(0);
-  const startWidthRef = useRef(0);
-  const paintRef = useRef<Paint>({ mode: "full", width: 0, ease: 0 });
-  const geomRef = useRef<Geometry>({ min: 0, max: 0, openWidth: 0 });
-  geomRef.current = { min: minOpenWidth, max: maxOpenWidth, openWidth };
-
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    const raw = startWidthRef.current + (e.clientX - startXRef.current);
-    const next = nextPaint(raw, paintRef.current, geomRef.current, e.altKey);
-    paintRef.current = next;
-    setPaint(next);
-    if (next.ease > 0) ease(next.ease);
-  }, [ease]);
-
-  const handleMouseUp = useCallback(() => {
-    setIsResizing(false);
-    const landed = paintRef.current;
-    setPaint(null);
-
-    if (landed.mode !== "full") {
-      // The painted width already equals the mode's width, so there is no gap
-      // to close and nothing to animate — committing the mode is the whole
-      // release. `openWidth` is untouched, which is what makes collapsing
-      // non-destructive.
-      setSidebarMode(landed.mode);
-      return;
-    }
-
-    // Release detent: land on the remembered width when we are close to it, so a
-    // small nudge does not rewrite a width the user already chose. That ≤18px is
-    // the only gap a release can have, and the only easing that follows one.
-    const resting = restingWidth(landed.width, geomRef.current);
-
-    setStoredWidth(resting);
-    localStorage.setItem(SIDEBAR_STORAGE_KEY, String(resting));
-    setSidebarMode("full");
-    if (resting !== landed.width) ease(COLLAPSE_MS);
-  }, [ease, setSidebarMode]);
-
-  // Shared with the rail/Copilot panels — the pointer capture and the
-  // `col-resize` cursor are the same problem for all three. The mapping above is
-  // not shared, and is the reason this panel keeps its own loop.
-  useDragCapture(isResizing, handleMouseMove, handleMouseUp);
-
-  const modeWidth = sidebarMode === "hidden"
+  const sidebarWidth = sidebarMode === "hidden"
     ? 0
     : sidebarMode === "compact"
     ? COMPACT_WIDTH
     : openWidth;
 
-  const startResize = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    const from: Paint = { mode: sidebarMode, width: modeWidth, ease: 0 };
-    paintRef.current = from;
-    startXRef.current = e.clientX;
-    startWidthRef.current = modeWidth;
-    setPaint(from);
-    setIsResizing(true);
-  }, [modeWidth, sidebarMode]);
+  // Mirrored so `commitResize` can compare a landing against where the panel
+  // already is without taking either as a dependency — the handle holds this
+  // callback across a whole gesture and re-creating it mid-drag would leave the
+  // pointer-up listener calling a stale one.
+  const currentRef = useRef<Landing>({ mode: sidebarMode, width: sidebarWidth });
+  currentRef.current = { mode: sidebarMode, width: sidebarWidth };
 
-  const effectiveWidth = paint?.width ?? modeWidth;
-  const getEffectiveWidth = useCallback(() => effectiveWidth, [effectiveWidth]);
+  const commitResize = useCallback((landing: Landing) => {
+    const current = currentRef.current;
+    // Released back where it started. The gesture was a look, not an edit, so
+    // it writes nothing — no localStorage, no state, and therefore no render.
+    if (landing.mode === current.mode && landing.width === current.width) {
+      return;
+    }
+
+    setCommittedByDrag(true);
+    // Only a landing in the open range rewrites the remembered width, which is
+    // what makes collapsing non-destructive: drag the panel shut and back out
+    // and it returns to the width you chose.
+    if (landing.mode === "full") {
+      setStoredWidth(landing.width);
+      localStorage.setItem(SIDEBAR_STORAGE_KEY, String(landing.width));
+    }
+    setSidebarModeState(landing.mode);
+    localStorage.setItem(SIDEBAR_MODE_KEY, landing.mode);
+  }, []);
+
+  const noWidthMotion = committedByDrag || reducedMotion;
 
   /**
-   * Precedence matters, and reads as the rule it enforces:
-   *
-   * 1. An owed ease wins — it is a deliberate, bounded animation.
-   * 2. Otherwise a drag in progress gets **no** transition at all. This is the
-   *    hard requirement: any easing here would put the panel edge behind the
-   *    pointer for the whole gesture.
-   * 3. Otherwise this is a programmatic mode change (rail, Cmd+\, keyboard,
-   *    double-click) with no drag to follow, and it slides.
+   * A width change is either a drag landing on a destination the user has been
+   * watching an outline of — instant, because animating towards a result
+   * already on screen is pure lag — or a programmatic mode change with no
+   * gesture behind it, which slides so the jump reads as one panel moving
+   * rather than two panels swapping.
    */
-  const widthTransition = easeMs > 0
-    ? `width ${easeMs}ms ${COLLAPSE_EASING}`
-    : isResizing || reducedMotion
-    ? "none"
-    : SIDEBAR_WIDTH_TRANSITION;
+  const widthTransition = noWidthMotion ? "none" : SIDEBAR_WIDTH_TRANSITION;
 
   return (
     <SidebarWidthContext.Provider
@@ -282,12 +226,10 @@ export const SidebarWidthProvider: React.FC<{ children: React.ReactNode }> = ({
         minOpenWidth,
         maxOpenWidth,
         sidebarMode,
-        dragZone: paint?.mode ?? null,
-        isResizing,
-        easeMs,
+        sidebarWidth,
+        noWidthMotion,
         widthTransition,
-        getEffectiveWidth,
-        startResize,
+        commitResize,
         setSidebarMode,
         stepSidebarMode,
         toggleSidebar,

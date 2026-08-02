@@ -56,7 +56,7 @@ the whole run. `src/types/vitest.d.ts` is what gives `tsc` the globals;
 `compilerOptions.types` is deliberately left unset, because setting it would
 restrict resolution to only its entries and drop every other ambient package.
 
-Coverage is nine specs, 176 assertions: `src/lib/__tests__/ordering.test.ts`
+Coverage is nine specs, 177 assertions: `src/lib/__tests__/ordering.test.ts`
 (fractional rank keys), `src/components/Layout/SideBar/__tests__/
 dragGeometry.test.ts` (sidebar drag thresholds — `dragGeometry.ts` is kept
 import-free precisely so it is testable without a browser),
@@ -85,6 +85,15 @@ covered — verify it against a profile that has the old database. The DOM half 
 the scroll restore is `components/EditDocument/hooks/useScrollMemory.ts`, also
 uncovered: finding the right scroller and re-asserting an offset as content
 settles are both things only a real browser answers.
+
+The sidebar drag's browser half is `SideBar/SidebarResizeHandle.tsx` plus
+`SidebarDragPreview.tsx`, and it is uncovered for the same reason: pointer
+capture, and the claim that the gesture does no layout, are only answerable by a
+real engine. Verify with CDP `Performance.getMetrics` — `LayoutCount` must not
+move between pointerdown and pointerup, and a `ResizeObserver` on `#app-sidebar`
+must see exactly one `borderBoxSize` change per drag. See
+`verify-ui-in-browser` for the harness (and the trap that `:3000` is usually a
+stale `next start`).
 
 **No automated check covers API authorization.** Verify behaviour changes by
 running the app against the local Postgres and exercising the routes directly.

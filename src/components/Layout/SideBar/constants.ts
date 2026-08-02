@@ -21,11 +21,11 @@ export const SIDEBAR_STORAGE_KEY = "sidebar-width";
 /**
  * ── Drag geometry ──────────────────────────────────────────────────────────
  *
- * The thresholds, the hysteresis and the pointer → width mapping all live in
- * `./dragGeometry`, which has no imports: it is the part of the interaction that
- * is decidable without a browser, and keeping it free of React and MUI is what
- * lets it be read and exercised on its own. What stays here is everything the
- * gesture needs a *layout* answer for.
+ * The thresholds, the hysteresis and the pointer → destination mapping all live
+ * in `./dragGeometry`, which has no imports: it is the part of the interaction
+ * that is decidable without a browser, and keeping it free of React and MUI is
+ * what lets it be read and exercised on its own. What stays here is everything
+ * the gesture needs a *layout* answer for.
  *
  * Neither end of the open range is a constant anywhere — see
  * `hooks/useSidebarBounds`, which measures the minimum off the nav labels and
@@ -63,8 +63,9 @@ export const SIDEBAR_PANEL_ID = "app-sidebar";
  * string, but the numbers come from one place now.
  *
  * These cover *programmatic* mode changes only — rail click, Cmd+\, keyboard,
- * double-click. A drag never uses them: it sets the width per frame, and the two
- * moments it eases use `SIDEBAR_COLLAPSE_*` above.
+ * double-click. A drag never uses them: it previews its destination and then
+ * lands on it instantly, because animating towards a width the user has been
+ * watching an outline of for the length of the gesture is lag, not polish.
  *
  * `prefers-reduced-motion` no longer needs handling per call site — it is
  * enforced globally in `globals.css` (DESIGN.md §11).
@@ -79,16 +80,18 @@ export const SIDEBAR_WIDTH_TRANSITION =
  * the swap reads as a filmstrip advancing.
  *
  * Deliberately `MOTION.base` (200ms) and not `MOTION.layout` (340ms): the panes
- * travel `COMPACT_WIDTH` while the panel itself is being dragged, and a push
- * that outlasts the width move it belongs to reads as two separate events.
+ * travel `COMPACT_WIDTH` while the panel itself is changing width, and a push
+ * that outlasts the width move it belongs to reads as two separate events. For
+ * the same reason it is dropped entirely when the width move is instant — see
+ * `noWidthMotion` at the call site in `./index.tsx`.
  */
 export const SIDEBAR_LAYER_TRANSITION =
   `transform ${MOTION.base}ms ${SIDEBAR_EASING}`;
 /**
  * The drag edge's slide, for programmatic mode changes only. Matches
  * `SIDEBAR_WIDTH_TRANSITION` so the handle and the panel it belongs to arrive
- * together; during a drag the handle is positioned per frame with no transition
- * at all.
+ * together; a drag freezes the panel, so the handle has nothing to follow until
+ * the release, which lands both at once.
  */
 export const SIDEBAR_EDGE_TRANSITION = [
   `left ${MOTION.layout}ms ${SIDEBAR_EASING}`,

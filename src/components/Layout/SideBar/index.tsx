@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { type RootState, useSelector } from "@/store";
 import { capabilities } from "@/lib/capabilities";
 import { selectRootPosts } from "@/store/selectors/layoutSelectors";
-import { Box, Drawer, useMediaQuery } from "@mui/material";
+import { Box, Drawer } from "@mui/material";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
 import { useSidebarFontSize } from "./hooks/useSidebarFontSize";
@@ -35,19 +35,19 @@ const SideBar: React.FC = () => {
   const {
     minOpenWidth,
     sidebarMode,
-    dragZone,
     sidebarOpen: open,
     toggleSidebar,
     isMobile,
     widthTransition,
-    getEffectiveWidth,
+    noWidthMotion,
+    sidebarWidth,
   } = useSidebarWidth();
 
-  // While dragging, render the mode the release would land in rather than the
-  // committed one: the drag is WYSIWYG, so the compact rail is already on screen
-  // by the time you let go of it.
-  const shownMode = dragZone ?? sidebarMode;
-  const isExpanded = shownMode === "full";
+  // The committed mode, throughout — including during a drag. A drag previews
+  // its destination beside the panel rather than inside it, so swapping the
+  // rail in here mid-gesture would put a 76px pane in a panel still 300px wide:
+  // the preview says where the panel is going, and this says where it is.
+  const isExpanded = sidebarMode === "full";
   const { sidebarFontSize } = useSidebarFontSize();
   const {
     postActions,
@@ -57,9 +57,6 @@ const SideBar: React.FC = () => {
     seriesMenu,
     projectMenu,
   } = useSidebarActions();
-
-  // Honor the OS "reduce motion" setting: drop the width slide and the push.
-  const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 
   // Rail and tree are laid out side by side in one horizontal track, rail first:
   //
@@ -122,18 +119,18 @@ const SideBar: React.FC = () => {
       // The pane the resize handle's `aria-controls` points at.
       PaperProps={{ id: SIDEBAR_PANEL_ID }}
       sx={{
-        width: getEffectiveWidth(),
+        width: sidebarWidth,
         flexShrink: 0,
         displayPrint: "none",
         "& .MuiDrawer-paper": {
           // Dock the fixed paper to the right of the activity rail, not the
           // viewport edge (mobile temporary drawer slides in past the rail too).
           left: `${ACTIVITY_RAIL_W}px`,
-          width: getEffectiveWidth(),
+          width: sidebarWidth,
           boxSizing: "border-box",
-          // A drag sets the width per frame and must not be transitioned; the
-          // context has already resolved that against the two moments that do
-          // ease, so this is one value rather than a condition per call site.
+          // Instant after a drag release, a slide after a programmatic mode
+          // change. The context has already resolved which, so this is one
+          // value rather than a condition per call site.
           transition: widthTransition,
           overflowX: "hidden",
           overscrollBehavior: "contain",
@@ -154,7 +151,13 @@ const SideBar: React.FC = () => {
             inset: 0,
             display: "flex",
             transform: `translateX(${trackShift}px)`,
-            transition: reducedMotion ? "none" : SIDEBAR_LAYER_TRANSITION,
+            // The same rule the panel's own width follows, and for the same
+            // reason: the push and the width change are one event. A drag
+            // release snaps both — sliding the panes over a width that already
+            // jumped would leave the tree visibly clipped inside a 76px panel
+            // for the length of the push. `noWidthMotion` folds in
+            // `prefers-reduced-motion`, which drops the push on principle.
+            transition: noWidthMotion ? "none" : SIDEBAR_LAYER_TRANSITION,
             willChange: "transform",
           }}
         >
@@ -170,17 +173,16 @@ const SideBar: React.FC = () => {
           </Box>
 
           {
-            /* Full tree. Follows the *live* width, not the remembered one, so a
-              1:1 drag widens the content with the panel instead of dragging the
-              paper out from behind a pane frozen at the old width.
+            /* Full tree, sized to the panel so the content fills it rather than
+              being dragged out from behind a pane frozen at some other width.
 
               Floored at the minimum open width — measured off these very labels
-              — so that a drag heading for compact or hidden clips this pane off
+              — so that a collapse to compact or hidden clips this pane off
               cleanly rather than squishing it below the point where its own
               labels truncate. */
           }
           <Box
-            sx={paneSx(Math.max(getEffectiveWidth(), minOpenWidth))}
+            sx={paneSx(Math.max(sidebarWidth, minOpenWidth))}
             inert={!isExpanded || undefined}
           >
             {

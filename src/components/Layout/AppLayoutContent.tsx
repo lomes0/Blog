@@ -7,7 +7,6 @@ import ActivityRail from "./ActivityRail";
 import SidebarResizeHandle from "./SideBar/SidebarResizeHandle";
 import { ACTIVITY_RAIL_W } from "./SideBar/constants";
 import { CONTENT_PAD_X } from "./contentInset";
-import { COLLAPSE_EASING } from "./SideBar/dragGeometry";
 import HydrationManager from "./HydrationManager";
 import EditorTopBar from "./EditorTopBar";
 import RightRail from "./RightRail";
@@ -36,7 +35,7 @@ const COPILOT_TRANSITION_MS = 225;
 const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
   const dispatch = useDispatch();
   const initialized = useSelector((state: RootState) => state.ui.initialized);
-  const { isResizing, easeMs, getEffectiveWidth } = useSidebarWidth();
+  const { noWidthMotion, sidebarWidth } = useSidebarWidth();
   const {
     railMode,
     railWidth,
@@ -78,7 +77,6 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
     if (!initialized) dispatch(actions.load());
   }, [dispatch, initialized]);
 
-  const sidebarW = getEffectiveWidth();
   const railW = railMode === "full"
     ? railWidth + RAIL_COMPACT_W
     : RAIL_COMPACT_W;
@@ -94,16 +92,16 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
           sx={{
             display: "grid",
             gridTemplateColumns:
-              `${ACTIVITY_RAIL_W}px ${sidebarW}px 1fr ${copilotCol}${railW}px`,
+              `${ACTIVITY_RAIL_W}px ${sidebarWidth}px 1fr ${copilotCol}${railW}px`,
             height: "100vh",
             overflow: "hidden",
-            // The sidebar drag drives its column width per frame, so the grid
-            // must not also transition it — except across the one step that
-            // eases, where the content edge has to travel with the panel or
-            // the two visibly come apart.
-            transition: easeMs > 0
-              ? `grid-template-columns ${easeMs}ms ${COLLAPSE_EASING}`
-              : isResizing || isRailResizing || isCopilotResizing
+            // A sidebar drag never reaches this: it previews its destination
+            // and leaves the column alone until release, and the release lands
+            // instantly — the content edge has to arrive with the panel, and
+            // the panel does not animate onto a width the user has been
+            // watching an outline of. The rail and Copilot still drag live, so
+            // their columns still have to opt out per frame.
+            transition: noWidthMotion || isRailResizing || isCopilotResizing
               ? "none"
               : "grid-template-columns 225ms cubic-bezier(0.4, 0, 0.6, 1)",
           }}
@@ -126,8 +124,9 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
             {
               /* The shell's toolbar slot, for the routes that mount a lone
                   editor (Playground, Tutorial). The workspace does not use it:
-                  each pane nests its own provider and puts the toolbar in its
-                  own header, under its own tabs. */
+                  it nests its own provider and draws the target inside the
+                  editor route — the pane's header, or the band above a split's
+                  panes. */
             }
             <ToolbarSlotTarget style={{ flexShrink: 0 }} />
             <HydrationManager>

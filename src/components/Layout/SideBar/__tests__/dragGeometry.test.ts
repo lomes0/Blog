@@ -1,37 +1,37 @@
 import {
-  COLLAPSE_MS,
   COMPACT_WIDTH,
   type Geometry,
-  nextPaint,
-  type Paint,
+  type Landing,
+  landingCommit,
+  nextLanding,
   restingWidth,
 } from "../dragGeometry";
 
 /**
  * The sidebar drag, pinned.
  *
- * `describe`/`it`/`expect` shape, like `src/lib/__tests__/ordering.test.ts`: the
- * repo has no runner wired up yet, so this runs as-is the day one is. It is
- * written anyway because `dragGeometry` is import-free precisely so that it
- * *can* be — the feel of this interaction is a set of thresholds, and thresholds
- * are the part of a gesture you can hold still without a browser.
+ * `dragGeometry` is import-free precisely so that it *can* be pinned: the feel
+ * of this interaction is a set of thresholds, and thresholds are the part of a
+ * gesture you can hold still without a browser.
  *
- * Bounds are the ones measured at the default sidebar font size. They are
- * parameters, not constants, so a change to the nav labels moves them; what
- * these assert is the *shape* the ranges make, not the pixel values.
+ * What these assert is the *destination* the drag previews, not anything the
+ * panel renders — the panel does not move until release, so there are no frames
+ * here and nothing to time. Bounds are the ones measured at the default sidebar
+ * font size; they are parameters, not constants, so a change to the nav labels
+ * moves them. What is fixed is the shape the ranges make.
  */
 const geom: Geometry = { min: 180, max: 640, openWidth: 300 };
 
-const HIDDEN: Paint = { mode: "hidden", width: 0, ease: 0 };
-const OPEN: Paint = { mode: "full", width: 300, ease: 0 };
+const HIDDEN: Landing = { mode: "hidden", width: 0 };
+const OPEN: Landing = { mode: "full", width: 300 };
 
-/** Drag the pointer one px at a time, recording every frame it paints. */
-const sweep = (from: number, to: number, start: Paint, bypass = false) => {
+/** Drag the pointer one px at a time, recording where each step would land. */
+const sweep = (from: number, to: number, start: Landing, bypass = false) => {
   const step = from < to ? 1 : -1;
-  const frames: Array<Paint & { raw: number }> = [];
+  const frames: Array<Landing & { raw: number }> = [];
   let p = start;
   for (let raw = from; step > 0 ? raw <= to : raw >= to; raw += step) {
-    p = nextPaint(raw, p, geom, bypass);
+    p = nextLanding(raw, p, geom, bypass);
     frames.push({ ...p, raw });
   }
   return frames;
@@ -52,7 +52,7 @@ describe("sidebar drag geometry", () => {
       expect(frames.find((f) => f.mode === "compact")?.raw).toBe(58);
     });
 
-    it("stalls — the panel does not move between the step and the open range", () => {
+    it("stalls — the destination does not move between the step and the open range", () => {
       const stall = frames.filter((f) => f.raw > 58 && f.raw < geom.min);
       expect(stall.every((f) => f.width === COMPACT_WIDTH)).toBe(true);
     });
@@ -61,14 +61,10 @@ describe("sidebar drag geometry", () => {
       const tracking = frames.filter((f) => f.raw >= geom.min);
       expect(tracking.every((f) => f.width === f.raw)).toBe(true);
     });
-
-    it("animates nothing on the way out", () => {
-      expect(frames.every((f) => f.ease === 0)).toBe(true);
-    });
   });
 
   describe("dragging shut from open", () => {
-    const frames = sweep(400, 0, { mode: "full", width: 400, ease: 0 });
+    const frames = sweep(400, 0, { mode: "full", width: 400 });
     const at = (raw: number) => frames.find((f) => f.raw === raw)!;
 
     it("holds still through the dead band", () => {
@@ -82,14 +78,9 @@ describe("sidebar drag geometry", () => {
       expect(at(139).width).toBe(COMPACT_WIDTH);
     });
 
-    it("eases that step, and only that step", () => {
-      expect(at(139).ease).toBe(COLLAPSE_MS);
-      expect(frames.filter((f) => f.ease > 0)).toHaveLength(1);
-    });
-
-    it("hides with a hard step, not an animated one", () => {
+    it("hides at the snap threshold", () => {
       expect(at(39).mode).toBe("hidden");
-      expect(at(39).ease).toBe(0);
+      expect(at(39).width).toBe(0);
     });
   });
 
@@ -97,7 +88,7 @@ describe("sidebar drag geometry", () => {
     it("cannot flicker the hidden edge", () => {
       let p = HIDDEN;
       for (const raw of [45, 52, 41, 48, 39, 44, 53, 40]) {
-        p = nextPaint(raw, p, geom, false);
+        p = nextLanding(raw, p, geom, false);
         expect(p.mode).toBe("hidden");
       }
     });
@@ -105,17 +96,17 @@ describe("sidebar drag geometry", () => {
     it("cannot flicker the open edge — the dead band is its band", () => {
       let p = OPEN;
       for (const raw of [175, 182, 168, 150, 178, 145]) {
-        p = nextPaint(raw, p, geom, false);
+        p = nextLanding(raw, p, geom, false);
         expect(p.mode).toBe("full");
       }
     });
   });
 
   describe("modifier bypass", () => {
-    const frames = sweep(400, 100, { mode: "full", width: 400, ease: 0 }, true);
+    const frames = sweep(400, 100, { mode: "full", width: 400 }, true);
 
-    it("resizes continuously with no zones and no animation", () => {
-      expect(frames.every((f) => f.mode === "full" && f.ease === 0)).toBe(true);
+    it("resizes continuously with no zones", () => {
+      expect(frames.every((f) => f.mode === "full")).toBe(true);
       expect(
         frames.filter((f) => f.raw >= geom.min).every((f) => f.width === f.raw),
       ).toBe(true);
@@ -145,13 +136,39 @@ describe("sidebar drag geometry", () => {
     });
   });
 
-  describe("frames that change nothing", () => {
-    it("are returned by reference, so a stalled drag renders nothing", () => {
-      const held: Paint = { mode: "full", width: geom.min, ease: 0 };
-      expect(nextPaint(160, held, geom, false)).toBe(held);
+  describe("what a release writes", () => {
+    it("applies the detent to an open landing", () => {
+      expect(landingCommit({ mode: "full", width: 292 }, geom))
+        .toEqual({ mode: "full", width: geom.openWidth });
+    });
 
-      const pinned: Paint = { mode: "compact", width: COMPACT_WIDTH, ease: 0 };
-      expect(nextPaint(100, pinned, geom, false)).toBe(pinned);
+    it("leaves the discrete landings alone — they have no gap to close", () => {
+      expect(landingCommit(HIDDEN, geom)).toEqual(HIDDEN);
+      expect(landingCommit({ mode: "compact", width: COMPACT_WIDTH }, geom))
+        .toEqual({ mode: "compact", width: COMPACT_WIDTH });
+    });
+
+    it("is comparable to the panel's current mode and width, so an unmoved drag is detectably a no-op", () => {
+      // The whole point of returning a `Landing` rather than a width: the
+      // release handler decides "commit nothing" with one equality test,
+      // identically for all three modes.
+      const unmoved = landingCommit({ mode: "full", width: 305 }, geom);
+      expect(unmoved).toEqual({ mode: "full", width: geom.openWidth });
+
+      const current: Landing = { mode: "full", width: geom.openWidth };
+      expect(
+        unmoved.mode === current.mode && unmoved.width === current.width,
+      ).toBe(true);
+    });
+  });
+
+  describe("pointer moves that change nothing", () => {
+    it("are returned by reference, so the preview writes no DOM", () => {
+      const held: Landing = { mode: "full", width: geom.min };
+      expect(nextLanding(160, held, geom, false)).toBe(held);
+
+      const pinned: Landing = { mode: "compact", width: COMPACT_WIDTH };
+      expect(nextLanding(100, pinned, geom, false)).toBe(pinned);
     });
   });
 });
