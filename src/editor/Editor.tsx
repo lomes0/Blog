@@ -68,7 +68,6 @@ const Editor: React.FC<{
         <ToolbarPlugin
           isActive={isActive}
           onReset={onReset}
-          onSave={onSave}
         />
         <EditorPlugins
           onChange={onChange}
