@@ -65,9 +65,11 @@ const LABEL_DIM = 0.85;
  *
  * Full-width rather than label-width — it underlines the *tab*, including the
  * trailing dirty/close slot, which is what makes it read as the tab owning the
- * content below rather than as an underlined word. Drawn at full opacity
- * against the labels' `LABEL_DIM`, so it is a step up in presence without being
- * a step sideways in hue.
+ * content below rather than as an underlined word. Drawn in the labels' exact
+ * rendered ink — same token, same `LABEL_DIM` — and lifted with them on hover,
+ * so the rule and the word it sits under never read as two different greys. The
+ * active mark is carried by the rule's presence and 600 weight, not by making
+ * it darker than its own label.
  *
  * A child element, not a pseudo-element: `::after` is the separator and
  * `::before` the drop indicator, and an active tab can be showing either.
@@ -232,6 +234,9 @@ const DocumentTab: React.FC<DocumentTabProps> = ({
         transition: `background-color ${MOTION.fast}ms`,
         "&:hover": { bgcolor: "action.hover" },
         "&:hover .tab-label": { opacity: 1 },
+        // Lifts with the label, so the rule is never a different grey from the
+        // word above it.
+        "&:hover .tab-active-rule": { opacity: 1 },
         "&:hover .tab-close-btn": { opacity: 1 },
         "&:hover .tab-dirty-dot": { opacity: 0 },
         "&:focus-visible": CHROME_RING,
@@ -352,6 +357,7 @@ const DocumentTab: React.FC<DocumentTabProps> = ({
       </Box>
       {isActive && (
         <Box
+          className="tab-active-rule"
           sx={{
             position: "absolute",
             left: 0,
@@ -359,6 +365,8 @@ const DocumentTab: React.FC<DocumentTabProps> = ({
             bottom: 0,
             height: ACTIVE_RULE_H,
             bgcolor: "text.secondary",
+            opacity: LABEL_DIM,
+            transition: `opacity ${MOTION.fast}ms`,
             // Stops at the tab's own edge — it does not reach into `TAB_GAP`,
             // so the run still reads as separate tabs with one underlined
             // rather than as a single rule with a break in it.
