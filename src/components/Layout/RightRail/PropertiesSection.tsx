@@ -1,8 +1,9 @@
 "use client";
-import { Avatar, Box, Chip, Divider, Typography } from "@mui/material";
+import { Avatar, Box, Chip, Divider, Link, Typography } from "@mui/material";
 import { Info } from "lucide-react";
 import RouterLink from "next/link";
-import { postsSelectors, useSelector } from "@/store";
+import { postsSelectors, selectSaveTrouble, useSelector } from "@/store";
+import { triggerSave } from "@/components/EditDocument/saveRegistry";
 import type { RootState } from "@/store";
 import { shallowEqual } from "react-redux";
 import { DateDisplay } from "@/components/shared/DateDisplay";
@@ -47,7 +48,7 @@ export default function PropertiesSection({
   activeDocId,
   isEditMode,
 }: PropertiesSectionProps) {
-  const { localDoc, cloudDoc, series, tabIds, dirtyDocIds } = useSelector(
+  const { localDoc, cloudDoc, series, tabIds } = useSelector(
     (state: RootState) => {
       const rootUserDoc = postsSelectors.selectById(state, rootId);
       const activeUserDoc = activeDocId
@@ -63,14 +64,17 @@ export default function PropertiesSection({
           ? state.series.find((s) => s.id === seriesId)
           : undefined,
         tabIds: selectFocusedPane(state)?.tabIds ?? EMPTY_TAB_IDS,
-        dirtyDocIds: state.ui.dirtyDocIds,
       };
     },
     shallowEqual,
   );
 
   const hasMultipleTabs = tabIds.length > 1;
-  const isTabDirty = activeDocId ? dirtyDocIds.includes(activeDocId) : false;
+  // Undefined unless a save is retrying or has failed — see `selectSaveTrouble`.
+  // Falls back to the pane's root: `activeDocId` is null for the beat between a
+  // pane opening and `setPaneTabs` landing, and a save in trouble during that
+  // window is exactly when the user needs to be told.
+  const saveTrouble = useSelector(selectSaveTrouble(activeDocId ?? rootId));
 
   const activeLocalDoc = useSelector((state: RootState) =>
     activeDocId ? postsSelectors.selectById(state, activeDocId) : undefined
@@ -196,6 +200,60 @@ export default function PropertiesSection({
             v={<DateDisplay date={localDoc.createdAt} variant="short" />}
           />
         )}
+
+        {
+          /* Absent while saving works — which is nearly always. A row that said
+            "Saved" the rest of the time was reporting the one outcome the user
+            already assumes, and flipping it to "Unsaved" on every pause in
+            typing made the assumption look wrong when it wasn't.
+
+            It belongs to the *post* section, not the "This tab" one below:
+            that block only renders when a pane has more than one tab, so a
+            single-tab document — the ordinary case — could never show this,
+            and the collapsed-rail badge would light with nothing to explain
+            it. See docs/plans/quiet-autosave.md §3.2. */
+        }
+        {saveTrouble && (
+          <KVRow
+            k="Save"
+            v={
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                <Box
+                  sx={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: "50%",
+                    bgcolor: saveTrouble === "error"
+                      ? "error.main"
+                      : "warning.main",
+                    flexShrink: 0,
+                  }}
+                />
+                <Typography variant="caption" color="text.secondary">
+                  {saveTrouble === "error"
+                    ? "Couldn't save"
+                    : "Reconnecting… saved locally"}
+                </Typography>
+                {
+                  /* Only on a hard error. `retrying` is already on a backoff and
+                    re-fires on the `online` event (useSave), so offering a
+                    manual retry there is offering to do what is happening
+                    anyway. */
+                }
+                {saveTrouble === "error" && (
+                  <Link
+                    component="button"
+                    type="button"
+                    variant="caption"
+                    onClick={() => void triggerSave()}
+                  >
+                    Retry
+                  </Link>
+                )}
+              </Box>
+            }
+          />
+        )}
       </Box>
 
       {/* --- Tab-level properties --- */}
@@ -246,25 +304,6 @@ export default function PropertiesSection({
                 v={`${wordCount.toLocaleString()} · ${readMin} min`}
               />
             )}
-            <KVRow
-              k="Save"
-              v={
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                  <Box
-                    sx={{
-                      width: 7,
-                      height: 7,
-                      borderRadius: "50%",
-                      bgcolor: isTabDirty ? "warning.main" : "success.main",
-                      flexShrink: 0,
-                    }}
-                  />
-                  <Typography variant="caption" color="text.secondary">
-                    {isTabDirty ? "Unsaved" : "Saved"}
-                  </Typography>
-                </Box>
-              }
-            />
           </Box>
         </>
       )}

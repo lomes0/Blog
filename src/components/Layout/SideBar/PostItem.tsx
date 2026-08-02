@@ -10,7 +10,7 @@ import {
   TextField,
   Tooltip,
 } from "@mui/material";
-import { File, Pencil, Save } from "lucide-react";
+import { File, Pencil } from "lucide-react";
 import { type RootState, useSelector } from "@/store";
 import {
   selectChildPostsByParent,
@@ -27,7 +27,6 @@ import {
   dropPositionFromEvent,
 } from "@/lib/dragDrop";
 import { type SubTabEntry, SubTabList } from "./SubTabList";
-import { triggerSave } from "../../EditDocument/saveRegistry";
 import { ICON_SIZE } from "@/theme/icons";
 import { MONO_FONT, SB_FONT, SB_ITEM_RADIUS } from "./constants";
 import {
@@ -99,10 +98,6 @@ export const PostItem = memo(
     // With two panes, asking only about focus marks one of the two open posts
     // and leaves the other looking closed, and it makes a sub-tab click
     // ambiguous (see `selectPaneRootedAt`).
-    //
-    // `openDirtyIds` stays null for every other post rather than being read
-    // unconditionally: a stable null keeps the whole sidebar off the re-render
-    // path of every keystroke in the open editor.
     const openPaneId = useSelector(
       (state: RootState) => selectPaneRootedAt(state, post.id)?.id ?? null,
     );
@@ -110,9 +105,6 @@ export const PostItem = memo(
     const activeTabId = useSelector(
       (state: RootState) =>
         selectPaneRootedAt(state, post.id)?.activeTabId ?? null,
-    );
-    const openDirtyIds = useSelector((state: RootState) =>
-      selectPaneRootedAt(state, post.id) ? state.ui.dirtyDocIds : null
     );
 
     const doc = post;
@@ -134,46 +126,26 @@ export const PostItem = memo(
     const isRenaming = rename.renamingId === post.id &&
       rename.context === "name";
 
-    // The post has unsaved live edits if it's the open document and any tab is
-    // dirty. Driven by the same `ui.dirtyDocIds` the Save button uses, so the
-    // sidebar updates live as the user types (and clears on save/reset).
-    const isDirty = isOpenRoot && (openDirtyIds?.length ?? 0) > 0;
-    // Tab entries: the root itself is the first tab, then each child. A tab is
-    // dirty only while its editor is open with unsaved edits — a closed post has
-    // nothing pending, since the save loop persists on unmount.
+    // Tab entries: the root itself is the first tab, then each child.
+    //
+    // These deliberately say nothing about unsaved state. Autosave is silent
+    // while it is working, and the sidebar reading `ui.dirtyDocIds` used to put
+    // every row on the re-render path of every keystroke in the open editor —
+    // see docs/plans/quiet-autosave.md.
     const tabEntries = useMemo<SubTabEntry[]>(() => {
       if (!hasTabs) return EMPTY_TAB_ENTRIES;
-      const rootDirty = isOpenRoot &&
-        Boolean(openDirtyIds?.includes(post.id));
       const entries: SubTabEntry[] = [
-        { id: post.id, name: rootTabLabel, dirty: rootDirty },
+        { id: post.id, name: rootTabLabel },
       ];
       for (const child of children) {
-        const cd = child;
-        const childDirty = isOpenRoot &&
-          Boolean(openDirtyIds?.includes(child.id));
         entries.push({
           id: child.id,
-          name: cd?.name || "Untitled",
-          dirty: childDirty,
+          name: child?.name || "Untitled",
         });
       }
       return entries;
-    }, [
-      hasTabs,
-      children,
-      isOpenRoot,
-      openDirtyIds,
-      post.id,
-      rootTabLabel,
-    ]);
+    }, [hasTabs, children, post.id, rootTabLabel]);
 
-    const anyTabDirty = tabEntries.some((tab) => tab.dirty);
-
-    // Unsaved state is carried by filename color only (no weight bump).
-    const nameColor = isDirty || anyTabDirty
-      ? "warning.main"
-      : "text.secondary";
     // Select is carried by the filled pill alone — no weight bump (matches the
     // sub-tab treatment), so the resting weight holds whether selected or not.
     const nameWeight = 500;
@@ -182,14 +154,6 @@ export const PostItem = memo(
     // (handleToggleTabs). Opening/viewing a tabbed post does NOT auto-reveal
     // its tabs — the expand state is entirely user-driven and persisted.
     const isExpanded = expandedTabs.has(post.id);
-
-    // Autosave already handles this; the button is for users who want to force
-    // it now rather than wait out the debounce.
-    const handleSaveNow = useCallback(async (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      await triggerSave();
-    }, []);
 
     const handleToggleTabs = useCallback((e: React.MouseEvent) => {
       e.preventDefault();
@@ -272,21 +236,21 @@ export const PostItem = memo(
     // When the sub-tab list is shown, the active visible content is one of the
     // sub-tabs (highlighted in SubTabList), so don't also highlight the parent.
     const highlightParent = isSelected && !showSubTabs;
-    // A clean selected row darkens its filename to the accent indigo (light mode
-    // only, applied below). `nameColor` still owns the amber/green sync signals,
-    // so only override when the row is clean (color resolved to `text.secondary`).
-    const showAccentText = highlightParent && nameColor === "text.secondary";
+    // A selected row darkens its filename to the accent indigo (light mode only,
+    // applied below). Nothing competes for the filename's colour any more — the
+    // amber "unsaved" tint that used to take precedence is gone.
+    const showAccentText = highlightParent;
 
     return (
       <ListItem
         disablePadding
         sx={{
           display: "block",
-          "& .sync-btn, & .edit-btn": {
+          "& .edit-btn": {
             opacity: 0,
             transition: "opacity 0.15s",
           },
-          "&:hover .sync-btn, &:hover .edit-btn": { opacity: 1 },
+          "&:hover .edit-btn": { opacity: 1 },
         }}
       >
         <Tooltip title={sidebarOpen ? "" : docName} placement="right">
@@ -419,42 +383,13 @@ export const PostItem = memo(
                         minWidth: 0,
                         fontFamily: MONO_FONT,
                         fontWeight: nameWeight,
-                        color: showAccentText ? "accent.activeText" : nameColor,
+                        color: showAccentText
+                          ? "accent.activeText"
+                          : "text.secondary",
                       },
                     }}
                   />
                 ))}
-            {sidebarOpen && isDirty && !showSubTabs && (
-              <Box
-                component="span"
-                aria-label="Unsaved changes"
-                sx={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: "50%",
-                  bgcolor: "warning.main",
-                  flexShrink: 0,
-                  ml: "auto",
-                }}
-              />
-            )}
-            {sidebarOpen && isDirty && (
-              <Tooltip title="Save now" placement="right">
-                <IconButton
-                  className="sync-btn"
-                  size="small"
-                  onClick={handleSaveNow}
-                  sx={{
-                    p: 0.25,
-                    ml: isDirty && !showSubTabs ? 0.5 : "auto",
-                    color: "warning.main",
-                    "&:hover": { bgcolor: "action.hover" },
-                  }}
-                >
-                  <Save size={ICON_SIZE.inline} />
-                </IconButton>
-              </Tooltip>
-            )}
             {sidebarOpen && !isRenaming && !isEditing && (
               <Tooltip title="Edit" placement="right">
                 <IconButton
@@ -466,7 +401,10 @@ export const PostItem = memo(
                     p: 0.25,
                     // Align the glyph's right edge with the series doc-count
                     // badge above by cancelling the button's own right padding.
-                    ml: isDirty && !showSubTabs ? 0.5 : "auto",
+                    // Unconditionally `auto`: this margin used to flip to 0.5
+                    // whenever the row went dirty, so the row's layout shifted
+                    // on every pause in typing.
+                    ml: "auto",
                     mr: -0.25,
                     color: "text.secondary",
                     "&:hover": { bgcolor: "action.hover" },

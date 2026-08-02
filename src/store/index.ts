@@ -105,9 +105,39 @@ export const postsSelectors = postsAdapter.getSelectors<RootState>(
   (state) => state.posts,
 );
 
-/** Does anything open have unsaved editor content? Keyed by document, not pane. */
-export const selectIsDirty = (state: RootState) =>
-  state.ui.dirtyDocIds.length > 0;
+/*
+ * There is deliberately no `selectIsDirty` here any more.
+ *
+ * It read `dirtyDocIds.length > 0` — true whenever *any* open tab was dirty,
+ * which is almost never what a per-pane control means; the editor toolbar's
+ * Save button enabled itself because a document in the other pane had been
+ * typed into. Its last caller went with the quiet-autosave work. If a close
+ * guard ever needs the per-document form, write it scoped to an id from the
+ * start: `state.ui.dirtyDocIds.includes(id)`.
+ */
+
+/**
+ * A document's save state, and *only* when it is worth saying out loud.
+ *
+ * `idle` is absent from the map by construction (`setSaveStatus` deletes it),
+ * and `saving` is folded into "nothing to report": on the happy path it is a
+ * ~200ms round trip, so painting it would reintroduce exactly the flicker the
+ * quiet-autosave work removed. What survives is the pair of states where the
+ * user's assumption — "it saved" — has actually stopped being true.
+ */
+export const selectSaveTrouble =
+  (id: string | null | undefined) => (state: RootState) => {
+    if (!id) return undefined;
+    const status = state.ui.saveStatus[id];
+    return status === "retrying" || status === "error" ? status : undefined;
+  };
+
+/** As `selectSaveTrouble`, but for anything open — for always-visible chrome. */
+export const selectAnySaveTrouble = (state: RootState) => {
+  const statuses = Object.values(state.ui.saveStatus);
+  if (statuses.includes("error")) return "error" as const;
+  return statuses.includes("retrying") ? ("retrying" as const) : undefined;
+};
 
 export const useDispatch: () => AppDispatch = useReduxDispatch;
 export const useSelector: <T>(

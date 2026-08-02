@@ -19,7 +19,6 @@ import type { PostItemActions, RenameField } from "./hooks/useSidebarActions";
 export interface SubTabEntry {
   id: string;
   name: string;
-  dirty: boolean;
 }
 
 interface SubTabListProps {
@@ -210,19 +209,6 @@ export const SubTabList: React.FC<SubTabListProps> = (
               >
                 {tab.name}
               </Box>
-              {tab.dirty && (
-                <Box
-                  component="span"
-                  aria-label="Unsaved"
-                  sx={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: "50%",
-                    bgcolor: "warning.main",
-                    flexShrink: 0,
-                  }}
-                />
-              )}
             </Box>
           );
         })}

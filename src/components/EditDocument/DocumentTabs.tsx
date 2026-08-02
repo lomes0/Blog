@@ -64,7 +64,7 @@ const LABEL_DIM = 0.85;
  * The active tab's mark: a rule under the whole tab box, in the labels' own ink.
  *
  * Full-width rather than label-width — it underlines the *tab*, including the
- * trailing dirty/close slot, which is what makes it read as the tab owning the
+ * trailing close slot, which is what makes it read as the tab owning the
  * content below rather than as an underlined word. Drawn in the labels' exact
  * rendered ink — same token, same `LABEL_DIM` — and lifted with them on hover,
  * so the rule and the word it sits under never read as two different greys. The
@@ -98,7 +98,6 @@ interface DocumentTabsProps {
   activeTabId: string | null;
   /** The pane's root document — its tab cannot be closed. */
   rootTabId: string;
-  dirtyTabIds: string[];
   /** Set by the context menu's Rename; cleared through `onRenameStarted`. */
   renamingTabId: string | null;
   onSwitch: (tabId: string) => void;
@@ -113,7 +112,6 @@ interface DocumentTabsProps {
 interface DocumentTabProps {
   tab: TabMeta;
   isActive: boolean;
-  isDirty: boolean;
   isRoot: boolean;
   /**
    * The off-screen clone the fit math measures. It renders the same box so the
@@ -165,7 +163,6 @@ const dropIndicatorSx = (side: "left" | "right") => ({
 const DocumentTab: React.FC<DocumentTabProps> = ({
   tab,
   isActive,
-  isDirty,
   isRoot,
   measuring,
   isRenaming,
@@ -301,8 +298,9 @@ const DocumentTab: React.FC<DocumentTabProps> = ({
           </Typography>
         )}
       {
-        /* One 16px slot, shared: the dirty dot rests in it and the close button
-          takes it over on hover, so a tab never changes width mid-interaction. */
+        /* One 16px slot, reserved: empty at rest, the close button takes it on
+          hover, so a tab never changes width mid-interaction. It used to also
+          hold a dirty dot; autosave no longer announces itself. */
       }
       <Box
         sx={{
@@ -315,19 +313,6 @@ const DocumentTab: React.FC<DocumentTabProps> = ({
           flexShrink: 0,
         }}
       >
-        {isDirty && (
-          <Box
-            className="tab-dirty-dot"
-            sx={{
-              position: "absolute",
-              width: 5,
-              height: 5,
-              borderRadius: "50%",
-              bgcolor: "warning.main",
-              transition: `opacity ${MOTION.fast}ms`,
-            }}
-          />
-        )}
         {!isRoot && !measuring && (
           <IconButton
             className="tab-close-btn"
@@ -397,7 +382,6 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
   tabs,
   activeTabId,
   rootTabId,
-  dirtyTabIds,
   renamingTabId,
   onSwitch,
   onClose,
@@ -583,7 +567,6 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
               key={tab.id}
               tab={tab}
               isActive={tab.id === activeTabId}
-              isDirty={dirtyTabIds.includes(tab.id)}
               isRoot={tab.id === rootTabId}
               measuring
               innerRef={(el) => {
@@ -599,7 +582,6 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
             key={tab.id}
             tab={tab}
             isActive={tab.id === activeTabId}
-            isDirty={dirtyTabIds.includes(tab.id)}
             isRoot={tab.id === rootTabId}
             isRenaming={editingTabId === tab.id}
             showSeparator={i < visible.length - 1}
@@ -676,18 +658,6 @@ const DocumentTabs: React.FC<DocumentTabsProps> = ({
               <FileText size={ICON_SIZE.dense} />
             </ListItemIcon>
             <ListItemText>{tab.name}</ListItemText>
-            {dirtyTabIds.includes(tab.id) && (
-              <Box
-                sx={{
-                  width: 5,
-                  height: 5,
-                  ml: 1,
-                  borderRadius: "50%",
-                  bgcolor: "warning.main",
-                  flexShrink: 0,
-                }}
-              />
-            )}
           </MenuItem>
         ))}
       </Menu>

@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import SettingsPanel from "./SettingsPanel";
 import { openCommandPalette } from "@/components/CommandPalette/CommandPalette";
-import { useSelector } from "@/store";
+import { selectAnySaveTrouble, useSelector } from "@/store";
 import {
   selectFocusedDocId,
   selectFocusedPane,
@@ -53,6 +53,8 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
   const rootId = pane?.rootId ?? null;
   const isEditMode = pane?.mode === "write";
   const activeDocId = useSelector(selectFocusedDocId);
+  // Undefined unless something open is retrying or has failed to save.
+  const saveTrouble = useSelector(selectAnySaveTrouble);
 
   // Keep the full panel in the DOM during the close animation so it clips
   // gradually as the grid column shrinks, instead of vanishing instantly.
@@ -152,18 +154,49 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
           displayPrint: "none",
         }}
       >
+        {
+          /* The save-trouble badge lives here, on the one control that is
+            mounted at *both* rail modes. The message itself is a row inside
+            Properties, which is invisible while the rail is collapsed — which is
+            exactly when a stuck save would otherwise go unnoticed for longest.
+            See docs/plans/quiet-autosave.md §3.3. */
+        }
         <Tooltip
-          title={railMode === "full" ? "Collapse rail" : "Expand rail"}
+          title={saveTrouble
+            ? (saveTrouble === "error"
+              ? "A document couldn't be saved"
+              : "Reconnecting — unsaved work is stored locally")
+            : railMode === "full"
+            ? "Collapse rail"
+            : "Expand rail"}
           placement="left"
         >
           <IconButton
             size="small"
             onClick={toggleRail}
             aria-label={railMode === "full" ? "Collapse rail" : "Expand rail"}
+            sx={{ position: "relative" }}
           >
             {railMode === "full"
               ? <PanelRightClose size={ICON_SIZE.dense} />
               : <PanelRightOpen size={ICON_SIZE.dense} />}
+            {saveTrouble && (
+              <Box
+                component="span"
+                aria-hidden
+                sx={{
+                  position: "absolute",
+                  top: 4,
+                  right: 4,
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  bgcolor: saveTrouble === "error"
+                    ? "error.main"
+                    : "warning.main",
+                }}
+              />
+            )}
           </IconButton>
         </Tooltip>
         <Tooltip title="Copilot" placement="left">

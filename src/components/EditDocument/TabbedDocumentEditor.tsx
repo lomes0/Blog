@@ -66,7 +66,6 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
   const isMaximized = useSelector(
     (state) => state.ui.workspace.maximizedPaneId === paneId,
   );
-  const dirtyDocIds = useSelector((state) => state.ui.dirtyDocIds);
   const user = useSelector((state) => state.user);
   // The pane strip names the pane by the document it is showing — the active
   // tab's label, which is what the pane is actually displaying, rather than the
@@ -424,7 +423,6 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
         tabs={orderedTabs}
         activeTabId={activeTabId}
         rootTabId={rootId}
-        dirtyTabIds={dirtyDocIds}
         renamingTabId={renamingTabId}
         onSwitch={handleSwitch}
         onClose={handleCloseRequest}
