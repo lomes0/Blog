@@ -56,12 +56,13 @@ export const PANE_PAD_X = 3;
  * is the whole depth cue: the panes stand on the canvas, the seam sits a step
  * below it.
  *
- * Odd on purpose. A 1px rule centred in an even strip lands on a half pixel and
- * is drawn as two columns at half strength — a permanently blurred hairline in
- * the state you look at all day. 13 puts it on a whole pixel; the 6px of channel
- * left either side is what the reference had.
+ * Odd on purpose, and it has to stay odd: a rule of odd width centred in an even
+ * strip lands on a half pixel and is drawn as two columns at half strength — a
+ * blurred hairline in the state you look at all day. 11 keeps both the 1px rest
+ * rule and the 3px hover rule on whole pixels, and leaves the 5px of channel
+ * either side that the reference had.
  */
-export const SPLITTER_W = 13;
+export const SPLITTER_W = 11;
 
 /**
  * The pane strip — the row that names a pane and carries its ⤢ / ✕.

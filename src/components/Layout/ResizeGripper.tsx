@@ -16,7 +16,7 @@ export const GRIPPER_W = 4;
  *   way to be seen at all.
  * - `rule` — the strip is a recessed channel ({@link RULE_CHANNEL}) with a 1px
  *   rule down its centre, and the rule alone answers hover, drag and focus: it
- *   recolours to `primary` and gains a pixel ({@link RULE_W}). This is for an
+ *   recolours to `primary` and thickens ({@link RULE_W}). This is for an
  *   edge *between two documents*, where the strip
  *   is wide enough to grab comfortably and a band of `primary` landing between
  *   two columns of prose reads as a third thing on screen rather than as the
@@ -53,14 +53,18 @@ const RULE_CHANNEL = "background.sidebar";
 /**
  * The centre rule's thickness, at rest and while it is being addressed.
  *
- * It gains a pixel on hover, drag and focus rather than only changing colour:
- * the strip around it is a 13px grab area the pointer is already inside, and
- * the rule growing is what says the thing under the cursor is the handle and
- * not the seam. Kept to one pixel — two lines' worth of accent between two
- * columns of prose is a band again, which is what the `rule` variant exists to
- * avoid.
+ * It thickens on hover, drag and focus rather than only changing colour: the
+ * strip around it is a grab area the pointer is already inside, and the rule
+ * growing is what says the thing under the cursor is the handle and not the
+ * seam. Both widths are odd so that a rule centred in `SPLITTER_W` — also odd —
+ * lands on whole pixels in either state.
+ *
+ * 3px is the ceiling. Past it the accent stops reading as a lit rule and starts
+ * reading as a band of colour between two columns of prose, which is the thing
+ * the `rule` variant exists to avoid; the channel either side is only 5px, so
+ * there is not much room to grow into either.
  */
-const RULE_W = { rest: "1px", live: "2px" } as const;
+const RULE_W = { rest: "1px", live: "3px" } as const;
 
 /**
  * The `separator` half of the ARIA window-splitter pattern. Supply all four
