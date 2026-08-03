@@ -97,13 +97,13 @@
     "prisma": "^6.19.3",
     "terser-webpack-plugin": "^5.6.1",
     "tsx": "^4.23.5",
-    "typescript": "5.8.2",
+    "typescript": "5.9.3",
     "vitest": "^4.1.10",
     "workbox-webpack-plugin": "^7.4.1",
     "workbox-window": "^7.4.1"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "overrides": {
     "@radix-ui/react-tabs": {

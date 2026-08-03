@@ -11,6 +11,7 @@ export function setDomHiddenUntilFound(dom: HTMLElement): void {
 }
 
 export function domOnBeforeMatch(dom: HTMLElement, callback: () => void): void {
-  // @ts-expect-error: onbeforematch is a non-standard event not in HTMLElement types
+  // onbeforematch reached lib.dom in TypeScript 5.9, so this no longer needs a
+  // suppression. `hidden = "until-found"` above still does.
   dom.onbeforematch = callback;
 }

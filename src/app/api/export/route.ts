@@ -178,8 +178,10 @@ export const GET = userRoute(async (_request, { user }) => {
   zip.file("manifest.json", JSON.stringify(manifest, null, 2));
 
   // ── 4. Generate zip buffer and return ─────────────────────────────────────
+  // "arraybuffer" rather than "nodebuffer": Response wants a BodyInit, and Node
+  // types Buffer as ArrayBufferLike-backed, which no longer satisfies that.
   const zipBuffer = await zip.generateAsync({
-    type: "nodebuffer",
+    type: "arraybuffer",
     compression: "DEFLATE",
     compressionOptions: { level: 6 },
   });

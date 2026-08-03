@@ -260,7 +260,9 @@ export async function $generateDocxBlob(): Promise<Blob> {
     },
   });
 
-  const buffer = await Packer.toBuffer(doc);
+  // toArrayBuffer, not toBuffer: Node's Buffer is no longer a BlobPart. Not
+  // Packer.toBlob either — that one labels the result application/zip.
+  const buffer = await Packer.toArrayBuffer(doc);
   return new Blob([buffer], {
     type:
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

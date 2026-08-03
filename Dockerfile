@@ -4,7 +4,9 @@
 # Requires `output: "standalone"` in next.config.ts.
 
 # ---- Base -------------------------------------------------------------------
-FROM node:20-alpine AS base
+# Keep this major in step with .nvmrc, so the image builds on what development
+# runs. Node 20 was end-of-life on 2026-04-30; 24 is supported to 2028-04-30.
+FROM node:24-alpine AS base
 # Prisma needs OpenSSL at runtime; libc6-compat covers native deps on musl.
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
@@ -13,7 +15,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # ---- Dependencies -----------------------------------------------------------
 FROM base AS deps
 # patch-package runs in `postinstall`, so patches must exist before `npm ci`.
-COPY package.json package-lock.json ./
+# .npmrc matters too: it sets legacy-peer-deps, which is the mode the lock file
+# was resolved under. Without it `npm ci` builds a different ideal tree and
+# fails the sync check, so the image must install the way development does.
+COPY package.json package-lock.json .npmrc ./
 COPY patches ./patches
 RUN npm ci
 
