@@ -180,7 +180,7 @@ export const SubTabList: React.FC<SubTabListProps> = (
                 gap: "6px",
                 py: "3px",
                 px: "7px",
-                borderRadius: 1.5,
+                borderRadius: SB_ITEM_RADIUS,
                 fontSize: SB_FONT.meta,
                 cursor: "pointer",
                 color: "text.secondary",

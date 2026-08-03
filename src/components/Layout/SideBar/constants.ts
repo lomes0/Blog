@@ -3,7 +3,6 @@
  * Single source of truth for all sidebar-related dimensions
  */
 import { MOTION } from "@/theme/tokens";
-import { TREE_ROW_RADIUS } from "@/theme/treeRow";
 
 /**
  * Width of the far-left activity rail (icon strip that switches sidebar views).
@@ -102,15 +101,17 @@ export const SIDEBAR_EDGE_TRANSITION = [
 
 /**
  * Corner radius shared by every selectable sidebar row — post/document rows,
- * series rows, and sub-tabs — so the "soft filled pill" select treatment stays
- * identical across all three.
+ * series rows, sub-tabs, search results and the collapsed rail's icon buttons —
+ * so the select/hover fill has one shape across all of them.
  *
- * Re-exported from `@/theme/treeRow`: the value is DESIGN.md §17.4's radius for
- * *any* tree row, not a sidebar preference, and the /posts rows were carrying
- * their own (`0.5`, `1`) precisely because it was only written down here. Kept
- * as an alias so the sidebar's own call sites read in sidebar vocabulary.
+ * **Square (`0`), deliberately.** This is the sidebar's own value, not
+ * `TREE_ROW_RADIUS`: it used to alias that token, but a filled pill reads as a
+ * floating chip in a full-height rail where the fill runs edge to edge, and the
+ * IDE explorers this sidebar follows highlight a row as a plain band. The
+ * /posts tree rows still take DESIGN.md §17.4's `1.5` — they sit on a page with
+ * margins, where the pill has room to be a pill.
  */
-export const SB_ITEM_RADIUS = TREE_ROW_RADIUS;
+export const SB_ITEM_RADIUS = 0;
 
 /**
  * Monospace stack for IDE file-system cues (`.md` filenames, folder paths,

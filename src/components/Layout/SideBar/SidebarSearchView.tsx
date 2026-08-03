@@ -6,7 +6,7 @@ import { FileText, Search } from "lucide-react";
 import { type RootState, useSelector } from "@/store";
 import { selectAllPosts } from "@/store/selectors/postsSelectors";
 import { ICON_SIZE } from "@/theme/icons";
-import { MONO_FONT, SB_FONT } from "./constants";
+import { MONO_FONT, SB_FONT, SB_ITEM_RADIUS } from "./constants";
 import { SafeNavigationLink } from "./SafeNavigationLink";
 
 interface SidebarSearchViewProps {
@@ -124,7 +124,7 @@ export const SidebarSearchView: React.FC<SidebarSearchViewProps> = (
                     color: "inherit",
                     px: 1,
                     py: 0.625,
-                    borderRadius: 1,
+                    borderRadius: SB_ITEM_RADIUS,
                     bgcolor: active ? "action.selected" : "transparent",
                     "&:hover": { bgcolor: "action.hover" },
                   }}

@@ -131,8 +131,8 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
                 position: "relative",
                 ...(isSeriesActive && { bgcolor: "action.selected" }),
                 "&:hover": { bgcolor: "action.hover" },
-                // Drop-a-post-into-series: the shared fill, plus a pill outline
-                // that marks the header as a container (ProjectGroup uses a rule
+                // Drop-a-post-into-series: the shared fill, plus an outline that
+                // marks the header as a container (ProjectGroup uses a rule
                 // instead — see its band treatment).
                 ...(isDropInto && {
                   ...dropIntoSx(),

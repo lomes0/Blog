@@ -279,7 +279,7 @@ export const PostItem = memo(
                 overflow: "hidden",
                 position: "relative",
                 ...(dropIndicator && dropIndicatorSx(dropIndicator)),
-                // Rounded "pill" select shared with sub-tabs and series rows.
+                // Square-edged select band, shared with sub-tabs and series rows.
                 borderRadius: SB_ITEM_RADIUS,
                 // Top-level rows use the same left padding as a SeriesGroup row
                 // (px: 2) so the post icon lines up under the series chevron;

@@ -30,6 +30,10 @@ import { MOTION } from "./tokens";
  * (sidebar, via a `SB_ITEM_RADIUS` local to `SideBar/constants.ts`). The
  * sidebar's was the conforming one; it moves here because a rule that governs
  * every tree row cannot live in one region's constants file.
+ *
+ * The sidebar has since gone square by request — its `SB_ITEM_RADIUS` is now
+ * `0` and no longer an alias of this. So this governs the /posts rows only;
+ * see that constant for why the rail wants a band rather than a pill.
  */
 export const TREE_ROW_RADIUS = 1.5;
 

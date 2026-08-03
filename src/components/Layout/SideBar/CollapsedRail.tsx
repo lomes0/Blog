@@ -5,6 +5,7 @@ import { FileText, Folder } from "lucide-react";
 import type { SeriesGroupItem } from "@/utils/posts/seriesGrouping";
 import { SafeNavigationLink } from "./SafeNavigationLink";
 import { ICON_SIZE } from "@/theme/icons";
+import { SB_ITEM_RADIUS } from "./constants";
 
 interface CollapsedRailProps {
   /** All active-post groups: series collections and standalone posts. */
@@ -32,7 +33,7 @@ const RailItem: React.FC<{
         justifyContent: "center",
         width: 40,
         height: 40,
-        borderRadius: 3,
+        borderRadius: SB_ITEM_RADIUS,
         textDecoration: "none",
         color: selected ? "text.primary" : "text.secondary",
         bgcolor: selected ? "action.selected" : "transparent",
