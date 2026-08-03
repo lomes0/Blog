@@ -14,20 +14,20 @@ export const GRIPPER_W = 4;
  *   full while held. This is the edge of a *panel*, and it lies against a rail
  *   or a document on one side only, so painting the whole 4px strip is the only
  *   way to be seen at all.
- * - `rule` — the strip stays invisible and draws a 1px rule down its centre,
- *   which recolours to `primary` on hover and while dragging, plus a fainter
- *   hairline {@link RULE_FLANK_OFFSET}px out on either side. This is for an edge
- *   *between two documents*, where the strip is wide enough to grab comfortably
- *   and a band of colour landing between two columns of prose reads as a third
- *   thing on screen rather than as the seam between them.
+ * - `rule` — the strip is a recessed channel ({@link RULE_CHANNEL}) with a 1px
+ *   rule down its centre, and the rule alone answers hover, drag and focus: it
+ *   recolours to `primary` and gains a pixel ({@link RULE_W}). This is for an
+ *   edge *between two documents*, where the strip
+ *   is wide enough to grab comfortably and a band of `primary` landing between
+ *   two columns of prose reads as a third thing on screen rather than as the
+ *   seam between them.
  *
- *   The flanks are where each pane ends, and they are the flat-surface
- *   equivalent of the recess this was drawn from: there, the panes were a
- *   lighter surface than the page, so the gutter read as a channel sunk between
- *   them and its two edges were the lines you saw. This app has one surface, so
- *   the same reading is drawn rather than lit — which is also why the flanks do
- *   *not* answer hover. They say where the panes are; only the middle line is
- *   the handle.
+ *   The channel is the depth cue: the panes stand on the canvas and the seam
+ *   sits one step below it, so the two strips either side of the rule are where
+ *   each pane ends. They are structure and do not answer hover — only the middle
+ *   line is the handle. (An earlier pass drew those two edges as hairlines
+ *   instead. It read as three lines rather than as a gap between two surfaces,
+ *   which is the thing the reference is actually showing.)
  *
  * Both live here rather than in the call sites for the reason in the component
  * note below: the rest/hover/active/focus ladder is one vocabulary (§17.3), and
@@ -36,17 +36,31 @@ export const GRIPPER_W = 4;
 export type GripperVariant = "wash" | "rule";
 
 /**
- * How far the `rule` variant's flanking hairlines sit from its centre line, in
- * px — measured from centre to the flank's own edge, so the clear space between
- * a flank and the rule is one px less.
+ * The `rule` variant's channel — the strip either side of its centre line.
  *
- * Taken from the reference this was drawn from, where the channel between the
- * panes measured 5px of gap either side of the rule. The owning strip has to be
- * at least `2 * (RULE_FLANK_OFFSET + 1)` wide or the flanks are clipped — the
- * pane row's `SPLITTER_W` carries a couple of px more than that, so the outer
- * edge of the grab area is still grabbable past the last line.
+ * `background.sidebar` is the palette's "recessed below `default`" step, which
+ * is what the sidebar and the two rails already stand on. Borrowing it here is
+ * borrowing a *depth*, not a region: a seam between two documents is the same
+ * one step below the canvas, and it tracks both colour schemes for free, which
+ * a hand-mixed dark wash would not (§19).
+ *
+ * The delta this reproduces, measured off the reference: canvas `#1c202b`,
+ * channel `#161923`. Ours is `#252b3a` → `#202634` in dark and `#ffffff` →
+ * `#f8fafc` in light — the same few points of separation in both.
  */
-export const RULE_FLANK_OFFSET = 6;
+const RULE_CHANNEL = "background.sidebar";
+
+/**
+ * The centre rule's thickness, at rest and while it is being addressed.
+ *
+ * It gains a pixel on hover, drag and focus rather than only changing colour:
+ * the strip around it is a 13px grab area the pointer is already inside, and
+ * the rule growing is what says the thing under the cursor is the handle and
+ * not the seam. Kept to one pixel — two lines' worth of accent between two
+ * columns of prose is a band again, which is what the `rule` variant exists to
+ * avoid.
+ */
+const RULE_W = { rest: "1px", live: "2px" } as const;
 
 /**
  * The `separator` half of the ARIA window-splitter pattern. Supply all four
@@ -206,16 +220,20 @@ const ResizeGripper: React.FC<ResizeGripperProps> = ({
           boxShadow: FOCUS_RING.chrome,
         },
         // Everything above is the `wash`. The `rule` keeps the same states and
-        // moves them onto a hairline: the strip goes back to being invisible at
-        // every rung, and the 1px rule down its centre is what carries them.
-        // Written as a trailing spread so each key *replaces* the wash's — two
-        // `&:hover` entries in one literal would silently drop the first.
+        // moves them onto the hairline: the strip becomes a recessed channel
+        // that never changes, and the 1px rule down its centre is what carries
+        // rest, hover, active and focus. Written as a trailing spread so each
+        // key *replaces* the wash's — two `&:hover` entries in one literal
+        // would silently drop the first.
         ...(variant === "rule" && {
-          // The grab area is the parent's to size; the rule is centred in it.
+          // The channel fills the grab strip edge to edge, so it meets both
+          // panes with no sliver of canvas between. Its width is the parent's
+          // to set (`SPLITTER_W`), which is also what sets how much channel
+          // shows either side of the rule.
           left: 0,
           right: 0,
           width: "auto",
-          backgroundColor: "transparent",
+          backgroundColor: RULE_CHANNEL,
           "&::before": {
             content: '""',
             position: "absolute",
@@ -223,40 +241,24 @@ const ResizeGripper: React.FC<ResizeGripperProps> = ({
             bottom: 0,
             left: "50%",
             transform: "translateX(-50%)",
-            width: "1px",
+            width: isResizing ? RULE_W.live : RULE_W.rest,
             backgroundColor: isResizing ? "primary.main" : "divider",
             transition: isResizing
               ? "none"
-              : `background-color ${MOTION.base}ms ${MOTION.easing}`,
+              : `background-color ${MOTION.base}ms ${MOTION.easing}, width ${MOTION.base}ms ${MOTION.easing}`,
           },
-          // The two flanks, as one element with a border down each side: they
-          // are always the same distance apart, so a single box is the shape
-          // that cannot drift out of symmetry.
-          "&::after": {
-            content: '""',
-            position: "absolute",
-            top: 0,
-            bottom: 0,
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: RULE_FLANK_OFFSET * 2 + 1,
-            borderLeft: "1px solid",
-            borderRight: "1px solid",
-            borderColor: "divider",
-            // Below the rule they sit beside — these are the panes' own edges,
-            // not part of the handle.
-            opacity: 0.45,
-            pointerEvents: "none",
-          },
-          "&:hover, &:active": { backgroundColor: "transparent", opacity: 1 },
+          // The channel holds still through every state — it is the gap between
+          // two surfaces, not part of the handle.
+          "&:hover, &:active": { backgroundColor: RULE_CHANNEL, opacity: 1 },
           "&:hover::before, &:active::before": {
             backgroundColor: "primary.main",
+            width: RULE_W.live,
           },
           "&:focus-visible": {
             outline: "none",
-            backgroundColor: "transparent",
+            backgroundColor: RULE_CHANNEL,
             opacity: 1,
-            // Not on the strip: a ring around 12px of nothing is a floating
+            // Not on the strip: a ring around the whole channel is a floating
             // rectangle. On the rule it reads as the hairline lighting up,
             // which is also what keeps focus distinguishable from hover — the
             // two are otherwise the same accent line.
@@ -264,6 +266,7 @@ const ResizeGripper: React.FC<ResizeGripperProps> = ({
           },
           "&:focus-visible::before": {
             backgroundColor: "primary.main",
+            width: RULE_W.live,
             boxShadow: FOCUS_RING.chrome,
           },
         }),

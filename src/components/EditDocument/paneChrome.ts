@@ -49,13 +49,19 @@ export const PANE_PAD_X = 3;
  * not against a rail, it is between two documents, and it is the only drag edge
  * you reach for while reading rather than while arranging the window.
  *
- * `ResizeGripper`'s `rule` variant fills it: a 1px rule down the *centre* — so
- * the grab margin is symmetric rather than the rule hugging one pane's edge with
- * all the slack on the other — flanked by a fainter hairline 6px out on each
- * side, which is where each pane ends. Three lines, and the width is what sets
- * the 5px of clear space between them.
+ * `ResizeGripper`'s `rule` variant fills it: a recessed channel, edge to edge,
+ * with a 1px rule down the *centre* — so the grab margin is symmetric rather
+ * than the rule hugging one pane's edge with all the slack on the other. This
+ * width is therefore also how much channel shows either side of the rule, which
+ * is the whole depth cue: the panes stand on the canvas, the seam sits a step
+ * below it.
+ *
+ * Odd on purpose. A 1px rule centred in an even strip lands on a half pixel and
+ * is drawn as two columns at half strength — a permanently blurred hairline in
+ * the state you look at all day. 13 puts it on a whole pixel; the 6px of channel
+ * left either side is what the reference had.
  */
-export const SPLITTER_W = 16;
+export const SPLITTER_W = 13;
 
 /**
  * The pane strip — the row that names a pane and carries its ⤢ / ✕.
