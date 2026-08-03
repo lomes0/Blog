@@ -118,11 +118,11 @@ function LinkDialog(
     else setTarget(null);
   };
 
-  const handleSubmit = (
-    event:
-      | React.FormEvent<HTMLFormElement>
-      | React.MouseEvent<HTMLButtonElement>,
-  ) => {
+  // Widened to SyntheticEvent because this is both the Button's onClick and the
+  // dialog paper's onSubmit, and MUI types that paper as a div even under
+  // `component: "form"` — so React 19.2 hands it a SubmitEvent<HTMLDivElement>.
+  // preventDefault is all this needs, and every synthetic event has it.
+  const handleSubmit = (event: React.SyntheticEvent) => {
     event.preventDefault();
     if (rel === "bookmark" && figure) setNodeId(figure, url.slice(1));
     if (!node) {
