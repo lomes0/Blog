@@ -1,23 +1,19 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Box, Button, IconButton, Paper, Tooltip } from "@mui/material";
-import type { Theme } from "@mui/material/styles";
+import { Box, Button, IconButton, Tooltip } from "@mui/material";
 import { ChevronDown } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useSelector } from "@/store";
 import { useAIModel } from "@/contexts/AIModelContext";
 import { ICON_SIZE } from "@/theme/icons";
-import { FOCUS_RING, MOTION, SHADOW } from "@/theme/tokens";
 import CopilotChat from "./CopilotChat";
+import { composerSurfaceSx, composerWrapperSx } from "./Composer";
 
-/** Matches the home pane's composer, so the two read as the same affordance. */
-const COLUMN_W = "min(660px, 100%)";
-
-/** The card's focused look, applied in both color schemes. */
-const focusWithinSx = (theme: Theme) => ({
-  borderColor: "primary.main",
-  boxShadow: FOCUS_RING.card(theme),
-});
+/**
+ * The design handoff's 760px content column, which it says should match the
+ * chat thread's width.
+ */
+const COLUMN_W = "min(760px, 100%)";
 
 /**
  * Cap on the conversation's height. Half the viewport keeps the document behind
@@ -38,11 +34,12 @@ const MAX_H = "50vh";
  * of a document can be scrolled out from under the resting bar.
  *
  * "Floats over content" is about the *middle* of a document passing beneath it;
- * the end still has to be reachable. Sized for the collapsed bar (composer plus
- * model row plus the wrapper's padding) — expanding covers more, but expanding
- * is a thing the reader just did and can undo with Escape.
+ * the end still has to be reachable. Sized for the collapsed bar — the surface
+ * padding, a two-row field, the 34px control row, the border and the
+ * wrapper's own bottom padding. Expanding covers more, but expanding is a thing
+ * the reader just did and can undo with Escape.
  */
-export const INLINE_BAR_CLEARANCE = 116;
+export const INLINE_BAR_CLEARANCE = 140;
 
 const EXCLUDED_ROUTES = [
   // Reading surfaces with nothing for the agent to act on.
@@ -162,14 +159,19 @@ const InlineCopilotBar: React.FC<InlineCopilotBarProps> = ({ documentId }) => {
         zIndex: 3,
       }}
     >
-      <Paper
-        elevation={0}
+      {
+        /* The card is the composer's 1px border. A plain Box, not a Paper:
+          Paper's root sets its own background and radius, and this element is
+          nothing but a rule around the surface below. */
+      }
+      <Box
         onKeyDown={handleKeyDown}
         // Collapsed, a thread is invisible — the bar looks like an empty
         // composer. Returning to it brings it back, so Escape means "out of my
         // way" rather than "throw that away".
         onFocus={() => setCollapsed(false)}
         sx={(theme) => ({
+          ...composerWrapperSx(theme),
           pointerEvents: "auto",
           width: COLUMN_W,
           // Always capped. `none` → a length is not an animatable pair, so the
@@ -179,88 +181,73 @@ const InlineCopilotBar: React.FC<InlineCopilotBarProps> = ({ documentId }) => {
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
-          border: "1px solid",
-          borderColor: "divider",
-          borderRadius: 3,
-          // The field colour, not the panel colour: at rest this *is* an input,
-          // and `background.panel` (#eceef2) read as a grey slab dropped on the
-          // page. It also gives the assistant bubbles' `action.hover` tint
-          // something to register against.
-          bgcolor: "background.input",
-          boxShadow: SHADOW.card.rest,
-          transition: `border-color ${MOTION.fast}ms, ` +
-            `box-shadow ${MOTION.fast}ms`,
-          // The card is the field when it is nothing but its composer, so it
-          // carries the focus treatment — as the home pane's composer does.
-          "&:focus-within": focusWithinSx(theme),
-          // One `applyStyles("dark")` per literal, and the focus ring is
-          // repeated inside it: the dark branch sets `boxShadow` on the same
-          // element at higher specificity, so a ring left outside would be
-          // overwritten and the card would show no focus at all in dark mode.
-          ...theme.applyStyles("dark", {
-            boxShadow: SHADOW.raised.dark,
-            "&:focus-within": focusWithinSx(theme),
-          }),
         })}
       >
-        {expanded && (
-          <Box
-            sx={{
-              pl: 1.5,
-              pr: 1,
-              py: 0.5,
-              display: "flex",
-              alignItems: "center",
-              gap: 0.5,
-              borderBottom: 1,
-              borderColor: "divider",
-              flexShrink: 0,
-            }}
-          >
-            <Box sx={{ flex: 1 }} />
-            {pendingCount > 0 && (
-              <Button
-                size="small"
-                variant="contained"
-                onClick={() => acceptAllRef.current?.()}
-                sx={{
-                  textTransform: "none",
-                  typography: "micro",
-                  py: 0.25,
-                  px: 1,
-                  flexShrink: 0,
-                }}
-              >
-                Accept all
-              </Button>
-            )}
-            <Tooltip title="Collapse (Esc)">
-              <IconButton
-                size="small"
-                onClick={() => setCollapsed(true)}
-                aria-label="Collapse Copilot"
-              >
-                <ChevronDown size={ICON_SIZE.dense} />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        )}
+        {
+          /* The surface. It holds the transcript as well as the composer,
+            which is why the inline bar draws it rather than `CopilotChat`. */
+        }
+        <Box
+          sx={(theme) => ({
+            ...composerSurfaceSx(theme),
+            minHeight: 0,
+            overflow: "hidden",
+          })}
+        >
+          {expanded && (
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 0.5,
+                flexShrink: 0,
+              }}
+            >
+              <Box sx={{ flex: 1 }} />
+              {pendingCount > 0 && (
+                <Button
+                  size="small"
+                  variant="contained"
+                  onClick={() => acceptAllRef.current?.()}
+                  sx={{
+                    textTransform: "none",
+                    typography: "micro",
+                    py: 0.25,
+                    px: 1,
+                    flexShrink: 0,
+                  }}
+                >
+                  Accept all
+                </Button>
+              )}
+              <Tooltip title="Collapse (Esc)">
+                <IconButton
+                  size="small"
+                  onClick={() => setCollapsed(true)}
+                  aria-label="Collapse Copilot"
+                >
+                  <ChevronDown size={ICON_SIZE.dense} />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          )}
 
-        <CopilotChat
-          key={scopeKey}
-          variant="inline"
-          persist={false}
-          documentId={documentId}
-          llmConfig={llmConfig}
-          setLlmConfig={setLlmConfig}
-          onRegisterAcceptAll={handleRegisterAcceptAll}
-          onPendingCountChange={setPendingCount}
-          onMessageCountChange={setMessageCount}
-          showTranscript={expanded}
-          inputRef={inputRef}
-          disabledReason={user ? undefined : "Sign in to use AI"}
-        />
-      </Paper>
+          <CopilotChat
+            key={scopeKey}
+            variant="inline"
+            persist={false}
+            documentId={documentId}
+            llmConfig={llmConfig}
+            setLlmConfig={setLlmConfig}
+            onRegisterAcceptAll={handleRegisterAcceptAll}
+            onPendingCountChange={setPendingCount}
+            onMessageCountChange={setMessageCount}
+            showTranscript={expanded}
+            inputRef={inputRef}
+            disabledReason={user ? undefined : "Sign in to use AI"}
+          />
+        </Box>
+      </Box>
     </Box>
   );
 };

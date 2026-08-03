@@ -60,6 +60,17 @@ export const SHADOW = {
     rest: "0 4px 12px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04)",
     hover: "0 12px 32px rgba(0,0,0,0.15), 0 6px 16px rgba(0,0,0,0.1)",
   },
+  /**
+   * A wide, heavily-inset drop for a surface that floats *over* content — the
+   * AI composer. `card` is a close lift for something sitting in the flow; this
+   * is the handoff's `0 18px 40px -24px`, which reads as depth rather than an
+   * edge. The light branch is slate rather than the mock's near-black, which on
+   * a white canvas would be a smudge.
+   */
+  floating: {
+    light: "0 18px 40px -24px rgba(15,23,42,0.35)",
+    dark: "0 18px 40px -24px #0b0d17",
+  },
 } as const;
 
 /**
