@@ -54,6 +54,25 @@ function collectRefs(node, out = new Set()) {
     if (node.initializer) collectRefs(node.initializer, out);
     return out;
   }
+  // `a.b` — only `a` is a reference. `b` is a member name that merely parses as
+  // an Identifier, and counting it makes any later `const { b } = …` look like a
+  // TDZ hit. Element access (`a[b]`) is left alone: there `b` really is one.
+  if (ts.isPropertyAccessExpression(node)) {
+    collectRefs(node.expression, out);
+    return out;
+  }
+  // `{ k: v }` — `k` is a key, not a reference; only `v` is. Shorthand `{ v }`
+  // is a ShorthandPropertyAssignment, so it falls through and still counts.
+  if (ts.isPropertyAssignment(node)) {
+    if (ts.isComputedPropertyName(node.name)) collectRefs(node.name, out);
+    collectRefs(node.initializer, out);
+    return out;
+  }
+  // `A.B` in type position — the same rule as property access.
+  if (ts.isQualifiedName(node)) {
+    collectRefs(node.left, out);
+    return out;
+  }
   ts.forEachChild(node, (child) => {
     // Stop at nested function boundaries — they have their own scope.
     if (
