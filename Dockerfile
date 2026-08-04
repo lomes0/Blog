@@ -15,10 +15,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # ---- Dependencies -----------------------------------------------------------
 FROM base AS deps
 # patch-package runs in `postinstall`, so patches must exist before `npm ci`.
-# .npmrc matters too: it sets legacy-peer-deps, which is the mode the lock file
-# was resolved under. Without it `npm ci` builds a different ideal tree and
-# fails the sync check, so the image must install the way development does.
-COPY package.json package-lock.json .npmrc ./
+# There is deliberately no .npmrc: the lock file is resolved under npm's normal
+# peer rules, so the image and development agree without needing to share one.
+COPY package.json package-lock.json ./
 COPY patches ./patches
 RUN npm ci
 
