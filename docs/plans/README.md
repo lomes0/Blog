@@ -9,6 +9,7 @@ read that first.** A plan describes an intended state, not the current one.
 | [tree-model-brief.md](./tree-model-brief.md)               | Decision brief — awaits one product call: does `/posts` render projects?                       |
 | [ide-redesign.md](./ide-redesign.md)                       | In progress — ⌘K command palette landed; status bar and Explorer restyle pending               |
 | [workspace-panes.md](./workspace-panes.md)                 | Proposal — command registry, `ui.tabs` → `ui.workspace`, public/workspace route split, split view; two product calls open |
+| [claude-code-lexical.md](./claude-code-lexical.md)         | Proposal rev 2 — Claude Code edits Lexical documents by addressed block, not Markdown. Three spikes killed rev 1's stored ids, its `expectedHead` guard, and its headline Copilot data-loss bug (never real — §2.4). Not urgent; phase 1 is the start |
 | [storage-uploads.md](./storage-uploads.md)                 | Proposal — move uploads off the container filesystem to R2/MinIO                               |
 | [ordering-simplification.md](./ordering-simplification.md) | Proposal — see below                                                                           |
 | [schema-organization.md](./schema-organization.md)         | Proposal — see below                                                                           |
