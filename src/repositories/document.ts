@@ -420,6 +420,35 @@ const updateDocument = async (
   return findDocument(handle, "all");
 };
 
+/**
+ * Delete one already-located document, inside the caller's transaction.
+ *
+ * Split out because the delete has a second entry point (`discardAgentDocument`)
+ * that differs only in how the row is found — and the part worth not
+ * duplicating is what happens *after* the delete: child tabs are promoted to
+ * root by `onDelete: SetNull`, which leaves them holding ranks from a container
+ * they are no longer in, so they have to be re-ranked into root here.
+ */
+const deleteDocumentRow = async (
+  tx: Prisma.TransactionClient,
+  doc: { id: string; authorId: string },
+) => {
+  // Child tabs are promoted to root via onDelete: SetNull — capture them
+  // (in order) so we can re-home them with fresh root ranks below.
+  const children = await tx.document.findMany({
+    where: { parentId: doc.id },
+    orderBy: { rank: "asc" },
+    select: { id: true },
+  });
+
+  const deleted = await tx.document.delete({
+    where: { id: doc.id },
+  });
+
+  await reRankIntoRoot(tx, doc.authorId, children.map((c) => c.id));
+  return deleted;
+};
+
 const deleteDocument = async (handle: string) => {
   // Find and delete in a single transaction to ensure consistency
   return await prisma.$transaction(async (tx) => {
@@ -438,20 +467,7 @@ const deleteDocument = async (handle: string) => {
       throw new Error("Post not found");
     }
 
-    // Child tabs are promoted to root via onDelete: SetNull — capture them
-    // (in order) so we can re-home them with fresh root ranks below.
-    const children = await tx.document.findMany({
-      where: { parentId: doc.id },
-      orderBy: { rank: "asc" },
-      select: { id: true },
-    });
-
-    const deleted = await tx.document.delete({
-      where: { id: doc.id },
-    });
-
-    await reRankIntoRoot(tx, doc.authorId, children.map((c) => c.id));
-    return deleted;
+    return deleteDocumentRow(tx, doc);
   });
 };
 
@@ -568,9 +584,77 @@ const findDocumentChildren = async (parentId: string) => {
   });
 };
 
+// ─── Agent-created posts (docs/plans/agent-gating.md §3.7) ───────────────────
+
+/**
+ * How many of this author's posts are still flagged as agent-created.
+ *
+ * Half of the §3.5 focus poll — the badge covers pending proposals *and* posts
+ * awaiting accept, because from the author's side they are the same question:
+ * how much of Claude's work is waiting on me.
+ */
+const countAgentCreatedDocuments = async (authorId: string) =>
+  prisma.document.count({
+    where: {
+      authorId,
+      type: PrismaDocumentType.DOCUMENT,
+      agentCreatedAt: { not: null },
+    },
+  });
+
+/**
+ * Accept an agent-created post: clear the flag, keep the post.
+ *
+ * Guarded rather than unconditional, so the answer distinguishes "accepted" from
+ * "there was nothing to accept" — which is what lets the route be idempotent
+ * without pretending a second click did something. It writes no other column:
+ * accepting is not publishing (§3.7), and a flagged post is an ordinary
+ * unpublished draft in every other respect.
+ *
+ * @returns true if a flag was cleared, false if the post was not flagged.
+ */
+const acceptAgentDocument = async (id: string) => {
+  const { count } = await prisma.document.updateMany({
+    where: { id, agentCreatedAt: { not: null } },
+    data: { agentCreatedAt: null, agentOrigin: null },
+  });
+  return count > 0;
+};
+
+/**
+ * Discard an agent-created post: delete it, but *only* if it is still flagged.
+ *
+ * The guard is inside the transaction with the delete rather than a read in the
+ * route, so accepting a post and discarding it cannot interleave into "accepted,
+ * then deleted anyway". It is also what keeps this narrower than
+ * `DELETE /api/documents/[id]`: a discard button wired to the wrong id cannot
+ * remove a post you wrote.
+ *
+ * @returns true if the post was deleted, false if it was not agent-created (or
+ *          does not exist).
+ */
+const discardAgentDocument = async (id: string) =>
+  prisma.$transaction(async (tx) => {
+    const doc = await tx.document.findFirst({
+      where: {
+        id,
+        type: PrismaDocumentType.DOCUMENT,
+        agentCreatedAt: { not: null },
+      },
+      select: { id: true, authorId: true },
+    });
+    if (!doc) return false;
+
+    await deleteDocumentRow(tx, doc);
+    return true;
+  });
+
 export {
+  acceptAgentDocument,
+  countAgentCreatedDocuments,
   createDocument,
   deleteDocument,
+  discardAgentDocument,
   findCloudStorageUsageByAuthorId,
   findDocument,
   findDocumentChildren,

@@ -216,6 +216,23 @@ const findPendingProposal = async (
     select: pendingSelect,
   });
 
+/**
+ * How many of this author's documents have a proposal waiting for review.
+ *
+ * Scoped through the document's `authorId` and not the *revision's*: the
+ * proposal is written by whoever the agent authenticates as, and the person who
+ * has to answer for it is the one who owns the document — the same line
+ * `requireDocument(…, "own")` draws for approving it.
+ *
+ * Counting revisions and counting documents are the same number here, because
+ * `revision_one_pending_per_document` makes at most one pending row per document
+ * a database fact (§3.1).
+ */
+const countPendingProposals = async (authorId: string) =>
+  prisma.revision.count({
+    where: { proposedAt: { not: null }, document: { authorId } },
+  });
+
 /** What a caller must supply to fold one agent batch into the proposal. */
 export interface ProposalInput {
   documentId: string;
@@ -423,6 +440,7 @@ const rejectProposal = async (documentId: string, revisionId: string) => {
 
 export {
   approveProposal,
+  countPendingProposals,
   createRevision,
   deleteRevision,
   findPendingProposal,
