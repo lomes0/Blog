@@ -244,9 +244,11 @@ function ProposalRow({
         <Button size="small" variant="text" disabled={busy} onClick={onReview}>
           Review
         </Button>
-        {/* No Approve on a stale row. The server refuses it with a 409 — that
+        {
+          /* No Approve on a stale row. The server refuses it with a 409 — that
             is the safety property, not a hint — so offering the button would be
-            offering a failure. Reject and a re-run are the only exits (§3.6). */}
+            offering a failure. Reject and a re-run are the only exits (§3.6). */
+        }
         {!stale && (
           <Button
             size="small"

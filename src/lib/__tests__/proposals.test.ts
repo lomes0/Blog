@@ -194,7 +194,10 @@ describe("foldProposal — squashing", () => {
   });
 
   it("keeps the existing summary when a batch supplies none", () => {
-    const plan = foldProposal(pending({ summary: "renamed the intro" }), second);
+    const plan = foldProposal(
+      pending({ summary: "renamed the intro" }),
+      second,
+    );
     expect(plan.row.summary).toBe("renamed the intro");
     expect(
       foldProposal(
@@ -215,14 +218,18 @@ describe("foldProposal — squashing", () => {
 
 describe("isProposalStale", () => {
   it("says no while the base is still head", () => {
-    expect(isProposalStale({ baseRevisionId: "head-1", staleAt: null }, "head-1"))
+    expect(
+      isProposalStale({ baseRevisionId: "head-1", staleAt: null }, "head-1"),
+    )
       .toBe(false);
   });
 
   it("says yes once head has moved off the base, unstamped", () => {
     // The proposal written while a save was in flight: no marker could have run
     // over a row that did not exist yet, and the two pointers are the evidence.
-    expect(isProposalStale({ baseRevisionId: "head-1", staleAt: null }, "head-2"))
+    expect(
+      isProposalStale({ baseRevisionId: "head-1", staleAt: null }, "head-2"),
+    )
       .toBe(true);
   });
 
@@ -256,7 +263,9 @@ describe("isProposalStale", () => {
 });
 
 describe("planStaleMarking", () => {
-  const candidate = (over: Partial<Parameters<typeof planStaleMarking>[0][0]> = {}) => ({
+  const candidate = (
+    over: Partial<Parameters<typeof planStaleMarking>[0][0]> = {},
+  ) => ({
     id: "prop-1",
     baseRevisionId: "head-1" as string | null,
     staleAt: null as Date | null,
@@ -291,12 +300,17 @@ describe("planStaleMarking", () => {
   it("marks a proposal built on an empty document once head exists", () => {
     // The row a `NOT ("baseRevisionId" = $1)` in SQL would silently skip, since
     // that comparison is unknown — and therefore false — for a null base.
-    expect(planStaleMarking([candidate({ baseRevisionId: null })], "head-1", now).ids)
+    expect(
+      planStaleMarking([candidate({ baseRevisionId: null })], "head-1", now)
+        .ids,
+    )
       .toEqual(["prop-1"]);
   });
 
   it("leaves that same proposal alone while head is still null", () => {
-    expect(planStaleMarking([candidate({ baseRevisionId: null })], null, now).ids)
+    expect(
+      planStaleMarking([candidate({ baseRevisionId: null })], null, now).ids,
+    )
       .toEqual([]);
   });
 

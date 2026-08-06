@@ -112,7 +112,7 @@ pending proposal holding all three edits, that each batch saw the previous one's
 work, and that `head` never moves. Both grew a phase-5 half (§3.6): which
 proposals a head move invalidates and why a null base cannot be excluded in SQL
 (`planStaleMarking`), and what an author's save between two batches now does —
-the second batch reads the live document and *replaces* the stale proposal
+the second batch reads the live document and _replaces_ the stale proposal
 rather than folding onto something approval could only refuse. The database half
 of all this (the partial unique index, the `version` compare-and-set and the
 stale marking actually firing) is a throwaway script against the local Postgres,

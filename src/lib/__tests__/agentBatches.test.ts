@@ -152,7 +152,13 @@ const toPending = (row: Row): PendingProposal => ({
 });
 
 /** `upsertProposal`: execute the plan, honouring the `version` CAS. */
-const propose = (store: Store, next: Blocks, op: SetText, base: string | null, at: Date) => {
+const propose = (
+  store: Store,
+  next: Blocks,
+  op: SetText,
+  base: string | null,
+  at: Date,
+) => {
   const existing = store.pending();
   const plan = foldProposal(existing ? toPending(existing) : null, {
     data: next,
@@ -188,7 +194,9 @@ const propose = (store: Store, next: Blocks, op: SetText, base: string | null, a
   // first, and the caller re-reads — here it is an outright failure, because in
   // a single-threaded test nothing else can have folded.
   if (row.version !== plan.expectedVersion) {
-    throw new Error(`version CAS missed: ${row.version} !== ${plan.expectedVersion}`);
+    throw new Error(
+      `version CAS missed: ${row.version} !== ${plan.expectedVersion}`,
+    );
   }
   Object.assign(row, {
     data: plan.patch.data as Blocks,
@@ -220,15 +228,27 @@ describe("three consecutive agent batches", () => {
     const store = new Store({ text: ["one", "two", "three"] });
     const heads: (string | null)[] = [store.head];
     const batches = [
-      applyOps(store, { op: "set_text", index: 0, text: "ONE" }, at("2026-08-06T10:00:00Z")),
+      applyOps(
+        store,
+        { op: "set_text", index: 0, text: "ONE" },
+        at("2026-08-06T10:00:00Z"),
+      ),
     ];
     heads.push(store.head);
     batches.push(
-      applyOps(store, { op: "set_text", index: 1, text: "TWO" }, at("2026-08-06T10:01:00Z")),
+      applyOps(
+        store,
+        { op: "set_text", index: 1, text: "TWO" },
+        at("2026-08-06T10:01:00Z"),
+      ),
     );
     heads.push(store.head);
     batches.push(
-      applyOps(store, { op: "set_text", index: 2, text: "THREE" }, at("2026-08-06T10:02:00Z")),
+      applyOps(
+        store,
+        { op: "set_text", index: 2, text: "THREE" },
+        at("2026-08-06T10:02:00Z"),
+      ),
     );
     heads.push(store.head);
     return { store, heads, batches };
@@ -303,9 +323,16 @@ describe("a human saves between two agent batches", () => {
    */
   const run = () => {
     const store = new Store({ text: ["one", "two", "three"] });
-    const first = applyOps(store, { op: "set_text", index: 0, text: "ONE" }, at("2026-08-06T10:00:00Z"));
+    const first = applyOps(
+      store,
+      { op: "set_text", index: 0, text: "ONE" },
+      at("2026-08-06T10:00:00Z"),
+    );
     const stale = store.pending()!;
-    const saved = store.save({ text: ["one", "two", "EDITED BY HAND"] }, at("2026-08-06T10:00:30Z"));
+    const saved = store.save(
+      { text: ["one", "two", "EDITED BY HAND"] },
+      at("2026-08-06T10:00:30Z"),
+    );
     const second = applyOps(
       store,
       { op: "set_text", index: 1, text: "TWO" },
@@ -371,7 +398,11 @@ describe("selectAgentRead", () => {
   const committed = { id: "rev-head" };
 
   it("prefers the pending proposal over the committed document", () => {
-    const read = selectAgentRead({ head: "rev-head", pending: proposal, committed });
+    const read = selectAgentRead({
+      head: "rev-head",
+      pending: proposal,
+      committed,
+    });
     expect(read.source).toBe("proposal");
     expect(read.revision).toBe(proposal);
   });
@@ -379,13 +410,21 @@ describe("selectAgentRead", () => {
   it("bases a write on head even when it read the proposal", () => {
     // The whole point of keeping these two apart: recording the proposal's own
     // id would make approval's CAS test a value head never held.
-    const read = selectAgentRead({ head: "rev-head", pending: proposal, committed });
+    const read = selectAgentRead({
+      head: "rev-head",
+      pending: proposal,
+      committed,
+    });
     expect(read.base).toBe("rev-head");
     expect(read.base).not.toBe(proposal.id);
   });
 
   it("reads the committed document when nothing is pending", () => {
-    const read = selectAgentRead({ head: "rev-head", pending: null, committed });
+    const read = selectAgentRead({
+      head: "rev-head",
+      pending: null,
+      committed,
+    });
     expect(read.source).toBe("committed");
     expect(read.revision).toBe(committed);
     expect(read.base).toBe("rev-head");
@@ -400,7 +439,11 @@ describe("selectAgentRead", () => {
   });
 
   it("calls a document with no content at all empty rather than missing", () => {
-    const read = selectAgentRead({ head: null, pending: null, committed: null });
+    const read = selectAgentRead({
+      head: null,
+      pending: null,
+      committed: null,
+    });
     expect(read).toEqual({
       source: "empty",
       revision: null,

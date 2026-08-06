@@ -116,9 +116,11 @@ export default function ProposalReviewBar({ docId }: ProposalReviewBarProps) {
         >
           Reject
         </Button>
-        {/* Absent rather than disabled when stale: a disabled primary button
+        {
+          /* Absent rather than disabled when stale: a disabled primary button
             reads as "not yet", and there is no yet — the only exits are reject
-            or a re-run against current content (§3.6). */}
+            or a re-run against current content (§3.6). */
+        }
         {!stale && (
           <Button
             size="small"

@@ -468,10 +468,8 @@ export type ApprovalPlan =
 export const planApproval = (
   proposal: { baseRevisionId: string | null; staleAt: Date | null },
 ): ApprovalPlan =>
-  proposal.staleAt
-    ? { kind: "stale" }
-    : {
-      kind: "approve",
-      expectedHead: proposal.baseRevisionId,
-      patch: { proposedAt: null, staleAt: null },
-    };
+  proposal.staleAt ? { kind: "stale" } : {
+    kind: "approve",
+    expectedHead: proposal.baseRevisionId,
+    patch: { proposedAt: null, staleAt: null },
+  };

@@ -1,11 +1,11 @@
 # Gating agent changes
 
-**Status: proposal (2026-08-06), decisions locked — not started.** Builds
-directly on the content bridge
-([claude-code-lexical.md](./claude-code-lexical.md), phases 1–5 shipped) and on
-the `head` compare-and-set that landed in `fd67510e`. The eight decisions §8
-used to leave open were taken on 6 Aug 2026 and are folded into the design
-below.
+**Status: phases 1–5 shipped (6 Aug 2026), `232af829`…`e9dddb8b`.** Phases 6 and
+7 remain deferred pending the evidence §3.6 asks for. Builds directly on the
+content bridge ([claude-code-lexical.md](./claude-code-lexical.md), phases 1–5
+shipped) and on the `head` compare-and-set that landed in `fd67510e`. The eight
+decisions §8 used to leave open were taken on 6 Aug 2026 and are folded into the
+design below.
 
 Claude Code writes to the blog from the terminal, out of band, and the change is
 live the moment it lands. This plan makes an agent write **proposed** rather
@@ -371,16 +371,47 @@ rendering.
 Estimates are new-or-changed LOC and file counts, for a change that follows the
 existing conventions. They are estimates.
 
-| # | Phase                                                      | Size | Est.                           | Risk                                       | Blocks                      |
-| - | ---------------------------------------------------------- | ---- | ------------------------------ | ------------------------------------------ | --------------------------- |
-| 1 | Schema + repository + the §2.1 write paths                 | M    | ~230 LOC, 6 files, 1 migration | Low                                        | 2, 3                        |
-| 2 | MCP proposes; squash; flagged creates; owner-only reads    | M    | ~170 LOC, 3 files              | **Medium** — §3.2 is the subtle part       | 3                           |
-| 3 | Approve / reject / accept / discard routes, plus the count | S–M  | ~200 LOC, 6 files              | Low                                        | 4                           |
-| 4 | Surfacing: rail, badge, review bar, tab reload             | M–L  | ~500 LOC, 9–11 files           | Low, but the §2.1 filter must be got right | —                           |
-| — | **Walking skeleton = 1–4**                                 |      | **~1,100 LOC, ~22 files**      |                                            |                             |
-| 5 | Staleness marking (§3.6)                                   | S    | ~80 LOC                        | Low                                        | —                           |
-| 6 | Per-block approve/reject                                   | L    | ~500 LOC                       | Medium                                     | needs §3.3                  |
-| 7 | Rebase by block id                                         | M–L  | ~300 LOC                       | Medium                                     | needs §3.3, evidence from 5 |
+| # | Phase                                                      | Size | Est.                           | Actual                    | Risk                                       | Blocks                      |
+| - | ---------------------------------------------------------- | ---- | ------------------------------ | ------------------------- | ------------------------------------------ | --------------------------- |
+| 1 | Schema + repository + the §2.1 write paths                 | M    | ~230 LOC, 6 files, 1 migration | **shipped** — 9 files     | Low                                        | 2, 3                        |
+| 2 | MCP proposes; squash; flagged creates; owner-only reads    | M    | ~170 LOC, 3 files              | **shipped** — 9 files     | **Medium** — §3.2 is the subtle part       | 3                           |
+| 3 | Approve / reject / accept / discard routes, plus the count | S–M  | ~200 LOC, 6 files              | **shipped** — 7 files     | Low                                        | 4                           |
+| 4 | Surfacing: rail, badge, review bar, tab reload             | M–L  | ~500 LOC, 9–11 files           | **shipped** — 21 files    | Low, but the §2.1 filter must be got right | —                           |
+| — | **Walking skeleton = 1–4**                                 |      | **~1,100 LOC, ~22 files**      | **~2,000 LOC, ~40 files** |                                            |                             |
+| 5 | Staleness marking (§3.6)                                   | S    | ~80 LOC                        | **shipped** — ~400 LOC    | Low                                        | —                           |
+| 6 | Per-block approve/reject                                   | L    | ~500 LOC                       | deferred                  | Medium                                     | needs §3.3                  |
+| 7 | Rebase by block id                                         | M–L  | ~300 LOC                       | deferred                  | Medium                                     | needs §3.3, evidence from 5 |
+
+Where the estimates missed, and why — each of these is a claim in the sections
+above that the code did not support:
+
+- **Phase 1 named three head-moving write paths (§2.1); there are four.**
+  `findEditorDocument` repairs `head` with its own `orderBy createdAt desc`, the
+  identical bug in a different function — and it is the path the _editor_ loads
+  through.
+- **Phase 2's §2.1 gotcha names only `requireRevision`.** Three other paths
+  dereference a caller-supplied revision id: the fork route and the `?v=`
+  embed/view pages. The pages are the worse two, because no route wrapper is
+  involved at all, so `grep publicRoute` would not have found them. (Still open,
+  pre-existing and out of scope: none of those three checks that the `?v=`
+  revision belongs to the document in the path.)
+- **Nothing anywhere says `params.id` may be a handle.** `requireDocument`
+  accepts one; the repositories key on `documentId`. Passing `params.id` through
+  would have 404'd every proposal on a document with a handle.
+- **§3.9's baseline is not directly comparable.** "Does the editor's state
+  differ from the last acknowledged save" reads like a string compare. Lexical
+  normalizes on parse, so the stored bytes never match and every freshly-opened
+  tab answers dirty. And approval strands the tab's `lastSavedHead`, so its next
+  autosave 409s against the user's own approval — `adoptSavedState` is the half
+  §3.9 does not mention.
+- **§3.6 is much thinner than the work.** ~80 LOC covers marking alone. Once
+  `loadPost` prefers the proposal (phase 2), not deciding what the _agent_ does
+  with a stale one leaves it folding batches onto a row approval must refuse. A
+  stale proposal now loses to the live document on read and is superseded on
+  write — that is what makes "ask Claude again" happen rather than be advice.
+  §3.6 also implies marking is total; a proposal created while a save is in
+  flight is born on a base that is not head and no marker sees it. Approval
+  still refuses via the CAS.
 
 ### Phase 1 — schema + repository
 
