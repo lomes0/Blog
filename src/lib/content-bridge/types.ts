@@ -88,6 +88,75 @@ export interface CodeBlock {
   code: string;
 }
 
+export interface DividerBlock {
+  type: "divider";
+}
+
+/**
+ * A multi-column layout.
+ *
+ * `columns` is absent on a read, because each column is addressed in its own
+ * right (`b4.1`, `b4.2`) and reading it here would duplicate them. On a write
+ * it is optional: supplied, it replaces the columns; omitted on a replace, the
+ * existing columns are kept. Inserting a new layout must supply it.
+ */
+export interface LayoutBlock {
+  type: "layout";
+  /** A CSS grid track list, e.g. `"1fr 1fr"`. */
+  templateColumns: string;
+  columns?: WritableBlock[][];
+}
+
+/**
+ * A collapsible section. `body` follows the same rule as `LayoutBlock.columns`:
+ * absent on a read because the contents are addressed in their own right,
+ * optional on a write. It is not called `children` because an `AddressedBlock`
+ * already uses that name for the nesting a read hands back.
+ */
+export interface DetailsBlock {
+  type: "details";
+  summary: string;
+  open?: boolean;
+  body?: WritableBlock[];
+}
+
+/** The label of a collapsible section — its own block so it can be retitled. */
+export interface SummaryBlock extends TextOpacity {
+  type: "summary";
+  text: string;
+}
+
+export interface KanbanTask {
+  name: string;
+  description?: string;
+  /** Lane index, from 0. */
+  stage: number;
+  priority: "low" | "medium" | "high";
+  tags?: string[];
+  /** Minted when absent — supply them to keep a rebuild deterministic. */
+  id?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface KanbanBlock {
+  type: "kanban";
+  tasks: KanbanTask[];
+}
+
+/**
+ * A file attached to the document. Authorable only against a URL that already
+ * exists — the bridge cannot upload (plan §9).
+ */
+export interface AttachmentBlock {
+  type: "attachment";
+  url: string;
+  filename: string;
+  mimetype?: string;
+  size?: number;
+  expanded?: boolean;
+}
+
 /**
  * A block with no codec: readable, addressable, movable, deletable — never
  * rewritten (plan §4.6). `summary` is shape, not content: it says the block is
@@ -107,6 +176,12 @@ export type Block =
   | QuoteBlock
   | ListBlock
   | CodeBlock
+  | DividerBlock
+  | LayoutBlock
+  | DetailsBlock
+  | SummaryBlock
+  | KanbanBlock
+  | AttachmentBlock
   | OpaqueBlock;
 
 /** A block carrying its address, plus any nested blocks. */

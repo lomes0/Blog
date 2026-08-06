@@ -56,7 +56,7 @@ the whole run. `src/types/vitest.d.ts` is what gives `tsc` the globals;
 `compilerOptions.types` is deliberately left unset, because setting it would
 restrict resolution to only its entries and drop every other ambient package.
 
-Coverage is twelve specs, 233 assertions: `src/lib/__tests__/ordering.test.ts`
+Coverage is thirteen specs, 253 assertions: `src/lib/__tests__/ordering.test.ts`
 (fractional rank keys), `src/components/Layout/SideBar/__tests__/
 dragGeometry.test.ts` (sidebar drag thresholds — `dragGeometry.ts` is kept
 import-free precisely so it is testable without a browser),
@@ -77,13 +77,15 @@ re-copies nothing, and that a record is only released from the old database once
 the new one holds it), `src/lib/__tests__/scrollMemory.test.ts` (restoring a
 document to where it was left — what a stored offset map may contain, and when a
 restore has settled versus is still waiting on content that has not rendered),
-and three for the content bridge (`src/lib/content-bridge/__tests__/`) —
+and four for the content bridge (`src/lib/content-bridge/__tests__/`) —
 `inline.test.ts` (that a block's inline formatting survives a Markdown
 round-trip, over a corpus of literal marker characters plus 400 randomized
 runs), `ops.test.ts` (the plan's central claim: a block nobody named comes out
 byte-identical, plus snapshot addressing, atomicity and the freshness guard) and
 `outline.test.ts` (addressing, descriptors for blocks with no codec, and the
-content hash).
+content hash) and `codecs.test.ts` (a round-trip per graduated block type over a
+node with every optional field populated — the obligation
+docs/plans/claude-code-lexical.md §4.6.1 attaches to graduating one).
 
 All of these follow the same rule as `dragGeometry.ts`: the logic lives in an
 import-free module so it can be exercised without mounting anything. The IDB

@@ -404,6 +404,43 @@ worth having.
 The limit is not the architecture. It is whether a node's content is authorable
 by a language model at all, and that splits three ways.
 
+**What the corpus actually contains** (counted across every stored revision,
+recursively, 2026-08-06). The a-priori tiering below was written without this,
+and it was wrong in two places — see the note after the table.
+
+| Node type | Count | State |
+| --------- | ----- | ----- |
+| `paragraph` / `list` / `heading` / `code` / `quote` | 30k+ | phase 1 |
+| `horizontalrule` | 1785 | **graduated** as `divider` |
+| `layout-item` | 741 | opaque (structural; you address *into* it) |
+| `blog-tablecell` + `matheditor-tablecell` | 5943 | opaque — **the biggest remaining gap** |
+| `tablerow` | 1357 | opaque |
+| `layout-container` | 247 | **graduated** as `layout` |
+| `attachment` | 164 | graduated, but see below |
+| `canvas` | 131 | §4.6.3 |
+| `blog-table` + `matheditor-table` | 263 | opaque — ~263 tables |
+| `image` | 67 | §4.6.3 |
+| `sketch` | 64 | never (§tier 3) |
+| `graph` | 10 | never |
+| `math` | 8 | inline only — already handled in `inline.ts` |
+| `kanban`, `details-container`, `iframe`, `sticky`, `pagebreak` | **0** | no stored content at all |
+
+Two corrections this forced:
+
+- **`horizontalrule` was missing from the tiering entirely**, and is the second
+  most common non-prose block in the corpus. It is now `divider`.
+- **`kanban`, `details` and `iframe` have no stored content whatsoever.** They
+  were argued for on authoring value, which is real for `details` and `kanban`
+  (§5's two worked examples need them) — so those were built anyway — but
+  `iframe` has neither content nor a workflow and was skipped.
+
+A third thing only showed up when the codecs were run over real revisions:
+**`attachment` is an inline node**, sitting inside paragraphs rather than at
+block level, so the block codec never sees the 164 stored ones. They reach the
+reader through `describeNode` instead, and a paragraph containing one is
+text-opaque. Making attachments editable means giving them an inline spelling in
+§4.5, not a block codec.
+
 **Tier 1 — trivial, all scalars or plain recursion:**
 
 | Type | Shape | Note |
@@ -511,7 +548,7 @@ already stable for the editor's lifetime — `address.ts` resolves a path to a
 | 0 | ~~Refusal guard in the Copilot's Markdown path.~~ **Deleted — premise was false (§2.4).** The Copilot already protects rich nodes via opaque tokens; the guard would have removed capability and prevented nothing | |
 | 1 | **DONE.** `src/lib/content-bridge/`: `address`, `stateHash`, `inline` (+ property test), `blocks` (paragraph/heading/quote/list/code + opaque fallback), `ops`, `outline`. 50 specs; pure JSON, no DOM | |
 | 2 | **DONE.** `mcp/content-server.ts` on §5's surface; Markdown path retired. `mcp/lexical.ts`, `bootstrap.mjs` and `css-loader.mjs` **deleted** — the bridge is pure JSON, so the server needs no headless editor and no DOM shim, which closes the §9 fragility outright | |
-| 3 | Graduate codecs in tier order (§4.6.2), one at a time, each with the §4.6.1 round-trip spec: **math, iframe, details, layout, attachment, kanban** (trivial) → **table** (work) → **image, sticky, canvas-text** (needs §4.6.3 decided first) → **graph, sketch never** | §4.6.3 gates the third group |
+| 3 | **PART DONE.** Graduated `divider`, `layout`, `attachment`, `details`, `kanban` (+ `summary`), each with a §4.6.1 round-trip spec. 87.8% of real blocks now read as typed. **Remaining, in corpus order: nested `list` (1893), `table` (263), `layout-item` (741, structural).** `iframe` skipped — zero occurrences, no workflow, inherits image's caption problem | §4.6.3 still gates image/sticky/canvas |
 | 4 | `copilotAgentExecutors` moves onto the core. Now a **capability upgrade, not a bug fix** (§2.4): it replaces unreadable base64 tokens with blocks the agent can actually read and author | |
 | 5 | *Optional.* Persistent ids, if concurrent editing proves painful — pays §2.1's cost knowingly: `super.exportJSON()` + `updateFromJSON` across ~20 node classes, a conformance spec per class, and a backfill | |
 
@@ -524,6 +561,15 @@ the applier is better off on serialized JSON than on a live editor (§4.2), and
 a tree walk that lazily creates `children: []` breaks the central preservation
 property outright — a kanban node gained a field it never had, and the ops spec
 caught it.
+
+Phase 3 was reordered by evidence rather than by the tiering in §4.6.2: the
+counts above put `horizontalrule` (absent from the plan) second by volume, and
+showed that three of the types argued for as "trivial and useful" have no
+stored content at all. It also surfaced a design bug — the outline advertised a
+kanban as editable and then refused the edit, because one flag was answering
+two different questions. `editable` (can `replace_block` touch it) and
+`textEditable` (will `set_text` work) are now separate, with one shared
+definition so the outline and the applier cannot drift.
 
 Phase 2 removed more than it added. Choosing plain JSON in phase 1 meant the
 MCP server stopped needing a headless editor at all, so three files and a whole

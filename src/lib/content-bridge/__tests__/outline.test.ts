@@ -8,7 +8,7 @@
  */
 import { formatAddress, parseAddress, walkBlocks } from "@/lib/content-bridge/address";
 import { describeNode, nodeToBlock } from "@/lib/content-bridge/blocks";
-import { outline, readAll, readBlocks } from "@/lib/content-bridge/outline";
+import { formatOutline, outline, readAll, readBlocks } from "@/lib/content-bridge/outline";
 import { stateHash } from "@/lib/content-bridge/stateHash";
 import type { SerializedNode } from "@/lib/content-bridge/types";
 import { makeState, paragraph } from "./fixture";
@@ -63,7 +63,7 @@ describe("outline", () => {
       "b1 heading[1]",
       "b2 paragraph",
       "b3 kanban",
-      "b4 layout-container",
+      "b4 layout",
       "b4.1 layout-item",
       "b4.1.1 paragraph",
       "b4.2 layout-item",
@@ -74,20 +74,35 @@ describe("outline", () => {
     ]);
   });
 
-  it("describes opaque blocks by shape", () => {
+  it("previews graduated block types by their own shape", () => {
     const byId = new Map(outline(makeState()).blocks.map((b) => [b.id, b]));
     expect(byId.get("b3")?.preview).toBe("2 lanes · 3 cards");
-    expect(byId.get("b4")?.preview).toBe("2 columns");
+    expect(byId.get("b4")?.preview).toBe("1fr 1fr");
+  });
+
+  it("still describes blocks with no codec by shape", () => {
+    const byId = new Map(outline(makeState()).blocks.map((b) => [b.id, b]));
     expect(byId.get("b4.2.1")?.preview).toBe("geogebra · f(x)=x^2");
     expect(byId.get("b7")?.preview).toBe("page break");
   });
 
-  it("marks what may and may not be rewritten", () => {
+  it("separates what can be replaced from what set_text accepts", () => {
+    // Conflating these advertised a kanban as editable and then refused the
+    // edit: it has no single text field, but replace_block works fine.
     const byId = new Map(outline(makeState()).blocks.map((b) => [b.id, b]));
-    expect(byId.get("b2")?.editable).toBe(true);
-    expect(byId.get("b5")?.editable).toBe(true);
-    expect(byId.get("b3")?.editable).toBe(false);
-    expect(byId.get("b4.2.1")?.editable).toBe(false);
+    expect(byId.get("b2")).toMatchObject({ editable: true, textEditable: true });
+    expect(byId.get("b5")).toMatchObject({ editable: true, textEditable: true });
+    expect(byId.get("b3")).toMatchObject({ editable: true, textEditable: false });
+    expect(byId.get("b4")).toMatchObject({ editable: true, textEditable: false });
+    // A graph has no codec at all — neither op will touch it.
+    expect(byId.get("b4.2.1")).toMatchObject({ editable: false, textEditable: false });
+  });
+
+  it("marks each refusal distinctly in the rendered outline", () => {
+    const rendered = formatOutline(outline(makeState()));
+    expect(rendered).toMatch(/b3\s+kanban.*\[replace only\]/);
+    expect(rendered).toMatch(/b4\.2\.1\s+graph.*\[read-only\]/);
+    expect(rendered).not.toMatch(/b2\s+paragraph.*\[/);
   });
 
   it("previews prose and sizes it, without carrying the body", () => {
@@ -132,12 +147,12 @@ describe("readBlocks", () => {
     expect(result.missing).toEqual(["b99"]);
   });
 
-  it("reads an opaque block as a descriptor rather than refusing", () => {
-    expect(readBlocks(makeState(), ["b3"]).blocks[0]).toEqual({
-      id: "b3",
+  it("reads a block with no codec as a descriptor rather than refusing", () => {
+    expect(readBlocks(makeState(), ["b4.2.1"]).blocks[0]).toEqual({
+      id: "b4.2.1",
       type: "opaque",
-      nodeType: "kanban",
-      summary: "2 lanes · 3 cards",
+      nodeType: "graph",
+      summary: "geogebra · f(x)=x^2",
     });
   });
 });
@@ -197,7 +212,9 @@ describe("codecs", () => {
     expect(outline(state).blocks[1]).toMatchObject({
       kind: "paragraph",
       preview: "[2 notes]",
-      editable: false,
+      // Replaceable whole, but set_text would flatten the canvas away.
+      editable: true,
+      textEditable: false,
     });
   });
 });

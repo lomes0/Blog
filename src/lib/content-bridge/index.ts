@@ -12,7 +12,15 @@
  * and in the MCP server, and is testable without mounting anything.
  */
 export { formatAddress, parseAddress, locate, walkBlocks } from "./address";
-export { describeNode, isTextEditable, nodeToBlock, blockToNode } from "./blocks";
+export {
+  blockText,
+  blockToNode,
+  canSetText,
+  describeNode,
+  isTextEditable,
+  nodeToBlock,
+  TEXT_BLOCKS,
+} from "./blocks";
 export { normalizeInline, parseInline, renderInline } from "./inline";
 export { applyOps, emptyState, OpError, stateFromBlocks } from "./ops";
 export type { ApplyResult, InsertTarget, Op } from "./ops";
@@ -22,15 +30,22 @@ export { assertFresh, StaleStateError, stateHash } from "./stateHash";
 export type {
   Address,
   AddressedBlock,
+  AttachmentBlock,
   Block,
   CodeBlock,
+  DetailsBlock,
+  DividerBlock,
   HeadingBlock,
+  KanbanBlock,
+  KanbanTask,
+  LayoutBlock,
   ListBlock,
   ListItem,
   OpaqueBlock,
   ParagraphBlock,
   QuoteBlock,
   SerializedNode,
+  SummaryBlock,
   StoredState,
   WritableBlock,
 } from "./types";

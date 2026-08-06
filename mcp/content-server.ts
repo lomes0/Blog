@@ -33,6 +33,7 @@ import {
   stateFromBlocks,
   stateHash,
   walkBlocks,
+  blockText,
   nodeToBlock,
   type Op,
   type StoredState,
@@ -146,6 +147,14 @@ const listItemSchema = z.object({
   indent: z.number().int().min(0).default(0),
 });
 
+const kanbanTaskSchema = z.object({
+  name: z.string(),
+  description: z.string().optional(),
+  stage: z.number().int().min(0).default(0),
+  priority: z.enum(["low", "medium", "high"]).default("medium"),
+  tags: z.array(z.string()).optional(),
+});
+
 const blockSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("paragraph"), text: z.string() }),
   z.object({
@@ -163,6 +172,34 @@ const blockSchema = z.discriminatedUnion("type", [
     type: z.literal("list"),
     listType: z.enum(["bullet", "number", "check"]).default("bullet"),
     items: z.array(listItemSchema),
+  }),
+  z.object({ type: z.literal("divider") }),
+  z.object({ type: z.literal("summary"), text: z.string() }),
+  z.object({
+    type: z.literal("attachment"),
+    url: z.string(),
+    filename: z.string(),
+    mimetype: z.string().optional(),
+    size: z.number().optional(),
+    expanded: z.boolean().optional(),
+  }),
+  z.object({
+    type: z.literal("kanban"),
+    tasks: z.array(kanbanTaskSchema),
+  }),
+  // Containers nest, so their bodies are typed loosely here and validated by
+  // the codec. Zod cannot express the recursion inside a discriminated union
+  // without a lazy schema the MCP JSON-Schema conversion would not survive.
+  z.object({
+    type: z.literal("layout"),
+    templateColumns: z.string().default("1fr 1fr"),
+    columns: z.array(z.array(z.unknown())).optional(),
+  }),
+  z.object({
+    type: z.literal("details"),
+    summary: z.string(),
+    open: z.boolean().optional(),
+    body: z.array(z.unknown()).optional(),
   }),
 ]);
 
@@ -190,11 +227,18 @@ const opSchema = z.discriminatedUnion("op", [
 const BLOCK_DOC =
   "Authorable block types: paragraph {text}, heading {level 1-6, text}, " +
   "quote {text}, code {language, code}, list {listType bullet|number|check, " +
-  "items[{text, checked?, indent}]}. Inline formatting inside `text` uses " +
-  "**bold**, __italic__, `code`, ~~strike~~, ==highlight==, ++underline++, " +
-  "^^sup^^, ,,sub,,, [link](url) and $latex$. Every other node type " +
-  "(kanban, math, image, table, graph, …) is read-only: it can be read, moved " +
-  "or deleted by address, but not rewritten.";
+  "items[{text, checked?, indent}]}, divider {}, " +
+  "attachment {url, filename, mimetype?, size?}, " +
+  "kanban {tasks[{name, description?, stage, priority low|medium|high, tags?}]}, " +
+  "layout {templateColumns e.g. \"1fr 1fr\", columns[[block,…],[block,…]]}, " +
+  "details {summary, open?, body[block,…]}, summary {text}. " +
+  "For layout and details, columns/body are required when inserting a new one " +
+  "and optional when replacing — omit them to keep the contents already there. " +
+  "Inline formatting inside `text` uses **bold**, __italic__, `code`, " +
+  "~~strike~~, ==highlight==, ++underline++, ^^sup^^, ,,sub,,, [link](url) and " +
+  "$latex$. Node types with no codec (math as a block, image, table, graph, " +
+  "sketch, canvas, sticky) are read-only: they can be read, moved or deleted " +
+  "by address, but not rewritten.";
 
 const server = new McpServer({ name: "blog-content", version: "0.2.0" });
 
@@ -362,14 +406,7 @@ server.registerTool(
       for (const { address, node } of walkBlocks(revision.data as StoredState)) {
         if (hits.length >= limit) break;
         const block = nodeToBlock(node);
-        const haystack =
-          block.type === "opaque"
-            ? block.summary
-            : block.type === "code"
-              ? block.code
-              : block.type === "list"
-                ? block.items.map((item) => item.text).join("\n")
-                : block.text;
+        const haystack = blockText(block);
         if (!haystack.toLowerCase().includes(needle)) continue;
 
         const at = haystack.toLowerCase().indexOf(needle);

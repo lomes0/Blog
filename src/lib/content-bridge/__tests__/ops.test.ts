@@ -153,24 +153,31 @@ describe("applyOps — atomicity", () => {
 describe("applyOps — what may not be rewritten", () => {
   it("refuses to set text on a block with no codec", () => {
     const state = makeState();
-    expect(() => apply(state, [{ op: "set_text", id: "b3", text: "nope" }])).toThrow(
-      /kanban, which has no codec/,
+    // b4.2.1 is a graph — a GeoGebra state blob that will never have a codec.
+    expect(() => apply(state, [{ op: "set_text", id: "b4.2.1", text: "nope" }])).toThrow(
+      /graph, which has no codec/,
     );
   });
 
-  it("still allows moving and deleting an opaque block", () => {
+  it("refuses set_text on a block that has no single text field", () => {
     const state = makeState();
-    const moved = apply(state, [{ op: "move_block", id: "b3", before: "b1" }]);
-    expect((moved.state.root.children as SerializedNode[])[0].type).toBe("kanban");
+    expect(() => apply(state, [{ op: "set_text", id: "b3", text: "nope" }])).toThrow(
+      /kanban block has no single text field/,
+    );
+  });
+
+  it("still allows moving and deleting a block with no codec", () => {
+    const state = makeState();
+    const moved = apply(state, [{ op: "move_block", id: "b4.2.1", before: "b1" }]);
+    expect((moved.state.root.children as SerializedNode[])[0].type).toBe("graph");
     // …and it survived the trip unchanged.
+    const original = (at(makeState(), 3).children as SerializedNode[])[1];
     expect(snapshot((moved.state.root.children as SerializedNode[])[0])).toBe(
-      snapshot(at(makeState(), 2)),
+      snapshot((original.children as SerializedNode[])[0]),
     );
 
-    const deleted = apply(state, [{ op: "delete_block", id: "b3" }]);
-    expect(
-      (deleted.state.root.children as SerializedNode[]).some((n) => n.type === "kanban"),
-    ).toBe(false);
+    const deleted = apply(state, [{ op: "delete_block", id: "b4.2.1" }]);
+    expect(JSON.stringify(deleted.state)).not.toContain("GEOGEBRA_STATE_BLOB");
   });
 
   it("refuses to flatten inline formatting it cannot express", () => {

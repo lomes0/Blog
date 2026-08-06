@@ -27,7 +27,12 @@ from the format covering every node type. Block types with no codec (kanban,
 math, image, table, graph, …) are still listed, addressable, movable and
 deletable; they just cannot be rewritten. Under the old Markdown transport they
 were simply absent from what Claude saw, with nothing to say they had been
-there.
+there. The outline marks the difference: `[read-only]` has no codec at all,
+`[replace only]` can be replaced but has no single text field for `set_text`.
+
+Across this blog's stored content, 87.8% of blocks now read as a typed block
+rather than an opaque descriptor. The largest remaining gaps are nested lists
+and tables.
 
 `stateHash` is a hash of the document's content, and it does double duty: it
 detects that someone else wrote, *and* certifies that the addresses still point
@@ -52,8 +57,11 @@ new node class touching browser APIs at import can no longer break it.
 | `apply_ops`    | Edit by block, all-or-nothing, guarded by `stateHash` |
 | `create_post`  | New post from blocks — real code nodes and lists, not fenced Markdown |
 
-Authorable block types are paragraph, heading, quote, code and list. Inline
-formatting inside a block's `text` uses `**bold**`, `__italic__`, `` `code` ``,
+Authorable block types are paragraph, heading, quote, code, list, divider,
+details, layout, kanban, attachment and summary. For `layout` and `details`, the
+nested `columns`/`body` are required when inserting a new one and optional when
+replacing — omit them to keep the contents already there. Inline formatting
+inside a block's `text` uses `**bold**`, `__italic__`, `` `code` ``,
 `~~strike~~`, `==highlight==`, `++underline++`, `^^sup^^`, `,,sub,,`,
 `[link](url)` and `$latex$` — italic is `__` rather than `*` so that no
 delimiter is a prefix of another.

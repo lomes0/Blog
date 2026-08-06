@@ -14,8 +14,14 @@
  * deleted `b2`. That is why targets are resolved to node references up front
  * and positions recomputed at apply time, rather than re-walking paths.
  */
-import type { Address, SerializedNode, StoredState, WritableBlock } from "./types";
-import { blockToNode, isTextEditable, nodeToBlock } from "./blocks";
+import type {
+  Address,
+  ParagraphBlock,
+  SerializedNode,
+  StoredState,
+  WritableBlock,
+} from "./types";
+import { blockToNode, canSetText, nodeToBlock, TEXT_BLOCKS } from "./blocks";
 import { assertFresh, stateHash } from "./stateHash";
 import { walkBlocks } from "./address";
 
@@ -165,20 +171,23 @@ function build(
 function applySetText(target: Target, text: string, opIndex: number): void {
   const block = nodeToBlock(target.node);
 
-  if (block.type === "opaque") {
-    throw new OpError(
-      `block is a ${block.nodeType}, which has no codec — it can be moved or ` +
-        `deleted, but not rewritten`,
-      opIndex,
-    );
-  }
-  if (block.type === "list") {
-    throw new OpError(
-      "a list's text lives in its items — use replace_block",
-      opIndex,
-    );
-  }
-  if (!isTextEditable(block)) {
+  // One gate, shared with the outline's `textEditable` so the two cannot
+  // disagree about what will be accepted. The branches below only choose which
+  // explanation to give.
+  if (!canSetText(block)) {
+    if (block.type === "opaque") {
+      throw new OpError(
+        `block is a ${block.nodeType}, which has no codec — it can be moved or ` +
+          `deleted, but not rewritten`,
+        opIndex,
+      );
+    }
+    if (!TEXT_BLOCKS.has(block.type) && block.type !== "code") {
+      throw new OpError(
+        `a ${block.type} block has no single text field — use replace_block`,
+        opIndex,
+      );
+    }
     throw new OpError(
       "this block carries inline formatting the bridge cannot express, so " +
         "setting its text would flatten it — use replace_block to overwrite it " +
@@ -192,7 +201,10 @@ function applySetText(target: Target, text: string, opIndex: number): void {
   const next =
     block.type === "code"
       ? blockToNode({ ...block, code: text }, target.node)
-      : blockToNode({ ...block, text }, target.node);
+      : blockToNode(
+        { ...(block as ParagraphBlock), text } as WritableBlock,
+        target.node,
+      );
 
   const position = positionOf(target);
   childrenOf(target.parent)[position] = next;

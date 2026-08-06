@@ -16,14 +16,18 @@
  * *out* of preserving something rather than opt in.
  */
 import type {
+  AttachmentBlock,
   Block,
   CodeBlock,
+  DetailsBlock,
   HeadingBlock,
+  KanbanTask,
   ListBlock,
   ListItem,
   ParagraphBlock,
   QuoteBlock,
   SerializedNode,
+  SummaryBlock,
   WritableBlock,
 } from "./types";
 import { parseInline, renderInline } from "./inline";
@@ -76,15 +80,10 @@ export function describeNode(node: SerializedNode): string {
       ).size;
       return `${plural(lanes, "lane")} · ${plural(tasks.length, "card")}`;
     }
-    case "layout-container": {
-      const columns = str(node.templateColumns).trim().split(/\s+/).filter(Boolean);
-      return plural(columns.length, "column");
-    }
-    case "details-container": {
-      const summary = kids.find((k) => k.type === "details-summary");
-      const label = summary ? plainText(childrenOf(summary)).trim() : "";
-      return label ? `"${label}"` : "collapsible";
-    }
+    case "layout-item":
+      return `column · ${plural(kids.length, "block")}`;
+    case "details-content":
+      return plural(kids.length, "block");
     case "math":
       return str(node.value);
     case "graph":
@@ -95,10 +94,15 @@ export function describeNode(node: SerializedNode): string {
       return str(node.altText) || str(node.src);
     case "iframe":
       return str(node.src);
-    case "attachment":
-      return `${str(node.filename)}${node.size ? ` · ${node.size} bytes` : ""}`;
     case "sticky":
       return "sticky note";
+    // Attachments live *inside* paragraphs in real content, so they are reached
+    // as inline nodes rather than as blocks. The block codec below still builds
+    // one, but this is the path that describes the ones already stored.
+    case "attachment":
+      return `${str(node.filename)}${
+        typeof node.size === "number" ? ` · ${node.size} bytes` : ""
+      }`;
     case "canvas": {
       const notes = Array.isArray(node.notes) ? node.notes.length : 0;
       return plural(notes, "note");
@@ -153,11 +157,81 @@ function readListItems(node: SerializedNode): {
   return { items, readonlyText };
 }
 
+const num = (value: unknown, fallback: number): number =>
+  typeof value === "number" && Number.isFinite(value) ? value : fallback;
+
+/** Read the label out of a details container's summary child. */
+const summaryTextOf = (node: SerializedNode): string => {
+  const summary = childrenOf(node).find((k) => k.type === "details-summary");
+  if (!summary) return "";
+  return renderInline(childrenOf(summary)) ?? plainText(childrenOf(summary));
+};
+
+function readKanbanTasks(node: SerializedNode): KanbanTask[] {
+  const tasks = Array.isArray(node.tasks) ? node.tasks : [];
+  return tasks.map((raw) => {
+    const task = raw as Record<string, unknown>;
+    const priority = str(task.priority, "medium");
+    return {
+      id: str(task.id),
+      name: str(task.name),
+      ...(task.description === undefined
+        ? {}
+        : { description: str(task.description) }),
+      stage: num(task.stage, 0),
+      priority:
+        priority === "low" || priority === "high" || priority === "medium"
+          ? priority
+          : "medium",
+      tags: Array.isArray(task.tags) ? task.tags.map((t) => String(t)) : [],
+      createdAt: str(task.createdAt),
+      updatedAt: str(task.updatedAt),
+    };
+  });
+}
+
 /** Read one node as a block. Never throws: an unknown type reads as opaque. */
 export function nodeToBlock(node: SerializedNode): Block {
   const kids = childrenOf(node);
 
   switch (node.type) {
+    case "horizontalrule":
+      return { type: "divider" };
+
+    case "layout-container":
+      return { type: "layout", templateColumns: str(node.templateColumns) };
+
+    case "details-container": {
+      const block: DetailsBlock = {
+        type: "details",
+        summary: summaryTextOf(node),
+      };
+      if (typeof node.open === "boolean") block.open = node.open;
+      return block;
+    }
+
+    case "details-summary": {
+      const text = renderInline(kids);
+      const block: SummaryBlock = { type: "summary", text: text ?? plainText(kids) };
+      if (text === null) block.readonlyText = true;
+      return block;
+    }
+
+    case "kanban":
+      return { type: "kanban", tasks: readKanbanTasks(node) };
+
+    case "attachment": {
+      const block: AttachmentBlock = {
+        type: "attachment",
+        url: str(node.url),
+        filename: str(node.filename),
+      };
+      if (node.mimetype !== undefined) block.mimetype = str(node.mimetype);
+      if (typeof node.size === "number") block.size = node.size;
+      if (typeof node.expanded === "boolean") block.expanded = node.expanded;
+      return block;
+    }
+
     case "paragraph":
     case "quote": {
       const text = renderInline(kids);
@@ -237,8 +311,48 @@ const textLeaf = (text: string): SerializedNode => ({
   style: "",
 });
 
-/** Phase-1 codecs all name their node type directly. */
-const blockTypeToNodeType = (block: WritableBlock): string => block.type;
+/** Block type -> node type, where they differ. */
+const NODE_TYPE_OF: Readonly<Record<string, string>> = {
+  divider: "horizontalrule",
+  layout: "layout-container",
+  details: "details-container",
+  summary: "details-summary",
+};
+
+const blockTypeToNodeType = (block: WritableBlock): string =>
+  NODE_TYPE_OF[block.type] ?? block.type;
+
+/**
+ * Ids and timestamps for a freshly authored kanban card.
+ *
+ * This is the one impure corner of the codecs: a `Task` the app will read needs
+ * an id and timestamps, and a caller composing a board from prose has none to
+ * give. Supply them explicitly to keep a rebuild deterministic — the round-trip
+ * spec does.
+ */
+const mintId = (): string =>
+  globalThis.crypto?.randomUUID?.() ??
+  `t_${Math.floor(Math.random() * 1e12).toString(36)}`;
+
+function kanbanTaskNode(task: KanbanTask): Record<string, unknown> {
+  const stamp = task.updatedAt || task.createdAt || new Date().toISOString();
+  return {
+    id: task.id || mintId(),
+    name: task.name ?? "",
+    ...(task.description === undefined ? {} : { description: task.description }),
+    stage: Number.isInteger(task.stage) ? task.stage : 0,
+    priority: task.priority ?? "medium",
+    tags: task.tags ?? [],
+    createdAt: task.createdAt || stamp,
+    updatedAt: task.updatedAt || stamp,
+  };
+}
+
+const elementNode = (
+  type: string,
+  children: SerializedNode[],
+  extra: Record<string, unknown> = {},
+): SerializedNode => ({ ...ELEMENT_DEFAULTS, type, ...extra, children });
 
 function listItemNode(item: ListItem, index: number): SerializedNode {
   const node: SerializedNode = {
@@ -311,10 +425,128 @@ export function blockToNode(
         children: items.map(listItemNode),
       };
     }
+    case "divider":
+      // A decorator leaf: no children, no element chrome. Carry through
+      // anything a future version of the node adds.
+      return { ...carried, type: "horizontalrule", version: 1 };
+
+    case "kanban":
+      return {
+        ...carried,
+        type: "kanban",
+        version: 1,
+        style: str(carried?.style),
+        tasks: (block.tasks ?? []).map(kanbanTaskNode),
+      };
+
+    case "attachment":
+      return {
+        ...carried,
+        type: "attachment",
+        version: 1,
+        url: str(block.url),
+        filename: str(block.filename),
+        mimetype: block.mimetype ?? str(carried?.mimetype),
+        size: block.size ?? num(carried?.size, 0),
+        expanded: block.expanded ?? carried?.expanded ?? false,
+        editing: false,
+      };
+
+    case "summary":
+      return elementNode("details-summary", parseInline(block.text ?? ""), {
+        ...carried,
+        editable: carried?.editable ?? true,
+      });
+
+    case "layout": {
+      // Columns absent on a replace means keep the ones already there — the
+      // same carry-through rule as any unmodelled field. On an insert there is
+      // nothing to keep, so they are required.
+      const children = block.columns
+        ? block.columns.map((column) =>
+          elementNode("layout-item", column.map((child) => blockToNode(child))))
+        : childrenOf(carried ?? {} as SerializedNode);
+      if (children.length === 0) {
+        throw new Error("a new layout needs `columns`, e.g. [[…],[…]]");
+      }
+      return {
+        ...base,
+        type: "layout-container",
+        templateColumns:
+          block.templateColumns || str(carried?.templateColumns, "1fr 1fr"),
+        children,
+      };
+    }
+
+    case "details": {
+      const summary = elementNode(
+        "details-summary",
+        parseInline(block.summary ?? ""),
+        { editable: true },
+      );
+      const previousContent = childrenOf(carried ?? {} as SerializedNode).find(
+        (child) => child.type === "details-content",
+      );
+      const content = block.body
+        ? elementNode(
+          "details-content",
+          block.body.map((child) => blockToNode(child)),
+        )
+        : previousContent;
+      if (!content) {
+        throw new Error("a new details block needs `body`");
+      }
+      return {
+        ...base,
+        type: "details-container",
+        open: block.open ?? carried?.open ?? true,
+        editable: carried?.editable ?? true,
+        children: [summary, content],
+      };
+    }
+
     default: {
       const unreachable = block as { type: string };
       throw new Error(`no codec for block type "${unreachable.type}"`);
     }
+  }
+}
+
+/** Blocks whose prose lives in a `text` field that `set_text` may replace. */
+export const TEXT_BLOCKS: ReadonlySet<string> = new Set([
+  "paragraph",
+  "heading",
+  "quote",
+  "summary",
+]);
+
+/**
+ * Text worth searching, for any block — one definition, so `search` and the
+ * outline cannot disagree about what a block "says".
+ */
+export function blockText(block: Block): string {
+  switch (block.type) {
+    case "paragraph":
+    case "heading":
+    case "quote":
+    case "summary":
+      return block.text;
+    case "code":
+      return block.code;
+    case "list":
+      return block.items.map((item) => item.text).join("\n");
+    case "details":
+      return block.summary;
+    case "kanban":
+      return block.tasks
+        .map((task) => [task.name, task.description].filter(Boolean).join(" — "))
+        .join("\n");
+    case "attachment":
+      return `${block.filename} ${block.url}`;
+    case "opaque":
+      return block.summary;
+    default:
+      return "";
   }
 }
 
@@ -327,3 +559,16 @@ export function blockToNode(
 export const isTextEditable = (block: Block): boolean =>
   block.type !== "opaque" &&
   !("readonlyText" in block && block.readonlyText === true);
+
+/**
+ * True when `set_text` will work on this block.
+ *
+ * Distinct from "can be rewritten at all": a kanban or a layout is perfectly
+ * replaceable via `replace_block`, it just has no single text field to set.
+ * Conflating the two made the outline advertise a kanban as editable and then
+ * refuse the edit. One definition here so the outline and the applier cannot
+ * drift apart on it.
+ */
+export const canSetText = (block: Block): boolean =>
+  (TEXT_BLOCKS.has(block.type) || block.type === "code") &&
+  isTextEditable(block);

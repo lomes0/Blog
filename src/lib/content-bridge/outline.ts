@@ -13,7 +13,7 @@
  */
 import type { Address, AddressedBlock, Block, StoredState } from "./types";
 import { walkBlocks } from "./address";
-import { isTextEditable, nodeToBlock } from "./blocks";
+import { canSetText, nodeToBlock } from "./blocks";
 import { stateHash } from "./stateHash";
 
 export interface OutlineEntry {
@@ -26,8 +26,10 @@ export interface OutlineEntry {
   preview: string;
   /** Length of the block's text, where it has any. */
   chars?: number;
-  /** False for opaque blocks and for text the bridge cannot safely rewrite. */
+  /** False only for opaque blocks: whether `replace_block` can rewrite it. */
   editable: boolean;
+  /** Whether `set_text` works — false for blocks with no single text field. */
+  textEditable: boolean;
 }
 
 export interface Outline {
@@ -57,11 +59,14 @@ function kindOf(block: Block): string {
   }
 }
 
+const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
+
 function entryFor(block: Block): { preview: string; chars?: number } {
   switch (block.type) {
     case "paragraph":
     case "heading":
     case "quote":
+    case "summary":
       return { preview: truncate(block.text), chars: block.text.length };
     case "code": {
       const lines = block.code === "" ? 0 : block.code.split("\n").length;
@@ -74,6 +79,24 @@ function entryFor(block: Block): { preview: string; chars?: number } {
         preview: `${count} item${count === 1 ? "" : "s"}${first ? ` · ${truncate(first)}` : ""}`,
       };
     }
+    case "divider":
+      return { preview: "———" };
+    case "layout":
+      return { preview: block.templateColumns };
+    case "details":
+      return {
+        preview: `${block.open === false ? "closed" : "open"} · ${truncate(block.summary)}`,
+      };
+    case "kanban": {
+      const lanes = new Set(block.tasks.map((task) => task.stage)).size;
+      return {
+        preview: `${plural(lanes, "lane")} · ${plural(block.tasks.length, "card")}`,
+      };
+    }
+    case "attachment":
+      return {
+        preview: `${block.filename}${block.size ? ` · ${block.size} bytes` : ""}`,
+      };
     case "opaque":
       return { preview: block.summary };
   }
@@ -89,7 +112,8 @@ export function outline(state: StoredState): Outline {
       depth,
       kind: kindOf(block),
       preview,
-      editable: isTextEditable(block),
+      editable: block.type !== "opaque",
+      textEditable: canSetText(block),
     };
     if (chars !== undefined) entry.chars = chars;
     return entry;
@@ -101,17 +125,23 @@ export function outline(state: StoredState): Outline {
 /**
  * Render an outline the way §4.4 shows it — for a terminal, not for parsing.
  *
- * Blocks that cannot be rewritten are marked, because the alternative is the
- * caller discovering it by having a write refused.
+ * Blocks are marked with what they will refuse, because the alternative is the
+ * caller discovering it by having a write rejected: `[read-only]` cannot be
+ * rewritten at all, `[replace only]` has no single text field for `set_text`.
  */
 export function formatOutline(result: Outline): string {
   return result.blocks
-    .map(({ id, depth, kind, preview, chars, editable }) => {
+    .map(({ id, depth, kind, preview, chars, editable, textEditable }) => {
       const indent = "  ".repeat(depth);
       const size = chars !== undefined && chars > 0 ? `  (${chars} chars)` : "";
-      return `${id.padEnd(8)}${indent}${kind.padEnd(14)}${preview}${size}${
-        editable ? "" : "  [read-only]"
-      }`;
+      const note = !editable
+        ? "  [read-only]"
+        : textEditable
+          ? ""
+          : "  [replace only]";
+      // Trailing space, not just padding: a kind longer than the column would
+      // otherwise run straight into the preview ("details-content1 block").
+      return `${id.padEnd(8)}${indent}${kind.padEnd(15)} ${preview}${size}${note}`;
     })
     .join("\n");
 }
