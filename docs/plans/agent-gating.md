@@ -40,17 +40,17 @@ Measured against the tree at `05ba3a0d`.
 | --- | --- | --- |
 | Full-state revisions | `Revision.data` | The proposal payload, already stored per write |
 | Conditional head write | `updateDocument(…, expectedHead)`, `repositories/document.ts` | Approval that cannot clobber a concurrent save |
-| Revision diff view | `components/Diff/index.tsx` | `generateHtml` both sides + `HtmlDiff.execute`. Compares **any two revision ids** — this is the review UI, near enough |
+| Revision diff view | `components/Diff/index.tsx` | `generateHtml` both sides + `HtmlDiff.execute`. Compares **any two revision ids** — this is the review UI, near enough, once its fallback branch stops writing (§2.1) |
 | Diff wiring | `setDiffRevisions` / per-pane `diffOpen` (`store/app.ts:310,543`) | "Review" = two dispatches |
 | A rail to hang it on | `Layout/RightRail/RevisionsSection.tsx` | A sibling `ProposalsSection` is ~an afternoon |
 | Revision fetch | `GET /api/revisions/[id]` | Loading a proposal's content client-side |
 | Conflict handling in the editor | `useSave.ts`, `pendingSaves.ts` | A tab that loses a race already stops, buffers and recovers |
 | Persistent block ids | `content-bridge/blockId.ts` | What would make rebasing and per-block approval possible later |
 
-### 2.1 Three gotchas, all findable only by reading
+### 2.1 Five gotchas, all findable only by reading
 
-**The client never sees a non-head revision.** `toCloudDocument`
-(`repositories/document.ts:99`) does
+**The client never sees a non-head revision — except on a collab document.**
+`toCloudDocument` (`repositories/document.ts:99`) does
 
 ```ts
 const revisions = post.collab
@@ -58,10 +58,41 @@ const revisions = post.collab
   : post.revisions.filter((r) => r.id === post.head);
 ```
 
-and `revisionsSelect` is `take: 1` besides. So a proposal is invisible to the
-app **by construction** — `post.revisions` would arrive empty. Surfacing
-proposals is not "they show up in the list"; it needs a deliberate change here or
-its own fetch. Phase 4 owns it.
+and `revisionsSelect` is `take: 1` besides. On the ordinary branch a proposal is
+invisible **by construction** — the one row fetched *is* the proposal, the
+filter then drops it, and `post.revisions` arrives empty, taking head's own
+metadata with it. On the `collab` branch nothing filters, so the proposal
+arrives dressed as history. `collab` is reachable — `useDocumentSubmit.ts:41`
+toggles it — so this is not a theoretical branch.
+
+Both follow from putting the `proposedAt: null` filter in the wrong place: it
+belongs in `revisionsSelect`, where it covers every caller, and not in the
+non-collab arm of `toCloudDocument`. Surfacing proposals then needs a deliberate
+change here or its own fetch; phase 4 owns that half.
+
+**`findDocument` repairs `head` by writing, and would promote a proposal.**
+`repositories/document.ts:209-216`:
+
+```ts
+if (!revision && !revisions) {
+  // head is null or points to a revision not in the list — recover from latest
+  revision = cloudDoc.revisions[0];   // newest first
+  await prisma.document.update({
+    where: { id: doc.id },
+    data: { head: revision.id },
+  });
+```
+
+`DELETE /api/revisions/[id]` lets a revision's own author delete it and
+`deleteRevision` does not touch `head`, so head's row can vanish — and the next
+read then repairs `head` to the newest revision, which under gating is the
+pending proposal. No CAS, no user action, and the partial unique index does not
+help: it constrains `proposedAt`, not `head`, so the result is `head` pointing
+at a row still marked pending, which `toCloudDocument` will happily serve.
+
+This is the one place that promotes a revision to head without going through
+§3.4, and it is a *write*, so the phase-1 sweep for history reads will not find
+it. The repair must pick `revisions.find((r) => !r.proposedAt)`.
 
 **A revision on a published post is world-readable.** `requireRevision(id, user,
 "read")` follows the parent document, and `read` means published-and-not-private
@@ -69,12 +100,36 @@ its own fetch. Phase 4 owns it.
 of a published post would therefore be fetchable by anyone holding the revision
 id. The id is an unguessable uuid and the content is the author's own, so this is
 a leak of *draft* status rather than of secrets — but a proposal should be
-owner-only regardless of the document's publication state. Phase 3 owns it.
+owner-only regardless of the document's publication state. Phase 2 owns it, in
+the same change that first creates a proposal: there is no reason for a window
+where the two are apart.
+
+**`getCachedRevision` never invalidates.** `requireRevision` reads through
+`unstable_cache(findRevisionById, [], { tags: ["revision"] })`
+(`repositories/revision.ts:24-26`) — no `revalidate`, and nothing in the app
+calls `revalidateTag("revision")`; only the generic `/api/revalidate` route
+exists. Before the squash this bit only the autosave fold. Now it is the design:
+one revision id is rewritten on every batch and `GET /api/revisions/[id]` is
+how the review UI fetches it, so the rail can offer a proposal squashed five
+times while the diff renders batch one — and you approve content you never saw.
+Either the proposal fetch bypasses the cache or `upsertProposal` revalidates the
+tag.
+Phase 1 owns it, because phase 1 is what starts rewriting a live id.
 
 **`POST /api/revisions` rewrites a known id.** The editor folds a run of
-autosaves into one revision by re-posting its id. The proposal row is *also*
-rewritten in place (§3.2), but by the repository, never through that route — an
-autosave must not be able to land on a pending proposal.
+autosaves into one revision by re-posting its id, and `createRevision` is an
+upsert (`repositories/revision.ts:59-65`). The proposal row is *also* rewritten
+in place (§3.2), but by the repository, never through that route — an autosave
+must not be able to land on a pending proposal.
+
+Today nothing collides, because `useSave` mints fresh uuids
+(`useSave.ts:148`). But phase 4 hands proposal ids to the client for the diff,
+and `components/Diff/index.tsx:16-35` still carries a duplicated fallback branch
+that dispatches `actions.createRevision(...)` — the review surface is a write
+path onto the row under review. Make it an invariant rather than a rule: the
+upsert's update arm refuses a row with `proposedAt IS NOT NULL`. Same argument
+as the partial index in §3.1 — it then holds against code nobody has written
+yet.
 
 ## 3. Design
 
@@ -156,10 +211,31 @@ POST /api/documents/[id]/proposals/[revisionId]/approve
 POST /api/documents/[id]/proposals/[revisionId]/reject
 ```
 
-`userRoute` + `requireDocument(id, user, "write")` — never a hand-rolled author
-comparison (CLAUDE.md). Approve calls `updateDocument(id, { head: revisionId },
-expectedHead)` and clears `proposedAt`, so the proposal becomes ordinary history;
-a 409 means the document moved under it, and the answer is re-run, never clobber.
+`userRoute` + `requireDocument(id, user, "own")` — never a hand-rolled author
+comparison (CLAUDE.md). **`own`, not `write`**: `collab` satisfies `write`
+(`lib/access.ts:62-63`, "anyone holding the link may edit"), so on a collab
+document `write` would let any signed-in visitor approve Claude's work into
+head, reject it, or — via §3.7's discard — delete the post. Approving is an act
+*on* the document rather than an edit *of* its content, which is the line `own`
+draws for rename, delete and move.
+
+**`expectedHead` is the proposal's `baseRevisionId`**, and that is load-bearing.
+It makes the CAS the staleness check for free: if you saved between the proposal
+and the approval, head has moved off the base, the guarded `updateMany` matches
+nothing, and approve 409s rather than silently discarding your own edit. Phase 5
+(§3.6) then only has to *tell* you it went stale — it is not what makes the
+skeleton safe. Passing "whatever head is now" instead would invert that, so the
+value is named here and not left to the implementer.
+
+**Approve is one transaction, written in `repositories/revision.ts`.** Moving
+`head` and clearing `proposedAt` cannot be `updateDocument` followed by a second
+write: `updateDocument` opens its own `prisma.$transaction`
+(`repositories/document.ts:364`) and takes no `tx`, so composing it leaves a
+window in which head points at a row still flagged pending — the same broken
+state §2.1's repair gotcha produces. `approveProposal` does the guarded
+`updateMany` on `Document.head` and the `proposedAt` clear together, in one
+transaction of its own.
+
 **Reject deletes the row.** No `rejectedAt`, no retention story, no filter on
 every history read — the content is not lost in any sense that matters, since
 Claude can regenerate it and you rejected it deliberately.
@@ -201,6 +277,10 @@ agent-created with two actions: accept (clear the flag) or discard (delete the
 post). You see everything Claude made, without a second proposal shape for a
 document that has no head yet.
 
+"Lands normally" is not "goes live": `published` defaults to false
+(`prisma/schema.prisma:72`) and `create_post` does not set it, so an
+agent-created post is a draft nobody else can read until you publish it.
+
 ### 3.8 The gate is always on
 
 Not an env flag, not a per-document column, not a rule derived from published
@@ -230,6 +310,21 @@ Doing nothing was the cheap option and is wrong: the existing 409 path
 (`fd67510e`) would eventually catch it, but until you next typed the screen would
 keep showing content that is no longer the document.
 
+**There is no dirty flag to read, and reintroducing one is the wrong fix.**
+`SaveStatus` is `"idle" | "saving" | "retrying" | "error"` (`types.ts:146`) —
+`idle` covers both "clean" and "typed, not yet flushed" — and `dirtyDocIds`,
+`useDirtyTracking` and `selectIsDirty` were deleted deliberately when autosave
+went quiet. `pendingSaves` only holds a record while a save is in flight or
+conflicted, so it is not the signal either.
+
+The signal that exists is `savedBaseline.current` inside `useSave`
+(`useSave.ts:116`): the serialized state storage is known to hold. Phase 4
+exposes an answer from that ref — "does the editor's current state differ from
+the last acknowledged save" — rather than putting a dirty flag back in the
+store.
+The distinction matters because it is one component asking itself a question at
+one moment, not a piece of global state eight surfaces will start rendering.
+
 ## 4. Phases, costed
 
 Estimates are new-or-changed LOC and file counts, for a change that follows the
@@ -237,11 +332,11 @@ existing conventions. They are estimates.
 
 | # | Phase | Size | Est. | Risk | Blocks |
 | - | --- | --- | --- | --- | --- |
-| 1 | Schema + repository | M | ~180 LOC, 5 files, 1 migration | Low | 2, 3 |
-| 2 | MCP proposes; squash; flagged creates | M | ~150 LOC, 2 files | **Medium** — §3.2 is the subtle part | 3 |
-| 3 | Approve / reject / accept / discard routes | S–M | ~160 LOC, 5 files | Low | 4 |
+| 1 | Schema + repository + the §2.1 write paths | M | ~230 LOC, 6 files, 1 migration | Low | 2, 3 |
+| 2 | MCP proposes; squash; flagged creates; owner-only reads | M | ~170 LOC, 3 files | **Medium** — §3.2 is the subtle part | 3 |
+| 3 | Approve / reject / accept / discard routes | S–M | ~170 LOC, 5 files | Low | 4 |
 | 4 | Surfacing: rail, badge, review bar, tab reload | M–L | ~500 LOC, 9–11 files | Low, but the §2.1 filter must be got right | — |
-| — | **Walking skeleton = 1–4** | | **~1,000 LOC, ~20 files** | | |
+| — | **Walking skeleton = 1–4** | | **~1,070 LOC, ~21 files** | | |
 | 5 | Staleness marking (§3.6) | S | ~80 LOC | Low | — |
 | 6 | Per-block approve/reject | L | ~500 LOC | Medium | needs §3.3 |
 | 7 | Rebase by block id | M–L | ~300 LOC | Medium | needs §3.3, evidence from 5 |
@@ -249,13 +344,23 @@ existing conventions. They are estimates.
 ### Phase 1 — schema + repository
 
 The migration in §3.1, including the partial unique index as raw SQL;
-`proposedAt: null` filters on every existing history read; `upsertProposal`,
+`proposedAt: null` in `revisionsSelect` (not in `toCloudDocument`'s non-collab
+arm — §2.1) and on every other existing history read; `upsertProposal`,
 `findPendingProposal`, `approveProposal`, `rejectProposal` in
-`repositories/revision.ts`.
+`repositories/revision.ts`, with `approveProposal` as the single transaction
+§3.4 describes.
+
+Plus the three §2.1 write paths, which are the ones a read-filter sweep will not
+find: `findDocument`'s head repair skips proposals; `createRevision`'s upsert
+refuses a row with `proposedAt` set; and the proposal fetch either bypasses
+`getCachedRevision` or `upsertProposal` revalidates the `"revision"` tag.
 
 *Done when:* a proposal row can be created, squashed onto and listed from a
 script; a second pending row for the same document is refused by the database;
-and the existing revision history is provably unchanged by any of it.
+deleting a document's head revision while a proposal is pending leaves `head`
+alone rather than promoting it; re-reading a squashed proposal returns the
+latest content; and the existing revision history is provably unchanged by any
+of it.
 
 ### Phase 2 — the MCP server proposes
 
@@ -264,6 +369,11 @@ and the existing revision history is provably unchanged by any of it.
 alone; `apply_ops` reports that the change is pending; `create_post` stamps
 `agentCreatedAt`; `smoke.ts` cleans up after itself.
 
+Also the ownership tightening from §2.1, so a pending revision on a published
+post is not world-readable. It lands here rather than in phase 3 because this is
+the phase that starts creating them, and a window where proposals exist
+unprotected is not worth the tidier phase boundary.
+
 *Done when:* three consecutive `apply_ops` calls against one document leave
 **exactly one** pending proposal containing all three edits, each batch having
 seen the previous one's work, with `head` untouched throughout. Write that test
@@ -271,22 +381,30 @@ before the code — it is the shape of the only real risk here.
 
 ### Phase 3 — approve, reject, accept, discard
 
-The two proposal routes in §3.4 plus accept/discard for flagged posts (§3.7), and
-the ownership tightening from §2.1 so a pending revision on a published post is
-not world-readable.
+The two proposal routes in §3.4 plus accept/discard for flagged posts (§3.7),
+all four on `requireDocument(id, user, "own")`.
 
 *Done when:* approving advances `head` and the content is what the diff showed;
-approving twice is a no-op or a clean 409; rejecting leaves no orphan; discarding
-removes the post. **No automated check covers API authorization** (CLAUDE.md) —
-exercise these against the local Postgres by hand, including as a signed-out
-caller.
+approving twice is a no-op or a clean 409; approving after your own save 409s
+rather than clobbering it; rejecting leaves no orphan; discarding removes the
+post. **No automated check covers API authorization** (CLAUDE.md) — exercise
+these against the local Postgres by hand, including as a signed-out caller and
+as a second signed-in account against a document with `collab` set, which is the
+case `write` would have let through.
 
 ### Phase 4 — the UI
 
 Fix the head-only revision filter (§2.1) or add a dedicated pending fetch; a
 `ProposalsSection` beside `RevisionsSection` covering both pending proposals and
 flagged posts; a sidebar badge; an approve/reject bar over the existing diff;
-focus-poll for the count; the reload-or-warn behaviour from §3.9.
+focus-poll for the count; the reload-or-warn behaviour from §3.9, reading the
+`useSave` baseline rather than a restored dirty flag.
+
+Delete the duplicated fallback branch in `components/Diff/index.tsx:16-35` first
+— both `try` blocks call the same thing, the "not in local, try cloud" comment
+describes code that is not there, and the second dispatches `createRevision`.
+Building the review bar on top of a component that can write the row it is
+reviewing is not worth the saved half hour.
 
 Follow DESIGN.md conventions; run `npm run check:theme`. Needs the required
 states — loading, empty, error — and the empty state is the common one, so it
@@ -309,7 +427,10 @@ mounting anything. The testable core here is the **squash**: resolving the
 pending proposal rather than head, folding a batch onto the pending state rather
 than onto head, appending ops, and what approval does to `proposedAt`. That
 belongs in a pure function over rows — `repositories/` calls it, and a spec
-covers it with no database.
+covers it with no database. Head selection goes in the same module and gets the
+same treatment: given a set of revision rows and a `head` id, which row is the
+document, and which row does a repair fall back to (§2.1). It is a pure function
+over rows too, and it is the shape of the bug that would auto-approve.
 
 The parts no spec will cover: the routes' authorization (by hand, per CLAUDE.md)
 and everything in phase 4 (a real browser).
@@ -380,6 +501,11 @@ complaint about granularity).
 - **Two sources of "what the document says."** Head and pending proposal. Any new
   read path has to pick deliberately, and the wrong default is invisible until
   someone approves.
+- **Three existing paths write `head` or a revision row without knowing about
+  proposals** — the repair in `findDocument`, the upsert behind
+  `POST /api/revisions`, and the never-invalidated revision cache (§2.1). None
+  is a read, so none turns up in a search for history queries to filter; they
+  are listed in phase 1 for exactly that reason.
 - **A stale proposal is a dead end.** Until §3.6 gains rebasing, editing a
   document with a pending proposal means Claude's work has to be redone. If that
   happens often, phase 7 stops being optional.
