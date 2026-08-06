@@ -74,8 +74,9 @@ npm run mcp:smoke              # read-only
 RUN_WRITE=1 npm run mcp:smoke  # also creates a throwaway post and edits it
 ```
 
-The write path only touches the post it just created. It also asserts that a
-stale `stateHash` is refused, which is the guard everything else rests on.
+The write path only touches the post it just created. It also exercises the
+stale-`stateHash` refusal, which is the guard everything else rests on — it
+prints the refusal rather than failing on it, so read the output.
 
 ---
 
@@ -100,9 +101,21 @@ stateHash: h_3f2ab9c14d0e7712
 
 b1         heading[1]      Gradient descent, revisited  (27 chars)
 b2         paragraph       The usual derivation starts from…  (284 chars)
-b3         kanban          3 lanes · 11 cards  [read-only]
-b4         list[check]     5 items, 2 levels · Check the Hessian
+b3         kanban          3 lanes · 11 cards  [replace only]
+b4         list[check]     5 items, 2 levels · Check the Hessian  [replace only]
 ```
+
+Addresses come in two spellings. A document no agent has touched is addressed by
+position — `b3` is the third block, `b4.2` the second child of the fourth. The
+first write stamps every block with a persistent id, so afterwards the same
+outline reads `blk_7uoxl2` instead, and those ids survive insertions and
+deletions above them. Both spellings resolve; pass back whatever the read gave
+you.
+
+An outline also lists the structural containers — a table's rows, a layout's
+columns, a collapsible section's body — each `[read-only]` and holding the
+addressable blocks beneath it. A twelve-block post with one table and one layout
+outlines as thirty lines, not twelve.
 
 Then edit by address, passing back the `stateHash` from the read those
 addresses came from:
@@ -135,7 +148,7 @@ mechanics matter when something is refused.
 
 | Tool           | Purpose                                                           |
 | -------------- | ----------------------------------------------------------------- |
-| `list_posts`   | The author's posts — id, title, handle, series, published, updated |
+| `list_posts`   | The author's posts — id, name, handle, series, published, updated  |
 | `list_series`  | The author's series                                                |
 | `outline`      | Block skeleton + `stateHash`. **Start here**                       |
 | `read_blocks`  | Full content of specific blocks, by address                        |
@@ -181,6 +194,18 @@ Inline formatting inside any `text` field:
 
 Italic is `__`, not `*`, so that no delimiter is a prefix of another.
 
+**Reads come back escaped, and the escapes are part of the text.** A delimiter
+character is backslashed wherever it would otherwise open something — most often
+a comma straight after a formatted run, since `,,` is subscript — alongside a
+literal `` ` ``, `[`, `]`, `\` and `$`:
+
+```
+Every mark at once: **bold**\, __italic__\, `code`\, and 50% of \$5.
+```
+
+Keep them when you rewrite a block. Dropping a backslash does not tidy the text
+up, it changes what the block says.
+
 For `layout`, `details` and `table`, the nested `columns`/`body`/`rows` are
 **required when inserting** a new one and **optional when replacing** — omit
 them to keep the contents already there.
@@ -194,10 +219,15 @@ addresses in the write may no longer point where they did. Re-run `outline` and
 retry with the fresh hash. Note that `apply_ops` returns the new outline and
 hash, so a follow-up edit needs no extra read.
 
-**`[read-only]` blocks.** Math as a block, images, graphs, sketches, canvases
-and sticky notes have no codec. They are visible, addressable, movable and
-deletable — but not rewritable. `[replace only]` means `replace_block` works but
-`set_text` does not, because the block has no single text field.
+**`[read-only]` blocks.** Math as a block, images, graphs, sketches, embeds,
+canvases and sticky notes have no codec. They are visible, addressable, movable
+and deletable — but not rewritable.
+
+**`[replace only]` blocks.** `set_text` needs a single text field, which only
+paragraph, heading, quote, summary, table cell and code have. A list, table,
+layout, collapsible section or kanban is rewritten whole with `replace_block`
+instead — which is why the outline says so up front rather than letting you
+discover it by having a write refused.
 
 **A block that "carries inline formatting the bridge cannot express."**
 Something inside it (an inline colour, say) has no spelling in the inline
@@ -213,6 +243,9 @@ client-side.
 URL that already exists.
 
 **`create_post` creates unpublished.** Publish from the app.
+
+**Posts can be created but not deleted.** There is no delete tool, by design —
+one you regret has to be removed from the app.
 
 **Careful with a post open in the editor.** An agent write creates a new
 revision, but a browser tab holding the older state can autosave over it.

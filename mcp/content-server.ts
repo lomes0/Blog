@@ -258,9 +258,11 @@ const BLOCK_DOC =
   "contents already there. " +
   "Inline formatting inside `text` uses **bold**, __italic__, `code`, " +
   "~~strike~~, ==highlight==, ++underline++, ^^sup^^, ,,sub,,, [link](url) and " +
-  "$latex$. Node types with no codec (math as a block, image, table, graph, " +
-  "sketch, canvas, sticky) are read-only: they can be read, moved or deleted " +
-  "by address, but not rewritten.";
+  "$latex$. Node types with no codec (math as a block, image, graph, sketch, " +
+  "iframe, canvas, sticky) are read-only: they can be read, moved or deleted " +
+  "by address, but not rewritten. set_text needs a single text field, so it " +
+  "applies only to paragraph, heading, quote, summary, cell and code; a list, " +
+  "table, layout, details or kanban is rewritten whole with replace_block.";
 
 const server = new McpServer({ name: "blog-content", version: "0.2.0" });
 
