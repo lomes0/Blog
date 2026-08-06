@@ -96,13 +96,18 @@ it. The repair must pick `revisions.find((r) => !r.proposedAt)`.
 
 **A revision on a published post is world-readable.** `requireRevision(id, user,
 "read")` follows the parent document, and `read` means published-and-not-private
-(`lib/access.ts:121`, CLAUDE.md route conventions). An unapproved agent rewrite
+(`lib/access.ts:66-69`, CLAUDE.md route conventions). An unapproved agent rewrite
 of a published post would therefore be fetchable by anyone holding the revision
 id. The id is an unguessable uuid and the content is the author's own, so this is
 a leak of *draft* status rather than of secrets — but a proposal should be
 owner-only regardless of the document's publication state. Phase 2 owns it, in
 the same change that first creates a proposal: there is no reason for a window
 where the two are apart.
+
+The check needs a column it cannot currently see: `findRevisionById`'s select
+(`repositories/revision.ts:6-21`) lists `id`, `documentId`, `createdAt` and
+`data` and nothing else, so `proposedAt` has to be added there before anything
+can branch on it.
 
 **`getCachedRevision` never invalidates.** `requireRevision` reads through
 `unstable_cache(findRevisionById, [], { tags: ["revision"] })`
@@ -118,12 +123,12 @@ Phase 1 owns it, because phase 1 is what starts rewriting a live id.
 
 **`POST /api/revisions` rewrites a known id.** The editor folds a run of
 autosaves into one revision by re-posting its id, and `createRevision` is an
-upsert (`repositories/revision.ts:59-65`). The proposal row is *also* rewritten
+upsert (`repositories/revision.ts:59-64`). The proposal row is *also* rewritten
 in place (§3.2), but by the repository, never through that route — an autosave
 must not be able to land on a pending proposal.
 
 Today nothing collides, because `useSave` mints fresh uuids
-(`useSave.ts:148`). But phase 4 hands proposal ids to the client for the diff,
+(`useSave.ts:152`). But phase 4 hands proposal ids to the client for the diff,
 and `components/Diff/index.tsx:16-35` still carries a duplicated fallback branch
 that dispatches `actions.createRevision(...)` — the review surface is a write
 path onto the row under review. Make it an invariant rather than a rule: the
@@ -144,10 +149,11 @@ model Revision {
   // … existing fields
   proposedAt       DateTime?         // null = ordinary history
   origin           String?           // "claude-code"
-  baseRevisionId   String?  @db.Uuid // the head this was built on
+  baseRevisionId   String?  @db.Uuid // the head this was built on — write once (§3.2)
   ops              Json?             // the batches folded into this proposal
   summary          String?           // one line, for the rail
   staleAt          DateTime?         // set when the base stops being head
+  version          Int @default(0)   // CAS token for the squash (§3.2)
   @@index([documentId, proposedAt])
 }
 
@@ -186,10 +192,27 @@ intermediate states existed only so the agent could read its own writes — ther
 is no reason to review them separately, and one pending thing per document means
 nothing accumulates and the rail cannot fill with forty rows.
 
-Two failure modes, and they are the whole risk in this plan:
+**`baseRevisionId` is written once, when the proposal is created, and a squash
+must not touch it.** Refreshing it to whatever head is now is the worst bug
+available in this plan. The second batch reads the *pending proposal* rather
+than head — that is the point of this section — so it never sees a save you made
+in between; but a refreshed base makes §3.4's CAS match anyway, and approval
+then moves head to content derived from the old base. Your save is gone, with no
+409 and no staleness. An immutable base makes the CAS miss instead, which is the
+entire safety property §3.4 claims.
+
+Three failure modes, and they are the whole risk in this plan:
 
 - **Folding onto `head` instead of onto the pending state** discards the earlier
   batch. Silent, and only visible after approval.
+- **Two batches folding onto the same row concurrently**, last writer winning —
+  the same lost batch, reached from the other direction. Today `saveRevision`'s
+  guarded `updateMany` on `head` is what serializes an agent write against
+  everything else, and §3.4 moves that CAS to approval time, so the write path
+  is left with no guard at all. `version` is the replacement: read it with the
+  proposal, `updateMany where { id, version }`, bump it, and treat a miss as
+  re-read-and-re-apply. Nothing already in the row can serve instead —
+  `createdAt` is what the squash itself rewrites.
 - **Two proposals surviving** for one document — hence the partial unique index
   rather than a convention.
 
@@ -204,15 +227,28 @@ head today.
 nor per-block approval needs to exist yet — storing the ops now is what makes
 them cheap later, and they cost nothing meanwhile.
 
+It grows without a bound and nothing prunes it: a long agent session appends
+every batch to one Json column, and approval keeps them. At one author's scale
+that is not worth a retention rule, but it is worth knowing it is unbounded
+before someone runs a hundred-batch session.
+
 ### 3.4 Approve and reject
 
 ```
 POST /api/documents/[id]/proposals/[revisionId]/approve
 POST /api/documents/[id]/proposals/[revisionId]/reject
+GET  /api/proposals/count                    // the §3.5 focus poll
 ```
 
-`userRoute` + `requireDocument(id, user, "own")` — never a hand-rolled author
-comparison (CLAUDE.md). **`own`, not `write`**: `collab` satisfies `write`
+The count route is `userRoute` and scoped to the caller's own documents. It is
+named here rather than left to phase 4 because a bare count endpoint is exactly
+the shape of thing that gets written as `publicRoute` without anyone deciding to
+(CLAUDE.md: `grep -rn "publicRoute" src/app/api` is meant to stay the complete
+list).
+
+The two proposal routes take `userRoute` + `requireDocument(id, user, "own")` —
+never a hand-rolled author comparison (CLAUDE.md). **`own`, not `write`**:
+`collab` satisfies `write`
 (`lib/access.ts:62-63`, "anyone holding the link may edit"), so on a collab
 document `write` would let any signed-in visitor approve Claude's work into
 head, reject it, or — via §3.7's discard — delete the post. Approving is an act
@@ -230,7 +266,7 @@ value is named here and not left to the implementer.
 **Approve is one transaction, written in `repositories/revision.ts`.** Moving
 `head` and clearing `proposedAt` cannot be `updateDocument` followed by a second
 write: `updateDocument` opens its own `prisma.$transaction`
-(`repositories/document.ts:364`) and takes no `tx`, so composing it leaves a
+(`repositories/document.ts:365`) and takes no `tx`, so composing it leaves a
 window in which head points at a row still flagged pending — the same broken
 state §2.1's repair gotcha produces. `approveProposal` does the guarded
 `updateMany` on `Document.head` and the `proposedAt` clear together, in one
@@ -251,8 +287,8 @@ Three tiers. The first two are cheap because the diff view exists.
 | Review per block | Accept some ops, reject the rest | new; needs §3.3 |
 
 The browser cannot know a terminal write happened. Cheapest signal consistent
-with the quiet-UI rule (silent success, loud failure): poll a pending-count
-endpoint on window focus and on document open. A badge that appears — not a
+with the quiet-UI rule (silent success, loud failure): poll the pending-count
+endpoint (§3.4) on window focus and on document open. A badge that appears — not a
 toast, not a modal. SSE is available if that proves too laggy, but it is a second
 system to keep alive and should not be phase 1.
 
@@ -293,6 +329,11 @@ Two consequences to build for:
 - `apply_ops` must answer *"proposed, awaiting approval"* rather than "updated",
   or Claude will report the change as live. The tool's own text is the only thing
   that tells it what happened.
+- `apply_ops` also stops detecting a concurrent editor save. Today the guarded
+  write fails loudly with `StaleHeadError`; once the write leaves `head` alone,
+  it succeeds and the conflict surfaces only when you try to approve (§3.4's
+  CAS). That is the intended trade — the human is the one who can resolve it —
+  but the agent no longer gets told, so the tool text must not imply it checked.
 - `mcp/smoke.ts`'s write path (`RUN_WRITE=1`) now produces a proposal instead of
   a save, so it must approve or clean up after itself.
 
@@ -318,7 +359,7 @@ went quiet. `pendingSaves` only holds a record while a save is in flight or
 conflicted, so it is not the signal either.
 
 The signal that exists is `savedBaseline.current` inside `useSave`
-(`useSave.ts:116`): the serialized state storage is known to hold. Phase 4
+(`useSave.ts:114`): the serialized state storage is known to hold. Phase 4
 exposes an answer from that ref — "does the editor's current state differ from
 the last acknowledged save" — rather than putting a dirty flag back in the
 store.
@@ -334,9 +375,9 @@ existing conventions. They are estimates.
 | - | --- | --- | --- | --- | --- |
 | 1 | Schema + repository + the §2.1 write paths | M | ~230 LOC, 6 files, 1 migration | Low | 2, 3 |
 | 2 | MCP proposes; squash; flagged creates; owner-only reads | M | ~170 LOC, 3 files | **Medium** — §3.2 is the subtle part | 3 |
-| 3 | Approve / reject / accept / discard routes | S–M | ~170 LOC, 5 files | Low | 4 |
+| 3 | Approve / reject / accept / discard routes, plus the count | S–M | ~200 LOC, 6 files | Low | 4 |
 | 4 | Surfacing: rail, badge, review bar, tab reload | M–L | ~500 LOC, 9–11 files | Low, but the §2.1 filter must be got right | — |
-| — | **Walking skeleton = 1–4** | | **~1,070 LOC, ~21 files** | | |
+| — | **Walking skeleton = 1–4** | | **~1,100 LOC, ~22 files** | | |
 | 5 | Staleness marking (§3.6) | S | ~80 LOC | Low | — |
 | 6 | Per-block approve/reject | L | ~500 LOC | Medium | needs §3.3 |
 | 7 | Rebase by block id | M–L | ~300 LOC | Medium | needs §3.3, evidence from 5 |
@@ -350,10 +391,21 @@ arm — §2.1) and on every other existing history read; `upsertProposal`,
 `repositories/revision.ts`, with `approveProposal` as the single transaction
 §3.4 describes.
 
+`upsertProposal` is not a `prisma.revision.upsert`, despite the name. The
+uniqueness lives in a partial index Prisma cannot see, so `where: { documentId }`
+does not typecheck — `documentId` is not a Prisma unique. Two workable shapes:
+find-then-create-or-update, which races and needs the resulting `P2002` caught
+and retried, or raw
+`INSERT … ON CONFLICT ("documentId") WHERE "proposedAt" IS NOT NULL DO UPDATE`,
+which the partial index does support. Pick the raw one if the retry loop starts
+looking like logic.
+
 Plus the three §2.1 write paths, which are the ones a read-filter sweep will not
 find: `findDocument`'s head repair skips proposals; `createRevision`'s upsert
 refuses a row with `proposedAt` set; and the proposal fetch either bypasses
-`getCachedRevision` or `upsertProposal` revalidates the `"revision"` tag.
+`getCachedRevision` or `upsertProposal` revalidates the `"revision"` tag —
+adding `proposedAt` to `findRevisionById`'s select while there, since phase 2's
+ownership check reads it.
 
 *Done when:* a proposal row can be created, squashed onto and listed from a
 script; a second pending row for the same document is refused by the database;
@@ -365,9 +417,18 @@ of it.
 ### Phase 2 — the MCP server proposes
 
 `loadPost` resolves the pending proposal; `saveRevision` upserts it with
-`proposedAt`/`origin`/`baseRevisionId`, appends to `ops`, and leaves `head`
-alone; `apply_ops` reports that the change is pending; `create_post` stamps
-`agentCreatedAt`; `smoke.ts` cleans up after itself.
+`proposedAt`/`origin`/`baseRevisionId`, appends to `ops`, bumps `version` under
+the CAS from §3.2, and leaves `head` alone; `apply_ops` reports that the change
+is pending; `create_post` stamps `agentCreatedAt`; `smoke.ts` cleans up after
+itself.
+
+Two details inside `loadPost` that the rewrite has to carry: its no-head branch
+falls back to `findFirst … orderBy createdAt desc` (`content-server.ts:110-116`),
+and under gating "newest" can be the pending proposal — it must resolve the
+proposal deliberately rather than by accident. And `Loaded.head`'s comment,
+"the head this state was read at — the precondition for writing it back"
+(`content-server.ts:83`), stops being true here: it becomes the base pointer the
+proposal records, and nothing checks it at write time any more.
 
 Also the ownership tightening from §2.1, so a pending revision on a published
 post is not world-readable. It lands here rather than in phase 3 because this is
@@ -376,13 +437,15 @@ unprotected is not worth the tidier phase boundary.
 
 *Done when:* three consecutive `apply_ops` calls against one document leave
 **exactly one** pending proposal containing all three edits, each batch having
-seen the previous one's work, with `head` untouched throughout. Write that test
+seen the previous one's work, with `head` untouched throughout and
+`baseRevisionId` still naming the head the *first* batch read. Write that test
 before the code — it is the shape of the only real risk here.
 
 ### Phase 3 — approve, reject, accept, discard
 
 The two proposal routes in §3.4 plus accept/discard for flagged posts (§3.7),
-all four on `requireDocument(id, user, "own")`.
+all four on `requireDocument(id, user, "own")`, and the pending-count route the
+§3.5 poll needs, on `userRoute` and scoped to the caller.
 
 *Done when:* approving advances `head` and the content is what the diff showed;
 approving twice is a no-op or a clean 409; approving after your own save 409s
@@ -425,9 +488,13 @@ proves too coarse, rebasing when marking proves too blunt to live with.
 Per CLAUDE.md, logic lives in an import-free module so it is testable without
 mounting anything. The testable core here is the **squash**: resolving the
 pending proposal rather than head, folding a batch onto the pending state rather
-than onto head, appending ops, and what approval does to `proposedAt`. That
-belongs in a pure function over rows — `repositories/` calls it, and a spec
-covers it with no database. Head selection goes in the same module and gets the
+than onto head, appending ops, carrying `baseRevisionId` through unchanged while
+`version` advances, and what approval does to `proposedAt`. That belongs in a
+pure function over rows — `repositories/` calls it, and a spec covers it with no
+database. The base-immutability case is worth naming as its own assertion: it is
+one field, and getting it wrong is the silent clobber in §3.2.
+
+Head selection goes in the same module and gets the
 same treatment: given a set of revision rows and a `head` id, which row is the
 document, and which row does a repair fall back to (§2.1). It is a pure function
 over rows too, and it is the shape of the bug that would auto-approve.
@@ -496,8 +563,15 @@ complaint about granularity).
 
 - **A squash done wrong loses work silently** — an approved proposal missing an
   earlier batch, because the fold went onto `head` instead of onto the pending
-  state. This is the single real risk in the plan. The phase-2 acceptance test is
-  exactly that shape and should be written first.
+  state, or because two folds raced and the later one overwrote the earlier
+  (§3.2's `version` CAS is what stops the second; the write path has no other
+  guard once `head` stops moving). This is the single real risk in the plan. The
+  phase-2 acceptance test is exactly that shape and should be written first.
+- **A squash that refreshes `baseRevisionId` loses *your* work silently**, which
+  is worse: approval's CAS then matches a base the proposal's content never saw,
+  and your intervening save is overwritten with no 409 (§3.2). The field is
+  write-once, and that is the one invariant here that has no database constraint
+  behind it.
 - **Two sources of "what the document says."** Head and pending proposal. Any new
   read path has to pick deliberately, and the wrong default is invisible until
   someone approves.
