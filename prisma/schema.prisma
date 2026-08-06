@@ -107,6 +107,12 @@ model Document {
   // Type discrimination
   type DocumentType
 
+  // An agent-created post lands normally but stays flagged until you accept it
+  // (docs/plans/agent-gating.md §3.7). `published` defaults to false, so this is
+  // a draft nobody else can read meanwhile.
+  agentCreatedAt DateTime?
+  agentOrigin    String?
+
   // Relations
   author    User                @relation(fields: [authorId], references: [id], onDelete: Cascade)
   coauthors DocumentCoauthors[]
@@ -139,8 +145,30 @@ model Revision {
   authorId   String   @db.Uuid
   author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
+  // ── Agent proposals (docs/plans/agent-gating.md §3.1) ──────────────────────
+  // A revision with `proposedAt` set is *not* history: it is a pending agent
+  // write that `Document.head` does not point at, and every history read
+  // filters it out with `proposedAt: null`. Approval clears the flag, which is
+  // what turns the row into history; rejection deletes it.
+  proposedAt DateTime?
+  origin     String? // where the write came from, e.g. "claude-code"
+  // The head this proposal was built on. **Written once**, on creation — a
+  // squash must never refresh it (§3.2), because approval's compare-and-set on
+  // `Document.head` uses it as the staleness check.
+  baseRevisionId String? @db.Uuid
+  ops            Json? // the batches folded into this proposal (§3.3)
+  summary        String? // one line, for the rail
+  staleAt        DateTime? // set when the base stops being head (§3.6)
+  // CAS token for the squash (§3.2). Once `head` stops moving on an agent
+  // write, this is the only thing serializing two folds onto the same row.
+  version        Int       @default(0)
+
   @@index([documentId])
   @@index([authorId])
+  @@index([documentId, proposedAt])
+  // At most one pending proposal per document is enforced by a *partial*
+  // unique index, which Prisma cannot express — see the raw SQL in
+  // migrations/20260806…_add_revision_proposals.
 }
 
 model User {

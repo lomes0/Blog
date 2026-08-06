@@ -8,6 +8,7 @@ import {
   RevisionMeta,
 } from "@/types";
 import { validate } from "uuid";
+import { historyOf, selectHead } from "@/lib/proposals";
 import { getCachedRevision } from "./revision";
 import { rankForAppend, reRankIntoRoot } from "./ordering";
 
@@ -45,6 +46,14 @@ const revisionAuthorSelect = {
  * loaded there.
  */
 const revisionsSelect = {
+  // The history filter, and it lives **here** rather than in
+  // `toCloudDocument`'s non-collab arm (docs/plans/agent-gating.md §2.1). In
+  // the arm it would be wrong twice over: the non-collab arm already keeps only
+  // `head`, so with `take: 1` the one row fetched *is* the proposal and the
+  // document arrives with no revision metadata at all — and the `collab` arm
+  // filters nothing, so a proposal would reach the client dressed as history.
+  // Filtering in the query fixes both, for every caller, in one place.
+  where: { proposedAt: null },
   select: {
     id: true,
     documentId: true,
@@ -156,10 +165,15 @@ const findDocument = async (
     },
     include: {
       revisions: {
+        // Unfiltered, unlike `revisionsSelect` — and `proposedAt` is selected —
+        // because the head repair below has to *know about* proposals in order
+        // to skip them. Proposals are dropped from what leaves this function a
+        // few lines down (`historyOf`), so no caller sees one.
         select: {
           id: true,
           documentId: true,
           createdAt: true,
+          proposedAt: true,
           author: {
             select: {
               id: true,
@@ -191,34 +205,52 @@ const findDocument = async (
     return null;
   }
 
+  // `proposedAt` is an implementation detail of the repair; nothing above this
+  // repository has a use for it.
+  const asMeta = ({ proposedAt: _proposedAt, ...meta }: typeof doc.revisions[0]) =>
+    meta as RevisionMeta;
+  const history = historyOf(doc.revisions);
+
   const cloudDoc: CloudPost = {
     ...doc,
     coauthors: [], // Remove coauthor complexity
     type: PrismaDocumentType.DOCUMENT,
     head: doc.head || "",
-    revisions: doc.revisions as RevisionMeta[],
+    revisions: history.map(asMeta),
     status: doc.status as DocumentStatus,
   };
 
   if (revisions !== "all") {
-    const revisionId = revisions ?? doc.head;
-    let revision = revisionId
-      ? cloudDoc.revisions.find((r) => r.id === revisionId)
+    // A pinned revision id resolves against history only: a pending proposal is
+    // not a state this document may be shown at.
+    let revision = revisions
+      ? history.find((r) => r.id === revisions)
       : undefined;
 
-    if (!revision && !revisions) {
-      // head is null or points to a revision not in the list — recover from latest
-      revision = cloudDoc.revisions[0];
-      if (!revision) return null;
-      await prisma.document.update({
-        where: { id: doc.id },
-        data: { head: revision.id },
-      });
-      cloudDoc.head = revision.id;
+    if (!revisions) {
+      const selection = selectHead(doc.revisions, doc.head);
+      revision = selection.revision ?? undefined;
+
+      if (!revision) {
+        // head is null, points at a revision not in the list, or names a
+        // pending proposal — recover from the newest row that is *not* a
+        // proposal. `DELETE /api/revisions/[id]` lets a revision's author
+        // delete head's own row without touching `head`, so this repair runs on
+        // an ordinary read; promoting the newest row full stop would make an
+        // unreviewed agent write the document with no user action and no
+        // compare-and-set (docs/plans/agent-gating.md §2.1).
+        if (!selection.repair) return null;
+        revision = selection.repair;
+        await prisma.document.update({
+          where: { id: doc.id },
+          data: { head: revision.id },
+        });
+        cloudDoc.head = revision.id;
+      }
     }
 
     if (!revision) return null;
-    cloudDoc.revisions = [revision];
+    cloudDoc.revisions = [asMeta(revision)];
     cloudDoc.updatedAt = revision.createdAt;
   }
 
@@ -436,11 +468,17 @@ const findEditorDocument = async (handle: string) => {
   if (!doc) return null;
 
   let revision = doc.head ? await getCachedRevision(doc.head) : null;
+  // A `head` naming a pending proposal is a broken state rather than an
+  // impossible one — nothing constrains the pointer — and serving it would put
+  // an unapproved agent write in the editor. Treat it as missing and repair.
+  if (revision?.proposedAt) revision = null;
 
   if (!revision) {
-    // Head is missing or points to a deleted revision — recover from latest
+    // Head is missing or points to a deleted revision — recover from the latest
+    // row that is *not* a proposal. Same rule, and same reason, as the repair in
+    // `findDocument` (docs/plans/agent-gating.md §2.1).
     const latestRevision = await prisma.revision.findFirst({
-      where: { documentId: doc.id },
+      where: { documentId: doc.id, proposedAt: null },
       orderBy: { createdAt: "desc" },
       select: { id: true, documentId: true, createdAt: true, data: true },
     });
@@ -452,6 +490,7 @@ const findEditorDocument = async (handle: string) => {
       });
       revision = {
         ...latestRevision,
+        proposedAt: null, // guaranteed by the query above
         data: latestRevision.data as unknown as Revision["data"],
       };
       // Update doc.head so the editorDocument below is consistent

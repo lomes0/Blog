@@ -58,7 +58,7 @@ globals; `compilerOptions.types` is deliberately left unset, because setting it
 would restrict resolution to only its entries and drop every other ambient
 package.
 
-Coverage is sixteen specs, 296 assertions: `src/lib/__tests__/ordering.test.ts`
+Coverage is seventeen specs, 320 assertions: `src/lib/__tests__/ordering.test.ts`
 (fractional rank keys),
 `src/components/Layout/SideBar/__tests__/
 dragGeometry.test.ts` (sidebar drag
@@ -100,7 +100,12 @@ a load — `importJSON` is the only parse path, so a class that does not delegat
 to `updateFromJSON` silently drops node state _and_ element format/indent/
 direction; five classes did). `npm run check:nodes` enforces the same rule
 statically across every node class, including the `.tsx` ones the test
-environment cannot parse.
+environment cannot parse. The newest is
+`src/lib/__tests__/proposals.test.ts` (gating an agent's writes — that a head
+repair falls back to history rather than promoting a pending proposal, and that
+squashing a second batch onto one carries `baseRevisionId` through untouched
+while `version` advances; see docs/plans/agent-gating.md §3.2, where refreshing
+that one field is the silent clobber).
 
 All of these follow the same rule as `dragGeometry.ts`: the logic lives in an
 import-free module so it can be exercised without mounting anything. The IDB

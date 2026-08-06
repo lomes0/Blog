@@ -40,6 +40,10 @@ export const GET = userRoute(async (_request, { user }) => {
     where: { authorId: user.id },
     include: {
       revisions: {
+        // A backup is history. A pending agent proposal is not yet part of it,
+        // and round-tripping one through import would recreate it as an
+        // ordinary revision (docs/plans/agent-gating.md §3.1).
+        where: { proposedAt: null },
         select: { id: true, documentId: true, createdAt: true, data: true },
         orderBy: { createdAt: "asc" },
       },
