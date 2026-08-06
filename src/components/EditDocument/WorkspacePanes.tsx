@@ -432,11 +432,7 @@ const WorkspacePanes: React.FC<WorkspacePanesProps> = ({ rootId }) => {
                 // A maximized pane takes the row whole; its neighbour keeps a
                 // grow factor it is not using, so restoring is one flag rather
                 // than a second source of truth about the ratio.
-                grow={maximizedPaneId
-                  ? 1
-                  : index === 0
-                  ? ratio
-                  : 1 - ratio}
+                grow={maximizedPaneId ? 1 : index === 0 ? ratio : 1 - ratio}
                 isHidden={!!maximizedPaneId && pane.id !== maximizedPaneId}
               />
             </Fragment>

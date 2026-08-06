@@ -66,8 +66,9 @@ describe("zod → JSON Schema", () => {
     // for tool input. `commandInputSchema` normalizes it; this is the case that
     // would otherwise ship a declaration the model cannot call.
     const parameterless = commandRegistry.filter(
-      (c) => Object.keys((commandInputSchema(c).properties ?? {}) as object)
-        .length === 0,
+      (c) =>
+        Object.keys((commandInputSchema(c).properties ?? {}) as object)
+          .length === 0,
     );
     expect(parameterless.length).toBeGreaterThan(0);
     for (const command of parameterless) {

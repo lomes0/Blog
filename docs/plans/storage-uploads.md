@@ -86,8 +86,8 @@ as the only secret):
   assets. **Already unauthenticated.** Making them public-bucket URLs changes
   nothing about who can read them, and buys full CDN cacheability.
 - **Attachments** → `ATTACHMENTS_DIR` (outside the static tree), gated:
-  `GET /api/attachments/[filename]` calls `requireAttachmentRead` before serving.
-  That check must survive.
+  `GET /api/attachments/[filename]` calls `requireAttachmentRead` before
+  serving. That check must survive.
 
 So: `blog-public` (backgrounds) and `blog-private` (attachments) — a 1:1 mapping
 onto the two constants that already exist. `src/lib/uploads.ts` is the seam this

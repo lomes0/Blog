@@ -10,10 +10,10 @@ reversing it.
 
 workspace-panes.md §0 established the right inversion: **workspace state is the
 source of truth, and the URL is a projection of it.** That is still correct.
-What this plan changes is *which coordinate* gets projected.
+What this plan changes is _which coordinate_ gets projected.
 
-Today the answer is **focus**, and focus is the wrong thing to put in an
-address bar:
+Today the answer is **focus**, and focus is the wrong thing to put in an address
+bar:
 
 > The workspace is a 2-pane × N-tab structure with a focus pointer. The URL has
 > one slot. Binding that slot to the highest-frequency, lowest-semantic-value
@@ -36,35 +36,35 @@ which never touch the URL.
 
 All of this exists to keep one id in sync with focus:
 
-| Thing | Size / shape |
-| --- | --- |
-| `src/lib/workspaceUrl.ts` | 97L, five refusal guards |
-| `src/lib/__tests__/workspaceUrl.test.ts` | a whole spec for those guards |
-| The `project()` listener in `WorkspacePanes.tsx:250-275` | a `store.subscribe` running on **every dispatched action** |
-| `CommandRouter.rewrite` (`commands/types.ts:32-40`) | a third navigation primitive, whose only consumer is `pane.close` |
-| `pane.close`'s own rewrite (`commands/pane.ts:112-133`) | plus a dynamic import of `layoutSelectors` to read back what to write |
-| `pane.split`'s push (`commands/pane.ts:82`) | with a 6-line comment on why a resolved id and not `id` |
-| `document.open` dispatching *and* pushing (`commands/document.ts:53-54`) | order matters |
-| `force-dynamic` + `generateMetadata` on `edit/[[...id]]/page.tsx` | a DB query per open, for a page that renders `null` |
+| Thing                                                                    | Size / shape                                                          |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| `src/lib/workspaceUrl.ts`                                                | 97L, five refusal guards                                              |
+| `src/lib/__tests__/workspaceUrl.test.ts`                                 | a whole spec for those guards                                         |
+| The `project()` listener in `WorkspacePanes.tsx:250-275`                 | a `store.subscribe` running on **every dispatched action**            |
+| `CommandRouter.rewrite` (`commands/types.ts:32-40`)                      | a third navigation primitive, whose only consumer is `pane.close`     |
+| `pane.close`'s own rewrite (`commands/pane.ts:112-133`)                  | plus a dynamic import of `layoutSelectors` to read back what to write |
+| `pane.split`'s push (`commands/pane.ts:82`)                              | with a 6-line comment on why a resolved id and not `id`               |
+| `document.open` dispatching _and_ pushing (`commands/document.ts:53-54`) | order matters                                                         |
+| `force-dynamic` + `generateMetadata` on `edit/[[...id]]/page.tsx`        | a DB query per open, for a page that renders `null`                   |
 
-The `rewrite` primitive deserves its own line: it exists **only** because
-`push` is a server round trip on a `force-dynamic` route, and that route is
+The `rewrite` primitive deserves its own line: it exists **only** because `push`
+is a server round trip on a `force-dynamic` route, and that route is
 `force-dynamic` **only** because of a `generateMetadata` that produces an OG
 card for a private route and a `<title>` the focused `EditorTabPanel` already
-sets client-side (`EditorTabPanel.tsx:193`). One unused OG image is holding up
-a subsystem that reasons about Next 15's `restoreReducer` internals.
+sets client-side (`EditorTabPanel.tsx:193`). One unused OG image is holding up a
+subsystem that reasons about Next 15's `restoreReducer` internals.
 
 ### 1.1 It is also already lying, in two places
 
 **Back does not go back.** The deep-link seam's effect depends on `rootId`
 (`WorkspacePanes.tsx:275`). Pressing Back changes the pathname, which changes
 `rootId`, which re-fires `openPane({ rootId })` — case (3) in the reducer,
-*retarget the focused pane*. It does not restore the previous layout. If you
+_retarget the focused pane_. It does not restore the previous layout. If you
 split or closed a pane since, Back hands you a state that never existed.
 
 **The URL overrides a strictly better source.** The stored record carries
 `panes[]`, `focusedPaneId` and `splitRatio` (`workspacePersistence.ts:143-151`).
-The URL carries one id. On cold load the restore lands and *then* the URL
+The URL carries one id. On cold load the restore lands and _then_ the URL
 replays over it — the ordering comment at `WorkspacePanes.tsx:238-244` says so
 outright ("a stored layout can name a different focused pane than the URL does,
 and the URL wins"). A stale bookmark can retarget a correctly restored pane.
@@ -81,12 +81,12 @@ damage the URL replay itself causes.
 Four claims are usually made for a document id in the workspace URL. Only one
 survives.
 
-| Claim | Verdict |
-| --- | --- |
-| **Sharing** | Does not apply. Sharing is `/view/[id]`, the public page. An `/edit` link is only useful to its author. |
-| **Browser Back** | Already broken — see §1.1. Removing it makes Back honest (it leaves the workspace) rather than removing a feature. |
-| **Reload restores what I had** | IndexedDB already does this, more completely. The URL degrades it. |
-| **Deep links / bookmarks / inbound links** | **Real, and the only one.** 14 href sites point at `/edit/<id>`, plus external bookmarks and MCP. |
+| Claim                                      | Verdict                                                                                                            |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| **Sharing**                                | Does not apply. Sharing is `/view/[id]`, the public page. An `/edit` link is only useful to its author.            |
+| **Browser Back**                           | Already broken — see §1.1. Removing it makes Back honest (it leaves the workspace) rather than removing a feature. |
+| **Reload restores what I had**             | IndexedDB already does this, more completely. The URL degrades it.                                                 |
+| **Deep links / bookmarks / inbound links** | **Real, and the only one.** 14 href sites point at `/edit/<id>`, plus external bookmarks and MCP.                  |
 
 The target model keeps the surviving one and drops the other three.
 
@@ -113,7 +113,7 @@ Removing `[[...id]]` outright would break every inbound link, which is the one
 thing the URL is genuinely good for. Consuming it keeps all 14 internal href
 sites, `ViewDocument`'s "Open in workspace" button, external bookmarks and the
 MCP server working **unchanged** — they are entries, and entries still work.
-What changes is only that you do not *remain* at that address.
+What changes is only that you do not _remain_ at that address.
 
 ### 3.2 What `document.open` becomes
 
@@ -143,22 +143,22 @@ working.
 the last segment 36 chars".
 
 This breaks on bare `/edit`. It is also the last surviving instance of the
-data-flow the parent plan set out to kill (§0: "that code exists *only* because
+data-flow the parent plan set out to kill (§0: "that code exists _only_ because
 workspace state is not represented anywhere"), and it was missed because it
 lives under `src/editor` rather than `src/components`.
 
 **It is already broken today, on a handle URL.** The parser only accepts a
 36-char segment containing a dash, so `/edit/my-post` matches neither the
-`routeWithId` loop nor the last-segment fallback, and it returns `null` —
-which `handleSubmit` turns into a thrown `"Document ID not found"` and an
-"Upload Failed" toast. That path is reachable from the app's own links:
+`routeWithId` loop nor the last-segment fallback, and it returns `null` — which
+`handleSubmit` turns into a thrown `"Document ID not found"` and an "Upload
+Failed" toast. That path is reachable from the app's own links:
 `ViewDocument.tsx:176` ("Open in workspace") uses `handle || id`, and
 `BacklinksSection.tsx:75` uses `handle ?? id`. Per the parent plan a handle URL
 survives "until focus actually moves" — so an author following their own
 published post into the workspace cannot attach a file until they click into
 another pane.
 
-More generally it is correct only *because* the projection keeps the URL on the
+More generally it is correct only _because_ the projection keeps the URL on the
 focused pane's active tab, and only once that projection has landed. It is
 reading a derived, eventually-consistent copy of a value the store holds
 directly.
@@ -172,8 +172,8 @@ This is worth doing **whether or not the rest of this plan lands.**
 - `SideBar/PostItem.tsx:130` — already has the store answer (`isOpenRoot` via
   `selectPaneRootedAt`); the pathname check is documented as a fallback "for the
   beat between a navigation landing and the deep-link seam dispatching
-  `openPane`". Under the new model there is no such beat on an in-app open —
-  the dispatch happens first and the URL never names the document. **Delete the
+  `openPane`". Under the new model there is no such beat on an in-app open — the
+  dispatch happens first and the URL never names the document. **Delete the
   fallback.**
 - `SideBar/SidebarSearchView.tsx:115` — has **no** store fallback; it is
   pathname-only. **Give it `selectPaneShowingDoc`.** It is arguably wrong today
@@ -181,9 +181,10 @@ This is worth doing **whether or not the rest of this plan lands.**
 
 ### 4.3 Bare `/edit` is currently a dead end — **must build**
 
-`EditDocumentContent.tsx:62-64` returns `<SplashScreen title="Document Not
-Found" />` when there is no segment. Under the new model bare `/edit` is the
-*normal* address, so it needs a real answer:
+`EditDocumentContent.tsx:62-64` returns
+`<SplashScreen title="Document Not
+Found" />` when there is no segment. Under
+the new model bare `/edit` is the _normal_ address, so it needs a real answer:
 
 - Stored layout present → restore it and render. (Already the code path; it just
   is not reachable without a segment today.)
@@ -213,9 +214,10 @@ read the URL; they write one, as an entry. **No change.**
 - `pane.split`'s push (`commands/pane.ts:74-82`) — `focusedPaneId` is persisted,
   which is what that push was compensating for.
 - Probably `generateMetadata` + `force-dynamic` on `edit/[[...id]]/page.tsx`
-  (§6, needs a call). If they go, the page file goes entirely and `edit/
-  layout.tsx` can hold a plain `page.tsx` returning `null` — or the catch-all
-  collapses to a `/edit/[[...id]]` that is purely an entry.
+  (§6, needs a call). If they go, the page file goes entirely and
+  `edit/
+  layout.tsx` can hold a plain `page.tsx` returning `null` — or the
+  catch-all collapses to a `/edit/[[...id]]` that is purely an entry.
 
 Net: roughly −250L of mechanism, −1 navigation primitive, −1 per-action store
 subscription.
@@ -232,7 +234,7 @@ keeping `force-dynamic`, which means `push` stays expensive — though after thi
 plan far fewer pushes happen, so the pressure is lower either way.
 
 **Recommendation: delete both.** If an `/edit` link is ever unfurled in Slack,
-the useful preview is the *public* one, and `/view/[id]` already has it.
+the useful preview is the _public_ one, and `/view/[id]` already has it.
 
 ### 6.2 What does an empty workspace show?
 
@@ -270,9 +272,10 @@ Deliberately ordered so that §7.1 is worth doing even if the rest is abandoned.
 `AttachmentDialog` (§4.1), `PostItem` and `SidebarSearchView` (§4.2). All three
 move to `ui.workspace` selectors.
 
-*Acceptance:* `grep -rn "location.pathname\|pathname ===" src/components src/editor`
-returns nothing that is deciding which document is open. Attaching a file works
-in both panes of a split, and attaches to the right one. `npx tsc --noEmit`,
+_Acceptance:_
+`grep -rn "location.pathname\|pathname ===" src/components src/editor` returns
+nothing that is deciding which document is open. Attaching a file works in both
+panes of a split, and attaches to the right one. `npx tsc --noEmit`,
 `npm run lint`, `npm test` clean.
 
 **This phase stands alone.** It fixes a live two-pane bug and removes the last
@@ -289,11 +292,11 @@ reachable in normal use until Phase C.
 The one-shot: after `openPane` lands, `history.replaceState` to `/edit`. Then
 delete §5's list. `document.open` takes the three-branch shape of §3.2.
 
-*Acceptance:* opening from the sidebar, `/posts`, the palette, the Copilot and a
+_Acceptance:_ opening from the sidebar, `/posts`, the palette, the Copilot and a
 cold deep link all land on `/edit` with the right document focused. Splitting
 and clicking between panes produce **zero** history entries and zero URL
-changes. Reload restores the two-pane layout with the correct pane focused.
-Back from `/edit` leaves the workspace.
+changes. Reload restores the two-pane layout with the correct pane focused. Back
+from `/edit` leaves the workspace.
 
 ### Phase D — Drop `force-dynamic` (if §6.1 says so)
 
@@ -302,7 +305,7 @@ be reverted independently if the OG card turns out to matter.
 
 ---
 
-## 8. What this does *not* change
+## 8. What this does _not_ change
 
 - **The AI surface.** Nothing in `src/commands` changes shape except deleting
   `rewrite` from `CommandRouter`. `workspace.describe` is still the addressing

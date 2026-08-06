@@ -57,7 +57,7 @@ A record whose write fails — most plausibly a `ConstraintError` from the uniqu
 `handle` index on `documents` — is left in the legacy database rather than
 dropped, and logged. The failure mode is a retry, never a lost draft.
 
-## What the rename did *not* remove
+## What the rename did _not_ remove
 
 Searching the tree for the old name still returns hits, and they are
 load-bearing. Two Lexical node type strings are baked into stored content —
@@ -67,13 +67,12 @@ no class for, so `LegacyTableNode` and `LegacyTableCellNode` stay registered as
 import aliases, and no migration can retire them: it would not reach the
 backups.
 
-Both strings are declared once, in
-`src/editor/nodes/TableNode/legacyTypes.ts`, which is where a search for them
-should land. Current saves already emit `blog-*`, and
-`src/editor/nodes/TableNode/__tests__/legacyTypes.test.ts` imports the constants
-from that module to guard both spellings.
+Both strings are declared once, in `src/editor/nodes/TableNode/legacyTypes.ts`,
+which is where a search for them should land. Current saves already emit
+`blog-*`, and `src/editor/nodes/TableNode/__tests__/legacyTypes.test.ts` imports
+the constants from that module to guard both spellings.
 
 The remaining mentions are this guide and `LEGACY_DATABASE_NAME` in
-`src/indexeddb/migrate.ts`. Those *can* eventually go: once the legacy database
+`src/indexeddb/migrate.ts`. Those _can_ eventually go: once the legacy database
 is drained in practice, deleting `migrate.ts` and `migrationPlan.ts` takes the
 comment in `src/indexeddb/index.ts` and most of this page with it.

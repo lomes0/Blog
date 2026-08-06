@@ -25,11 +25,8 @@ import { useCommandContext } from "@/commands/CommandProvider";
 import { postsSelectors, useSelector } from "@/store";
 import CopilotMessage from "./CopilotMessage";
 import QuickActions from "./QuickActions";
-import Composer, {
-  composerSurfaceSx,
-  composerWrapperSx,
-} from "./Composer";
-import { type SlashCommand, SLASH_COMMANDS } from "./slashCommands";
+import Composer, { composerSurfaceSx, composerWrapperSx } from "./Composer";
+import { SLASH_COMMANDS, type SlashCommand } from "./slashCommands";
 import { loadCurrentThread, saveCurrentThread } from "./copilotStorage";
 import { WORKSPACE_SCOPE } from "@/types";
 import { ICON_SIZE } from "@/theme/icons";
@@ -316,11 +313,9 @@ const CopilotChat: React.FC<CopilotChatProps> = (
 
   // Slash-command autocomplete: active while the input is a single "/token".
   const slashQuery = /^\/\S*$/.test(input) ? input.toLowerCase() : null;
-  const slashMatches = slashQuery === null
-    ? []
-    : SLASH_COMMANDS
-      .filter((c) => documentId !== null || !c.needsDocument)
-      .filter((c) => c.command.startsWith(slashQuery));
+  const slashMatches = slashQuery === null ? [] : SLASH_COMMANDS
+    .filter((c) => documentId !== null || !c.needsDocument)
+    .filter((c) => c.command.startsWith(slashQuery));
   const slashOpen = slashMatches.length > 0 && !isLoading;
 
   const pickSlashCommand = (cmd: SlashCommand) => {
@@ -406,9 +401,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
           state: at rest it is its composer and nothing else, so the document
           behind it stays uncovered until there is something to show. */
       }
-      {!showTranscript
-        ? null
-        : messages.length === 0
+      {!showTranscript ? null : messages.length === 0
         ? isInline ? null : (
           <Box
             sx={{

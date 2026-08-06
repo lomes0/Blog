@@ -217,7 +217,8 @@ const ActivityRail: React.FC = () => {
       <RailButton
         label="Posts"
         active={postsActive}
-        onClick={() => run(workspaceCommands.openSection, { section: "library" })}
+        onClick={() =>
+          run(workspaceCommands.openSection, { section: "library" })}
       >
         <Newspaper size={ICON_SIZE.dense} strokeWidth={1.9} />
       </RailButton>

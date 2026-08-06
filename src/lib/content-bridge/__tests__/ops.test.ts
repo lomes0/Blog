@@ -56,7 +56,11 @@ describe("applyOps — preservation", () => {
     const state = makeState();
     // The app's code node carries width and wrap; the IR knows only language
     // and body, so a naive rebuild would silently drop them.
-    const result = apply(state, [{ op: "set_text", id: "b5", text: "const z = 3;" }]);
+    const result = apply(state, [{
+      op: "set_text",
+      id: "b5",
+      text: "const z = 3;",
+    }]);
     const code = at(result.state, 4);
     expect(code.width).toBe(640);
     expect(code.wrap).toBe(true);
@@ -67,13 +71,21 @@ describe("applyOps — preservation", () => {
   it("carries through on replace_block too, but not across node types", () => {
     const state = makeState();
     const kept = apply(state, [
-      { op: "replace_block", id: "b5", block: { type: "code", language: "py", code: "x = 1" } },
+      {
+        op: "replace_block",
+        id: "b5",
+        block: { type: "code", language: "py", code: "x = 1" },
+      },
     ]);
     expect(at(kept.state, 4).width).toBe(640);
 
     // Replacing a code block with a paragraph must not smuggle code fields over.
     const swapped = apply(state, [
-      { op: "replace_block", id: "b5", block: { type: "paragraph", text: "prose now" } },
+      {
+        op: "replace_block",
+        id: "b5",
+        block: { type: "paragraph", text: "prose now" },
+      },
     ]);
     expect(at(swapped.state, 4).width).toBeUndefined();
     expect(at(swapped.state, 4).type).toBe("paragraph");
@@ -83,9 +95,11 @@ describe("applyOps — preservation", () => {
 describe("applyOps — the freshness guard", () => {
   it("refuses a batch whose hash no longer matches", () => {
     const state = makeState();
-    expect(() => applyOps(state, "h_deadbeefdeadbeef", [
-      { op: "set_text", id: "b2", text: "x" },
-    ])).toThrow(/changed since it was read/);
+    expect(() =>
+      applyOps(state, "h_deadbeefdeadbeef", [
+        { op: "set_text", id: "b2", text: "x" },
+      ])
+    ).toThrow(/changed since it was read/);
   });
 
   it("returns a new hash that guards the next batch", () => {
@@ -94,7 +108,11 @@ describe("applyOps — the freshness guard", () => {
     expect(first.stateHash).not.toBe(stateHash(state));
     // The returned hash is the one the next batch must carry.
     expect(() =>
-      applyOps(first.state, first.stateHash, [{ op: "set_text", id: "b2", text: "two" }]),
+      applyOps(first.state, first.stateHash, [{
+        op: "set_text",
+        id: "b2",
+        text: "two",
+      }])
     ).not.toThrow();
   });
 });
@@ -108,8 +126,17 @@ describe("applyOps — snapshot addressing", () => {
       { op: "delete_block", id: "b2" },
       { op: "set_text", id: "b5", text: "const shifted = true;" },
     ]);
-    const types = (result.state.root.children as SerializedNode[]).map((n) => n.type);
-    expect(types).toEqual(["heading", "kanban", "layout-container", "code", "list", "pagebreak"]);
+    const types = (result.state.root.children as SerializedNode[]).map((n) =>
+      n.type
+    );
+    expect(types).toEqual([
+      "heading",
+      "kanban",
+      "layout-container",
+      "code",
+      "list",
+      "pagebreak",
+    ]);
     expect(nodeToBlock(at(result.state, 3))).toMatchObject({
       code: "const shifted = true;",
     });
@@ -121,7 +148,7 @@ describe("applyOps — snapshot addressing", () => {
       apply(state, [
         { op: "delete_block", id: "b2" },
         { op: "set_text", id: "b2", text: "gone" },
-      ]),
+      ])
     ).toThrow(/removed earlier in this batch/);
   });
 });
@@ -134,7 +161,7 @@ describe("applyOps — atomicity", () => {
       apply(state, [
         { op: "set_text", id: "b2", text: "this one is fine" },
         { op: "set_text", id: "b99", text: "this one is not" },
-      ]),
+      ])
     ).toThrow(/no block at "b99"/);
     expect(snapshot(state)).toBe(before);
   });
@@ -144,8 +171,12 @@ describe("applyOps — atomicity", () => {
     expect(() =>
       apply(state, [
         { op: "set_text", id: "b2", text: "ok" },
-        { op: "replace_block", id: "b1", block: { type: "heading", level: 9, text: "x" } as never },
-      ]),
+        {
+          op: "replace_block",
+          id: "b1",
+          block: { type: "heading", level: 9, text: "x" } as never,
+        },
+      ])
     ).toThrow(/op 2: heading level must be 1-6/);
   });
 });
@@ -154,21 +185,27 @@ describe("applyOps — what may not be rewritten", () => {
   it("refuses to set text on a block with no codec", () => {
     const state = makeState();
     // b4.2.1 is a graph — a GeoGebra state blob that will never have a codec.
-    expect(() => apply(state, [{ op: "set_text", id: "b4.2.1", text: "nope" }])).toThrow(
-      /graph, which has no codec/,
-    );
+    expect(() => apply(state, [{ op: "set_text", id: "b4.2.1", text: "nope" }]))
+      .toThrow(
+        /graph, which has no codec/,
+      );
   });
 
   it("refuses set_text on a block that has no single text field", () => {
     const state = makeState();
-    expect(() => apply(state, [{ op: "set_text", id: "b3", text: "nope" }])).toThrow(
-      /kanban block has no single text field/,
-    );
+    expect(() => apply(state, [{ op: "set_text", id: "b3", text: "nope" }]))
+      .toThrow(
+        /kanban block has no single text field/,
+      );
   });
 
   it("still allows moving and deleting a block with no codec", () => {
     const state = makeState();
-    const moved = apply(state, [{ op: "move_block", id: "b4.2.1", before: "b1" }]);
+    const moved = apply(state, [{
+      op: "move_block",
+      id: "b4.2.1",
+      before: "b1",
+    }]);
     const landed = (moved.state.root.children as SerializedNode[])[0];
     expect(landed.type).toBe("graph");
 
@@ -196,18 +233,31 @@ describe("applyOps — what may not be rewritten", () => {
     // block is text-opaque and set_text must refuse rather than lose it.
     const target = at(state, 1);
     target.children = [
-      { type: "text", version: 1, text: "coloured", detail: 0, format: 0, mode: "normal", style: "color: #f00" },
+      {
+        type: "text",
+        version: 1,
+        text: "coloured",
+        detail: 0,
+        format: 0,
+        mode: "normal",
+        style: "color: #f00",
+      },
     ];
     expect(() =>
-      applyOps(state, stateHash(state), [{ op: "set_text", id: "b2", text: "x" }]),
+      applyOps(state, stateHash(state), [{
+        op: "set_text",
+        id: "b2",
+        text: "x",
+      }])
     ).toThrow(/cannot express/);
   });
 
   it("points at replace_block for lists", () => {
     const state = makeState();
-    expect(() => apply(state, [{ op: "set_text", id: "b6", text: "x" }])).toThrow(
-      /use replace_block/,
-    );
+    expect(() => apply(state, [{ op: "set_text", id: "b6", text: "x" }]))
+      .toThrow(
+        /use replace_block/,
+      );
   });
 });
 
@@ -215,10 +265,20 @@ describe("applyOps — structure", () => {
   it("inserts relative to a block, and into a container", () => {
     const state = makeState();
     const result = apply(state, [
-      { op: "insert_blocks", after: "b1", blocks: [{ type: "paragraph", text: "new intro" }] },
-      { op: "insert_blocks", appendTo: "b4.1", blocks: [{ type: "paragraph", text: "in the column" }] },
+      {
+        op: "insert_blocks",
+        after: "b1",
+        blocks: [{ type: "paragraph", text: "new intro" }],
+      },
+      {
+        op: "insert_blocks",
+        appendTo: "b4.1",
+        blocks: [{ type: "paragraph", text: "in the column" }],
+      },
     ]);
-    expect(nodeToBlock(at(result.state, 1))).toMatchObject({ text: "new intro" });
+    expect(nodeToBlock(at(result.state, 1))).toMatchObject({
+      text: "new intro",
+    });
     const column = (at(result.state, 4).children as SerializedNode[])[0];
     expect((column.children as SerializedNode[]).length).toBe(2);
   });
@@ -226,22 +286,32 @@ describe("applyOps — structure", () => {
   it("appends to the document by default", () => {
     const state = makeState();
     const result = apply(state, [
-      { op: "insert_blocks", blocks: [{ type: "heading", level: 2, text: "Coda" }] },
+      {
+        op: "insert_blocks",
+        blocks: [{ type: "heading", level: 2, text: "Coda" }],
+      },
     ]);
     const children = result.state.root.children as SerializedNode[];
-    expect(children[children.length - 1]).toMatchObject({ type: "heading", tag: "h2" });
+    expect(children[children.length - 1]).toMatchObject({
+      type: "heading",
+      tag: "h2",
+    });
   });
 
   it("moves a block within its container without losing it", () => {
     const state = makeState();
     const result = apply(state, [{ op: "move_block", id: "b1", after: "b2" }]);
-    const types = (result.state.root.children as SerializedNode[]).map((n) => n.type);
+    const types = (result.state.root.children as SerializedNode[]).map((n) =>
+      n.type
+    );
     expect(types.slice(0, 2)).toEqual(["paragraph", "heading"]);
   });
 
   it("refuses to move a container inside itself", () => {
     const state = makeState();
-    expect(() => apply(state, [{ op: "move_block", id: "b4", appendTo: "b4.1" }])).toThrow(
+    expect(() =>
+      apply(state, [{ op: "move_block", id: "b4", appendTo: "b4.1" }])
+    ).toThrow(
       /cannot be moved inside itself/,
     );
   });
@@ -253,24 +323,34 @@ describe("applyOps — structure", () => {
         op: "insert_blocks",
         appendTo: "b4.2",
         blocks: [
-          { type: "list", listType: "check", items: [{ text: "done", checked: true }] },
+          {
+            type: "list",
+            listType: "check",
+            items: [{ text: "done", checked: true }],
+          },
         ],
       },
     ]);
     const secondColumn = (at(result.state, 3).children as SerializedNode[])[1];
     const list = (secondColumn.children as SerializedNode[])[1];
     expect(list).toMatchObject({ type: "list", listType: "check" });
-    expect((list.children as SerializedNode[])[0]).toMatchObject({ checked: true });
+    expect((list.children as SerializedNode[])[0]).toMatchObject({
+      checked: true,
+    });
   });
 
   it("reports the change count for the caller's summary line", () => {
     const state = makeState();
     const result = apply(state, [
       { op: "set_text", id: "b2", text: "a" },
-      { op: "insert_blocks", after: "b2", blocks: [
-        { type: "paragraph", text: "b" },
-        { type: "paragraph", text: "c" },
-      ] },
+      {
+        op: "insert_blocks",
+        after: "b2",
+        blocks: [
+          { type: "paragraph", text: "b" },
+          { type: "paragraph", text: "c" },
+        ],
+      },
     ]);
     expect(result.changed).toBe(3);
   });
@@ -280,7 +360,11 @@ describe("applyOps — round-trip through the outline", () => {
   it("keeps the outline addressable after an edit", () => {
     const state = makeState();
     const result = apply(state, [
-      { op: "insert_blocks", before: "b1", blocks: [{ type: "paragraph", text: "prelude" }] },
+      {
+        op: "insert_blocks",
+        before: "b1",
+        blocks: [{ type: "paragraph", text: "prelude" }],
+      },
     ]);
     const after = outline(result.state);
     expect(after.stateHash).toBe(result.stateHash);

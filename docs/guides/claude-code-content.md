@@ -4,7 +4,7 @@ Claude Code can navigate, read, write and create posts in this blog directly,
 through an MCP server that exposes the Prisma/Lexical content as tools. This
 page is the usage guide: how to switch it on, and how to drive it.
 
-For *why* it addresses content by block rather than by Markdown, see
+For _why_ it addresses content by block rather than by Markdown, see
 [mcp/README.md](../../mcp/README.md) and
 [docs/plans/claude-code-lexical.md](../plans/claude-code-lexical.md).
 
@@ -59,8 +59,8 @@ personal, single-user use.
 /mcp
 ```
 
-should list **blog-content** as connected, with eight tools. If it doesn't,
-run the server by hand to see the error — a missing `DATABASE_URL` or an
+should list **blog-content** as connected, with eight tools. If it doesn't, run
+the server by hand to see the error — a missing `DATABASE_URL` or an
 `MCP_AUTHOR_ID` matching no user both fail loudly at startup:
 
 ```bash
@@ -117,18 +117,26 @@ columns, a collapsible section's body — each `[read-only]` and holding the
 addressable blocks beneath it. A twelve-block post with one table and one layout
 outlines as thirty lines, not twelve.
 
-Then edit by address, passing back the `stateHash` from the read those
-addresses came from:
+Then edit by address, passing back the `stateHash` from the read those addresses
+came from:
 
 ```jsonc
 {
   "id": "…",
   "stateHash": "h_3f2ab9c14d0e7712",
   "ops": [
-    { "op": "set_text", "id": "b2", "text": "The usual derivation starts from the **chain rule**." },
-    { "op": "insert_blocks", "after": "b2", "blocks": [
-      { "type": "paragraph", "text": "A worked example follows." }
-    ] }
+    {
+      "op": "set_text",
+      "id": "b2",
+      "text": "The usual derivation starts from the **chain rule**."
+    },
+    {
+      "op": "insert_blocks",
+      "after": "b2",
+      "blocks": [
+        { "type": "paragraph", "text": "A worked example follows." }
+      ]
+    }
   ]
 }
 ```
@@ -146,16 +154,16 @@ mechanics matter when something is refused.
 
 ## Tools
 
-| Tool           | Purpose                                                           |
-| -------------- | ----------------------------------------------------------------- |
-| `list_posts`   | The author's posts — id, name, handle, series, published, updated  |
-| `list_series`  | The author's series                                                |
-| `outline`      | Block skeleton + `stateHash`. **Start here**                       |
-| `read_blocks`  | Full content of specific blocks, by address                        |
-| `read_post`    | The whole post as nested blocks — short documents only             |
-| `search`       | Block-level text hits across posts, each with an address           |
-| `apply_ops`    | Edit by block, all-or-nothing, guarded by `stateHash`              |
-| `create_post`  | New post from blocks — real code nodes and lists, not fenced Markdown |
+| Tool          | Purpose                                                               |
+| ------------- | --------------------------------------------------------------------- |
+| `list_posts`  | The author's posts — id, name, handle, series, published, updated     |
+| `list_series` | The author's series                                                   |
+| `outline`     | Block skeleton + `stateHash`. **Start here**                          |
+| `read_blocks` | Full content of specific blocks, by address                           |
+| `read_post`   | The whole post as nested blocks — short documents only                |
+| `search`      | Block-level text hits across posts, each with an address              |
+| `apply_ops`   | Edit by block, all-or-nothing, guarded by `stateHash`                 |
+| `create_post` | New post from blocks — real code nodes and lists, not fenced Markdown |
 
 Ops accepted by `apply_ops`: `set_text{id,text}`, `replace_block{id,block}`,
 `insert_blocks{blocks, after|before|appendTo}`, `delete_block{id}`,
@@ -184,13 +192,13 @@ are plain strings in the common case, with an object form
 
 Inline formatting inside any `text` field:
 
-| Markup            | Result    |     | Markup           | Result     |
-| ----------------- | --------- | --- | ---------------- | ---------- |
-| `**bold**`        | bold      |     | `++underline++`  | underline  |
-| `__italic__`      | italic    |     | `^^sup^^`        | superscript |
-| `` `code` ``      | code      |     | `,,sub,,`        | subscript  |
-| `~~strike~~`      | strike    |     | `[text](url)`    | link       |
-| `==highlight==`   | highlight |     | `$latex$`        | math       |
+| Markup          | Result    |   | Markup          | Result      |
+| --------------- | --------- | - | --------------- | ----------- |
+| `**bold**`      | bold      |   | `++underline++` | underline   |
+| `__italic__`    | italic    |   | `^^sup^^`       | superscript |
+| `` `code` ``    | code      |   | `,,sub,,`       | subscript   |
+| `~~strike~~`    | strike    |   | `[text](url)`   | link        |
+| `==highlight==` | highlight |   | `$latex$`       | math        |
 
 Italic is `__`, not `*`, so that no delimiter is a prefix of another.
 
@@ -248,19 +256,19 @@ URL that already exists.
 one you regret has to be removed from the app.
 
 **Careful with a post open in the editor.** An agent write creates a new
-revision, but a browser tab holding the older state can autosave over it.
-Reload the editor after an agent edit rather than leaving both live.
+revision, but a browser tab holding the older state can autosave over it. Reload
+the editor after an agent edit rather than leaving both live.
 
 ---
 
 ## Where the code is
 
-| Path                             | What                                                        |
-| -------------------------------- | ----------------------------------------------------------- |
-| `mcp/content-server.ts`          | The MCP server: tool definitions, Prisma reads, revision writes |
-| `mcp/smoke.ts`                   | End-to-end check against the live database                   |
-| `src/lib/content-bridge/`        | Addressing, codecs, ops applier, `stateHash` — pure JSON, no DOM |
-| `src/editor/utils/copilotAgentExecutors.ts` | The same bridge, driving the in-app Copilot        |
+| Path                                        | What                                                             |
+| ------------------------------------------- | ---------------------------------------------------------------- |
+| `mcp/content-server.ts`                     | The MCP server: tool definitions, Prisma reads, revision writes  |
+| `mcp/smoke.ts`                              | End-to-end check against the live database                       |
+| `src/lib/content-bridge/`                   | Addressing, codecs, ops applier, `stateHash` — pure JSON, no DOM |
+| `src/editor/utils/copilotAgentExecutors.ts` | The same bridge, driving the in-app Copilot                      |
 
 The bridge is covered by `src/lib/content-bridge/__tests__/` and needs no
 database; `npm run mcp:smoke` is what covers the server.

@@ -143,7 +143,9 @@ const blockSchema = z.discriminatedUnion("type", [
     rows: z
       .array(z.array(z.unknown()))
       .optional()
-      .describe('Rows of cells; a cell is a string or {text, header, colSpan, rowSpan}'),
+      .describe(
+        "Rows of cells; a cell is a string or {text, header, colSpan, rowSpan}",
+      ),
     headerRow: z.boolean().optional(),
   }),
   z.object({
@@ -163,7 +165,11 @@ const placement = {
 
 const opSchema = z.discriminatedUnion("op", [
   z.object({ op: z.literal("set_text"), id: z.string(), text: z.string() }),
-  z.object({ op: z.literal("replace_block"), id: z.string(), block: blockSchema }),
+  z.object({
+    op: z.literal("replace_block"),
+    id: z.string(),
+    block: blockSchema,
+  }),
   z.object({
     op: z.literal("insert_blocks"),
     blocks: z.array(blockSchema).min(1),

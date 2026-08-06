@@ -60,7 +60,9 @@ describe("stamping", () => {
       { type: "heading", level: 1, text: "Title" },
       { type: "paragraph", text: "Body" },
     ]);
-    expect(outline(state).blocks.every((b) => b.id.startsWith("blk_"))).toBe(true);
+    expect(outline(state).blocks.every((b) => b.id.startsWith("blk_"))).toBe(
+      true,
+    );
   });
 
   it("mints ids that are unique within a document", () => {
@@ -80,7 +82,11 @@ describe("an id survives what a path does not", () => {
     const state = makeState();
 
     // Edit b2, which stamps it.
-    const first = apply(state, [{ op: "set_text", id: "b2", text: "the intro" }]);
+    const first = apply(state, [{
+      op: "set_text",
+      id: "b2",
+      text: "the intro",
+    }]);
     const id = readBlockId(at(first.state, 1));
     expect(id).toMatch(/^blk_/);
 
@@ -121,7 +127,7 @@ describe("an id survives what a path does not", () => {
     expect(() =>
       applyOps(first.state, first.stateHash, [
         { op: "set_text", id: "b2", text: "two" },
-      ]),
+      ])
     ).not.toThrow();
     expect(readBlocks(first.state, ["b2"]).blocks).toHaveLength(1);
   });
@@ -129,7 +135,7 @@ describe("an id survives what a path does not", () => {
   it("reports an id that names nothing, rather than guessing", () => {
     const state = makeState();
     expect(() =>
-      apply(state, [{ op: "set_text", id: "blk_nosuchblock", text: "x" }]),
+      apply(state, [{ op: "set_text", id: "blk_nosuchblock", text: "x" }])
     ).toThrow(/no block at "blk_nosuchblock"/);
     expect(readBlocks(state, ["blk_nosuchblock"]).missing).toEqual([
       "blk_nosuchblock",

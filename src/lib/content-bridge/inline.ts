@@ -81,8 +81,9 @@ const escapeText = (text: string): string => {
     const ch = text[i];
     const atBoundary = i === 0 || i === text.length - 1;
     if (ALWAYS_ESCAPE.has(ch)) out += `\\${ch}`;
-    else if (MARK_CHARS.has(ch) && (text[i + 1] === ch || atBoundary)) out += `\\${ch}`;
-    else out += ch;
+    else if (MARK_CHARS.has(ch) && (text[i + 1] === ch || atBoundary)) {
+      out += `\\${ch}`;
+    } else out += ch;
   }
   return out;
 };
@@ -90,7 +91,9 @@ const escapeText = (text: string): string => {
 /** A backtick fence long enough that the content cannot close it early. */
 function codeFence(text: string): string {
   let longest = 0;
-  for (const run of text.match(/`+/g) ?? []) longest = Math.max(longest, run.length);
+  for (const run of text.match(/`+/g) ?? []) {
+    longest = Math.max(longest, run.length);
+  }
   return "`".repeat(longest + 1);
 }
 
@@ -101,13 +104,16 @@ function codeFence(text: string): string {
  */
 function renderCode(text: string): string {
   const fence = codeFence(text);
-  const padded = text.startsWith("`") || text.endsWith("`") ? ` ${text} ` : text;
+  const padded = text.startsWith("`") || text.endsWith("`")
+    ? ` ${text} `
+    : text;
   return `${fence}${padded}${fence}`;
 }
 
 /** Undo `renderCode`'s padding. */
 function stripCodePadding(text: string): string {
-  return text.length > 1 && text.startsWith(" ") && text.endsWith(" ") && text.trim() !== ""
+  return text.length > 1 && text.startsWith(" ") && text.endsWith(" ") &&
+      text.trim() !== ""
     ? text.slice(1, -1)
     : text;
 }
@@ -162,7 +168,9 @@ function wrap(body: string, format: number): string {
  * Render a node's inline children to Markdown, or null if any of them carries
  * something this vocabulary cannot express.
  */
-export function renderInline(children: readonly SerializedNode[]): string | null {
+export function renderInline(
+  children: readonly SerializedNode[],
+): string | null {
   let out = "";
 
   for (const child of children) {
@@ -173,7 +181,9 @@ export function renderInline(children: readonly SerializedNode[]): string | null
         const format = typeof child.format === "number" ? child.format : 0;
         const raw = typeof child.text === "string" ? child.text : "";
         // Code content is literal inside its fence, so it is never escaped.
-        out += format & IS_CODE ? wrap(raw, format) : wrap(escapeText(raw), format);
+        out += format & IS_CODE
+          ? wrap(raw, format)
+          : wrap(escapeText(raw), format);
         break;
       }
       case "linebreak":
@@ -327,7 +337,10 @@ function parseRuns(md: string, format: number): SerializedNode[] {
       if (close !== -1) {
         flush();
         out.push(
-          ...parseRuns(md.slice(i + mark.delim.length, close), format | mark.bit),
+          ...parseRuns(
+            md.slice(i + mark.delim.length, close),
+            format | mark.bit,
+          ),
         );
         i = close + mark.delim.length;
         continue;

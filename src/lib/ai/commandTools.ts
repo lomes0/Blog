@@ -22,12 +22,12 @@
  * the executor), so it must stay free of anything either side cannot load —
  * which is also why `src/commands` has no static `@/store` edge.
  */
-import { type JSONSchema7, jsonSchema, tool, zodSchema } from "ai";
+import { jsonSchema, type JSONSchema7, tool, zodSchema } from "ai";
 import { isReadTool, isWriteTool } from "./copilotAgentTools";
 import {
   type CommandContext,
-  type CommandResult,
   commandRegistry,
+  type CommandResult,
   type ErasedCommand,
   type ProposedChange,
 } from "@/commands";

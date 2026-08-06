@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef } from "react";
 import { isRestoreSettled } from "@/lib/scrollMemory";
-import { rememberScroll, readScroll } from "@/store/workspacePersistence";
+import { readScroll, rememberScroll } from "@/store/workspacePersistence";
 
 /**
  * Return a pane's document to where it was left.

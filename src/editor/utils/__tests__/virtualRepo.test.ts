@@ -63,9 +63,30 @@ const doc = (
 
 const docs: Post[] = [
   doc("d1", "Gradient descent", [
-    { type: "heading", tag: "h1", version: 1, direction: null, format: "", indent: 0, children: [text("Gradient descent")] },
+    {
+      type: "heading",
+      tag: "h1",
+      version: 1,
+      direction: null,
+      format: "",
+      indent: 0,
+      children: [text("Gradient descent")],
+    },
     paragraph("The usual derivation starts from the gradient."),
-    { type: "kanban", version: 1, style: "", tasks: [{ id: "t", name: "Rewrite the intro", stage: 0, priority: "high", tags: [], createdAt: "a", updatedAt: "b" }] },
+    {
+      type: "kanban",
+      version: 1,
+      style: "",
+      tasks: [{
+        id: "t",
+        name: "Rewrite the intro",
+        stage: 0,
+        priority: "high",
+        tags: [],
+        createdAt: "a",
+        updatedAt: "b",
+      }],
+    },
   ]),
   doc("d2", "Notes about gradients", [paragraph("Nothing relevant here.")]),
   // Cloud-only: metadata is known, the body is not loaded client-side.
@@ -76,8 +97,18 @@ describe("listDocuments", () => {
   it("says which bodies are actually loaded client-side", () => {
     expect(listDocuments(docs)).toEqual([
       { id: "d1", title: "Gradient descent", seriesId: null, hasContent: true },
-      { id: "d2", title: "Notes about gradients", seriesId: null, hasContent: true },
-      { id: "d3", title: "Gradient appendix", seriesId: null, hasContent: false },
+      {
+        id: "d2",
+        title: "Notes about gradients",
+        seriesId: null,
+        hasContent: true,
+      },
+      {
+        id: "d3",
+        title: "Gradient appendix",
+        seriesId: null,
+        hasContent: false,
+      },
     ]);
   });
 });
@@ -107,7 +138,13 @@ describe("searchDocuments", () => {
   it("surfaces a document by title even when its body is not local", () => {
     const hits = searchDocuments(docs, "appendix");
     expect(hits).toEqual([
-      { id: "d3", title: "Gradient appendix", blockId: "", kind: "title", text: "Gradient appendix" },
+      {
+        id: "d3",
+        title: "Gradient appendix",
+        blockId: "",
+        kind: "title",
+        text: "Gradient appendix",
+      },
     ]);
   });
 

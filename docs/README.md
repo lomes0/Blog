@@ -11,9 +11,9 @@ them.
 
 ## Getting started
 
-| File                                                             | Description                                                        |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------ |
-| [bootstrap.md](./bootstrap.md)                                   | From-zero local setup: Node, Docker Postgres, env                  |
+| File                                                             | Description                                                         |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------- |
+| [bootstrap.md](./bootstrap.md)                                   | From-zero local setup: Node, Docker Postgres, env                   |
 | [guides/claude-code-content.md](./guides/claude-code-content.md) | Editing blog content from Claude Code: MCP setup and the edit cycle |
 
 ## Guides
@@ -29,23 +29,23 @@ Each documents a specific failure mode and its fix.
 
 ## Architecture
 
-| File                                                       | Description                                                                          |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| [architecture/overview.md](./architecture/overview.md)     | Layered architecture, rules per layer, naming conventions, and new-feature checklist |
-| [architecture/api-client.md](./architecture/api-client.md) | `apiClient` contract, error handling, and how to add new API routes                  |
+| File                                                                                 | Description                                                                                        |
+| ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| [architecture/overview.md](./architecture/overview.md)                               | Layered architecture, rules per layer, naming conventions, and new-feature checklist               |
+| [architecture/api-client.md](./architecture/api-client.md)                           | `apiClient` contract, error handling, and how to add new API routes                                |
 | [architecture/claude-code-integration.md](./architecture/claude-code-integration.md) | The content bridge, the MCP server and the in-app Copilot — one block-addressing layer, two agents |
-| [ai.instructions.md](./ai.instructions.md)                 | Multi-provider AI completion layer: models, providers, env vars                      |
+| [ai.instructions.md](./ai.instructions.md)                                           | Multi-provider AI completion layer: models, providers, env vars                                    |
 
 ## Plans and reviews
 
 Proposals and audits — **status is stated at the top of each file**. These
 describe intended or observed states, not necessarily the current one.
 
-| File                                                                       | Description                                                                     |
-| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| [plans/README.md](./plans/README.md)                                       | Index of the content-model & ordering proposals                                 |
-| [claude_code_support_tasks.md](./claude_code_support_tasks.md)             | Backlog for the Claude Code / Copilot content bridge — what is left, and why    |
-| [reviews/](./reviews/)                                                     | Point-in-time code reviews, dated                                               |
+| File                                                           | Description                                                                  |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| [plans/README.md](./plans/README.md)                           | Index of the content-model & ordering proposals                              |
+| [claude_code_support_tasks.md](./claude_code_support_tasks.md) | Backlog for the Claude Code / Copilot content bridge — what is left, and why |
+| [reviews/](./reviews/)                                         | Point-in-time code reviews, dated                                            |
 
 Findings in `reviews/` carry a per-finding `STATUS` line stating whether they
 are still open. Re-verify before acting on one — a review body describes the

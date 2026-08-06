@@ -6,9 +6,18 @@
  * kanban board simply vanished from what the agent saw, with nothing to say it
  * had been there.
  */
-import { formatAddress, parseAddress, walkBlocks } from "@/lib/content-bridge/address";
+import {
+  formatAddress,
+  parseAddress,
+  walkBlocks,
+} from "@/lib/content-bridge/address";
 import { describeNode, nodeToBlock } from "@/lib/content-bridge/blocks";
-import { formatOutline, outline, readAll, readBlocks } from "@/lib/content-bridge/outline";
+import {
+  formatOutline,
+  outline,
+  readAll,
+  readBlocks,
+} from "@/lib/content-bridge/outline";
 import { stateHash } from "@/lib/content-bridge/stateHash";
 import { stateFromBlocks } from "@/lib/content-bridge/ops";
 import type { SerializedNode } from "@/lib/content-bridge/types";
@@ -91,19 +100,38 @@ describe("outline", () => {
     // Conflating these advertised a kanban as editable and then refused the
     // edit: it has no single text field, but replace_block works fine.
     const byId = new Map(outline(makeState()).blocks.map((b) => [b.id, b]));
-    expect(byId.get("b2")).toMatchObject({ editable: true, textEditable: true });
-    expect(byId.get("b5")).toMatchObject({ editable: true, textEditable: true });
-    expect(byId.get("b3")).toMatchObject({ editable: true, textEditable: false });
-    expect(byId.get("b4")).toMatchObject({ editable: true, textEditable: false });
+    expect(byId.get("b2")).toMatchObject({
+      editable: true,
+      textEditable: true,
+    });
+    expect(byId.get("b5")).toMatchObject({
+      editable: true,
+      textEditable: true,
+    });
+    expect(byId.get("b3")).toMatchObject({
+      editable: true,
+      textEditable: false,
+    });
+    expect(byId.get("b4")).toMatchObject({
+      editable: true,
+      textEditable: false,
+    });
     // A graph has no codec at all — neither op will touch it.
-    expect(byId.get("b4.2.1")).toMatchObject({ editable: false, textEditable: false });
+    expect(byId.get("b4.2.1")).toMatchObject({
+      editable: false,
+      textEditable: false,
+    });
   });
 
   it("keeps its columns separated even for a wide address or kind", () => {
     // Both have overrun their column before: a persistent id is wider than a
     // path, and "details-content" is wider than the kind column.
     const state = stateFromBlocks([
-      { type: "details", summary: "S", body: [{ type: "paragraph", text: "x" }] },
+      {
+        type: "details",
+        summary: "S",
+        body: [{ type: "paragraph", text: "x" }],
+      },
     ]);
     for (const line of formatOutline(outline(state)).split("\n")) {
       expect(line).toMatch(/^\S+\s+\S/);
@@ -120,7 +148,9 @@ describe("outline", () => {
 
   it("previews prose and sizes it, without carrying the body", () => {
     const entry = outline(makeState()).blocks[1];
-    expect(entry.preview).toBe("The usual derivation starts from the gradient.");
+    expect(entry.preview).toBe(
+      "The usual derivation starts from the gradient.",
+    );
     expect(entry.chars).toBe(46);
 
     const long = makeState();
@@ -141,7 +171,11 @@ describe("readBlocks", () => {
   it("returns full content only for what was asked for", () => {
     const result = readBlocks(makeState(), ["b2", "b6"]);
     expect(result.blocks).toEqual([
-      { id: "b2", type: "paragraph", text: "The usual derivation starts from the gradient." },
+      {
+        id: "b2",
+        type: "paragraph",
+        text: "The usual derivation starts from the gradient.",
+      },
       {
         id: "b6",
         type: "list",
@@ -174,7 +208,13 @@ describe("readAll", () => {
   it("nests children under their container", () => {
     const result = readAll(makeState());
     expect(result.blocks.map((b) => b.id)).toEqual([
-      "b1", "b2", "b3", "b4", "b5", "b6", "b7",
+      "b1",
+      "b2",
+      "b3",
+      "b4",
+      "b5",
+      "b6",
+      "b7",
     ]);
     const layout = result.blocks.find((b) => b.id === "b4");
     expect(layout?.children?.map((c) => c.id)).toEqual(["b4.1", "b4.2"]);
@@ -189,16 +229,32 @@ describe("codecs", () => {
     const list = (state.root.children as SerializedNode[])[5];
     (list.children as SerializedNode[])[0].children = [
       {
-        type: "text", version: 1, text: "outer", detail: 0,
-        format: 0, mode: "normal", style: "",
+        type: "text",
+        version: 1,
+        text: "outer",
+        detail: 0,
+        format: 0,
+        mode: "normal",
+        style: "",
       },
       {
-        type: "list", version: 1, listType: "number", children: [
+        type: "list",
+        version: 1,
+        listType: "number",
+        children: [
           {
-            type: "listitem", version: 1, value: 1, indent: 1,
+            type: "listitem",
+            version: 1,
+            value: 1,
+            indent: 1,
             children: [{
-              type: "text", version: 1, text: "inner", detail: 0,
-              format: 0, mode: "normal", style: "",
+              type: "text",
+              version: 1,
+              text: "inner",
+              detail: 0,
+              format: 0,
+              mode: "normal",
+              style: "",
             }],
           },
         ],
@@ -208,7 +264,10 @@ describe("codecs", () => {
       type: "list",
       listType: "bullet",
       items: [
-        { text: "outer", sublist: { listType: "number", items: [{ text: "inner" }] } },
+        {
+          text: "outer",
+          sublist: { listType: "number", items: [{ text: "inner" }] },
+        },
         { text: "second" },
       ],
     });
@@ -231,7 +290,13 @@ describe("codecs", () => {
       direction: null,
       format: "",
       indent: 0,
-      children: [{ type: "canvas", version: 1, id: "c1", height: 300, notes: [{}, {}] }],
+      children: [{
+        type: "canvas",
+        version: 1,
+        id: "c1",
+        height: 300,
+        notes: [{}, {}],
+      }],
     };
     const block = nodeToBlock((state.root.children as SerializedNode[])[1]);
     expect(block).toMatchObject({

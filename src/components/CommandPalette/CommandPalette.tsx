@@ -16,10 +16,7 @@ import {
 import { type RootState, useSelector } from "@/store";
 import { selectAllPosts } from "@/store/selectors/postsSelectors";
 import { ICON_SIZE } from "@/theme/icons";
-import {
-  useCommandContext,
-  useCommandRun,
-} from "@/commands/CommandProvider";
+import { useCommandContext, useCommandRun } from "@/commands/CommandProvider";
 import { documentCommands, uiCommands } from "@/commands";
 
 /**
@@ -199,8 +196,7 @@ const CommandPalette = () => {
         icon: toRead
           ? <Eye size={ICON_SIZE.dense} />
           : <Pencil size={ICON_SIZE.dense} />,
-        run: () =>
-          run(uiCommands.setMode, { mode: toRead ? "read" : "write" }),
+        run: () => run(uiCommands.setMode, { mode: toRead ? "read" : "write" }),
       });
     }
 

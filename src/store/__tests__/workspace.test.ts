@@ -944,7 +944,8 @@ describe("ui.workspace — the split ratio", () => {
  * left to the component that happens not to do it today.
  */
 describe("ui.workspace — maximizing a pane", () => {
-  const split = () => openWithTabs(openWithTabs(initial(), "p1", "doc-a"), "p2", "doc-b");
+  const split = () =>
+    openWithTabs(openWithTabs(initial(), "p1", "doc-a"), "p2", "doc-b");
 
   it("starts with nothing maximized", () => {
     expect(workspaceOf(initial()).maximizedPaneId).toBeNull();
@@ -1132,7 +1133,10 @@ describe("ui.workspace — the URL follows focus", () => {
 
   it("replaying an active *child tab* keeps that tab active", () => {
     let before = split("p1");
-    before = reducer(before, actions.setActiveTab({ paneId: "p1", tabId: "c2" }));
+    before = reducer(
+      before,
+      actions.setActiveTab({ paneId: "p1", tabId: "c2" }),
+    );
     // The URL now names the child, not the post it belongs to.
     expect(focusedDocIdOf(before)).toBe("c2");
 

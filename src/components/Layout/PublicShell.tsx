@@ -73,7 +73,9 @@ const PublicShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <Tooltip title={isDark ? "Light mode" : "Dark mode"}>
             <IconButton
               size="small"
-              aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+              aria-label={isDark
+                ? "Switch to light mode"
+                : "Switch to dark mode"}
               onClick={() => setMode(isDark ? "light" : "dark")}
               sx={{ color: "text.secondary" }}
             >

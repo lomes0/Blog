@@ -185,7 +185,10 @@ export const SidebarWidthProvider: React.FC<{ children: React.ReactNode }> = ({
   // already is without taking either as a dependency — the handle holds this
   // callback across a whole gesture and re-creating it mid-drag would leave the
   // pointer-up listener calling a stale one.
-  const currentRef = useRef<Landing>({ mode: sidebarMode, width: sidebarWidth });
+  const currentRef = useRef<Landing>({
+    mode: sidebarMode,
+    width: sidebarWidth,
+  });
   currentRef.current = { mode: sidebarMode, width: sidebarWidth };
 
   const commitResize = useCallback((landing: Landing) => {

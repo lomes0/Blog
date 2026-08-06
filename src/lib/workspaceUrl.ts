@@ -80,12 +80,17 @@ export interface WorkspaceUrlInput {
  * The last check is the plain one: never write a path the browser already has.
  */
 export function workspaceUrlForFocus(input: WorkspaceUrlInput): string | null {
-  const { currentPath, workspaceHydrated, urlDocId, focusedDocId, urlDocIsOpen }
-    = input;
+  const {
+    currentPath,
+    workspaceHydrated,
+    urlDocId,
+    focusedDocId,
+    urlDocIsOpen,
+  } = input;
 
   if (
-    currentPath !== WORKSPACE_ROUTE
-    && !currentPath.startsWith(`${WORKSPACE_ROUTE}/`)
+    currentPath !== WORKSPACE_ROUTE &&
+    !currentPath.startsWith(`${WORKSPACE_ROUTE}/`)
   ) return null;
   if (!workspaceHydrated) return null;
   if (!focusedDocId) return null;

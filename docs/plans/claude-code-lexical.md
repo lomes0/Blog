@@ -72,7 +72,7 @@ Free for Lexical's own classes. Not free for ours, because ours predate
   without routing through `updateFromJSON`. `layout-container` exports its id
   correctly and still loses it on parse.
 
-Two of the casualties, `math` and `image`, were in rev 1's *authorable* set, so
+Two of the casualties, `math` and `image`, were in rev 1's _authorable_ set, so
 this landed on the write path, not only on reading.
 
 What did hold: ids survived `setTextContent` and `setFormat` through Lexical's
@@ -118,6 +118,7 @@ know to look.
 
 The bridge guards its own writes. Closing the other direction means a CAS on
 that route, and is out of scope here — recorded in §8.
+
 ### 2.5 The conformance pass was a bug fix, not a cost
 
 §2.1 measured that node state does not survive this app's custom classes, and
@@ -147,7 +148,7 @@ or "already lost" and cannot distinguish them.
 Fixed by routing every `importJSON` through `updateFromJSON` and spreading
 `super.exportJSON()`. Two guards keep it fixed:
 `src/editor/nodes/__tests__/serialization.test.ts` for the classes that import
-without a DOM, and `npm run check:nodes` — a static check over *all* of them,
+without a DOM, and `npm run check:nodes` — a static check over _all_ of them,
 since the `.tsx` node modules cannot be parsed in the test environment. The
 check found two classes the manual pass had missed.
 
@@ -198,46 +199,45 @@ from a `write_document` full rewrite drops that node. The tool description
 keep", so omission is by design — but a token that vanishes is a rich block
 deleted with nothing on screen to say so. §8 asks what to do about it.
 
-Worth noting for §4.1: this token scheme is the same insight as this plan's,
-in a cruder form — preserve by not touching. It works, and it is prior evidence
-in this codebase that the approach holds. What it cannot do is let Claude *read
-or author* what is inside the token, which is exactly the gap the block IR
-closes.
+Worth noting for §4.1: this token scheme is the same insight as this plan's, in
+a cruder form — preserve by not touching. It works, and it is prior evidence in
+this codebase that the approach holds. What it cannot do is let Claude _read or
+author_ what is inside the token, which is exactly the gap the block IR closes.
 
 ## 3. What exists today, and why it is not enough
 
 `mcp/content-server.ts` speaks Markdown in both directions:
 
-| Tool          | Behaviour                                                             |
-| ------------- | --------------------------------------------------------------------- |
-| `read_post`   | Flattens through `TRANSFORMERS`. Untransformed types vanish, silently  |
-| `update_post` | Replaces the whole body; refuses posts containing untransformed types  |
-| `create_post` | Markdown in, so only ever authors what Markdown can express            |
-| `list_posts` / `list_series` | Fine, keep                                          |
+| Tool                         | Behaviour                                                             |
+| ---------------------------- | --------------------------------------------------------------------- |
+| `read_post`                  | Flattens through `TRANSFORMERS`. Untransformed types vanish, silently |
+| `update_post`                | Replaces the whole body; refuses posts containing untransformed types |
+| `create_post`                | Markdown in, so only ever authors what Markdown can express           |
+| `list_posts` / `list_series` | Fine, keep                                                            |
 
 So for exactly the rich posts worth writing about, Claude gets an incomplete
 view and cannot write at all. There is no addressing, so every edit is a
 full-document rewrite; and no search, so reviewing a series costs every body in
 full.
 
-The in-app Copilot solves the *preservation* half of this differently and
+The in-app Copilot solves the _preservation_ half of this differently and
 correctly (§2.4), by tokenizing rich nodes into opaque base64. But a token is
 unreadable and unauthorable by the agent, so it trades silent loss for a blind
 spot. Both callers want the same thing: blocks they can see into.
 
 Nothing off the shelf closes this. Lexical ships `@lexical/headless` (already
-used) and the Markdown transformers, and no block-addressing API.
-`@lexical/yjs` would give genuinely stable per-node identity and real concurrent
-merge — at the price of standing up collaboration infrastructure for a
-single-user blog, and it does nothing for the other half of the problem, which
-is Claude understanding the format. We build the layer.
+used) and the Markdown transformers, and no block-addressing API. `@lexical/yjs`
+would give genuinely stable per-node identity and real concurrent merge — at the
+price of standing up collaboration infrastructure for a single-user blog, and it
+does nothing for the other half of the problem, which is Claude understanding
+the format. We build the layer.
 
 ## 4. The model
 
 Raw Lexical JSON is unauthorable by a model — version fields, format bitmasks,
 `direction`/`indent` boilerplate, deep nesting — and ruinous on context.
-Markdown is lossy. The third option is to **address blocks rather than
-serialize documents**.
+Markdown is lossy. The third option is to **address blocks rather than serialize
+documents**.
 
 ### 4.1 The central property
 
@@ -269,7 +269,7 @@ backfill, no agent scaffolding in the stored document, and no new class of
 document that the bridge silently cannot address.
 
 The cost is that an address is only valid against the state that minted it. That
-is acceptable because it is *detectable* — §4.3 — and because the failure is a
+is acceptable because it is _detectable_ — §4.3 — and because the failure is a
 loud "re-read", not a wrong write. Rev 1 bought resilience across concurrent
 human edits, at the price measured in §2.1, for a single-user blog where that
 window is a few seconds wide.
@@ -277,14 +277,14 @@ window is a few seconds wide.
 Persistent ids remain available later as a pure upgrade (§7, phase 5) if
 concurrent editing ever proves annoying in practice. Nothing here forecloses it.
 
-**Built (phase 5): ids are opportunistic, and there is no backfill.**
-Rev 1 wanted every stored revision stamped up front. Instead: a stamped block is
+**Built (phase 5): ids are opportunistic, and there is no backfill.** Rev 1
+wanted every stored revision stamped up front. Instead: a stamped block is
 addressed by its id, an unstamped one by its path, both spellings resolve, and a
 write stamps only the blocks it touched. Documents accrue ids exactly where
 editing happens, nothing is migrated, and nothing breaks if a document is never
 stamped.
 
-Stamping *everything* on first write was the obvious implementation and is wrong
+Stamping _everything_ on first write was the obvious implementation and is wrong
 twice over: a kanban board nobody mentioned would gain an id and stop being
 byte-identical, breaking §4.1; and a one-paragraph change buried in a 200-block
 restamp is not reviewable, breaking §4.7's diff-against-the-previous-revision
@@ -308,7 +308,7 @@ re-read it".
 
 Per §2.2 this is not a stylistic preference over `expectedHead`: head is simply
 not a version here. The hash also happens to be exactly the right token for
-§4.2, because it certifies the *content the addresses were derived from*. If the
+§4.2, because it certifies the _content the addresses were derived from_. If the
 hash matches, the paths are valid by construction.
 
 ### 4.4 Reading — an outline, then bodies
@@ -337,18 +337,18 @@ today (§3) is visible, addressable, and movable — just not authorable until i
 has a codec (§4.6).
 
 **A descriptor is shape, not content.** `kanban  3 lanes · 11 cards` does not
-carry the card text, so until a type has a codec Claude cannot reason about
-what is inside it — "summarize this post" will silently skip it. This is a
-weaker claim than "full view of the document", and the difference is worth
-stating plainly: **full structural view from day one, full content view only
-for typed blocks.** Descriptors could cheaply carry extracted read-only text
-for the types that have text at all; that is §8.
+carry the card text, so until a type has a codec Claude cannot reason about what
+is inside it — "summarize this post" will silently skip it. This is a weaker
+claim than "full view of the document", and the difference is worth stating
+plainly: **full structural view from day one, full content view only for typed
+blocks.** Descriptors could cheaply carry extracted read-only text for the types
+that have text at all; that is §8.
 
 ### 4.5 Inline formatting: Markdown inside a block, never across blocks
 
-Rev 1 modelled a paragraph as a plain string, which quietly destroys bold,
-links and inline math on every `set_text` — the same losslessness bug one level
-down, on the main prose-rewrite path.
+Rev 1 modelled a paragraph as a plain string, which quietly destroys bold, links
+and inline math on every `set_text` — the same losslessness bug one level down,
+on the main prose-rewrite path.
 
 Blocks carry their inline runs as **Markdown extended to a closed inline set**.
 The set must be the app's, not Markdown's: the toolbar offers **highlight,
@@ -367,11 +367,11 @@ the rule total rather than aspirational.
 **Built (phase 1), and the spelling changed under test.** Every mark delimiter
 is two characters and none is a prefix of another:
 
-| | | | |
-| --- | --- | --- | --- |
-| `**bold**` | `__italic__` | `==highlight==` | `++underline++` |
-| `~~strike~~` | `^^sup^^` | `,,sub,,` | `` `code` `` |
-| `[text](url)` | `$latex$` | | |
+|               |              |                 |                 |
+| ------------- | ------------ | --------------- | --------------- |
+| `**bold**`    | `__italic__` | `==highlight==` | `++underline++` |
+| `~~strike~~`  | `^^sup^^`    | `,,sub,,`       | `` `code` ``    |
+| `[text](url)` | `$latex$`    |                 |                 |
 
 Italic is `__` rather than `*` because the obvious spelling makes bold+italic
 render `***`, which the parser splits the wrong way — it takes `**` first and
@@ -386,8 +386,11 @@ escaped only where it is doubled, or where it sits at the very edge of a run and
 would merge with the delimiter about to wrap it.
 
 ```jsonc
-{ "id": "b2", "type": "paragraph",
-  "text": "The usual derivation starts from **the gradient**, see [here](/x)." }
+{
+  "id": "b2",
+  "type": "paragraph",
+  "text": "The usual derivation starts from **the gradient**, see [here](/x)."
+}
 ```
 
 Structured runs (`[{t:"…"},{t:"…",b:true}]`) would be lossless without an
@@ -414,24 +417,29 @@ which types have a **codec** (a bidirectional mapping to node classes):
 { "type": "layout",  "columns": [ [ … ], [ … ] ] }
 ```
 
-Types without a codec are **opaque**: readable, addressable, deletable,
-movable — never rewritten.
+Types without a codec are **opaque**: readable, addressable, deletable, movable
+— never rewritten.
 
 ```jsonc
-{ "id": "b7", "type": "graph", "summary": "geogebra · f(x)=x^2", "opaque": true }
+{
+  "id": "b7",
+  "type": "graph",
+  "summary": "geogebra · f(x)=x^2",
+  "opaque": true
+}
 ```
 
 Phase 1 codecs: paragraph, heading, quote, list, code. Everything else opaque.
 Per §4.1 an opaque block costs nothing — it is preserved by not being touched —
 so graduation is purely additive, has no correctness deadline, and a
-half-finished codec set is never *wrong*, only less capable. This is the main
+half-finished codec set is never _wrong_, only less capable. This is the main
 property the design is buying and the reason the phase order below is free.
 
 #### 4.6.1 Codecs must carry through what they do not model
 
 A clean IR is the hazard. `{ "type": "math", "latex": "…" }` does not mention
-`style`, so a `replace_block` built from it strips the node's styling —
-silently — the failure mode this whole plan is meant to avoid.
+`style`, so a `replace_block` built from it strips the node's styling — silently
+— the failure mode this whole plan is meant to avoid.
 
 Eleven node classes carry `__style` and/or `__width`: `MathNode`, `ImageNode`,
 `GraphNode`, `SketchNode`, `CodeNode`, `TableNode`, `TableCellNode`,
@@ -454,23 +462,23 @@ by a language model at all, and that splits three ways.
 recursively, 2026-08-06). The a-priori tiering below was written without this,
 and it was wrong in two places — see the note after the table.
 
-| Node type | Count | State |
-| --------- | ----- | ----- |
-| `paragraph` / `heading` / `code` / `quote` | 30k+ | phase 1 |
-| `list`, including 1893 nested | 6070 | **graduated**, nesting and all |
-| `horizontalrule` | 1785 | **graduated** as `divider` |
-| `layout-item` | 741 | opaque (structural; you address *into* it) |
-| `blog-tablecell` + `matheditor-tablecell` | 5943 | opaque — **the biggest remaining gap** |
-| `tablerow` | 1357 | opaque |
-| `layout-container` | 247 | **graduated** as `layout` |
-| `attachment` | 164 | graduated, but see below |
-| `canvas` | 131 | §4.6.3 |
-| `blog-table` + `matheditor-table` | 263 | opaque — ~263 tables |
-| `image` | 67 | §4.6.3 |
-| `sketch` | 64 | never (§tier 3) |
-| `graph` | 10 | never |
-| `math` | 8 | inline only — already handled in `inline.ts` |
-| `kanban`, `details-container`, `iframe`, `sticky`, `pagebreak` | **0** | no stored content at all |
+| Node type                                                      | Count | State                                        |
+| -------------------------------------------------------------- | ----- | -------------------------------------------- |
+| `paragraph` / `heading` / `code` / `quote`                     | 30k+  | phase 1                                      |
+| `list`, including 1893 nested                                  | 6070  | **graduated**, nesting and all               |
+| `horizontalrule`                                               | 1785  | **graduated** as `divider`                   |
+| `layout-item`                                                  | 741   | opaque (structural; you address _into_ it)   |
+| `blog-tablecell` + `matheditor-tablecell`                      | 5943  | opaque — **the biggest remaining gap**       |
+| `tablerow`                                                     | 1357  | opaque                                       |
+| `layout-container`                                             | 247   | **graduated** as `layout`                    |
+| `attachment`                                                   | 164   | graduated, but see below                     |
+| `canvas`                                                       | 131   | §4.6.3                                       |
+| `blog-table` + `matheditor-table`                              | 263   | opaque — ~263 tables                         |
+| `image`                                                        | 67    | §4.6.3                                       |
+| `sketch`                                                       | 64    | never (§tier 3)                              |
+| `graph`                                                        | 10    | never                                        |
+| `math`                                                         | 8     | inline only — already handled in `inline.ts` |
+| `kanban`, `details-container`, `iframe`, `sticky`, `pagebreak` | **0** | no stored content at all                     |
 
 Two corrections this forced:
 
@@ -483,7 +491,7 @@ Two corrections this forced:
 
 Nested lists were the last content gap, and the measurement again decided the
 shape. Nesting is structural — a `list` inside a `listitem` — 1 to 4 levels
-deep, no item ever carries more than one sublist, and `indent` is *exactly* the
+deep, no item ever carries more than one sublist, and `indent` is _exactly_ the
 nesting depth minus one in every stored list. So the IR is recursive
 (`item.sublist = {listType, items}`) and **`indent` is derived on write rather
 than exposed**, which makes an item whose indent contradicts its nesting
@@ -494,9 +502,9 @@ through the codec, and read again. **5917 came back identical and 0 mismatched**
 — the remaining 153 are read-only because their inline content is outside §4.5's
 vocabulary, which is the designed fallback rather than a failure.
 
-Adding tables raised the number of *addressable* blocks in this blog from
-~23.7k to ~31k, because a table's interior was previously not reachable at all —
-263 tables became 263 tables plus 1357 rows and 5943 cells. The share reading as
+Adding tables raised the number of _addressable_ blocks in this blog from ~23.7k
+to ~31k, because a table's interior was previously not reachable at all — 263
+tables became 263 tables plus 1357 rows and 5943 cells. The share reading as
 typed rather than opaque moved 87.8% → 87.1%, which is the denominator growing,
 not coverage shrinking.
 
@@ -509,26 +517,28 @@ text-opaque. Making attachments editable means giving them an inline spelling in
 
 **Tier 1 — trivial, all scalars or plain recursion:**
 
-| Type | Shape | Note |
-| ---- | ----- | ---- |
-| `math` | `{value, style, id}` | `value` is LaTeX; native to author |
-| `iframe` | `{src, …}` (extends image) | a URL |
-| `details` | `{open, editable}` + children | recurse the block IR |
-| `layout` | `{templateColumns}` + item children | `"1fr 1fr"` is the whole config |
+| Type         | Shape                                       | Note                                             |
+| ------------ | ------------------------------------------- | ------------------------------------------------ |
+| `math`       | `{value, style, id}`                        | `value` is LaTeX; native to author               |
+| `iframe`     | `{src, …}` (extends image)                  | a URL                                            |
+| `details`    | `{open, editable}` + children               | recurse the block IR                             |
+| `layout`     | `{templateColumns}` + item children         | `"1fr 1fr"` is the whole config                  |
 | `attachment` | `{url, filename, mimetype, size, expanded}` | scalars; creating one still needs an upload (§9) |
-| `kanban` | `{tasks: Task[], style}` | see below |
+| `kanban`     | `{tasks: Task[], style}`                    | see below                                        |
 
 `kanban` was classed describe-only in rev 1 and in early rev-2 drafts. That is
-wrong: `Task` is `{id, name, description?, stage, priority, tags, createdAt,
-updatedAt}` (`KanbanNode/utils.ts`) — plain scalars end to end. It is among the
-*easiest* types to author and one of the most useful ("turn these session notes
-into a board"), so it belongs early in phase 3 rather than never.
+wrong: `Task` is
+`{id, name, description?, stage, priority, tags, createdAt,
+updatedAt}`
+(`KanbanNode/utils.ts`) — plain scalars end to end. It is among the _easiest_
+types to author and one of the most useful ("turn these session notes into a
+board"), so it belongs early in phase 3 rather than never.
 
 **Tier 2 — structural, real work:**
 
 - `table` — **done.** The IR is not the 2D array of cell block-lists predicted
   here. Measured first: stored tables are 3–7 rows, and **97.4% of cells hold
-  exactly one paragraph**. So a cell is *text-bearing* rather than a container —
+  exactly one paragraph**. So a cell is _text-bearing_ rather than a container —
   `set_text` edits it directly, and addressing does not descend through to the
   paragraph inside. That halves the depth of every table in an outline and gives
   one address per piece of content instead of two. The 2.6% holding more go
@@ -546,15 +556,15 @@ into a board"), so it belongs early in phase 3 rather than never.
   technically authorable; practically nothing good comes of a model hand-writing
   it. They stay read-describe-move-delete permanently. Claude can still
   reposition one, delete it, edit its `altText`, and write prose around it.
-- `canvas` splits: note *text* is authorable through §4.6.3, board geometry is
+- `canvas` splits: note _text_ is authorable through §4.6.3, board geometry is
   not.
 
 #### 4.6.3 Nested editors — undecided, blocks three codecs
 
 `image.caption`, `sticky.editor`, and every entry in `canvas.notes` each hold a
 **complete serialized Lexical editor** inside a block. So the IR has to recurse
-into sub-documents, and addressing has to either reach into them
-(`b7.note2.b1`) or refuse to explicitly.
+into sub-documents, and addressing has to either reach into them (`b7.note2.b1`)
+or refuse to explicitly.
 
 Neither the address scheme (§4.2) nor the op set (§4.7) currently says which.
 This needs deciding before `image`, `sticky` or `canvas` starts — not before
@@ -616,22 +626,22 @@ already stable for the editor's lifetime — `address.ts` resolves a path to a
 
 ## 7. Phases
 
-| # | Work                                                                                                                                                   | Gate |
-| - | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ---- |
-| 0 | ~~Refusal guard in the Copilot's Markdown path.~~ **Deleted — premise was false (§2.4).** The Copilot already protects rich nodes via opaque tokens; the guard would have removed capability and prevented nothing | |
-| 1 | **DONE.** `src/lib/content-bridge/`: `address`, `stateHash`, `inline` (+ property test), `blocks` (paragraph/heading/quote/list/code + opaque fallback), `ops`, `outline`. 50 specs; pure JSON, no DOM | |
-| 2 | **DONE.** `mcp/content-server.ts` on §5's surface; Markdown path retired. `mcp/lexical.ts`, `bootstrap.mjs` and `css-loader.mjs` **deleted** — the bridge is pure JSON, so the server needs no headless editor and no DOM shim, which closes the §9 fragility outright | |
+| # | Work                                                                                                                                                                                                                                                                                                                                                                                                           | Gate                                   |
+| - | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| 0 | ~~Refusal guard in the Copilot's Markdown path.~~ **Deleted — premise was false (§2.4).** The Copilot already protects rich nodes via opaque tokens; the guard would have removed capability and prevented nothing                                                                                                                                                                                             |                                        |
+| 1 | **DONE.** `src/lib/content-bridge/`: `address`, `stateHash`, `inline` (+ property test), `blocks` (paragraph/heading/quote/list/code + opaque fallback), `ops`, `outline`. 50 specs; pure JSON, no DOM                                                                                                                                                                                                         |                                        |
+| 2 | **DONE.** `mcp/content-server.ts` on §5's surface; Markdown path retired. `mcp/lexical.ts`, `bootstrap.mjs` and `css-loader.mjs` **deleted** — the bridge is pure JSON, so the server needs no headless editor and no DOM shim, which closes the §9 fragility outright                                                                                                                                         |                                        |
 | 3 | **DONE for every content type this blog holds.** `divider`, `layout`, `attachment`, `details`, `kanban`, `summary`, `table`, `cell`, and **nested `list`**. 93.2% of addressable blocks read as typed; the only opaque ones left are `tablerow` (1357) and `layout-item` (741), both pure structure with nothing to author. `iframe` skipped — zero occurrences, no workflow, inherits image's caption problem | §4.6.3 still gates image/sticky/canvas |
-| 4 | **DONE.** `copilotAgentExecutors` + `virtualRepo` on the core; `markdownBridge.ts` **deleted**. Tools are now `outline_document` / `read_blocks` / `read_document` / `search_documents` / `apply_ops` / `create_document(blocks)`; `edit_document`, `write_document` and `read_current_document` are gone | |
-| 5 | **DONE, and it cost less than §2.1 predicted.** The conformance pass fixed a *live* bug rather than merely enabling ids (§2.5). Ids are **opportunistic** — stamped on write, never backfilled, both spellings resolve — so there is no migration and no big-bang | |
+| 4 | **DONE.** `copilotAgentExecutors` + `virtualRepo` on the core; `markdownBridge.ts` **deleted**. Tools are now `outline_document` / `read_blocks` / `read_document` / `search_documents` / `apply_ops` / `create_document(blocks)`; `edit_document`, `write_document` and `read_current_document` are gone                                                                                                      |                                        |
+| 5 | **DONE, and it cost less than §2.1 predicted.** The conformance pass fixed a _live_ bug rather than merely enabling ids (§2.5). Ids are **opportunistic** — stamped on write, never backfilled, both spellings resolve — so there is no migration and no big-bang                                                                                                                                              |                                        |
 
 Rev 1's phase 0 spike is answered (§2.1), its phase 3 backfill is deleted, and
 its urgency is gone (§2.4) — nothing here is racing a live bug.
 
 Phase 1 landed three things the design did not anticipate, all found by tests
 rather than by reading: the inline delimiters had to become prefix-free (§4.5),
-the applier is better off on serialized JSON than on a live editor (§4.2), and
-a tree walk that lazily creates `children: []` breaks the central preservation
+the applier is better off on serialized JSON than on a live editor (§4.2), and a
+tree walk that lazily creates `children: []` breaks the central preservation
 property outright — a kanban node gained a field it never had, and the ops spec
 caught it.
 
@@ -657,15 +667,15 @@ typing, in that window.
 
 Phase 3 was reordered by evidence rather than by the tiering in §4.6.2: the
 counts above put `horizontalrule` (absent from the plan) second by volume, and
-showed that three of the types argued for as "trivial and useful" have no
-stored content at all. It also surfaced a design bug — the outline advertised a
-kanban as editable and then refused the edit, because one flag was answering
-two different questions. `editable` (can `replace_block` touch it) and
+showed that three of the types argued for as "trivial and useful" have no stored
+content at all. It also surfaced a design bug — the outline advertised a kanban
+as editable and then refused the edit, because one flag was answering two
+different questions. `editable` (can `replace_block` touch it) and
 `textEditable` (will `set_text` work) are now separate, with one shared
 definition so the outline and the applier cannot drift.
 
-Phase 2 removed more than it added. Choosing plain JSON in phase 1 meant the
-MCP server stopped needing a headless editor at all, so three files and a whole
+Phase 2 removed more than it added. Choosing plain JSON in phase 1 meant the MCP
+server stopped needing a headless editor at all, so three files and a whole
 class of import-time fragility went with the Markdown path. Verified against the
 live database (203 posts): outline, read_blocks and search over real content,
 and a create → edit → stale-hash-refused cycle whose stored JSON is real Lexical
@@ -696,7 +706,7 @@ what it was; unspellable inline nodes now contribute a descriptor.
 - **The app can still clobber Claude (§2.3).** Wants a compare-and-set on
   `PATCH /api/documents/[id]`. Separate change; should it ride along with phase
   2, or wait?
-- **Local drafts are out of reach *from the terminal*.** MCP reaches Postgres
+- **Local drafts are out of reach _from the terminal_.** MCP reaches Postgres
   via Prisma, so guest and local IndexedDB documents stay invisible to Claude
   Code. Phase 4 closed this for the in-app Copilot — it runs client-side and
   reads every local document — but the two agents still see different libraries.
@@ -712,10 +722,10 @@ Accepted consequences, recorded so they are not rediscovered as surprises.
 
 **Inherent to the design**
 
-- **A write is still refused when the document moved under it.** `stateHash`
-  is a whole-document token, so an actively-typed editor refuses writes until
-  you stop, even where persistent ids (phase 5) would have kept the addresses
-  valid. Ids fixed *addressing* across edits; they did not make the guard
+- **A write is still refused when the document moved under it.** `stateHash` is
+  a whole-document token, so an actively-typed editor refuses writes until you
+  stop, even where persistent ids (phase 5) would have kept the addresses valid.
+  Ids fixed _addressing_ across edits; they did not make the guard
   finer-grained. Doing that means a per-block hash, and is not planned.
 - **Claude reasons about a projection, not Lexical.** Whatever the IR omits is
   invisible. That is what makes it affordable on context.

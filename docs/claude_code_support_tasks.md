@@ -2,7 +2,7 @@
 
 **Status: backlog.** Everything the plan in
 [plans/claude-code-lexical.md](./plans/claude-code-lexical.md) scoped is built
-(phases 1–5, plus tables and nested lists). This file is what is *left*, why
+(phases 1–5, plus tables and nested lists). This file is what is _left_, why
 each item exists, and what it would cost. Nothing here is in progress.
 
 Read the plan first for the design; this file assumes it.
@@ -18,15 +18,15 @@ Markdown any more.
 Coverage against this blog's real content, measured 2026-08-06 across every
 stored revision:
 
-| | |
-| --- | --- |
-| Addressable blocks | ~31,000 |
-| Reading as a typed block | **93.2%** |
-| Still opaque at block level | `tablerow` (1357), `layout-item` (741) — pure structure, nothing to author |
-| Block-level content types with no codec | **none** |
+|                                         |                                                                            |
+| --------------------------------------- | -------------------------------------------------------------------------- |
+| Addressable blocks                      | ~31,000                                                                    |
+| Reading as a typed block                | **93.2%**                                                                  |
+| Still opaque at block level             | `tablerow` (1357), `layout-item` (741) — pure structure, nothing to author |
+| Block-level content types with no codec | **none**                                                                   |
 
 That last row is narrower than it sounds, and the difference is item 4. Stored
-`image`, `canvas` and `sketch` nodes sit *inside* paragraphs rather than at the
+`image`, `canvas` and `sketch` nodes sit _inside_ paragraphs rather than at the
 top level, so they never reach `nodeToBlock` — they reach the model as bracketed
 descriptors through `plainText` (`blocks.ts:58`), which is why they do not show
 up as opaque blocks. They still have no codec.
@@ -43,7 +43,7 @@ The hole: `head` was a client-chosen uuid written unconditionally, so a tab open
 a while could point it back at its own revision and orphan an agent's, with
 nothing on screen to say so — autosave went quiet in Aug 2026
 (`plans/quiet-autosave-plan.md`), so there is no indicator to notice either. The
-content bridge guarded *its* writes with `stateHash`; this was the other
+content bridge guarded _its_ writes with `stateHash`; this was the other
 direction.
 
 **Both writers are now conditional**, which is what the fix turned out to
@@ -52,17 +52,17 @@ straight through Prisma next to it.
 
 - `updateDocument(handle, data, expectedHead)` (`repositories/document.ts`).
   `undefined` writes unconditionally, which is what a rename or a publish toggle
-  wants; anything else — including `null` for "no revision yet" — makes the write
-  conditional. `updateMany` carries the guard, because `head` is not unique and
-  `update`'s `where` will not take it; it also takes scalars only, so the nested
-  `revisions`/`coauthors` writes are split off and replayed inside the same
-  transaction on the row the guard has already locked. A miss throws
+  wants; anything else — including `null` for "no revision yet" — makes the
+  write conditional. `updateMany` carries the guard, because `head` is not
+  unique and `update`'s `where` will not take it; it also takes scalars only, so
+  the nested `revisions`/`coauthors` writes are split off and replayed inside
+  the same transaction on the row the guard has already locked. A miss throws
   `StaleHeadError`, which the route answers as **409**.
 - `saveRevision` (`mcp/content-server.ts`) does the same on the head its read
   came from, so an editor save landing between `outline` and `apply_ops` is
   refused rather than overwritten. `stateHash` still guards addresses; this
   guards the write.
-- The editor sends the head its *last successful save* wrote (`useSave.ts`), not
+- The editor sends the head its _last successful save_ wrote (`useSave.ts`), not
   the head at load — autosave folds a stretch into one revision and mints a
   fresh id every `REVISION_SESSION_MS`. On a 409 it stops asking (every retry
   would be refused identically), keeps buffering into `pendingSaves` so nothing
@@ -79,7 +79,7 @@ overlapping writers on the same expected head — exactly one lands, the other
 gets `StaleHeadError`.
 
 **Still owed:** the browser pass. What the DB check cannot answer is what the
-conflict *looks like* — that the snackbar reads sensibly, that the tab stops
+conflict _looks like_ — that the snackbar reads sensibly, that the tab stops
 retrying, and that reopening the document restores the buffered text.
 
 ---
@@ -110,7 +110,7 @@ only fires for a kanban reached inline.
 
 **Cost.** A morning.
 
-**Blocked by.** Nothing. Note that `canvas` here is *read-only extraction*,
+**Blocked by.** Nothing. Note that `canvas` here is _read-only extraction_,
 which is unrelated to and unblocked by item 4.
 
 ---
@@ -139,25 +139,25 @@ concrete failure to point at.
 `image.caption`, `sticky.editor` and every entry in `canvas.notes` each hold a
 **complete serialized Lexical editor** — a whole sub-document inside a block.
 
-| Type | Occurrences | |
-| --- | --- | --- |
-| `canvas` | 131 | gated by this decision |
-| `image` | 67 | gated by this decision |
-| `sticky` | 0 stored | gated, but nothing stored to gate |
-| `sketch` | 64 | *not* counted — see "never" below; only its `altText` is reachable either way |
+| Type     | Occurrences |                                                                               |
+| -------- | ----------- | ----------------------------------------------------------------------------- |
+| `canvas` | 131         | gated by this decision                                                        |
+| `image`  | 67          | gated by this decision                                                        |
+| `sticky` | 0 stored    | gated, but nothing stored to gate                                             |
+| `sketch` | 64          | _not_ counted — see "never" below; only its `altText` is reachable either way |
 
 Neither the address scheme (§4.2) nor the op set (§4.7) says what happens here.
 Two coherent answers:
 
 - **Address into them.** A nested editor becomes addressable, e.g.
-  `b7.note2.b1`. Most capable; costs a second addressing dimension, and every
-  op has to know which document it is operating on.
+  `b7.note2.b1`. Most capable; costs a second addressing dimension, and every op
+  has to know which document it is operating on.
 - **Refuse explicitly.** Nested editors stay opaque and the blocks around them
   are read/move/delete only. Cheapest, and consistent with how `graph` and
   `sketch` are already treated.
 
 There is a middle option worth considering: read-only text extraction (item 2)
-gets most of the *visibility* benefit without either commitment, which may make
+gets most of the _visibility_ benefit without either commitment, which may make
 the full decision less urgent than it looks.
 
 **Cost.** The decision is the work; the implementation follows from it.
@@ -168,14 +168,15 @@ the full decision less urgent than it looks.
 
 ## 5. A deleted rich block should be visible in the proposal
 
-An agent can legitimately be asked to delete a canvas or a table, so refusing the
-operation is wrong. But a board of 40 notes disappearing with nothing on screen
-to say so is also wrong. In this blog the deletes that carry unrecoverable-looking
-content are `canvas` (131), `image` (67), `sketch` (64) and `table` (263).
+An agent can legitimately be asked to delete a canvas or a table, so refusing
+the operation is wrong. But a board of 40 notes disappearing with nothing on
+screen to say so is also wrong. In this blog the deletes that carry
+unrecoverable-looking content are `canvas` (131), `image` (67), `sketch` (64)
+and `table` (263).
 
 The Copilot already has an accept/reject proposal flow, and `ActionPreview.tsx`
 already renders one line per operation — including `delete b7`. What it does not
-do is say *what* `b7` is, because the preview only sees the op, not the
+do is say _what_ `b7` is, because the preview only sees the op, not the
 document.
 
 Likely answer: the proposal resolves the address and names what it will remove
@@ -222,16 +223,16 @@ Listed here so it is a decision rather than a gap nobody noticed.
 ## Never — recorded so they are not re-proposed
 
 - **`graph` and `sketch` codecs.** They carry GeoGebra state and Excalidraw
-  scene graphs — geometry with coordinates, seeds and version nonces. Technically
-  JSON, so technically authorable; practically nothing good comes of a model
-  hand-writing one. They stay read-describe-move-delete. Their `altText` is
-  editable, which covers the useful case.
+  scene graphs — geometry with coordinates, seeds and version nonces.
+  Technically JSON, so technically authorable; practically nothing good comes of
+  a model hand-writing one. They stay read-describe-move-delete. Their `altText`
+  is editable, which covers the useful case.
 - **`iframe` codec.** Zero occurrences in this blog, no workflow asking for it,
   and it inherits `ImageNode`'s nested-caption problem for nothing.
 - **Per-block hashing.** `stateHash` is a whole-document token, so an
   actively-typed editor refuses writes even where persistent ids would have kept
-  the addresses valid. Making the guard finer-grained means a hash per block, and
-  the complexity is not worth the narrow window it would recover.
+  the addresses valid. Making the guard finer-grained means a hash per block,
+  and the complexity is not worth the narrow window it would recover.
 - **Backfilling block ids.** Ids are opportunistic by design — stamped on write,
   never migrated. Stamping a whole document breaks byte-identical preservation
   and buries real edits in unreviewable diffs. See the plan §4.2.
@@ -247,8 +248,8 @@ None of these are bugs; the surface was scoped to content on purpose.
   of this to the in-app Copilot; MCP has none of it.
 - **No uploads.** `image` and `attachment` can only reference files that already
   exist. Authoring an image means someone uploaded it first.
-- **No revision history access.** Claude can write a new revision but cannot read
-  or diff prior ones — so it cannot answer "what changed last week".
+- **No revision history access.** Claude can write a new revision but cannot
+  read or diff prior ones — so it cannot answer "what changed last week".
 - **Single author.** Everything is scoped to `MCP_AUTHOR_ID`.
 - **No cross-post transactionality.** A multi-post refactor is N independent
   writes; failing halfway leaves the set inconsistent.

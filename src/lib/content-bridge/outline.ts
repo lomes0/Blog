@@ -47,7 +47,9 @@ const PREVIEW_LIMIT = 80;
 
 const truncate = (text: string): string => {
   const flat = text.replace(/\s+/g, " ").trim();
-  return flat.length > PREVIEW_LIMIT ? `${flat.slice(0, PREVIEW_LIMIT - 1)}…` : flat;
+  return flat.length > PREVIEW_LIMIT
+    ? `${flat.slice(0, PREVIEW_LIMIT - 1)}…`
+    : flat;
 };
 
 function kindOf(block: Block): string {
@@ -69,7 +71,8 @@ const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
 
 const countItems = (items: readonly ListItem[]): number =>
   items.reduce(
-    (total, item) => total + 1 + (item.sublist ? countItems(item.sublist.items) : 0),
+    (total, item) =>
+      total + 1 + (item.sublist ? countItems(item.sublist.items) : 0),
     0,
   );
 
@@ -89,7 +92,10 @@ function entryFor(block: Block): { preview: string; chars?: number } {
       return { preview: truncate(block.text), chars: block.text.length };
     case "code": {
       const lines = block.code === "" ? 0 : block.code.split("\n").length;
-      return { preview: `${lines} line${lines === 1 ? "" : "s"}`, chars: block.code.length };
+      return {
+        preview: `${lines} line${lines === 1 ? "" : "s"}`,
+        chars: block.code.length,
+      };
     }
     case "list": {
       // Count the whole tree: a list of 3 items each with 4 children is not a
@@ -98,9 +104,9 @@ function entryFor(block: Block): { preview: string; chars?: number } {
       const depth = listDepth(block.items);
       const first = block.items.find((item) => item.text)?.text ?? "";
       return {
-        preview: `${plural(count, "item")}${depth > 1 ? `, ${depth} levels` : ""}${
-          first ? ` · ${truncate(first)}` : ""
-        }`,
+        preview: `${plural(count, "item")}${
+          depth > 1 ? `, ${depth} levels` : ""
+        }${first ? ` · ${truncate(first)}` : ""}`,
       };
     }
     case "divider":
@@ -109,21 +115,29 @@ function entryFor(block: Block): { preview: string; chars?: number } {
       return { preview: block.templateColumns };
     case "details":
       return {
-        preview: `${block.open === false ? "closed" : "open"} · ${truncate(block.summary)}`,
+        preview: `${block.open === false ? "closed" : "open"} · ${
+          truncate(block.summary)
+        }`,
       };
     case "kanban": {
       const lanes = new Set(block.tasks.map((task) => task.stage)).size;
       return {
-        preview: `${plural(lanes, "lane")} · ${plural(block.tasks.length, "card")}`,
+        preview: `${plural(lanes, "lane")} · ${
+          plural(block.tasks.length, "card")
+        }`,
       };
     }
     case "attachment":
       return {
-        preview: `${block.filename}${block.size ? ` · ${block.size} bytes` : ""}`,
+        preview: `${block.filename}${
+          block.size ? ` · ${block.size} bytes` : ""
+        }`,
       };
     case "table":
       return {
-        preview: `${plural(block.rowCount, "row")} × ${plural(block.columnCount, "column")}`,
+        preview: `${plural(block.rowCount, "row")} × ${
+          plural(block.columnCount, "column")
+        }`,
       };
     case "cell": {
       const spans = [
@@ -132,7 +146,9 @@ function entryFor(block: Block): { preview: string; chars?: number } {
         block.rowSpan ? `rowspan ${block.rowSpan}` : "",
       ].filter(Boolean);
       return {
-        preview: `${truncate(block.text)}${spans.length ? `  (${spans.join(", ")})` : ""}`,
+        preview: `${truncate(block.text)}${
+          spans.length ? `  (${spans.join(", ")})` : ""
+        }`,
         chars: block.text.length,
       };
     }
@@ -178,12 +194,14 @@ export function formatOutline(result: Outline): string {
       const note = !editable
         ? "  [read-only]"
         : textEditable
-          ? ""
-          : "  [replace only]";
+        ? ""
+        : "  [replace only]";
       // Trailing spaces, not just padding: an address or kind longer than its
       // column would otherwise run straight into the next one — a persistent
       // id is wider than a path ("blk_7ughz1heading[1]").
-      return `${id.padEnd(10)} ${indent}${kind.padEnd(15)} ${preview}${size}${note}`;
+      return `${id.padEnd(10)} ${indent}${
+        kind.padEnd(15)
+      } ${preview}${size}${note}`;
     })
     .join("\n");
 }
@@ -215,7 +233,9 @@ export function readBlocks(
 
   return {
     stateHash: stateHash(state),
-    blocks: ids.map((id) => found.get(id)).filter((b): b is AddressedBlock => !!b),
+    blocks: ids.map((id) => found.get(id)).filter((b): b is AddressedBlock =>
+      !!b
+    ),
     missing: ids.filter((id) => !found.has(id)),
   };
 }

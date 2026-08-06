@@ -153,7 +153,8 @@ describe("inline round-trip", () => {
 
   it("refuses content it cannot spell, rather than dropping it", () => {
     // An inline text colour has no spelling here — the block goes text-opaque.
-    expect(renderInline([{ ...t("coloured"), style: "color: #f00" }])).toBeNull();
+    expect(renderInline([{ ...t("coloured"), style: "color: #f00" }]))
+      .toBeNull();
     // So does an inline node type with no codec.
     expect(renderInline([{ type: "sticky", version: 1 }])).toBeNull();
     // And a format bit outside the mark set.
@@ -167,7 +168,7 @@ describe("inline round-trip", () => {
       seed = (Math.imul(seed, 48271) + 11) >>> 0;
       return seed / 0xffffffff;
     };
-    const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
+    const pick = <T>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)];
 
     const fragments = [
       "plain",
@@ -204,7 +205,9 @@ describe("inline round-trip", () => {
         const roll = rand();
         if (roll < 0.15) children.push(math(pick(["x", "\\alpha", "a_1"])));
         else if (roll < 0.3) {
-          children.push(link(pick(["/a", "https://e.example"]), [t(pick(fragments))]));
+          children.push(
+            link(pick(["/a", "https://e.example"]), [t(pick(fragments))]),
+          );
         } else children.push(t(pick(fragments), pick(bits)));
       }
       roundTrips(children);

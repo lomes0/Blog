@@ -2,10 +2,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
 import ResizeGripper, { GRIPPER_W } from "../ResizeGripper";
-import {
-  type PreviewOrigin,
-  SidebarDragPreview,
-} from "./SidebarDragPreview";
+import { type PreviewOrigin, SidebarDragPreview } from "./SidebarDragPreview";
 import {
   ACTIVITY_RAIL_W,
   SIDEBAR_EDGE_TRANSITION,
@@ -102,7 +99,9 @@ const SidebarResizeHandle: React.FC = () => {
 
     // Dropping the preview and applying the width are one React update, so the
     // panel is never seen without its outline or the outline without its panel.
-    if (commit) commitResize(landingCommit(landingRef.current, geomRef.current));
+    if (commit) {
+      commitResize(landingCommit(landingRef.current, geomRef.current));
+    }
     setOrigin(null);
   }, [commitResize]);
 

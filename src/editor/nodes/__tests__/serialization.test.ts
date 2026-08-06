@@ -20,8 +20,8 @@
  */
 import { createHeadlessEditor } from "@lexical/headless";
 import {
-  $getState,
   $getRoot,
+  $getState,
   createState,
   type Klass,
   type LexicalNode,
@@ -149,8 +149,13 @@ describe("custom element nodes survive a load", () => {
   });
 
   it("keeps the fields the class models itself", () => {
-    expect(after["details-container"]).toMatchObject({ open: true, editable: true });
-    expect(after["layout-container"]).toMatchObject({ templateColumns: "1fr 1fr" });
+    expect(after["details-container"]).toMatchObject({
+      open: true,
+      editable: true,
+    });
+    expect(after["layout-container"]).toMatchObject({
+      templateColumns: "1fr 1fr",
+    });
   });
 });
 
@@ -163,7 +168,9 @@ describe("node state is readable back through the state API", () => {
       const collect = (node: LexicalNode) => {
         const id = $getState(node, blockId);
         if (id) ids.push(id);
-        const anyNode = node as unknown as { getChildren?: () => LexicalNode[] };
+        const anyNode = node as unknown as {
+          getChildren?: () => LexicalNode[];
+        };
         anyNode.getChildren?.().forEach(collect);
       };
       $getRoot().getChildren().forEach(collect);

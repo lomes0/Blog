@@ -21,9 +21,11 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
           <LayoutModeProvider>
             <TopBarActionsProvider>
               <ToolbarSlotProvider>
-                {/* Innermost: the command context is built from the store, the
+                {
+                  /* Innermost: the command context is built from the store, the
                     color scheme and the layout mode, so it has to sit under all
-                    three. */}
+                    three. */
+                }
                 <CommandProvider>
                   <AppLayoutContent>{children}</AppLayoutContent>
                   <AlertDialog />

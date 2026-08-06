@@ -41,7 +41,11 @@ describe("divider", () => {
   });
 
   it("carries through fields a future node version might add", () => {
-    const previous: SerializedNode = { type: "horizontalrule", version: 1, style: "thick" };
+    const previous: SerializedNode = {
+      type: "horizontalrule",
+      version: 1,
+      style: "thick",
+    };
     expect(blockToNode({ type: "divider" }, previous).style).toBe("thick");
   });
 });
@@ -112,8 +116,15 @@ describe("kanban", () => {
   });
 
   it("keeps the board's styling across a rewrite", () => {
-    const previous: SerializedNode = { type: "kanban", version: 1, style: "width: 80%", tasks: [] };
-    expect(blockToNode({ type: "kanban", tasks }, previous).style).toBe("width: 80%");
+    const previous: SerializedNode = {
+      type: "kanban",
+      version: 1,
+      style: "width: 80%",
+      tasks: [],
+    };
+    expect(blockToNode({ type: "kanban", tasks }, previous).style).toBe(
+      "width: 80%",
+    );
   });
 });
 
@@ -131,8 +142,14 @@ describe("layout", () => {
     const node = blockToNode(block);
     expect(node.type).toBe("layout-container");
     expect(node.templateColumns).toBe("2fr 1fr");
-    expect(kids(node).map((c) => c.type)).toEqual(["layout-item", "layout-item"]);
-    expect(kids(kids(node)[1]).map((c) => c.type)).toEqual(["paragraph", "horizontalrule"]);
+    expect(kids(node).map((c) => c.type)).toEqual([
+      "layout-item",
+      "layout-item",
+    ]);
+    expect(kids(kids(node)[1]).map((c) => c.type)).toEqual([
+      "paragraph",
+      "horizontalrule",
+    ]);
   });
 
   it("reads back as attributes only — the columns are addressed in their own right", () => {
@@ -144,15 +161,21 @@ describe("layout", () => {
 
   it("keeps the existing columns when a replace omits them", () => {
     const previous = blockToNode(block);
-    const next = blockToNode({ type: "layout", templateColumns: "1fr 1fr 1fr" }, previous);
+    const next = blockToNode(
+      { type: "layout", templateColumns: "1fr 1fr 1fr" },
+      previous,
+    );
     expect(next.templateColumns).toBe("1fr 1fr 1fr");
-    expect(JSON.stringify(next.children)).toBe(JSON.stringify(previous.children));
+    expect(JSON.stringify(next.children)).toBe(
+      JSON.stringify(previous.children),
+    );
   });
 
   it("refuses a new layout with no columns, rather than making an empty one", () => {
-    expect(() => blockToNode({ type: "layout", templateColumns: "1fr 1fr" })).toThrow(
-      /needs `columns`/,
-    );
+    expect(() => blockToNode({ type: "layout", templateColumns: "1fr 1fr" }))
+      .toThrow(
+        /needs `columns`/,
+      );
   });
 });
 
@@ -168,7 +191,10 @@ describe("details", () => {
     const node = blockToNode(block);
     expect(node.type).toBe("details-container");
     expect(node.open).toBe(false);
-    expect(kids(node).map((c) => c.type)).toEqual(["details-summary", "details-content"]);
+    expect(kids(node).map((c) => c.type)).toEqual([
+      "details-summary",
+      "details-content",
+    ]);
     expect(kids(kids(node)[1]).map((c) => c.type)).toEqual(["code"]);
   });
 
@@ -184,12 +210,17 @@ describe("details", () => {
     const previous = blockToNode(block);
     const next = blockToNode({ type: "details", summary: "Renamed" }, previous);
     const content = kids(next)[1];
-    expect(nodeToBlock(kids(next)[0])).toMatchObject({ type: "summary", text: "Renamed" });
+    expect(nodeToBlock(kids(next)[0])).toMatchObject({
+      type: "summary",
+      text: "Renamed",
+    });
     expect(JSON.stringify(content)).toBe(JSON.stringify(kids(previous)[1]));
   });
 
   it("refuses a new details block with no body", () => {
-    expect(() => blockToNode({ type: "details", summary: "x" })).toThrow(/needs `body`/);
+    expect(() => blockToNode({ type: "details", summary: "x" })).toThrow(
+      /needs `body`/,
+    );
   });
 
   it("lets the summary be retitled in place through set_text", () => {
@@ -205,7 +236,7 @@ describe("details", () => {
 });
 
 describe("authoring a whole document from blocks", () => {
-  it("composes what \"publish this session as an article\" needs", () => {
+  it('composes what "publish this session as an article" needs', () => {
     const state = stateFromBlocks([
       { type: "heading", level: 1, text: "What we built" },
       { type: "paragraph", text: "The short version, with a [link](/x)." },
@@ -278,14 +309,18 @@ describe("table", () => {
 
   it("keeps the grid when a replace omits rows", () => {
     const previous = blockToNode(block);
-    const next = blockToNode({ type: "table", rowCount: 0, columnCount: 0 }, previous);
-    expect(JSON.stringify(next.children)).toBe(JSON.stringify(previous.children));
+    const next = blockToNode(
+      { type: "table", rowCount: 0, columnCount: 0 },
+      previous,
+    );
+    expect(JSON.stringify(next.children)).toBe(
+      JSON.stringify(previous.children),
+    );
   });
 
   it("refuses a new table with no rows", () => {
-    expect(() =>
-      blockToNode({ type: "table", rowCount: 0, columnCount: 0 }),
-    ).toThrow(/needs `rows`/);
+    expect(() => blockToNode({ type: "table", rowCount: 0, columnCount: 0 }))
+      .toThrow(/needs `rows`/);
   });
 });
 
@@ -307,7 +342,9 @@ describe("table cell", () => {
       rowSpan: 2,
     });
     // …and rebuilding from what was read gives the same node back.
-    expect(blockToNode(read as WritableBlock, cellOf(table))).toEqual(cellOf(table));
+    expect(blockToNode(read as WritableBlock, cellOf(table))).toEqual(
+      cellOf(table),
+    );
   });
 
   it("carries through styling the IR does not model", () => {
@@ -340,7 +377,10 @@ describe("table cell", () => {
         { type: "paragraph", version: 1, children: [] },
       ],
     };
-    expect(nodeToBlock(cell)).toMatchObject({ type: "cell", readonlyText: true });
+    expect(nodeToBlock(cell)).toMatchObject({
+      type: "cell",
+      readonlyText: true,
+    });
   });
 
   it("reads the pre-rename spellings, which are data in stored revisions", () => {
@@ -361,8 +401,13 @@ describe("table cell", () => {
                   type: "paragraph",
                   version: 1,
                   children: [{
-                    type: "text", version: 1, text: "old", detail: 0,
-                    format: 0, mode: "normal", style: "",
+                    type: "text",
+                    version: 1,
+                    text: "old",
+                    detail: 0,
+                    format: 0,
+                    mode: "normal",
+                    style: "",
                   }],
                 },
               ],
@@ -371,7 +416,11 @@ describe("table cell", () => {
         },
       ],
     };
-    expect(nodeToBlock(legacy)).toEqual({ type: "table", rowCount: 1, columnCount: 1 });
+    expect(nodeToBlock(legacy)).toEqual({
+      type: "table",
+      rowCount: 1,
+      columnCount: 1,
+    });
     expect(nodeToBlock(kids(kids(legacy)[0])[0])).toEqual({
       type: "cell",
       text: "old",
@@ -393,7 +442,10 @@ describe("nested lists", () => {
             { text: "inner a" },
             {
               text: "inner b",
-              sublist: { listType: "check", items: [{ text: "deep", checked: true }] },
+              sublist: {
+                listType: "check",
+                items: [{ text: "deep", checked: true }],
+              },
             },
           ],
         },
@@ -443,7 +495,10 @@ describe("nested lists", () => {
     const block: WritableBlock = {
       type: "list",
       listType: "bullet",
-      items: [{ text: "", sublist: { listType: "bullet", items: [{ text: "only" }] } }],
+      items: [{
+        text: "",
+        sublist: { listType: "bullet", items: [{ text: "only" }] },
+      }],
     };
     expect(nodeToBlock(blockToNode(block))).toEqual(block);
   });
@@ -482,8 +537,13 @@ describe("nested lists", () => {
           children: [
             { type: "list", version: 1, listType: "bullet", children: [] },
             {
-              type: "text", version: 1, text: "after", detail: 0,
-              format: 0, mode: "normal", style: "",
+              type: "text",
+              version: 1,
+              text: "after",
+              detail: 0,
+              format: 0,
+              mode: "normal",
+              style: "",
             },
           ],
         },

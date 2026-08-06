@@ -47,7 +47,9 @@ function readTraceLabel(name: string, input: Record<string, unknown>): string {
     case "search_documents":
       return `Searched “${asStr(input.query)}”`;
     case "outline_document":
-      return input.id ? `Outlined ${asStr(input.id)}` : "Outlined this document";
+      return input.id
+        ? `Outlined ${asStr(input.id)}`
+        : "Outlined this document";
     case "read_blocks": {
       const blocks = Array.isArray(input.blocks) ? input.blocks : [];
       return `Read ${blocks.length} block${blocks.length === 1 ? "" : "s"}`;

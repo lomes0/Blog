@@ -327,7 +327,11 @@ const Composer: React.FC<ComposerProps> = ({
       >
         <Tooltip title="Attach files">
           <span>
-            <IconButton disabled={disabled} aria-label="Attach files" sx={toolButtonSx}>
+            <IconButton
+              disabled={disabled}
+              aria-label="Attach files"
+              sx={toolButtonSx}
+            >
               <Plus size={ICON_SIZE.dense} />
             </IconButton>
           </span>
@@ -465,7 +469,11 @@ const Composer: React.FC<ComposerProps> = ({
 
         <Tooltip title="Voice input">
           <span>
-            <IconButton disabled={disabled} aria-label="Voice input" sx={toolButtonSx}>
+            <IconButton
+              disabled={disabled}
+              aria-label="Voice input"
+              sx={toolButtonSx}
+            >
               <Mic size={ICON_SIZE.dense} />
             </IconButton>
           </span>

@@ -18,6 +18,7 @@
 import type {
   AttachmentBlock,
   Block,
+  CellHeader,
   CodeBlock,
   DetailsBlock,
   HeadingBlock,
@@ -25,7 +26,6 @@ import type {
   ListBlock,
   ListItem,
   ListType,
-  CellHeader,
   ParagraphBlock,
   QuoteBlock,
   SerializedNode,
@@ -163,8 +163,7 @@ function readListItems(node: SerializedNode): {
 
       // More than one nested list, or content after one, is a shape this IR
       // cannot put back the way it found it.
-      const unreadable =
-        sublists.length > 1 ||
+      const unreadable = sublists.length > 1 ||
         (firstList !== -1 && firstList < kids.length - 1 &&
           kids.slice(firstList + 1).some((child) => child.type !== "list"));
 
@@ -294,14 +293,16 @@ export function nodeToBlock(node: SerializedNode): Block {
 
     case "details-summary": {
       const text = renderInline(kids);
-      const block: SummaryBlock = { type: "summary", text: text ?? plainText(kids) };
+      const block: SummaryBlock = {
+        type: "summary",
+        text: text ?? plainText(kids),
+      };
       if (text === null) block.readonlyText = true;
       return block;
     }
 
     case "kanban":
       return { type: "kanban", tasks: readKanbanTasks(node) };
-
 
     case "attachment": {
       const block: AttachmentBlock = {
@@ -368,7 +369,10 @@ export function nodeToBlock(node: SerializedNode): Block {
 
   if (TABLE_CELL_TYPES.has(node.type)) {
     const text = cellText(node);
-    const block: TableCellBlock = { type: "cell", text: text ?? plainText(kids) };
+    const block: TableCellBlock = {
+      type: "cell",
+      text: text ?? plainText(kids),
+    };
     if (text === null) block.readonlyText = true;
     const header = headerFromState(node.headerState);
     if (header) block.header = header;
@@ -432,14 +436,16 @@ const blockTypeToNodeType = (block: WritableBlock): string =>
  */
 const mintId = (): string =>
   globalThis.crypto?.randomUUID?.() ??
-  `t_${Math.floor(Math.random() * 1e12).toString(36)}`;
+    `t_${Math.floor(Math.random() * 1e12).toString(36)}`;
 
 function kanbanTaskNode(task: KanbanTask): Record<string, unknown> {
   const stamp = task.updatedAt || task.createdAt || new Date().toISOString();
   return {
     id: task.id || mintId(),
     name: task.name ?? "",
-    ...(task.description === undefined ? {} : { description: task.description }),
+    ...(task.description === undefined
+      ? {}
+      : { description: task.description }),
     stage: Number.isInteger(task.stage) ? task.stage : 0,
     priority: task.priority ?? "medium",
     tags: task.tags ?? [],
@@ -454,16 +460,15 @@ function cellNode(
   previous?: SerializedNode,
   headerDefault?: CellHeader,
 ): SerializedNode {
-  const carried =
-    previous && TABLE_CELL_TYPES.has(previous.type) ? previous : undefined;
+  const carried = previous && TABLE_CELL_TYPES.has(previous.type)
+    ? previous
+    : undefined;
   const header = block.header ?? headerDefault;
   return {
     ...ELEMENT_DEFAULTS,
     ...carried,
     type: TABLE_CELL_TYPE,
-    headerState: header
-      ? HEADER_STATE[header]
-      : num(carried?.headerState, 0),
+    headerState: header ? HEADER_STATE[header] : num(carried?.headerState, 0),
     colSpan: block.colSpan ?? num(carried?.colSpan, 1),
     rowSpan: block.rowSpan ?? num(carried?.rowSpan, 1),
     children: [
@@ -495,7 +500,9 @@ function listItemNode(
 ): SerializedNode {
   const children = parseInline(item.text ?? "");
   if (item.sublist) {
-    children.push(listNode(item.sublist.listType, item.sublist.items, depth + 1));
+    children.push(
+      listNode(item.sublist.listType, item.sublist.items, depth + 1),
+    );
   }
   const node: SerializedNode = {
     ...ELEMENT_DEFAULTS,
@@ -537,15 +544,24 @@ export function blockToNode(
 ): SerializedNode {
   // Only carry through from a node of the same kind; a paragraph's leftovers
   // have no business on a code block.
-  const carried =
-    previous && previous.type === blockTypeToNodeType(block) ? previous : undefined;
+  const carried = previous && previous.type === blockTypeToNodeType(block)
+    ? previous
+    : undefined;
   const base = { ...ELEMENT_DEFAULTS, ...carried };
 
   switch (block.type) {
     case "paragraph":
-      return { ...base, type: "paragraph", children: parseInline(block.text ?? "") };
+      return {
+        ...base,
+        type: "paragraph",
+        children: parseInline(block.text ?? ""),
+      };
     case "quote":
-      return { ...base, type: "quote", children: parseInline(block.text ?? "") };
+      return {
+        ...base,
+        type: "quote",
+        children: parseInline(block.text ?? ""),
+      };
     case "heading": {
       const level = block.level;
       if (!Number.isInteger(level) || level < 1 || level > 6) {
@@ -614,7 +630,8 @@ export function blockToNode(
       // nothing to keep, so they are required.
       const children = block.columns
         ? block.columns.map((column) =>
-          elementNode("layout-item", column.map((child) => blockToNode(child))))
+          elementNode("layout-item", column.map((child) => blockToNode(child)))
+        )
         : childrenOf(carried ?? {} as SerializedNode);
       if (children.length === 0) {
         throw new Error("a new layout needs `columns`, e.g. [[…],[…]]");
@@ -622,8 +639,8 @@ export function blockToNode(
       return {
         ...base,
         type: "layout-container",
-        templateColumns:
-          block.templateColumns || str(carried?.templateColumns, "1fr 1fr"),
+        templateColumns: block.templateColumns ||
+          str(carried?.templateColumns, "1fr 1fr"),
         children,
       };
     }
@@ -676,9 +693,10 @@ export function blockToNode(
                 },
                 undefined,
                 block.headerRow && rowIndex === 0 ? "row" : undefined,
-              ),
+              )
             ),
-          ))
+          )
+        )
         : childrenOf(carried ?? {} as SerializedNode);
       if (children.length === 0) {
         throw new Error('a new table needs `rows`, e.g. [["A","B"],["1","2"]]');
@@ -727,7 +745,9 @@ export function blockText(block: Block): string {
       return block.summary;
     case "kanban":
       return block.tasks
-        .map((task) => [task.name, task.description].filter(Boolean).join(" — "))
+        .map((task) =>
+          [task.name, task.description].filter(Boolean).join(" — ")
+        )
         .join("\n");
     case "attachment":
       return `${block.filename} ${block.url}`;

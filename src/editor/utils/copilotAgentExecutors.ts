@@ -35,20 +35,17 @@ import { apiClient } from "@/api";
 import { postsSelectors, store } from "@/store";
 import { createPost, updatePost } from "@/store/app";
 import type { CommandContext } from "@/commands";
-import {
-  isProposalCommandTool,
-  runCommandTool,
-} from "@/lib/ai/commandTools";
+import { isProposalCommandTool, runCommandTool } from "@/lib/ai/commandTools";
 import { isWriteTool } from "@/lib/ai/copilotAgentTools";
 import type { Post, PostCreateInput } from "@/types";
 import {
   applyOps,
   formatOutline,
+  type Op,
   outline,
   readAll,
   readBlocks,
   stateFromBlocks,
-  type Op,
   type StoredState,
   type WritableBlock,
 } from "@/lib/content-bridge";

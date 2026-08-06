@@ -69,7 +69,7 @@ export class OpError extends Error {
   }
 }
 
-const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
 /**
  * Read a node's children without touching it.
@@ -132,7 +132,10 @@ function requireTarget(
   const target = targets.get(id);
   if (!target) throw new OpError(`no block at "${id}"`, opIndex);
   if (positionOf(target) === -1) {
-    throw new OpError(`block "${id}" was removed earlier in this batch`, opIndex);
+    throw new OpError(
+      `block "${id}" was removed earlier in this batch`,
+      opIndex,
+    );
   }
   return target;
 }
@@ -152,10 +155,9 @@ function resolveInsertion(
     const target = requireTarget(targets, spec.before, opIndex);
     return { parent: target.parent, index: positionOf(target) };
   }
-  const container =
-    spec.appendTo === undefined || spec.appendTo === "root"
-      ? state.root
-      : requireTarget(targets, spec.appendTo, opIndex).node;
+  const container = spec.appendTo === undefined || spec.appendTo === "root"
+    ? state.root
+    : requireTarget(targets, spec.appendTo, opIndex).node;
   // Only here, where something is genuinely about to be appended, may a node
   // gain a children array it did not have.
   return { parent: container, index: mutableChildren(container).length };
@@ -207,13 +209,12 @@ function applySetText(target: Target, text: string, opIndex: number): void {
 
   // Rebuild through the codec so carry-through (§4.6.1) applies: the node's
   // alignment, indent and any unmodelled fields survive the text change.
-  const next =
-    block.type === "code"
-      ? blockToNode({ ...block, code: text }, target.node)
-      : blockToNode(
-        { ...(block as ParagraphBlock), text } as WritableBlock,
-        target.node,
-      );
+  const next = block.type === "code"
+    ? blockToNode({ ...block, code: text }, target.node)
+    : blockToNode(
+      { ...(block as ParagraphBlock), text } as WritableBlock,
+      target.node,
+    );
 
   const position = positionOf(target);
   childrenOf(target.parent)[position] = next;
@@ -279,7 +280,12 @@ export function applyOps(
       }
       case "insert_blocks": {
         const nodes = build(op.blocks, opIndex);
-        const { parent, index } = resolveInsertion(working, targets, op, opIndex);
+        const { parent, index } = resolveInsertion(
+          working,
+          targets,
+          op,
+          opIndex,
+        );
         mutableChildren(parent).splice(index, 0, ...nodes);
         nodes.forEach(markSubtree);
         changed += nodes.length;
@@ -361,7 +367,10 @@ export function stampBlockIds(
 }
 
 /** True when `candidate` is `node` or lives somewhere beneath it. */
-function containsNode(node: SerializedNode, candidate: SerializedNode): boolean {
+function containsNode(
+  node: SerializedNode,
+  candidate: SerializedNode,
+): boolean {
   if (node === candidate) return true;
   return childrenOf(node).some((child) => containsNode(child, candidate));
 }

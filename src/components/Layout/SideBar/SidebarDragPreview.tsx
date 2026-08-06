@@ -108,7 +108,8 @@ export const SidebarDragPreview: React.FC<SidebarDragPreviewProps> = ({
           transformOrigin: "left",
           // Channel variable, not `alpha()`: under `cssVariables` the latter
           // bakes the light value into both schemes (DESIGN.md §2).
-          backgroundColor: "rgba(var(--mui-palette-primary-mainChannel) / 0.10)",
+          backgroundColor:
+            "rgba(var(--mui-palette-primary-mainChannel) / 0.10)",
         }}
       />
       {

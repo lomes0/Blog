@@ -79,9 +79,8 @@ export function mintBlockId(): string {
 
 /** Write an id onto a serialized node, preserving any other node state. */
 export function writeBlockId(node: SerializedNode, id: string): void {
-  const existing =
-    node[STATE_KEY] && typeof node[STATE_KEY] === "object"
-      ? (node[STATE_KEY] as Record<string, unknown>)
-      : {};
+  const existing = node[STATE_KEY] && typeof node[STATE_KEY] === "object"
+    ? (node[STATE_KEY] as Record<string, unknown>)
+    : {};
   node[STATE_KEY] = { ...existing, blockId: id };
 }

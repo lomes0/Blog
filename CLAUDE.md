@@ -49,26 +49,29 @@ npm run test:watch   # Vitest, watch mode
 ```
 
 Config is `vitest.config.mts`: `globals: true` (no importing `describe`/`it`/
-`expect`), the `@/*` alias mirrored from `tsconfig.json`, and `environment:
-"node"` — every current spec is pure logic. A spec that needs a DOM should opt
-in per-file with a `// @vitest-environment jsdom` docblock rather than slowing
-the whole run. `src/types/vitest.d.ts` is what gives `tsc` the globals;
-`compilerOptions.types` is deliberately left unset, because setting it would
-restrict resolution to only its entries and drop every other ambient package.
+`expect`), the `@/*` alias mirrored from `tsconfig.json`, and
+`environment:
+"node"` — every current spec is pure logic. A spec that needs a
+DOM should opt in per-file with a `// @vitest-environment jsdom` docblock rather
+than slowing the whole run. `src/types/vitest.d.ts` is what gives `tsc` the
+globals; `compilerOptions.types` is deliberately left unset, because setting it
+would restrict resolution to only its entries and drop every other ambient
+package.
 
 Coverage is sixteen specs, 296 assertions: `src/lib/__tests__/ordering.test.ts`
-(fractional rank keys), `src/components/Layout/SideBar/__tests__/
-dragGeometry.test.ts` (sidebar drag thresholds — `dragGeometry.ts` is kept
-import-free precisely so it is testable without a browser),
-`src/editor/nodes/TableNode/__tests__/legacyTypes.test.ts` (that stored tables
-still parse under both their current and pre-rename `type` strings — it builds a
-headless editor, so it stays DOM-free), `src/store/__tests__/workspace.test.ts`
-(the `ui.workspace` reducers — pane focus, the one-document-one-pane invariant,
-dirty hoisting, and the URL replayed over a restored layout),
-`src/lib/__tests__/workspaceUrl.test.ts` (when the address bar may be rewritten
-to follow pane focus), `src/commands/__tests__/toolParity.test.ts` (that the
-AI tool surface stays derivable from the command registry — see
-docs/plans/workspace-panes.md §3.1),
+(fractional rank keys),
+`src/components/Layout/SideBar/__tests__/
+dragGeometry.test.ts` (sidebar drag
+thresholds — `dragGeometry.ts` is kept import-free precisely so it is testable
+without a browser), `src/editor/nodes/TableNode/__tests__/legacyTypes.test.ts`
+(that stored tables still parse under both their current and pre-rename `type`
+strings — it builds a headless editor, so it stays DOM-free),
+`src/store/__tests__/workspace.test.ts` (the `ui.workspace` reducers — pane
+focus, the one-document-one-pane invariant, dirty hoisting, and the URL replayed
+over a restored layout), `src/lib/__tests__/workspaceUrl.test.ts` (when the
+address bar may be rewritten to follow pane focus),
+`src/commands/__tests__/toolParity.test.ts` (that the AI tool surface stays
+derivable from the command registry — see docs/plans/workspace-panes.md §3.1),
 `src/components/EditDocument/__tests__/tabFit.test.ts` (which pane tabs fit the
 strip and which fall into the overflow menu),
 `src/indexeddb/__tests__/migrationPlan.test.ts` (the key arithmetic behind the
@@ -94,7 +97,7 @@ naming its block after the tree shifts above it, that a write stamps only what
 it touched, and that a read never stamps) and
 `src/editor/nodes/__tests__/serialization.test.ts` (that a stored node survives
 a load — `importJSON` is the only parse path, so a class that does not delegate
-to `updateFromJSON` silently drops node state *and* element format/indent/
+to `updateFromJSON` silently drops node state _and_ element format/indent/
 direction; five classes did). `npm run check:nodes` enforces the same rule
 statically across every node class, including the `.tsx` ones the test
 environment cannot parse.
@@ -112,9 +115,8 @@ The sidebar drag's browser half is `SideBar/SidebarResizeHandle.tsx` plus
 capture, and the claim that the gesture does no layout, are only answerable by a
 real engine. Verify with CDP `Performance.getMetrics` — `LayoutCount` must not
 move between pointerdown and pointerup, and a `ResizeObserver` on `#app-sidebar`
-must see exactly one `borderBoxSize` change per drag. See
-`verify-ui-in-browser` for the harness (and the trap that `:3000` is usually a
-stale `next start`).
+must see exactly one `borderBoxSize` change per drag. See `verify-ui-in-browser`
+for the harness (and the trap that `:3000` is usually a stale `next start`).
 
 **No automated check covers API authorization.** Verify behaviour changes by
 running the app against the local Postgres and exercising the routes directly.
@@ -122,14 +124,14 @@ running the app against the local Postgres and exercising the routes directly.
 > **Check what is already serving `5432` before starting anything.** This repo's
 > `docker-compose.yml` defines `blog-postgres` (postgres:16) on that port, but a
 > different container may already be there holding the real dev data — running
-> `docker compose up -d` then collides and **kills the running one**. `docker ps`
-> and `pg_isready -h localhost -p 5432` first; if a server answers, use it. A
-> system PostgreSQL cluster may also be running, on a *different* port
+> `docker compose up -d` then collides and **kills the running one**.
+> `docker ps` and `pg_isready -h localhost -p 5432` first; if a server answers,
+> use it. A system PostgreSQL cluster may also be running, on a _different_ port
 > (`pg_lsclusters`), and is not the one the app talks to.
 
 Type-check and lint with `npx tsc --noEmit` and `npm run lint`. After touching
-anything in `src/editor/nodes/`, run `npm run check:nodes`. For UI changes
-also run `npm run check:theme`, which catches colors that do not respond to the
+anything in `src/editor/nodes/`, run `npm run check:nodes`. For UI changes also
+run `npm run check:theme`, which catches colors that do not respond to the
 light/dark toggle (DESIGN.md §19).
 
 ## Architecture

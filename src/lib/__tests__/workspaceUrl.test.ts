@@ -1,4 +1,4 @@
-import { workspaceUrlForFocus, WORKSPACE_ROUTE } from "@/lib/workspaceUrl";
+import { WORKSPACE_ROUTE, workspaceUrlForFocus } from "@/lib/workspaceUrl";
 import type { WorkspaceUrlInput } from "@/lib/workspaceUrl";
 
 /**

@@ -40,13 +40,21 @@ const firstLine = (text: string, max = 70): string => {
 function describeBlock(value: unknown): string {
   const block = value as Record<string, unknown>;
   const type = asString(block?.type) || "block";
-  if (typeof block?.text === "string") return `${type}: ${firstLine(block.text)}`;
-  if (typeof block?.code === "string") return `${type}: ${firstLine(block.code)}`;
+  if (typeof block?.text === "string") {
+    return `${type}: ${firstLine(block.text)}`;
+  }
+  if (typeof block?.code === "string") {
+    return `${type}: ${firstLine(block.code)}`;
+  }
   if (typeof block?.summary === "string") {
     return `${type}: ${firstLine(block.summary)}`;
   }
-  if (Array.isArray(block?.items)) return `${type} · ${block.items.length} items`;
-  if (Array.isArray(block?.tasks)) return `${type} · ${block.tasks.length} cards`;
+  if (Array.isArray(block?.items)) {
+    return `${type} · ${block.items.length} items`;
+  }
+  if (Array.isArray(block?.tasks)) {
+    return `${type} · ${block.tasks.length} cards`;
+  }
   return type;
 }
 
@@ -61,7 +69,8 @@ function describeBlock(value: unknown): string {
 function describeOp(value: unknown): string {
   const op = value as Record<string, unknown>;
   const target = (): string =>
-    asString(op.after) || asString(op.before) || asString(op.appendTo) || "the end";
+    asString(op.after) || asString(op.before) || asString(op.appendTo) ||
+    "the end";
 
   switch (asString(op.op)) {
     case "set_text":

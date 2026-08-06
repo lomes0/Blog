@@ -50,12 +50,7 @@ import {
   TableDialog,
 } from "./Dialogs";
 import { $isStickyNode, StickyNode } from "@/editor/nodes/StickyNode";
-import {
-  Box,
-  Divider,
-  IconButton,
-  Tooltip,
-} from "@mui/material";
+import { Box, Divider, IconButton, Tooltip } from "@mui/material";
 import { Link, Redo, RotateCcw, Undo } from "lucide-react";
 import { $isIFrameNode } from "@/editor/nodes/IFrameNode";
 import { $findMatchingParent, IS_APPLE } from "@lexical/utils";

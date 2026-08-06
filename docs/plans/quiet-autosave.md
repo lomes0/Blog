@@ -28,17 +28,17 @@ The state machine does not change. Only which branch of it gets painted.
 `useDirtyTracking` (300ms trailing debounce) maintains `ui.dirtyDocIds`. That
 one array drives every surface below:
 
-| Surface | Where |
-| --- | --- |
+| Surface                                                 | Where                             |
+| ------------------------------------------------------- | --------------------------------- |
 | Toolbar **Save** — `disabled` + `CircularProgress` swap | `ToolbarPlugin/index.tsx:356-359` |
-| Toolbar **Reset** — `disabled` | `ToolbarPlugin/index.tsx:377` |
-| Tab dirty dot (5px, `warning.main`) | `DocumentTabs.tsx:318` |
-| Tab overflow-menu dot | `DocumentTabs.tsx:679` |
-| Sidebar sub-tab dots | `SubTabList.tsx:213` |
-| Sidebar post name → `warning.main` | `PostItem.tsx:174` |
-| Sidebar dirty dot | `PostItem.tsx:427` |
-| Sidebar **"Save now"** button appears | `PostItem.tsx:441-471` |
-| Rail `Save: Unsaved / Saved` + status dot | `PropertiesSection.tsx:250-266` |
+| Toolbar **Reset** — `disabled`                          | `ToolbarPlugin/index.tsx:377`     |
+| Tab dirty dot (5px, `warning.main`)                     | `DocumentTabs.tsx:318`            |
+| Tab overflow-menu dot                                   | `DocumentTabs.tsx:679`            |
+| Sidebar sub-tab dots                                    | `SubTabList.tsx:213`              |
+| Sidebar post name → `warning.main`                      | `PostItem.tsx:174`                |
+| Sidebar dirty dot                                       | `PostItem.tsx:427`                |
+| Sidebar **"Save now"** button appears                   | `PostItem.tsx:441-471`            |
+| Rail `Save: Unsaved / Saved` + status dot               | `PropertiesSection.tsx:250-266`   |
 
 ### 1.1 The timing is the whole complaint
 
@@ -57,7 +57,7 @@ t=2.2s   ack → dirty clears → 8 surfaces go back
 The indicator is at its loudest at the exact moment the user has stopped to
 think. That is not a tuning problem; it is the design pointing the wrong way.
 
-`PostItem.tsx:441-471` is the worst offender: the "Save now" button *appears*,
+`PostItem.tsx:441-471` is the worst offender: the "Save now" button _appears_,
 and the sibling Edit button's margin flips between `0.5` and `auto` (`:449`,
 `:469`), so the sidebar row **shifts** on every pause.
 
@@ -81,11 +81,12 @@ the case that does not.
 
 ```ts
 // store/index.ts:109
-export const selectIsDirty = (state: RootState) => state.ui.dirtyDocIds.length > 0;
+export const selectIsDirty = (state: RootState) =>
+  state.ui.dirtyDocIds.length > 0;
 ```
 
-Not scoped to a document or a pane. The Save button in *this* editor enables
-because *some other* open tab is dirty — and `triggerSave` then saves every open
+Not scoped to a document or a pane. The Save button in _this_ editor enables
+because _some other_ open tab is dirty — and `triggerSave` then saves every open
 tab (`saveRegistry.ts`). The button in a pane does not mean what its position
 claims.
 
@@ -96,11 +97,11 @@ claims.
 The dirty indicator looks like a safety mechanism. It is not one — **nothing in
 the persistence path depends on the user reacting to it.**
 
-- There is no `beforeunload` guard anywhere in `src/`. Closing a tab with unsaved
-  content has never been blocked.
+- There is no `beforeunload` guard anywhere in `src/`. Closing a tab with
+  unsaved content has never been blocked.
 - `pendingSaves` writes the content to IndexedDB **before** every attempt and
-  clears it only on acknowledgement (`useSave.ts:124,146`). An edit is never held
-  only in component memory.
+  clears it only on acknowledgement (`useSave.ts:124,146`). An edit is never
+  held only in component memory.
 - Unmount (`useSave.ts:222-227`) and `visibilitychange` (`:209-219`) both flush.
 - `usePostLoader.ts:99-106` restores unconfirmed content on the next load.
 
@@ -109,8 +110,8 @@ the system already guarantees — so removing them removes no safety net, only t
 anxiety.
 
 `dirtyDocIds` itself **stays**. It is read by `Reset`, and by the pane/tab
-bookkeeping in `app.ts:540,557-562`. This plan changes what is *painted*, not
-what is *tracked*.
+bookkeeping in `app.ts:540,557-562`. This plan changes what is _painted_, not
+what is _tracked_.
 
 ---
 
@@ -123,32 +124,33 @@ Delete the nine renderings in §1's table. Specifically:
 - `DocumentTabs.tsx:318`, `:679` — remove both dot blocks and the now-unused
   `isDirty` prop / `dirtyTabIds` plumbing (`:101`, `:116`, `:168`, `:400`,
   `:586`, `:602`) and its source at `TabbedDocumentEditor.tsx:57,353`.
-- `PostItem.tsx` — `nameColor` collapses to `text.secondary` (`:174`); delete the
-  dot (`:427`) and the "Save now" button (`:441-471`); the Edit button's margin
-  becomes an unconditional `auto`, which also removes the layout shift. `isDirty`
-  / `anyTabDirty` / `openDirtyIds` and the `selectPaneRootedAt` selector at
-  `:115` all become dead and go with them.
-- `SubTabList.tsx:213` — remove the dot; `SubTabEntry.dirty` (`:22`) drops out of
-  the type, and with it the `tabEntries` dirty computation in `PostItem.tsx`.
+- `PostItem.tsx` — `nameColor` collapses to `text.secondary` (`:174`); delete
+  the dot (`:427`) and the "Save now" button (`:441-471`); the Edit button's
+  margin becomes an unconditional `auto`, which also removes the layout shift.
+  `isDirty` / `anyTabDirty` / `openDirtyIds` and the `selectPaneRootedAt`
+  selector at `:115` all become dead and go with them.
+- `SubTabList.tsx:213` — remove the dot; `SubTabEntry.dirty` (`:22`) drops out
+  of the type, and with it the `tabEntries` dirty computation in `PostItem.tsx`.
 - `ToolbarPlugin/index.tsx:377` — `Reset` loses `disabled`. Resetting to an
   identical baseline is a no-op, so gating it buys nothing and costs a flicker.
 
 ### 3.2 The rail row becomes exception-only
 
-`PropertiesSection.tsx:250-266` currently renders a permanent `Save:
-Unsaved/Saved` KV row. Replace `isTabDirty` with a read of `ui.saveStatus` for
-the active doc, and render **nothing** on the happy path:
+`PropertiesSection.tsx:250-266` currently renders a permanent
+`Save:
+Unsaved/Saved` KV row. Replace `isTabDirty` with a read of
+`ui.saveStatus` for the active doc, and render **nothing** on the happy path:
 
-| `saveStatus` | Rail row |
-| --- | --- |
-| absent (idle) | *row not rendered* |
-| `saving` | *row not rendered* — see below |
-| `retrying` | `⟳ Reconnecting… saved locally` |
-| `error` | `⚠ Couldn't save` + Retry |
+| `saveStatus`  | Rail row                        |
+| ------------- | ------------------------------- |
+| absent (idle) | _row not rendered_              |
+| `saving`      | _row not rendered_ — see below  |
+| `retrying`    | `⟳ Reconnecting… saved locally` |
+| `error`       | `⚠ Couldn't save` + Retry       |
 
 `"saving"` is deliberately not painted. It is a ~200ms round trip on the happy
 path; painting it recreates the exact flicker this plan removes, just with a
-different glyph. The status only becomes visible once a save has *failed* to
+different glyph. The status only becomes visible once a save has _failed_ to
 land — which is the first moment the user's assumption ("it saved") is wrong.
 
 This needs a new selector; add it next to `selectIsDirty`:
@@ -177,17 +179,17 @@ doc, badge the rail toggle button in that strip (`index.tsx:155-170`) — a smal
 Zero new chrome, always on screen, and silent on the happy path like everything
 else here.
 
-### 3.4 `Save` → `Checkpoint` — *superseded, see 3.4a*
+### 3.4 `Save` → `Checkpoint` — _superseded, see 3.4a_
 
 The button has a second, real job that survives this plan: `closeRevision()`
 (`useSave.ts:78`, wired at `:201`) seals the revision autosaves are folding
 into, so the user can mark a version worth keeping in history. Autosaves
-otherwise fold into one row until the 10-minute ceiling
-(`REVISION_SESSION_MS`), a tab hide, or unmount.
+otherwise fold into one row until the 10-minute ceiling (`REVISION_SESSION_MS`),
+a tab hide, or unmount.
 
 So the button stays — but stops claiming to be responsible for persistence:
 
-- Label `Checkpoint`, tooltip *"Mark this version in history (⌘S)"*.
+- Label `Checkpoint`, tooltip _"Mark this version in history (⌘S)"_.
 - **Always enabled.** Remove `disabled={isSaving || !isDirty}`
   (`ToolbarPlugin/index.tsx:356`).
 - **No spinner.** Remove the `isSaving` state (`:111`), the `handleSave`
@@ -204,23 +206,23 @@ toolbar altogether, taking `ToolbarPlugin`'s `onSave` prop with it.
 The reasoning is a step past this plan's, and better. §3.4 kept the button
 because checkpointing is a real capability that would otherwise be lost — but
 that was never true: **⌘S already seals a revision through `SavePlugin`**, which
-`Editor` still wires by passing `onSave` to `EditorPlugins`. So the button was
-a third way to ask for something the keystroke and the autosave loop both
-already covered, and the honest version of "silent success" has no resting
-chrome for it at all.
+`Editor` still wires by passing `onSave` to `EditorPlugins`. So the button was a
+third way to ask for something the keystroke and the autosave loop both already
+covered, and the honest version of "silent success" has no resting chrome for it
+at all.
 
 That also answers §6's open question in the other direction from what it
-assumed: ⌘S stays bound *and* stays a checkpoint, and nothing in the toolbar has
+assumed: ⌘S stays bound _and_ stays a checkpoint, and nothing in the toolbar has
 to explain itself.
 
 ### 3.5 Delete `selectIsDirty`
 
-*Revised during implementation.* The plan was to add a scoped
-`selectIsDocDirty` sibling and keep the global form for callers that genuinely
-mean "anything, anywhere". Once §3.1 landed there were **no such callers** —
-the toolbar was the only consumer, and both `Save` and `Reset` are now ungated.
-Adding a second selector nothing calls would have been new dead code in a repo
-that runs `knip` to prevent exactly that.
+_Revised during implementation._ The plan was to add a scoped `selectIsDocDirty`
+sibling and keep the global form for callers that genuinely mean "anything,
+anywhere". Once §3.1 landed there were **no such callers** — the toolbar was the
+only consumer, and both `Save` and `Reset` are now ungated. Adding a second
+selector nothing calls would have been new dead code in a repo that runs `knip`
+to prevent exactly that.
 
 So both go, and `store/index.ts` keeps a comment recording the trap and the
 one-line scoped form to write if a close guard ever needs it.
@@ -258,9 +260,9 @@ during the beat before `setPaneTabs` lands.
 
 No automated test covers any of this; it is all rendering. Per CLAUDE.md:
 
-- `npx tsc --noEmit`, `npm run lint`, `npm run check:theme`, `npm test`.
-  The deletions should surface unused-symbol errors in exactly the files listed
-  in §3.1 — that list is the checklist.
+- `npx tsc --noEmit`, `npm run lint`, `npm run check:theme`, `npm test`. The
+  deletions should surface unused-symbol errors in exactly the files listed in
+  §3.1 — that list is the checklist.
 - `npm run check:unused` (knip) after the deletions, to catch the cascade
   (`SubTabEntry.dirty`, `selectPaneRootedAt` if it loses its last caller).
 - **In a real browser** (`verify-ui-in-browser`), the acceptance test is
@@ -277,12 +279,12 @@ session, so there is no UI path to a document as a guest).
 **Happy path** — a `MutationObserver` over the sidebar, tab strip, toolbar and
 rail, armed after load, cleared at the last keystroke, read 6s later:
 
-| Region | Mutations after the last keystroke |
-| --- | --- |
-| sidebar | **0** |
-| tab strip | **0** |
-| toolbar | **0** |
-| rail | 4, all identified — see below |
+| Region    | Mutations after the last keystroke |
+| --------- | ---------------------------------- |
+| sidebar   | **0**                              |
+| tab strip | **0**                              |
+| toolbar   | **0**                              |
+| rail      | 4, all identified — see below      |
 
 The rail's four are not save chrome: the **Revisions** section gaining its row
 (`+4768ms`) and the **Outline** section gaining `0% read · ~1 min left`
@@ -296,17 +298,17 @@ from the page.
 `window.__store` handle (removed afterwards; guest saves go to IndexedDB and
 never fail, so the real path cannot be provoked in a signed-out session):
 
-| status | rail row | rail-toggle badge |
-| --- | --- | --- |
-| idle | absent | none |
-| `saving` | **absent** | **none** |
-| `retrying` | "Reconnecting… saved locally" | `rgb(249,115,22)` |
-| `retrying`, rail collapsed | (rail gone) | **still `rgb(249,115,22)`** |
-| `error` | "Couldn't save" + Retry | `rgb(211,47,47)` |
-| back to idle | absent | none |
+| status                     | rail row                      | rail-toggle badge           |
+| -------------------------- | ----------------------------- | --------------------------- |
+| idle                       | absent                        | none                        |
+| `saving`                   | **absent**                    | **none**                    |
+| `retrying`                 | "Reconnecting… saved locally" | `rgb(249,115,22)`           |
+| `retrying`, rail collapsed | (rail gone)                   | **still `rgb(249,115,22)`** |
+| `error`                    | "Couldn't save" + Retry       | `rgb(211,47,47)`            |
+| back to idle               | absent                        | none                        |
 
 **Not covered:** a real cloud save failing. That needs a signed-in session
-against Postgres, and `retrying` for a *guest* is cleared within a frame because
+against Postgres, and `retrying` for a _guest_ is cleared within a frame because
 the restored save re-lands on IndexedDB immediately.
 
 ---

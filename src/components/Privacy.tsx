@@ -118,23 +118,25 @@ export default function Privacy() {
             sx={{ pl: 3, m: 0, display: "flex", flexDirection: "column" }}
           >
             <Typography component="li" variant="body1" gutterBottom>
-              <strong>Signing in.</strong> GitHub or Google learns that you
-              signed in here, and applies its own privacy policy to that.
+              <strong>Signing in.</strong>{" "}
+              GitHub or Google learns that you signed in here, and applies its
+              own privacy policy to that.
             </Typography>
             <Typography component="li" variant="body1" gutterBottom>
-              <strong>AI features.</strong> When you use the AI assistant or an
-              editor AI action, the text it works on — which may be the whole
-              post — is sent to the configured model provider. Depending on how
-              this deployment is set up, that is Anthropic, Google, Azure
-              OpenAI, or a self-hosted Ollama instance, and their terms then
-              apply to that text. Do not put anything in a post you are not
-              willing to send to a model provider before using these features.
+              <strong>AI features.</strong>{" "}
+              When you use the AI assistant or an editor AI action, the text it
+              works on — which may be the whole post — is sent to the configured
+              model provider. Depending on how this deployment is set up, that
+              is Anthropic, Google, Azure OpenAI, or a self-hosted Ollama
+              instance, and their terms then apply to that text. Do not put
+              anything in a post you are not willing to send to a model provider
+              before using these features.
             </Typography>
             <Typography component="li" variant="body1">
-              <strong>Embedded media.</strong> If you embed a video, the
-              reader&rsquo;s browser loads it from that service (for example
-              YouTube), which lets the service see the reader&rsquo;s IP
-              address.
+              <strong>Embedded media.</strong>{" "}
+              If you embed a video, the reader&rsquo;s browser loads it from
+              that service (for example YouTube), which lets the service see the
+              reader&rsquo;s IP address.
             </Typography>
           </Box>
         </Section>
@@ -176,8 +178,7 @@ export default function Privacy() {
         <Section title="Contact">
           <Typography variant="body1">
             Questions about this policy, or a request to export or delete your
-            data, can go to{" "}
-            {CONTACT_EMAIL
+            data, can go to {CONTACT_EMAIL
               ? <Link href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</Link>
               : "the operator of this site"}.
           </Typography>

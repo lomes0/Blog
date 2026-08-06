@@ -3,18 +3,18 @@
 Proposals and in-flight work. **Each file states its own status at the top —
 read that first.** A plan describes an intended state, not the current one.
 
-| Plan                                                       | Status                                                                                         |
-| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| [bloat-remediation.md](./bloat-remediation.md)             | Steps 1–6 done (re-verified 2026-07-30); only step 7 is left, still blocked on the brief below |
-| [tree-model-brief.md](./tree-model-brief.md)               | Decision brief — awaits one product call: does `/posts` render projects?                       |
-| [ide-redesign.md](./ide-redesign.md)                       | In progress — ⌘K command palette landed; status bar and Explorer restyle pending               |
-| [workspace-panes.md](./workspace-panes.md)                 | Proposal — command registry, `ui.tabs` → `ui.workspace`, public/workspace route split, split view; two product calls open |
+| Plan                                                       | Status                                                                                                                                                                                                                                                |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [bloat-remediation.md](./bloat-remediation.md)             | Steps 1–6 done (re-verified 2026-07-30); only step 7 is left, still blocked on the brief below                                                                                                                                                        |
+| [tree-model-brief.md](./tree-model-brief.md)               | Decision brief — awaits one product call: does `/posts` render projects?                                                                                                                                                                              |
+| [ide-redesign.md](./ide-redesign.md)                       | In progress — ⌘K command palette landed; status bar and Explorer restyle pending                                                                                                                                                                      |
+| [workspace-panes.md](./workspace-panes.md)                 | Proposal — command registry, `ui.tabs` → `ui.workspace`, public/workspace route split, split view; two product calls open                                                                                                                             |
 | [claude-code-lexical.md](./claude-code-lexical.md)         | Proposal rev 2 — Claude Code edits Lexical documents by addressed block, not Markdown. Three spikes killed rev 1's stored ids, its `expectedHead` guard, and its headline Copilot data-loss bug (never real — §2.4). Not urgent; phase 1 is the start |
-| [agent-gating.md](./agent-gating.md)                       | Proposal, decisions locked — agent writes land as *proposals*, reviewed and approved in the app before they become the document. Gate is always on, terminal only, one squashed proposal per document; phases 1–4 are the walking skeleton |
-| [storage-uploads.md](./storage-uploads.md)                 | Proposal — move uploads off the container filesystem to R2/MinIO                               |
-| [ordering-simplification.md](./ordering-simplification.md) | Proposal — see below                                                                           |
-| [schema-organization.md](./schema-organization.md)         | Proposal — see below                                                                           |
-| [series-as-node.md](./series-as-node.md)                   | Proposal — see below                                                                           |
+| [agent-gating.md](./agent-gating.md)                       | Proposal, decisions locked — agent writes land as _proposals_, reviewed and approved in the app before they become the document. Gate is always on, terminal only, one squashed proposal per document; phases 1–4 are the walking skeleton            |
+| [storage-uploads.md](./storage-uploads.md)                 | Proposal — move uploads off the container filesystem to R2/MinIO                                                                                                                                                                                      |
+| [ordering-simplification.md](./ordering-simplification.md) | Proposal — see below                                                                                                                                                                                                                                  |
+| [schema-organization.md](./schema-organization.md)         | Proposal — see below                                                                                                                                                                                                                                  |
+| [series-as-node.md](./series-as-node.md)                   | Proposal — see below                                                                                                                                                                                                                                  |
 
 ---
 

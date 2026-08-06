@@ -11,7 +11,13 @@
  * `@lexical/headless`, no node classes — so it runs identically in the browser
  * and in the MCP server, and is testable without mounting anything.
  */
-export { formatAddress, parseAddress, pathOf, locate, walkBlocks } from "./address";
+export {
+  formatAddress,
+  locate,
+  parseAddress,
+  pathOf,
+  walkBlocks,
+} from "./address";
 export { blockIdState, isBlockId, mintBlockId, readBlockId } from "./blockId";
 export {
   blockText,
@@ -23,7 +29,13 @@ export {
   TEXT_BLOCKS,
 } from "./blocks";
 export { normalizeInline, parseInline, renderInline } from "./inline";
-export { applyOps, emptyState, OpError, stampBlockIds, stateFromBlocks } from "./ops";
+export {
+  applyOps,
+  emptyState,
+  OpError,
+  stampBlockIds,
+  stateFromBlocks,
+} from "./ops";
 export type { ApplyResult, InsertTarget, Op } from "./ops";
 export { formatOutline, outline, readAll, readBlocks } from "./outline";
 export type { BlocksRead, Outline, OutlineEntry } from "./outline";
@@ -46,8 +58,8 @@ export type {
   ParagraphBlock,
   QuoteBlock,
   SerializedNode,
-  SummaryBlock,
   StoredState,
+  SummaryBlock,
   WritableBlock,
 } from "./types";
 export { isWritableBlock } from "./types";

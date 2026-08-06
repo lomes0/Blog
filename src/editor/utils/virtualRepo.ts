@@ -19,8 +19,8 @@ import type { Post } from "@/types";
 import {
   blockText,
   nodeToBlock,
-  walkBlocks,
   type StoredState,
+  walkBlocks,
 } from "@/lib/content-bridge";
 
 export interface RepoFileMeta {
