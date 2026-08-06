@@ -50,13 +50,13 @@ npm run test:watch   # Vitest, watch mode
 
 Config is `vitest.config.mts`: `globals: true` (no importing `describe`/`it`/
 `expect`), the `@/*` alias mirrored from `tsconfig.json`, and `environment:
-"node"` — both current specs are pure logic. A spec that needs a DOM should opt
+"node"` — every current spec is pure logic. A spec that needs a DOM should opt
 in per-file with a `// @vitest-environment jsdom` docblock rather than slowing
 the whole run. `src/types/vitest.d.ts` is what gives `tsc` the globals;
 `compilerOptions.types` is deliberately left unset, because setting it would
 restrict resolution to only its entries and drop every other ambient package.
 
-Coverage is nine specs, 177 assertions: `src/lib/__tests__/ordering.test.ts`
+Coverage is twelve specs, 232 assertions: `src/lib/__tests__/ordering.test.ts`
 (fractional rank keys), `src/components/Layout/SideBar/__tests__/
 dragGeometry.test.ts` (sidebar drag thresholds — `dragGeometry.ts` is kept
 import-free precisely so it is testable without a browser),
@@ -74,11 +74,18 @@ strip and which fall into the overflow menu),
 `src/indexeddb/__tests__/migrationPlan.test.ts` (the key arithmetic behind the
 copy out of the fork's old IndexedDB database — that a finished migration
 re-copies nothing, and that a record is only released from the old database once
-the new one holds it) and `src/lib/__tests__/scrollMemory.test.ts` (restoring a
+the new one holds it), `src/lib/__tests__/scrollMemory.test.ts` (restoring a
 document to where it was left — what a stored offset map may contain, and when a
-restore has settled versus is still waiting on content that has not rendered).
+restore has settled versus is still waiting on content that has not rendered),
+and three for the content bridge (`src/lib/content-bridge/__tests__/`) —
+`inline.test.ts` (that a block's inline formatting survives a Markdown
+round-trip, over a corpus of literal marker characters plus 400 randomized
+runs), `ops.test.ts` (the plan's central claim: a block nobody named comes out
+byte-identical, plus snapshot addressing, atomicity and the freshness guard) and
+`outline.test.ts` (addressing, descriptors for blocks with no codec, and the
+content hash).
 
-The last six follow the same rule as `dragGeometry.ts`: the logic lives in an
+All of these follow the same rule as `dragGeometry.ts`: the logic lives in an
 import-free module so it can be exercised without mounting anything. The IDB
 half that needs a real browser is `src/indexeddb/migrate.ts`, and it is not
 covered — verify it against a profile that has the old database. The DOM half of

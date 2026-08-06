@@ -244,6 +244,16 @@ window is a few seconds wide.
 Persistent ids remain available later as a pure upgrade (§7, phase 5) if
 concurrent editing ever proves annoying in practice. Nothing here forecloses it.
 
+**Built (phase 1): the applier works on serialized JSON, not a live editor.**
+§4.1 describes loading "the real editor state"; operating on the stored JSON is
+strictly better. The preservation guarantee becomes literal rather than a matter
+of trusting a round-trip through node classes; it removes the headless-editor
+fragility in §9 (no node registration, no DOM shim, so no new node type can
+break the server by touching `document` at import); and the same code runs
+unchanged in the browser and in Node. The cost is that nodes are hand-built
+rather than minted by a node class, which is what §4.6.1's per-codec round-trip
+spec is for.
+
 ### 4.3 The concurrency token is a content hash
 
 Every read returns `stateHash` — a hash over the canonicalized revision data.
@@ -303,11 +313,31 @@ bold/italic/code/strike/link/math would therefore destroy an underline on every
 further down.
 
 So the closed set is: **bold, italic, code, strikethrough, link, inline math,
-highlight, underline, superscript, subscript**, the last four on non-standard
-syntax (`==mark==`, `++ins++`, `^sup^`, `~sub~` or similar). Any inline format
-outside the set makes the block **text-opaque**: readable, replaceable whole,
-but not editable via `set_text`. That fallback is what keeps the rule total
-rather than aspirational.
+highlight, underline, superscript, subscript**. Any inline format outside the
+set — an inline text colour, say — makes the block **text-opaque**: readable,
+replaceable whole, but not editable via `set_text`. That fallback is what keeps
+the rule total rather than aspirational.
+
+**Built (phase 1), and the spelling changed under test.** Every mark delimiter
+is two characters and none is a prefix of another:
+
+| | | | |
+| --- | --- | --- | --- |
+| `**bold**` | `__italic__` | `==highlight==` | `++underline++` |
+| `~~strike~~` | `^^sup^^` | `,,sub,,` | `` `code` `` |
+| `[text](url)` | `$latex$` | | |
+
+Italic is `__` rather than `*` because the obvious spelling makes bold+italic
+render `***`, which the parser splits the wrong way — it takes `**` first and
+the stranded `*` decays to literal text, losing the italic. Markdown resolves
+that with flanking rules; a prefix-free set resolves it by construction. The
+property test found it, along with a literal `]` inside link text terminating
+the link early, and code content touching its own fence.
+
+Because every delimiter is doubled, a lone marker character needs no escaping:
+"2 * 3", `snake_case` and "a ^ b" all survive as written. A mark character is
+escaped only where it is doubled, or where it sits at the very edge of a run and
+would merge with the delimiter about to wrap it.
 
 ```jsonc
 { "id": "b2", "type": "paragraph",
@@ -479,15 +509,21 @@ already stable for the editor's lifetime — `address.ts` resolves a path to a
 | # | Work                                                                                                                                                   | Gate |
 | - | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ---- |
 | 0 | ~~Refusal guard in the Copilot's Markdown path.~~ **Deleted — premise was false (§2.4).** The Copilot already protects rich nodes via opaque tokens; the guard would have removed capability and prevented nothing | |
-| 1 | Core: `address`, `stateHash`, `inline` (+ round-trip property test, §4.5), `blocks` with paragraph/heading/quote/list/code codecs and opaque fallback, `ops`. Headless specs in the style of `TableNode/__tests__/legacyTypes.test.ts` | |
+| 1 | **DONE.** `src/lib/content-bridge/`: `address`, `stateHash`, `inline` (+ property test), `blocks` (paragraph/heading/quote/list/code + opaque fallback), `ops`, `outline`. 50 specs; pure JSON, no DOM | |
 | 2 | Rewire `mcp/content-server.ts` to §5. Retire the Markdown path                                                                                          | |
 | 3 | Graduate codecs in tier order (§4.6.2), one at a time, each with the §4.6.1 round-trip spec: **math, iframe, details, layout, attachment, kanban** (trivial) → **table** (work) → **image, sticky, canvas-text** (needs §4.6.3 decided first) → **graph, sketch never** | §4.6.3 gates the third group |
 | 4 | `copilotAgentExecutors` moves onto the core. Now a **capability upgrade, not a bug fix** (§2.4): it replaces unreadable base64 tokens with blocks the agent can actually read and author | |
 | 5 | *Optional.* Persistent ids, if concurrent editing proves painful — pays §2.1's cost knowingly: `super.exportJSON()` + `updateFromJSON` across ~20 node classes, a conformance spec per class, and a backfill | |
 
 Rev 1's phase 0 spike is answered (§2.1), its phase 3 backfill is deleted, and
-its urgency is gone (§2.4) — nothing here is racing a live bug. Phase 1 is the
-start.
+its urgency is gone (§2.4) — nothing here is racing a live bug.
+
+Phase 1 landed three things the design did not anticipate, all found by tests
+rather than by reading: the inline delimiters had to become prefix-free (§4.5),
+the applier is better off on serialized JSON than on a live editor (§4.2), and
+a tree walk that lazily creates `children: []` breaks the central preservation
+property outright — a kanban node gained a field it never had, and the ops spec
+caught it. **Phase 2 is next: rewire `mcp/content-server.ts` to §5.**
 
 ## 8. Open questions
 
