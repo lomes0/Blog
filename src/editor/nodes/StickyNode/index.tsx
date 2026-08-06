@@ -76,7 +76,7 @@ export class StickyNode extends DecoratorNode<JSX.Element> {
     } catch (e) {
       console.error(e);
     }
-    return node;
+    return node.updateFromJSON(serializedNode);
   }
 
   constructor(
@@ -91,6 +91,7 @@ export class StickyNode extends DecoratorNode<JSX.Element> {
 
   exportJSON(): SerializedStickyNode {
     return {
+      ...super.exportJSON(),
       editor: this.__editor.toJSON(),
       style: this.__style,
       type: "sticky",

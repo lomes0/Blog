@@ -96,7 +96,7 @@ export class IFrameNode extends ImageNode {
     } catch (e) {
       console.error(e);
     }
-    return node;
+    return node.updateFromJSON(serializedNode);
   }
 
   exportJSON(): SerializedIFrameNode {

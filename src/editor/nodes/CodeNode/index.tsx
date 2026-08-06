@@ -177,10 +177,8 @@ export class CodeNode extends LexicalCodeNode {
    * Import from serialized JSON.
    */
   static importJSON(serializedNode: SerializedCodeNodeWithWidth): CodeNode {
-    const node = $createCodeNode(serializedNode.language);
-    node.setFormat(serializedNode.format);
-    node.setIndent(serializedNode.indent);
-    node.setDirection(serializedNode.direction);
+    const node = $createCodeNode(serializedNode.language)
+      .updateFromJSON(serializedNode);
 
     // Restore width if present
     if (serializedNode.width) {

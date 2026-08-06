@@ -10,6 +10,7 @@ import { formatAddress, parseAddress, walkBlocks } from "@/lib/content-bridge/ad
 import { describeNode, nodeToBlock } from "@/lib/content-bridge/blocks";
 import { formatOutline, outline, readAll, readBlocks } from "@/lib/content-bridge/outline";
 import { stateHash } from "@/lib/content-bridge/stateHash";
+import { stateFromBlocks } from "@/lib/content-bridge/ops";
 import type { SerializedNode } from "@/lib/content-bridge/types";
 import { makeState, paragraph } from "./fixture";
 
@@ -96,6 +97,18 @@ describe("outline", () => {
     expect(byId.get("b4")).toMatchObject({ editable: true, textEditable: false });
     // A graph has no codec at all — neither op will touch it.
     expect(byId.get("b4.2.1")).toMatchObject({ editable: false, textEditable: false });
+  });
+
+  it("keeps its columns separated even for a wide address or kind", () => {
+    // Both have overrun their column before: a persistent id is wider than a
+    // path, and "details-content" is wider than the kind column.
+    const state = stateFromBlocks([
+      { type: "details", summary: "S", body: [{ type: "paragraph", text: "x" }] },
+    ]);
+    for (const line of formatOutline(outline(state)).split("\n")) {
+      expect(line).toMatch(/^\S+\s+\S/);
+      expect(line).not.toMatch(/blk_\w*[a-z]+\[/);
+    }
   });
 
   it("marks each refusal distinctly in the rendered outline", () => {

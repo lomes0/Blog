@@ -7,6 +7,7 @@
  * only valid against the content that minted them, which `stateHash` certifies.
  */
 import type { Address, SerializedNode, StoredState } from "./types";
+import { isBlockId, readBlockId } from "./blockId";
 
 /**
  * The only node types whose children are addressed individually.
@@ -60,9 +61,9 @@ export interface Located {
   index: number;
 }
 
-/** Resolve an address against a state, or null if it points at nothing. */
+/** Resolve an address — id or path — against a state, or null. */
 export function locate(state: StoredState, address: string): Located | null {
-  const path = parseAddress(address);
+  const path = pathOf(state, address);
   if (!path || path.length === 0) return null;
 
   let parent = state.root;
@@ -83,7 +84,9 @@ export function locate(state: StoredState, address: string): Located | null {
 }
 
 export interface WalkEntry {
+  /** The id when the block has one, otherwise its structural path. */
   address: Address;
+  /** The structural path, always — `readBlocks` and moves need it. */
   path: number[];
   node: SerializedNode;
   /** Nesting level; 0 for a top-level block. */
@@ -103,8 +106,13 @@ export function walkBlocks(state: StoredState): WalkEntry[] {
   const visit = (parent: SerializedNode, prefix: number[]): void => {
     childrenOf(parent).forEach((node, index) => {
       const path = [...prefix, index];
+      // A stamped block is addressed by its id, which survives the tree
+      // shifting underneath it; an unstamped one falls back to its path. Both
+      // spellings coexist in one document, which is what lets ids arrive
+      // gradually instead of by migration (see `blockId.ts`).
+      const id = readBlockId(node);
       entries.push({
-        address: formatAddress(path),
+        address: id || formatAddress(path),
         path,
         node,
         depth: prefix.length,
@@ -115,4 +123,19 @@ export function walkBlocks(state: StoredState): WalkEntry[] {
 
   visit(state.root, []);
   return entries;
+}
+
+/**
+ * Resolve an address — id or path — to its structural path.
+ *
+ * Ids win over paths when both could match, because an id is the more specific
+ * claim: it names one block, whereas a path names a position that some other
+ * block may since have taken.
+ */
+export function pathOf(state: StoredState, address: string): number[] | null {
+  if (isBlockId(address)) {
+    const hit = walkBlocks(state).find((entry) => entry.address === address);
+    return hit ? hit.path : null;
+  }
+  return parseAddress(address);
 }

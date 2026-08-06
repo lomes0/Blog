@@ -98,7 +98,7 @@ export class SketchNode extends ImageNode {
     } catch (e) {
       console.error(e);
     }
-    return node;
+    return node.updateFromJSON(serializedNode);
   }
 
   exportDOM(editor: LexicalEditor): DOMExportOutput {

@@ -101,7 +101,7 @@ export class DetailsSummaryNode extends ElementNode {
   ): DetailsSummaryNode {
     const summaryNode = $createDetailsSummaryNode();
     summaryNode.__editable = serializedNode.editable;
-    return summaryNode;
+    return summaryNode.updateFromJSON(serializedNode);
   }
 
   exportJSON(): SerializedDetailsSummaryNode {

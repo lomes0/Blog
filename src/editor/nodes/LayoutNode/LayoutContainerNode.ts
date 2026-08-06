@@ -63,7 +63,7 @@ export class LayoutContainerNode extends ElementNode {
   static importJSON(
     json: SerializedLayoutContainerNode,
   ): LayoutContainerNode {
-    return $createLayoutContainerNode(json.templateColumns);
+    return $createLayoutContainerNode(json.templateColumns).updateFromJSON(json);
   }
 
   canBeEmpty(): boolean {

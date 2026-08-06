@@ -56,7 +56,7 @@ the whole run. `src/types/vitest.d.ts` is what gives `tsc` the globals;
 `compilerOptions.types` is deliberately left unset, because setting it would
 restrict resolution to only its entries and drop every other ambient package.
 
-Coverage is fourteen specs, 260 assertions: `src/lib/__tests__/ordering.test.ts`
+Coverage is sixteen specs, 281 assertions: `src/lib/__tests__/ordering.test.ts`
 (fractional rank keys), `src/components/Layout/SideBar/__tests__/
 dragGeometry.test.ts` (sidebar drag thresholds — `dragGeometry.ts` is kept
 import-free precisely so it is testable without a browser),
@@ -88,7 +88,16 @@ node with every optional field populated — the obligation
 docs/plans/claude-code-lexical.md §4.6.1 attaches to graduating one), and
 `src/editor/utils/__tests__/virtualRepo.test.ts` (the Copilot's view of the
 library — that a search hit carries a block address a later tool can act on,
-rather than a line number no other tool accepts).
+rather than a line number no other tool accepts). Two more cover phase 5:
+`src/lib/content-bridge/__tests__/blockId.test.ts` (that a persistent id keeps
+naming its block after the tree shifts above it, that a write stamps only what
+it touched, and that a read never stamps) and
+`src/editor/nodes/__tests__/serialization.test.ts` (that a stored node survives
+a load — `importJSON` is the only parse path, so a class that does not delegate
+to `updateFromJSON` silently drops node state *and* element format/indent/
+direction; five classes did). `npm run check:nodes` enforces the same rule
+statically across every node class, including the `.tsx` ones the test
+environment cannot parse.
 
 All of these follow the same rule as `dragGeometry.ts`: the logic lives in an
 import-free module so it can be exercised without mounting anything. The IDB
@@ -118,7 +127,8 @@ running the app against the local Postgres and exercising the routes directly.
 > system PostgreSQL cluster may also be running, on a *different* port
 > (`pg_lsclusters`), and is not the one the app talks to.
 
-Type-check and lint with `npx tsc --noEmit` and `npm run lint`. For UI changes
+Type-check and lint with `npx tsc --noEmit` and `npm run lint`. After touching
+anything in `src/editor/nodes/`, run `npm run check:nodes`. For UI changes
 also run `npm run check:theme`, which catches colors that do not respond to the
 light/dark toggle (DESIGN.md §19).
 

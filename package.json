@@ -11,6 +11,7 @@
     "lint": "next lint",
     "rebuild": "npm run clean && npm run build",
     "check:tdz": "node scripts/check-tdz.mjs",
+    "check:nodes": "node scripts/check-node-serialization.mjs",
     "check:tdz:fix": "node scripts/check-tdz.mjs --fix-hint",
     "check:unused": "knip",
     "check:theme": "node scripts/check-theme.mjs",

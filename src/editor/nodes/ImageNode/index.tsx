@@ -128,7 +128,7 @@ export class ImageNode extends DecoratorNode<JSX.Element> {
     } catch (error) {
       console.error(error);
     }
-    return node;
+    return node.updateFromJSON(serializedNode);
   }
 
   exportDOM(editor: LexicalEditor): DOMExportOutput {
@@ -198,6 +198,7 @@ export class ImageNode extends DecoratorNode<JSX.Element> {
 
   exportJSON(): SerializedImageNode {
     return {
+      ...super.exportJSON(),
       altText: this.getAltText(),
       height: this.__height,
       src: this.getSrc(),

@@ -194,6 +194,8 @@ describe("details", () => {
 
   it("lets the summary be retitled in place through set_text", () => {
     const state: StoredState = stateFromBlocks([block]);
+    // Address it by its path even though it is stamped — both spellings work,
+    // so a caller holding an address from an older read is never stranded.
     const result = applyOps(state, stateHash(state), [
       { op: "set_text", id: "b1.1", text: "Shorter title" },
     ]);
@@ -219,15 +221,20 @@ describe("authoring a whole document from blocks", () => {
       },
     ]);
 
-    expect(outline(state).blocks.map((b) => `${b.id} ${b.kind}`)).toEqual([
-      "b1 heading[1]",
-      "b2 paragraph",
-      "b3 divider",
-      "b4 details",
-      "b4.1 summary",
-      "b4.2 details-content",
-      "b4.2.1 code[ts]",
-      "b5 kanban",
+    // A document authored from blocks is stamped from birth, so every address
+    // is a persistent id rather than a structural path.
+    const blocks = outline(state).blocks;
+    expect(blocks.map((b) => b.kind)).toEqual([
+      "heading[1]",
+      "paragraph",
+      "divider",
+      "details",
+      "summary",
+      "details-content",
+      "code[ts]",
+      "kanban",
     ]);
+    expect(blocks.every((b) => b.id.startsWith("blk_"))).toBe(true);
+    expect(new Set(blocks.map((b) => b.id)).size).toBe(blocks.length);
   });
 });

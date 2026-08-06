@@ -12,7 +12,7 @@
  * not what the cards say.
  */
 import type { Address, AddressedBlock, Block, StoredState } from "./types";
-import { walkBlocks } from "./address";
+import { formatAddress, walkBlocks } from "./address";
 import { canSetText, nodeToBlock } from "./blocks";
 import { stateHash } from "./stateHash";
 
@@ -139,9 +139,10 @@ export function formatOutline(result: Outline): string {
         : textEditable
           ? ""
           : "  [replace only]";
-      // Trailing space, not just padding: a kind longer than the column would
-      // otherwise run straight into the preview ("details-content1 block").
-      return `${id.padEnd(8)}${indent}${kind.padEnd(15)} ${preview}${size}${note}`;
+      // Trailing spaces, not just padding: an address or kind longer than its
+      // column would otherwise run straight into the next one — a persistent
+      // id is wider than a path ("blk_7ughz1heading[1]").
+      return `${id.padEnd(10)} ${indent}${kind.padEnd(15)} ${preview}${size}${note}`;
     })
     .join("\n");
 }
@@ -161,9 +162,14 @@ export function readBlocks(
   const wanted = new Set(ids);
   const found = new Map<Address, AddressedBlock>();
 
-  for (const { address, node } of walkBlocks(state)) {
-    if (!wanted.has(address)) continue;
-    found.set(address, { ...nodeToBlock(node), id: address });
+  for (const { address, path, node } of walkBlocks(state)) {
+    // Accept either spelling: a stamped block is addressed by its id, but a
+    // caller may be holding the structural path from an earlier read.
+    const asPath = formatAddress(path);
+    if (!wanted.has(address) && !wanted.has(asPath)) continue;
+    const block = { ...nodeToBlock(node), id: address };
+    if (wanted.has(address)) found.set(address, block);
+    if (wanted.has(asPath)) found.set(asPath, block);
   }
 
   return {
@@ -178,19 +184,20 @@ export function readAll(state: StoredState): {
   stateHash: string;
   blocks: AddressedBlock[];
 } {
-  const byAddress = new Map<Address, AddressedBlock>();
+  // Keyed by structural path, never by the block's own address: a stamped
+  // block is addressed by its id, so looking a parent up by path would miss.
+  const byPath = new Map<string, AddressedBlock>();
   const roots: AddressedBlock[] = [];
 
   for (const { address, node, path } of walkBlocks(state)) {
     const block: AddressedBlock = { ...nodeToBlock(node), id: address };
-    byAddress.set(address, block);
+    byPath.set(formatAddress(path), block);
 
     if (path.length === 1) {
       roots.push(block);
       continue;
     }
-    const parentAddress = `b${path.slice(0, -1).map((i) => i + 1).join(".")}`;
-    const parent = byAddress.get(parentAddress);
+    const parent = byPath.get(formatAddress(path.slice(0, -1)));
     if (parent) (parent.children ??= []).push(block);
   }
 

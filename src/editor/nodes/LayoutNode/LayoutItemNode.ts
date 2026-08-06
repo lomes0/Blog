@@ -42,8 +42,8 @@ export class LayoutItemNode extends ElementNode {
     return {};
   }
 
-  static importJSON(): LayoutItemNode {
-    return $createLayoutItemNode();
+  static importJSON(serializedNode: SerializedElementNode): LayoutItemNode {
+    return $createLayoutItemNode().updateFromJSON(serializedNode);
   }
 
   isShadowRoot(): boolean {

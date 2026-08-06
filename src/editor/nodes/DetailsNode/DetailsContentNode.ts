@@ -97,9 +97,9 @@ export class DetailsContentNode extends ElementNode {
   }
 
   static importJSON(
-    _serializedNode: SerializedDetailsContentNode,
+    serializedNode: SerializedDetailsContentNode,
   ): DetailsContentNode {
-    return $createDetailsContentNode();
+    return $createDetailsContentNode().updateFromJSON(serializedNode);
   }
 
   isShadowRoot(): boolean {

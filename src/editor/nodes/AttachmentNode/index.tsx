@@ -91,7 +91,7 @@ export class AttachmentNode extends DecoratorNode<JSX.Element> {
       size,
       expanded: expanded ?? false,
       editing: editing ?? false,
-    });
+    }).updateFromJSON(serializedNode);
   }
 
   exportDOM(): DOMExportOutput {
@@ -230,6 +230,7 @@ export class AttachmentNode extends DecoratorNode<JSX.Element> {
 
   exportJSON(): SerializedAttachmentNode {
     return {
+      ...super.exportJSON(),
       url: this.getUrl(),
       filename: this.getFilename(),
       mimetype: this.getMimetype(),

@@ -72,7 +72,7 @@ export class CanvasNode extends DecoratorNode<JSX.Element> {
         editor: createNoteEditor(editor?.editorState),
       })),
       height ?? CANVAS_DEFAULT_HEIGHT,
-    );
+    ).updateFromJSON(serializedNode);
   }
 
   static importDOM(): null {
@@ -93,6 +93,7 @@ export class CanvasNode extends DecoratorNode<JSX.Element> {
 
   exportJSON(): SerializedCanvasNode {
     return {
+      ...super.exportJSON(),
       id: this.__id,
       notes: this.__notes.map(({ editor, ...frame }) => ({
         ...frame,

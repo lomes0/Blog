@@ -99,7 +99,7 @@ export class TableNode extends LexicalTableNode {
     node.setId(_serializedNode.id);
     node.setRowStriping(_serializedNode.rowStriping || false);
     node.setColWidths(_serializedNode.colWidths);
-    return node;
+    return node.updateFromJSON(_serializedNode);
   }
 
   constructor(key?: NodeKey) {

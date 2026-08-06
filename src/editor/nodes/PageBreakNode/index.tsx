@@ -28,8 +28,8 @@ export class PageBreakNode extends DecoratorNode<JSX.Element> {
     return new PageBreakNode(node.__key);
   }
 
-  static importJSON(_serializedNode: SerializedPageBreakNode): PageBreakNode {
-    return $createPageBreakNode();
+  static importJSON(serializedNode: SerializedPageBreakNode): PageBreakNode {
+    return $createPageBreakNode().updateFromJSON(serializedNode);
   }
 
   static importDOM(): DOMConversionMap | null {
@@ -48,6 +48,7 @@ export class PageBreakNode extends DecoratorNode<JSX.Element> {
 
   exportJSON(): SerializedLexicalNode {
     return {
+      ...super.exportJSON(),
       type: this.getType(),
       version: 1,
     };

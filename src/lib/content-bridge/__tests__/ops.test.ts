@@ -169,12 +169,22 @@ describe("applyOps — what may not be rewritten", () => {
   it("still allows moving and deleting a block with no codec", () => {
     const state = makeState();
     const moved = apply(state, [{ op: "move_block", id: "b4.2.1", before: "b1" }]);
-    expect((moved.state.root.children as SerializedNode[])[0].type).toBe("graph");
-    // …and it survived the trip unchanged.
+    const landed = (moved.state.root.children as SerializedNode[])[0];
+    expect(landed.type).toBe("graph");
+
+    // Its content survived the trip untouched. A move stamps the block with a
+    // persistent id — that is exactly the case an id is for — so compare
+    // everything except the node-state key.
     const original = (at(makeState(), 3).children as SerializedNode[])[1];
-    expect(snapshot((moved.state.root.children as SerializedNode[])[0])).toBe(
-      snapshot((original.children as SerializedNode[])[0]),
+    const stripId = (node: SerializedNode) => {
+      const { $: _state, ...rest } = node as Record<string, unknown>;
+      return JSON.stringify(rest);
+    };
+    expect(stripId(landed)).toBe(
+      stripId((original.children as SerializedNode[])[0]),
     );
+    expect(String(landed.$ && (landed.$ as Record<string, unknown>).blockId))
+      .toMatch(/^blk_/);
 
     const deleted = apply(state, [{ op: "delete_block", id: "b4.2.1" }]);
     expect(JSON.stringify(deleted.state)).not.toContain("GEOGEBRA_STATE_BLOB");
@@ -274,7 +284,11 @@ describe("applyOps — round-trip through the outline", () => {
     ]);
     const after = outline(result.state);
     expect(after.stateHash).toBe(result.stateHash);
-    expect(after.blocks[0]).toMatchObject({ id: "b1", kind: "paragraph" });
+    // The inserted block was touched, so it carries a persistent id; the
+    // heading below it was not, so it keeps its structural path — and the path
+    // has shifted to b2, which is precisely the fragility ids exist to fix.
+    expect(after.blocks[0].kind).toBe("paragraph");
+    expect(after.blocks[0].id).toMatch(/^blk_/);
     expect(after.blocks[1]).toMatchObject({ id: "b2", kind: "heading[1]" });
   });
 });

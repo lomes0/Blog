@@ -85,7 +85,7 @@ export class TableCellNode extends LexicalTableCellNode {
     if (backgroundColor) {
       cellNode.__backgroundColor = backgroundColor;
     }
-    return cellNode;
+    return cellNode.updateFromJSON(serializedNode);
   }
 
   constructor(

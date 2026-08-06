@@ -23,7 +23,8 @@ import type {
 } from "./types";
 import { blockToNode, canSetText, nodeToBlock, TEXT_BLOCKS } from "./blocks";
 import { assertFresh, stateHash } from "./stateHash";
-import { walkBlocks } from "./address";
+import { formatAddress, walkBlocks } from "./address";
+import { mintBlockId, readBlockId, writeBlockId } from "./blockId";
 
 export type InsertTarget = {
   /** Place the blocks after this one. */
@@ -57,6 +58,7 @@ export const emptyState = (): StoredState => ({
 export function stateFromBlocks(blocks: readonly WritableBlock[]): StoredState {
   const state = emptyState();
   state.root.children = blocks.map((block) => blockToNode(block));
+  stampBlockIds(state);
   return state;
 }
 
@@ -107,7 +109,14 @@ function indexTargets(state: StoredState): Map<Address, Target> {
 
   for (const entry of walkBlocks(state)) {
     const parent = parents.get(entry.node);
-    if (parent) targets.set(entry.address, { node: entry.node, parent });
+    if (!parent) continue;
+    const target = { node: entry.node, parent };
+    targets.set(entry.address, target);
+    // A block that has since been stamped is now *addressed* by its id, but a
+    // caller may still be holding the path from an earlier read. Both spellings
+    // resolve to the same node; they cannot collide, because an id never looks
+    // like a path.
+    targets.set(formatAddress(entry.path), target);
   }
   return targets;
 }
@@ -238,12 +247,19 @@ export function applyOps(
   // Work on a copy so a failure part-way leaves the caller's state untouched.
   const working = clone(state);
   const targets = indexTargets(working);
+  const touched = new Set<SerializedNode>();
+  const markSubtree = (node: SerializedNode) => {
+    touched.add(node);
+    childrenOf(node).forEach(markSubtree);
+  };
   let changed = 0;
 
   ops.forEach((op, opIndex) => {
     switch (op.op) {
       case "set_text": {
-        applySetText(requireTarget(targets, op.id, opIndex), op.text ?? "", opIndex);
+        const target = requireTarget(targets, op.id, opIndex);
+        applySetText(target, op.text ?? "", opIndex);
+        markSubtree(target.node);
         changed++;
         break;
       }
@@ -257,6 +273,7 @@ export function applyOps(
         }
         childrenOf(target.parent)[positionOf(target)] = next;
         target.node = next;
+        markSubtree(next);
         changed++;
         break;
       }
@@ -264,6 +281,7 @@ export function applyOps(
         const nodes = build(op.blocks, opIndex);
         const { parent, index } = resolveInsertion(working, targets, op, opIndex);
         mutableChildren(parent).splice(index, 0, ...nodes);
+        nodes.forEach(markSubtree);
         changed += nodes.length;
         break;
       }
@@ -288,6 +306,8 @@ export function applyOps(
             : destination.index;
         mutableChildren(destination.parent).splice(to, 0, target.node);
         target.parent = destination.parent;
+        // A moved block is precisely the case a stable id is for.
+        touched.add(target.node);
         changed++;
         break;
       }
@@ -298,7 +318,46 @@ export function applyOps(
     }
   });
 
+  // Stamp only what this batch touched, so a document accrues ids exactly
+  // where editing happens — which is where an address most needs to survive
+  // the tree shifting. See `stampBlockIds` for why not everything.
+  stampBlockIds(working, touched);
+
   return { state: working, stateHash: stateHash(working), changed };
+}
+
+/**
+ * Give addressable blocks a persistent id, leaving existing ones alone.
+ *
+ * `only` restricts stamping to the nodes a batch touched. Stamping *everything*
+ * on the first write was the obvious implementation and is wrong twice over:
+ *
+ *   - it breaks the property this module exists to hold. A kanban board nobody
+ *     mentioned would no longer serialize identically, because it would have
+ *     gained an id;
+ *   - it buries the edit. Review happens by diffing against the previous
+ *     revision (plan §4.7), and a one-paragraph change inside a 200-block
+ *     restamp is not reviewable.
+ *
+ * Stamping what was touched costs nothing on either count and still gives the
+ * blocks being worked on a durable identity. A block that is never edited keeps
+ * its structural path, which is exactly as good as it was before.
+ *
+ * Only ever called on a write. A read that stamped would change the document's
+ * `stateHash` as a side effect of being observed, and so refuse the very next
+ * write.
+ */
+export function stampBlockIds(
+  state: StoredState,
+  only?: ReadonlySet<SerializedNode>,
+): void {
+  // Addressable blocks only. Walking the whole tree would stamp every text run
+  // too, which is invisible in the outline and would bloat the stored document
+  // for nothing — ids exist to name things an op can target.
+  for (const { node } of walkBlocks(state)) {
+    if (only && !only.has(node)) continue;
+    if (!readBlockId(node)) writeBlockId(node, mintBlockId());
+  }
 }
 
 /** True when `candidate` is `node` or lives somewhere beneath it. */

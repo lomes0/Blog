@@ -136,7 +136,7 @@ export class DetailsContainerNode extends ElementNode {
   ): DetailsContainerNode {
     const node = $createDetailsContainerNode(serializedNode.open);
     node.__editable = serializedNode.editable;
-    return node;
+    return node.updateFromJSON(serializedNode);
   }
 
   exportDOM(): DOMExportOutput {

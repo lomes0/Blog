@@ -118,6 +118,39 @@ know to look.
 
 The bridge guards its own writes. Closing the other direction means a CAS on
 that route, and is out of scope here — recorded in §8.
+### 2.5 The conformance pass was a bug fix, not a cost
+
+§2.1 measured that node state does not survive this app's custom classes, and
+priced the fix as phase 5's entry ticket. Doing it revealed the price was
+already being paid.
+
+`importJSON` is the **only** parse path — `$parseSerializedNodeImpl` calls it
+and nothing afterwards restores what the implementation forgot. So a hand-rolled
+`importJSON` that never delegates loses base fields too, not just `$`. Measured
+by round-tripping a state through a real editor:
+
+```
+details-container   format center -> ""   indent 2 -> 0   direction ltr -> null
+details-summary     format center -> ""   indent 2 -> 0   direction ltr -> null
+details-content     format center -> ""   indent 2 -> 0   direction ltr -> null
+layout-container    format center -> ""   indent 2 -> 0   direction ltr -> null
+layout-item         format center -> ""   indent 2 -> 0   direction ltr -> null
+paragraph           (Lexical's own)                                        ok
+```
+
+**Five classes dropped alignment, indent and direction on every single load.**
+Not a phase-5 concern at all — a live bug in the editor, invisible because the
+document still opens, it just quietly comes back different. Stored content shows
+all-default values on those types, which is consistent with either "never set"
+or "already lost" and cannot distinguish them.
+
+Fixed by routing every `importJSON` through `updateFromJSON` and spreading
+`super.exportJSON()`. Two guards keep it fixed:
+`src/editor/nodes/__tests__/serialization.test.ts` for the classes that import
+without a DOM, and `npm run check:nodes` — a static check over *all* of them,
+since the `.tsx` node modules cannot be parsed in the test environment. The
+check found two classes the manual pass had missed.
+
 ### 2.4 Retracted: the Copilot does not lose rich nodes
 
 Rev 1 §1 and rev 2's first draft both asserted that the in-app Copilot's
@@ -243,6 +276,19 @@ window is a few seconds wide.
 
 Persistent ids remain available later as a pure upgrade (§7, phase 5) if
 concurrent editing ever proves annoying in practice. Nothing here forecloses it.
+
+**Built (phase 5): ids are opportunistic, and there is no backfill.**
+Rev 1 wanted every stored revision stamped up front. Instead: a stamped block is
+addressed by its id, an unstamped one by its path, both spellings resolve, and a
+write stamps only the blocks it touched. Documents accrue ids exactly where
+editing happens, nothing is migrated, and nothing breaks if a document is never
+stamped.
+
+Stamping *everything* on first write was the obvious implementation and is wrong
+twice over: a kanban board nobody mentioned would gain an id and stop being
+byte-identical, breaking §4.1; and a one-paragraph change buried in a 200-block
+restamp is not reviewable, breaking §4.7's diff-against-the-previous-revision
+story. Stamping what was touched costs nothing on either count.
 
 **Built (phase 1): the applier works on serialized JSON, not a live editor.**
 §4.1 describes loading "the real editor state"; operating on the stored JSON is
@@ -550,7 +596,7 @@ already stable for the editor's lifetime — `address.ts` resolves a path to a
 | 2 | **DONE.** `mcp/content-server.ts` on §5's surface; Markdown path retired. `mcp/lexical.ts`, `bootstrap.mjs` and `css-loader.mjs` **deleted** — the bridge is pure JSON, so the server needs no headless editor and no DOM shim, which closes the §9 fragility outright | |
 | 3 | **PART DONE.** Graduated `divider`, `layout`, `attachment`, `details`, `kanban` (+ `summary`), each with a §4.6.1 round-trip spec. 87.8% of real blocks now read as typed. **Remaining, in corpus order: nested `list` (1893), `table` (263), `layout-item` (741, structural).** `iframe` skipped — zero occurrences, no workflow, inherits image's caption problem | §4.6.3 still gates image/sticky/canvas |
 | 4 | **DONE.** `copilotAgentExecutors` + `virtualRepo` on the core; `markdownBridge.ts` **deleted**. Tools are now `outline_document` / `read_blocks` / `read_document` / `search_documents` / `apply_ops` / `create_document(blocks)`; `edit_document`, `write_document` and `read_current_document` are gone | |
-| 5 | *Optional.* Persistent ids, if concurrent editing proves painful — pays §2.1's cost knowingly: `super.exportJSON()` + `updateFromJSON` across ~20 node classes, a conformance spec per class, and a backfill | |
+| 5 | **DONE, and it cost less than §2.1 predicted.** The conformance pass fixed a *live* bug rather than merely enabling ids (§2.5). Ids are **opportunistic** — stamped on write, never backfilled, both spellings resolve — so there is no migration and no big-bang | |
 
 Rev 1's phase 0 spike is answered (§2.1), its phase 3 backfill is deleted, and
 its urgency is gone (§2.4) — nothing here is racing a live bug.
@@ -639,11 +685,11 @@ Accepted consequences, recorded so they are not rediscovered as surprises.
 
 **Inherent to the design**
 
-- **Addresses die when the document changes.** They are minted per read and
-  certified by `stateHash` (§4.2/§4.3). An *idle* open editor is fine; an
-  actively-typed one moves the hash on every autosave burst, so writes are
-  refused until you stop. "Watch Claude rewrite the post you are typing in" is
-  not a supported workflow — phase 5 is the escape hatch if that chafes.
+- **A write is still refused when the document moved under it.** `stateHash`
+  is a whole-document token, so an actively-typed editor refuses writes until
+  you stop, even where persistent ids (phase 5) would have kept the addresses
+  valid. Ids fixed *addressing* across edits; they did not make the guard
+  finer-grained. Doing that means a per-block hash, and is not planned.
 - **Claude reasons about a projection, not Lexical.** Whatever the IR omits is
   invisible. That is what makes it affordable on context.
 - **Block granularity.** No sub-block surgery; changing a word rewrites the

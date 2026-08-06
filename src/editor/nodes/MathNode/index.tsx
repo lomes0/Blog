@@ -47,11 +47,12 @@ export class MathNode extends DecoratorNode<JSX.Element> {
       serializedNode.style,
       serializedNode.id,
     );
-    return node;
+    return node.updateFromJSON(serializedNode);
   }
 
   exportJSON(): SerializedMathNode {
     return {
+      ...super.exportJSON(),
       value: this.getValue(),
       style: this.getStyle(),
       id: this.getId(),

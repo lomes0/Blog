@@ -38,7 +38,7 @@ export class KanbanNode extends DecoratorNode<JSX.Element> {
 
   static importJSON(serializedNode: SerializedKanbanNode): KanbanNode {
     const { tasks, style } = serializedNode;
-    return $createKanbanNode({ tasks, style });
+    return $createKanbanNode({ tasks, style }).updateFromJSON(serializedNode);
   }
 
   constructor(
@@ -57,6 +57,7 @@ export class KanbanNode extends DecoratorNode<JSX.Element> {
 
   exportJSON(): SerializedKanbanNode {
     return {
+      ...super.exportJSON(),
       tasks: this.__tasks,
       style: this.__style,
       type: "kanban",
