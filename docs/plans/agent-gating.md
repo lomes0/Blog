@@ -1,8 +1,10 @@
 # Gating agent changes
 
-**Status: proposal (2026-08-06).** Not started. Builds directly on the content
-bridge ([claude-code-lexical.md](./claude-code-lexical.md), phases 1–5 shipped)
-and on the `head` compare-and-set that landed in `fd67510e`.
+**Status: proposal (2026-08-06), decisions locked — not started.** Builds
+directly on the content bridge ([claude-code-lexical.md](./claude-code-lexical.md),
+phases 1–5 shipped) and on the `head` compare-and-set that landed in `fd67510e`.
+The eight decisions §8 used to leave open were taken on 6 Aug 2026 and are
+folded into the design below.
 
 Claude Code writes to the blog from the terminal, out of band, and the change is
 live the moment it lands. This plan makes an agent write **proposed** rather than
@@ -19,7 +21,7 @@ is a matter of not doing the second one.
 today     apply_ops ──► INSERT Revision ──► head = revision.id       live at once
                                             (CAS on expected head)
 
-gated     apply_ops ──► INSERT Revision ──► head unchanged           proposed
+gated     apply_ops ──► UPSERT Revision ──► head unchanged           proposed
                         proposedAt set        │
                                               ├─► approve: head = revision.id  (same CAS)
                                               └─► reject:  delete the row
@@ -42,7 +44,8 @@ Measured against the tree at `05ba3a0d`.
 | Diff wiring | `setDiffRevisions` / per-pane `diffOpen` (`store/app.ts:310,543`) | "Review" = two dispatches |
 | A rail to hang it on | `Layout/RightRail/RevisionsSection.tsx` | A sibling `ProposalsSection` is ~an afternoon |
 | Revision fetch | `GET /api/revisions/[id]` | Loading a proposal's content client-side |
-| Persistent block ids | `content-bridge/blockId.ts` | What makes rebasing and per-block approval possible at all |
+| Conflict handling in the editor | `useSave.ts`, `pendingSaves.ts` | A tab that loses a race already stops, buffers and recovers |
+| Persistent block ids | `content-bridge/blockId.ts` | What would make rebasing and per-block approval possible later |
 
 ### 2.1 Three gotchas, all findable only by reading
 
@@ -69,8 +72,9 @@ a leak of *draft* status rather than of secrets — but a proposal should be
 owner-only regardless of the document's publication state. Phase 3 owns it.
 
 **`POST /api/revisions` rewrites a known id.** The editor folds a run of
-autosaves into one revision by re-posting its id. An approval flow must not reuse
-that path, or an autosave could overwrite a pending proposal.
+autosaves into one revision by re-posting its id. The proposal row is *also*
+rewritten in place (§3.2), but by the repository, never through that route — an
+autosave must not be able to land on a pending proposal.
 
 ## 3. Design
 
@@ -83,11 +87,19 @@ A new table means rebuilding all four.
 ```prisma
 model Revision {
   // … existing fields
-  proposedAt       DateTime?        // null = ordinary history
-  origin           String?          // "claude-code" | "copilot"
-  baseRevisionId   String?  @db.Uuid // the tip this was built on
-  summary          String?          // one line, for the rail
+  proposedAt       DateTime?         // null = ordinary history
+  origin           String?           // "claude-code"
+  baseRevisionId   String?  @db.Uuid // the head this was built on
+  ops              Json?             // the batches folded into this proposal
+  summary          String?           // one line, for the rail
+  staleAt          DateTime?         // set when the base stops being head
   @@index([documentId, proposedAt])
+}
+
+model Document {
+  // … existing fields
+  agentCreatedAt   DateTime?         // set by create_post, cleared on accept
+  agentOrigin      String?
 }
 ```
 
@@ -95,36 +107,47 @@ model Revision {
 history reads must gain an explicit `proposedAt: null` filter, or proposals leak
 into the revision list as though they were history.
 
-### 3.2 The pending tip — the load-bearing part
+**At most one pending proposal per document** (§3.2). Enforce it in the database
+with a partial unique index, not in application code:
+
+```sql
+CREATE UNIQUE INDEX revision_one_pending_per_document
+  ON "Revision" ("documentId") WHERE "proposedAt" IS NOT NULL;
+```
+
+Prisma cannot express a partial unique index in the schema, so it goes in the
+migration as raw SQL. Worth the awkwardness: the invariant then cannot be broken
+by a code path nobody thought about.
+
+### 3.2 One pending proposal, squashed — the load-bearing part
 
 If Claude edits block 2 and then block 5, its second `outline` **must** see the
-first edit. So the MCP server's `loadPost` resolves to the newest proposal for
-the document when one exists, not to `Document.head`, and each new proposal
-chains via `baseRevisionId`.
+first edit. So the MCP server's `loadPost` resolves to the pending proposal when
+one exists, not to `Document.head`.
 
-Get this wrong and gating silently breaks every multi-step edit: batch two is
-built against stale content, and approving it discards batch one. It is the one
-part of this plan that is not mechanical.
+Successive batches **squash into that one row**: the second write rewrites the
+proposal rather than adding a second one, and appends its ops to `ops`. The
+intermediate states existed only so the agent could read its own writes — there
+is no reason to review them separately, and one pending thing per document means
+nothing accumulates and the rail cannot fill with forty rows.
 
-`stateHash` needs no change — it hashes whatever state was read, so it goes on
-guarding addresses against the tip exactly as it guards them against head today.
+Two failure modes, and they are the whole risk in this plan:
 
-Approving the tip means approving the chain: `head` moves to the tip, and every
-proposal below it becomes ordinary history (`proposedAt = null`). Approving a
-proposal that is not the tip is not supported — see §7.
+- **Folding onto `head` instead of onto the pending state** discards the earlier
+  batch. Silent, and only visible after approval.
+- **Two proposals surviving** for one document — hence the partial unique index
+  rather than a convention.
+
+`stateHash` needs no change. It hashes whatever state was read, so it goes on
+guarding addresses against the pending proposal exactly as it guards them against
+head today.
 
 ### 3.3 Store the ops, not just the result
 
 `Revision.data` is the materialized state, which is what the diff view wants.
-Persist the ops batch alongside it (a JSON column, or a `ProposalOp` child table
-if per-op state is wanted later). It buys two things:
-
-- **Rebase.** Ops name `blk_…` ids, which survive edits elsewhere in the tree —
-  so a proposal can often be re-applied onto a document you have since edited.
-- **Per-block approval.** Accepting three ops of five is only expressible if the
-  ops survived.
-
-Neither is needed in phase 1. Storing them then is what makes them cheap later.
+`ops` accumulates the batches folded into the proposal. Neither rebasing (§3.6)
+nor per-block approval needs to exist yet — storing the ops now is what makes
+them cheap later, and they cost nothing meanwhile.
 
 ### 3.4 Approve and reject
 
@@ -135,9 +158,11 @@ POST /api/documents/[id]/proposals/[revisionId]/reject
 
 `userRoute` + `requireDocument(id, user, "write")` — never a hand-rolled author
 comparison (CLAUDE.md). Approve calls `updateDocument(id, { head: revisionId },
-expectedHead)`; a 409 means the document moved under the proposal, and the answer
-is rebase-or-rerun, never clobber. Reject deletes the row, or sets `rejectedAt`
-if you want an audit trail — a decision, see §8.
+expectedHead)` and clears `proposedAt`, so the proposal becomes ordinary history;
+a 409 means the document moved under it, and the answer is re-run, never clobber.
+**Reject deletes the row.** No `rejectedAt`, no retention story, no filter on
+every history read — the content is not lost in any sense that matters, since
+Claude can regenerate it and you rejected it deliberately.
 
 ### 3.5 Surfacing
 
@@ -145,7 +170,7 @@ Three tiers. The first two are cheap because the diff view exists.
 
 | Tier | What | Where |
 | --- | --- | --- |
-| Awareness | A badge on the sidebar row; a `ProposalsSection` listing pending proposals with origin, time and summary | `Layout/RightRail/`, `SideBar/` |
+| Awareness | A badge on the sidebar row; a `ProposalsSection` listing the pending proposal with origin, time and summary, plus any agent-created posts awaiting accept (§3.7) | `Layout/RightRail/`, `SideBar/` |
 | Review whole | "Review" → `setDiffRevisions({ old: head, new: proposalId })` + `setDiffOpen(true)`, plus an approve/reject bar over the diff | `components/Diff/`, `EditDocument/` |
 | Review per block | Accept some ops, reject the rest | new; needs §3.3 |
 
@@ -155,30 +180,55 @@ endpoint on window focus and on document open. A badge that appears — not a
 toast, not a modal. SSE is available if that proves too laggy, but it is a second
 system to keep alive and should not be phase 1.
 
-### 3.6 Conflicts with your own edits
+### 3.6 When you edit under a pending proposal
 
-A proposal is built on a base. If you edit the document afterwards, the base is
-stale. Three answers, in ascending cost:
+The proposal is built on a base. If you save afterwards, the base is no longer
+head: **mark the proposal stale** (`staleAt`) and refuse to approve it. Ask
+Claude again against current content.
 
-1. **Mark it stale** and require a re-run. Correct, trivial, occasionally
-   annoying.
-2. **Rebase by block id** — re-apply the stored ops onto the current head. Clean
-   when the ops name blocks you did not touch, which is the common case.
-3. **Per-block conflict resolution.** Not worth it here.
+Rebasing the stored ops by block id is the better answer *if staleness turns out
+to be common* — the ops name `blk_…` ids that survive edits elsewhere in the
+tree, which is exactly what phase 5 of the bridge built them for. It is deferred
+rather than dismissed: build the blunt version, find out how often it fires, and
+only then decide. A rebase that half-applies is worse than a refusal.
 
-Take (1) in phase 5, (2) only if staleness proves common in practice.
+### 3.7 Creates land, flagged
 
-### 3.7 Creates, and where the gate lives
+`create_post` has no head to withhold, and creating is additive — nothing is
+overwritten and deleting it is one action. So a new post **lands normally**, with
+`agentCreatedAt` set. It appears in the library, and in the same rail, marked
+agent-created with two actions: accept (clear the flag) or discard (delete the
+post). You see everything Claude made, without a second proposal shape for a
+document that has no head yet.
 
-`create_post` has no head to withhold. Creating is additive and reversible, so
-the default should be that it lands as an ordinary unpublished draft rather than
-inventing a proposal state for a document that does not exist yet — but see §8.
+### 3.8 The gate is always on
 
-The gate must be **server-side**: `MCP_GATED=1` in `.mcp.json`'s `env`, not a
-tool parameter. A gate the agent can choose to skip is a suggestion. `apply_ops`
-must also answer *"proposed, awaiting approval"* rather than "updated", or Claude
-will report the change as live — the tool's own text is the only thing telling it
-what happened.
+Not an env flag, not a per-document column, not a rule derived from published
+state. Every agent write to an existing document proposes. There is nothing to
+configure, nothing to forget to switch on, and no mode where the terminal is
+quietly authoritative.
+
+Two consequences to build for:
+
+- `apply_ops` must answer *"proposed, awaiting approval"* rather than "updated",
+  or Claude will report the change as live. The tool's own text is the only thing
+  that tells it what happened.
+- `mcp/smoke.ts`'s write path (`RUN_WRITE=1`) now produces a proposal instead of
+  a save, so it must approve or clean up after itself.
+
+**The in-app Copilot is unaffected.** It already shows a proposal and waits for
+accept before writing — it is gated, just in-session. Claude Code is the case
+that needs this, because it writes with nobody watching.
+
+### 3.9 An approval under an open tab
+
+If the tab has no unsaved edits, reload it to the new head **silently** — this is
+a success, and the quiet-UI rule says successes do not announce themselves. If it
+has unsaved edits, say so before replacing them.
+
+Doing nothing was the cheap option and is wrong: the existing 409 path
+(`fd67510e`) would eventually catch it, but until you next typed the screen would
+keep showing content that is no longer the document.
 
 ## 4. Phases, costed
 
@@ -187,50 +237,56 @@ existing conventions. They are estimates.
 
 | # | Phase | Size | Est. | Risk | Blocks |
 | - | --- | --- | --- | --- | --- |
-| 1 | Schema + repository | S–M | ~150 LOC, 4 files, 1 migration | Low | 2, 3 |
-| 2 | MCP writes proposals; reads the tip | M | ~120 LOC, 1 file | **Medium** — §3.2 is the subtle part | 3 |
-| 3 | Approve / reject routes | S | ~120 LOC, 4 files | Low | 4 |
-| 4 | Surfacing: rail, badge, review bar | M–L | ~450 LOC, 8–10 files | Low, but the §2.1 filter must be got right | — |
-| — | **Walking skeleton = 1–4** | | **~850 LOC, ~18 files** | | |
-| 5 | Staleness marking | S | ~80 LOC | Low | — |
-| 6 | Fold in the Copilot's proposals | M | ~250 LOC, 4 files | Medium | — |
-| 7 | Per-block approve/reject | L | ~500 LOC | Medium | needs §3.3 |
-| 8 | Rebase by block id | M–L | ~300 LOC | Medium | needs §3.3 |
+| 1 | Schema + repository | M | ~180 LOC, 5 files, 1 migration | Low | 2, 3 |
+| 2 | MCP proposes; squash; flagged creates | M | ~150 LOC, 2 files | **Medium** — §3.2 is the subtle part | 3 |
+| 3 | Approve / reject / accept / discard routes | S–M | ~160 LOC, 5 files | Low | 4 |
+| 4 | Surfacing: rail, badge, review bar, tab reload | M–L | ~500 LOC, 9–11 files | Low, but the §2.1 filter must be got right | — |
+| — | **Walking skeleton = 1–4** | | **~1,000 LOC, ~20 files** | | |
+| 5 | Staleness marking (§3.6) | S | ~80 LOC | Low | — |
+| 6 | Per-block approve/reject | L | ~500 LOC | Medium | needs §3.3 |
+| 7 | Rebase by block id | M–L | ~300 LOC | Medium | needs §3.3, evidence from 5 |
 
 ### Phase 1 — schema + repository
 
-The migration in §3.1; `proposedAt: null` filters on every existing history read;
-`createProposal`, `listProposals`, `approveProposal`, `rejectProposal` in
+The migration in §3.1, including the partial unique index as raw SQL;
+`proposedAt: null` filters on every existing history read; `upsertProposal`,
+`findPendingProposal`, `approveProposal`, `rejectProposal` in
 `repositories/revision.ts`.
 
-*Done when:* a proposal row can be created and listed from a script, and the
-existing revision history is provably unchanged by it.
+*Done when:* a proposal row can be created, squashed onto and listed from a
+script; a second pending row for the same document is refused by the database;
+and the existing revision history is provably unchanged by any of it.
 
 ### Phase 2 — the MCP server proposes
 
-`loadPost` resolves the pending tip; `saveRevision` writes `proposedAt`/`origin`/
-`baseRevisionId` and leaves `head` alone under `MCP_GATED`; `apply_ops` reports
-that the change is pending.
+`loadPost` resolves the pending proposal; `saveRevision` upserts it with
+`proposedAt`/`origin`/`baseRevisionId`, appends to `ops`, and leaves `head`
+alone; `apply_ops` reports that the change is pending; `create_post` stamps
+`agentCreatedAt`; `smoke.ts` cleans up after itself.
 
-*Done when:* three consecutive `apply_ops` calls against one document produce a
-chain of three proposals, each seeing the previous one's edits, with `head`
-untouched throughout. `mcp/smoke.ts` gains that case.
+*Done when:* three consecutive `apply_ops` calls against one document leave
+**exactly one** pending proposal containing all three edits, each batch having
+seen the previous one's work, with `head` untouched throughout. Write that test
+before the code — it is the shape of the only real risk here.
 
-### Phase 3 — approve and reject
+### Phase 3 — approve, reject, accept, discard
 
-The two routes in §3.4, plus the ownership tightening from §2.1 so a pending
-revision on a published post is not world-readable.
+The two proposal routes in §3.4 plus accept/discard for flagged posts (§3.7), and
+the ownership tightening from §2.1 so a pending revision on a published post is
+not world-readable.
 
 *Done when:* approving advances `head` and the content is what the diff showed;
-approving twice is a no-op or a clean 409; rejecting leaves no orphan. **No
-automated check covers API authorization** (CLAUDE.md) — exercise these against
-the local Postgres by hand, including as a signed-out caller.
+approving twice is a no-op or a clean 409; rejecting leaves no orphan; discarding
+removes the post. **No automated check covers API authorization** (CLAUDE.md) —
+exercise these against the local Postgres by hand, including as a signed-out
+caller.
 
 ### Phase 4 — the UI
 
 Fix the head-only revision filter (§2.1) or add a dedicated pending fetch; a
-`ProposalsSection` beside `RevisionsSection`; a sidebar badge; an approve/reject
-bar over the existing diff; focus-poll for the count.
+`ProposalsSection` beside `RevisionsSection` covering both pending proposals and
+flagged posts; a sidebar badge; an approve/reject bar over the existing diff;
+focus-poll for the count; the reload-or-warn behaviour from §3.9.
 
 Follow DESIGN.md conventions; run `npm run check:theme`. Needs the required
 states — loading, empty, error — and the empty state is the common one, so it
@@ -240,19 +296,19 @@ should be quiet rather than an illustration.
 as a diff, and applies on approve. Verify in a real browser (see
 `verify-ui-in-browser`).
 
-### Phases 5–8
+### Phases 5–7
 
-Optional, and each is worth taking only against evidence: staleness marking when
-you hit a stale proposal, rebasing when marking proves too blunt, per-block
-approval when whole-proposal approval proves too coarse, Copilot unification when
-losing an ephemeral proposal on reload actually annoys you.
+Optional, each taken only against evidence: staleness marking when the first
+stale proposal actually bites, per-block approval when whole-proposal approval
+proves too coarse, rebasing when marking proves too blunt to live with.
 
 ## 5. Tests owed
 
 Per CLAUDE.md, logic lives in an import-free module so it is testable without
-mounting anything. The testable core here is the **chain**: tip resolution, what
-approving a tip does to the proposals below it, and what a stale base looks like.
-That belongs in a pure function over rows — `repositories/` calls it, and a spec
+mounting anything. The testable core here is the **squash**: resolving the
+pending proposal rather than head, folding a batch onto the pending state rather
+than onto head, appending ops, and what approval does to `proposedAt`. That
+belongs in a pure function over rows — `repositories/` calls it, and a spec
 covers it with no database.
 
 The parts no spec will cover: the routes' authorization (by hand, per CLAUDE.md)
@@ -262,8 +318,8 @@ and everything in phase 4 (a real browser).
 
 - **Not a review workflow for humans.** Single-user blog; there is no second
   approver, no comments, no request-changes.
-- **Not branching.** One pending chain per document. Two agents proposing
-  concurrently is out of scope.
+- **Not branching.** One pending proposal per document, enforced by the database.
+  Two agents proposing concurrently is out of scope.
 - **Not undo.** Approval is already reversible by pointing `head` back at the
   previous revision; that is a different feature and it can be built on this one.
 
@@ -275,43 +331,55 @@ the rail section, the fetch route and the store plumbing — every one of which
 already speaks `Revision`. Revisit if proposals grow fields that embarrass the
 revision model.
 
+**A chain of proposals instead of a squash.** Reviewing Claude's work batch by
+batch. Rejected: the intermediate states exist only so the agent can read its own
+writes, reviewing them separately has no value, and keeping them means inventing
+a retention rule for chains nobody ever approves (§3.2).
+
+**A configurable gate** — env flag, per-document column, or published-only.
+Rejected in favour of always on (§3.8). Every variant has a mode where the
+terminal writes straight through, which is the exact situation this plan exists
+to remove.
+
+**Gating the in-app Copilot too.** It reviews in-session already; a persisted
+proposal would be a second gate on a flow that has one (§3.8). Persisting its
+proposals so they survive a reload remains available as a later, separate idea.
+
 **Fork the document per change.** The schema already has `base`/`forks`. Rejected
 because approval then means *merge*, and merging two Lexical documents is a
 harder problem than the one being solved.
 
-**Git-style branches over revisions.** Approving a non-tip proposal, reordering
-proposals, resolving between them. Rejected as a large amount of machinery for a
-single-user blog; §3.2's "approve the tip, or nothing" is the deliberate cheap
-version.
-
 **Gate in the agent's system prompt.** "Ask before writing." Rejected: it is not
 enforcement, and the failure mode is silent.
 
-## 8. Open decisions
+## 8. Decisions
 
-1. **Gate scope.** All agent writes, or per-document opt-in? An env flag is the
-   cheap start; a per-document `gated` column is the honest end state if you want
-   some posts to stay direct-write.
-2. **Reject = delete, or `rejectedAt`?** An audit trail of what Claude proposed
-   and you turned down has some value for tuning prompts, and costs a column plus
-   a filter.
-3. **Does `create_post` gate?** §3.7 argues no. It is a call.
-4. **What happens to an open tab on approval?** If it has unsaved edits, approving
-   under it makes its next save 409 — correctly, that path exists now. Whether it
-   reloads silently, prompts, or just surfaces the conflict is a UX decision, and
-   it interacts with `pendingSaves` restore.
-5. **Does the in-app Copilot gate too?** Its proposals are already reviewed
-   in-session, so gating would be a second gate. Phase 6 is about *persisting*
-   them, not adding a gate.
+Taken 6 Aug 2026. Rationale for each is in the section named.
+
+| # | Question | Decision | § |
+| - | --- | --- | --- |
+| 1 | Gate scope | Always on — no flag, no opt-out | 3.8 |
+| 2 | Does the Copilot gate too? | No — terminal only | 3.8 |
+| 3 | `create_post` | Lands normally, flagged for accept or discard | 3.7 |
+| 4 | Successive edits | Squash into one pending proposal | 3.2 |
+| 5 | Reject | Delete the row | 3.4 |
+| 6 | You edit under a proposal | Mark stale, require a re-run | 3.6 |
+| 7 | Approval under an open tab | Silent if clean, warn if dirty | 3.9 |
+| 8 | Build now? | No — plan only, for now | — |
+
+Nothing is left open. The two things deliberately deferred rather than decided
+are rebasing (§3.6, wants evidence) and per-block approval (phase 6, wants a
+complaint about granularity).
 
 ## 9. Risks
 
-- **§3.2 done wrong loses work silently** — an approved chain that dropped its
-  middle. The phase-2 acceptance test is specifically that shape and should be
-  written before the code.
-- **Proposals accumulate.** Nothing prunes them. A document with forty stale
-  proposals is a slow rail section and a confusing one; decide a retention rule
-  in phase 1 rather than after.
-- **Two sources of "what the document says."** Head and tip. Any new read path
-  has to pick deliberately, and the wrong default is invisible until someone
-  approves.
+- **A squash done wrong loses work silently** — an approved proposal missing an
+  earlier batch, because the fold went onto `head` instead of onto the pending
+  state. This is the single real risk in the plan. The phase-2 acceptance test is
+  exactly that shape and should be written first.
+- **Two sources of "what the document says."** Head and pending proposal. Any new
+  read path has to pick deliberately, and the wrong default is invisible until
+  someone approves.
+- **A stale proposal is a dead end.** Until §3.6 gains rebasing, editing a
+  document with a pending proposal means Claude's work has to be redone. If that
+  happens often, phase 7 stops being optional.
