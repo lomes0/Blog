@@ -22,8 +22,14 @@ stored revision:
 | --- | --- |
 | Addressable blocks | ~31,000 |
 | Reading as a typed block | **93.2%** |
-| Still opaque | `tablerow` (1357), `layout-item` (741) — pure structure, nothing to author |
-| Content types with no codec | **none** |
+| Still opaque at block level | `tablerow` (1357), `layout-item` (741) — pure structure, nothing to author |
+| Block-level content types with no codec | **none** |
+
+That last row is narrower than it sounds, and the difference is item 4. Stored
+`image`, `canvas` and `sketch` nodes sit *inside* paragraphs rather than at the
+top level, so they never reach `nodeToBlock` — they reach the model as bracketed
+descriptors through `plainText` (`blocks.ts:58`), which is why they do not show
+up as opaque blocks. They still have no codec.
 
 So the remaining work is not "finish the codecs". It is one correctness hole,
 some capability, and four decisions.
@@ -45,12 +51,32 @@ other direction, and it is unguarded.
 Recoverable from revision history, but only if you know to look.
 
 **Shape of the fix.** `PATCH` takes the `head` it expects to be replacing and
-the update becomes conditional on it. Prisma can express this as an
-`updateMany` with `head` in the `where`, checking the affected count — a real
-CAS without a transaction. The client already knows the previous head; the work
-is threading it through `PostUpdateInput` and deciding what the editor does on
-a rejected save (most likely: reload and warn, since the alternative is
-silently discarding one side).
+the update becomes conditional on it. `updateMany` with `head` in the `where`
+is the CAS, but it cannot be the whole thing: the requests that need guarding
+are exactly the ones carrying content, and those attach a nested
+`revisions.connectOrCreate` (`route.ts:121-133`), which `updateDocument` runs as
+one `prisma.document.update` (`repositories/document.ts:325`). `updateMany`
+takes scalar data only. So it is an interactive `$transaction` — create the
+revision, then the conditional `updateMany`, and throw on `count === 0` to roll
+back. `head` is `String?` (`schema.prisma:76`), so a document's first save
+expects `null` and the `where` has to say so.
+
+Three things that decide whether this actually holds:
+
+- **It only guards one of the two writers.** The MCP server never goes through
+  `PATCH` — `saveRevision` (`mcp/content-server.ts:122-136`) writes `head`
+  directly in its own transaction, and its `stateHash` guard is a read-then-write
+  spanning two separate tool calls. An editor save landing between `outline` and
+  `apply_ops` is not caught by a CAS on `PATCH`. Closing the hole properly means
+  both writers doing a conditional head update.
+- **The expected head is not the head at load.** Autosave folds a stretch into
+  one revision and mints a fresh id every `REVISION_SESSION_MS`
+  (`useSave.ts:105-118`), so what the client must send is the head its *last
+  successful save* wrote.
+- **The reject path already has a home.** `lib/pendingSaves.ts` and
+  `isPendingSaveAhead(pending, post.head)` (`usePostLoader.ts:99`) already reason
+  about head divergence at load. A rejected save should land there rather than
+  grow a second story about the same situation.
 
 **Cost.** Small change, moderate care — it touches the save path every editor
 keystroke eventually reaches. Needs a manual pass in the browser.
@@ -61,18 +87,27 @@ keystroke eventually reaches. Needs a manual pass in the browser.
 
 ## 2. Descriptors could carry text
 
-Reading a block with no codec gives shape, not content: `kanban  3 lanes · 11
-cards` says a board is there but not what the cards say. The same applies to
-canvas notes. So "summarise this post" silently skips them.
+Reading a block with no codec gives shape, not content: `canvas  7 notes` says a
+board is there but not what the notes say. So "summarise this post" silently
+skips them.
 
 Extracting read-only text into the descriptor closes most of that gap. It is
 strictly a read-path change — no new authoring surface, no write risk — and the
-machinery already exists (`describeNode` in `blocks.ts`, and `plainText`
-already does this for inline nodes it cannot spell).
+policy is already written down and already followed: `describeNode`'s docstring
+in `blocks.ts` states it, its `tablerow` case joins the row's cell text rather
+than counting cells, and `plainText` does the same for inline nodes it cannot
+spell.
 
-Worth doing for `kanban` (card names, already trivially available as
-`task.name`) and `canvas` (note text, which needs walking each note's nested
-editor state).
+**`canvas` (131 stored) is the one that is left**, and it needs walking each
+note's nested editor state. `image` captions join it if item 4 lands on
+"refuse".
+
+Not `kanban`: it has had a full codec since `6abf8c09` — `nodeToBlock` returns
+`{type: "kanban", tasks}` and `readKanbanTasks` (`blocks.ts:252`) already yields
+`name`, `description`, `tags`, `stage` and `priority` — and this blog stores
+zero of them anyway. The `3 lanes · 11 cards` example that used to be here was
+copied from the plan §4.4, written before that graduation; the descriptor now
+only fires for a kanban reached inline.
 
 **Cost.** A morning.
 
@@ -100,17 +135,17 @@ concrete failure to point at.
 
 ## 4. Nested editors — decision required
 
-**Blocks three codecs and 262 real nodes.**
+**Blocks three codecs and 198 real nodes.**
 
 `image.caption`, `sticky.editor` and every entry in `canvas.notes` each hold a
 **complete serialized Lexical editor** — a whole sub-document inside a block.
 
-| Type | Occurrences |
-| --- | --- |
-| `canvas` | 131 |
-| `image` | 67 |
-| `sketch` | 64 (see "never" below — only its `altText` is reachable) |
-| `sticky` | 0 stored |
+| Type | Occurrences | |
+| --- | --- | --- |
+| `canvas` | 131 | gated by this decision |
+| `image` | 67 | gated by this decision |
+| `sticky` | 0 stored | gated, but nothing stored to gate |
+| `sketch` | 64 | *not* counted — see "never" below; only its `altText` is reachable either way |
 
 Neither the address scheme (§4.2) nor the op set (§4.7) says what happens here.
 Two coherent answers:
@@ -134,9 +169,10 @@ the full decision less urgent than it looks.
 
 ## 5. A deleted rich block should be visible in the proposal
 
-An agent can legitimately be asked to delete a kanban board, so refusing the
-operation is wrong. But a board disappearing with nothing on screen to say so is
-also wrong.
+An agent can legitimately be asked to delete a canvas or a table, so refusing the
+operation is wrong. But a board of 40 notes disappearing with nothing on screen
+to say so is also wrong. In this blog the deletes that carry unrecoverable-looking
+content are `canvas` (131), `image` (67), `sketch` (64) and `table` (263).
 
 The Copilot already has an accept/reject proposal flow, and `ActionPreview.tsx`
 already renders one line per operation — including `delete b7`. What it does not
@@ -144,7 +180,7 @@ do is say *what* `b7` is, because the preview only sees the op, not the
 document.
 
 Likely answer: the proposal resolves the address and names what it will remove
-("deletes 1 kanban block"). Small UI change.
+("deletes 1 canvas · 7 notes"). Small UI change.
 
 **Cost.** Small, once the wording is decided.
 
