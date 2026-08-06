@@ -157,6 +157,54 @@ export interface AttachmentBlock {
   expanded?: boolean;
 }
 
+/** Which edges of the grid a cell is a header for. */
+export type CellHeader = "row" | "column" | "both";
+
+/**
+ * A cell, as supplied when authoring a table.
+ *
+ * A bare string is the overwhelmingly common case — 97.4% of the cells in this
+ * blog hold exactly one paragraph — so it is the short spelling, and the object
+ * form is there for spans and header flags.
+ */
+export type TableCellInput =
+  | string
+  | {
+    text?: string;
+    header?: CellHeader;
+    colSpan?: number;
+    rowSpan?: number;
+  };
+
+/**
+ * A table.
+ *
+ * `rows` follows the same rule as `LayoutBlock.columns`: absent on a read
+ * because each cell is addressed in its own right, required when inserting a
+ * new table, optional when replacing one.
+ */
+export interface TableBlock {
+  type: "table";
+  rowCount: number;
+  columnCount: number;
+  rows?: TableCellInput[][];
+  /** Convenience on write: make the first row header cells. */
+  headerRow?: boolean;
+}
+
+/**
+ * One cell. Text-bearing rather than a container, because almost every cell
+ * holds a single paragraph and addressing through to it would double the depth
+ * of every table in an outline for nothing.
+ */
+export interface TableCellBlock extends TextOpacity {
+  type: "cell";
+  text: string;
+  header?: CellHeader;
+  colSpan?: number;
+  rowSpan?: number;
+}
+
 /**
  * A block with no codec: readable, addressable, movable, deletable — never
  * rewritten (plan §4.6). `summary` is shape, not content: it says the block is
@@ -182,6 +230,8 @@ export type Block =
   | SummaryBlock
   | KanbanBlock
   | AttachmentBlock
+  | TableBlock
+  | TableCellBlock
   | OpaqueBlock;
 
 /** A block carrying its address, plus any nested blocks. */

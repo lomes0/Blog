@@ -24,10 +24,12 @@ import type {
   KanbanTask,
   ListBlock,
   ListItem,
+  CellHeader,
   ParagraphBlock,
   QuoteBlock,
   SerializedNode,
   SummaryBlock,
+  TableCellBlock,
   WritableBlock,
 } from "./types";
 import { parseInline, renderInline } from "./inline";
@@ -111,10 +113,11 @@ export function describeNode(node: SerializedNode): string {
       return "divider";
     case "pagebreak":
       return "page break";
-    case "table": {
-      const rows = kids.filter((k) => k.type === "tablerow");
-      const columns = rows[0] ? childrenOf(rows[0]).length : 0;
-      return `${plural(rows.length, "row")} × ${plural(columns, "column")}`;
+    case "tablerow": {
+      const cells = kids
+        .map((cell) => (cellText(cell) ?? plainText(childrenOf(cell))).trim())
+        .filter(Boolean);
+      return cells.length > 0 ? cells.join(" | ") : plural(kids.length, "cell");
     }
     default:
       return node.type;
@@ -159,6 +162,57 @@ function readListItems(node: SerializedNode): {
 
 const num = (value: unknown, fallback: number): number =>
   typeof value === "number" && Number.isFinite(value) ? value : fallback;
+
+/**
+ * The table `type` strings, both spellings.
+ *
+ * These are hardcoded rather than read from `TableNode.getType()` on purpose:
+ * importing a node class here would drag the editor's browser-only
+ * dependencies into a module that has to run in a bare Node process (see
+ * `types.ts`). The `matheditor-*` spellings are *data* sitting in stored
+ * revisions, guests' IndexedDB and `.zip` backups — see
+ * `src/editor/nodes/TableNode/legacyTypes.ts` for why they can never be
+ * retired. Reads accept both; writes always produce the current one.
+ */
+export const TABLE_TYPES: ReadonlySet<string> = new Set([
+  "blog-table",
+  "matheditor-table",
+]);
+export const TABLE_CELL_TYPES: ReadonlySet<string> = new Set([
+  "blog-tablecell",
+  "matheditor-tablecell",
+]);
+const TABLE_TYPE = "blog-table";
+const TABLE_CELL_TYPE = "blog-tablecell";
+const TABLE_ROW_TYPE = "tablerow";
+
+// @lexical/table's TableCellHeaderStates: NO_STATUS 0, ROW 1, COLUMN 2, BOTH 3.
+const HEADER_STATE: Record<CellHeader, number> = { row: 1, column: 2, both: 3 };
+const headerFromState = (state: unknown): CellHeader | undefined => {
+  switch (num(state, 0)) {
+    case 1:
+      return "row";
+    case 2:
+      return "column";
+    case 3:
+      return "both";
+    default:
+      return undefined;
+  }
+};
+
+/**
+ * A cell's text, or null when it holds something a single `text` cannot carry.
+ *
+ * 97.4% of stored cells hold exactly one paragraph, which is why a cell is
+ * text-bearing at all. The rest keep their content and go read-only rather than
+ * being flattened into it.
+ */
+function cellText(node: SerializedNode): string | null {
+  const kids = childrenOf(node);
+  if (kids.length !== 1 || kids[0].type !== "paragraph") return null;
+  return renderInline(childrenOf(kids[0]));
+}
 
 /** Read the label out of a details container's summary child. */
 const summaryTextOf = (node: SerializedNode): string => {
@@ -220,6 +274,7 @@ export function nodeToBlock(node: SerializedNode): Block {
     case "kanban":
       return { type: "kanban", tasks: readKanbanTasks(node) };
 
+
     case "attachment": {
       const block: AttachmentBlock = {
         type: "attachment",
@@ -278,12 +333,34 @@ export function nodeToBlock(node: SerializedNode): Block {
       return block;
     }
     default:
-      return {
-        type: "opaque",
-        nodeType: node.type,
-        summary: describeNode(node),
-      };
+      break;
   }
+
+  if (TABLE_TYPES.has(node.type)) {
+    const rows = kids.filter((k) => k.type === TABLE_ROW_TYPE);
+    return {
+      type: "table",
+      rowCount: rows.length,
+      columnCount: rows[0] ? childrenOf(rows[0]).length : 0,
+    };
+  }
+
+  if (TABLE_CELL_TYPES.has(node.type)) {
+    const text = cellText(node);
+    const block: TableCellBlock = { type: "cell", text: text ?? plainText(kids) };
+    if (text === null) block.readonlyText = true;
+    const header = headerFromState(node.headerState);
+    if (header) block.header = header;
+    if (num(node.colSpan, 1) > 1) block.colSpan = num(node.colSpan, 1);
+    if (num(node.rowSpan, 1) > 1) block.rowSpan = num(node.rowSpan, 1);
+    return block;
+  }
+
+  return {
+    type: "opaque",
+    nodeType: node.type,
+    summary: describeNode(node),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -313,6 +390,8 @@ const textLeaf = (text: string): SerializedNode => ({
 
 /** Block type -> node type, where they differ. */
 const NODE_TYPE_OF: Readonly<Record<string, string>> = {
+  table: TABLE_TYPE,
+  cell: TABLE_CELL_TYPE,
   divider: "horizontalrule",
   layout: "layout-container",
   details: "details-container",
@@ -345,6 +424,34 @@ function kanbanTaskNode(task: KanbanTask): Record<string, unknown> {
     tags: task.tags ?? [],
     createdAt: task.createdAt || stamp,
     updatedAt: task.updatedAt || stamp,
+  };
+}
+
+/** Build a table cell, carrying through anything the IR does not model. */
+function cellNode(
+  block: TableCellBlock,
+  previous?: SerializedNode,
+  headerDefault?: CellHeader,
+): SerializedNode {
+  const carried =
+    previous && TABLE_CELL_TYPES.has(previous.type) ? previous : undefined;
+  const header = block.header ?? headerDefault;
+  return {
+    ...ELEMENT_DEFAULTS,
+    ...carried,
+    type: TABLE_CELL_TYPE,
+    headerState: header
+      ? HEADER_STATE[header]
+      : num(carried?.headerState, 0),
+    colSpan: block.colSpan ?? num(carried?.colSpan, 1),
+    rowSpan: block.rowSpan ?? num(carried?.rowSpan, 1),
+    children: [
+      {
+        ...ELEMENT_DEFAULTS,
+        type: "paragraph",
+        children: parseInline(block.text ?? ""),
+      },
+    ],
   };
 }
 
@@ -505,6 +612,43 @@ export function blockToNode(
       };
     }
 
+    case "cell":
+      return cellNode(block, carried);
+
+    case "table": {
+      // Rows absent on a replace means keep the grid already there — the same
+      // carry-through rule the layout codec uses for its columns.
+      const children = block.rows
+        ? block.rows.map((row, rowIndex) =>
+          elementNode(
+            TABLE_ROW_TYPE,
+            row.map((cell) =>
+              cellNode(
+                typeof cell === "string" ? { type: "cell", text: cell } : {
+                  type: "cell",
+                  text: cell.text ?? "",
+                  ...(cell.header ? { header: cell.header } : {}),
+                  ...(cell.colSpan ? { colSpan: cell.colSpan } : {}),
+                  ...(cell.rowSpan ? { rowSpan: cell.rowSpan } : {}),
+                },
+                undefined,
+                block.headerRow && rowIndex === 0 ? "row" : undefined,
+              ),
+            ),
+          ))
+        : childrenOf(carried ?? {} as SerializedNode);
+      if (children.length === 0) {
+        throw new Error('a new table needs `rows`, e.g. [["A","B"],["1","2"]]');
+      }
+      return {
+        ...base,
+        type: TABLE_TYPE,
+        style: str(carried?.style),
+        id: str(carried?.id),
+        children,
+      };
+    }
+
     default: {
       const unreachable = block as { type: string };
       throw new Error(`no codec for block type "${unreachable.type}"`);
@@ -518,6 +662,7 @@ export const TEXT_BLOCKS: ReadonlySet<string> = new Set([
   "heading",
   "quote",
   "summary",
+  "cell",
 ]);
 
 /**
@@ -543,6 +688,8 @@ export function blockText(block: Block): string {
         .join("\n");
     case "attachment":
       return `${block.filename} ${block.url}`;
+    case "cell":
+      return block.text;
     case "opaque":
       return block.summary;
     default:

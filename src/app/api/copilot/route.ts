@@ -135,6 +135,21 @@ const blockSchema = z.discriminatedUnion("type", [
     open: z.boolean().optional(),
     body: z.array(z.unknown()).optional(),
   }),
+  z.object({
+    type: z.literal("table"),
+    rows: z
+      .array(z.array(z.unknown()))
+      .optional()
+      .describe('Rows of cells; a cell is a string or {text, header, colSpan, rowSpan}'),
+    headerRow: z.boolean().optional(),
+  }),
+  z.object({
+    type: z.literal("cell"),
+    text: z.string(),
+    header: z.enum(["row", "column", "both"]).optional(),
+    colSpan: z.number().int().min(1).optional(),
+    rowSpan: z.number().int().min(1).optional(),
+  }),
 ]);
 
 const placement = {
@@ -160,9 +175,12 @@ const BLOCK_DOC =
   "{text}, code {language, code}, list {listType, items[{text, checked?, " +
   "indent}]}, divider {}, summary {text}, attachment {url, filename}, kanban " +
   "{tasks[{name, description?, stage, priority}]}, layout {templateColumns, " +
-  "columns[[block,…],…]}, details {summary, open?, body[block,…]}. For layout " +
-  "and details, columns/body are required when inserting and optional when " +
-  "replacing — omit them to keep the contents already there. Inline formatting " +
+  "columns[[block,…],…]}, details {summary, open?, body[block,…]}, " +
+  "table {rows[[cell,…],…], headerRow?} where a cell is a plain string or " +
+  "{text, header row|column|both, colSpan, rowSpan}, and cell {text, header?}. " +
+  "For layout, details and table, columns/body/rows are required when " +
+  "inserting and optional when replacing — omit them to keep the contents " +
+  "already there. Inline formatting " +
   "inside text: **bold**, __italic__, `code`, ~~strike~~, ==highlight==, " +
   "++underline++, ^^sup^^, ,,sub,,, [link](url), $latex$.";
 

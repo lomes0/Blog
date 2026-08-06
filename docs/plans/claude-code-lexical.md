@@ -480,6 +480,12 @@ Two corrections this forced:
   (§5's two worked examples need them) — so those were built anyway — but
   `iframe` has neither content nor a workflow and was skipped.
 
+Adding tables raised the number of *addressable* blocks in this blog from
+~23.7k to ~31k, because a table's interior was previously not reachable at all —
+263 tables became 263 tables plus 1357 rows and 5943 cells. The share reading as
+typed rather than opaque moved 87.8% → 87.1%, which is the denominator growing,
+not coverage shrinking.
+
 A third thing only showed up when the codecs were run over real revisions:
 **`attachment` is an inline node**, sitting inside paragraphs rather than at
 block level, so the block codec never sees the 164 stored ones. They reach the
@@ -506,9 +512,16 @@ into a board"), so it belongs early in phase 3 rather than never.
 
 **Tier 2 — structural, real work:**
 
-- `table` — Lexical's serialized table plus `{style, id}`, cells holding
-  arbitrary blocks. The IR is a 2D array of cell block-lists. Well understood,
-  just not small, and §4.6.1 applies hardest here.
+- `table` — **done.** The IR is not the 2D array of cell block-lists predicted
+  here. Measured first: stored tables are 3–7 rows, and **97.4% of cells hold
+  exactly one paragraph**. So a cell is *text-bearing* rather than a container —
+  `set_text` edits it directly, and addressing does not descend through to the
+  paragraph inside. That halves the depth of every table in an outline and gives
+  one address per piece of content instead of two. The 2.6% holding more go
+  read-only, the same fallback §4.5 uses for inline. Authoring takes a bare
+  string per cell (`[["Name","Count"],["apples","3"]]`) with an object form for
+  spans and headers. Both the current and pre-rename `type` spellings are read;
+  writes produce the current one.
 - `image` — mostly scalars, but `caption` is a `SerializedEditor`. First
   appearance of §4.6.3.
 
@@ -594,7 +607,7 @@ already stable for the editor's lifetime — `address.ts` resolves a path to a
 | 0 | ~~Refusal guard in the Copilot's Markdown path.~~ **Deleted — premise was false (§2.4).** The Copilot already protects rich nodes via opaque tokens; the guard would have removed capability and prevented nothing | |
 | 1 | **DONE.** `src/lib/content-bridge/`: `address`, `stateHash`, `inline` (+ property test), `blocks` (paragraph/heading/quote/list/code + opaque fallback), `ops`, `outline`. 50 specs; pure JSON, no DOM | |
 | 2 | **DONE.** `mcp/content-server.ts` on §5's surface; Markdown path retired. `mcp/lexical.ts`, `bootstrap.mjs` and `css-loader.mjs` **deleted** — the bridge is pure JSON, so the server needs no headless editor and no DOM shim, which closes the §9 fragility outright | |
-| 3 | **PART DONE.** Graduated `divider`, `layout`, `attachment`, `details`, `kanban` (+ `summary`), each with a §4.6.1 round-trip spec. 87.8% of real blocks now read as typed. **Remaining, in corpus order: nested `list` (1893), `table` (263), `layout-item` (741, structural).** `iframe` skipped — zero occurrences, no workflow, inherits image's caption problem | §4.6.3 still gates image/sticky/canvas |
+| 3 | **PART DONE.** Graduated `divider`, `layout`, `attachment`, `details`, `kanban` (+ `summary`), then **`table` + `cell`** — the largest gap by volume. Each has a §4.6.1 round-trip spec. **Remaining: nested `list` (1893) is the only content still opaque**; `tablerow` (1357) and `layout-item` (741) are pure structure. `iframe` skipped — zero occurrences, no workflow, inherits image's caption problem | §4.6.3 still gates image/sticky/canvas |
 | 4 | **DONE.** `copilotAgentExecutors` + `virtualRepo` on the core; `markdownBridge.ts` **deleted**. Tools are now `outline_document` / `read_blocks` / `read_document` / `search_documents` / `apply_ops` / `create_document(blocks)`; `edit_document`, `write_document` and `read_current_document` are gone | |
 | 5 | **DONE, and it cost less than §2.1 predicted.** The conformance pass fixed a *live* bug rather than merely enabling ids (§2.5). Ids are **opportunistic** — stamped on write, never backfilled, both spellings resolve — so there is no migration and no big-bang | |
 

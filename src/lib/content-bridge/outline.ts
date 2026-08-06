@@ -97,8 +97,25 @@ function entryFor(block: Block): { preview: string; chars?: number } {
       return {
         preview: `${block.filename}${block.size ? ` · ${block.size} bytes` : ""}`,
       };
+    case "table":
+      return {
+        preview: `${plural(block.rowCount, "row")} × ${plural(block.columnCount, "column")}`,
+      };
+    case "cell": {
+      const spans = [
+        block.header ? `${block.header} header` : "",
+        block.colSpan ? `colspan ${block.colSpan}` : "",
+        block.rowSpan ? `rowspan ${block.rowSpan}` : "",
+      ].filter(Boolean);
+      return {
+        preview: `${truncate(block.text)}${spans.length ? `  (${spans.join(", ")})` : ""}`,
+        chars: block.text.length,
+      };
+    }
     case "opaque":
-      return { preview: block.summary };
+      // Truncated like prose: a table row's descriptor is every cell in it,
+      // which is useful but can run to hundreds of characters.
+      return { preview: truncate(block.summary) };
   }
 }
 

@@ -238,3 +238,144 @@ describe("authoring a whole document from blocks", () => {
     expect(new Set(blocks.map((b) => b.id)).size).toBe(blocks.length);
   });
 });
+
+describe("table", () => {
+  const block: WritableBlock = {
+    type: "table",
+    rowCount: 0,
+    columnCount: 0,
+    headerRow: true,
+    rows: [
+      ["Name", "Count"],
+      ["apples", { text: "**3**", colSpan: 2 }],
+    ],
+  };
+
+  const rowsOf = (node: SerializedNode) => kids(node).map((row) => kids(row));
+
+  it("builds rows of cells, each holding a paragraph", () => {
+    const node = blockToNode(block);
+    expect(node.type).toBe("blog-table");
+    const rows = rowsOf(node);
+    expect(rows.map((r) => r.length)).toEqual([2, 2]);
+    expect(rows[0][0].type).toBe("blog-tablecell");
+    expect(kids(rows[0][0]).map((c) => c.type)).toEqual(["paragraph"]);
+  });
+
+  it("applies headerRow to the first row only", () => {
+    const rows = rowsOf(blockToNode(block));
+    expect(rows[0].map((c) => c.headerState)).toEqual([1, 1]);
+    expect(rows[1].map((c) => c.headerState)).toEqual([0, 0]);
+  });
+
+  it("reads back as a shape — the cells are addressed in their own right", () => {
+    expect(nodeToBlock(blockToNode(block))).toEqual({
+      type: "table",
+      rowCount: 2,
+      columnCount: 2,
+    });
+  });
+
+  it("keeps the grid when a replace omits rows", () => {
+    const previous = blockToNode(block);
+    const next = blockToNode({ type: "table", rowCount: 0, columnCount: 0 }, previous);
+    expect(JSON.stringify(next.children)).toBe(JSON.stringify(previous.children));
+  });
+
+  it("refuses a new table with no rows", () => {
+    expect(() =>
+      blockToNode({ type: "table", rowCount: 0, columnCount: 0 }),
+    ).toThrow(/needs `rows`/);
+  });
+});
+
+describe("table cell", () => {
+  const cellOf = (node: SerializedNode) => kids(kids(node)[0])[0];
+
+  it("round-trips its text, inline formatting included", () => {
+    const table = blockToNode({
+      type: "table",
+      rowCount: 0,
+      columnCount: 0,
+      rows: [[{ text: "a **bold** cell", header: "column", rowSpan: 2 }]],
+    });
+    const read = nodeToBlock(cellOf(table));
+    expect(read).toEqual({
+      type: "cell",
+      text: "a **bold** cell",
+      header: "column",
+      rowSpan: 2,
+    });
+    // …and rebuilding from what was read gives the same node back.
+    expect(blockToNode(read as WritableBlock, cellOf(table))).toEqual(cellOf(table));
+  });
+
+  it("carries through styling the IR does not model", () => {
+    const previous: SerializedNode = {
+      type: "blog-tablecell",
+      version: 1,
+      headerState: 0,
+      colSpan: 1,
+      rowSpan: 1,
+      backgroundColor: "#eee",
+      style: "text-align: right",
+      children: [],
+    };
+    const next = blockToNode({ type: "cell", text: "x" }, previous);
+    expect(next).toMatchObject({
+      backgroundColor: "#eee",
+      style: "text-align: right",
+    });
+  });
+
+  it("goes read-only rather than flatten a cell holding several blocks", () => {
+    // 2.6% of stored cells hold more than one block; setting their text would
+    // collapse the rest away.
+    const cell: SerializedNode = {
+      type: "blog-tablecell",
+      version: 1,
+      headerState: 0,
+      children: [
+        { type: "paragraph", version: 1, children: [] },
+        { type: "paragraph", version: 1, children: [] },
+      ],
+    };
+    expect(nodeToBlock(cell)).toMatchObject({ type: "cell", readonlyText: true });
+  });
+
+  it("reads the pre-rename spellings, which are data in stored revisions", () => {
+    const legacy: SerializedNode = {
+      type: "matheditor-table",
+      version: 1,
+      children: [
+        {
+          type: "tablerow",
+          version: 1,
+          children: [
+            {
+              type: "matheditor-tablecell",
+              version: 1,
+              headerState: 1,
+              children: [
+                {
+                  type: "paragraph",
+                  version: 1,
+                  children: [{
+                    type: "text", version: 1, text: "old", detail: 0,
+                    format: 0, mode: "normal", style: "",
+                  }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    expect(nodeToBlock(legacy)).toEqual({ type: "table", rowCount: 1, columnCount: 1 });
+    expect(nodeToBlock(kids(kids(legacy)[0])[0])).toEqual({
+      type: "cell",
+      text: "old",
+      header: "row",
+    });
+  });
+});
