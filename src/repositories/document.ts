@@ -312,9 +312,29 @@ const createDocument = async (data: CreateDocumentInput) => {
   return findDocument(data.id);
 };
 
+/**
+ * A conditional update lost the race: `head` was not what the caller expected.
+ *
+ * Carried as its own class so the route can answer 409 rather than 500, and so
+ * that "someone else saved first" is never mistaken for a bug.
+ */
+export class StaleHeadError extends Error {
+  constructor(readonly expected: string | null) {
+    super("Document head is no longer the one this write was based on");
+    this.name = "StaleHeadError";
+  }
+}
+
 const updateDocument = async (
   handle: string,
   data: Prisma.DocumentUncheckedUpdateInput,
+  /**
+   * Compare-and-set on `head`. `undefined` writes unconditionally — a rename or
+   * a publish toggle is not racing anyone over content. Any other value,
+   * including `null` for "this document has no revision yet", makes the whole
+   * write conditional on the stored head still being that.
+   */
+  expectedHead?: string | null,
 ) => {
   // Ensure type remains DOCUMENT
   const docData = {
@@ -322,10 +342,49 @@ const updateDocument = async (
     type: PrismaDocumentType.DOCUMENT,
   };
 
-  await prisma.document.update({
-    where: validate(handle) ? { id: handle } : { handle: handle.toLowerCase() },
-    data: docData,
+  const where = validate(handle)
+    ? { id: handle }
+    : { handle: handle.toLowerCase() };
+
+  if (expectedHead === undefined) {
+    await prisma.document.update({ where, data: docData });
+    return findDocument(handle, "all");
+  }
+
+  // `updateMany` is the only shape that can carry the guard, because `head` is
+  // not a unique column and `update`'s `where` will not take it. It also takes
+  // scalars only, so the nested relation writes are split off and replayed
+  // afterwards on the row the guard has already locked.
+  //
+  // The order is what makes this a compare-and-set rather than a check followed
+  // by a hope: Postgres holds a row lock from the moment the UPDATE matches, so
+  // a writer arriving mid-transaction blocks and then re-evaluates `head`
+  // against what we committed rather than against what it originally read.
+  const { revisions, coauthors, ...scalars } = docData;
+
+  await prisma.$transaction(async (tx) => {
+    const { count } = await tx.document.updateMany({
+      where: { ...where, head: expectedHead },
+      // The relation keys are gone; what is left is the scalar column set,
+      // which `updateMany` accepts and the wider `Unchecked…Input` type does not
+      // narrow to on its own.
+      data: scalars as Prisma.DocumentUncheckedUpdateManyInput,
+    });
+    // Callers reach this having already proven the document exists (see
+    // `requireDocument`), so a miss is a head mismatch rather than a 404.
+    if (count === 0) throw new StaleHeadError(expectedHead);
+
+    if (revisions || coauthors) {
+      await tx.document.update({
+        where,
+        data: {
+          ...(revisions !== undefined && { revisions }),
+          ...(coauthors !== undefined && { coauthors }),
+        },
+      });
+    }
   });
+
   return findDocument(handle, "all");
 };
 

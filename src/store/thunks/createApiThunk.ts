@@ -2,10 +2,22 @@ import {
   type AsyncThunkPayloadCreator,
   createAsyncThunk,
 } from "@reduxjs/toolkit";
+import { ApiClientError } from "@/api";
 import type { AppState } from "@/types";
 
-/** The `rejectWithValue` payload every thunk in this folder rejects with. */
-export type Failure = { title: string; subtitle: string };
+/**
+ * The `rejectWithValue` payload every thunk in this folder rejects with.
+ *
+ * `statusCode` is present when the failure came back from the API with one. It
+ * exists because some HTTP answers are not just text to show the user: a 409
+ * from the save route means "someone wrote first", which the editor has to
+ * handle differently from a server that is merely unhappy.
+ */
+export type Failure = {
+  title: string;
+  subtitle: string;
+  statusCode?: number;
+};
 
 const DEFAULT_TITLE = "Something went wrong";
 
@@ -81,7 +93,13 @@ export function createApiThunk<Returned, ThunkArg = void>(
         else console.error(error);
         return thunkAPI.rejectWithValue({
           title,
+          // `message` is already "Title: Subtitle" from the API envelope, so the
+          // server's own wording survives; the status code is what would
+          // otherwise be lost here.
           subtitle: toErrorMessage(error),
+          ...(error instanceof ApiClientError && error.statusCode !== undefined
+            ? { statusCode: error.statusCode }
+            : {}),
         });
       }
     },

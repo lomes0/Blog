@@ -31,57 +31,56 @@ top level, so they never reach `nodeToBlock` — they reach the model as bracket
 descriptors through `plainText` (`blocks.ts:58`), which is why they do not show
 up as opaque blocks. They still have no codec.
 
-So the remaining work is not "finish the codecs". It is one correctness hole,
-some capability, and four decisions.
+So the remaining work is not "finish the codecs". The one correctness hole is
+now closed (item 1, kept here for the record); what is left is capability and
+four decisions.
 
 ---
 
-## 1. Compare-and-set on `PATCH /api/documents/[id]`
+## 1. Compare-and-set on `head` — **DONE (6 Aug 2026)**
 
-**The last correctness hole. Everything else on this list is capability.**
+The hole: `head` was a client-chosen uuid written unconditionally, so a tab open
+a while could point it back at its own revision and orphan an agent's, with
+nothing on screen to say so — autosave went quiet in Aug 2026
+(`plans/quiet-autosave-plan.md`), so there is no indicator to notice either. The
+content bridge guarded *its* writes with `stateHash`; this was the other
+direction.
 
-`src/app/api/documents/[id]/route.ts:54` takes `head` as a client-chosen uuid
-and writes it with no compare-and-set. So a browser tab that has been open a
-while can point `head` back at its own revision and orphan an agent's, with
-nothing on screen to say so — and autosave went quiet in Aug 2026
-(`plans/quiet-autosave-plan.md`), so there is no save indicator to notice
-either. The content bridge guards *its* writes with `stateHash`; this is the
-other direction, and it is unguarded.
+**Both writers are now conditional**, which is what the fix turned out to
+require — a guard on `PATCH` alone would have left the MCP server writing `head`
+straight through Prisma next to it.
 
-Recoverable from revision history, but only if you know to look.
+- `updateDocument(handle, data, expectedHead)` (`repositories/document.ts`).
+  `undefined` writes unconditionally, which is what a rename or a publish toggle
+  wants; anything else — including `null` for "no revision yet" — makes the write
+  conditional. `updateMany` carries the guard, because `head` is not unique and
+  `update`'s `where` will not take it; it also takes scalars only, so the nested
+  `revisions`/`coauthors` writes are split off and replayed inside the same
+  transaction on the row the guard has already locked. A miss throws
+  `StaleHeadError`, which the route answers as **409**.
+- `saveRevision` (`mcp/content-server.ts`) does the same on the head its read
+  came from, so an editor save landing between `outline` and `apply_ops` is
+  refused rather than overwritten. `stateHash` still guards addresses; this
+  guards the write.
+- The editor sends the head its *last successful save* wrote (`useSave.ts`), not
+  the head at load — autosave folds a stretch into one revision and mints a
+  fresh id every `REVISION_SESSION_MS`. On a 409 it stops asking (every retry
+  would be refused identically), keeps buffering into `pendingSaves` so nothing
+  typed after the conflict is lost, and lets the store announce the server's own
+  wording. The rejected content is also in history: the revision row lands, it
+  just is not `head`.
+- `Failure` (`store/thunks/createApiThunk.ts`) now carries `statusCode`, because
+  a 409 is a fact the editor has to act on rather than text to display.
 
-**Shape of the fix.** `PATCH` takes the `head` it expects to be replacing and
-the update becomes conditional on it. `updateMany` with `head` in the `where`
-is the CAS, but it cannot be the whole thing: the requests that need guarding
-are exactly the ones carrying content, and those attach a nested
-`revisions.connectOrCreate` (`route.ts:121-133`), which `updateDocument` runs as
-one `prisma.document.update` (`repositories/document.ts:325`). `updateMany`
-takes scalar data only. So it is an interactive `$transaction` — create the
-revision, then the conditional `updateMany`, and throw on `count === 0` to roll
-back. `head` is `String?` (`schema.prisma:76`), so a document's first save
-expects `null` and the `where` has to say so.
+**Verified** against the dev database: a null-head first save, a matching head
+writing both scalars and its nested revision, a stale head refused with nothing
+written and no orphan revision, an unconditional write still working, and two
+overlapping writers on the same expected head — exactly one lands, the other
+gets `StaleHeadError`.
 
-Three things that decide whether this actually holds:
-
-- **It only guards one of the two writers.** The MCP server never goes through
-  `PATCH` — `saveRevision` (`mcp/content-server.ts:122-136`) writes `head`
-  directly in its own transaction, and its `stateHash` guard is a read-then-write
-  spanning two separate tool calls. An editor save landing between `outline` and
-  `apply_ops` is not caught by a CAS on `PATCH`. Closing the hole properly means
-  both writers doing a conditional head update.
-- **The expected head is not the head at load.** Autosave folds a stretch into
-  one revision and mints a fresh id every `REVISION_SESSION_MS`
-  (`useSave.ts:105-118`), so what the client must send is the head its *last
-  successful save* wrote.
-- **The reject path already has a home.** `lib/pendingSaves.ts` and
-  `isPendingSaveAhead(pending, post.head)` (`usePostLoader.ts:99`) already reason
-  about head divergence at load. A rejected save should land there rather than
-  grow a second story about the same situation.
-
-**Cost.** Small change, moderate care — it touches the save path every editor
-keystroke eventually reaches. Needs a manual pass in the browser.
-
-**Blocked by.** Nothing.
+**Still owed:** the browser pass. What the DB check cannot answer is what the
+conflict *looks like* — that the snackbar reads sensibly, that the tab stops
+retrying, and that reopening the document restores the buffered text.
 
 ---
 
@@ -275,3 +274,10 @@ editor.
 Worth one manual pass before leaning on it. Specifically: that a proposal
 renders, that accepting it lands the edit in the open editor, and that a stale
 `stateHash` produces the refusal message rather than a crash.
+
+**The compare-and-set (item 1) owes the same pass, and it is the same session.**
+Its database half is verified; what is not is the editor's side of a 409 — that
+the snackbar reads sensibly, that the tab stops retrying instead of announcing
+every two seconds, and that reopening the document brings the buffered text
+back. Set it up by opening a post in the editor, editing it from Claude Code
+over MCP, then typing in the browser tab.

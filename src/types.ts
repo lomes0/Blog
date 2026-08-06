@@ -370,9 +370,20 @@ export type PostCreateInput =
  * server's update schema is `.strict()` about the same three fields, so the two
  * sides of the seam agree; this half just means the mistake does not compile.
  */
-export type PostUpdateInput = Partial<
-  Omit<PostCreateInput, "id" | "type" | "parentId" | "seriesId" | "rank">
->;
+export type PostUpdateInput =
+  & Partial<
+    Omit<PostCreateInput, "id" | "type" | "parentId" | "seriesId" | "rank">
+  >
+  & {
+    /**
+     * The head this write is replacing, for a save that must not clobber one it
+     * has not seen. The cloud backend refuses the update with a 409 if storage
+     * has moved on; omit it to write unconditionally, which is what a rename or
+     * a publish toggle wants. Never persisted — it is a precondition, not a
+     * field.
+     */
+    expectedHead?: string | null;
+  };
 
 /**
  * The container a post lives in. `{}` is the author's root list; a `seriesId`

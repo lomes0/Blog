@@ -1,4 +1,5 @@
 import { type PendingSave, pendingSaveDB } from "@/indexeddb";
+import type { Failure } from "@/store/thunks/createApiThunk";
 import type { SerializedEditorState } from "lexical";
 
 /**
@@ -56,6 +57,17 @@ export function isPendingSaveAhead(
   storedHead: string,
 ): pending is PendingSave {
   return !!pending && pending.headId !== storedHead;
+}
+
+/**
+ * Whether a failure is another writer having got there first.
+ *
+ * A 409 from the save route is not a fault and not transient: it says storage
+ * holds a head this tab has not seen, so the same request will keep being
+ * refused until the tab catches up. The save loop stops rather than retrying.
+ */
+export function isConflict(error: unknown): boolean {
+  return (error as Failure | undefined)?.statusCode === 409;
 }
 
 /** Whether a network failure is worth retrying rather than surfacing. */

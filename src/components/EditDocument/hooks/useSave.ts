@@ -6,6 +6,7 @@ import { actions, useDispatch } from "@/store";
 import { useErrorAnnounce } from "@/hooks/useErrorAnnounce";
 import {
   clearPendingSave,
+  isConflict,
   isTransient,
   pendingSaveOf,
   writePendingSave,
@@ -60,8 +61,27 @@ export function useSave(
   // opened. Null means the next save opens a new one.
   const revisionId = useRef<string | null>(null);
   const revisionOpenedAt = useRef(0);
+  // The head this tab believes storage holds — the one its last save wrote, or
+  // the one the document was loaded at. Sent with every save as the
+  // compare-and-set precondition, so a save that would overwrite someone else's
+  // work is refused rather than silently winning.
+  const lastSavedHead = useRef<string | null>(null);
+  // Set once storage has refused this tab's head. It cannot become true again
+  // by trying: every later save carries the same precondition and is refused
+  // identically, so the loop stops asking and only keeps buffering.
+  const conflicted = useRef(false);
 
   const postId = post?.id;
+  // Read through a ref: the seed below must run when the *document* changes, not
+  // every time its head advances — which is what a `post.head` dependency would
+  // mean, and it would reset the precondition to whatever we just wrote.
+  const postRef = useRef(post);
+  postRef.current = post;
+
+  useEffect(() => {
+    lastSavedHead.current = postRef.current?.head ?? null;
+    conflicted.current = false;
+  }, [postId]);
 
   const cancelRetry = useCallback(() => {
     if (retryTimer.current) {
@@ -101,6 +121,23 @@ export function useSave(
       return true;
     }
 
+    if (conflicted.current) {
+      // Storage is ahead of this tab and will refuse anything it sends, so
+      // asking again would only stack another snackbar every couple of seconds.
+      // The buffer still has to keep up, or everything typed after the conflict
+      // would be the thing that actually got lost — it is what `usePostLoader`
+      // restores from on the next open.
+      await writePendingSave(
+        pendingSaveOf(
+          postId,
+          revisionId.current ?? uuidv4(),
+          data,
+          new Date().toISOString(),
+        ),
+      );
+      return false;
+    }
+
     // Autosaves fold into one revision instead of minting a row every attempt.
     // A new id opens a revision; reusing it rewrites that row in place, so a
     // long writing stretch costs one record rather than one per two seconds.
@@ -138,17 +175,37 @@ export function useSave(
       await dispatch(
         actions.updatePost({
           id: postId,
-          partial: { head: headId, updatedAt, data },
+          partial: {
+            head: headId,
+            updatedAt,
+            data,
+            expectedHead: lastSavedHead.current,
+          },
         }),
       ).unwrap();
 
       await clearPendingSave(postId);
       savedBaseline.current = serialized;
+      lastSavedHead.current = headId;
       attempt.current = 0;
       dispatch(actions.setSaveStatus({ id: postId, status: "idle" }));
       return true;
     } catch (error) {
       // The content is already in `pendingSaves`, so nothing is lost either way.
+      if (isConflict(error)) {
+        // Someone else — another tab, or an agent — wrote after our last save.
+        // Retrying would fail identically until this tab knows what landed, so
+        // stop, and leave the buffered record alone: it is what brings this
+        // text back when the document is reopened (see `usePostLoader`). The
+        // store has already announced the server's own wording, so saying it
+        // again here would only stack a second snackbar on the same event.
+        // The revision above did land — it is simply not `head`, so this
+        // content is also recoverable from history rather than only locally.
+        conflicted.current = true;
+        attempt.current = 0;
+        dispatch(actions.setSaveStatus({ id: postId, status: "error" }));
+        return false;
+      }
       if (isTransient(error)) {
         const delay = Math.min(
           MAX_BACKOFF_MS,

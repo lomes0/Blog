@@ -46,6 +46,10 @@ const NOT_STORED = [
   "private",
   "series",
   "revisions", // revisions live in their own store
+  // A precondition for the cloud's compare-and-set, not a column. IndexedDB has
+  // one writer per browser, so there is no race here to guard — but the field
+  // still must not end up in the stored record.
+  "expectedHead",
 ] as const;
 
 /** Drop cloud-only fields and content-adjacent collections before persisting. */

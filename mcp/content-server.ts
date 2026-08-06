@@ -80,6 +80,20 @@ interface Loaded {
   id: string;
   name: string;
   state: StoredState;
+  /** The head this state was read at — the precondition for writing it back. */
+  head: string | null;
+}
+
+/** A write refused because the document moved under it. */
+class StaleHeadError extends Error {
+  constructor() {
+    super(
+      "The document was saved by someone else (an editor tab, most likely) " +
+        "while these edits were being prepared. Nothing was written. Re-read " +
+        "it and apply the edits again.",
+    );
+    this.name = "StaleHeadError";
+  }
 }
 
 /** Fetch one of the author's posts as an editor state. */
@@ -108,6 +122,7 @@ async function loadPost(id: string, authorId: string): Promise<Loaded | null> {
     id: doc.id,
     name: doc.name,
     state: (data as StoredState | undefined) ?? emptyState(),
+    head: doc.head,
   };
 }
 
@@ -118,22 +133,34 @@ async function loadPost(id: string, authorId: string): Promise<Loaded | null> {
  * into one revision by re-posting its id (see the plan §2.2); an agent write is
  * a distinct point in history and must not be merged into whatever the editor
  * happens to have open.
+ *
+ * `expectedHead` is the head the edited state was read at, and the write is
+ * conditional on it. `stateHash` already refuses a batch whose *addresses* have
+ * gone stale, but it is checked in this process against a state read moments
+ * earlier — an editor saving in that window would simply be overwritten. The
+ * guard has to be in the database to mean anything, which is what `updateMany`
+ * on `head` does here: it matches nothing if the row moved, and it holds the
+ * row lock for the rest of the transaction if it did not.
  */
 async function saveRevision(
   documentId: string,
   authorId: string,
   state: StoredState,
+  expectedHead: string | null,
 ): Promise<string> {
   const revisionId = randomUUID();
-  await prisma.$transaction([
-    prisma.revision.create({
-      data: { id: revisionId, documentId, authorId, data: state as object },
-    }),
-    prisma.document.update({
-      where: { id: documentId },
+  await prisma.$transaction(async (tx) => {
+    const { count } = await tx.document.updateMany({
+      where: { id: documentId, head: expectedHead },
       data: { head: revisionId },
-    }),
-  ]);
+    });
+    // The document was proven to exist by the read this write is based on, so a
+    // miss means the head moved rather than the row vanishing.
+    if (count === 0) throw new StaleHeadError();
+    await tx.revision.create({
+      data: { id: revisionId, documentId, authorId, data: state as object },
+    });
+  });
   return revisionId;
 }
 
@@ -486,7 +513,18 @@ server.registerTool(
       return fail((error as Error).message);
     }
 
-    const revisionId = await saveRevision(post.id, authorId, result.state);
+    let revisionId: string;
+    try {
+      revisionId = await saveRevision(
+        post.id,
+        authorId,
+        result.state,
+        post.head,
+      );
+    } catch (error) {
+      if (error instanceof StaleHeadError) return fail(error.message);
+      throw error;
+    }
     const after = outline(result.state);
     return text(
       `Updated ${result.changed} block${result.changed === 1 ? "" : "s"} in ` +

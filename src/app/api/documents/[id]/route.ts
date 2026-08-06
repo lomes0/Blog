@@ -8,6 +8,7 @@ import { requireDocument } from "@/lib/access";
 import {
   deleteDocument,
   findEditorDocument,
+  StaleHeadError,
   updateDocument,
 } from "@/repositories/document";
 import { NextResponse } from "next/server";
@@ -132,7 +133,24 @@ export const PATCH = userRoute<{ id: string }>(
       };
     }
 
-    const data = await updateDocument(params.id, input);
+    // `expectedHead` is absent on a rename or a publish toggle, which writes
+    // unconditionally; a content save sends the head it is replacing, and loses
+    // to whoever got there first rather than overwriting them.
+    let data;
+    try {
+      data = await updateDocument(params.id, input, body.expectedHead);
+    } catch (error) {
+      if (error instanceof StaleHeadError) {
+        throw new ApiError(
+          409,
+          "Saved somewhere else first",
+          "This document changed after your last save — another tab, or an " +
+            "agent. Nothing was overwritten; your unsaved text is kept locally " +
+            "and comes back when you reopen the document.",
+        );
+      }
+      throw error;
+    }
 
     revalidatePath("/");
     revalidatePath(`/${userPost.handle || params.id}`);

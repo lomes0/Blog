@@ -112,8 +112,18 @@ export const documentCreateSchema = z.object({
  *
  * `rank` is likewise not accepted: it is derived from `between` inside the move
  * transaction, which is what keeps concurrent reorders consistent.
+ *
+ * `expectedHead` is the one field here that is not a column. It is the
+ * compare-and-set: send the head this write is based on and the update is
+ * refused with a 409 if storage has moved on, which is what stops a long-open
+ * tab from pointing `head` back at its own revision and orphaning whatever an
+ * agent wrote meanwhile. Omitting it writes unconditionally — correct for a
+ * rename or a publish toggle, which are not racing anyone over content.
  */
 export const documentUpdateSchema = z
-  .object(documentFields)
+  .object({
+    ...documentFields,
+    expectedHead: z.string().uuid().nullable(),
+  })
   .partial()
   .strict();
