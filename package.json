@@ -16,7 +16,7 @@
     "check:theme": "node scripts/check-theme.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "mcp:server": "node --import tsx --import ./mcp/bootstrap.mjs --env-file=.env mcp/content-server.ts",
+    "mcp:server": "node --import tsx --env-file=.env mcp/content-server.ts",
     "mcp:smoke": "node --import tsx mcp/smoke.ts"
   },
   "dependencies": {

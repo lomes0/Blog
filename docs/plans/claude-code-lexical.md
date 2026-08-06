@@ -549,7 +549,7 @@ already stable for the editor's lifetime — `address.ts` resolves a path to a
 | 1 | **DONE.** `src/lib/content-bridge/`: `address`, `stateHash`, `inline` (+ property test), `blocks` (paragraph/heading/quote/list/code + opaque fallback), `ops`, `outline`. 50 specs; pure JSON, no DOM | |
 | 2 | **DONE.** `mcp/content-server.ts` on §5's surface; Markdown path retired. `mcp/lexical.ts`, `bootstrap.mjs` and `css-loader.mjs` **deleted** — the bridge is pure JSON, so the server needs no headless editor and no DOM shim, which closes the §9 fragility outright | |
 | 3 | **PART DONE.** Graduated `divider`, `layout`, `attachment`, `details`, `kanban` (+ `summary`), each with a §4.6.1 round-trip spec. 87.8% of real blocks now read as typed. **Remaining, in corpus order: nested `list` (1893), `table` (263), `layout-item` (741, structural).** `iframe` skipped — zero occurrences, no workflow, inherits image's caption problem | §4.6.3 still gates image/sticky/canvas |
-| 4 | `copilotAgentExecutors` moves onto the core. Now a **capability upgrade, not a bug fix** (§2.4): it replaces unreadable base64 tokens with blocks the agent can actually read and author | |
+| 4 | **DONE.** `copilotAgentExecutors` + `virtualRepo` on the core; `markdownBridge.ts` **deleted**. Tools are now `outline_document` / `read_blocks` / `read_document` / `search_documents` / `apply_ops` / `create_document(blocks)`; `edit_document`, `write_document` and `read_current_document` are gone | |
 | 5 | *Optional.* Persistent ids, if concurrent editing proves painful — pays §2.1's cost knowingly: `super.exportJSON()` + `updateFromJSON` across ~20 node classes, a conformance spec per class, and a backfill | |
 
 Rev 1's phase 0 spike is answered (§2.1), its phase 3 backfill is deleted, and
@@ -561,6 +561,26 @@ the applier is better off on serialized JSON than on a live editor (§4.2), and
 a tree walk that lazily creates `children: []` breaks the central preservation
 property outright — a kanban node gained a field it never had, and the ops spec
 caught it.
+
+Phase 4 made the Copilot's content layer the same code as the terminal's, and
+deleted the Markdown transport's last user. Three things it settled:
+
+- The `.md` path fiction (`<id>.md`) is gone; documents are addressed by id.
+  Keeping it would have described a folder of Markdown files that no longer
+  exists anywhere in the system.
+- `read_current_document` collapsed into an optional `id` on the three document
+  readers — omitted, they act on the open editor including unsaved edits. One
+  fewer tool whose only difference was its subject.
+- Search now returns a **block address** rather than a line number. A line
+  number was useless to every other tool, so a hit meant re-reading the whole
+  body to act on it.
+
+The `stateHash` guard bites harder here than over MCP, and deliberately: the
+document being edited is usually the one on screen, and a proposal sits waiting
+for the user to accept it. If they typed meanwhile, the addresses may no longer
+point where they did, so the write is refused with something actionable instead
+of applied to the wrong block. In practice the user is reading the proposal, not
+typing, in that window.
 
 Phase 3 was reordered by evidence rather than by the tiering in §4.6.2: the
 counts above put `horizontalrule` (absent from the plan) second by volume, and
@@ -603,9 +623,11 @@ what it was; unspellable inline nodes now contribute a descriptor.
 - **The app can still clobber Claude (§2.3).** Wants a compare-and-set on
   `PATCH /api/documents/[id]`. Separate change; should it ride along with phase
   2, or wait?
-- **Local drafts are out of reach.** MCP reaches Postgres via Prisma; guest and
-  local IndexedDB documents are browser-only and stay invisible to Claude Code.
-  Phase 4 closes it only for the document currently open. Accepted?
+- **Local drafts are out of reach *from the terminal*.** MCP reaches Postgres
+  via Prisma, so guest and local IndexedDB documents stay invisible to Claude
+  Code. Phase 4 closed this for the in-app Copilot — it runs client-side and
+  reads every local document — but the two agents still see different libraries.
+  Accepted?
 - **Series/project placement on create** — does "publish this session" pick a
   series itself, or always land at root for you to file?
 - **Does `search` need to be semantic?** Postgres `ILIKE` over block text is a

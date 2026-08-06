@@ -31,6 +31,58 @@ const TABLE_LABEL = (input: Record<string, unknown>): string => {
   return `${rows} × ${cols} table`;
 };
 
+const firstLine = (text: string, max = 70): string => {
+  const flat = text.replace(/\s+/g, " ").trim();
+  return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat;
+};
+
+/** One line describing a block the agent wants to write. */
+function describeBlock(value: unknown): string {
+  const block = value as Record<string, unknown>;
+  const type = asString(block?.type) || "block";
+  if (typeof block?.text === "string") return `${type}: ${firstLine(block.text)}`;
+  if (typeof block?.code === "string") return `${type}: ${firstLine(block.code)}`;
+  if (typeof block?.summary === "string") {
+    return `${type}: ${firstLine(block.summary)}`;
+  }
+  if (Array.isArray(block?.items)) return `${type} · ${block.items.length} items`;
+  if (Array.isArray(block?.tasks)) return `${type} · ${block.tasks.length} cards`;
+  return type;
+}
+
+/**
+ * One line per operation.
+ *
+ * The agent names the blocks it changes rather than restating the document, so
+ * a whole-body diff would be mostly unchanged text. The addresses are the
+ * useful part — and "deletes b7" is what a user most needs to see before
+ * accepting.
+ */
+function describeOp(value: unknown): string {
+  const op = value as Record<string, unknown>;
+  const target = (): string =>
+    asString(op.after) || asString(op.before) || asString(op.appendTo) || "the end";
+
+  switch (asString(op.op)) {
+    case "set_text":
+      return `${asString(op.id)} → ${firstLine(asString(op.text))}`;
+    case "replace_block":
+      return `${asString(op.id)} replaced by ${describeBlock(op.block)}`;
+    case "insert_blocks": {
+      const blocks = Array.isArray(op.blocks) ? op.blocks : [];
+      return `insert ${blocks.length} block${
+        blocks.length === 1 ? "" : "s"
+      } at ${target()}: ${blocks.map(describeBlock).join("; ")}`;
+    }
+    case "delete_block":
+      return `delete ${asString(op.id)}`;
+    case "move_block":
+      return `move ${asString(op.id)} to ${target()}`;
+    default:
+      return asString(op.op) || "unknown operation";
+  }
+}
+
 /**
  * Renders a human-readable preview of a pending Copilot edit so the user can
  * see *what* will be inserted before accepting — not just the tool name.
@@ -191,61 +243,35 @@ const ActionPreview: React.FC<ActionPreviewProps> = (
     case "remove_node":
       return label("Remove this block", true);
 
-    case "edit_document": {
-      const removed = asString(input.old_text);
-      const added = asString(input.new_text);
+    case "apply_ops": {
+      const ops = Array.isArray(input.ops) ? input.ops : [];
+      // Say what each op does to which block. The agent names blocks rather
+      // than restating the document, so a diff of the whole body would be both
+      // huge and mostly unchanged — the addresses are the useful part, and
+      // "deletes b7" is the line a user most needs to notice before accepting.
+      const destructive = ops.some(
+        (op) => (op as { op?: string }).op === "delete_block",
+      );
       return (
         <Box>
-          {label(`Edit ${asString(input.path)}`)}
-          <Typography
-            variant="body2"
-            sx={{
-              color: onColoredBg ? "primary.contrastText" : "error.main",
-              whiteSpace: "pre-wrap",
-              overflowWrap: "anywhere",
-              textDecoration: "line-through",
-              opacity: 0.8,
-              display: "-webkit-box",
-              WebkitLineClamp: 3,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-            }}
-          >
-            {removed}
-          </Typography>
-          <Typography
-            variant="body2"
-            sx={{
-              color: onColoredBg ? "primary.contrastText" : "success.main",
-              whiteSpace: "pre-wrap",
-              overflowWrap: "anywhere",
-              display: "-webkit-box",
-              WebkitLineClamp: 4,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-            }}
-          >
-            {added}
-          </Typography>
+          {label(
+            `Edit ${ops.length} block${ops.length === 1 ? "" : "s"}`,
+            destructive,
+          )}
+          {snippet(ops.map(describeOp).join("\n"))}
         </Box>
       );
     }
 
-    case "write_document":
-      return (
-        <Box>
-          {label(`Rewrite ${asString(input.path)}`, true)}
-          {snippet(asString(input.markdown))}
-        </Box>
-      );
-
-    case "create_document":
+    case "create_document": {
+      const blocks = Array.isArray(input.blocks) ? input.blocks : [];
       return (
         <Box>
           {label(`New post · ${asString(input.title)}`)}
-          {snippet(asString(input.markdown))}
+          {snippet(blocks.map(describeBlock).join("\n"))}
         </Box>
       );
+    }
 
     default:
       return label(type.replace(/_/g, " "));

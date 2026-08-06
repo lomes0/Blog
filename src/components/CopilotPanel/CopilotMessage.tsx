@@ -46,10 +46,14 @@ function readTraceLabel(name: string, input: Record<string, unknown>): string {
       return "Listed all posts";
     case "search_documents":
       return `Searched “${asStr(input.query)}”`;
+    case "outline_document":
+      return input.id ? `Outlined ${asStr(input.id)}` : "Outlined this document";
+    case "read_blocks": {
+      const blocks = Array.isArray(input.blocks) ? input.blocks : [];
+      return `Read ${blocks.length} block${blocks.length === 1 ? "" : "s"}`;
+    }
     case "read_document":
-      return `Read ${asStr(input.path)}`;
-    case "read_current_document":
-      return "Read the current document";
+      return input.id ? `Read ${asStr(input.id)}` : "Read this document";
     case "get_selection":
       return "Read the selection";
     default:

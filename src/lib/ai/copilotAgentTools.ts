@@ -10,19 +10,32 @@
  * server route and the browser can import it.
  */
 
-/** Read-only tools: executed automatically client-side, results fed back. */
+/**
+ * Read-only tools: executed automatically client-side, results fed back.
+ *
+ * `id` is optional on the three document readers — omitted, they act on the
+ * document currently open in the editor, including its unsaved edits. That
+ * collapses what used to be a separate `read_current_document` into a
+ * parameter, so there is one less tool whose only difference is its subject.
+ */
 export const READ_TOOLS = [
   "list_documents",
   "search_documents",
+  "outline_document",
+  "read_blocks",
   "read_document",
-  "read_current_document",
   "get_selection",
 ] as const;
 
-/** Write tools: surfaced as proposals; applied only on user accept. */
+/**
+ * Write tools: surfaced as proposals; applied only on user accept.
+ *
+ * `edit_document` and `write_document` are gone. Both worked by rewriting a
+ * document's entire body from Markdown; `apply_ops` names the blocks it
+ * changes and leaves everything else untouched.
+ */
 export const WRITE_TOOLS = [
-  "edit_document",
-  "write_document",
+  "apply_ops",
   "create_document",
 ] as const;
 

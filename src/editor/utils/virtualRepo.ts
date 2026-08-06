@@ -1,89 +1,74 @@
 /**
- * Virtual "repo" view of the author's content for the Copilot agent.
+ * The Copilot's view of the author's content.
  *
- * The agent works over the blog as if it were a folder of Markdown files. Each
- * document becomes a file addressed by `<id>.md`; listing/searching/reading are
- * pure, synchronous functions over a Redux `documents` snapshot so they can run
- * client-side (which is the only place all content — local IndexedDB + cloud —
- * is available) with no server round-trip.
+ * Everything here is a pure, synchronous function over a Redux `documents`
+ * snapshot, so it runs client-side — the only place *all* content is available,
+ * since local IndexedDB documents never reach the server at all.
  *
- * Content comes from `local.data` (the full `SerializedEditorState`). Cloud-only
- * documents expose metadata (title, series) and are matched by title, but their
- * body isn't in the store, so pure repo reads report them as not-locally-loaded.
- * The current-document Copilot executor hydrates a cloud-only head revision on
- * demand when no live editor or local body is available.
+ * Documents used to be presented as a folder of Markdown files addressed by
+ * `<id>.md`, with rich nodes hidden inside opaque `[[lexblk:…]]` tokens. That
+ * framing is gone: content is addressed by block through
+ * `src/lib/content-bridge` (docs/plans/claude-code-lexical.md), so the agent can
+ * see a kanban board is there and move it, rather than being handed base64 it
+ * must not touch.
+ *
+ * Cloud-only documents expose metadata and are matched by title, but their body
+ * is not in the store; the executors hydrate a cloud head revision on demand.
  */
-import type { SerializedEditorState } from "lexical";
 import type { Post } from "@/types";
-import { serializedStateToMarkdown } from "./markdownBridge";
+import {
+  blockText,
+  nodeToBlock,
+  walkBlocks,
+  type StoredState,
+} from "@/lib/content-bridge";
 
 export interface RepoFileMeta {
-  path: string;
+  id: string;
   title: string;
   seriesId: string | null;
-  /** Whether the body has been loaded client-side (i.e. the post has `data`). */
-  hasContent: boolean;
-}
-
-export interface RepoReadResult {
-  path: string;
-  title: string;
-  markdown: string;
+  /** Whether the body is loaded client-side (i.e. the post has `data`). */
   hasContent: boolean;
 }
 
 export interface RepoSearchHit {
-  path: string;
+  id: string;
   title: string;
-  line: number;
+  /** The block address the match is in — feed it straight to `read_blocks`. */
+  blockId: string;
+  kind: string;
   text: string;
 }
 
-const pathOf = (doc: Post): string => `${doc.id}.md`;
 const titleOf = (doc: Post): string => doc.name ?? "Untitled";
-const seriesOf = (doc: Post): string | null => doc.seriesId ?? null;
-const dataOf = (doc: Post): SerializedEditorState | undefined => doc.data;
+const stateOf = (doc: Post): StoredState | undefined =>
+  doc.data as StoredState | undefined;
 
-const findByPath = (
-  docs: Post[],
-  path: string,
-): Post | undefined => {
-  const id = path.replace(/\.md$/, "");
-  return docs.find((d) => d.id === id);
+/** Accepts a bare id or a legacy `<id>.md` path. */
+export const normalizeDocId = (ref: string): string =>
+  ref.trim().replace(/\.md$/i, "");
+
+const findById = (docs: Post[], ref: string): Post | undefined => {
+  const id = normalizeDocId(ref);
+  return docs.find((doc) => doc.id === id);
 };
 
-/** List every document as a repo file (metadata only — cheap). */
+/** List every document (metadata only — cheap). */
 export function listDocuments(docs: Post[]): RepoFileMeta[] {
   return docs.map((doc) => ({
-    path: pathOf(doc),
+    id: doc.id,
     title: titleOf(doc),
-    seriesId: seriesOf(doc),
-    hasContent: Boolean(dataOf(doc)),
+    seriesId: doc.seriesId ?? null,
+    hasContent: Boolean(stateOf(doc)),
   }));
 }
 
-/** Read one document's body as Markdown (rich nodes as opaque tokens). */
-export function readDocument(
-  docs: Post[],
-  path: string,
-): RepoReadResult {
-  const doc = findByPath(docs, path);
-  if (!doc) {
-    return { path, title: "", markdown: "", hasContent: false };
-  }
-  const data = dataOf(doc);
-  return {
-    path: pathOf(doc),
-    title: titleOf(doc),
-    markdown: data ? serializedStateToMarkdown(data) : "",
-    hasContent: Boolean(data),
-  };
-}
-
 /**
- * Grep-style search across titles and locally-available bodies. `query` is a
- * plain (case-insensitive) substring; returns per-line hits, capped so a broad
- * query can't flood the context window.
+ * Search titles and locally-available bodies for a substring.
+ *
+ * Hits are per *block* rather than per line, so a match comes back with an
+ * address the agent can read or edit directly instead of a line number that
+ * means nothing to any other tool.
  */
 export function searchDocuments(
   docs: Post[],
@@ -97,31 +82,47 @@ export function searchDocuments(
   for (const doc of docs) {
     if (hits.length >= maxHits) break;
     const title = titleOf(doc);
-    const path = pathOf(doc);
 
-    // Title match surfaces the document even when its body isn't local.
+    // A title match surfaces the document even when its body is not local.
     if (title.toLowerCase().includes(needle)) {
-      hits.push({ path, title, line: 0, text: `# ${title}` });
+      hits.push({ id: doc.id, title, blockId: "", kind: "title", text: title });
     }
 
-    const data = dataOf(doc);
-    if (!data) continue;
-    const markdown = serializedStateToMarkdown(data);
-    const lines = markdown.split("\n");
-    for (let i = 0; i < lines.length; i++) {
+    const state = stateOf(doc);
+    if (!state) continue;
+
+    for (const { address, node } of walkBlocks(state)) {
       if (hits.length >= maxHits) break;
-      if (lines[i].toLowerCase().includes(needle)) {
-        hits.push({ path, title, line: i + 1, text: lines[i].trim() });
-      }
+      const block = nodeToBlock(node);
+      const haystack = blockText(block);
+      const at = haystack.toLowerCase().indexOf(needle);
+      if (at === -1) continue;
+      hits.push({
+        id: doc.id,
+        title,
+        blockId: address,
+        kind: block.type === "opaque" ? block.nodeType : block.type,
+        text: haystack
+          .slice(Math.max(0, at - 40), at + needle.length + 40)
+          .replace(/\s+/g, " ")
+          .trim(),
+      });
     }
   }
   return hits;
 }
 
-/** Resolve a repo path back to the underlying document id (or null). */
-export function resolveDocId(
+/** Resolve a reference back to a document id (or null). */
+export function resolveDocId(docs: Post[], ref: string): string | null {
+  return findById(docs, ref)?.id ?? null;
+}
+
+/** A document's stored state, if its body is loaded client-side. */
+export function documentState(
   docs: Post[],
-  path: string,
-): string | null {
-  return findByPath(docs, path)?.id ?? null;
+  ref: string,
+): { id: string; title: string; state?: StoredState } | null {
+  const doc = findById(docs, ref);
+  if (!doc) return null;
+  return { id: doc.id, title: titleOf(doc), state: stateOf(doc) };
 }

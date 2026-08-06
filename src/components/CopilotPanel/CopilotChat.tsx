@@ -113,7 +113,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
   // still a conversation worth keeping across a panel close.
   const scope = documentId ?? WORKSPACE_SCOPE;
   // What the tool executors call "the open document". They already read the
-  // empty string as "none open" — `read_current_document` returns empty rather
+  // empty string as "none open" — the document readers return empty rather
   // than throwing — so it is the existing spelling of this state, not a new one.
   const openDocId = documentId ?? "";
 

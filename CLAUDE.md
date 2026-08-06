@@ -56,7 +56,7 @@ the whole run. `src/types/vitest.d.ts` is what gives `tsc` the globals;
 `compilerOptions.types` is deliberately left unset, because setting it would
 restrict resolution to only its entries and drop every other ambient package.
 
-Coverage is thirteen specs, 253 assertions: `src/lib/__tests__/ordering.test.ts`
+Coverage is fourteen specs, 260 assertions: `src/lib/__tests__/ordering.test.ts`
 (fractional rank keys), `src/components/Layout/SideBar/__tests__/
 dragGeometry.test.ts` (sidebar drag thresholds — `dragGeometry.ts` is kept
 import-free precisely so it is testable without a browser),
@@ -85,7 +85,10 @@ byte-identical, plus snapshot addressing, atomicity and the freshness guard) and
 `outline.test.ts` (addressing, descriptors for blocks with no codec, and the
 content hash) and `codecs.test.ts` (a round-trip per graduated block type over a
 node with every optional field populated — the obligation
-docs/plans/claude-code-lexical.md §4.6.1 attaches to graduating one).
+docs/plans/claude-code-lexical.md §4.6.1 attaches to graduating one), and
+`src/editor/utils/__tests__/virtualRepo.test.ts` (the Copilot's view of the
+library — that a search hit carries a block address a later tool can act on,
+rather than a line number no other tool accepts).
 
 All of these follow the same rule as `dragGeometry.ts`: the logic lives in an
 import-free module so it can be exercised without mounting anything. The IDB

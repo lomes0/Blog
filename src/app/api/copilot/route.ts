@@ -22,31 +22,55 @@ import {
 // the app can *do* — open, navigate, rename, describe the workspace — arrives
 // via `buildCommandTools()`, generated from the command registry, so adding a
 // command needs no edit to this file (plan §3.1).
+// Documents are addressed by BLOCK — see docs/plans/claude-code-lexical.md.
+// A read hands back addresses (b3, b4.2) and a stateHash; a write names blocks
+// and carries that hash. Blocks the write does not name are left exactly as
+// they were, which is why rich content no longer has to be hidden behind
+// opaque tokens the agent must not touch.
+const docRef = z
+  .string()
+  .optional()
+  .describe("Document id. Omit to act on the document currently open.");
+
 const readTools = {
   // ---- read (auto-executed client-side) ----
   list_documents: tool({
     description:
-      "List every post in the blog (metadata only: path, title, series). " +
+      "List every post in the blog (metadata only: id, title, series). " +
       "Cheap — call this to discover what exists before reading bodies.",
     inputSchema: z.object({}),
   }),
   search_documents: tool({
-    description: "Grep across post titles and locally-available bodies for a " +
-      "case-insensitive substring. Returns per-line hits with their path.",
+    description:
+      "Search post titles and locally-available bodies for a case-insensitive " +
+      "substring. Returns hits per BLOCK, each with the block address to read " +
+      "or edit next.",
     inputSchema: z.object({ query: z.string() }),
+  }),
+  outline_document: tool({
+    description:
+      "Skeleton of a post: one line per block with its address, kind and a " +
+      "preview, plus the stateHash. START HERE — it is far cheaper than " +
+      "reading a whole post, and every other tool takes the addresses it " +
+      "returns. Blocks marked [read-only] cannot be rewritten; [replace only] " +
+      "means no single text field, so use replace_block rather than set_text.",
+    inputSchema: z.object({ id: docRef }),
+  }),
+  read_blocks: tool({
+    description:
+      "Full content of specific blocks, by address from outline_document. " +
+      "Prefer this over read_document — it is how you work on a long article " +
+      "without reading all of it.",
+    inputSchema: z.object({
+      id: docRef,
+      blocks: z.array(z.string()).min(1).describe('e.g. ["b2","b4.1"]'),
+    }),
   }),
   read_document: tool({
     description:
-      'Read one post\'s body as Markdown by its path (e.g. "<id>.md"). ' +
-      "Rich elements appear as opaque [[lexblk:...]] tokens — never edit their " +
-      "contents.",
-    inputSchema: z.object({ path: z.string() }),
-  }),
-  read_current_document: tool({
-    description:
-      "Read the currently open document as Markdown, including any unsaved " +
-      "edits in the editor.",
-    inputSchema: z.object({}),
+      "The whole post as nested blocks. Use for short documents; for anything " +
+      "long use outline_document then read_blocks.",
+    inputSchema: z.object({ id: docRef }),
   }),
   get_selection: tool({
     description:
@@ -54,6 +78,93 @@ const readTools = {
     inputSchema: z.object({}),
   }),
 };
+
+const listItemSchema = z.object({
+  text: z.string(),
+  checked: z.boolean().optional(),
+  indent: z.number().int().min(0).default(0),
+});
+
+const kanbanTaskSchema = z.object({
+  name: z.string(),
+  description: z.string().optional(),
+  stage: z.number().int().min(0).default(0),
+  priority: z.enum(["low", "medium", "high"]).default("medium"),
+  tags: z.array(z.string()).optional(),
+});
+
+const blockSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("paragraph"), text: z.string() }),
+  z.object({
+    type: z.literal("heading"),
+    level: z.number().int().min(1).max(6),
+    text: z.string(),
+  }),
+  z.object({ type: z.literal("quote"), text: z.string() }),
+  z.object({
+    type: z.literal("code"),
+    language: z.string().default("plain"),
+    code: z.string(),
+  }),
+  z.object({
+    type: z.literal("list"),
+    listType: z.enum(["bullet", "number", "check"]).default("bullet"),
+    items: z.array(listItemSchema),
+  }),
+  z.object({ type: z.literal("divider") }),
+  z.object({ type: z.literal("summary"), text: z.string() }),
+  z.object({
+    type: z.literal("attachment"),
+    url: z.string(),
+    filename: z.string(),
+    mimetype: z.string().optional(),
+    size: z.number().optional(),
+  }),
+  z.object({ type: z.literal("kanban"), tasks: z.array(kanbanTaskSchema) }),
+  // Containers nest, so their bodies are loosely typed here and validated by
+  // the codec — zod cannot express the recursion inside a discriminated union
+  // without a lazy schema the JSON-Schema conversion would not survive.
+  z.object({
+    type: z.literal("layout"),
+    templateColumns: z.string().default("1fr 1fr"),
+    columns: z.array(z.array(z.unknown())).optional(),
+  }),
+  z.object({
+    type: z.literal("details"),
+    summary: z.string(),
+    open: z.boolean().optional(),
+    body: z.array(z.unknown()).optional(),
+  }),
+]);
+
+const placement = {
+  after: z.string().optional(),
+  before: z.string().optional(),
+  appendTo: z.string().optional(),
+};
+
+const opSchema = z.discriminatedUnion("op", [
+  z.object({ op: z.literal("set_text"), id: z.string(), text: z.string() }),
+  z.object({ op: z.literal("replace_block"), id: z.string(), block: blockSchema }),
+  z.object({
+    op: z.literal("insert_blocks"),
+    blocks: z.array(blockSchema).min(1),
+    ...placement,
+  }),
+  z.object({ op: z.literal("delete_block"), id: z.string() }),
+  z.object({ op: z.literal("move_block"), id: z.string(), ...placement }),
+]);
+
+const BLOCK_DOC =
+  "Authorable blocks: paragraph {text}, heading {level 1-6, text}, quote " +
+  "{text}, code {language, code}, list {listType, items[{text, checked?, " +
+  "indent}]}, divider {}, summary {text}, attachment {url, filename}, kanban " +
+  "{tasks[{name, description?, stage, priority}]}, layout {templateColumns, " +
+  "columns[[block,…],…]}, details {summary, open?, body[block,…]}. For layout " +
+  "and details, columns/body are required when inserting and optional when " +
+  "replacing — omit them to keep the contents already there. Inline formatting " +
+  "inside text: **bold**, __italic__, `code`, ~~strike~~, ==highlight==, " +
+  "++underline++, ^^sup^^, ,,sub,,, [link](url), $latex$.";
 
 /**
  * Write tools that act on the *open* document. Withheld when the caller may
@@ -67,22 +178,24 @@ const readTools = {
  */
 const documentWriteTools = {
   // ---- write (proposed; applied only on user accept) ----
-  edit_document: tool({
+  apply_ops: tool({
     description:
-      "Propose replacing an exact substring in a post. old_text must match " +
-      "the document verbatim (including whitespace) and must not cut through " +
-      "an [[lexblk:...]] token. Prefer this for targeted edits.",
+      "Propose editing a post by block. Every op names an address from a read, " +
+      "and the batch carries that read's stateHash — if the document changed " +
+      "since (the user typed, say), the whole batch is refused and you re-read. " +
+      "Ops apply all-or-nothing, and blocks you do not name are left exactly " +
+      "as they were, so you never need to restate the rest of the document. " +
+      "Ops: set_text{id,text}, replace_block{id,block}, " +
+      "insert_blocks{blocks,after|before|appendTo}, delete_block{id}, " +
+      "move_block{id,after|before|appendTo}. " +
+      BLOCK_DOC,
     inputSchema: z.object({
-      path: z.string(),
-      old_text: z.string(),
-      new_text: z.string(),
+      id: docRef,
+      stateHash: z
+        .string()
+        .describe("The stateHash from the read these addresses came from"),
+      ops: z.array(opSchema).min(1),
     }),
-  }),
-  write_document: tool({
-    description:
-      "Propose replacing a post's ENTIRE body with new Markdown. Use for " +
-      "large rewrites. Preserve any [[lexblk:...]] tokens you want to keep.",
-    inputSchema: z.object({ path: z.string(), markdown: z.string() }),
   }),
 };
 
@@ -93,8 +206,15 @@ const documentWriteTools = {
  */
 const libraryWriteTools = {
   create_document: tool({
-    description: "Propose creating a new post with a title and Markdown body.",
-    inputSchema: z.object({ title: z.string(), markdown: z.string() }),
+    description:
+      "Propose creating a new post from blocks. Produces real Lexical content " +
+      "— proper code nodes, headings, lists and collapsibles — not fenced " +
+      "Markdown in a paragraph. " +
+      BLOCK_DOC,
+    inputSchema: z.object({
+      title: z.string(),
+      blocks: z.array(blockSchema).min(1),
+    }),
   }),
 };
 
@@ -143,7 +263,7 @@ export const POST = userRoute(async (req, { user }) => {
       canWriteDocument = permitsDocument(doc, user, "write");
     } catch (error) {
       // A missing row is not a refusal. A post can be open in the editor before
-      // it has ever been saved, and `read_current_document` reads the live
+      // it has ever been saved, and the document readers read the live
       // editor client-side, so there is a real document to talk about even
       // though the server has nothing to authorize. Writes still land on
       // `/api/documents/[id]`, which authorizes them on its own.

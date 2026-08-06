@@ -10,7 +10,7 @@
  * Two things it is deliberately NOT:
  *
  * - **Not a replacement for the content tools.** `read_document`,
- *   `edit_document` and friends (`copilotAgentTools.ts`) operate on document
+ *   `apply_ops` and friends (`copilotAgentTools.ts`) operate on document
  *   *bodies* through the live Lexical editor and IndexedDB. They are not
  *   registry commands and forcing them into it would put a Lexical editor
  *   behind `CommandContext`. Command tools are additive.
