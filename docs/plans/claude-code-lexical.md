@@ -510,7 +510,7 @@ already stable for the editor's lifetime — `address.ts` resolves a path to a
 | - | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ---- |
 | 0 | ~~Refusal guard in the Copilot's Markdown path.~~ **Deleted — premise was false (§2.4).** The Copilot already protects rich nodes via opaque tokens; the guard would have removed capability and prevented nothing | |
 | 1 | **DONE.** `src/lib/content-bridge/`: `address`, `stateHash`, `inline` (+ property test), `blocks` (paragraph/heading/quote/list/code + opaque fallback), `ops`, `outline`. 50 specs; pure JSON, no DOM | |
-| 2 | Rewire `mcp/content-server.ts` to §5. Retire the Markdown path                                                                                          | |
+| 2 | **DONE.** `mcp/content-server.ts` on §5's surface; Markdown path retired. `mcp/lexical.ts`, `bootstrap.mjs` and `css-loader.mjs` **deleted** — the bridge is pure JSON, so the server needs no headless editor and no DOM shim, which closes the §9 fragility outright | |
 | 3 | Graduate codecs in tier order (§4.6.2), one at a time, each with the §4.6.1 round-trip spec: **math, iframe, details, layout, attachment, kanban** (trivial) → **table** (work) → **image, sticky, canvas-text** (needs §4.6.3 decided first) → **graph, sketch never** | §4.6.3 gates the third group |
 | 4 | `copilotAgentExecutors` moves onto the core. Now a **capability upgrade, not a bug fix** (§2.4): it replaces unreadable base64 tokens with blocks the agent can actually read and author | |
 | 5 | *Optional.* Persistent ids, if concurrent editing proves painful — pays §2.1's cost knowingly: `super.exportJSON()` + `updateFromJSON` across ~20 node classes, a conformance spec per class, and a backfill | |
@@ -523,7 +523,19 @@ rather than by reading: the inline delimiters had to become prefix-free (§4.5),
 the applier is better off on serialized JSON than on a live editor (§4.2), and
 a tree walk that lazily creates `children: []` breaks the central preservation
 property outright — a kanban node gained a field it never had, and the ops spec
-caught it. **Phase 2 is next: rewire `mcp/content-server.ts` to §5.**
+caught it.
+
+Phase 2 removed more than it added. Choosing plain JSON in phase 1 meant the
+MCP server stopped needing a headless editor at all, so three files and a whole
+class of import-time fragility went with the Markdown path. Verified against the
+live database (203 posts): outline, read_blocks and search over real content,
+and a create → edit → stale-hash-refused cycle whose stored JSON is real Lexical
+— `==highlight==` arrives as a text node with `format: 128`, not as literal
+characters. One fix came out of that run: a paragraph wrapping a canvas read
+back empty, so the outline said a block was there and read-only without saying
+what it was; unspellable inline nodes now contribute a descriptor.
+
+**Phase 3 is next: graduate codecs in tier order (§4.6.2).**
 
 ## 8. Open questions
 
@@ -582,11 +594,11 @@ Accepted consequences, recorded so they are not rediscovered as surprises.
 
 **Operational**
 
-- **The headless server is fragile.** `bootstrap.mjs` fakes a DOM so editor
-  nodes import outside a browser; MathLive already forced that. Any new node
-  class touching browser APIs at import time breaks the MCP server and nothing
-  in CI would notice. Wants a smoke spec that imports every registered node
-  headlessly — cheap, and it protects `mcp/lexical.ts` too.
+- ~~**The headless server is fragile.**~~ **Closed by phase 2.** The bridge is
+  plain JSON manipulation, so the server imports no editor node classes and
+  needs no DOM shim; `bootstrap.mjs`, `css-loader.mjs` and `mcp/lexical.ts` are
+  deleted. A new node class touching browser APIs at import can no longer break
+  it.
 - **It bypasses the app's authorization seam.** `content-server.ts` talks Prisma
   directly and scopes by `authorId` by hand — the pattern CLAUDE.md warns
   against — rather than going through `src/lib/access.ts`. Low stakes at one

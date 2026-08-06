@@ -34,13 +34,21 @@ const childrenOf = (node: SerializedNode): SerializedNode[] =>
 const str = (value: unknown, fallback = ""): string =>
   typeof value === "string" ? value : fallback;
 
-/** Plain text of a subtree — the read-only fallback when inline is unspellable. */
+/**
+ * Plain text of a subtree — the read-only fallback when inline is unspellable.
+ *
+ * A node carrying neither text nor children (a canvas embedded mid-paragraph,
+ * say) contributes a descriptor rather than nothing. Otherwise a paragraph
+ * wrapping one reads back as empty, and the outline says a block is there and
+ * read-only without ever saying what it is.
+ */
 function plainText(nodes: readonly SerializedNode[]): string {
   let out = "";
   for (const node of nodes) {
     if (node.type === "linebreak") out += "\n";
     else if (typeof node.text === "string") out += node.text;
     else if (node.children) out += plainText(childrenOf(node));
+    else out += `[${describeNode(node)}]`;
   }
   return out;
 }

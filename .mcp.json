@@ -5,8 +5,6 @@
       "args": [
         "--import",
         "tsx",
-        "--import",
-        "./mcp/bootstrap.mjs",
         "--env-file=.env",
         "mcp/content-server.ts"
       ],

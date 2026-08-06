@@ -174,6 +174,32 @@ describe("codecs", () => {
       "some-future-node",
     );
   });
+
+  it("describes an inline node it cannot spell, rather than reading as empty", () => {
+    // Found against real content: a paragraph wrapping a canvas came back with
+    // an empty preview, so the outline said a block was there and read-only
+    // without saying what it was.
+    const state = makeState();
+    (state.root.children as SerializedNode[])[1] = {
+      type: "paragraph",
+      version: 1,
+      direction: null,
+      format: "",
+      indent: 0,
+      children: [{ type: "canvas", version: 1, id: "c1", height: 300, notes: [{}, {}] }],
+    };
+    const block = nodeToBlock((state.root.children as SerializedNode[])[1]);
+    expect(block).toMatchObject({
+      type: "paragraph",
+      text: "[2 notes]",
+      readonlyText: true,
+    });
+    expect(outline(state).blocks[1]).toMatchObject({
+      kind: "paragraph",
+      preview: "[2 notes]",
+      editable: false,
+    });
+  });
 });
 
 describe("stateHash", () => {

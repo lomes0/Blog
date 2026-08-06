@@ -98,13 +98,20 @@ export function outline(state: StoredState): Outline {
   return { stateHash: stateHash(state), blocks };
 }
 
-/** Render an outline the way §4.4 shows it — for a terminal, not for parsing. */
+/**
+ * Render an outline the way §4.4 shows it — for a terminal, not for parsing.
+ *
+ * Blocks that cannot be rewritten are marked, because the alternative is the
+ * caller discovering it by having a write refused.
+ */
 export function formatOutline(result: Outline): string {
   return result.blocks
-    .map(({ id, depth, kind, preview, chars }) => {
+    .map(({ id, depth, kind, preview, chars, editable }) => {
       const indent = "  ".repeat(depth);
       const size = chars !== undefined && chars > 0 ? `  (${chars} chars)` : "";
-      return `${id.padEnd(8)}${indent}${kind.padEnd(14)}${preview}${size}`;
+      return `${id.padEnd(8)}${indent}${kind.padEnd(14)}${preview}${size}${
+        editable ? "" : "  [read-only]"
+      }`;
     })
     .join("\n");
 }

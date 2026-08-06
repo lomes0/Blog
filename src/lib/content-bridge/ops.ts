@@ -35,6 +35,25 @@ export type Op =
   | { op: "delete_block"; id: Address }
   | ({ op: "move_block"; id: Address } & InsertTarget);
 
+/** A document with no content — what a post without a revision reads as. */
+export const emptyState = (): StoredState => ({
+  root: {
+    type: "root",
+    version: 1,
+    direction: null,
+    format: "",
+    indent: 0,
+    children: [],
+  },
+});
+
+/** Build a whole document from blocks, for `create_post`. */
+export function stateFromBlocks(blocks: readonly WritableBlock[]): StoredState {
+  const state = emptyState();
+  state.root.children = blocks.map((block) => blockToNode(block));
+  return state;
+}
+
 export class OpError extends Error {
   constructor(message: string, readonly opIndex: number) {
     super(`op ${opIndex + 1}: ${message}`);
