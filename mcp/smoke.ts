@@ -61,7 +61,7 @@ async function main() {
           { type: "heading", level: 1, text: "Smoke test" },
           { type: "paragraph", text: "Created with **bold** and __italic__ and `code`." },
           { type: "code", language: "ts", code: "const x = 1;" },
-          { type: "list", listType: "check", items: [{ text: "first", checked: true, indent: 0 }] },
+          { type: "list", listType: "check", items: [{ text: "first", checked: true }] },
         ],
       }),
     );

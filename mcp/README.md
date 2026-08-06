@@ -30,10 +30,11 @@ were simply absent from what Claude saw, with nothing to say they had been
 there. The outline marks the difference: `[read-only]` has no codec at all,
 `[replace only]` can be replaced but has no single text field for `set_text`.
 
-Across this blog's stored content, 87.1% of addressable blocks read as a typed
-block rather than an opaque descriptor. Tables are addressed down to individual
-cells, so `set_text` edits one cell and leaves the rest of the grid alone. The
-only content still opaque is nested lists.
+Across this blog's stored content, 93.2% of addressable blocks read as a typed
+block rather than an opaque descriptor, and **every content-bearing type has a
+codec** — the only opaque blocks left are table rows and layout columns, which
+are pure structure. Tables are addressed down to individual cells, so `set_text`
+edits one cell and leaves the rest of the grid alone.
 
 `stateHash` is a hash of the document's content, and it does double duty: it
 detects that someone else wrote, *and* certifies that the addresses still point
@@ -61,7 +62,9 @@ new node class touching browser APIs at import can no longer break it.
 Authorable block types are paragraph, heading, quote, code, list, divider,
 details, layout, table, cell, kanban, attachment and summary. A table's cells
 are plain strings in the common case — `[["Name","Count"],["apples","3"]]` —
-with an object form for headers and spans. For `layout` and `details`, the
+with an object form for headers and spans. Lists nest through
+`item.sublist = {listType, items}`; indent is derived from the nesting, not
+supplied. For `layout` and `details`, the
 nested `columns`/`body` are required when inserting a new one and optional when
 replacing — omit them to keep the contents already there. Inline formatting
 inside a block's `text` uses `**bold**`, `__italic__`, `` `code` ``,

@@ -24,6 +24,7 @@ import type {
   KanbanTask,
   ListBlock,
   ListItem,
+  ListType,
   CellHeader,
   ParagraphBlock,
   QuoteBlock,
@@ -133,30 +134,57 @@ const headingLevel = (tag: string): HeadingBlock["level"] => {
   return level >= 1 && level <= 6 ? (level as HeadingBlock["level"]) : 1;
 };
 
-/** A list whose items nest another list cannot be flattened and back safely. */
-const hasNestedList = (node: SerializedNode): boolean =>
-  childrenOf(node).some((item) =>
-    childrenOf(item).some((child) => child.type === "list"),
-  );
+const asListType = (value: unknown): ListType => {
+  const listType = str(value, "bullet");
+  return listType === "number" || listType === "check" ? listType : "bullet";
+};
 
+/**
+ * Read a list's items, following nesting.
+ *
+ * A nested list is a `list` inside a `listitem`. Across every stored list here
+ * an item has at most one, and it always comes after whatever inline content
+ * the item carries — so anything else is treated as unreadable rather than
+ * guessed at, and the list goes read-only with its content intact.
+ */
 function readListItems(node: SerializedNode): {
   items: ListItem[];
   readonlyText: boolean;
 } {
   let readonlyText = false;
+
   const items = childrenOf(node)
     .filter((item) => item.type === "listitem")
     .map((item) => {
       const kids = childrenOf(item);
-      const text = renderInline(kids);
+      const sublists = kids.filter((child) => child.type === "list");
+      const inline = kids.filter((child) => child.type !== "list");
+      const firstList = kids.findIndex((child) => child.type === "list");
+
+      // More than one nested list, or content after one, is a shape this IR
+      // cannot put back the way it found it.
+      const unreadable =
+        sublists.length > 1 ||
+        (firstList !== -1 && firstList < kids.length - 1 &&
+          kids.slice(firstList + 1).some((child) => child.type !== "list"));
+
+      const text = unreadable ? null : renderInline(inline);
       if (text === null) readonlyText = true;
-      const listItem: ListItem = {
-        text: text ?? plainText(kids),
-        indent: typeof item.indent === "number" ? item.indent : 0,
-      };
+
+      const listItem: ListItem = { text: text ?? plainText(kids) };
       if (typeof item.checked === "boolean") listItem.checked = item.checked;
+
+      if (!unreadable && sublists[0]) {
+        const nested = readListItems(sublists[0]);
+        if (nested.readonlyText) readonlyText = true;
+        listItem.sublist = {
+          listType: asListType(sublists[0].listType),
+          items: nested.items,
+        };
+      }
       return listItem;
     });
+
   return { items, readonlyText };
 }
 
@@ -316,17 +344,10 @@ export function nodeToBlock(node: SerializedNode): Block {
       return block;
     }
     case "list": {
-      // Nesting is expressed by a list inside a list item, which this flat IR
-      // cannot round-trip. Reading it as opaque keeps it whole.
-      if (hasNestedList(node)) {
-        return { type: "opaque", nodeType: "list", summary: "nested list" };
-      }
-      const listType = str(node.listType, "bullet");
       const { items, readonlyText } = readListItems(node);
       const block: ListBlock = {
         type: "list",
-        listType:
-          listType === "number" || listType === "check" ? listType : "bullet",
+        listType: asListType(node.listType),
         items,
       };
       if (readonlyText) block.readonlyText = true;
@@ -461,16 +482,45 @@ const elementNode = (
   extra: Record<string, unknown> = {},
 ): SerializedNode => ({ ...ELEMENT_DEFAULTS, type, ...extra, children });
 
-function listItemNode(item: ListItem, index: number): SerializedNode {
+/**
+ * Build a list item, and the list nested under it.
+ *
+ * `depth` is where `indent` comes from: it is the nesting level, not something
+ * a caller supplies, so the two can never disagree.
+ */
+function listItemNode(
+  item: ListItem,
+  index: number,
+  depth: number,
+): SerializedNode {
+  const children = parseInline(item.text ?? "");
+  if (item.sublist) {
+    children.push(listNode(item.sublist.listType, item.sublist.items, depth + 1));
+  }
   const node: SerializedNode = {
     ...ELEMENT_DEFAULTS,
     type: "listitem",
     value: index + 1,
-    indent: Number.isInteger(item.indent) && item.indent > 0 ? item.indent : 0,
-    children: parseInline(item.text ?? ""),
+    indent: depth,
+    children,
   };
   if (typeof item.checked === "boolean") node.checked = item.checked;
   return node;
+}
+
+function listNode(
+  listType: ListType,
+  items: readonly ListItem[],
+  depth: number,
+): SerializedNode {
+  return {
+    ...ELEMENT_DEFAULTS,
+    type: "list",
+    listType,
+    start: 1,
+    tag: LIST_TYPE_TAG[listType],
+    children: items.map((item, index) => listItemNode(item, index, depth)),
+  };
 }
 
 /**
@@ -523,14 +573,7 @@ export function blockToNode(
         );
       }
       const items = Array.isArray(block.items) ? block.items : [];
-      return {
-        ...base,
-        type: "list",
-        listType,
-        start: 1,
-        tag: LIST_TYPE_TAG[listType],
-        children: items.map(listItemNode),
-      };
+      return { ...base, ...listNode(listType, items, 0) };
     }
     case "divider":
       // A decorator leaf: no children, no element chrome. Carry through

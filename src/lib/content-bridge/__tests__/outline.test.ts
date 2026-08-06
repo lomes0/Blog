@@ -147,8 +147,8 @@ describe("readBlocks", () => {
         type: "list",
         listType: "bullet",
         items: [
-          { text: "first", indent: 0 },
-          { text: "second", indent: 0 },
+          { text: "first" },
+          { text: "second" },
         ],
       },
     ]);
@@ -184,16 +184,33 @@ describe("readAll", () => {
 });
 
 describe("codecs", () => {
-  it("reads a nested list as opaque, since the flat IR cannot rebuild it", () => {
+  it("reads a list whose item nests another list", () => {
     const state = makeState();
     const list = (state.root.children as SerializedNode[])[5];
     (list.children as SerializedNode[])[0].children = [
-      { type: "list", version: 1, listType: "bullet", children: [] },
+      {
+        type: "text", version: 1, text: "outer", detail: 0,
+        format: 0, mode: "normal", style: "",
+      },
+      {
+        type: "list", version: 1, listType: "number", children: [
+          {
+            type: "listitem", version: 1, value: 1, indent: 1,
+            children: [{
+              type: "text", version: 1, text: "inner", detail: 0,
+              format: 0, mode: "normal", style: "",
+            }],
+          },
+        ],
+      },
     ];
     expect(nodeToBlock(list)).toEqual({
-      type: "opaque",
-      nodeType: "list",
-      summary: "nested list",
+      type: "list",
+      listType: "bullet",
+      items: [
+        { text: "outer", sublist: { listType: "number", items: [{ text: "inner" }] } },
+        { text: "second" },
+      ],
     });
   });
 

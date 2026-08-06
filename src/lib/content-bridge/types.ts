@@ -69,16 +69,34 @@ export interface QuoteBlock extends TextOpacity {
   text: string;
 }
 
+export type ListType = "bullet" | "number" | "check";
+
+/** A list hanging off a list item. Nesting is 1–4 deep in practice. */
+export interface NestedList {
+  listType: ListType;
+  items: ListItem[];
+}
+
 export interface ListItem {
   text: string;
   /** Present only for checklists. */
   checked?: boolean;
-  indent: number;
+  /**
+   * A list nested under this item.
+   *
+   * Nesting is structural, not an indent level. Lexical stores it as a `list`
+   * inside a `listitem`, and writes `indent` alongside — but across every
+   * stored list in this blog `indent` is *exactly* the nesting depth minus one,
+   * so it carries no information the structure does not. It is therefore
+   * derived on write rather than exposed, which makes an item whose indent
+   * disagrees with its nesting unrepresentable rather than merely unlikely.
+   */
+  sublist?: NestedList;
 }
 
 export interface ListBlock extends TextOpacity {
   type: "list";
-  listType: "bullet" | "number" | "check";
+  listType: ListType;
   items: ListItem[];
 }
 

@@ -253,7 +253,7 @@ describe("applyOps — structure", () => {
         op: "insert_blocks",
         appendTo: "b4.2",
         blocks: [
-          { type: "list", listType: "check", items: [{ text: "done", checked: true, indent: 0 }] },
+          { type: "list", listType: "check", items: [{ text: "done", checked: true }] },
         ],
       },
     ]);

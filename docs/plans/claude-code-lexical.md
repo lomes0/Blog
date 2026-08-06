@@ -456,7 +456,8 @@ and it was wrong in two places — see the note after the table.
 
 | Node type | Count | State |
 | --------- | ----- | ----- |
-| `paragraph` / `list` / `heading` / `code` / `quote` | 30k+ | phase 1 |
+| `paragraph` / `heading` / `code` / `quote` | 30k+ | phase 1 |
+| `list`, including 1893 nested | 6070 | **graduated**, nesting and all |
 | `horizontalrule` | 1785 | **graduated** as `divider` |
 | `layout-item` | 741 | opaque (structural; you address *into* it) |
 | `blog-tablecell` + `matheditor-tablecell` | 5943 | opaque — **the biggest remaining gap** |
@@ -479,6 +480,19 @@ Two corrections this forced:
   were argued for on authoring value, which is real for `details` and `kanban`
   (§5's two worked examples need them) — so those were built anyway — but
   `iframe` has neither content nor a workflow and was skipped.
+
+Nested lists were the last content gap, and the measurement again decided the
+shape. Nesting is structural — a `list` inside a `listitem` — 1 to 4 levels
+deep, no item ever carries more than one sublist, and `indent` is *exactly* the
+nesting depth minus one in every stored list. So the IR is recursive
+(`item.sublist = {listType, items}`) and **`indent` is derived on write rather
+than exposed**, which makes an item whose indent contradicts its nesting
+unrepresentable rather than merely unlikely.
+
+The check that mattered: every one of the 6070 stored lists was read, rebuilt
+through the codec, and read again. **5917 came back identical and 0 mismatched**
+— the remaining 153 are read-only because their inline content is outside §4.5's
+vocabulary, which is the designed fallback rather than a failure.
 
 Adding tables raised the number of *addressable* blocks in this blog from
 ~23.7k to ~31k, because a table's interior was previously not reachable at all —
@@ -607,7 +621,7 @@ already stable for the editor's lifetime — `address.ts` resolves a path to a
 | 0 | ~~Refusal guard in the Copilot's Markdown path.~~ **Deleted — premise was false (§2.4).** The Copilot already protects rich nodes via opaque tokens; the guard would have removed capability and prevented nothing | |
 | 1 | **DONE.** `src/lib/content-bridge/`: `address`, `stateHash`, `inline` (+ property test), `blocks` (paragraph/heading/quote/list/code + opaque fallback), `ops`, `outline`. 50 specs; pure JSON, no DOM | |
 | 2 | **DONE.** `mcp/content-server.ts` on §5's surface; Markdown path retired. `mcp/lexical.ts`, `bootstrap.mjs` and `css-loader.mjs` **deleted** — the bridge is pure JSON, so the server needs no headless editor and no DOM shim, which closes the §9 fragility outright | |
-| 3 | **PART DONE.** Graduated `divider`, `layout`, `attachment`, `details`, `kanban` (+ `summary`), then **`table` + `cell`** — the largest gap by volume. Each has a §4.6.1 round-trip spec. **Remaining: nested `list` (1893) is the only content still opaque**; `tablerow` (1357) and `layout-item` (741) are pure structure. `iframe` skipped — zero occurrences, no workflow, inherits image's caption problem | §4.6.3 still gates image/sticky/canvas |
+| 3 | **DONE for every content type this blog holds.** `divider`, `layout`, `attachment`, `details`, `kanban`, `summary`, `table`, `cell`, and **nested `list`**. 93.2% of addressable blocks read as typed; the only opaque ones left are `tablerow` (1357) and `layout-item` (741), both pure structure with nothing to author. `iframe` skipped — zero occurrences, no workflow, inherits image's caption problem | §4.6.3 still gates image/sticky/canvas |
 | 4 | **DONE.** `copilotAgentExecutors` + `virtualRepo` on the core; `markdownBridge.ts` **deleted**. Tools are now `outline_document` / `read_blocks` / `read_document` / `search_documents` / `apply_ops` / `create_document(blocks)`; `edit_document`, `write_document` and `read_current_document` are gone | |
 | 5 | **DONE, and it cost less than §2.1 predicted.** The conformance pass fixed a *live* bug rather than merely enabling ids (§2.5). Ids are **opportunistic** — stamped on write, never backfilled, both spellings resolve — so there is no migration and no big-bang | |
 

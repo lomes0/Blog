@@ -379,3 +379,119 @@ describe("table cell", () => {
     });
   });
 });
+
+describe("nested lists", () => {
+  const nested: WritableBlock = {
+    type: "list",
+    listType: "bullet",
+    items: [
+      {
+        text: "outer **one**",
+        sublist: {
+          listType: "number",
+          items: [
+            { text: "inner a" },
+            {
+              text: "inner b",
+              sublist: { listType: "check", items: [{ text: "deep", checked: true }] },
+            },
+          ],
+        },
+      },
+      { text: "outer two" },
+    ],
+  };
+
+  it("round-trips three levels of nesting", () => {
+    const { readBack } = rebuilds(nested);
+    expect(readBack).toEqual(nested);
+  });
+
+  it("derives indent from nesting depth, so the two cannot disagree", () => {
+    // Across every stored list here, indent is exactly depth - 1. Making it
+    // derived removes the possibility of an item whose indent contradicts
+    // where it actually sits.
+    const node = blockToNode(nested);
+    const indentAt = (n: SerializedNode, depth: number): number[] =>
+      kids(n)
+        .filter((item) => item.type === "listitem")
+        .flatMap((item) => [
+          item.indent as number,
+          ...kids(item)
+            .filter((c) => c.type === "list")
+            .flatMap((sub) => indentAt(sub, depth + 1)),
+        ]);
+    expect(indentAt(node, 0)).toEqual([0, 1, 1, 2, 0]);
+  });
+
+  it("keeps each level's own list type", () => {
+    const node = blockToNode(nested);
+    const outer = kids(node)[0];
+    const middle = kids(outer).find((c) => c.type === "list")!;
+    const inner = kids(kids(middle)[1]).find((c) => c.type === "list")!;
+    expect([node.listType, middle.listType, inner.listType]).toEqual([
+      "bullet",
+      "number",
+      "check",
+    ]);
+    expect([node.tag, middle.tag, inner.tag]).toEqual(["ul", "ol", "ul"]);
+  });
+
+  it("nests a list built from an item with no text of its own", () => {
+    // The overwhelmingly common stored shape: a wrapper item holding only a
+    // nested list.
+    const block: WritableBlock = {
+      type: "list",
+      listType: "bullet",
+      items: [{ text: "", sublist: { listType: "bullet", items: [{ text: "only" }] } }],
+    };
+    expect(nodeToBlock(blockToNode(block))).toEqual(block);
+  });
+
+  it("goes read-only on a shape it could not put back", () => {
+    const twoSublists: SerializedNode = {
+      type: "list",
+      version: 1,
+      listType: "bullet",
+      children: [
+        {
+          type: "listitem",
+          version: 1,
+          children: [
+            { type: "list", version: 1, listType: "bullet", children: [] },
+            { type: "list", version: 1, listType: "bullet", children: [] },
+          ],
+        },
+      ],
+    };
+    expect(nodeToBlock(twoSublists)).toMatchObject({
+      type: "list",
+      readonlyText: true,
+    });
+  });
+
+  it("goes read-only when content follows the nested list", () => {
+    const trailing: SerializedNode = {
+      type: "list",
+      version: 1,
+      listType: "bullet",
+      children: [
+        {
+          type: "listitem",
+          version: 1,
+          children: [
+            { type: "list", version: 1, listType: "bullet", children: [] },
+            {
+              type: "text", version: 1, text: "after", detail: 0,
+              format: 0, mode: "normal", style: "",
+            },
+          ],
+        },
+      ],
+    };
+    expect(nodeToBlock(trailing)).toMatchObject({
+      type: "list",
+      readonlyText: true,
+    });
+  });
+});

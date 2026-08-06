@@ -144,7 +144,10 @@ async function saveRevision(
 const listItemSchema = z.object({
   text: z.string(),
   checked: z.boolean().optional(),
-  indent: z.number().int().min(0).default(0),
+  // Nesting is recursive, which zod cannot express inside a discriminated
+  // union without a lazy schema the JSON-Schema conversion would not survive.
+  // The codec validates the shape: {listType, items:[…]}.
+  sublist: z.unknown().optional(),
 });
 
 const kanbanTaskSchema = z.object({
@@ -242,7 +245,8 @@ const opSchema = z.discriminatedUnion("op", [
 const BLOCK_DOC =
   "Authorable block types: paragraph {text}, heading {level 1-6, text}, " +
   "quote {text}, code {language, code}, list {listType bullet|number|check, " +
-  "items[{text, checked?, indent}]}, divider {}, " +
+  "items[{text, checked?, sublist?}]} where sublist is {listType, items[…]} " +
+  "for nesting, divider {}, " +
   "attachment {url, filename, mimetype?, size?}, " +
   "kanban {tasks[{name, description?, stage, priority low|medium|high, tags?}]}, " +
   "layout {templateColumns e.g. \"1fr 1fr\", columns[[block,…],[block,…]]}, " +

@@ -11,7 +11,13 @@
  * still shape rather than content — the descriptor says "3 lanes · 11 cards",
  * not what the cards say.
  */
-import type { Address, AddressedBlock, Block, StoredState } from "./types";
+import type {
+  Address,
+  AddressedBlock,
+  Block,
+  ListItem,
+  StoredState,
+} from "./types";
 import { formatAddress, walkBlocks } from "./address";
 import { canSetText, nodeToBlock } from "./blocks";
 import { stateHash } from "./stateHash";
@@ -61,6 +67,19 @@ function kindOf(block: Block): string {
 
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
 
+const countItems = (items: readonly ListItem[]): number =>
+  items.reduce(
+    (total, item) => total + 1 + (item.sublist ? countItems(item.sublist.items) : 0),
+    0,
+  );
+
+const listDepth = (items: readonly ListItem[]): number =>
+  items.reduce(
+    (deepest, item) =>
+      Math.max(deepest, item.sublist ? 1 + listDepth(item.sublist.items) : 1),
+    0,
+  );
+
 function entryFor(block: Block): { preview: string; chars?: number } {
   switch (block.type) {
     case "paragraph":
@@ -73,10 +92,15 @@ function entryFor(block: Block): { preview: string; chars?: number } {
       return { preview: `${lines} line${lines === 1 ? "" : "s"}`, chars: block.code.length };
     }
     case "list": {
-      const count = block.items.length;
-      const first = block.items[0]?.text ?? "";
+      // Count the whole tree: a list of 3 items each with 4 children is not a
+      // "3 item" list to anyone deciding whether to read it.
+      const count = countItems(block.items);
+      const depth = listDepth(block.items);
+      const first = block.items.find((item) => item.text)?.text ?? "";
       return {
-        preview: `${count} item${count === 1 ? "" : "s"}${first ? ` · ${truncate(first)}` : ""}`,
+        preview: `${plural(count, "item")}${depth > 1 ? `, ${depth} levels` : ""}${
+          first ? ` · ${truncate(first)}` : ""
+        }`,
       };
     }
     case "divider":
