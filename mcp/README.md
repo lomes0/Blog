@@ -6,6 +6,11 @@ Claude can navigate, read, write and create posts from the terminal.
 Personal, single-user use: everything is scoped to one author (`MCP_AUTHOR_ID`),
 and it authenticates to Claude via your normal Claude Code login — no API key.
 
+**To actually use it, start with
+[docs/guides/claude-code-content.md](../docs/guides/claude-code-content.md)** —
+setup, the read → write cycle, and what will trip you up. This file is the
+design rationale.
+
 ## How it works
 
 Posts are stored as Lexical editor-state JSON in `Revision.data`, not files.
