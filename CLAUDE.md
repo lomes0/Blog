@@ -58,7 +58,7 @@ globals; `compilerOptions.types` is deliberately left unset, because setting it
 would restrict resolution to only its entries and drop every other ambient
 package.
 
-Coverage is seventeen specs, 320 assertions: `src/lib/__tests__/ordering.test.ts`
+Coverage is eighteen specs, 334 assertions: `src/lib/__tests__/ordering.test.ts`
 (fractional rank keys),
 `src/components/Layout/SideBar/__tests__/
 dragGeometry.test.ts` (sidebar drag
@@ -100,12 +100,19 @@ a load — `importJSON` is the only parse path, so a class that does not delegat
 to `updateFromJSON` silently drops node state _and_ element format/indent/
 direction; five classes did). `npm run check:nodes` enforces the same rule
 statically across every node class, including the `.tsx` ones the test
-environment cannot parse. The newest is
-`src/lib/__tests__/proposals.test.ts` (gating an agent's writes — that a head
-repair falls back to history rather than promoting a pending proposal, and that
-squashing a second batch onto one carries `baseRevisionId` through untouched
-while `version` advances; see docs/plans/agent-gating.md §3.2, where refreshing
-that one field is the silent clobber).
+environment cannot parse. The newest two both gate an agent's writes:
+`src/lib/__tests__/proposals.test.ts` (that a head repair falls back to history
+rather than promoting a pending proposal, and that squashing a second batch onto
+one carries `baseRevisionId` through untouched while `version` advances; see
+docs/plans/agent-gating.md §3.2, where refreshing that one field is the silent
+clobber) and `src/lib/__tests__/agentBatches.test.ts`, which is the phase-2
+acceptance test — three consecutive `apply_ops` calls simulated end to end over
+an in-memory stand-in for the two tables, asserting that they leave exactly one
+pending proposal holding all three edits, that each batch saw the previous one's
+work, and that `head` never moves. The database half of that (the partial unique
+index and the `version` compare-and-set actually firing) is a throwaway script
+against the local Postgres, not a spec — as is anything about `mcp/`, which has
+no test environment.
 
 All of these follow the same rule as `dragGeometry.ts`: the logic lives in an
 import-free module so it can be exercised without mounting anything. The IDB

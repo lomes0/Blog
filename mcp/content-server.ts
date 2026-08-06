@@ -24,6 +24,12 @@ import { DocumentType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { rankForAppend } from "@/repositories/ordering";
 import {
+  findPendingProposal,
+  type ProposalRecord,
+  upsertProposal,
+} from "@/repositories/revision";
+import { selectAgentRead } from "@/lib/proposals";
+import {
   applyOps,
   emptyState,
   formatOutline,
@@ -76,27 +82,45 @@ const fail = (s: string) => ({
 // Loading and saving
 // ---------------------------------------------------------------------------
 
+/** Where a write from this process says it came from (`Revision.origin`). */
+const AGENT_ORIGIN = "claude-code";
+
 interface Loaded {
   id: string;
   name: string;
   state: StoredState;
-  /** The head this state was read at — the precondition for writing it back. */
-  head: string | null;
+  /**
+   * `Document.head` as it was when this state was read — the **base** a
+   * proposal records, not a precondition anything checks here.
+   *
+   * It used to be both: `saveRevision` moved `head` conditionally on it, and a
+   * miss meant an editor tab had saved underneath. Gating removed that write, so
+   * nothing in this process guards anything any more. The value's one job now is
+   * to be stored as `baseRevisionId` when the proposal is *created*, where it
+   * becomes `expectedHead` for approval's compare-and-set (§3.4) — which is why
+   * it is head rather than whatever row `state` was actually read from. Once a
+   * proposal exists those two differ, and a squash ignores this field entirely
+   * (§3.2).
+   */
+  base: string | null;
+  /**
+   * Which state was read: the committed document, or the document's pending
+   * proposal. Every read tool says so, because "the outline you are looking at
+   * is not what the blog is serving" is a fact the agent has to carry into what
+   * it tells the user.
+   */
+  source: "proposal" | "committed" | "empty";
 }
 
-/** A write refused because the document moved under it. */
-class StaleHeadError extends Error {
-  constructor() {
-    super(
-      "The document was saved by someone else (an editor tab, most likely) " +
-        "while these edits were being prepared. Nothing was written. Re-read " +
-        "it and apply the edits again.",
-    );
-    this.name = "StaleHeadError";
-  }
-}
-
-/** Fetch one of the author's posts as an editor state. */
+/**
+ * Fetch one of the author's posts as an editor state.
+ *
+ * **The pending proposal wins over `head`.** If a batch rewrote block 2, the
+ * next `outline` has to show that rewrite, or its addresses describe a document
+ * that no longer exists and the fold silently drops the earlier batch (§3.2).
+ * `selectAgentRead` makes that choice, and keeps it apart from the `base` a
+ * write records.
+ */
 async function loadPost(id: string, authorId: string): Promise<Loaded | null> {
   const doc = await prisma.document.findFirst({
     where: { id, authorId, type: DocumentType.DOCUMENT },
@@ -104,64 +128,76 @@ async function loadPost(id: string, authorId: string): Promise<Loaded | null> {
   });
   if (!doc) return null;
 
-  const revision = doc.head
-    ? await prisma.revision.findUnique({
-      where: { id: doc.head },
-      select: { data: true },
+  const pending = await findPendingProposal(doc.id);
+
+  // Only looked up when there is no proposal to read instead. Both arms filter
+  // `proposedAt: null`: the no-head fallback in particular used to be a bare
+  // "newest revision", and under gating the newest revision is usually the
+  // proposal — which would make this branch resolve it by accident, in the one
+  // case where the accident is indistinguishable from the decision until it is
+  // wrong.
+  const committed = pending
+    ? null
+    : doc.head
+    ? await prisma.revision.findFirst({
+      where: { id: doc.head, proposedAt: null },
+      select: { id: true, data: true },
     })
     : await prisma.revision.findFirst({
-      where: { documentId: id },
+      where: { documentId: doc.id, proposedAt: null },
       orderBy: { createdAt: "desc" },
-      select: { data: true },
+      select: { id: true, data: true },
     });
+
+  const read = selectAgentRead({ head: doc.head, pending, committed });
 
   // A post with no revision yet is an empty document, not an error — it can be
   // written to like any other.
-  const data = revision?.data;
+  const data = read.revision?.data;
   return {
     id: doc.id,
     name: doc.name,
     state: (data as StoredState | undefined) ?? emptyState(),
-    head: doc.head,
+    base: read.base,
+    source: read.source,
   };
 }
 
 /**
- * Save a new state as a new revision and advance head.
+ * Write the edited state as a **proposal**, leaving `Document.head` alone.
  *
- * Always a fresh revision id. The editor deliberately folds a run of autosaves
- * into one revision by re-posting its id (see the plan §2.2); an agent write is
- * a distinct point in history and must not be merged into whatever the editor
- * happens to have open.
+ * This is the whole of the gate (§1): the write and the commit were already two
+ * operations, and gating is a matter of not doing the second. The row goes to
+ * storage with `proposedAt` set, where the app can show it and nothing that
+ * serves the document will reach it; approval moves the pointer, rejection
+ * deletes it.
  *
- * `expectedHead` is the head the edited state was read at, and the write is
- * conditional on it. `stateHash` already refuses a batch whose *addresses* have
- * gone stale, but it is checked in this process against a state read moments
- * earlier — an editor saving in that window would simply be overwritten. The
- * guard has to be in the database to mean anything, which is what `updateMany`
- * on `head` does here: it matches nothing if the row moved, and it holds the
- * row lock for the rest of the transaction if it did not.
+ * Successive batches squash into that one row rather than accumulating — see
+ * `upsertProposal`, which does the `version` compare-and-set and re-folds on a
+ * miss. `base` is used only if there is no proposal yet: on a squash the
+ * original base is carried through untouched, which is the one invariant in this
+ * design with no database constraint behind it (§3.2, §9).
+ *
+ * There is deliberately no guard here. The conditional `head` write this
+ * replaced was what detected an editor tab saving underneath; that
+ * compare-and-set has moved to approval time, where a human can resolve the
+ * conflict (§3.8). The tool text must not claim otherwise.
  */
-async function saveRevision(
+async function proposeRevision(
   documentId: string,
   authorId: string,
   state: StoredState,
-  expectedHead: string | null,
-): Promise<string> {
-  const revisionId = randomUUID();
-  await prisma.$transaction(async (tx) => {
-    const { count } = await tx.document.updateMany({
-      where: { id: documentId, head: expectedHead },
-      data: { head: revisionId },
-    });
-    // The document was proven to exist by the read this write is based on, so a
-    // miss means the head moved rather than the row vanishing.
-    if (count === 0) throw new StaleHeadError();
-    await tx.revision.create({
-      data: { id: revisionId, documentId, authorId, data: state as object },
-    });
+  ops: readonly unknown[],
+  base: string | null,
+): Promise<ProposalRecord> {
+  return upsertProposal({
+    documentId,
+    authorId,
+    data: state,
+    ops,
+    origin: AGENT_ORIGIN,
+    base,
   });
-  return revisionId;
 }
 
 // ---------------------------------------------------------------------------
@@ -360,11 +396,21 @@ server.registerTool(
     if (!post) return fail(`Post ${id} not found (or not yours).`);
 
     const result = outline(post.state);
+    // Every read resolves the pending proposal in preference to the live
+    // document (§3.2). Saying so is the difference between the agent reporting
+    // "the post now says X" and "the proposal I have pending says X".
+    const note = post.source === "proposal"
+      ? "\n(showing this post's pending proposal, not the live document)"
+      : "";
     if (result.blocks.length === 0) {
-      return text(`"${post.name}" is empty.\nstateHash: ${result.stateHash}`);
+      return text(
+        `"${post.name}" is empty.${note}\nstateHash: ${result.stateHash}`,
+      );
     }
     return text(
-      `"${post.name}"\nstateHash: ${result.stateHash}\n\n${formatOutline(result)}`,
+      `"${post.name}"${note}\nstateHash: ${result.stateHash}\n\n${
+        formatOutline(result)
+      }`,
     );
   },
 );
@@ -390,7 +436,7 @@ server.registerTool(
     if (result.blocks.length === 0) {
       return fail(`No blocks matched ${result.missing.join(", ")} in post ${id}.`);
     }
-    return json(result);
+    return json({ ...result, pendingProposal: post.source === "proposal" });
   },
 );
 
@@ -406,7 +452,13 @@ server.registerTool(
     const authorId = await getAuthorId();
     const post = await loadPost(id, authorId);
     if (!post) return fail(`Post ${id} not found (or not yours).`);
-    return json({ title: post.name, ...readAll(post.state) });
+    return json({
+      title: post.name,
+      // True when what follows is the post's pending proposal rather than the
+      // live document — see `loadPost`.
+      pendingProposal: post.source === "proposal",
+      ...readAll(post.state),
+    });
   },
 );
 
@@ -443,18 +495,34 @@ server.registerTool(
       preview: string;
     }> = [];
 
-    // Walks every post's head revision. Fine at one author's scale; if this
+    // Pending proposals shadow head here for the same reason they do in
+    // `loadPost`: a hit hands back a block address, and an address that came
+    // from the live document does not name the same block in the proposal that
+    // `apply_ops` would edit. One query rather than one per document.
+    const proposed = new Map(
+      (await prisma.revision.findMany({
+        where: {
+          documentId: { in: docs.map((doc) => doc.id) },
+          proposedAt: { not: null },
+        },
+        select: { documentId: true, data: true },
+      })).map((row) => [row.documentId, row.data]),
+    );
+
+    // Walks every post's current state. Fine at one author's scale; if this
     // ever gets slow, prefilter in SQL on the revision JSON before walking.
     for (const doc of docs) {
       if (hits.length >= limit) break;
-      if (!doc.head) continue;
-      const revision = await prisma.revision.findUnique({
-        where: { id: doc.head },
-        select: { data: true },
-      });
-      if (!revision?.data) continue;
+      const data = proposed.get(doc.id) ??
+        (doc.head
+          ? (await prisma.revision.findUnique({
+            where: { id: doc.head },
+            select: { data: true },
+          }))?.data
+          : null);
+      if (!data) continue;
 
-      for (const { address, node } of walkBlocks(revision.data as StoredState)) {
+      for (const { address, node } of walkBlocks(data as StoredState)) {
         if (hits.length >= limit) break;
         const block = nodeToBlock(node);
         const haystack = blockText(block);
@@ -487,10 +555,19 @@ server.registerTool(
   "apply_ops",
   {
     description:
-      "Edit a post by block. Every op names a block address from a read, and " +
-      "the batch carries that read's stateHash — if the document changed since, " +
-      "the whole batch is refused and you re-read. Ops apply all-or-nothing, " +
-      "and blocks you do not name are left exactly as they were. " +
+      "PROPOSE a block-level edit to a post. The change is stored, but it does " +
+      "not become the document: it lands as a pending proposal for the author " +
+      "to approve or reject in the app. Report it as proposed, never as done. " +
+      "Successive calls on the same post squash into that one proposal, and " +
+      "every read of the post then returns the proposed content, so you can " +
+      "keep editing against your own work. " +
+      "Every op names a block address from a read, and the batch carries that " +
+      "read's stateHash — if the state you read has moved on, the whole batch " +
+      "is refused and you re-read. That guard covers the state you read; it " +
+      "does NOT detect the author saving in an editor tab, which is checked " +
+      "only when the proposal is approved. " +
+      "Ops apply all-or-nothing, and blocks you do not name are left exactly " +
+      "as they were. " +
       "Ops: set_text{id,text}, replace_block{id,block}, " +
       "insert_blocks{blocks,after|before|appendTo}, delete_block{id}, " +
       "move_block{id,after|before|appendTo}. " +
@@ -513,22 +590,28 @@ server.registerTool(
       return fail((error as Error).message);
     }
 
-    let revisionId: string;
-    try {
-      revisionId = await saveRevision(
-        post.id,
-        authorId,
-        result.state,
-        post.head,
-      );
-    } catch (error) {
-      if (error instanceof StaleHeadError) return fail(error.message);
-      throw error;
-    }
+    const proposal = await proposeRevision(
+      post.id,
+      authorId,
+      result.state,
+      ops,
+      post.base,
+    );
+
     const after = outline(result.state);
+    // `version` counts folds, so 0 means this call created the proposal.
+    const squashed = proposal.version > 0;
     return text(
-      `Updated ${result.changed} block${result.changed === 1 ? "" : "s"} in ` +
-        `"${post.name}" (revision ${revisionId}).\n` +
+      `Proposed ${result.changed} block change` +
+        `${result.changed === 1 ? "" : "s"} to "${post.name}". Nothing is ` +
+        `live: the document is unchanged, and this is ` +
+        (squashed
+          ? `folded into the pending proposal ${proposal.id} ` +
+            `(batch ${proposal.version + 1})`
+          : `pending proposal ${proposal.id}`) +
+        `, awaiting the author's approval in the app.\n` +
+        `Further edits to this post fold into the same proposal, and reads of ` +
+        `it now return the proposed content rather than the live document.\n` +
         `stateHash: ${after.stateHash}\n\n${formatOutline(after)}`,
     );
   },
@@ -540,7 +623,10 @@ server.registerTool(
     description:
       "Create a post from blocks. Produces real Lexical content — proper code " +
       "nodes with highlighting, real headings and lists — not fenced Markdown. " +
-      "The post is created unpublished. " +
+      "Unlike apply_ops, a create lands normally rather than as a proposal — " +
+      "there is nothing to overwrite — but it is flagged agent-created: it " +
+      "arrives in the author's library as an unpublished draft awaiting their " +
+      "accept or discard, and nobody else can read it until it is published. " +
       BLOCK_DOC,
     inputSchema: {
       title: z.string().min(1).describe("Post title"),
@@ -582,6 +668,12 @@ server.registerTool(
           rank,
           seriesId: seriesId ?? null,
           head: revisionId,
+          // A create has no head to withhold and overwrites nothing, so it
+          // lands — flagged, not gated (§3.7). The flag is what puts it in the
+          // author's accept-or-discard list; `published` already defaults to
+          // false, so "lands normally" is not "goes live".
+          agentCreatedAt: new Date(),
+          agentOrigin: AGENT_ORIGIN,
         },
       }),
       prisma.revision.create({
@@ -591,7 +683,11 @@ server.registerTool(
 
     return text(
       `Created post ${id} ("${title}") with ${blocks.length} block` +
-        `${blocks.length === 1 ? "" : "s"}.\nstateHash: ${stateHash(state)}`,
+        `${blocks.length === 1 ? "" : "s"} — an unpublished draft, flagged ` +
+        `agent-created and awaiting the author's accept or discard. Nobody ` +
+        `else can read it until they publish it.\nstateHash: ${
+          stateHash(state)
+        }`,
     );
   },
 );

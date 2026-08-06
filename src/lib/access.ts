@@ -24,9 +24,12 @@ import type { CloudPost } from "@/types";
  *
  * - `own`   — acts on the document as an object: rename, delete, change its
  *             handle or visibility, attach files, move it between containers.
+ *             Also: approve, reject or read a *pending agent proposal* — see
+ *             `requireRevision`, which forces this mode for one.
  * - `write` — edits the document's *content*: open it in the editor, save a
  *             revision, flip its status.
- * - `read`  — views rendered content: thumbnails, forking a copy.
+ * - `read`  — views rendered content: thumbnails, forking a copy. Published and
+ *             not private, or open for collaboration.
  */
 export type DocumentAccess = "own" | "write" | "read";
 
@@ -115,6 +118,15 @@ export async function requireDocument(
  * travel in document and series payloads, so anyone who could list series could
  * dereference every draft in the database. Access follows the parent document.
  *
+ * **A pending agent proposal is owner-only whatever the document allows.**
+ * Following the document would make an unapproved rewrite of a *published* post
+ * readable by anyone holding its id (docs/plans/agent-gating.md §2.1), and
+ * `collab` would hand it to any signed-in visitor besides — so the requested
+ * mode is overridden to `own`, the same line §3.4 draws for approving one. It is
+ * an override rather than a caller's option because there is no call site that
+ * should be able to opt out: a proposal is not the document, and it is not
+ * history either until it is approved.
+ *
  * `revisions: "all"` on the parent lookup keeps this read off the head-repair
  * write path inside `findDocument`.
  */
@@ -128,10 +140,12 @@ export async function requireRevision(
   if (!revision) {
     throw new ApiError(404, "Document Revision not found");
   }
-  await requireDocument(revision.documentId, user, access, {
-    revisions: "all",
-    subtitle,
-  });
+  await requireDocument(
+    revision.documentId,
+    user,
+    revision.proposedAt ? "own" : access,
+    { revisions: "all", subtitle },
+  );
   return revision;
 }
 

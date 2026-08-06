@@ -71,6 +71,23 @@ const getCachedRevision = async (id: string): Promise<StoredRevision | null> => 
   return cached;
 };
 
+/**
+ * Is this revision id a pending agent proposal?
+ *
+ * For the callers that render a revision straight from an id and have nothing
+ * else to branch on — see `src/app/api/utils.ts`, where `/embed` and `/view`
+ * take one from `?v=`. Deliberately uncached and deliberately narrow: the row is
+ * rewritten in place on every batch, and the answer must not be a stale `true`
+ * that outlives approval.
+ */
+const isPendingProposal = async (id: string): Promise<boolean> => {
+  const row = await prisma.revision.findUnique({
+    where: { id },
+    select: { proposedAt: true },
+  });
+  return !!row?.proposedAt;
+};
+
 /** The document a revision belongs to, or undefined if there is no such revision. */
 const findRevisionDocumentId = async (id: string) => {
   const revision = await prisma.revision.findUnique({
@@ -412,6 +429,7 @@ export {
   findRevisionAuthorId,
   findRevisionDocumentId,
   getCachedRevision,
+  isPendingProposal,
   rejectProposal,
   updateRevision,
   upsertProposal,
