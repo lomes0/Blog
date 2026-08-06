@@ -40,10 +40,11 @@ Each documents a specific failure mode and its fix.
 Proposals and audits — **status is stated at the top of each file**. These
 describe intended or observed states, not necessarily the current one.
 
-| File                                 | Description                                     |
-| ------------------------------------ | ----------------------------------------------- |
-| [plans/README.md](./plans/README.md) | Index of the content-model & ordering proposals |
-| [reviews/](./reviews/)               | Point-in-time code reviews, dated               |
+| File                                                                       | Description                                                                     |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| [plans/README.md](./plans/README.md)                                       | Index of the content-model & ordering proposals                                 |
+| [claude_code_support_tasks.md](./claude_code_support_tasks.md)             | Backlog for the Claude Code / Copilot content bridge — what is left, and why    |
+| [reviews/](./reviews/)                                                     | Point-in-time code reviews, dated                                               |
 
 Findings in `reviews/` carry a per-finding `STATUS` line stating whether they
 are still open. Re-verify before acting on one — a review body describes the
