@@ -39,8 +39,9 @@ const REVISION_SESSION_MS = 10 * 60 * 1000;
  * cleared in the same tick and the retry machinery simply never engages.
  *
  * Returns `savedBaseline` — the content storage last confirmed — which drives
- * dirty tracking and the editor's reset action, and an `onChange` handler to
- * compose with the other editor change handlers.
+ * the editor's reset action, an `onChange` handler to compose with the other
+ * editor change handlers, and two answers derived from that same baseline:
+ * `hasUnsavedChanges()` and `adoptSavedState()`.
  */
 export function useSave(
   post: Post | undefined,
@@ -223,6 +224,80 @@ export function useSave(
     }
   }, [postId, dispatch, editorRef, errorAnnounce, cancelRetry]);
 
+  /**
+   * Does the editor hold anything storage has not acknowledged?
+   *
+   * The answer §3.9 of docs/plans/agent-gating.md needs, and deliberately a
+   * *function* rather than a piece of state. There is no dirty flag in this app
+   * and putting one back was explicitly the wrong fix: `SaveStatus` cannot
+   * answer (`idle` covers both "clean" and "typed, not yet flushed"), and
+   * `dirtyDocIds`/`useDirtyTracking`/`selectIsDirty` were deleted when autosave
+   * went quiet — they cost a full `JSON.stringify` of the document on the typing
+   * path to keep a mirror nobody read.
+   *
+   * This is the same comparison `save` makes, against the same ref, and it costs
+   * the same `JSON.stringify` — but only at the moment somebody asks, which is
+   * when an approval lands under an open tab. One component asking itself a
+   * question once is not global state, and nothing re-renders because of it.
+   *
+   * A null baseline means the document has never been acknowledged in this
+   * session (nothing loaded yet), which is answered as "not dirty": there is no
+   * confirmed content for an approval to be replacing.
+   *
+   * **A byte comparison alone is not enough, and this was measured.** The
+   * baseline `usePostLoader` installs is the document's JSON *as stored*, while
+   * the left-hand side is what Lexical serializes — and Lexical normalizes on
+   * parse, filling in node defaults and settling key order. The two describe the
+   * same document and are not equal as strings, so an untouched freshly-opened
+   * tab answered "dirty" and every approval asked to replace edits nobody had
+   * made. Round-tripping the baseline through the same editor removes exactly
+   * that difference and no other: content really typed still fails to match.
+   *
+   * The round trip only runs when the cheap comparison has already failed, so
+   * the untouched case stays one `JSON.stringify`.
+   */
+  const hasUnsavedChanges = useCallback((): boolean => {
+    const baseline = savedBaseline.current;
+    if (baseline === null) return false;
+    const editor = editorRef.current;
+    const editorState = editor?.getEditorState() ?? latestState.current;
+    if (!editorState) return false;
+
+    const current = JSON.stringify(editorState.toJSON());
+    if (current === baseline) return false;
+    // Without an editor there is nothing to normalize against, and a difference
+    // has to be taken at face value.
+    if (!editor) return true;
+    try {
+      return JSON.stringify(editor.parseEditorState(baseline).toJSON()) !==
+        current;
+    } catch {
+      // A baseline the editor cannot parse is not a baseline. Say dirty: the
+      // question is asked before overwriting, and the cautious answer is the one
+      // that puts the choice in front of the user.
+      return true;
+    }
+  }, [editorRef]);
+
+  /**
+   * Adopt content that arrived from outside this tab as the new baseline.
+   *
+   * Used when an approved proposal replaces the document under an open editor.
+   * Without it the tab would keep sending `expectedHead` = the head it loaded
+   * at, which approval has just moved off — so the very next autosave would 409
+   * against a change the user themselves applied, and the tab would sit
+   * conflicted for no reason. Sealing the revision as well means the edits after
+   * a reload open a fresh row rather than folding into one that describes the
+   * pre-approval text.
+   */
+  const adoptSavedState = useCallback((head: string, serialized: string) => {
+    savedBaseline.current = serialized;
+    lastSavedHead.current = head;
+    conflicted.current = false;
+    attempt.current = 0;
+    revisionId.current = null;
+  }, []);
+
   // Keep a live handle so unmount and event listeners never call a stale save.
   const saveRef = useRef(save);
   saveRef.current = save;
@@ -281,5 +356,5 @@ export function useSave(
     closeRevision();
   }, [scheduleSave, cancelRetry, closeRevision]);
 
-  return { save, savedBaseline, track };
+  return { save, savedBaseline, track, hasUnsavedChanges, adoptSavedState };
 }

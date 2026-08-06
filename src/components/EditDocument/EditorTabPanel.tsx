@@ -11,16 +11,22 @@ import { useSelector as useReduxSelector } from "react-redux";
 import ConnectedEditor from "@/components/ConnectedEditor";
 import SplashScreen from "@/components/shared/SplashScreen";
 import DiffView from "@/components/Diff";
-import { postsSelectors, useSelector } from "@/store";
+import ProposalReviewBar from "@/components/Diff/ProposalReviewBar";
+import { actions, postsSelectors, useDispatch, useSelector } from "@/store";
 import type { RootState } from "@/store";
 import { selectPaneById } from "@/store/selectors/layoutSelectors";
+import { useConfirm } from "@/hooks/useConfirm";
 import { usePostLoader } from "./hooks/usePostLoader";
 import { useSave } from "./hooks/useSave";
 import { useScrollMemory } from "./hooks/useScrollMemory";
-import type { PaneMode, Post } from "@/types";
+import { EMPTY_EDITOR_STATE, type PaneMode, type Post } from "@/types";
 import DocumentHeader from "./DocumentHeader";
 import PaneSkeleton from "./PaneSkeleton";
 import { triggerSave } from "./saveRegistry";
+import {
+  registerProposalReload,
+  unregisterProposalReload,
+} from "./proposalReload";
 
 const EditDocumentInfo = dynamic(
   () => import("@/components/EditDocument/EditDocumentInfo"),
@@ -120,6 +126,8 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
   onEditorReady,
 }) => {
   const editorRef = useRef<LexicalEditor>(null);
+  const dispatch = useDispatch();
+  const confirm = useConfirm();
 
   useEffect(() => {
     if (isFocused) onEditorReady?.(editorRef);
@@ -149,10 +157,13 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
     (a, b) => a?.id === b?.id,
   );
 
-  const { save, savedBaseline, track: handleEditorChange } = useSave(
-    reduxPost,
-    editorRef,
-  );
+  const {
+    save,
+    savedBaseline,
+    track: handleEditorChange,
+    hasUnsavedChanges,
+    adoptSavedState,
+  } = useSave(reduxPost, editorRef);
   const { isLoading, error, loadedPost, restoredFromPending } = usePostLoader(
     docId,
     savedBaseline,
@@ -172,6 +183,60 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
       console.error("Failed to reset editor state:", e);
     }
   }, [editorRef, savedBaseline, loadedPost]);
+
+  // ── An approval landing under this tab (agent-gating §3.9) ────────────────
+  //
+  // Approving moved `Document.head`, so what this editor is showing has stopped
+  // being the document. Doing nothing was the cheap option and is wrong: the
+  // existing 409 path would eventually notice, but not until the user typed, and
+  // until then the screen quietly lies.
+  //
+  // Clean → reload and say nothing, because a success is not an event. Dirty →
+  // ask first, since the reload is about to overwrite text the user can see and
+  // storage has never acknowledged. "Dirty" is `hasUnsavedChanges()`, asked once
+  // here — not a flag in the store (§3.9 is explicit that reintroducing one is
+  // the wrong fix).
+  const reloadToApprovedHead = useCallback(async () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    if (hasUnsavedChanges()) {
+      const replace = await confirm({
+        title: "Replace your unsaved edits?",
+        content:
+          `“${
+            reduxPost?.name ?? "This document"
+          }” has changes here that were ` +
+          "never saved, and the change you just approved replaces them. " +
+          "Keep editing to save yours first — the approved version is already " +
+          "stored either way, and reopening the document will show it.",
+        confirmLabel: "Replace",
+        cancelLabel: "Keep editing",
+      });
+      if (!replace) return;
+    }
+
+    const post = await dispatch(actions.getPost(docId)).unwrap();
+    const dataStr = JSON.stringify(post.data ?? EMPTY_EDITOR_STATE);
+    editor.setEditorState(editor.parseEditorState(dataStr));
+    editor.dispatchCommand(CLEAR_HISTORY_COMMAND, undefined);
+    // The tab's save precondition has to move with the content, or its next
+    // autosave carries the head it loaded at and 409s against the approval.
+    adoptSavedState(post.head, dataStr);
+  }, [
+    editorRef,
+    hasUnsavedChanges,
+    confirm,
+    reduxPost?.name,
+    dispatch,
+    docId,
+    adoptSavedState,
+  ]);
+
+  useEffect(() => {
+    registerProposalReload(docId, reloadToApprovedHead);
+    return () => unregisterProposalReload(docId);
+  }, [docId, reloadToApprovedHead]);
 
   const documentForEditor = useMemo(
     () => loadedPost ? ensureValidDocumentData(loadedPost) : undefined,
@@ -222,7 +287,12 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
             }
             {isActive && tabs}
           </DocumentHeader>
-          {showDiff && isActive && <DiffView />}
+          {showDiff && isActive && (
+            <>
+              <ProposalReviewBar docId={docId} />
+              <DiffView />
+            </>
+          )}
           <ConnectedEditor
             document={documentForEditor}
             editorRef={editorRef}

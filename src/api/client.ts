@@ -10,14 +10,17 @@
 
 import type { SerializedEditorState } from "lexical";
 import type {
+  AgentCreatedPost,
   CopilotThread,
   CopilotThreadInput,
   DocumentStorageUsage,
   GetSessionResponse,
+  PendingProposal,
   Post,
   PostCreateInput,
   PostUpdateInput,
   Project,
+  ProposalCount,
   Revision,
   RevisionMeta,
   Series,
@@ -298,6 +301,69 @@ export const apiClient = {
       request<{ id: string; documentId: string }>(`/api/revisions/${id}`, {
         method: "DELETE",
       }),
+  },
+
+  // -------------------------------------------------------------------------
+  // Agent proposals (docs/plans/agent-gating.md)
+  // -------------------------------------------------------------------------
+  proposals: {
+    /**
+     * GET /api/proposals/count — the §3.5 focus poll.
+     *
+     * `no-store` on every one of these: the whole point is to notice a write
+     * that happened in a terminal since the last time the window had focus, and
+     * a cached answer is the one state this cannot be in.
+     */
+    count: (): Promise<ProposalCount | undefined> =>
+      request<ProposalCount>("/api/proposals/count", { cache: "no-store" }),
+
+    /** GET /api/proposals — what the rail lists once the count is non-zero. */
+    list: (): Promise<
+      | { proposals: PendingProposal[]; agentPosts: AgentCreatedPost[] }
+      | undefined
+    > =>
+      request<{ proposals: PendingProposal[]; agentPosts: AgentCreatedPost[] }>(
+        "/api/proposals",
+        { cache: "no-store" },
+      ),
+
+    /** POST /api/documents/:documentId/proposals/:revisionId/approve */
+    approve: (
+      documentId: string,
+      revisionId: string,
+    ): Promise<{ id: string; head: string; approved: boolean } | undefined> =>
+      request<{ id: string; head: string; approved: boolean }>(
+        `/api/documents/${documentId}/proposals/${revisionId}/approve`,
+        { method: "POST" },
+      ),
+
+    /** POST /api/documents/:documentId/proposals/:revisionId/reject */
+    reject: (
+      documentId: string,
+      revisionId: string,
+    ): Promise<{ id: string; revisionId: string } | undefined> =>
+      request<{ id: string; revisionId: string }>(
+        `/api/documents/${documentId}/proposals/${revisionId}/reject`,
+        { method: "POST" },
+      ),
+
+    /** POST /api/documents/:id/agent/accept — keep an agent-created post. */
+    acceptPost: (
+      id: string,
+    ): Promise<{ id: string; accepted: boolean } | undefined> =>
+      request<{ id: string; accepted: boolean }>(
+        `/api/documents/${id}/agent/accept`,
+        { method: "POST" },
+      ),
+
+    /** POST /api/documents/:id/agent/discard — delete an agent-created post. */
+    discardPost: (
+      id: string,
+    ): Promise<{ id: string; discarded: boolean } | undefined> =>
+      request<{ id: string; discarded: boolean }>(
+        `/api/documents/${id}/agent/discard`,
+        { method: "POST" },
+      ),
   },
 
   // -------------------------------------------------------------------------

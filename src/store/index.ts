@@ -4,7 +4,9 @@ import {
   useStore as useReduxStore,
 } from "react-redux";
 import {
+  acceptAgentPost,
   alert,
+  approveProposal,
   appSlice,
   createPost,
   createProject,
@@ -14,6 +16,7 @@ import {
   deleteProject,
   deleteRevision,
   deleteSeries,
+  discardAgentPost,
   duplicatePost,
   forkPost,
   getPost,
@@ -32,6 +35,8 @@ import {
   moveProject,
   moveSeries,
   postsAdapter,
+  refreshProposals,
+  rejectProposal,
   updatePost,
   updateProject,
   updateSeries,
@@ -80,6 +85,12 @@ export const actions = {
   updateProject,
   deleteProject,
   moveProject,
+
+  refreshProposals,
+  approveProposal,
+  rejectProposal,
+  acceptAgentPost,
+  discardAgentPost,
 };
 
 export const store = configureStore({

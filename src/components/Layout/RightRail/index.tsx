@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Box, IconButton, Tooltip } from "@mui/material";
 import {
   Command,
+  GitPullRequest,
   History,
   Info,
   Link as LinkIcon,
@@ -24,6 +25,7 @@ import ResizeGripper from "../ResizeGripper";
 import OutlineSection from "./OutlineSection";
 import PropertiesSection from "./PropertiesSection";
 import RevisionsSection from "./RevisionsSection";
+import ProposalsSection from "./ProposalsSection";
 import BacklinksSection from "./BacklinksSection";
 import { ICON_SIZE } from "@/theme/icons";
 import { uiCommands } from "@/commands";
@@ -55,6 +57,11 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
   const activeDocId = useSelector(selectFocusedDocId);
   // Undefined unless something open is retrying or has failed to save.
   const saveTrouble = useSelector(selectAnySaveTrouble);
+  // How much agent work is waiting on the author, across every document — not
+  // just this one. See ProposalsSection.
+  const pendingAgentChanges = useSelector((state) =>
+    state.ui.proposals.count.total
+  );
 
   // Keep the full panel in the DOM during the close animation so it clips
   // gradually as the grid column shrinks, instead of vanishing instantly.
@@ -99,37 +106,45 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
               displayPrint: "none",
             }}
           >
-            {!rootId
-              ? (
-                <Box
-                  sx={{ p: 2, color: "text.disabled", typography: "caption" }}
-                >
-                  Open a document to see its info here.
-                </Box>
-              )
-              : (
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 1,
-                    p: 1,
-                  }}
-                >
-                  <OutlineSection activeDocId={activeDocId} />
-                  <PropertiesSection
-                    rootId={rootId}
-                    activeDocId={activeDocId}
-                    isEditMode={isEditMode}
-                  />
-                  <RevisionsSection
-                    rootId={rootId}
-                    activeDocId={activeDocId}
-                    isEditMode={isEditMode}
-                  />
-                  <BacklinksSection rootId={rootId} />
-                </Box>
+            <Box
+              sx={{ display: "flex", flexDirection: "column", gap: 1, p: 1 }}
+            >
+              {
+                /* Above the document sections, and outside the "nothing open"
+                  branch: an agent writes to whatever it was asked about, so the
+                  work waiting on you is not a property of the document you
+                  happen to have open. With nothing open it is the only thing
+                  the rail can say — but only when there *is* something, or an
+                  empty rail would grow a permanent empty section. */
+              }
+              {(rootId || pendingAgentChanges > 0) && (
+                <ProposalsSection activeDocId={activeDocId} />
               )}
+              {!rootId
+                ? (
+                  <Box
+                    sx={{ p: 1, color: "text.disabled", typography: "caption" }}
+                  >
+                    Open a document to see its info here.
+                  </Box>
+                )
+                : (
+                  <>
+                    <OutlineSection activeDocId={activeDocId} />
+                    <PropertiesSection
+                      rootId={rootId}
+                      activeDocId={activeDocId}
+                      isEditMode={isEditMode}
+                    />
+                    <RevisionsSection
+                      rootId={rootId}
+                      activeDocId={activeDocId}
+                      isEditMode={isEditMode}
+                    />
+                    <BacklinksSection rootId={rootId} />
+                  </>
+                )}
+            </Box>
           </Box>
         </>
       )}
@@ -199,6 +214,45 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
             )}
           </IconButton>
         </Tooltip>
+        {
+          /* Mounted at both rail modes, like the save-trouble badge above it and
+            for the same reason: a collapsed rail is exactly when a terminal
+            write would otherwise go unnoticed. It appears only when there is
+            something — an always-present icon that is almost always inert is
+            not awareness, it is furniture. */
+        }
+        {pendingAgentChanges > 0 && (
+          <Tooltip
+            title={pendingAgentChanges === 1
+              ? "1 agent change waiting for review"
+              : `${pendingAgentChanges} agent changes waiting for review`}
+            placement="left"
+          >
+            <IconButton
+              size="small"
+              onClick={railMode === "compact" ? toggleRail : undefined}
+              aria-label={pendingAgentChanges === 1
+                ? "1 agent change waiting for review"
+                : `${pendingAgentChanges} agent changes waiting for review`}
+              sx={{ position: "relative", color: "primary.main" }}
+            >
+              <GitPullRequest size={ICON_SIZE.dense} />
+              <Box
+                component="span"
+                aria-hidden
+                sx={{
+                  position: "absolute",
+                  top: 4,
+                  right: 4,
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  bgcolor: "primary.main",
+                }}
+              />
+            </IconButton>
+          </Tooltip>
+        )}
         <Tooltip title="Copilot" placement="left">
           <IconButton
             size="small"

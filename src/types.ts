@@ -145,6 +145,79 @@ export type SidebarView = "explorer" | "search" | "notes";
  */
 export type SaveStatus = "idle" | "saving" | "retrying" | "error";
 
+// ─── Agent proposals (docs/plans/agent-gating.md §3.5) ───────────────────────
+
+/**
+ * An agent write that has been stored but is not yet the document.
+ *
+ * Metadata only. The content lives behind `GET /api/revisions/[id]` and is
+ * fetched by the diff, which is the one thing that needs it — the rail shows
+ * origin, time and summary, and that is the whole "awareness" tier.
+ */
+export interface PendingProposal {
+  /** The proposal's revision id — the right-hand side of the review diff. */
+  id: string;
+  documentId: string;
+  documentName: string;
+  documentHandle: string | null;
+  /** The document's head *now* — the left-hand side of the review diff. */
+  head: string | null;
+  /**
+   * The head the proposal was built on. Approval compare-and-sets against this,
+   * so when it differs from {@link head} the approval will 409 rather than
+   * overwrite whatever moved head (§3.4).
+   */
+  baseRevisionId: string | null;
+  proposedAt: string;
+  origin: string | null;
+  summary: string | null;
+  staleAt: string | null;
+}
+
+/** A post an agent created, landed as a draft and flagged for accept (§3.7). */
+export interface AgentCreatedPost {
+  id: string;
+  name: string;
+  handle: string | null;
+  agentCreatedAt: string;
+  agentOrigin: string | null;
+}
+
+/** What `GET /api/proposals/count` answers — the §3.5 focus poll. */
+export interface ProposalCount {
+  proposals: number;
+  agentPosts: number;
+  total: number;
+}
+
+/**
+ * What of Claude's work is waiting on the signed-in author.
+ *
+ * Global rather than per-pane on purpose: the sidebar badge, the rail and the
+ * review bar are three surfaces asking the same question about the same set of
+ * documents, and the answer comes from one poll. (Contrast §3.9's "has this tab
+ * unsaved edits", which is deliberately *not* here — that is one component
+ * asking itself at one moment, and it is answered from `useSave`'s baseline.)
+ *
+ * Proposals are keyed by document because that is how every reader addresses
+ * them — a sidebar row knows its post id and nothing else — and because
+ * `revision_one_pending_per_document` makes the key unique in the database.
+ */
+export interface ProposalsState {
+  byDocId: Record<string, PendingProposal>;
+  agentPosts: AgentCreatedPost[];
+  count: ProposalCount;
+  /**
+   * `loading` is set by every poll, including the ones that refresh a list
+   * already on screen — a reader that paints a skeleton must also check whether
+   * it has anything to show, or the rail flashes on every window focus.
+   */
+  status: "idle" | "loading" | "error";
+  error: string | null;
+  /** Whether a listing has ever come back, so `idle` + empty means "none". */
+  loaded: boolean;
+}
+
 export interface AppState {
   user?: User;
   posts: EntityState<Post, string>;
@@ -189,6 +262,8 @@ export interface AppState {
      */
     workspaceKey: string | null;
     sidebarView: SidebarView;
+    /** Agent work awaiting review — see {@link ProposalsState}. */
+    proposals: ProposalsState;
   };
 }
 

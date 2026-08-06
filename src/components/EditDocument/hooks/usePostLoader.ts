@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
 import { useAsyncEffect } from "@/hooks/useAsyncEffect";
-import { actions, useDispatch } from "@/store";
+import { actions, useDispatch, useStore } from "@/store";
+import { selectFocusedDocId } from "@/store/selectors/layoutSelectors";
 import { useErrorAnnounce } from "@/hooks/useErrorAnnounce";
 import { isPendingSaveAhead, readPendingSave } from "@/lib/pendingSaves";
 import {
@@ -41,6 +42,7 @@ export function usePostLoader(
   // Whether `loadedPost` came from the unconfirmed-save buffer rather than storage.
   const [restoredFromPending, setRestoredFromPending] = useState(false);
   const dispatch = useDispatch();
+  const store = useStore();
   const errorAnnounce = useErrorAnnounce();
 
   useAsyncEffect(async (isCancelled) => {
@@ -111,9 +113,22 @@ export function usePostLoader(
     await load();
 
     return () => {
-      dispatch(actions.setDiffOpen(false));
+      // Closing the diff is a *pane* action — `setDiffOpen` acts on whichever
+      // pane has focus — and by the time this cleanup runs, focus may already
+      // have moved. Opening another document unmounts this panel *after* the
+      // new one has been focused, so an unguarded dispatch here closes the new
+      // pane's diff: which is exactly what the rail's "Review" does, open the
+      // document and then show the proposal against it
+      // (docs/plans/agent-gating.md §3.5).
+      //
+      // Nothing is left open by being careful: `openPane` already clears
+      // `diffOpen` on a pane whose root changes, so this is the leaving-the-
+      // workspace case only.
+      if (selectFocusedDocId(store.getState()) === id) {
+        dispatch(actions.setDiffOpen(false));
+      }
     };
-  }, [dispatch, id]);
+  }, [dispatch, store, id]);
 
   return { isLoading, error, loadedPost, restoredFromPending };
 }

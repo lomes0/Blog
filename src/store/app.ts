@@ -11,6 +11,7 @@ import {
   DEFAULT_PANE_RATIO,
   MAX_PANES,
   PaneMode,
+  PendingProposal,
   Post,
   SaveStatus,
   Series,
@@ -57,6 +58,13 @@ import {
   moveProject,
   updateProject,
 } from "./thunks/projectThunks";
+import {
+  acceptAgentPost,
+  approveProposal,
+  discardAgentPost,
+  refreshProposals,
+  rejectProposal,
+} from "./thunks/proposalThunks";
 import { alert, updateUser } from "./thunks/userThunks";
 import { importGuestDrafts } from "./thunks/importGuestDrafts";
 import { createApiThunk, type Failure } from "./thunks/createApiThunk";
@@ -221,6 +229,33 @@ const heldElsewhere = (
       (pane.rootId === docId || pane.tabIds.includes(docId)),
   );
 
+/**
+ * Drop a document's pending proposal and keep the badge count honest.
+ *
+ * The count is decremented rather than recomputed because it is what the *poll*
+ * last reported, and the next poll is up to a window focus away: leaving it
+ * alone would keep a badge on a document whose proposal is already gone.
+ */
+function forgetProposal(state: AppState, documentId: string) {
+  if (!state.ui.proposals.byDocId[documentId]) return;
+  delete state.ui.proposals.byDocId[documentId];
+  const { count } = state.ui.proposals;
+  count.proposals = Math.max(0, count.proposals - 1);
+  count.total = count.proposals + count.agentPosts;
+}
+
+/** The same, for an agent-created post that has been accepted or discarded. */
+function forgetAgentPost(state: AppState, id: string) {
+  const before = state.ui.proposals.agentPosts.length;
+  state.ui.proposals.agentPosts = state.ui.proposals.agentPosts.filter(
+    (post) => post.id !== id,
+  );
+  if (state.ui.proposals.agentPosts.length === before) return;
+  const { count } = state.ui.proposals;
+  count.agentPosts = Math.max(0, count.agentPosts - 1);
+  count.total = count.proposals + count.agentPosts;
+}
+
 /** Push a thunk's `rejectWithValue` payload onto the announcement queue. */
 const announceFailure = (state: AppState, payload: unknown) => {
   state.ui.announcements.push({ message: payload as Failure });
@@ -250,6 +285,14 @@ const initialState: AppState = {
     workspaceHydrated: false,
     workspaceKey: null,
     sidebarView: "explorer",
+    proposals: {
+      byDocId: {},
+      agentPosts: [],
+      count: { proposals: 0, agentPosts: 0, total: 0 },
+      status: "idle",
+      error: null,
+      loaded: false,
+    },
   },
 };
 
@@ -750,6 +793,66 @@ export const appSlice = createSlice({
       .addCase(deleteRevision.rejected, (state, action) => {
         announceFailure(state, action.payload);
       })
+      // ── Agent proposals (docs/plans/agent-gating.md §3.5) ──
+      //
+      // No `announceFailure` on the poll, unlike almost everything else here: it
+      // runs on every window focus, and a server that is down would stack a
+      // snackbar each time you came back to the tab. The failure is recorded on
+      // the slice and the rail renders it — loud where someone is looking, quiet
+      // where nobody asked. The four *actions* below do announce, because a
+      // button that did nothing and said nothing is the worse failure.
+      .addCase(refreshProposals.pending, (state) => {
+        state.ui.proposals.status = "loading";
+      })
+      .addCase(refreshProposals.fulfilled, (state, action) => {
+        const { count, proposals, agentPosts } = action.payload;
+        const byDocId: Record<string, PendingProposal> = {};
+        for (const proposal of proposals) {
+          byDocId[proposal.documentId] = proposal;
+        }
+        state.ui.proposals.byDocId = byDocId;
+        state.ui.proposals.agentPosts = agentPosts;
+        state.ui.proposals.count = count;
+        state.ui.proposals.status = "idle";
+        state.ui.proposals.error = null;
+        state.ui.proposals.loaded = true;
+      })
+      .addCase(refreshProposals.rejected, (state, action) => {
+        state.ui.proposals.status = "error";
+        state.ui.proposals.error = action.payload?.subtitle ??
+          "Could not reach the server.";
+      })
+      .addCase(approveProposal.fulfilled, (state, action) => {
+        const { documentId, head } = action.payload;
+        forgetProposal(state, documentId);
+        // The document's `head` moved. Reflect it so the open tab's next save
+        // carries the right compare-and-set precondition rather than 409ing
+        // against the head it was loaded at.
+        const post = state.posts.entities[documentId];
+        if (post && head) post.head = head;
+      })
+      .addCase(approveProposal.rejected, (state, action) => {
+        announceFailure(state, action.payload);
+      })
+      .addCase(rejectProposal.fulfilled, (state, action) => {
+        forgetProposal(state, action.payload.documentId);
+      })
+      .addCase(rejectProposal.rejected, (state, action) => {
+        announceFailure(state, action.payload);
+      })
+      .addCase(acceptAgentPost.fulfilled, (state, action) => {
+        forgetAgentPost(state, action.payload);
+      })
+      .addCase(acceptAgentPost.rejected, (state, action) => {
+        announceFailure(state, action.payload);
+      })
+      .addCase(discardAgentPost.fulfilled, (state, action) => {
+        forgetAgentPost(state, action.payload);
+        removePost(state, action.payload);
+      })
+      .addCase(discardAgentPost.rejected, (state, action) => {
+        announceFailure(state, action.payload);
+      })
       // ── User ──
       .addCase(updateUser.fulfilled, (state, action) => {
         state.user = action.payload;
@@ -914,6 +1017,13 @@ export {
   moveProject,
   updateProject,
 } from "./thunks/projectThunks";
+export {
+  acceptAgentPost,
+  approveProposal,
+  discardAgentPost,
+  refreshProposals,
+  rejectProposal,
+} from "./thunks/proposalThunks";
 export { alert, updateUser } from "./thunks/userThunks";
 export { importGuestDrafts } from "./thunks/importGuestDrafts";
 

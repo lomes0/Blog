@@ -19,6 +19,7 @@ import CommandPalette from "@/components/CommandPalette/CommandPalette";
 import { Box, Container } from "@mui/material";
 import { actions, type RootState, useDispatch, useSelector } from "@/store";
 import { selectFocusedDocId } from "@/store/selectors/layoutSelectors";
+import { useProposalPoll } from "@/hooks/useProposalPoll";
 import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
 import { useLayoutMode } from "@/contexts/LayoutModeContext";
 import { usePathname } from "next/navigation";
@@ -77,6 +78,11 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (!initialized) dispatch(actions.load());
   }, [dispatch, initialized]);
+
+  // The app shell is the one place this belongs: what it fetches feeds the
+  // sidebar badge, the right rail and the review bar, and a second mount would
+  // be a second request on every window focus.
+  useProposalPoll();
 
   const railW = railMode === "full"
     ? railWidth + RAIL_COMPACT_W

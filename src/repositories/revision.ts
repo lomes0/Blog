@@ -65,7 +65,9 @@ const cachedRevision = unstable_cache(findRevisionById, [], {
  * after approval clears the flag, which costs one query on a handful of ids and
  * cannot serve stale content.
  */
-const getCachedRevision = async (id: string): Promise<StoredRevision | null> => {
+const getCachedRevision = async (
+  id: string,
+): Promise<StoredRevision | null> => {
   const cached = await cachedRevision(id);
   if (cached && cached.proposedAt) return findRevisionById(id);
   return cached;
@@ -231,6 +233,63 @@ const findPendingProposal = async (
 const countPendingProposals = async (authorId: string) =>
   prisma.revision.count({
     where: { proposedAt: { not: null }, document: { authorId } },
+  });
+
+/**
+ * What the rail renders for one pending proposal. Metadata only — no `data`.
+ *
+ * This is the **dedicated pending fetch** phase 4 was allowed to add instead of
+ * loosening the history filter (docs/plans/agent-gating.md §2.1, phase 4). The
+ * filter stays `proposedAt: null` in `revisionsSelect` where phase 1 put it: it
+ * covers every caller in one place, and the alternative — letting proposals
+ * through there — has to be right on *both* arms of `toCloudDocument`, where the
+ * `collab` arm filters nothing at all and would serve a proposal dressed as
+ * history. A separate query is a smaller surface than a shared one with two
+ * meanings.
+ *
+ * `head` comes along because the review diff's left-hand side is the document's
+ * current head, and the rail must be able to offer "Review" for a document that
+ * is not open and therefore not in the store.
+ *
+ * `baseRevisionId` is *not* the same thing: it is the head the proposal was
+ * built on, which approval compare-and-sets against (§3.4). They differ exactly
+ * when the proposal has gone stale, which is the phase-5 case.
+ */
+const proposalSummarySelect = {
+  id: true,
+  documentId: true,
+  proposedAt: true,
+  origin: true,
+  summary: true,
+  baseRevisionId: true,
+  staleAt: true,
+  document: { select: { name: true, handle: true, head: true } },
+} as const;
+
+export type ProposalSummaryRow = Prisma.RevisionGetPayload<
+  { select: typeof proposalSummarySelect }
+>;
+
+/**
+ * Every proposal waiting on this author, newest first.
+ *
+ * Scoped through `document.authorId` for the same reason `countPendingProposals`
+ * is: the proposal's own author is whoever the agent signed in as, and the
+ * person entitled to see it is the one who owns the document. Nothing here is
+ * readable by anyone else — the route is `userRoute` and passes its own
+ * `user.id`, never an id from the request.
+ *
+ * Uncached, like `findPendingProposal`: a proposal row is rewritten in place on
+ * every agent batch, so a cached listing would advertise a summary that no
+ * longer describes the content approval would apply.
+ */
+const findPendingProposalsByAuthor = async (
+  authorId: string,
+): Promise<ProposalSummaryRow[]> =>
+  prisma.revision.findMany({
+    where: { proposedAt: { not: null }, document: { authorId } },
+    select: proposalSummarySelect,
+    orderBy: { proposedAt: "desc" },
   });
 
 /** What a caller must supply to fold one agent batch into the proposal. */
@@ -444,6 +503,7 @@ export {
   createRevision,
   deleteRevision,
   findPendingProposal,
+  findPendingProposalsByAuthor,
   findRevisionAuthorId,
   findRevisionDocumentId,
   getCachedRevision,

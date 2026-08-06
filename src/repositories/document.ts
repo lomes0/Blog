@@ -207,8 +207,9 @@ const findDocument = async (
 
   // `proposedAt` is an implementation detail of the repair; nothing above this
   // repository has a use for it.
-  const asMeta = ({ proposedAt: _proposedAt, ...meta }: typeof doc.revisions[0]) =>
-    meta as RevisionMeta;
+  const asMeta = (
+    { proposedAt: _proposedAt, ...meta }: typeof doc.revisions[0],
+  ) => meta as RevisionMeta;
   const history = historyOf(doc.revisions);
 
   const cloudDoc: CloudPost = {
@@ -603,6 +604,31 @@ const countAgentCreatedDocuments = async (authorId: string) =>
   });
 
 /**
+ * This author's agent-created posts, newest first — the other half of the rail.
+ *
+ * Metadata only, and deliberately not routed through `findDocumentsByAuthorId`:
+ * that returns whole `CloudPost`s with revision metadata attached, and the rail
+ * needs a name and a timestamp. The flag itself is the filter, so an accepted
+ * post drops out of the listing the moment `acceptAgentDocument` clears it.
+ */
+const findAgentCreatedDocuments = async (authorId: string) =>
+  prisma.document.findMany({
+    where: {
+      authorId,
+      type: PrismaDocumentType.DOCUMENT,
+      agentCreatedAt: { not: null },
+    },
+    select: {
+      id: true,
+      name: true,
+      handle: true,
+      agentCreatedAt: true,
+      agentOrigin: true,
+    },
+    orderBy: { agentCreatedAt: "desc" },
+  });
+
+/**
  * Accept an agent-created post: clear the flag, keep the post.
  *
  * Guarded rather than unconditional, so the answer distinguishes "accepted" from
@@ -655,6 +681,7 @@ export {
   createDocument,
   deleteDocument,
   discardAgentDocument,
+  findAgentCreatedDocuments,
   findCloudStorageUsageByAuthorId,
   findDocument,
   findDocumentChildren,
