@@ -9,7 +9,7 @@ import {
 } from "@/types";
 import { validate } from "uuid";
 import { historyOf, selectHead } from "@/lib/proposals";
-import { getCachedRevision } from "./revision";
+import { getCachedRevision, markProposalsStale } from "./revision";
 import { rankForAppend, reRankIntoRoot } from "./ordering";
 
 // ─── Shared select fragments ─────────────────────────────────────────────────
@@ -242,11 +242,19 @@ const findDocument = async (
         // compare-and-set (docs/plans/agent-gating.md §2.1).
         if (!selection.repair) return null;
         revision = selection.repair;
-        await prisma.document.update({
-          where: { id: doc.id },
-          data: { head: revision.id },
+        const repaired = revision.id;
+        // A repair is a head move like any other, so it can strand a pending
+        // proposal — the base it was built on is the row that went missing.
+        // Marking makes that a stated "out of date" rather than a 409 the
+        // author only meets after clicking Approve (§3.6).
+        await prisma.$transaction(async (tx) => {
+          await tx.document.update({
+            where: { id: doc.id },
+            data: { head: repaired },
+          });
+          await markProposalsStale(tx, { id: doc.id }, repaired);
         });
-        cloudDoc.head = revision.id;
+        cloudDoc.head = repaired;
       }
     }
 
@@ -358,6 +366,23 @@ export class StaleHeadError extends Error {
   }
 }
 
+/**
+ * The literal value a write is setting `head` to, or `undefined` when it is not
+ * setting one at all — a rename, a publish toggle, a move.
+ *
+ * Prisma's update input admits both `head: "…"` and `head: { set: "…" }`, and
+ * the difference matters here only because getting it wrong would silently skip
+ * the stale marking on a save. Both shapes are read rather than one assumed.
+ */
+const literalHead = (
+  head: Prisma.DocumentUncheckedUpdateInput["head"],
+): string | null | undefined => {
+  if (head === undefined || head === null || typeof head === "string") {
+    return head;
+  }
+  return "set" in head ? head.set ?? null : undefined;
+};
+
 const updateDocument = async (
   handle: string,
   data: Prisma.DocumentUncheckedUpdateInput,
@@ -379,8 +404,22 @@ const updateDocument = async (
     ? { id: handle }
     : { handle: handle.toLowerCase() };
 
+  // A save moves `head`, and a proposal built on the head it moves off can no
+  // longer be approved (docs/plans/agent-gating.md §3.6). Marking travels with
+  // the move, in whichever transaction the move is happening in — the two must
+  // not be separable, or a crash between them leaves the rail offering an
+  // Approve button that can only 409, with nothing left to come back and fix it.
+  const nextHead = literalHead(docData.head);
+
   if (expectedHead === undefined) {
-    await prisma.document.update({ where, data: docData });
+    if (nextHead === undefined) {
+      await prisma.document.update({ where, data: docData });
+      return findDocument(handle, "all");
+    }
+    await prisma.$transaction(async (tx) => {
+      await tx.document.update({ where, data: docData });
+      await markProposalsStale(tx, where, nextHead);
+    });
     return findDocument(handle, "all");
   }
 
@@ -415,6 +454,10 @@ const updateDocument = async (
           ...(coauthors !== undefined && { coauthors }),
         },
       });
+    }
+
+    if (nextHead !== undefined) {
+      await markProposalsStale(tx, where, nextHead);
     }
   });
 
@@ -500,10 +543,17 @@ const findEditorDocument = async (handle: string) => {
       select: { id: true, documentId: true, createdAt: true, data: true },
     });
     if (latestRevision) {
-      // Repair the document's head pointer
-      await prisma.document.update({
-        where: { id: doc.id },
-        data: { head: latestRevision.id },
+      // `doc` is reassigned below, so its id is captured here: inside the
+      // callback TypeScript can no longer prove it is the row we just found.
+      const docId = doc.id;
+      // Repair the document's head pointer — and stale-mark whatever was built
+      // on the head it is replacing, for the same reason as in `findDocument`.
+      await prisma.$transaction(async (tx) => {
+        await tx.document.update({
+          where: { id: docId },
+          data: { head: latestRevision.id },
+        });
+        await markProposalsStale(tx, { id: docId }, latestRevision.id);
       });
       revision = {
         ...latestRevision,

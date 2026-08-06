@@ -9,6 +9,7 @@ import { ICON_SIZE } from "@/theme/icons";
 import { useProposalActions } from "@/hooks/useProposalActions";
 import type { AgentCreatedPost, PendingProposal } from "@/types";
 import { originLabel } from "@/lib/proposalLabels";
+import { isProposalStale } from "@/lib/proposals";
 import RailSection from "./RailSection";
 
 interface ProposalsSectionProps {
@@ -205,6 +206,11 @@ function ProposalRow({
   onApprove: () => void;
   onReject: () => void;
 }) {
+  // Both halves of the question, from one function: the `staleAt` a save
+  // stamped, and — for the proposal written while a save was in flight, which no
+  // marker could have reached — the two pointers disagreeing (§3.6).
+  const stale = isProposalStale(proposal, proposal.head);
+
   return (
     <Box sx={rowSx}>
       {showDocumentName && (
@@ -224,19 +230,34 @@ function ProposalRow({
         date={proposal.proposedAt}
         icon={<GitPullRequest size={ICON_SIZE.micro} />}
       />
+      {stale && (
+        // One line, in the warning colour, and no icon: this is a dead end
+        // rather than an error — nothing was lost and nothing is broken — but
+        // it is the reason the Approve button below is missing, so it has to be
+        // legible at a glance.
+        <Typography variant="micro" component="div" color="warning.main">
+          Out of date — you saved after this was written. Ask Claude again
+          against the current content.
+        </Typography>
+      )}
       <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
         <Button size="small" variant="text" disabled={busy} onClick={onReview}>
           Review
         </Button>
-        <Button
-          size="small"
-          variant="text"
-          disabled={busy}
-          startIcon={<Check size={ICON_SIZE.micro} />}
-          onClick={onApprove}
-        >
-          Approve
-        </Button>
+        {/* No Approve on a stale row. The server refuses it with a 409 — that
+            is the safety property, not a hint — so offering the button would be
+            offering a failure. Reject and a re-run are the only exits (§3.6). */}
+        {!stale && (
+          <Button
+            size="small"
+            variant="text"
+            disabled={busy}
+            startIcon={<Check size={ICON_SIZE.micro} />}
+            onClick={onApprove}
+          >
+            Approve
+          </Button>
+        )}
         <Button
           size="small"
           variant="text"

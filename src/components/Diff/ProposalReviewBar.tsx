@@ -6,6 +6,7 @@ import { DateDisplay } from "@/components/shared/DateDisplay";
 import { ICON_SIZE } from "@/theme/icons";
 import { useProposalActions } from "@/hooks/useProposalActions";
 import { originLabel } from "@/lib/proposalLabels";
+import { isProposalStale } from "@/lib/proposals";
 
 interface ProposalReviewBarProps {
   /** The document this pane is showing. */
@@ -35,6 +36,11 @@ export default function ProposalReviewBar({ docId }: ProposalReviewBarProps) {
   if (!proposal || comparing !== proposal.id) return null;
 
   const busy = busyId === proposal.id;
+  // The document moved off the base this was built on, so approval would 409
+  // (§3.6). The diff still means something — it is the left-hand side that has
+  // moved on — so the bar stays and loses its Approve button rather than
+  // disappearing and leaving no way to reject.
+  const stale = isProposalStale(proposal, proposal.head);
 
   return (
     <Box
@@ -78,7 +84,26 @@ export default function ProposalReviewBar({ docId }: ProposalReviewBarProps) {
             }}
           />
           <DateDisplay date={proposal.proposedAt} variant="full" />
+          {stale && (
+            <Chip
+              label="Out of date"
+              size="small"
+              color="warning"
+              variant="outlined"
+              sx={{
+                height: 16,
+                typography: "micro",
+                "& .MuiChip-label": { px: 0.75 },
+              }}
+            />
+          )}
         </Typography>
+        {stale && (
+          <Typography variant="micro" component="div" color="warning.main">
+            You saved after this was proposed, so it can no longer be applied.
+            Ask Claude again against the current content.
+          </Typography>
+        )}
       </Box>
       <Box sx={{ display: "flex", gap: 1, flexShrink: 0 }}>
         <Button
@@ -91,15 +116,20 @@ export default function ProposalReviewBar({ docId }: ProposalReviewBarProps) {
         >
           Reject
         </Button>
-        <Button
-          size="small"
-          variant="contained"
-          disabled={busy}
-          startIcon={<Check size={ICON_SIZE.inline} />}
-          onClick={() => void approve(proposal)}
-        >
-          Approve
-        </Button>
+        {/* Absent rather than disabled when stale: a disabled primary button
+            reads as "not yet", and there is no yet — the only exits are reject
+            or a re-run against current content (§3.6). */}
+        {!stale && (
+          <Button
+            size="small"
+            variant="contained"
+            disabled={busy}
+            startIcon={<Check size={ICON_SIZE.inline} />}
+            onClick={() => void approve(proposal)}
+          >
+            Approve
+          </Button>
+        )}
       </Box>
     </Box>
   );

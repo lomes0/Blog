@@ -58,7 +58,7 @@ globals; `compilerOptions.types` is deliberately left unset, because setting it
 would restrict resolution to only its entries and drop every other ambient
 package.
 
-Coverage is eighteen specs, 334 assertions: `src/lib/__tests__/ordering.test.ts`
+Coverage is eighteen specs, 355 assertions: `src/lib/__tests__/ordering.test.ts`
 (fractional rank keys),
 `src/components/Layout/SideBar/__tests__/
 dragGeometry.test.ts` (sidebar drag
@@ -109,10 +109,14 @@ clobber) and `src/lib/__tests__/agentBatches.test.ts`, which is the phase-2
 acceptance test — three consecutive `apply_ops` calls simulated end to end over
 an in-memory stand-in for the two tables, asserting that they leave exactly one
 pending proposal holding all three edits, that each batch saw the previous one's
-work, and that `head` never moves. The database half of that (the partial unique
-index and the `version` compare-and-set actually firing) is a throwaway script
-against the local Postgres, not a spec — as is anything about `mcp/`, which has
-no test environment.
+work, and that `head` never moves. Both grew a phase-5 half (§3.6): which
+proposals a head move invalidates and why a null base cannot be excluded in SQL
+(`planStaleMarking`), and what an author's save between two batches now does —
+the second batch reads the live document and *replaces* the stale proposal
+rather than folding onto something approval could only refuse. The database half
+of all this (the partial unique index, the `version` compare-and-set and the
+stale marking actually firing) is a throwaway script against the local Postgres,
+not a spec — as is anything about `mcp/`, which has no test environment.
 
 All of these follow the same rule as `dragGeometry.ts`: the logic lives in an
 import-free module so it can be exercised without mounting anything. The IDB

@@ -28,7 +28,7 @@ import {
   type ProposalRecord,
   upsertProposal,
 } from "@/repositories/revision";
-import { selectAgentRead } from "@/lib/proposals";
+import { isProposalStale, selectAgentRead } from "@/lib/proposals";
 import {
   applyOps,
   emptyState,
@@ -110,6 +110,13 @@ interface Loaded {
    * it tells the user.
    */
   source: "proposal" | "committed" | "empty";
+  /**
+   * True when this post has a pending proposal that was skipped because it went
+   * stale — the author saved after it was written, so it can no longer be
+   * approved (§3.6). What follows is the live document, and the next write
+   * replaces that proposal rather than folding into it.
+   */
+  staleProposal: boolean;
 }
 
 /**
@@ -120,6 +127,9 @@ interface Loaded {
  * that no longer exists and the fold silently drops the earlier batch (§3.2).
  * `selectAgentRead` makes that choice, and keeps it apart from the `base` a
  * write records.
+ *
+ * **Unless the proposal has gone stale**, in which case the document wins — see
+ * below, and §3.6.
  */
 async function loadPost(id: string, authorId: string): Promise<Loaded | null> {
   const doc = await prisma.document.findFirst({
@@ -130,13 +140,23 @@ async function loadPost(id: string, authorId: string): Promise<Loaded | null> {
 
   const pending = await findPendingProposal(doc.id);
 
+  // A *stale* proposal loses to the document (§3.6): the author has saved since
+  // it was written, so its content is built on a base that is no longer head and
+  // approval will refuse it. Reading it anyway would produce a second batch
+  // addressing blocks the author has already moved past, equally unapprovable —
+  // the "ask Claude again against current content" of §3.6 has to start with the
+  // agent reading the current content. `selectAgentRead` makes the same call
+  // from the same function; this one only decides whether the committed state is
+  // worth fetching, since it is the whole document state.
+  const usePending = !!pending && !isProposalStale(pending, doc.head);
+
   // Only looked up when there is no proposal to read instead. Both arms filter
   // `proposedAt: null`: the no-head fallback in particular used to be a bare
   // "newest revision", and under gating the newest revision is usually the
   // proposal — which would make this branch resolve it by accident, in the one
   // case where the accident is indistinguishable from the decision until it is
   // wrong.
-  const committed = pending
+  const committed = usePending
     ? null
     : doc.head
     ? await prisma.revision.findFirst({
@@ -160,6 +180,7 @@ async function loadPost(id: string, authorId: string): Promise<Loaded | null> {
     state: (data as StoredState | undefined) ?? emptyState(),
     base: read.base,
     source: read.source,
+    staleProposal: read.staleProposal,
   };
 }
 
@@ -183,6 +204,28 @@ async function loadPost(id: string, authorId: string): Promise<Loaded | null> {
  * compare-and-set has moved to approval time, where a human can resolve the
  * conflict (§3.8). The tool text must not claim otherwise.
  */
+/**
+ * The one line a read tool adds about which state it is showing.
+ *
+ * Three answers, and the third is the one worth spelling out: an agent that is
+ * told only "this is the live document" will happily report its earlier work as
+ * still pending, when in fact the author has edited underneath it and that work
+ * can no longer be approved (§3.6).
+ */
+const sourceNote = (post: Loaded): string => {
+  if (post.source === "proposal") {
+    return "\n(showing this post's pending proposal, not the live document)";
+  }
+  if (post.staleProposal) {
+    return "\n(your earlier proposal for this post is out of date — the author " +
+      "saved after it was written, so it can no longer be approved. This is " +
+      "the live document. Editing now discards that proposal and starts a new " +
+      "one against this content; tell the user their earlier proposal was " +
+      "superseded.)";
+  }
+  return "";
+};
+
 async function proposeRevision(
   documentId: string,
   authorId: string,
@@ -397,11 +440,10 @@ server.registerTool(
 
     const result = outline(post.state);
     // Every read resolves the pending proposal in preference to the live
-    // document (§3.2). Saying so is the difference between the agent reporting
-    // "the post now says X" and "the proposal I have pending says X".
-    const note = post.source === "proposal"
-      ? "\n(showing this post's pending proposal, not the live document)"
-      : "";
+    // document (§3.2), unless it has gone stale (§3.6). Saying so is the
+    // difference between the agent reporting "the post now says X" and "the
+    // proposal I have pending says X".
+    const note = sourceNote(post);
     if (result.blocks.length === 0) {
       return text(
         `"${post.name}" is empty.${note}\nstateHash: ${result.stateHash}`,
@@ -436,7 +478,11 @@ server.registerTool(
     if (result.blocks.length === 0) {
       return fail(`No blocks matched ${result.missing.join(", ")} in post ${id}.`);
     }
-    return json({ ...result, pendingProposal: post.source === "proposal" });
+    return json({
+      ...result,
+      pendingProposal: post.source === "proposal",
+      ...(post.staleProposal ? { staleProposal: sourceNote(post).trim() } : {}),
+    });
   },
 );
 
@@ -457,6 +503,7 @@ server.registerTool(
       // True when what follows is the post's pending proposal rather than the
       // live document — see `loadPost`.
       pendingProposal: post.source === "proposal",
+      ...(post.staleProposal ? { staleProposal: sourceNote(post).trim() } : {}),
       ...readAll(post.state),
     });
   },
@@ -560,7 +607,11 @@ server.registerTool(
       "to approve or reject in the app. Report it as proposed, never as done. " +
       "Successive calls on the same post squash into that one proposal, and " +
       "every read of the post then returns the proposed content, so you can " +
-      "keep editing against your own work. " +
+      "keep editing against your own work. If the author saves in the app " +
+      "meanwhile, that proposal goes out of date and can no longer be " +
+      "approved: reads return the live document again, and the next call " +
+      "REPLACES the stale proposal rather than folding into it — say so, " +
+      "because the earlier change is then no longer pending. " +
       "Every op names a block address from a read, and the batch carries that " +
       "read's stateHash — if the state you read has moved on, the whole batch " +
       "is refused and you re-read. That guard covers the state you read; it " +
@@ -601,6 +652,17 @@ server.registerTool(
     const after = outline(result.state);
     // `version` counts folds, so 0 means this call created the proposal.
     const squashed = proposal.version > 0;
+    // The author saved after the earlier proposal was written, so that proposal
+    // could never have been approved and this batch started over against the
+    // current document (§3.6). Say it plainly: the earlier work is gone, and
+    // reporting it as still pending would be a lie about the blog's state.
+    const replaced = proposal.replaced
+      ? `\nYour earlier proposal (${proposal.replaced}) was out of date — the ` +
+        `author edited this post after it was written — so it has been ` +
+        `replaced rather than added to. Only the change above is pending; tell ` +
+        `the user, and re-apply anything from the earlier proposal that still ` +
+        `matters.`
+      : "";
     return text(
       `Proposed ${result.changed} block change` +
         `${result.changed === 1 ? "" : "s"} to "${post.name}". Nothing is ` +
@@ -609,7 +671,7 @@ server.registerTool(
           ? `folded into the pending proposal ${proposal.id} ` +
             `(batch ${proposal.version + 1})`
           : `pending proposal ${proposal.id}`) +
-        `, awaiting the author's approval in the app.\n` +
+        `, awaiting the author's approval in the app.${replaced}\n` +
         `Further edits to this post fold into the same proposal, and reads of ` +
         `it now return the proposed content rather than the live document.\n` +
         `stateHash: ${after.stateHash}\n\n${formatOutline(after)}`,

@@ -30,6 +30,14 @@
  * and overwrites an intervening save with no 409. `foldProposal` expresses that
  * by leaving the column out of the patch entirely (§3.2, §9).
  *
+ * **When the author saves underneath.** The base stops being head, so the
+ * proposal can no longer be approved: `planStaleMarking` says which rows a head
+ * move invalidates, `isProposalStale` is the one question every surface asks
+ * about a row, and the answer changes what an agent *reads* as well as what an
+ * author may approve — a stale row is superseded by the next batch rather than
+ * folded onto, which is what makes "ask Claude again against current content"
+ * something that happens rather than something a document says (§3.6).
+ *
  * This module has **no imports on purpose**. It is the part that is decidable
  * without a database: `repositories/revision.ts` and `repositories/document.ts`
  * supply rows and execute plans, and `__tests__/proposals.test.ts` exercises
@@ -109,8 +117,12 @@ export const selectHead = <R extends RevisionRow>(
 export interface AgentSources<R> {
   /** `Document.head`, exactly as read. */
   head: string | null;
-  /** The document's pending proposal, if it has one. */
-  pending: R | null;
+  /**
+   * The document's pending proposal, if it has one — with the two columns
+   * staleness is decided from, because a *stale* proposal is not a state to
+   * keep reading (§3.6).
+   */
+  pending: (R & Omit<StaleCandidate, "id">) | null;
   /** The committed state, if the document has any content at all. */
   committed: R | null;
 }
@@ -134,6 +146,17 @@ export interface AgentRead<R> {
    * on the first batch.
    */
   base: string | null;
+  /**
+   * True when the document has a pending proposal that was **not** read because
+   * it has gone stale (§3.6).
+   *
+   * Worth reporting rather than hiding: it is the difference between "there is
+   * nothing pending" and "what you proposed can no longer be approved, and the
+   * content below is the author's, not yours". The next write replaces that row
+   * — see `foldProposal`'s `replace` — so an agent that says nothing still does
+   * the right thing, but it will describe it wrongly.
+   */
+  staleProposal: boolean;
 }
 
 /**
@@ -153,14 +176,109 @@ export const selectAgentRead = <R>(
   sources: AgentSources<R>,
 ): AgentRead<R> => {
   const base = sources.head ?? null;
-  if (sources.pending) {
-    return { source: "proposal", revision: sources.pending, base };
+  const stale = !!sources.pending && isProposalStale(sources.pending, base);
+
+  // A stale proposal is the one case where the pending row loses. Its content
+  // is built on a base that is no longer head, so approval refuses it — and
+  // addressing blocks inside it would produce a second batch that is equally
+  // unapprovable, on top of content the author has already moved past. Read
+  // what the document actually says instead; the next write starts over from
+  // there (§3.6, and decision 6 in §8).
+  if (sources.pending && !stale) {
+    return {
+      source: "proposal",
+      revision: sources.pending,
+      base,
+      staleProposal: false,
+    };
   }
   if (sources.committed) {
-    return { source: "committed", revision: sources.committed, base };
+    return {
+      source: "committed",
+      revision: sources.committed,
+      base,
+      staleProposal: stale,
+    };
   }
-  return { source: "empty", revision: null, base };
+  return { source: "empty", revision: null, base, staleProposal: stale };
 };
+
+// ─── Staleness (§3.6) ────────────────────────────────────────────────────────
+
+/**
+ * Has the document moved off the base this proposal was built on?
+ *
+ * Two answers in one, and they have to agree or the UI and the server say
+ * different things about the same row:
+ *
+ * - **`staleAt`** is the stamp a head move leaves behind (`planStaleMarking`).
+ *   It is what `planApproval` refuses on, so it is authoritative.
+ * - **`baseRevisionId !== head`** is the same fact derived from the two
+ *   pointers, and it covers the window the stamp cannot: a proposal *created*
+ *   while a save was in flight is born with a base that is already not head, and
+ *   no marker ran over a row that did not exist yet. Approval catches that case
+ *   anyway — the compare-and-set misses — but only after the click, and a
+ *   surface that has both pointers in hand can say so beforehand.
+ *
+ * `staleAt` is taken as a `Date` from Prisma and as an ISO string over the wire,
+ * so both are accepted: the only question asked of it is whether it is set.
+ */
+export const isProposalStale = (
+  proposal: { baseRevisionId: string | null; staleAt: Date | string | null },
+  head: string | null,
+): boolean =>
+  Boolean(proposal.staleAt) || (head ?? null) !== proposal.baseRevisionId;
+
+/** The columns a head move needs in order to decide what it invalidated. */
+export interface StaleCandidate {
+  id: string;
+  baseRevisionId: string | null;
+  staleAt: Date | null;
+}
+
+export interface StaleMarking {
+  /** The rows to stamp. Empty is the overwhelmingly common answer. */
+  ids: string[];
+  /** The stamp, supplied rather than read, so the plan stays pure. */
+  at: Date;
+}
+
+/**
+ * Which pending proposals a head move makes unapprovable (§3.6).
+ *
+ * Three exclusions, and every one of them is load-bearing:
+ *
+ * - **already stamped** — the first stamp names when the document moved on, and
+ *   an editor autosave folds into one revision id, so the same `head` value is
+ *   written repeatedly. Re-stamping would walk the timestamp forward for as long
+ *   as the author kept typing.
+ * - **the row becoming head** — that is an approval, not a save, and it must not
+ *   mark its own proposal stale on its way into history. Approval writes `head`
+ *   through its own transaction rather than this path, so this is a belt on top
+ *   of a brace; it costs one comparison and removes a whole class of accident
+ *   from any future caller.
+ * - **base already equal to the new head** — nothing moved, from this row's
+ *   point of view. A repair that lands back on the base is the realistic case.
+ *
+ * Decided over rows here rather than in a `NOT` on the update's `where`, because
+ * SQL's three-valued logic makes `NOT ("baseRevisionId" = $1)` *skip* a row
+ * whose base is null — exactly the proposal built on an empty document, and
+ * exactly the one that most needs the stamp.
+ */
+export const planStaleMarking = <R extends StaleCandidate>(
+  pending: readonly R[],
+  nextHead: string | null,
+  at: Date,
+): StaleMarking => ({
+  ids: pending
+    .filter((row) =>
+      !row.staleAt &&
+      row.id !== nextHead &&
+      row.baseRevisionId !== nextHead
+    )
+    .map((row) => row.id),
+  at,
+});
 
 // ─── The squash ──────────────────────────────────────────────────────────────
 
@@ -176,6 +294,9 @@ export interface PendingProposal {
   origin: string | null;
   summary: string | null;
   proposedAt: Date;
+  /** Set once the base stopped being head (§3.6). A stale row is not folded
+   * onto — it is replaced, because nothing folded onto it could be approved. */
+  staleAt: Date | null;
 }
 
 /** One agent write, on its way into the pending row. */
@@ -227,6 +348,20 @@ export type SquashPlan =
     row: ProposalRowState;
   }
   | {
+    /**
+     * The pending row is stale (§3.6), so this batch starts a new proposal and
+     * the old row goes. Not a squash: folding onto a base that is no longer
+     * head only grows something approval must refuse. Not a plain create
+     * either, because one pending row per document is a database fact — the
+     * delete and the insert have to travel together.
+     */
+    kind: "replace";
+    /** The stale row this supersedes. */
+    replaces: string;
+    /** A fresh proposal, based on what *this* batch read. */
+    row: ProposalRowState;
+  }
+  | {
     kind: "squash";
     id: string;
     /** `updateMany where { id, version: expectedVersion }`; a miss means
@@ -261,21 +396,27 @@ export const foldProposal = (
   existing: PendingProposal | null,
   batch: ProposalBatch,
 ): SquashPlan => {
-  if (!existing) {
-    return {
-      kind: "create",
-      row: {
-        data: batch.data,
-        ops: [...batch.ops],
-        origin: batch.origin,
-        summary: batch.summary ?? null,
-        // The one and only write of this column.
-        baseRevisionId: batch.base,
-        proposedAt: batch.at,
-        createdAt: batch.at,
-        version: 0,
-      },
-    };
+  const fresh = (): ProposalRowState => ({
+    data: batch.data,
+    ops: [...batch.ops],
+    origin: batch.origin,
+    summary: batch.summary ?? null,
+    // The one and only write of this column.
+    baseRevisionId: batch.base,
+    proposedAt: batch.at,
+    createdAt: batch.at,
+    version: 0,
+  });
+
+  if (!existing) return { kind: "create", row: fresh() };
+
+  // The pending row was built on a base this batch is not standing on: either
+  // it was stamped stale by a save (§3.6), or head moved between the stamp and
+  // now. Folding would append this batch's work to a row approval can only
+  // refuse, so the row is replaced by one based on what was actually read.
+  // The ops do not carry over — they name a state that is no longer anywhere.
+  if (isProposalStale(existing, batch.base)) {
+    return { kind: "replace", replaces: existing.id, row: fresh() };
   }
 
   const patch: ProposalPatch = {

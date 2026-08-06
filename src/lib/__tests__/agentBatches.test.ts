@@ -21,6 +21,7 @@ import {
   foldProposal,
   isProposal,
   type PendingProposal,
+  planStaleMarking,
   selectAgentRead,
   selectHead,
 } from "@/lib/proposals";
@@ -40,6 +41,7 @@ interface Row {
   summary: string | null;
   baseRevisionId: string | null;
   proposedAt: Date | null;
+  staleAt: Date | null;
   createdAt: Date;
   version: number;
 }
@@ -55,6 +57,7 @@ class Store {
   head: string | null;
   readonly rows = new Map<string, Row>();
   private nextId = 0;
+  private nextProp = 0;
 
   constructor(seed: Blocks) {
     const id = "rev-head";
@@ -66,10 +69,15 @@ class Store {
       summary: null,
       baseRevisionId: null,
       proposedAt: null,
+      staleAt: null,
       createdAt: new Date("2026-08-06T09:00:00Z"),
       version: 0,
     });
     this.head = id;
+  }
+
+  newProposalId(): string {
+    return `prop-${++this.nextProp}`;
   }
 
   all(): Row[] {
@@ -83,7 +91,13 @@ class Store {
     return this.all().find(isProposal) ?? null;
   }
 
-  /** What a human editor save does: a fresh history row, and head moves. */
+  /**
+   * What a human editor save does: a fresh history row, head moves — and every
+   * pending proposal built on the head it moved off is stamped stale, in the
+   * same breath (§3.6). `updateDocument` does exactly these two things in one
+   * transaction; doing them separately here would model a system that cannot
+   * exist.
+   */
   save(data: Blocks, at: Date): string {
     const id = `rev-save-${this.nextId++}`;
     this.rows.set(id, {
@@ -94,10 +108,14 @@ class Store {
       summary: null,
       baseRevisionId: null,
       proposedAt: null,
+      staleAt: null,
       createdAt: at,
       version: 0,
     });
     this.head = id;
+
+    const marking = planStaleMarking(this.all().filter(isProposal), id, at);
+    for (const stale of marking.ids) this.rows.get(stale)!.staleAt = marking.at;
     return id;
   }
 }
@@ -130,6 +148,7 @@ const toPending = (row: Row): PendingProposal => ({
   origin: row.origin,
   summary: row.summary,
   proposedAt: row.proposedAt as Date,
+  staleAt: row.staleAt,
 });
 
 /** `upsertProposal`: execute the plan, honouring the `version` CAS. */
@@ -143,19 +162,25 @@ const propose = (store: Store, next: Blocks, op: SetText, base: string | null, a
     at,
   });
 
-  if (plan.kind === "create") {
-    store.rows.set("prop-1", {
-      id: "prop-1",
+  if (plan.kind === "create" || plan.kind === "replace") {
+    // One transaction in the repository, delete first: one pending row per
+    // document is enforced by a partial unique index, so the stale row has to
+    // go before the fresh one can exist.
+    if (plan.kind === "replace") store.rows.delete(plan.replaces);
+    const id = store.newProposalId();
+    store.rows.set(id, {
+      id,
       data: plan.row.data as Blocks,
       ops: plan.row.ops,
       origin: plan.row.origin,
       summary: plan.row.summary,
       baseRevisionId: plan.row.baseRevisionId,
       proposedAt: plan.row.proposedAt,
+      staleAt: null,
       createdAt: plan.row.createdAt,
       version: plan.row.version,
     });
-    return "prop-1";
+    return id;
   }
 
   const row = store.rows.get(plan.id)!;
@@ -268,47 +293,81 @@ describe("three consecutive agent batches", () => {
 
 describe("a human saves between two agent batches", () => {
   /**
-   * The worse of the two silent losses (§9): if the squash refreshed the base
-   * to whatever head is now, approval's compare-and-set would match, and the
-   * save made in between would be overwritten with no 409 and no staleness.
+   * Phase 5's whole subject (§3.6), and the worse of the two silent losses in
+   * §9 at the same time: if the squash refreshed the base to whatever head is
+   * now, approval's compare-and-set would match and the save made in between
+   * would be overwritten with no 409 and no staleness.
+   *
+   * The save stamps the proposal stale, so the second batch does *not* fold onto
+   * it — it reads the live document and starts a new proposal against that.
    */
   const run = () => {
     const store = new Store({ text: ["one", "two", "three"] });
-    applyOps(store, { op: "set_text", index: 0, text: "ONE" }, at("2026-08-06T10:00:00Z"));
+    const first = applyOps(store, { op: "set_text", index: 0, text: "ONE" }, at("2026-08-06T10:00:00Z"));
+    const stale = store.pending()!;
     const saved = store.save({ text: ["one", "two", "EDITED BY HAND"] }, at("2026-08-06T10:00:30Z"));
     const second = applyOps(
       store,
       { op: "set_text", index: 1, text: "TWO" },
       at("2026-08-06T10:01:00Z"),
     );
-    return { store, saved, second };
+    return { store, first, stale, saved, second };
   };
 
-  it("still names the original base, not the new head", () => {
-    const { store, saved } = run();
+  it("stamps the proposal stale as the save moves head", () => {
+    const { store, first, stale, saved } = run();
     expect(store.head).toBe(saved);
-    expect(store.pending()!.baseRevisionId).toBe("rev-head");
-    expect(store.pending()!.baseRevisionId).not.toBe(saved);
+    // Captured before the second batch replaced it: the row the save invalidated.
+    expect(stale.id).toBe(first.id);
+    expect(stale.staleAt).toEqual(at("2026-08-06T10:00:30Z"));
   });
 
-  it("means approval's CAS misses rather than clobbering the save", () => {
-    const { store } = run();
-    // `approveProposal` does `updateMany where { id, head: baseRevisionId }`.
-    expect(store.head === store.pending()!.baseRevisionId).toBe(false);
+  it("never refreshes the stale row's base on its way out", () => {
+    // The one invariant with no database constraint behind it: had the fold
+    // refreshed the base instead of refusing, approval's CAS would have matched
+    // and the hand edit would be gone.
+    const { stale, saved } = run();
+    expect(stale.baseRevisionId).toBe("rev-head");
+    expect(stale.baseRevisionId).not.toBe(saved);
   });
 
-  it("keeps reading the proposal, so the agent never silently rebases", () => {
-    // The second batch read the proposal, so it did *not* see the hand edit —
-    // which is why approval must refuse rather than merge (§3.6).
-    const { store, second } = run();
-    expect(second.source).toBe("proposal");
-    expect(second.seen.text).toEqual(["ONE", "two", "three"]);
-    expect(store.pending()!.data.text).toEqual(["ONE", "TWO", "three"]);
+  it("reads the live document rather than the stale proposal", () => {
+    // Before phase 5 the second batch went on reading the proposal, and so
+    // never saw the hand edit. Continuing to build there only grows something
+    // approval must refuse (§3.6).
+    const { second } = run();
+    expect(second.source).toBe("committed");
+    expect(second.seen.text).toEqual(["one", "two", "EDITED BY HAND"]);
+  });
+
+  it("replaces the stale proposal instead of folding onto it", () => {
+    const { store, first, second } = run();
+    expect(second.id).not.toBe(first.id);
+    // Still exactly one pending row — the partial unique index would refuse two.
+    expect(store.all().filter(isProposal)).toHaveLength(1);
+    expect(store.rows.has(first.id)).toBe(false);
+  });
+
+  it("leaves a proposal that can actually be approved", () => {
+    const { store, saved } = run();
+    const pending = store.pending()!;
+    expect(pending.staleAt).toBeNull();
+    // `approveProposal` does `updateMany where { id, head: baseRevisionId }`,
+    // and this one matches: the new proposal is based on the save.
+    expect(pending.baseRevisionId).toBe(saved);
+    expect(store.head).toBe(pending.baseRevisionId);
+    // Built on the author's text, not on the discarded batch's.
+    expect(pending.data.text).toEqual(["one", "TWO", "EDITED BY HAND"]);
+    expect(pending.ops).toEqual([{ op: "set_text", index: 1, text: "TWO" }]);
   });
 });
 
 describe("selectAgentRead", () => {
-  const proposal = { id: "prop-1" };
+  const proposal = {
+    id: "prop-1",
+    baseRevisionId: "rev-head",
+    staleAt: null as Date | null,
+  };
   const committed = { id: "rev-head" };
 
   it("prefers the pending proposal over the committed document", () => {
@@ -342,6 +401,38 @@ describe("selectAgentRead", () => {
 
   it("calls a document with no content at all empty rather than missing", () => {
     const read = selectAgentRead({ head: null, pending: null, committed: null });
-    expect(read).toEqual({ source: "empty", revision: null, base: null });
+    expect(read).toEqual({
+      source: "empty",
+      revision: null,
+      base: null,
+      staleProposal: false,
+    });
+  });
+
+  it("passes over a stale proposal and says it did", () => {
+    // The agent has to be told, or it will report work as pending that can no
+    // longer be approved (§3.6).
+    const read = selectAgentRead({
+      head: "rev-head",
+      pending: { ...proposal, staleAt: new Date("2026-08-06T12:00:00Z") },
+      committed,
+    });
+    expect(read.source).toBe("committed");
+    expect(read.revision).toBe(committed);
+    expect(read.staleProposal).toBe(true);
+  });
+
+  it("passes over one whose base is not head, stamp or no stamp", () => {
+    // The proposal created while a save was in flight: no marker ever ran over
+    // a row that did not exist yet, and the pointers are the only evidence.
+    const read = selectAgentRead({
+      head: "rev-save-0",
+      pending: proposal,
+      committed,
+    });
+    expect(read.source).toBe("committed");
+    expect(read.staleProposal).toBe(true);
+    // And the write it bases is on the head it actually read.
+    expect(read.base).toBe("rev-save-0");
   });
 });

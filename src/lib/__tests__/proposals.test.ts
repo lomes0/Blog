@@ -2,8 +2,10 @@ import {
   foldProposal,
   historyOf,
   isProposal,
+  isProposalStale,
   type PendingProposal,
   planApproval,
+  planStaleMarking,
   type ProposalBatch,
   selectHead,
 } from "@/lib/proposals";
@@ -37,6 +39,7 @@ const pending = (over: Partial<PendingProposal> = {}): PendingProposal => ({
   origin: "claude-code",
   summary: null,
   proposedAt: at("2026-08-06T10:00:00Z"),
+  staleAt: null,
   ...over,
 });
 
@@ -128,7 +131,10 @@ describe("foldProposal — squashing", () => {
   const second = batch({
     data: { root: "two" },
     ops: ["op-2"],
-    base: "head-99", // head has moved on; irrelevant to a squash
+    // Head has not moved, which is what a squash *is*: a batch standing on the
+    // same base as the row it folds into. A batch that read a different head is
+    // the stale case below, and it replaces rather than folds.
+    base: "head-1",
     at: at("2026-08-06T11:00:00Z"),
   });
 
@@ -139,7 +145,6 @@ describe("foldProposal — squashing", () => {
     const plan = foldProposal(pending({ baseRevisionId: "head-1" }), second);
     expect(plan.kind).toBe("squash");
     expect(plan.row.baseRevisionId).toBe("head-1");
-    expect(plan.row.baseRevisionId).not.toBe(second.base);
   });
 
   it("does not even offer baseRevisionId to the write", () => {
@@ -205,6 +210,150 @@ describe("foldProposal — squashing", () => {
     // Not something this module writes — kept rather than dropped.
     expect(foldProposal(pending({ ops: { odd: true } }), second).row.ops)
       .toEqual([{ odd: true }, "op-2"]);
+  });
+});
+
+describe("isProposalStale", () => {
+  it("says no while the base is still head", () => {
+    expect(isProposalStale({ baseRevisionId: "head-1", staleAt: null }, "head-1"))
+      .toBe(false);
+  });
+
+  it("says yes once head has moved off the base, unstamped", () => {
+    // The proposal written while a save was in flight: no marker could have run
+    // over a row that did not exist yet, and the two pointers are the evidence.
+    expect(isProposalStale({ baseRevisionId: "head-1", staleAt: null }, "head-2"))
+      .toBe(true);
+  });
+
+  it("says yes on the stamp alone", () => {
+    expect(
+      isProposalStale(
+        { baseRevisionId: "head-1", staleAt: at("2026-08-06T12:00:00Z") },
+        "head-1",
+      ),
+    ).toBe(true);
+  });
+
+  it("takes the stamp as a date or as the string it arrives as over the wire", () => {
+    // The rail reads a JSON payload; the repository reads a Prisma `Date`. One
+    // function has to answer for both, or the UI and the server disagree about
+    // the same row.
+    expect(
+      isProposalStale(
+        { baseRevisionId: "head-1", staleAt: "2026-08-06T12:00:00.000Z" },
+        "head-1",
+      ),
+    ).toBe(true);
+  });
+
+  it("treats a proposal on an empty document as fresh only while head is null", () => {
+    expect(isProposalStale({ baseRevisionId: null, staleAt: null }, null))
+      .toBe(false);
+    expect(isProposalStale({ baseRevisionId: null, staleAt: null }, "head-1"))
+      .toBe(true);
+  });
+});
+
+describe("planStaleMarking", () => {
+  const candidate = (over: Partial<Parameters<typeof planStaleMarking>[0][0]> = {}) => ({
+    id: "prop-1",
+    baseRevisionId: "head-1" as string | null,
+    staleAt: null as Date | null,
+    ...over,
+  });
+  const now = at("2026-08-06T12:00:00Z");
+
+  it("marks a proposal whose base stopped being head", () => {
+    expect(planStaleMarking([candidate()], "head-2", now))
+      .toEqual({ ids: ["prop-1"], at: now });
+  });
+
+  it("leaves a proposal whose base is the new head alone", () => {
+    expect(planStaleMarking([candidate()], "head-1", now).ids).toEqual([]);
+  });
+
+  it("does not re-stamp an already stale row", () => {
+    // An editor autosave folds into one revision id, so the same head value is
+    // written over and over; re-stamping would walk the timestamp forward for
+    // as long as the author kept typing.
+    const already = candidate({ staleAt: at("2026-08-06T11:00:00Z") });
+    expect(planStaleMarking([already], "head-2", now).ids).toEqual([]);
+  });
+
+  it("never marks the row that is becoming head", () => {
+    // That head move is an approval, not a save. Approval writes head through
+    // its own transaction, so this is a second lock on the same door.
+    const approved = candidate({ id: "prop-1", baseRevisionId: "head-1" });
+    expect(planStaleMarking([approved], "prop-1", now).ids).toEqual([]);
+  });
+
+  it("marks a proposal built on an empty document once head exists", () => {
+    // The row a `NOT ("baseRevisionId" = $1)` in SQL would silently skip, since
+    // that comparison is unknown — and therefore false — for a null base.
+    expect(planStaleMarking([candidate({ baseRevisionId: null })], "head-1", now).ids)
+      .toEqual(["prop-1"]);
+  });
+
+  it("leaves that same proposal alone while head is still null", () => {
+    expect(planStaleMarking([candidate({ baseRevisionId: null })], null, now).ids)
+      .toEqual([]);
+  });
+
+  it("answers for every row it is given, not just the first", () => {
+    const rows = [
+      candidate({ id: "a", baseRevisionId: "head-1" }),
+      candidate({ id: "b", baseRevisionId: "head-2" }),
+      candidate({ id: "c", baseRevisionId: null }),
+    ];
+    expect(planStaleMarking(rows, "head-2", now).ids).toEqual(["a", "c"]);
+  });
+});
+
+describe("foldProposal — replacing a stale proposal", () => {
+  const later = batch({
+    data: { root: "two" },
+    ops: ["op-2"],
+    base: "head-2",
+    at: at("2026-08-06T11:00:00Z"),
+  });
+
+  it("replaces rather than folds when the pending row is stamped stale", () => {
+    const plan = foldProposal(
+      pending({ staleAt: at("2026-08-06T10:30:00Z") }),
+      batch({ ops: ["op-2"], at: at("2026-08-06T11:00:00Z") }),
+    );
+    if (plan.kind !== "replace") throw new Error("expected a replace");
+    expect(plan.replaces).toBe("prop-1");
+  });
+
+  it("replaces when the batch stands on a different head, stamp or no stamp", () => {
+    const plan = foldProposal(pending({ baseRevisionId: "head-1" }), later);
+    expect(plan.kind).toBe("replace");
+  });
+
+  it("bases the new proposal on what this batch actually read", () => {
+    // Not the old base. The replacement is approvable precisely because it is
+    // built on current head; carrying the dead base forward would produce a
+    // second unapprovable row.
+    const plan = foldProposal(pending({ baseRevisionId: "head-1" }), later);
+    expect(plan.row.baseRevisionId).toBe("head-2");
+  });
+
+  it("drops the stale row's ops rather than carrying them over", () => {
+    // They name blocks in a state that is no longer anywhere: the author's save
+    // moved past it, and this batch never saw it either.
+    const plan = foldProposal(pending({ ops: ["op-1"] }), later);
+    expect(plan.row.ops).toEqual(["op-2"]);
+  });
+
+  it("starts a fresh proposal — version 0, proposed now", () => {
+    const plan = foldProposal(
+      pending({ version: 7, proposedAt: at("2026-08-06T10:00:00Z") }),
+      later,
+    );
+    expect(plan.row.version).toBe(0);
+    expect(plan.row.proposedAt).toEqual(at("2026-08-06T11:00:00Z"));
   });
 });
 

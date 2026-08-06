@@ -7,6 +7,7 @@ import {
   foldProposal,
   type PendingProposal,
   planApproval,
+  planStaleMarking,
   type ProposalRowState,
 } from "@/lib/proposals";
 
@@ -292,6 +293,50 @@ const findPendingProposalsByAuthor = async (
     orderBy: { proposedAt: "desc" },
   });
 
+/**
+ * Stamp every pending proposal on a document stale, because `head` has moved off
+ * the base they were built on (docs/plans/agent-gating.md §3.6).
+ *
+ * **Takes a transaction client rather than opening one.** It has to commit with
+ * the head move: a crash in between would leave a proposal the compare-and-set
+ * will refuse — no work lost, but the rail would go on offering "Approve" for a
+ * button that can only 409, and nothing would ever come back to fix it, since
+ * the marker only runs when head moves. Every caller therefore already has a
+ * transaction open, and the one that did not (the unconditional arm of
+ * `updateDocument`) grew one.
+ *
+ * The decision is `planStaleMarking`'s, not this function's, and the round trip
+ * is a read then a write rather than one `updateMany` with a `NOT`: in SQL
+ * `NOT ("baseRevisionId" = $1)` is *unknown*, and therefore false, for the row
+ * whose base is null — the proposal written against an empty document, which is
+ * the one that most needs stamping.
+ */
+const markProposalsStale = async (
+  tx: Prisma.TransactionClient,
+  document: Prisma.DocumentWhereInput,
+  nextHead: string | null,
+  at: Date = new Date(),
+): Promise<number> => {
+  const pending = await tx.revision.findMany({
+    where: { document, proposedAt: { not: null } },
+    select: { id: true, baseRevisionId: true, staleAt: true },
+  });
+  // The overwhelmingly common case: no document has a proposal, so an ordinary
+  // save pays one indexed lookup and stops.
+  if (pending.length === 0) return 0;
+
+  const plan = planStaleMarking(pending, nextHead, at);
+  if (plan.ids.length === 0) return 0;
+
+  const { count } = await tx.revision.updateMany({
+    // `staleAt: null` a second time: the first stamp is the one that names when
+    // the document moved on, and a concurrent marker must not push it forward.
+    where: { id: { in: plan.ids }, staleAt: null },
+    data: { staleAt: plan.at },
+  });
+  return count;
+};
+
 /** What a caller must supply to fold one agent batch into the proposal. */
 export interface ProposalInput {
   documentId: string;
@@ -324,6 +369,16 @@ export interface ProposalRecord {
   createdAt: Date;
   origin: string | null;
   summary: string | null;
+  /**
+   * The stale proposal this write superseded, if there was one (§3.6).
+   *
+   * Non-null means the author had edited the document since the previous batch,
+   * so that batch's row could no longer be approved and this one started over
+   * against the current content. The agent has to be able to say so — it is the
+   * difference between "folded into what I proposed earlier" and "your earlier
+   * proposal is gone".
+   */
+  replaced: string | null;
 }
 
 const toPending = (row: PendingProposalRow): PendingProposal => ({
@@ -335,6 +390,7 @@ const toPending = (row: PendingProposalRow): PendingProposal => ({
   summary: row.summary,
   // Narrowed by the `proposedAt: { not: null }` the row was fetched under.
   proposedAt: row.proposedAt as Date,
+  staleAt: row.staleAt,
 });
 
 const asJson = (value: unknown) => value as Prisma.InputJsonValue;
@@ -343,6 +399,7 @@ const toRecord = (
   id: string,
   documentId: string,
   row: ProposalRowState,
+  replaced: string | null = null,
 ): ProposalRecord => ({
   id,
   documentId,
@@ -352,6 +409,7 @@ const toRecord = (
   createdAt: row.createdAt,
   origin: row.origin,
   summary: row.summary,
+  replaced,
 });
 
 /**
@@ -370,6 +428,9 @@ const toRecord = (
  *   `head` stops moving on an agent write, `version` is the *only* thing
  *   serializing this; `createdAt` cannot serve instead, since the squash is
  *   what rewrites it.
+ *
+ * A **stale** pending row is the third answer: it is replaced rather than folded
+ * onto (§3.6). See `foldProposal`.
  */
 const upsertProposal = async (
   input: ProposalInput,
@@ -387,25 +448,45 @@ const upsertProposal = async (
       at,
     });
 
-    if (plan.kind === "create") {
+    if (plan.kind === "create" || plan.kind === "replace") {
       const id = input.id ?? randomUUID();
+      const create = prisma.revision.create({
+        data: {
+          id,
+          documentId: input.documentId,
+          authorId: input.authorId,
+          data: asJson(plan.row.data),
+          ops: asJson(plan.row.ops),
+          origin: plan.row.origin,
+          summary: plan.row.summary,
+          baseRevisionId: plan.row.baseRevisionId,
+          proposedAt: plan.row.proposedAt,
+          createdAt: plan.row.createdAt,
+          version: plan.row.version,
+        },
+      });
       try {
-        await prisma.revision.create({
-          data: {
-            id,
-            documentId: input.documentId,
-            authorId: input.authorId,
-            data: asJson(plan.row.data),
-            ops: asJson(plan.row.ops),
-            origin: plan.row.origin,
-            summary: plan.row.summary,
-            baseRevisionId: plan.row.baseRevisionId,
-            proposedAt: plan.row.proposedAt,
-            createdAt: plan.row.createdAt,
-            version: plan.row.version,
-          },
-        });
-        return toRecord(id, input.documentId, plan.row);
+        if (plan.kind === "replace") {
+          // One transaction, and the delete first: `revision_one_pending_per_
+          // document` allows exactly one pending row, so the two statements
+          // cannot be separated and cannot be reordered. Losing the stale row
+          // is not a loss — it could only ever be rejected (§3.6), and this
+          // batch is the re-run that replaces it.
+          await prisma.$transaction([
+            prisma.revision.deleteMany({
+              where: { id: plan.replaces, proposedAt: { not: null } },
+            }),
+            create,
+          ]);
+        } else {
+          await create;
+        }
+        return toRecord(
+          id,
+          input.documentId,
+          plan.row,
+          plan.kind === "replace" ? plan.replaces : null,
+        );
       } catch (error) {
         // Someone else created the document's proposal between the read and
         // this insert; go round again and fold onto theirs.
@@ -453,6 +534,13 @@ export type ApproveResult =
  * now": that is what makes the compare-and-set the staleness check for free. A
  * miss is `"conflict"` — a distinguishable result rather than a thrown error,
  * because the route's answer to it is 409 and not 500.
+ *
+ * This moves `head` and deliberately does **not** call `markProposalsStale`. It
+ * is the one head move that is not a save: the row arriving at head is the
+ * proposal itself, so marking would stamp the thing being approved. The plan is
+ * belt-and-braces about it too — `planStaleMarking` skips the row whose id is
+ * the new head — but the reason it is not called here is that there is nothing
+ * to mark: at most one pending proposal exists per document, and this is it.
  */
 const approveProposal = async (
   documentId: string,
@@ -508,6 +596,7 @@ export {
   findRevisionDocumentId,
   getCachedRevision,
   isPendingProposal,
+  markProposalsStale,
   rejectProposal,
   updateRevision,
   upsertProposal,
