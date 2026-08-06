@@ -221,7 +221,7 @@ describe("ui.workspace — panes", () => {
     expect(paneOf(state, "p2").mode).toBe("write");
   });
 
-  it("opens the diff in the focused pane only", () => {
+  it("opens the diff in the pane holding that document only", () => {
     let state = reducer(
       initial(),
       actions.openPane({ paneId: "p1", rootId: "doc-a", mode: "write" }),
@@ -230,10 +230,88 @@ describe("ui.workspace — panes", () => {
       state,
       actions.openPane({ paneId: "p2", rootId: "doc-b", mode: "write" }),
     );
-    state = reducer(state, actions.setDiffOpen(true));
+    state = reducer(
+      state,
+      actions.setDiffOpen({ docId: "doc-b", open: true }),
+    );
 
     expect(paneOf(state, "p1").diffOpen).toBe(false);
     expect(paneOf(state, "p2").diffOpen).toBe(true);
+  });
+
+  /**
+   * The rail's "Review" on a document nothing is showing yet: the diff is asked
+   * for against a *document*, and the pane that will hold it may not exist —
+   * or, having been created by the open, may be torn down and rebuilt before
+   * the user sees anything. The workspace restore, the deep-link replay and
+   * `WorkspacePanes`' unmount (`closeAllPanes`, which React's development
+   * double-mount fires on entry) all rewrite panes after the click.
+   */
+  it("gives a pane the diff its document was already asked to show", () => {
+    let state = reducer(
+      initial(),
+      actions.setDiffOpen({ docId: "doc-b", open: true }),
+    );
+    // No pane held it, so nothing to project onto — but the request stands.
+    expect(workspaceOf(state).panes).toEqual([]);
+
+    // Whatever the workspace does next, the pane that ends up showing doc-b
+    // shows the review with it: minted from nothing…
+    state = reducer(
+      state,
+      actions.openPane({ paneId: "p1", rootId: "doc-b", mode: "write" }),
+    );
+    expect(paneOf(state, "p1").diffOpen).toBe(true);
+
+    // …retargeted away, which is a different review and so no review…
+    state = reducer(
+      state,
+      actions.openPane({ paneId: "p1", rootId: "doc-c", mode: "write" }),
+    );
+    expect(paneOf(state, "p1").diffOpen).toBe(false);
+
+    // …and retargeted back.
+    state = reducer(
+      state,
+      actions.openPane({ paneId: "p1", rootId: "doc-b", mode: "write" }),
+    );
+    expect(paneOf(state, "p1").diffOpen).toBe(true);
+  });
+
+  it("closes a diff by document, so leaving one pane cannot close another's", () => {
+    let state = reducer(
+      initial(),
+      actions.openPane({ paneId: "p1", rootId: "doc-a", mode: "write" }),
+    );
+    state = reducer(
+      state,
+      actions.openPane({ paneId: "p2", rootId: "doc-b", mode: "write" }),
+    );
+    state = reducer(
+      state,
+      actions.setDiffOpen({ docId: "doc-b", open: true }),
+    );
+
+    // What `usePostLoader` dispatches when doc-a's panel unmounts, after focus
+    // has already moved to doc-b.
+    state = reducer(
+      state,
+      actions.setDiffOpen({ docId: "doc-a", open: false }),
+    );
+    expect(paneOf(state, "p2").diffOpen).toBe(true);
+
+    // And closing doc-b's own diff both hides it and retires the request, so
+    // reopening the document does not bring it back.
+    state = reducer(
+      state,
+      actions.setDiffOpen({ docId: "doc-b", open: false }),
+    );
+    expect(paneOf(state, "p2").diffOpen).toBe(false);
+    state = reducer(
+      state,
+      actions.openPane({ paneId: "p2", rootId: "doc-b", mode: "write" }),
+    );
+    expect(paneOf(state, "p2").diffOpen).toBe(false);
   });
 });
 

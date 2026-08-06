@@ -29,12 +29,18 @@ export function useProposalActions() {
   /**
    * Show the proposal as a diff against the document's current head.
    *
-   * The document is opened first, and not only for the user's benefit:
-   * `setDiffOpen` acts on the *focused* pane, so a review started from a rail
-   * row for some other document would otherwise light up the diff in whatever
-   * pane happened to have focus. `document.open` dispatches `openPane`
-   * synchronously — including the duplicate-open guard — so by the next line the
-   * focused pane is the right one.
+   * The document is opened first because that is the order the user sees, but
+   * the diff no longer depends on the open having *finished*: `setDiffOpen`
+   * names the document, so the request is recorded whether or not a pane holds
+   * it yet, and `openPane` honours it when one does.
+   *
+   * That distinction is not theoretical. Reviewing a document the workspace was
+   * not already showing rebuilds the pane after this line runs — the layout
+   * restore lands, the deep link replays, and in development React mounts
+   * `WorkspacePanes` twice, whose unmount half dispatches `closeAllPanes`. Each
+   * of those used to reset a flag that had been written onto a pane, so the
+   * first click opened the document with no diff and only a second one, against
+   * a workspace that had settled, showed the review bar.
    */
   const review = useCallback(async (proposal: PendingProposal) => {
     await run(documentCommands.open, {
@@ -45,7 +51,7 @@ export function useProposalActions() {
       old: proposal.head ?? undefined,
       new: proposal.id,
     }));
-    dispatch(actions.setDiffOpen(true));
+    dispatch(actions.setDiffOpen({ docId: proposal.documentId, open: true }));
   }, [run, dispatch]);
 
   const approve = useCallback(async (proposal: PendingProposal) => {
@@ -62,7 +68,10 @@ export function useProposalActions() {
       if (actions.approveProposal.rejected.match(result)) return false;
 
       // There is nothing left to compare: the proposal *is* the document now.
-      dispatch(actions.setDiffOpen(false));
+      dispatch(actions.setDiffOpen({
+        docId: proposal.documentId,
+        open: false,
+      }));
       await reloadAfterApproval(proposal.documentId);
       return true;
     } finally {
@@ -78,7 +87,10 @@ export function useProposalActions() {
         revisionId: proposal.id,
       }));
       if (actions.rejectProposal.rejected.match(result)) return false;
-      dispatch(actions.setDiffOpen(false));
+      dispatch(actions.setDiffOpen({
+        docId: proposal.documentId,
+        open: false,
+      }));
       return true;
     } finally {
       setBusyId(null);

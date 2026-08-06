@@ -103,9 +103,11 @@ const restorePane = (raw: unknown): WorkspacePane | null => {
     tabIds,
     activeTabId,
     mode: asMode(raw.mode),
-    // Never restored open: `ui.diff` (which revisions to compare) is not
-    // persisted, so a pane that came back with `diffOpen` would render a diff
-    // of nothing.
+    // Never restored open: `ui.diff` — which revisions to compare, and whose
+    // review it is — is not persisted, so a pane that came back with `diffOpen`
+    // would render a diff of nothing. A review asked for in *this* session and
+    // still waiting for its pane is not lost by this: the deep-link `openPane`
+    // that follows the restore re-derives the flag from `ui.diff.docId`.
     diffOpen: false,
   };
 };

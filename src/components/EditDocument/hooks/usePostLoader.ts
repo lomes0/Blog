@@ -1,8 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useAsyncEffect } from "@/hooks/useAsyncEffect";
-import { actions, useDispatch, useStore } from "@/store";
-import { selectFocusedDocId } from "@/store/selectors/layoutSelectors";
+import { actions, useDispatch } from "@/store";
 import { useErrorAnnounce } from "@/hooks/useErrorAnnounce";
 import { isPendingSaveAhead, readPendingSave } from "@/lib/pendingSaves";
 import {
@@ -42,7 +41,6 @@ export function usePostLoader(
   // Whether `loadedPost` came from the unconfirmed-save buffer rather than storage.
   const [restoredFromPending, setRestoredFromPending] = useState(false);
   const dispatch = useDispatch();
-  const store = useStore();
   const errorAnnounce = useErrorAnnounce();
 
   useAsyncEffect(async (isCancelled) => {
@@ -113,22 +111,18 @@ export function usePostLoader(
     await load();
 
     return () => {
-      // Closing the diff is a *pane* action — `setDiffOpen` acts on whichever
-      // pane has focus — and by the time this cleanup runs, focus may already
-      // have moved. Opening another document unmounts this panel *after* the
-      // new one has been focused, so an unguarded dispatch here closes the new
-      // pane's diff: which is exactly what the rail's "Review" does, open the
-      // document and then show the proposal against it
-      // (docs/plans/agent-gating.md §3.5).
+      // This panel is going away, so a review it was showing is over. Named by
+      // document, which is what makes that safe to say unconditionally: closing
+      // *this* document's diff cannot close the one the rail's "Review" just
+      // asked for on another (docs/plans/agent-gating.md §3.5), even though
+      // opening that other document is precisely what unmounts this panel.
       //
-      // Nothing is left open by being careful: `openPane` already clears
-      // `diffOpen` on a pane whose root changes, so this is the leaving-the-
-      // workspace case only.
-      if (selectFocusedDocId(store.getState()) === id) {
-        dispatch(actions.setDiffOpen(false));
-      }
+      // It used to compare the focused document by hand, because `setDiffOpen`
+      // acted on the focused pane and by now focus has moved. Addressing the
+      // action instead of guarding the caller retires that whole question.
+      if (id) dispatch(actions.setDiffOpen({ docId: id, open: false }));
     };
-  }, [dispatch, store, id]);
+  }, [dispatch, id]);
 
   return { isLoading, error, loadedPost, restoredFromPending };
 }

@@ -81,7 +81,11 @@ export interface WorkspacePane {
   tabIds: string[];
   activeTabId: string | null;
   mode: PaneMode;
-  /** Was the global `ui.diff.open` (plan §5.1 #4). */
+  /**
+   * Was the global `ui.diff.open` (plan §5.1 #4). Derived from `ui.diff.docId`
+   * — see there — rather than owned here: this is the render gate, and the
+   * request it answers outlives any one pane.
+   */
   diffOpen: boolean;
 }
 
@@ -233,10 +237,18 @@ export interface AppState {
     drawer: boolean;
     page: number;
     /**
-     * Which revisions a diff is comparing. Whether a diff is *shown* is
-     * per-pane (`WorkspacePane.diffOpen`), because two panes can disagree.
+     * The comparison being shown: which revisions, and **which document's**
+     * review it belongs to.
+     *
+     * `docId` is the durable half. A pane is a viewport that can be torn down
+     * and rebuilt under a request that is still in flight — the workspace
+     * restore, the deep-link replay and `closeAllPanes` all rewrite panes after
+     * a click has already asked for a diff — so `WorkspacePane.diffOpen` is a
+     * projection of this onto whichever pane currently holds the document, not
+     * the record itself. `openPane` seeds it from here; `setDiffOpen` writes
+     * both together. Absent means no review is showing.
      */
-    diff: { old?: string; new?: string };
+    diff: { old?: string; new?: string; docId?: string };
     attachmentPreview: AttachmentPreviewState | null;
     attachmentModified: { url: string; timestamp: number } | null;
     workspace: WorkspaceState;

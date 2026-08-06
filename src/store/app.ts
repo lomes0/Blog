@@ -201,6 +201,20 @@ export const paneShowing = (
   );
 
 /**
+ * Should a pane holding `docId` be showing the review diff?
+ *
+ * The pane flag is a projection of `ui.diff.docId`, so every write that creates
+ * or retargets a pane asks this rather than assuming. Assuming was the bug: a
+ * pane is not a stable place to record a request made against a *document*.
+ * "Review" on a rail row for a closed document opens the document and then asks
+ * for its diff, and between those two the workspace can legitimately rebuild the
+ * pane — the restore lands, the deep link replays, `WorkspacePanes` remounts —
+ * each of which used to hard-clear a flag the click had already set.
+ */
+const diffOpenFor = (state: AppState, docId: string): boolean =>
+  state.ui.diff.docId === docId;
+
+/**
  * Is `docId` held by some pane *other* than `paneId`?
  *
  * The other half of §5.2. `openPane` keeps a pane from being **rooted** at a
@@ -404,6 +418,7 @@ export const appSlice = createSlice({
           state.ui.workspace.focusedPaneId = existing.id;
           if (existing.tabIds.includes(rootId)) existing.activeTabId = rootId;
           if (mode) existing.mode = mode;
+          if (diffOpenFor(state, rootId)) existing.diffOpen = true;
           enforceMaximizeInvariant(state);
           return;
         }
@@ -416,7 +431,12 @@ export const appSlice = createSlice({
           target.activeTabId = activeTabId;
           // An omitted mode means "however this pane is already being read".
           if (mode) target.mode = mode;
-          target.diffOpen = false;
+          // A different document means a different review, so the previous
+          // one's diff goes — that is what stops a pane retargeted mid-review
+          // from showing a stale comparison. The *same* document means this is
+          // the open half of a "Review" click (or the deep-link replay of one),
+          // and the diff it asked for comes with it. See {@link diffOpenFor}.
+          target.diffOpen = diffOpenFor(state, rootId);
           state.ui.workspace.focusedPaneId = target.id;
           enforceMaximizeInvariant(state);
           return;
@@ -430,7 +450,7 @@ export const appSlice = createSlice({
           tabIds: [],
           activeTabId,
           mode: mode ?? "write",
-          diffOpen: false,
+          diffOpen: diffOpenFor(state, rootId),
         });
         state.ui.workspace.focusedPaneId = id;
         // The pane that was filling the row is not the new one, so the split is
@@ -582,10 +602,31 @@ export const appSlice = createSlice({
       const pane = paneOf(state, action.payload.paneId);
       if (pane) pane.mode = action.payload.mode;
     },
-    /** Whether the *focused* pane shows a revision diff. */
-    setDiffOpen: (state, action: PayloadAction<boolean>) => {
-      const pane = focusedPaneOf(state);
-      if (pane) pane.diffOpen = action.payload;
+    /**
+     * Show or hide a **document's** review diff.
+     *
+     * Addressed by document rather than by pane, and that is the whole point.
+     * It used to act on the focused pane, which made every caller responsible
+     * for the pane being the right one *at that instant*: "Review" on a rail row
+     * had to open the document first and hope no later workspace write rebuilt
+     * the pane, and `usePostLoader`'s unmount cleanup had to check the focused
+     * document by hand before it dared close anything.
+     *
+     * Neither is a judgement call now. `ui.diff.docId` is the record — it
+     * survives a pane being replaced — and the pane holding the document, if
+     * there is one yet, is updated to match. Asking to close document A's diff
+     * cannot close document B's, and asking to open one before its pane exists
+     * is honoured by `openPane` when the pane appears.
+     */
+    setDiffOpen: (
+      state,
+      action: PayloadAction<{ docId: string; open: boolean }>,
+    ) => {
+      const { docId, open } = action.payload;
+      if (open) state.ui.diff.docId = docId;
+      else if (state.ui.diff.docId === docId) delete state.ui.diff.docId;
+      const pane = paneShowing(state, docId);
+      if (pane) pane.diffOpen = open;
     },
 
     // ── Workspace: the tab group inside a pane ────────────────────────────
