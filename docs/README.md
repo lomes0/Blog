@@ -33,6 +33,7 @@ Each documents a specific failure mode and its fix.
 | ---------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | [architecture/overview.md](./architecture/overview.md)     | Layered architecture, rules per layer, naming conventions, and new-feature checklist |
 | [architecture/api-client.md](./architecture/api-client.md) | `apiClient` contract, error handling, and how to add new API routes                  |
+| [architecture/claude-code-integration.md](./architecture/claude-code-integration.md) | The content bridge, the MCP server and the in-app Copilot — one block-addressing layer, two agents |
 | [ai.instructions.md](./ai.instructions.md)                 | Multi-provider AI completion layer: models, providers, env vars                      |
 
 ## Plans and reviews
