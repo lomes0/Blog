@@ -448,35 +448,33 @@ export const PostItem = memo(
                 </Box>
               </>
             )}
-            {/* The tooltip is non-interactive for the reason `RowAgentActions`
-                documents: a right-placed popper is portaled out of the row and
-                lands over the next glyph, so a pointer entering it drops the
-                `:hover` that is keeping this button visible in the first place. */}
+            {/* No tooltip, for the reason `RowAgentActions` documents: placed
+                `right`, its popper landed on top of the next glyph and, being
+                portaled out of the row, dropped the `:hover` holding these
+                buttons open. `aria-label` still carries the name. */}
             {sidebarOpen && !isRenaming && !isEditing && (
-              <Tooltip title="Edit" placement="right" disableInteractive>
-                <IconButton
-                  className="edit-btn"
-                  aria-label="Edit"
-                  size="small"
-                  onClick={handleEdit}
-                  sx={{
-                    p: 0.25,
-                    // Align the glyph's right edge with the series doc-count
-                    // badge above by cancelling the button's own right padding.
-                    // `auto` unless the agent marker above already claimed the
-                    // slack — two `auto` margins would split it and leave a gap
-                    // between the marker and this button. It is still not the old
-                    // dirty-state flip: agent work appears once, on a poll, and
-                    // does not oscillate with typing.
-                    ml: agentMarker ? 0 : "auto",
-                    mr: -0.25,
-                    color: "text.secondary",
-                    "&:hover": { bgcolor: "action.hover" },
-                  }}
-                >
-                  <Pencil size={ICON_SIZE.micro} />
-                </IconButton>
-              </Tooltip>
+              <IconButton
+                className="edit-btn"
+                aria-label="Edit"
+                size="small"
+                onClick={handleEdit}
+                sx={{
+                  p: 0.25,
+                  // Align the glyph's right edge with the series doc-count
+                  // badge above by cancelling the button's own right padding.
+                  // `auto` unless the agent marker above already claimed the
+                  // slack — two `auto` margins would split it and leave a gap
+                  // between the marker and this button. It is still not the old
+                  // dirty-state flip: agent work appears once, on a poll, and
+                  // does not oscillate with typing.
+                  ml: agentMarker ? 0 : "auto",
+                  mr: -0.25,
+                  color: "text.secondary",
+                  "&:hover": { bgcolor: "action.hover" },
+                }}
+              >
+                <Pencil size={ICON_SIZE.micro} />
+              </IconButton>
             )}
           </ListItemButton>
         </Tooltip>

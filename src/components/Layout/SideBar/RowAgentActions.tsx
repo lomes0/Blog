@@ -1,5 +1,5 @@
 "use client";
-import { IconButton, Tooltip } from "@mui/material";
+import { IconButton } from "@mui/material";
 import { Check, X } from "lucide-react";
 import { type RootState, useSelector, useStore } from "@/store";
 import {
@@ -36,15 +36,13 @@ interface RowAgentActionsProps {
  *   agent and has not been accepted yet. Discard is destructive; `discardPost`
  *   confirms and also closes the document if it is open.
  *
- * Every tooltip here is `disableInteractive`, and that is load-bearing rather
- * than a preference. A MUI tooltip is interactive by default — it must stay open
- * while the pointer is on it (WCAG 2.1 SC 1.4.13) — so its popper takes pointer
- * events, and the popper is portaled to `document.body` rather than nested in
- * the row. `placement="right"` then puts ✓'s tooltip directly over ✗: moving
- * between the two buttons lands the pointer in something that is not a
- * descendant of the row, the row's `:hover` drops, these vanish and the marker
- * comes back — which unmounts the tooltip and starts the cycle again. Declining
- * to be interactive is what puts `pointer-events: none` on the popper.
+ * No tooltips. They were the whole reason the hover state was fragile: placed
+ * `right`, each popper landed on top of the next glyph, and because a popper is
+ * portaled to `document.body` rather than nested in the row, crossing one took
+ * the pointer outside the row, dropped its `:hover`, and hid the very buttons
+ * being reached for. `disableInteractive` bought that back, but the label is
+ * what the glyph already says. The name survives on `aria-label`, which is what
+ * a screen reader reads and what a test queries.
  *
  * Hover-only, and therefore not reachable by keyboard — the row hides these
  * behind `display: none` until the pointer arrives, which no amount of
@@ -111,69 +109,48 @@ export function RowAgentActions({
   return (
     <>
       {showApprove && (
-        <Tooltip
-          title={marker === "created"
+        <IconButton
+          aria-label={marker === "created"
             ? "Keep agent-created post"
             : "Approve agent change"}
-          placement="right"
-          disableInteractive
+          size="small"
+          disabled={busy}
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            void handleApprove();
+          }}
+          sx={{
+            p: 0.25,
+            mr: 0.25,
+            color: "inherit",
+            "&:hover": { bgcolor: "action.hover" },
+          }}
         >
-          <span>
-            {/* Wrapped in span so the tooltip still shows when disabled. */}
-            <IconButton
-              aria-label={marker === "created"
-                ? "Keep agent-created post"
-                : "Approve agent change"}
-              size="small"
-              disabled={busy}
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                void handleApprove();
-              }}
-              sx={{
-                p: 0.25,
-                mr: 0.25,
-                color: "inherit",
-                "&:hover": { bgcolor: "action.hover" },
-              }}
-            >
-              <Check size={ICON_SIZE.micro} />
-            </IconButton>
-          </span>
-        </Tooltip>
+          <Check size={ICON_SIZE.micro} />
+        </IconButton>
       )}
-      <Tooltip
-        title={marker === "created"
+      <IconButton
+        aria-label={marker === "created"
           ? "Discard agent-created post"
           : "Reject agent change"}
-        placement="right"
-        disableInteractive
+        size="small"
+        disabled={busy}
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          void handleReject();
+        }}
+        sx={{
+          p: 0.25,
+          mr: -0.25,
+          // Discard (delete) is `error`, reject (costs nothing) is not.
+          color: marker === "created" ? "error.main" : "inherit",
+          "&:hover": { bgcolor: "action.hover" },
+        }}
       >
-        <span>
-          <IconButton
-            aria-label={marker === "created"
-              ? "Discard agent-created post"
-              : "Reject agent change"}
-            size="small"
-            disabled={busy}
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              void handleReject();
-            }}
-            sx={{
-              p: 0.25,
-              mr: -0.25,
-              // Discard (delete) is `error`, reject (costs nothing) is not.
-              color: marker === "created" ? "error.main" : "inherit",
-              "&:hover": { bgcolor: "action.hover" },
-            }}
-          >
-            <X size={ICON_SIZE.micro} />
-          </IconButton>
-        </span>
-      </Tooltip>
+        <X size={ICON_SIZE.micro} />
+      </IconButton>
     </>
   );
 }
