@@ -404,12 +404,14 @@ export const PostItem = memo(
                 ))}
             {sidebarOpen && !isRenaming && agentMarker && (
               <>
-                {/* One group takes the row's slack, so the marker still ends flush
+                {
+                  /* One group takes the row's slack, so the marker still ends flush
                     with the edge whether or not the actions are showing — two
                     separate `ml: "auto"` elements would split the slack between
                     them and leave a gap. ✓ ✗ open to the marker's left; the ✗
                     cancels its own right padding, so the group adds it back to
-                    keep a real gap before the glyph. */}
+                    keep a real gap before the glyph. */
+                }
                 <Box
                   sx={{
                     ml: "auto",
@@ -425,10 +427,12 @@ export const PostItem = memo(
                       mr: 0.75,
                     }}
                   >
-                    {/* Hooks are confined to rows that actually have a marker: mounting
+                    {
+                      /* Hooks are confined to rows that actually have a marker: mounting
                         useProposalActions (which calls useConfirm + useCommandRun) on
                         every row in the tree would put those two hooks on every post,
-                        series and project, when only the marked rows need them. */}
+                        series and project, when only the marked rows need them. */
+                    }
                     <RowAgentActions
                       postId={post.id}
                       marker={agentMarker}

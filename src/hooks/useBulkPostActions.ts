@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { actions, useDispatch } from "@/store";
 import type { Post, Project, Series } from "@/types";
 import { useConfirm } from "./useConfirm";
+import { useCloseDeletedDocument } from "./useCloseDeletedDocument";
 
 /**
  * What a selected row id names. Resolving an id to exactly one of these is what
@@ -73,6 +74,7 @@ export function useBulkPostActions({
   const dispatch = useDispatch();
   const router = useRouter();
   const confirm = useConfirm();
+  const closeDeleted = useCloseDeletedDocument();
 
   const index = useMemo(() => {
     const map = new Map<string, BulkTarget>();
@@ -123,13 +125,28 @@ export function useBulkPostActions({
     });
     if (!confirmed) return;
 
+    // Collected rather than closed in the loop: `useCloseDeletedDocument` can
+    // navigate — with nothing left open it leaves the editor for `/` — and doing
+    // that between two deletes would unmount the surface the rest of the
+    // selection is still being deleted from. One pass, after every delete has
+    // landed, means at most one navigation and it is the last thing that
+    // happens.
+    const deletedPostIds: string[] = [];
     for (const id of orderedSelection) {
       const target = index.get(id);
       if (!target) continue;
       switch (target.kind) {
-        case "post":
-          await dispatch(actions.deletePost(target.post.id));
+        case "post": {
+          // Not `unwrap`: one failed delete must not abort the rest of the
+          // selection. `fulfilled.match` is how a *successful* one is told
+          // apart, so a post the server refused to delete keeps its pane
+          // instead of having it closed out from under the editor.
+          const result = await dispatch(actions.deletePost(target.post.id));
+          if (actions.deletePost.fulfilled.match(result)) {
+            deletedPostIds.push(target.post.id);
+          }
           break;
+        }
         case "series":
           await dispatch(actions.deleteSeries(target.id));
           break;
@@ -138,6 +155,13 @@ export function useBulkPostActions({
           break;
       }
     }
+    // The workspace half, which the single-post delete paths already do
+    // (`useSidebarActions`, the tab strip, the agent discard bar). Without it a
+    // bulk delete left every pane mounted on a post that no longer exists: the
+    // title fell to "Untitled", the body stayed on screen, and saves from that
+    // editor were dropped. Each call is a no-op for a document no pane holds,
+    // which is every id when this runs from `/posts`.
+    for (const postId of deletedPostIds) closeDeleted(postId);
     clearSelection();
     router.refresh();
   }, [
@@ -145,6 +169,7 @@ export function useBulkPostActions({
     dispatch,
     router,
     clearSelection,
+    closeDeleted,
     selectedIds,
     orderedSelection,
     index,
@@ -182,15 +207,32 @@ export function useBulkPostActions({
     });
     if (!confirmed) return;
 
-    await dispatch(
+    const result = await dispatch(
       actions.mergePostsIntoTabs({
         targetId: target.id,
         sourceIds: sources.map((p) => p.id),
       }),
     );
+    // A merge deletes its sources — the thunk dispatches `deletePost` for each
+    // one once its content has been copied into a tab — so a pane rooted at a
+    // source is left on a document that is gone, exactly as a bulk delete was.
+    // The target survives and is deliberately not closed. A source's own child
+    // tabs go too, but they can only have been tabs *of the source's pane*,
+    // which closes with it.
+    if (actions.mergePostsIntoTabs.fulfilled.match(result)) {
+      for (const source of sources) closeDeleted(source.id);
+    }
     clearSelection();
     router.refresh();
-  }, [confirm, dispatch, router, clearSelection, canMerge, selectedPosts]);
+  }, [
+    confirm,
+    dispatch,
+    router,
+    clearSelection,
+    closeDeleted,
+    canMerge,
+    selectedPosts,
+  ]);
 
   return {
     selectedCount: selectedIds.size,
