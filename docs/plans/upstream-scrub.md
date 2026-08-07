@@ -314,39 +314,64 @@ links into it; the only external exposure was the sitemap, and a crawler holding
 a cached `/tutorial` now gets `not-found.tsx`. If that matters, add a redirect
 in `next.config.ts` — but for a route with no inbound links it is noise.
 
-### Phase 4 — delete `/playground`
+### Phase 4 — delete `/playground` — **DONE 7 Aug 2026**
 
-**Precondition: re-point the browser-verification harness first.** Your
-`verify-ui-in-browser` procedure drives `/playground` as its editor target
-(puppeteer-core + system Chrome). Deleting the route breaks it. Two options:
+**The precondition was cheaper than this plan assumed.** It called for
+re-pointing the harness in its own commit *before* the deletion, costing a
+fixture post in the dev database. But the harness is not a script in this repo —
+it is a **procedure**, recorded in the `verify-ui-in-browser` memory and
+referenced from CLAUDE.md §Testing. Re-pointing it is a documentation edit with
+no repo commit to order, so neither option (1) nor (2) was needed.
 
-1. **Point the harness at `/edit/<id>`** on a scratch post. Closest to what you
-   actually ship, and it exercises the workspace chrome rather than the app
-   shell — which is arguably what you want to be verifying anyway. Costs a
-   fixture post that must exist in the dev database.
-2. **Keep a dev-only route** that mounts a bare editor with no content fetch,
-   gated on `process.env.NODE_ENV !== "production"`. Preserves the harness
-   exactly, but keeps ~40 LOC alive for tooling — which cuts against the
-   maintenance goal.
+What replaces it: **the guest editor.** `src/middleware.ts` is a no-op and
+`(workspace)/layout.tsx` has no auth gate, so an anonymous browser can reach
+`/new`, create a local draft — `backendFor(user)` picks `localBackend`
+(IndexedDB) with no session — and land on `/edit/<id>` with every node
+registered. One more step than `/playground`, still no auth, and it exercises
+the workspace chrome rather than the app shell, which is what actually ships.
 
-Recommend (1). Land it as its own commit *before* this phase so the harness is
-never broken between commits.
+> Inferred from the code, not exercised end-to-end. The memory says so too;
+> whoever uses the harness next should confirm and correct it.
 
-Then delete:
+Deleted:
 
 - `src/app/(workspace)/playground/page.tsx`
-- `src/components/Playground/` (`index.tsx`, `PlaygroundEditor.tsx` — 44 LOC)
-- `public/data/playground.json` (280 KB)
+- `src/components/Playground/` (`index.tsx`, `PlaygroundEditor.tsx`)
+- `public/data/playground.json` (280 KB / 3,778 lines) — and `public/data/`
+  with it, now empty
 
-Edit:
+Edited:
 
-- `src/app/sitemap.ts:18` — drop the `/playground` entry
-- `src/components/CopilotPanel/InlineCopilotBar.tsx:46` — drop `"/playground"`
+- `src/app/sitemap.ts` — dropped the `/playground` entry
+- `src/components/CopilotPanel/InlineCopilotBar.tsx` — dropped `"/playground"`
+- `src/lib/capabilities.ts:7` — a guest's surface no longer lists "the
+  playground". **This plan never listed this file**; it turned up only on a
+  final grep, which is the argument for re-grepping after every deletion rather
+  than trusting the seam list written a day earlier.
+- `CLAUDE.md:356` and `DESIGN.md:400` both named `Playground` as the standalone
+  editor component. Fixed now rather than in phase 6 — CLAUDE.md loads into
+  every session, so a stale line there misleads more than most prose.
+- The four app-shell-toolbar comments no longer name any route.
 
-Note that `public/data/` is now empty and can go with it.
+Net **−3,859 / +11** across 13 files.
 
-**Revert:** `git revert`, plus re-pointing the harness back if you took option
-(1). Order the revert the same way — harness last.
+Checks: `tsc` clean, `lint` clean, `npm test` 18 files / 357 tests, knip
+unchanged (`DocumentActions/Fork.tsx` only, as before).
+
+**A prediction in §4 phase 5 was wrong, corrected here:** `htmr` does *not* fall
+out of `package.json`. It has six live callers — `Diff/index.tsx`,
+`app/embed/[id]/page.tsx`, and the `StickyNode` / `GraphNode` / `ImageNode` /
+`SketchNode` decorators. `findRevisionHtml` likewise keeps three
+(`embed`, `(public)/view/[id]`, plus its own module). Nothing was orphaned by
+either deletion.
+
+**Left for phase 6, deliberately:** `docs/plans/workspace-panes.md` §513-541 and
+`docs/reviews/code-review-2026-07.md` both discuss these routes. Both are dated
+records of decisions taken at the time — rewriting them would falsify the
+history. They should be *annotated* as superseded, not edited.
+
+**Revert:** `git revert`. The harness note in memory would need reverting by
+hand, since it does not live in this repo.
 
 ### Phase 5 — collapse the plumbing the two routes were holding up
 
