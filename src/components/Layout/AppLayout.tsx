@@ -7,7 +7,6 @@ import { Suspense } from "react";
 import { SidebarWidthProvider } from "@/contexts/SidebarWidthContext";
 import { LayoutModeProvider } from "@/contexts/LayoutModeContext";
 import { TopBarActionsProvider } from "@/contexts/TopBarActionsContext";
-import { ToolbarSlotProvider } from "@/contexts/ToolbarSlotContext";
 import { CommandProvider } from "@/commands/CommandProvider";
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
@@ -20,18 +19,16 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
         <SidebarWidthProvider>
           <LayoutModeProvider>
             <TopBarActionsProvider>
-              <ToolbarSlotProvider>
-                {
-                  /* Innermost: the command context is built from the store, the
-                    color scheme and the layout mode, so it has to sit under all
-                    three. */
-                }
-                <CommandProvider>
-                  <AppLayoutContent>{children}</AppLayoutContent>
-                  <AlertDialog />
-                  <Announcer />
-                </CommandProvider>
-              </ToolbarSlotProvider>
+              {
+                /* Innermost: the command context is built from the store, the
+                  color scheme and the layout mode, so it has to sit under all
+                  three. */
+              }
+              <CommandProvider>
+                <AppLayoutContent>{children}</AppLayoutContent>
+                <AlertDialog />
+                <Announcer />
+              </CommandProvider>
             </TopBarActionsProvider>
           </LayoutModeProvider>
         </SidebarWidthProvider>

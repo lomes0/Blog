@@ -28,7 +28,6 @@ import {
   ActiveEditorContext,
   SetActiveEditorContext,
 } from "@/contexts/ActiveEditorContext";
-import { ToolbarSlotTarget } from "@/contexts/ToolbarSlotContext";
 import { hiddenScrollbarSx } from "@/theme/tokens";
 
 // Must match the grid-template-columns transition duration below.
@@ -128,15 +127,6 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
           >
             <Box id="back-to-top-anchor" />
             <EditorTopBar />
-            {
-              /* The shell's toolbar slot, for a lone editor mounted outside the
-                  workspace. No route does that since /playground was deleted,
-                  so this currently has no consumer. The workspace does not use it:
-                  it nests its own provider and draws the target inside the
-                  editor route — the pane's header, or the band above a split's
-                  panes. */
-            }
-            <ToolbarSlotTarget style={{ flexShrink: 0 }} />
             <HydrationManager>
               <Container
                 className="editor-container"

@@ -25,11 +25,14 @@ export const useToolbarSlot = () => {
  * `ToolbarPlugin`'s portal.
  *
  * A component rather than a bare `ref={setSlotEl}` at each call site because
- * there is more than one provider: the app shell keeps one for a lone editor
- * mounted outside the workspace, and the workspace nests its own
- * so its editors portal into the editor route's chrome instead of the window's.
- * Both do the identical two things, and doing them in one place is what keeps a
- * second slot from being wired up subtly differently.
+ * the workspace draws its target from two places — `WorkspaceToolbar` above a
+ * split's pane row, and `TabbedDocumentEditor` in the lone pane's header — and
+ * both do the identical two things. Doing them in one place is what keeps the
+ * second site from being wired up subtly differently.
+ *
+ * The app shell used to keep a provider of its own, for the routes that mounted
+ * a lone editor outside the workspace (`/playground`, `/tutorial`). Both are
+ * gone, so `WorkspacePanes` now holds the only provider in the tree.
  *
  * Within a provider the slot *is* singular: two targets would both write
  * `slotEl` and the last to mount would take the toolbar. The workspace draws

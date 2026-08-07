@@ -19,9 +19,9 @@ interface LoadingCardProps {
  * `DocumentGrid` — so a change here is visible on all three.
  *
  * This is the app's only card skeleton. The other loading surfaces are
- * different shapes, not variants of this one: `shared/EditorSkeleton` is a
- * static clone of the editor toolbar (no `<Skeleton>` in it at all), and
- * `DocumentBrowserSkeleton` is page chrome around this. For a plain spinner,
+ * different shapes, not variants of this one: `EditDocument/PaneSkeleton` is
+ * the editor stand-in, and `DocumentBrowserSkeleton` is page chrome around
+ * this. For a plain spinner,
  * DESIGN.md §Loading says reach for MUI `<CircularProgress>` directly.
  */
 const LoadingCard: React.FC<LoadingCardProps> = ({ sx }) => {

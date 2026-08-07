@@ -1,7 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
 import { Component, ErrorInfo, ReactNode, Suspense } from "react";
-import { EditorSkeleton } from "../shared/EditorSkeleton";
 import SplashScreen from "../shared/SplashScreen";
 import PaneSkeleton from "./PaneSkeleton";
 
@@ -47,24 +46,21 @@ const DocumentEditor = dynamic(() => import("./EditDocumentContent"), {
   ssr: false,
 });
 
-const EditDocument: React.FC<React.PropsWithChildren> = ({ children }) => {
+const EditDocument: React.FC = () => {
   // The editor chunk is large (Lexical, its nodes, the toolbar), so this
   // fallback is on screen for a real fraction of a cold load. It used to be
   // `SplashScreen`, which is a fixed full-viewport overlay — the sidebar and
   // rails had already painted underneath and were covered up by it.
   //
-  // `EditorSkeleton` is the right stand-in only where `children` are SSR'd
-  // content in an app-shell toolbar layout, which no route now does. `/edit`
-  // passes none (the layout renders `<EditDocument />` bare), so this arm was
-  // the only one it ever took.
-  const fallback = children
-    ? <EditorSkeleton>{children}</EditorSkeleton>
-    : <PaneSkeleton withToolbar />;
-
+  // There used to be a second arm here, swapping in `shared/EditorSkeleton`
+  // when `children` were SSR'd content in an app-shell toolbar layout. Only
+  // `/playground` and `/tutorial` were ever shaped that way and neither
+  // survives; `/edit`'s layout renders `<EditDocument />` bare, so the arm was
+  // unreachable and went with them.
   return (
     <EditorErrorBoundary>
-      <Suspense fallback={fallback}>
-        <DocumentEditor>{children}</DocumentEditor>
+      <Suspense fallback={<PaneSkeleton withToolbar />}>
+        <DocumentEditor />
       </Suspense>
     </EditorErrorBoundary>
   );

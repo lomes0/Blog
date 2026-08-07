@@ -17,8 +17,8 @@ import { PANE_PAD_X, TOOLBAR_H } from "./paneChrome";
  *
  * ## Why the heights are written out
  *
- * Like `shared/EditorSkeleton`, this is a layout stand-in rather than a
- * shimmer — the point is that the real editor mounts into the same geometry, so
+ * This is a layout stand-in rather than a shimmer — the point is that the real
+ * editor mounts into the same geometry, so
  * nothing reflows at the swap. The numbers are not decorative: {@link
  * TOOLBAR_H} is `ToolbarPlugin`'s own box, and the title block mirrors
  * `DocumentHeader` (`pt: 2 / pb: 3`, an `h4` at `lineHeight: 1.1` with
@@ -28,11 +28,11 @@ import { PANE_PAD_X, TOOLBAR_H } from "./paneChrome";
  * exactly. The body lines below them are deliberately approximate: real content
  * never matches a stand-in, and pretending otherwise buys nothing.
  *
- * `shared/EditorSkeleton` is the sibling of this, not a substitute: it draws an
- * app-shell `AppBar` toolbar, which is where a lone editor mounted outside the
- * workspace would put its own.
- * The workspace gives every pane its own toolbar inside `PaneHeader`, so a pane
- * needs this shape instead.
+ * This is now the app's only editor skeleton. `shared/EditorSkeleton` was its
+ * sibling — it drew an app-shell `AppBar` toolbar, for the lone-editor routes
+ * that mounted outside the workspace — and was deleted with them. The workspace
+ * gives every pane its own toolbar inside `PaneHeader`, so a pane needs this
+ * shape.
  */
 
 interface PaneSkeletonProps {
