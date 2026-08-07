@@ -236,7 +236,7 @@ export const ProjectGroup: React.FC<ProjectGroupProps> = ({
               />
               <RowCreateButton
                 label="New series in project"
-                icon={<FolderPlus size={ICON_SIZE.micro} strokeWidth={2} />}
+                icon={<FolderPlus size={ICON_SIZE.inline} strokeWidth={2} />}
                 onClick={() => seriesActions.handleCreateSeries(projectId)}
               />
             </>
