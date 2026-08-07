@@ -10,12 +10,13 @@ import {
   TextField,
   Tooltip,
 } from "@mui/material";
-import { File, GitPullRequest, Pencil } from "lucide-react";
+import { File, Pencil } from "lucide-react";
 import { type RootState, useSelector } from "@/store";
 import {
   selectChildPostsByParent,
   selectPaneRootedAt,
 } from "@/store/selectors/layoutSelectors";
+import { selectAgentMarker } from "@/store/selectors/proposalSelectors";
 import type { Post } from "@/types";
 import { SafeNavigationLink } from "./SafeNavigationLink";
 import type { PostItemActions } from "./hooks/useSidebarActions";
@@ -34,6 +35,7 @@ import {
   dropIndicatorSx,
   multiSelectSx,
 } from "@/theme/treeRow";
+import { AgentMarker } from "./AgentMarker";
 
 const EMPTY_CHILDREN: Post[] = [];
 const EMPTY_TAB_ENTRIES: SubTabEntry[] = [];
@@ -102,18 +104,19 @@ export const PostItem = memo(
       (state: RootState) => selectPaneRootedAt(state, post.id)?.id ?? null,
     );
     const isOpenRoot = openPaneId !== null;
-    // An agent has proposed a change to this post and it is still waiting
-    // (docs/plans/agent-gating.md §3.5). A boolean, not the proposal itself:
-    // this selector runs for every row in the tree on every store change, and
-    // returning the object would give each one a fresh identity to diff.
+    // An agent has proposed a change to this post, or an agent created it and it
+    // has not been accepted yet (docs/plans/agent-gating.md §3.5 and §3.7). A
+    // primitive, not the proposal itself: this selector runs for every row in
+    // the tree on every store change, and returning an object would give each
+    // one a fresh identity to diff.
     //
     // Note what this deliberately is *not*: the row said nothing about unsaved
-    // state when autosave went quiet, and it still does not. A proposal is not
-    // the user's own typing — it arrived from outside, it changes only on a
-    // poll, and it is the one thing about this document the user cannot
-    // otherwise find out.
-    const hasProposal = useSelector(
-      (state: RootState) => Boolean(state.ui.proposals.byDocId[post.id]),
+    // state when autosave went quiet, and it still does not. A proposal or an
+    // agent-created post are not the user's own typing — they arrived from
+    // outside, change only on a poll, and are the one thing about this document
+    // the user cannot otherwise find out.
+    const agentMarker = useSelector(
+      (state: RootState) => selectAgentMarker(state, post.id),
     );
     const activeTabId = useSelector(
       (state: RootState) =>
@@ -403,30 +406,11 @@ export const PostItem = memo(
                     }}
                   />
                 ))}
-            {sidebarOpen && !isRenaming && hasProposal && (
-              <Tooltip
-                title="Agent change waiting for review"
-                placement="right"
-              >
-                <Box
-                  component="span"
-                  role="img"
-                  aria-label="Agent change waiting for review"
-                  sx={{
-                    display: "flex",
-                    flexShrink: 0,
-                    ml: "auto",
-                    mr: 0.25,
-                    color: "primary.main",
-                  }}
-                >
-                  {
-                    /* A glyph rather than a coloured dot: DESIGN.md §10 — state
-                      is never carried by colour alone. */
-                  }
-                  <GitPullRequest size={ICON_SIZE.micro} />
-                </Box>
-              </Tooltip>
+            {sidebarOpen && !isRenaming && (
+              <AgentMarker
+                marker={agentMarker}
+                sx={{ ml: "auto", mr: 0.25 }}
+              />
             )}
             {sidebarOpen && !isRenaming && !isEditing && (
               <Tooltip title="Edit" placement="right">
@@ -439,12 +423,12 @@ export const PostItem = memo(
                     p: 0.25,
                     // Align the glyph's right edge with the series doc-count
                     // badge above by cancelling the button's own right padding.
-                    // `auto` unless the proposal badge above already claimed the
+                    // `auto` unless the agent marker above already claimed the
                     // slack — two `auto` margins would split it and leave a gap
-                    // between the badge and this button. It is still not the old
-                    // dirty-state flip: a proposal appears once, on a poll, and
+                    // between the marker and this button. It is still not the old
+                    // dirty-state flip: agent work appears once, on a poll, and
                     // does not oscillate with typing.
-                    ml: hasProposal ? 0 : "auto",
+                    ml: agentMarker ? 0 : "auto",
                     mr: -0.25,
                     color: "text.secondary",
                     "&:hover": { bgcolor: "action.hover" },
