@@ -373,9 +373,21 @@ history. They should be *annotated* as superseded, not edited.
 **Revert:** `git revert`. The harness note in memory would need reverting by
 hand, since it does not live in this repo.
 
-### Phase 5 — collapse the plumbing the two routes were holding up
+### Phase 5 — collapse the plumbing the two routes were holding up — **DONE 7 Aug 2026**
 
-Only after both 3 and 4 have landed. This is where the maintenance win is.
+Net **−459 / +36** across 7 files. Everything below happened as written, plus
+one item the plan did not anticipate (the `EditorSkeleton` arm, item 6).
+
+The runtime risk was real and was checked by hand, since types cannot see it:
+`useToolbarSlot` throws outside a provider. The callers are `ToolbarPlugin`
+(reached only via `Editor` ← `ConnectedEditor` ← `EditorTabPanel`) and
+`ToolbarSlotTarget` (mounted at `WorkspaceToolbar:61` and
+`TabbedDocumentEditor:462`). All three sit under `WorkspacePanes`, which wraps
+**both** its split and unsplit branches in the provider — so removing the
+shell's leaves every caller covered.
+
+Nested editors are not a concern: `NestedEditor` renders `EditorPlugins`, which
+carries `FloatingToolbarPlugin`, not `ToolbarPlugin`.
 
 1. **`src/components/Layout/AppLayoutContent.tsx:131-138`** — the shell's
    `<ToolbarSlotTarget>` and the comment explaining it. With no lone-editor
@@ -394,12 +406,44 @@ Only after both 3 and 4 have landed. This is where the maintenance win is.
    **`src/components/EditDocument/index.tsx:57`** — both explain a layout
    decision by contrast with "Playground and Tutorial". Re-word to state the
    rule directly rather than by reference to routes that no longer exist.
-5. Re-run knip and diff against Phase 0's output. Expect `htmr` to fall out of
-   `package.json` (grep for other callers first — `findRevisionHtml` has some)
-   and possibly one or two `Loading`/skeleton components.
+5. Re-run knip and diff against Phase 0's output. ~~Expect `htmr` to fall out of
+   `package.json`~~ — it did not, see phase 4. knip is unchanged throughout:
+   `DocumentActions/Fork.tsx` before and after.
+6. **Not in the original plan — `EditDocument`'s second Suspense arm.** It swapped
+   in `shared/EditorSkeleton` when `children` were SSR'd content in an app-shell
+   toolbar layout. `EditDocument` has exactly one mount — `edit/layout.tsx:27`,
+   which renders it **bare** — so the arm was unreachable, and `children` was
+   never anything. Removing it deletes `shared/EditorSkeleton.tsx` (**409
+   lines**) and leaves `PaneSkeleton` as the app's only editor stand-in.
+   `EditDocumentContent` also declared `PropsWithChildren` without using it.
+
+   This is the largest single deletion of the phase and the plan missed it
+   entirely, because it looked for *routes* that used the shell toolbar layout
+   and this was a *fallback* shaped for one.
 
 **Revert:** `git revert` restores the plumbing, but the routes stay gone — which
 is fine, the plumbing is inert without them.
+
+---
+
+### A correction to §3.1, found while reading the deleted code
+
+Phase 4's inspection of the two deleted editors showed both took `children` and
+**threw them away**:
+
+```tsx
+const PlaygroundEditor: React.FC<PropsWithChildren> = ({ children: _children }) => { … }
+```
+
+Each route did `findDocument(…)` → `findRevisionHtml` → `htmr(html)` and passed
+the result down to a component that never rendered it. So §3.1 overstated the
+symptom: a private draft holding one of those handles would **not have been
+painted on the page**. Because `children` crossed a server→client boundary it
+would still have been serialized into the RSC flight payload, and so been
+retrievable from the page source — a real disclosure, but not a visible one.
+
+The conclusion is unchanged (Phase 0 found no such document, and the routes are
+gone), but the original wording claimed more than the code did.
 
 ### Phase 6 — the prose
 
