@@ -36,6 +36,16 @@ interface RowAgentActionsProps {
  *   agent and has not been accepted yet. Discard is destructive; `discardPost`
  *   confirms and also closes the document if it is open.
  *
+ * Every tooltip here is `disableInteractive`, and that is load-bearing rather
+ * than a preference. A MUI tooltip is interactive by default — it must stay open
+ * while the pointer is on it (WCAG 2.1 SC 1.4.13) — so its popper takes pointer
+ * events, and the popper is portaled to `document.body` rather than nested in
+ * the row. `placement="right"` then puts ✓'s tooltip directly over ✗: moving
+ * between the two buttons lands the pointer in something that is not a
+ * descendant of the row, the row's `:hover` drops, these vanish and the marker
+ * comes back — which unmounts the tooltip and starts the cycle again. Declining
+ * to be interactive is what puts `pointer-events: none` on the popper.
+ *
  * Hover-only, and therefore not reachable by keyboard — the row hides these
  * behind `display: none` until the pointer arrives, which no amount of
  * `:focus-within` can undo, because an element that is not displayed cannot take
@@ -106,6 +116,7 @@ export function RowAgentActions({
             ? "Keep agent-created post"
             : "Approve agent change"}
           placement="right"
+          disableInteractive
         >
           <span>
             {/* Wrapped in span so the tooltip still shows when disabled. */}

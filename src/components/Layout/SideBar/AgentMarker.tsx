@@ -76,8 +76,12 @@ export function AgentMarker({
 
   const Icon = glyphs[marker];
 
+  // The tooltip is non-interactive for the reason `RowAgentActions` gives at
+  // length: an interactive popper is portaled out of the row, so the pointer
+  // entering it drops the `:hover` that decides what the row is showing.
+
   return (
-    <Tooltip title={label} placement="right">
+    <Tooltip title={label} placement="right" disableInteractive>
       <Box
         component="span"
         role="img"
