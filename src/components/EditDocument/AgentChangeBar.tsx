@@ -1,6 +1,12 @@
 "use client";
 import { Box, Button, Chip, Typography } from "@mui/material";
-import { Check, FilePlus2, GitPullRequest, Trash2, X } from "lucide-react";
+import {
+  Check,
+  GitPullRequest,
+  GitPullRequestCreate,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useSelector } from "@/store";
 import { selectAgentPost } from "@/store/selectors/proposalSelectors";
 import { DateDisplay } from "@/components/shared/DateDisplay";
@@ -152,7 +158,7 @@ export default function AgentChangeBar({ docId }: AgentChangeBarProps) {
 
     return (
       <Bar
-        icon={<FilePlus2 size={ICON_SIZE.dense} />}
+        icon={<GitPullRequestCreate size={ICON_SIZE.dense} />}
         title={agentPost.name || "Untitled"}
         meta={
           <>

@@ -1,6 +1,10 @@
 "use client";
 import { Box, type SxProps, type Theme, Tooltip } from "@mui/material";
-import { AlertTriangle, FilePlus2, GitPullRequest } from "lucide-react";
+import {
+  AlertTriangle,
+  GitPullRequest,
+  GitPullRequestCreate,
+} from "lucide-react";
 import type { AgentMarker as AgentMarkerValue } from "@/store/selectors/proposalSelectors";
 import { ICON_SIZE } from "@/theme/icons";
 
@@ -56,10 +60,14 @@ export function AgentMarker({
     ? `${count} agent changes inside`
     : labels[marker];
 
+  // `pending` and `created` are deliberately one metaphor: an agent proposing a
+  // change to a document, and an agent proposing a whole new one. They differ by
+  // the plus stroke, which is a fine distinction at `micro` — the tooltip and
+  // the row's own actions are what separate them when the glyph cannot.
   const glyphs = {
     pending: GitPullRequest,
     stale: AlertTriangle,
-    created: FilePlus2,
+    created: GitPullRequestCreate,
   } as const;
 
   const colors = {
