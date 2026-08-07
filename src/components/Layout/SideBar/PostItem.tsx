@@ -448,8 +448,12 @@ export const PostItem = memo(
                 </Box>
               </>
             )}
+            {/* The tooltip is non-interactive for the reason `RowAgentActions`
+                documents: a right-placed popper is portaled out of the row and
+                lands over the next glyph, so a pointer entering it drops the
+                `:hover` that is keeping this button visible in the first place. */}
             {sidebarOpen && !isRenaming && !isEditing && (
-              <Tooltip title="Edit" placement="right">
+              <Tooltip title="Edit" placement="right" disableInteractive>
                 <IconButton
                   className="edit-btn"
                   aria-label="Edit"

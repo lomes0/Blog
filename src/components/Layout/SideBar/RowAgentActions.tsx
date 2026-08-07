@@ -148,6 +148,7 @@ export function RowAgentActions({
           ? "Discard agent-created post"
           : "Reject agent change"}
         placement="right"
+        disableInteractive
       >
         <span>
           <IconButton
