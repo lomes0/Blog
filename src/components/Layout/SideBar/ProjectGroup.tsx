@@ -147,7 +147,10 @@ export const ProjectGroup: React.FC<ProjectGroupProps> = ({
           sx={{
             minHeight: 24,
             pl: 2,
-            pr: 1,
+            // Same right padding as the series and post rows below, so the
+            // trailing "new series" button ends where their count pills and
+            // hover actions do instead of hanging 8px further out.
+            pr: 2,
             py: 0.25,
             display: "flex",
             alignItems: "center",

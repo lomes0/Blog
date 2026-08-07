@@ -42,9 +42,10 @@ export const RowCreateButton: React.FC<RowCreateButtonProps> = ({
       sx={{
         p: 0.25,
         ml: 0.25,
-        // Cancel the button's own right padding so the glyph's edge lines up
-        // with the post-row actions below it.
-        mr: -0.25,
+        // The button box is 16px (12px glyph + 2px padding each side) and the
+        // count pill it sits above is 20px, so inset it by half the difference:
+        // both then share a vertical centre line down the row's right edge.
+        mr: "2px",
         flexShrink: 0,
         opacity: 0,
         transition: "opacity 0.15s",
