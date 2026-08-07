@@ -231,21 +231,51 @@ Checks: `tsc --noEmit` clean, `npm run lint` clean, `npm run check:theme` clean
 
 **Revert:** `git revert`. No runtime state involved.
 
-### Phase 2 — untrack `claude_design/`
+### Phase 2 — delete `claude_design/` — **DONE 7 Aug 2026**
 
-Not upstream's — it is your own design scratch — but it is 14 tracked files
-including two binary zips (`blog_default_view.zip`, `sidebar.zip`) that no build
-step reads.
+Not upstream's — it is your own design scratch — but the handoffs are
+superseded: every one of them has been absorbed into the code it informed
+(`ThemeProvider`'s palette, `Composer`'s metrics, `toolbar.css`,
+`theme/treeRow.ts`).
 
-- `git rm -r --cached claude_design/`
-- Add `/claude_design/` to `.gitignore`.
+**Scoped up from "untrack" to "delete" on the author's call.** The plan
+originally proposed `git rm --cached` plus a `.gitignore` entry, on the premise
+that nothing read the directory. That premise was **wrong**, and the correction
+is the useful part of this phase:
 
-**The files stay on disk** and stay in git history; this only stops tracking
-them going forward. Removing them from history is a rewrite, which §1.2 rules
-out. If you want them gone from clones entirely, that is a separate decision.
+> `claude_design/` was cited in five places — `DESIGN.md:96` ("**is** the design
+> reference"), `ThemeProvider.tsx:16`, `Composer.tsx:26`, `toolbar.css:2` and
+> `ide-redesign.md:4`. Nothing *built* from it, which is what the first check
+> looked for; documentation depended on it, which is not the same question.
+> CLAUDE.md makes DESIGN.md mandatory for UI work, so untracking would have left
+> the required design doc pointing at a file no clone contains.
 
-**Revert:** `git revert` re-adds them to the index; the working tree is
-untouched either way.
+Two of those five were **already dangling** before this phase:
+`claude_design/toolbar/Editor.html` was never tracked, and the IDE proposal zip
+was gitignored (`.gitignore:55`). So the repo already shipped design citations a
+fresh clone could not resolve — the deletion just made the rot legible.
+
+What was done:
+
+- `git rm -r claude_design/` — 14 tracked files, 2,506 lines + 4 binaries.
+- Rewrote all five citations to state the design decision **without** naming a
+  file that is not there. `DESIGN.md` §2 now names `ThemeProvider.tsx` as the
+  palette reference, which is what it had actually been all along — the handoff
+  was explicitly never imported.
+- Dropped the two now-vestigial `.gitignore` entries.
+- Six further files (228 KB) were untracked/gitignored and so **not recoverable
+  from git history**; they were copied to the session scratchpad before
+  `rm -rf`. Everything tracked is recoverable from history as normal.
+
+Checks: `tsc` clean, `lint` clean, `check:theme` clean.
+
+**Lesson worth keeping:** "no build step reads it" is not the same as "nothing
+depends on it". Grep the docs, not just the config, before deleting a
+directory — `DESIGN.md` and `CLAUDE.md` are load-bearing in this repo.
+
+**Revert:** `git revert` restores the tracked files and the citations together.
+The six untracked files are not in the commit and would have to come from the
+scratchpad copy.
 
 ### Phase 3 — delete `/tutorial`
 
