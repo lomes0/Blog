@@ -51,10 +51,6 @@ next-env.d.ts
 # Location is overridable with UPLOADS_DIR; this is the default.
 /var/
 
-# stray design export
-/claude_design/ide/IDE UIUX redesign proposal.zip
-/claude_design/side/
-
 # local scratch — notes and throwaways, not part of the project
 /fix.diff
 /docs/plans/storage-model.md

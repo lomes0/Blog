@@ -13,7 +13,7 @@ import "@fontsource/public-sans/600.css";
 import "@fontsource/public-sans/700.css";
 
 // Extend MUI's background palette with the recessed chrome surfaces from the
-// "Slate + Indigo" design spec (claude_design/blog-editor-tokens.css). These
+// "Slate + Indigo" design spec (handoff no longer in the repo). These
 // emit as --mui-palette-background-{sidebar,panel,input} and switch with the
 // active color scheme automatically — no hand-maintained html.dark overrides.
 declare module "@mui/material/styles" {

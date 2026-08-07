@@ -1,5 +1,6 @@
 /*
- * Editor toolbar styling — mirrors claude_design/toolbar/Editor.html.
+ * Editor toolbar styling — mirrors the toolbar design handoff, which is no
+ * longer in the repo; this file is the reference.
  * Scoped entirely to `.editor-toolbar` so the rest of the app keeps the
  * global MUI/Roboto theme. Colours are exposed as CSS variables so dark
  * mode (html.dark, via MUI InitColorSchemeScript) can override them.

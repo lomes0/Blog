@@ -1,7 +1,7 @@
 # IDE Redesign — Phased Plan (visible pass)
 
-Applying the **Blog IDE** proposal
-(`claude_design/ide/IDE UIUX redesign proposal.zip`) to this app.
+Applying the **Blog IDE** proposal to this app. (The proposal bundle itself is
+no longer in the repo; the locked decisions below are what survived of it.)
 
 ## Locked decisions
 

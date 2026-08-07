@@ -23,9 +23,9 @@ import { FOCUS_RING, MOTION, SHADOW } from "@/theme/tokens";
 import type { SlashCommand } from "./slashCommands";
 
 /**
- * Metrics from the AI-composer design handoff (`claude_design/box/chatbox.zip`,
- * option 1a). Kept verbatim because that bundle is high-fidelity: "all colors,
- * type sizes, radii, spacing, and shadows are final".
+ * Metrics from the AI-composer design handoff (option 1a; the bundle is no
+ * longer in the repo). Kept verbatim because it was high-fidelity: "all
+ * colors, type sizes, radii, spacing, and shadows are final".
  *
  * Radii are the one place this knowingly leaves DESIGN.md §5's ladder
  * (4/6/8/10/12) — 9px icon buttons, a 17px surface inside an 18px border, a

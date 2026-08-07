@@ -92,12 +92,13 @@ MUI CSS variables are enabled with
 All palette values are defined in `src/components/Layout/ThemeProvider.tsx` and
 exposed as MUI CSS variables (`var(--mui-palette-*)`).
 
-> **Source spec:** the "Slate + Indigo" palette
-> (`claude_design/blog-editor-tokens.css`) is the design reference. It is
-> **not** imported — its `--accent`/`--bg-*` names and `data-theme="dark"`
-> selector are mapped onto this project's MUI tokens and `html.dark` scheme
-> instead. The spec's green "Active" badge intentionally diverges from this
-> project, where Active = `info` blue (see Status Gradients).
+> **Source spec:** the palette came from the "Slate + Indigo" design handoff,
+> which is no longer kept in the repo — `ThemeProvider.tsx` above is now the
+> reference. The handoff was **never** imported: its `--accent`/`--bg-*` names
+> and `data-theme="dark"` selector were mapped onto this project's MUI tokens
+> and `html.dark` scheme instead, so nothing was lost by dropping it. The
+> spec's green "Active" badge intentionally diverges from this project, where
+> Active = `info` blue (see Status Gradients).
 
 ### Light Mode
 
