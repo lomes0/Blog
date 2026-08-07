@@ -1,6 +1,6 @@
 # Indicating agent changes in the UI
 
-**Status: guidelines, decided 7 Aug 2026 — not started.** Follow-on to
+**Status: shipped 7 Aug 2026, `ab646e49`…`cff44415`.** Follow-on to
 [agent-gating.md](./agent-gating.md), whose phase 4 shipped the first cut of
 surfacing (§3.5). The gating mechanism is right; what it says on screen is
 thinner than intended. This document fixes the vocabulary, not the mechanism —
@@ -19,9 +19,9 @@ Four surfaces exist: a glyph on the sidebar post row
    Claude wrote sits in the sidebar looking like any other draft.
 2. **The marker dies at a fold.** It is gated on `sidebarOpen`, and no group row
    aggregates it, so a proposal inside a collapsed series is invisible.
-3. **No count outside the full rail.** `ui.proposals.count.total` has exactly
-   one reader (`RightRail/index.tsx:63`); collapse the rail and the number is
-   gone.
+3. ~~**No count outside the full rail.**~~ Wrong when written — the compact
+   strip already carries an icon and a dot at both rail modes (§3.3). Only the
+   number is absent, deliberately.
 4. **Opening the document says nothing.** `ProposalReviewBar` renders only
    inside the `showDiff` branch (`EditorTabPanel.tsx:290`), so you can open a
    document with a pending proposal, type, and silently mark it stale — a dead
@@ -83,11 +83,18 @@ The collapsed (icon-only) sidebar keeps the marker as a dot on the document icon
 one place colour carries the state alone; the `aria-label` carries it for
 everything else, and the collapsed rail is not a state anyone reviews from.
 
-### 3.3 The rail toggle
+### 3.3 The rail toggle — already there
 
-A dot on the toggle when `count.total > 0` and the rail is not `full`. Not a
-number: the rail is one click away and the count is the first thing it says.
-This closes gap #3 without a second counting surface to keep honest.
+Gap #3 as first written was wrong. The compact strip is mounted at **both** rail
+modes and already carries a `GitPullRequest` button with a dot whenever
+`count.total > 0`, next to the save-trouble badge and for the stated reason that
+a collapsed rail is exactly when a terminal write would go unnoticed longest
+(`RightRail/index.tsx:216-249`). What is missing is only the number, and a
+number is not worth a second counting surface to keep honest when the rail is
+one click away and says it first.
+
+Nothing to build. The gap was that the count has one reader, not that the
+collapsed state is silent.
 
 ### 3.4 The open document (`EditorTabPanel.tsx`)
 
