@@ -369,11 +369,6 @@ html.dark .editor-input {
 }
 
 @font-face {
-  font-family: Assistant;
-  src: url(/fonts/Assistant/Assistant-Regular.woff2);
-}
-
-@font-face {
   font-family: Roboto;
   font-style: normal;
   font-weight: 300;
