@@ -15,10 +15,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: now,
     },
     {
-      url: `${PUBLIC_URL}/playground`,
-      lastModified: now,
-    },
-    {
       url: `${PUBLIC_URL}/new`,
       lastModified: now,
     },

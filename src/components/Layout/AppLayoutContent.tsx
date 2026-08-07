@@ -129,8 +129,9 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
             <Box id="back-to-top-anchor" />
             <EditorTopBar />
             {
-              /* The shell's toolbar slot, for the routes that mount a lone
-                  editor (Playground). The workspace does not use it:
+              /* The shell's toolbar slot, for a lone editor mounted outside the
+                  workspace. No route does that since /playground was deleted,
+                  so this currently has no consumer. The workspace does not use it:
                   it nests its own provider and draws the target inside the
                   editor route — the pane's header, or the band above a split's
                   panes. */

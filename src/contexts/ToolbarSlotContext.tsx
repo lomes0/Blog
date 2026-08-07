@@ -25,8 +25,8 @@ export const useToolbarSlot = () => {
  * `ToolbarPlugin`'s portal.
  *
  * A component rather than a bare `ref={setSlotEl}` at each call site because
- * there is more than one provider: the app shell keeps one for the routes that
- * mount a lone editor (Playground), and the workspace nests its own
+ * there is more than one provider: the app shell keeps one for a lone editor
+ * mounted outside the workspace, and the workspace nests its own
  * so its editors portal into the editor route's chrome instead of the window's.
  * Both do the identical two things, and doing them in one place is what keeps a
  * second slot from being wired up subtly differently.

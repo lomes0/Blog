@@ -4,9 +4,9 @@ import type { User } from "@/types";
  * What the current session is allowed to do.
  *
  * Guests keep a deliberately small surface: local drafts in IndexedDB, their
- * revision history, backing those up, the playground, and viewing published
- * posts. Everything that needs a server — organising posts, sharing, publishing,
- * collaborating — is signed-in only.
+ * revision history, backing those up, and viewing published posts. Everything
+ * that needs a server — organising posts, sharing, publishing, collaborating —
+ * is signed-in only.
  *
  * This exists so the guest/member boundary is stated once rather than as ~20
  * scattered `if (!user)` checks. Prefer *hiding* an unavailable affordance over

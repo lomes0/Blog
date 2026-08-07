@@ -397,7 +397,6 @@ src/components/
 | Sidebar/nav drawer     | `AppDrawer`                             |
 | Document browser modal | `DocumentBrowser`                       |
 | Edit view wrapper      | `EditDocument`                          |
-| Standalone editor      | `Playground`                            |
 | Bin / soft-delete UI   | `TrashBin`                              |
 | Sticky notes canvas    | `NotesCanvas`                           |
 | Rich text editor       | `Editor` (Lexical-based, `src/editor/`) |

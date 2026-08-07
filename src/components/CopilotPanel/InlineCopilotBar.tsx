@@ -43,7 +43,6 @@ export const INLINE_BAR_CLEARANCE = 140;
 
 const EXCLUDED_ROUTES = [
   // Reading surfaces with nothing for the agent to act on.
-  "/playground",
   "/privacy",
 ];
 

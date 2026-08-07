@@ -353,7 +353,6 @@ The rich text editor is built with Lexical (`src/editor/`):
 
 Key UI components (`src/components/`):
 
-- **Playground**: Standalone editor component
 - **BlogManager**: Main blog management interface
 - **PostsList**: Display and manage posts
 - **SeriesGrid** / **SeriesView** / **SeriesCard**: Series organization UI
