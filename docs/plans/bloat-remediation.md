@@ -211,6 +211,14 @@ animation still clips gradually (`AppLayoutContent.tsx:66-74`).
 > `AsyncComponentWrapper`) is gone; `EditorSkeleton` and
 > `DocumentBrowserSkeleton` remain, which matches the step's own "these may be
 > genuinely different shapes" outcome. `DocumentCard/theme.ts` is 149 → 72.
+>
+> **Update, 7 Aug 2026:** `shared/EditorSkeleton.tsx` is gone too — not by this
+> step's reasoning but as a side effect of deleting `/playground` and
+> `/tutorial` (see [upstream-scrub.md](./upstream-scrub.md) phase 5). It was the
+> fallback for a Suspense arm only those routes' layout shape could reach, so it
+> became unreachable rather than redundant. Three skeleton systems are now two:
+> `EditDocument/PaneSkeleton` and `DocumentBrowserSkeleton`, plus
+> `DocumentCard/LoadingCard`.
 
 **State.** Four skeleton systems coexist, ~860 LOC: `shared/LoadingState.tsx`
 (204, exports `LoadingState` + `SuspenseWrapper` + `AsyncComponentWrapper`),

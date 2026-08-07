@@ -527,6 +527,13 @@ The two are not the same mistake:
   but that is a product call about whether the tutorial is a marketing surface
   or an in-app help page, so it is recorded here rather than guessed at.
 
+  > **Resolved 7 Aug 2026, by deletion.** The product call was made the other
+  > way: `/tutorial` was the upstream fork's product tour, and it and
+  > `/playground` were both removed rather than re-homed — see
+  > [upstream-scrub.md](./upstream-scrub.md) phases 3–4. The route table below
+  > still lists them; it describes the layout as designed here, not as it now
+  > stands.
+
 **`(workspace)`** — session required, five-column shell:
 
 | Route                                 | Purpose                             |

@@ -58,7 +58,7 @@ globals; `compilerOptions.types` is deliberately left unset, because setting it
 would restrict resolution to only its entries and drop every other ambient
 package.
 
-Coverage is eighteen specs, 355 assertions: `src/lib/__tests__/ordering.test.ts`
+Coverage is eighteen specs, 357 tests: `src/lib/__tests__/ordering.test.ts`
 (fractional rank keys),
 `src/components/Layout/SideBar/__tests__/
 dragGeometry.test.ts` (sidebar drag

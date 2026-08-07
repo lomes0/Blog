@@ -1,8 +1,9 @@
 # Scrubbing what the fork left behind
 
-**Status:** proposed, 7 Aug 2026. Scope decisions locked (§2); nothing
-implemented. Follows the 30 Jul 2026 identity scrub, which handled *names*; this
-handles *surface*.
+**Status:** COMPLETE, 7 Aug 2026 — all six phases landed, scope as locked in §2.
+Follows the 30 Jul 2026 identity scrub, which handled _names_; this handled
+_surface_. §3 records where this plan's own analysis was wrong and what
+corrected it; §8 records what was never verified.
 
 ---
 
@@ -10,10 +11,10 @@ handles *surface*.
 
 `blog-simple` is a fork of `IBastawisi/math-editor`. The 30 Jul 2026 pass
 scrubbed the inherited **identity** — package name, manifest, OG metadata,
-Lexical namespaces, the previous owner's `ads.txt` / `assetlinks.json` /
-Play Store graphic. What it did not touch is inherited **product surface**:
-routes, demo content and plumbing that exist because upstream was a public
-multi-user math-editor demo site, and that a single-author blog never uses.
+Lexical namespaces, the previous owner's `ads.txt` / `assetlinks.json` / Play
+Store graphic. What it did not touch is inherited **product surface**: routes,
+demo content and plumbing that exist because upstream was a public multi-user
+math-editor demo site, and that a single-author blog never uses.
 
 The accepted goals are all four at once — less code to maintain, nothing
 upstream-authored left, smaller repo, smaller attack surface. Where they
@@ -32,13 +33,13 @@ them.
 
 ### 1.1 In scope
 
-| Surface | Size | Why it is upstream's, not yours |
-| --- | --- | --- |
-| `/tutorial` + `public/data/tutorial.json` | 476 KB + 268 LOC | A product tour teaching *upstream's* math editor, authored by upstream |
-| `/playground` + `public/data/playground.json` | 280 KB + 44 LOC | Upstream's "test drive the editor" demo doc |
-| The app shell's second `ToolbarSlotProvider` | ~10 LOC + 3 doc comments | Exists *only* to serve those two routes |
-| `public/fonts/Assistant/` | 80 KB, 4 files | `@font-face` declared in `globals.css`, offered by nothing |
-| README / CLAUDE.md / `docs/` references | prose | Describe the above as if they were features |
+| Surface                                       | Size                     | Why it is upstream's, not yours                                        |
+| --------------------------------------------- | ------------------------ | ---------------------------------------------------------------------- |
+| `/tutorial` + `public/data/tutorial.json`     | 476 KB + 268 LOC         | A product tour teaching _upstream's_ math editor, authored by upstream |
+| `/playground` + `public/data/playground.json` | 280 KB + 44 LOC          | Upstream's "test drive the editor" demo doc                            |
+| The app shell's second `ToolbarSlotProvider`  | ~10 LOC + 3 doc comments | Exists _only_ to serve those two routes                                |
+| `public/fonts/Assistant/`                     | 80 KB, 4 files           | `@font-face` declared in `globals.css`, offered by nothing             |
+| README / CLAUDE.md / `docs/` references       | prose                    | Describe the above as if they were features                            |
 
 Neither route is reachable from the UI. `grep` finds no `href` to either one
 anywhere in `src`. They are advertised to crawlers by `sitemap.ts` and named in
@@ -58,7 +59,7 @@ of the app.
   `DocumentCoauthors`; that is a separate decision, tracked there, not here.)
 - **PWA / service worker / `/offline`**, **`/embed`**, **`/docx` + `/pdf`** —
   all stay. Considered and kept.
-- **No database content is deleted.** Phase 0 *reads* the database; no later
+- **No database content is deleted.** Phase 0 _reads_ the database; no later
   phase writes to it.
 - **Git history is not rewritten.** The 1,000 upstream commits stay. Every SHA
   keeps resolving, and the `docs/plans/` files that cite SHAs keep working.
@@ -67,15 +68,15 @@ of the app.
 
 ## 2. Decisions locked
 
-| Question | Answer |
-| --- | --- |
-| Goal | All four: maintenance, provenance, size, attack surface. Provenance breaks ties. |
-| Tutorial & Playground | **Cut both**, route + component + data |
-| Editor nodes | **Keep all** |
-| Collaboration surface | **Keep**, out of scope |
-| Odds and ends | Orphan font + untrack `claude_design/` only |
-| Git history | **Untouched** |
-| DB content | **Untouched** |
+| Question              | Answer                                                                           |
+| --------------------- | -------------------------------------------------------------------------------- |
+| Goal                  | All four: maintenance, provenance, size, attack surface. Provenance breaks ties. |
+| Tutorial & Playground | **Cut both**, route + component + data                                           |
+| Editor nodes          | **Keep all**                                                                     |
+| Collaboration surface | **Keep**, out of scope                                                           |
+| Odds and ends         | Orphan font + untrack `claude_design/` only                                      |
+| Git history           | **Untouched**                                                                    |
+| DB content            | **Untouched**                                                                    |
 
 ---
 
@@ -109,7 +110,7 @@ the routes closes it outright with no authorization code to get right. **Phase 0
 checks for those two handles before anything else happens.**
 
 **Checked 7 Aug 2026: no such document exists, so this never fired.** It stays
-documented because it is a *latent* hole, not a fixed one — the routes still
+documented because it is a _latent_ hole, not a fixed one — the routes still
 contain the pattern, and any post that ever takes one of those handles trips it.
 Deleting the routes is what closes it.
 
@@ -128,7 +129,7 @@ Excalidraw's asset naming), and `SketchNode` stays, so they stay.
 referenced by no `font-family` rule and no component. 80 KB, not 608 KB.
 
 **Corrected again during Phase 1 — it is not an orphan, it is a duplicate.**
-`Assistant` is *Excalidraw's UI font* (`--ui-font: Assistant, system-ui, …`,
+`Assistant` is _Excalidraw's UI font_ (`--ui-font: Assistant, system-ui, …`,
 `.ExcTextField__label{font-family:Assistant}`), and Excalidraw ships its own
 four weights, declared against package-relative urls
 (`./fonts/Assistant/Assistant-{Regular,Medium,SemiBold,Bold}.woff2`) that
@@ -144,7 +145,7 @@ regression in the Sketch dialog's chrome — worth stating so nobody later
 ### 3.3 `showTutorialLink` is not a seam
 
 `GraphDialog.tsx:46,84` is a GeoGebra applet parameter — it toggles a link to
-*GeoGebra's* tutorial. Unrelated to `/tutorial`. Leave it.
+_GeoGebra's_ tutorial. Unrelated to `/tutorial`. Leave it.
 
 ### 3.4 `ToolbarSlotContext` is not dead after the cut — its second provider is
 
@@ -188,12 +189,12 @@ one answer that could change the plan.
 
    **RAN 7 Aug 2026 — zero rows, and zero near-misses on `handle ILIKE` /
    `name ILIKE '%playground%'` / `'%tutorial%'`.** Against the real database
-   (`blog-dev` on the `postgres-blog` container, 206 documents / 1,362
-   revisions / 72 published), so the negative is meaningful. Decisive detail:
-   **only 1 of 206 documents has a handle at all** (`toolchain-upgrade`,
-   unpublished) — the by-handle path is effectively unused in this data, so both
-   routes have always fallen through to the static JSON. §3.1 never fired.
-   Phases 3–4 are unblocked with no redirect and no handle rename.
+   (`blog-dev` on the `postgres-blog` container, 206 documents / 1,362 revisions
+   / 72 published), so the negative is meaningful. Decisive detail: **only 1 of
+   206 documents has a handle at all** (`toolchain-upgrade`, unpublished) — the
+   by-handle path is effectively unused in this data, so both routes have always
+   fallen through to the static JSON. §3.1 never fired. Phases 3–4 are unblocked
+   with no redirect and no handle rename.
 
    > **Do not run `docker compose up -d` to do this.** `postgres-blog`
    > (postgres:17.2) already holds 5432 — not this repo's `blog-postgres`
@@ -245,7 +246,7 @@ is the useful part of this phase:
 
 > `claude_design/` was cited in five places — `DESIGN.md:96` ("**is** the design
 > reference"), `ThemeProvider.tsx:16`, `Composer.tsx:26`, `toolbar.css:2` and
-> `ide-redesign.md:4`. Nothing *built* from it, which is what the first check
+> `ide-redesign.md:4`. Nothing _built_ from it, which is what the first check
 > looked for; documentation depended on it, which is not the same question.
 > CLAUDE.md makes DESIGN.md mandatory for UI work, so untracking would have left
 > the required design doc pointing at a file no clone contains.
@@ -270,8 +271,8 @@ What was done:
 Checks: `tsc` clean, `lint` clean, `check:theme` clean.
 
 **Lesson worth keeping:** "no build step reads it" is not the same as "nothing
-depends on it". Grep the docs, not just the config, before deleting a
-directory — `DESIGN.md` and `CLAUDE.md` are load-bearing in this repo.
+depends on it". Grep the docs, not just the config, before deleting a directory
+— `DESIGN.md` and `CLAUDE.md` are load-bearing in this repo.
 
 **Revert:** `git revert` restores the tracked files and the citations together.
 The six untracked files are not in the commit and would have to come from the
@@ -317,7 +318,7 @@ in `next.config.ts` — but for a route with no inbound links it is noise.
 ### Phase 4 — delete `/playground` — **DONE 7 Aug 2026**
 
 **The precondition was cheaper than this plan assumed.** It called for
-re-pointing the harness in its own commit *before* the deletion, costing a
+re-pointing the harness in its own commit _before_ the deletion, costing a
 fixture post in the dev database. But the harness is not a script in this repo —
 it is a **procedure**, recorded in the `verify-ui-in-browser` memory and
 referenced from CLAUDE.md §Testing. Re-pointing it is a documentation edit with
@@ -337,8 +338,8 @@ Deleted:
 
 - `src/app/(workspace)/playground/page.tsx`
 - `src/components/Playground/` (`index.tsx`, `PlaygroundEditor.tsx`)
-- `public/data/playground.json` (280 KB / 3,778 lines) — and `public/data/`
-  with it, now empty
+- `public/data/playground.json` (280 KB / 3,778 lines) — and `public/data/` with
+  it, now empty
 
 Edited:
 
@@ -358,17 +359,17 @@ Net **−3,859 / +11** across 13 files.
 Checks: `tsc` clean, `lint` clean, `npm test` 18 files / 357 tests, knip
 unchanged (`DocumentActions/Fork.tsx` only, as before).
 
-**A prediction in §4 phase 5 was wrong, corrected here:** `htmr` does *not* fall
+**A prediction in §4 phase 5 was wrong, corrected here:** `htmr` does _not_ fall
 out of `package.json`. It has six live callers — `Diff/index.tsx`,
 `app/embed/[id]/page.tsx`, and the `StickyNode` / `GraphNode` / `ImageNode` /
-`SketchNode` decorators. `findRevisionHtml` likewise keeps three
-(`embed`, `(public)/view/[id]`, plus its own module). Nothing was orphaned by
-either deletion.
+`SketchNode` decorators. `findRevisionHtml` likewise keeps three (`embed`,
+`(public)/view/[id]`, plus its own module). Nothing was orphaned by either
+deletion.
 
 **Left for phase 6, deliberately:** `docs/plans/workspace-panes.md` §513-541 and
 `docs/reviews/code-review-2026-07.md` both discuss these routes. Both are dated
 records of decisions taken at the time — rewriting them would falsify the
-history. They should be *annotated* as superseded, not edited.
+history. They should be _annotated_ as superseded, not edited.
 
 **Revert:** `git revert`. The harness note in memory would need reverting by
 hand, since it does not live in this repo.
@@ -394,10 +395,10 @@ carries `FloatingToolbarPlugin`, not `ToolbarPlugin`.
    route left, nothing portals into it.
 2. **`src/components/Layout/AppLayout.tsx`** — the shell's `ToolbarSlotProvider`
    wrapper, if the target above was its only consumer. **Verify before
-   deleting**: `ToolbarPlugin` calls `useToolbarSlot()`, which *throws* outside a
-   provider, so any editor that mounts under the shell rather than the workspace
-   still needs one. If such a route exists, keep the provider and delete only
-   the target.
+   deleting**: `ToolbarPlugin` calls `useToolbarSlot()`, which _throws_ outside
+   a provider, so any editor that mounts under the shell rather than the
+   workspace still needs one. If such a route exists, keep the provider and
+   delete only the target.
 3. **`src/contexts/ToolbarSlotContext.tsx:26-34`** — rewrite the doc comment.
    Its whole rationale is "there is more than one provider"; if step 2 removes
    the second one, that paragraph is now wrong, and a wrong comment about why a
@@ -409,17 +410,18 @@ carries `FloatingToolbarPlugin`, not `ToolbarPlugin`.
 5. Re-run knip and diff against Phase 0's output. ~~Expect `htmr` to fall out of
    `package.json`~~ — it did not, see phase 4. knip is unchanged throughout:
    `DocumentActions/Fork.tsx` before and after.
-6. **Not in the original plan — `EditDocument`'s second Suspense arm.** It swapped
-   in `shared/EditorSkeleton` when `children` were SSR'd content in an app-shell
-   toolbar layout. `EditDocument` has exactly one mount — `edit/layout.tsx:27`,
-   which renders it **bare** — so the arm was unreachable, and `children` was
-   never anything. Removing it deletes `shared/EditorSkeleton.tsx` (**409
-   lines**) and leaves `PaneSkeleton` as the app's only editor stand-in.
-   `EditDocumentContent` also declared `PropsWithChildren` without using it.
+6. **Not in the original plan — `EditDocument`'s second Suspense arm.** It
+   swapped in `shared/EditorSkeleton` when `children` were SSR'd content in an
+   app-shell toolbar layout. `EditDocument` has exactly one mount —
+   `edit/layout.tsx:27`, which renders it **bare** — so the arm was unreachable,
+   and `children` was never anything. Removing it deletes
+   `shared/EditorSkeleton.tsx` (**409 lines**) and leaves `PaneSkeleton` as the
+   app's only editor stand-in. `EditDocumentContent` also declared
+   `PropsWithChildren` without using it.
 
    This is the largest single deletion of the phase and the plan missed it
-   entirely, because it looked for *routes* that used the shell toolbar layout
-   and this was a *fallback* shaped for one.
+   entirely, because it looked for _routes_ that used the shell toolbar layout
+   and this was a _fallback_ shaped for one.
 
 **Revert:** `git revert` restores the plumbing, but the routes stay gone — which
 is fine, the plumbing is inert without them.
@@ -445,16 +447,51 @@ retrievable from the page source — a real disclosure, but not a visible one.
 The conclusion is unchanged (Phase 0 found no such document, and the routes are
 gone), but the original wording claimed more than the code did.
 
-### Phase 6 — the prose
+### Phase 6 — the prose — **DONE 7 Aug 2026**
 
 Last, so it describes the end state rather than an intention.
 
+Two were **live rules pointing at deleted code**, which is the category that
+actually matters — the rest is bookkeeping:
+
+- `DESIGN.md:412` told every reader to "use `EditorSkeleton` for editor-area
+  skeletons". Now names `EditDocument/PaneSkeleton`.
+- `CLAUDE.md:61` said "eighteen specs, **355 assertions**". The suite reports
+  357 tests; the file has 632 `expect()` calls and 347 literal `it`/`test`
+  blocks (the gap is generated cases). "355" matched no metric — it was the
+  vitest count when written, since drifted. Now reads "eighteen specs, 357
+  tests", which is unambiguous about which number it is.
+
+Historical records were **annotated, never rewritten** — `docs/README.md` says a
+review body describes the code as it was on the date at its top, and editing one
+would falsify that:
+
+- `docs/reviews/code-review-2026-07.md` §3 got a second dated `STATUS` line, per
+  the file's own per-finding convention. The finding is unchanged — the sinks
+  and both delivery paths are untouched — but two route lists inside it are
+  stale.
+- `docs/plans/workspace-panes.md` §8.2 left `/tutorial` as an open product call
+  ("marketing surface or in-app help page"). Annotated as resolved by deletion.
+- `docs/plans/bloat-remediation.md` Step 5 said `EditorSkeleton` would stay,
+  being a genuinely different shape. Annotated: it went anyway, as a side effect
+  rather than a refutation.
+
+`README.md` needed nothing — every feature it advertises (Math, Graph, Sketch,
+Sticky notes, series) is still shipped, because no editor node was in scope.
+`docs/README.md` links nothing that was deleted.
+
+Memory updated: `verify-ui-in-browser` (the harness target, phase 4) and
+`matheditor-fork-remnants` (this scrub, its locked scope, and the three traps
+worth carrying forward).
+
 - **`README.md`** — the Features list is still upstream's framing. Since every
-  node stays it is not *wrong*, but check it claims nothing the app no longer
+  node stays it is not _wrong_, but check it claims nothing the app no longer
   does.
-- **`CLAUDE.md`** — "Component Organization" lists `**Playground**: Standalone
-  editor component`. Remove it. Check the Testing section too, which documents
-  the `verify-ui-in-browser` harness and its `:3000` trap.
+- **`CLAUDE.md`** — "Component Organization" lists
+  `**Playground**: Standalone
+  editor component`. Remove it. Check the Testing
+  section too, which documents the `verify-ui-in-browser` harness and its
+  `:3000` trap.
 - **`docs/plans/README.md`** — add this plan's row.
 - **`docs/README.md`** — check the index for links into anything deleted.
 - **Your memory files** — `verify-ui-in-browser.md` names `/playground` as the
@@ -492,19 +529,45 @@ Per phase: `npx tsc --noEmit` and `npm run lint`. After Phase 5 also
 `npm test` should stay at eighteen specs / 355 assertions throughout; no spec
 covers any of this, which is itself worth noticing.
 
-End state, measured against Phase 0's numbers:
+End state, measured 7 Aug 2026 (`git diff --shortstat 701498ed HEAD`):
 
-| | Before | After |
-| --- | --- | --- |
-| `public/` demo data | 756 KB | 0 |
-| `public/fonts/` | 608 KB | 528 KB |
-| Deleted app code | — | ~322 LOC + ~10 LOC plumbing |
-| Public routes | includes `/tutorial`, `/playground` | neither |
-| Unauthenticated `findDocument` callers | 2 | 0 |
-| Tracked binary zips | 2 | 0 |
+|                                    | Before                     | After                                        |
+| ---------------------------------- | -------------------------- | -------------------------------------------- |
+| Whole scrub                        | —                          | **47 files, +580 / −16,292**                 |
+| `public/` demo data                | 756 KB                     | 0 — `public/data/` deleted                   |
+| `public/fonts/`                    | 608 KB                     | 524 KB                                       |
+| `public/` total                    | ~41.8 MB                   | 41 MB (`geogebra` is 22 MB of it, kept)      |
+| Deleted app code                   | —                          | ~740 LOC (`EditorSkeleton` 409 is over half) |
+| Public routes                      | `/tutorial`, `/playground` | neither                                      |
+| `ToolbarSlotProvider`s in the tree | 2                          | 1                                            |
+| Editor skeleton components         | 2                          | 1                                            |
+| Tracked binary blobs               | 4                          | 0                                            |
+
+**One row of this table was wrong when written, and is corrected rather than
+quietly dropped:** it claimed unauthenticated `findDocument` callers would go "2
+→ 0". Six page-level callers remain (`docx`, `pdf`, `embed`, `(public)/view`,
+`(workspace)/edit`, `(workspace)/new`). The honest metric is _callers that
+perform no visibility check at all_, which did go **2 → 0** — `view/[id]` and
+`embed/[id]` both test `document.private` by hand, which is precisely what
+`/playground` and `/tutorial` never did. Hand-checking is still the pattern
+CLAUDE.md warns about and the July review's §1 tracks as OPEN; it is simply not
+the same defect.
 
 The bundle win is small and always was — `public/geogebra` is 22 MB and stays.
 The provenance and attack-surface wins are the point.
+
+## 8. What was never verified
+
+No phase was exercised in a browser, per the working agreement that `tsc` and
+lint are the gate. Every phase passed `tsc`, `lint`, `check:theme` and the 357
+tests, and none of that can prove a React context is reachable at runtime —
+phase 5's provider removal is the change where that gap is real, and it was
+closed by hand-tracing every `useToolbarSlot` caller rather than by a tool. A
+`npm run build` plus one load of `/edit` would close it properly.
+
+The guest-editor replacement for the browser harness (phase 4) is likewise
+inferred from `backendFor`, the no-op middleware and the ungated workspace
+layout — not run.
 
 ---
 

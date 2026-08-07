@@ -96,9 +96,9 @@ exposed as MUI CSS variables (`var(--mui-palette-*)`).
 > which is no longer kept in the repo — `ThemeProvider.tsx` above is now the
 > reference. The handoff was **never** imported: its `--accent`/`--bg-*` names
 > and `data-theme="dark"` selector were mapped onto this project's MUI tokens
-> and `html.dark` scheme instead, so nothing was lost by dropping it. The
-> spec's green "Active" badge intentionally diverges from this project, where
-> Active = `info` blue (see Status Gradients).
+> and `html.dark` scheme instead, so nothing was lost by dropping it. The spec's
+> green "Active" badge intentionally diverges from this project, where Active =
+> `info` blue (see Status Gradients).
 
 ### Light Mode
 
@@ -409,7 +409,7 @@ Every data-dependent component **must** handle all four states:
 
 | State        | Implementation                                                                                             |
 | ------------ | ---------------------------------------------------------------------------------------------------------- |
-| **Loading**  | MUI `<Skeleton>` or `<CircularProgress>` — use `EditorSkeleton` for editor-area skeletons                  |
+| **Loading**  | MUI `<Skeleton>` or `<CircularProgress>` — use `EditDocument/PaneSkeleton` for editor-area skeletons       |
 | **Empty**    | Descriptive empty-state message + optional CTA button; never render a blank space                          |
 | **Error**    | MUI `<Alert severity="error">` with a human-readable message; wrap async boundaries with `<ErrorBoundary>` |
 | **Disabled** | Set `disabled` prop on interactive MUI elements; never rely solely on visual opacity                       |

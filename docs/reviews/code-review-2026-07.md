@@ -208,6 +208,14 @@ depth:
 > **STATUS 2026-07-30: OPEN.** `KanbanNode/index.tsx:183` still assigns
 > `element.innerHTML`, and there is still no sanitizer dependency. The
 > concurrent-globals note is open too — `editor/utils/generateDocx.ts:21-31`.
+>
+> **STATUS 2026-08-07: STILL OPEN, two route lists below are stale.**
+> `/playground` and `/tutorial` were deleted
+> ([plans/upstream-scrub.md](../plans/upstream-scrub.md) phases 3–4), so the
+> `htmr`-rendered set is now just `/embed/[id]`, and `/api/embed`'s loopback
+> callers no longer include those two. The finding itself is unaffected — the
+> sinks and both delivery paths are unchanged, and the "do not require a session
+> on `/api/embed`" advice still holds for the remaining callers.
 
 **Was §8 — UPGRADED.** The first draft said `/api/embed` was "an unauthenticated
 compute sink" and that "any XSS sink in the Lexical serializer is directly
