@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import {
   Box,
   Collapse,
@@ -30,6 +30,12 @@ import {
   dropIntoSx,
   rowHoverRevealSx,
 } from "@/theme/treeRow";
+import { useSelector } from "@/store";
+import {
+  rollUpMarkers,
+  selectMarkerByDocId,
+} from "@/store/selectors/proposalSelectors";
+import { AgentMarker as AgentMarkerComponent } from "./AgentMarker";
 
 /** Width of the leading rule stub before the tag title (the "── " lead-in). */
 const LEAD_RULE_W = 14;
@@ -79,6 +85,20 @@ export const ProjectGroup: React.FC<ProjectGroupProps> = ({
   const projectId = item.project.id;
   const { rename } = projectActions;
   const isRenaming = rename.renamingId === projectId;
+
+  // Agent marker roll-up: a project shows a marker when ANY descendant post
+  // carries one. A project's descendants are its member series, and each series'
+  // descendants are posts — so this is a two-level walk. One subscription to the
+  // memoized marker map; no per-row store scan.
+  const markerByDocId = useSelector(selectMarkerByDocId);
+  const groupMarker = useMemo(() => {
+    const descendantIds: string[] = [];
+    for (const child of item.children) {
+      if (child.type !== "series") continue;
+      for (const post of child.posts) descendantIds.push(post.id);
+    }
+    return rollUpMarkers(descendantIds, markerByDocId);
+  }, [item.children, markerByDocId]);
 
   const handleHeaderDragOver = useCallback(
     (e: React.DragEvent<HTMLElement>) => {
@@ -200,11 +220,23 @@ export const ProjectGroup: React.FC<ProjectGroupProps> = ({
             }}
           />
           {sidebarOpen && !isRenaming && (
-            <RowCreateButton
-              label="New series in project"
-              icon={<FolderPlus size={ICON_SIZE.micro} strokeWidth={2} />}
-              onClick={() => seriesActions.handleCreateSeries(projectId)}
-            />
+            <>
+              {
+                /* Agent marker before the "new series" button. As with SeriesGroup,
+                  do NOT suppress when expanded — a marker that flickers on every
+                  fold is worse than redundancy. */
+              }
+              <AgentMarkerComponent
+                marker={groupMarker.marker}
+                count={groupMarker.count}
+                sx={{ mr: 0.25 }}
+              />
+              <RowCreateButton
+                label="New series in project"
+                icon={<FolderPlus size={ICON_SIZE.micro} strokeWidth={2} />}
+                onClick={() => seriesActions.handleCreateSeries(projectId)}
+              />
+            </>
           )}
         </ListItemButton>
       </ListItem>

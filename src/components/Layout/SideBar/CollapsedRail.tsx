@@ -6,6 +6,19 @@ import type { SeriesGroupItem } from "@/utils/posts/seriesGrouping";
 import { SafeNavigationLink } from "./SafeNavigationLink";
 import { ICON_SIZE } from "@/theme/icons";
 import { SB_ITEM_RADIUS } from "./constants";
+import { useSelector } from "@/store";
+import {
+  type AgentMarker,
+  rollUpMarkers,
+  selectMarkerByDocId,
+} from "@/store/selectors/proposalSelectors";
+
+/** The §2 tooltip/`aria-label` wording, one copy for both rail item kinds. */
+const MARKER_LABELS = {
+  pending: "Agent change waiting for review",
+  stale: "Agent change is out of date — reject or re-run",
+  created: "Created by an agent, not yet accepted",
+} as const;
 
 interface CollapsedRailProps {
   /** All active-post groups: series collections and standalone posts. */
@@ -77,6 +90,44 @@ const CountBadge: React.FC<{ count: number }> = ({ count }) => (
 );
 
 /**
+ * Agent marker dot overlaid on a document/folder icon in the collapsed rail.
+ *
+ * This is the ONE place where color carries state alone, because a 6px dot
+ * cannot be three different glyphs. DESIGN.md §10 forbids carrying state in
+ * colour alone everywhere else, but the collapsed rail is icon-only chrome with
+ * no label to sit beside — so the words go in the `aria-label` here and in the
+ * rail item's own tooltip, which already names the document. The exception is
+ * deliberate and scoped to this one surface.
+ *
+ * No `Tooltip` of its own: `RailItem` wraps every entry in one, and a second
+ * inside it would race the first over a 6px target.
+ */
+const MarkerDot: React.FC<{ marker: AgentMarker; label: string }> = ({
+  marker,
+  label,
+}) => (
+  <Box
+    component="span"
+    role="img"
+    aria-label={label}
+    sx={{
+      position: "absolute",
+      // Bottom, not top: `CountBadge` holds the top-right corner on every
+      // series folder, and a 6px dot placed there lands underneath it.
+      bottom: 2,
+      right: 2,
+      width: 6,
+      height: 6,
+      borderRadius: "50%",
+      // Stale uses warning.main (amber), pending/created use primary.main
+      // (indigo). The glyph colour vocabulary from AgentMarker.tsx, adapted to
+      // a dot that can only be two colours.
+      bgcolor: marker === "stale" ? "warning.main" : "primary.main",
+    }}
+  />
+);
+
+/**
  * Compact "summary" rail shown when the sidebar is dragged shut: the file tree
  * collapses to one icon per top-level entry — a folder (with post count) for
  * each series collection and a file icon for each standalone post.
@@ -85,6 +136,11 @@ export const CollapsedRail: React.FC<CollapsedRailProps> = ({
   groupedActivePosts,
   pathname,
 }) => {
+  // One subscription, one stable memoized map: every marked document and the
+  // marker it carries. Reading a rail item's state is a key lookup, so the rail
+  // does not re-render on store changes that touch no proposal.
+  const markerByDocId = useSelector(selectMarkerByDocId);
+
   if (groupedActivePosts.length === 0) {
     return <Box sx={{ flex: "1 1 auto", minHeight: 0 }} />;
   }
@@ -112,15 +168,35 @@ export const CollapsedRail: React.FC<CollapsedRailProps> = ({
           const href = `/posts/${g.series.id}`;
           const selected = pathname === href ||
             pathname.startsWith(`${href}/`);
+
+          // The same roll-up SeriesGroup does, called directly rather than
+          // through a `useMemo`: this runs inside a map, so there is no hook to
+          // hang it on. `rollUpMarkers` is pure, so a repeat call is only the
+          // walk itself.
+          const { marker: groupMarker, count: totalCount } = rollUpMarkers(
+            g.posts.map((post) => post.id),
+            markerByDocId,
+          );
+          const markerLabel = groupMarker
+            ? (totalCount > 1
+              ? `${totalCount} agent changes inside`
+              : MARKER_LABELS[groupMarker])
+            : null;
+
           return (
             <RailItem
               key={`series-${g.series.id}`}
               href={href}
               selected={selected}
-              title={`${g.series.title} · ${g.posts.length}`}
+              title={markerLabel
+                ? `${g.series.title} · ${g.posts.length} — ${markerLabel}`
+                : `${g.series.title} · ${g.posts.length}`}
             >
               <Folder size={ICON_SIZE.dense} strokeWidth={1.7} />
               <CountBadge count={g.posts.length} />
+              {groupMarker && markerLabel && (
+                <MarkerDot marker={groupMarker} label={markerLabel} />
+              )}
             </RailItem>
           );
         }
@@ -134,14 +210,22 @@ export const CollapsedRail: React.FC<CollapsedRailProps> = ({
         // there would close the panes the rail is drawn beside.
         const href = `/edit/${post.id}`;
         const selected = pathname === href;
+
+        // Standalone post: its own marker, straight off the map.
+        const postMarker: AgentMarker | null = markerByDocId[post.id] ?? null;
+        const markerLabel = postMarker ? MARKER_LABELS[postMarker] : null;
+
         return (
           <RailItem
             key={`post-${post.id}`}
             href={href}
             selected={selected}
-            title={name}
+            title={markerLabel ? `${name} — ${markerLabel}` : name}
           >
             <FileText size={ICON_SIZE.dense} strokeWidth={1.7} />
+            {postMarker && markerLabel && (
+              <MarkerDot marker={postMarker} label={markerLabel} />
+            )}
           </RailItem>
         );
       })}

@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import {
   Box,
   Collapse,
@@ -30,6 +30,12 @@ import {
   rowHoverRevealSx,
 } from "@/theme/treeRow";
 import { ICON_SIZE } from "@/theme/icons";
+import { useSelector } from "@/store";
+import {
+  rollUpMarkers,
+  selectMarkerByDocId,
+} from "@/store/selectors/proposalSelectors";
+import { AgentMarker as AgentMarkerComponent } from "./AgentMarker";
 
 interface SeriesGroupProps {
   group: SeriesGroupItem & { series: Series };
@@ -61,6 +67,19 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
   dnd,
 }) => {
   const seriesId = group.series.id;
+
+  // Agent marker roll-up: a series shows a marker when ANY descendant post
+  // carries one. The precedence is stale > pending > created, same as rows.
+  //
+  // The row subscribes to one memoized map and nothing else. Reading a marker
+  // out of it is one lookup per child, and the map's identity only moves when a
+  // poll or a review decision moves it — so an unrelated dispatch re-renders no
+  // group row.
+  const markerByDocId = useSelector(selectMarkerByDocId);
+  const groupMarker = useMemo(
+    () => rollUpMarkers(group.posts.map((post) => post.id), markerByDocId),
+    [group.posts, markerByDocId],
+  );
 
   const handleHeaderDragOver = useCallback(
     (e: React.DragEvent<HTMLElement>) => {
@@ -219,8 +238,27 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
                 sx={{ minWidth: 0, my: 0 }}
               />
             )}
-            {sidebarOpen && !isRenaming && group.posts.length > 0 && (
-              <CountPill count={group.posts.length} active={isSeriesActive} />
+            {sidebarOpen && !isRenaming && (
+              <>
+                {
+                  /* Agent marker sits beside the count pill. Do NOT suppress when
+                    expanded: that makes the marker flicker on every fold, which is
+                    worse than the redundancy. The descendant rows carry their own
+                    markers, so the group's is load-bearing only when collapsed, but
+                    it stays visible when open too — see docs/plans/agent-change-indication.md §3.2. */
+                }
+                <AgentMarkerComponent
+                  marker={groupMarker.marker}
+                  count={groupMarker.count}
+                  sx={{ ml: "auto", mr: 0.25 }}
+                />
+                {group.posts.length > 0 && (
+                  <CountPill
+                    count={group.posts.length}
+                    active={isSeriesActive}
+                  />
+                )}
+              </>
             )}
           </ListItemButton>
         </Tooltip>
