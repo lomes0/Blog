@@ -277,25 +277,42 @@ directory — `DESIGN.md` and `CLAUDE.md` are load-bearing in this repo.
 The six untracked files are not in the commit and would have to come from the
 scratchpad copy.
 
-### Phase 3 — delete `/tutorial`
+### Phase 3 — delete `/tutorial` — **DONE 7 Aug 2026**
 
-Delete:
+Deleted:
 
 - `src/app/(workspace)/tutorial/page.tsx`
-- `src/components/Tutorial/` (`index.tsx`, `TutorialEditor.tsx` — 268 LOC)
-- `public/data/tutorial.json` (476 KB)
+- `src/components/Tutorial/` — **three** files, not the two this plan listed:
+  `index.tsx`, `TutorialEditor.tsx` and `checkpoints.ts` (106 LOC of
+  tour-progress predicates, imported only by `TutorialEditor`)
+- `public/data/tutorial.json` (476 KB / 9,160 lines)
 
-Edit:
+Edited:
 
-- `src/app/sitemap.ts:22` — drop the `/tutorial` entry
-- `src/components/CopilotPanel/InlineCopilotBar.tsx:47` — drop `"/tutorial"`
-  from the deny-list
+- `src/app/sitemap.ts` — dropped the `/tutorial` entry
+- `src/components/CopilotPanel/InlineCopilotBar.tsx` — dropped `"/tutorial"`
+  from `EXCLUDED_ROUTES`
+- The four comments naming "Playground **and Tutorial**" as a pair
+  (`PaneSkeleton.tsx:32`, `EditDocument/index.tsx:57`,
+  `AppLayoutContent.tsx:133`, `ToolbarSlotContext.tsx:29`) now name only
+  Playground. Phase 5 retires them entirely, but deferring the edit would have
+  put a comment naming a deleted route into history — each commit should stand
+  on its own.
 
-**Revert:** `git revert`. The route is unreachable from the UI, so nothing links
-into it; the only external exposure is the sitemap, and a crawler that has
-cached `/tutorial` will get your `not-found.tsx`. If that matters, add a
-redirect to `/` in `next.config.ts` instead of accepting the 404 — but for a
-route with no inbound links it is noise.
+Net **−9,458 / +4** across 11 files.
+
+Checks: `tsc` clean, `lint` clean, `npm test` 18 files / **357** tests. Nothing
+newly orphaned — knip's one unused file is `DocumentActions/Fork.tsx`, part of
+the untouched collab surface. `htmr` and `findRevisionHtml` stay live via
+`/playground` until phase 4.
+
+> Note: CLAUDE.md documents "355 assertions"; the suite is at 357. Pre-existing
+> drift, unrelated to this phase — fold the correction into phase 6.
+
+**Revert:** `git revert`. The route was unreachable from the UI, so nothing
+links into it; the only external exposure was the sitemap, and a crawler holding
+a cached `/tutorial` now gets `not-found.tsx`. If that matters, add a redirect
+in `next.config.ts` — but for a route with no inbound links it is noise.
 
 ### Phase 4 — delete `/playground`
 
