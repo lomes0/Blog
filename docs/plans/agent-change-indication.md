@@ -1,6 +1,6 @@
 # Indicating agent changes in the UI
 
-**Status: shipped 7 Aug 2026, `ab646e49`…`cff44415`.** Follow-on to
+**Status: shipped 7 Aug 2026, `ab646e49`…`642c4223`.** Follow-on to
 [agent-gating.md](./agent-gating.md), whose phase 4 shipped the first cut of
 surfacing (§3.5). The gating mechanism is right; what it says on screen is
 thinner than intended. This document fixes the vocabulary, not the mechanism —
@@ -71,6 +71,26 @@ Stale is available client-side already —
 proposal.head)`, the same call the rail and the
 review bar make — so per-state glyphs need no new field and no new request.
 
+**Answering from the row.** Hovering a marked row replaces the marker with ✓ / ✗
+(`RowAgentActions.tsx`) — approve/reject for a proposal, keep/discard for a
+created post, and ✗ alone when stale, because the server 409s a stale approval
+and a button that always fails is worse than no button. Replacing rather than
+appending: a ~230px row already holds a label, a marker and an edit button, and
+the marker's whole job is done the moment the pointer arrives.
+
+Two things that fall out of it and are easy to get wrong. `useProposalActions`
+pulls in `useConfirm` and `useCommandRun`, so it lives in a child rendered only
+when there is a marker — inlined, it would mount those hooks on every row in the
+tree. And `busyId` holds the id of the thing in flight, which for a proposal is
+the _revision_ id and not the document's; a row that compares it against its own
+post id disables nothing, and only looks correct on an agent-created post, where
+the two are the same row.
+
+The actions are hover-only and therefore keyboard-unreachable — `display: none`
+cannot be undone by `:focus-within`, since an undisplayed element cannot take
+focus. That is deliberate and confined to here: this is an accelerator, and the
+rail and §3.4's bar offer all four actions to the keyboard.
+
 ### 3.2 Group rows and the collapsed sidebar
 
 `SeriesGroup` and `ProjectGroup` show the marker when any descendant carries
@@ -109,6 +129,24 @@ open. One bar, two contexts, so the two cannot drift.
 
 This is the gap worth the most. Everything else here makes agent work easier to
 find; this one stops the user destroying it by accident.
+
+**And the created post too.** A create lands rather than proposes (§3.7) — there
+is no head to withhold — so opening one used to say nothing either, and the only
+place to accept it was the rail. The same bar answers both, branching on which
+of the two the document is: a proposal keeps Review / Approve / Reject, a
+created post gets Keep / Discard and no Review, because there is nothing to diff
+it against. The wording is lifted from `ProposalsSection` verbatim so the rail
+and the editor cannot come to describe one document differently. It lives at
+`EditDocument/AgentChangeBar.tsx`; `components/Diff/` stopped being true of it
+when it stopped needing a diff.
+
+Discard deletes the post, and `removePost` never touched `ui.workspace` — so the
+pane was left mounted on a document that no longer existed. Closing it belongs
+in `useProposalActions` rather than at either call site, because the rail can
+discard a post that is open behind it: a tab is removed, a pane's root closes
+the pane, and the address bar is repaired exactly as `pane.close` repairs it.
+Note that `pane.close` itself cannot be reused — its `available` gate refuses
+the last pane, which is the common case here.
 
 ## 4. What the store has to grow
 
