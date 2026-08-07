@@ -1,0 +1,280 @@
+"use client";
+import { Box, Button, Chip, Typography } from "@mui/material";
+import { Check, FilePlus2, GitPullRequest, Trash2, X } from "lucide-react";
+import { useSelector } from "@/store";
+import { selectAgentPost } from "@/store/selectors/proposalSelectors";
+import { DateDisplay } from "@/components/shared/DateDisplay";
+import { ICON_SIZE } from "@/theme/icons";
+import { useProposalActions } from "@/hooks/useProposalActions";
+import { originLabel } from "@/lib/proposalLabels";
+import { isProposalStale } from "@/lib/proposals";
+
+interface AgentChangeBarProps {
+  /** The document this pane is showing. */
+  docId: string;
+}
+
+/**
+ * What an agent did to the open document, and the answer the author owes it.
+ *
+ * Two kinds of thing, one bar, for the reason `RightRail/ProposalsSection`
+ * gives for putting them in one list: from the author's side they are one
+ * question, and the wording and the labels are that section's, kept identical so
+ * the rail and the editor cannot come to describe the same document
+ * differently.
+ *
+ * - A **pending proposal** on an existing document (agent-gating.md §3.5, the
+ *   "review whole" tier) — Review it as a diff, Approve it into `head`, or
+ *   Reject it. The diff view already compares any two revisions, so reviewing a
+ *   proposal is that view plus a decision.
+ * - An **agent-created post** (§3.7), which landed as an unpublished draft
+ *   because a create has no head to withhold — Keep it or Discard it. No
+ *   Review: there is nothing to diff it against, which is the whole reason a
+ *   create lands rather than proposes.
+ *
+ * A document is at most one of the two — a post the author has not accepted yet
+ * has no proposals against it — so this branches rather than stacking, and
+ * renders nothing when neither answers.
+ *
+ * It renders whenever this document is in either state — in or out of diff mode
+ * (docs/plans/agent-change-indication.md §3.4). It used to render only when the
+ * diff's right-hand side was the proposal, which left the one state that needs a
+ * warning as the one state with nothing on screen: you could open a document
+ * Claude had written against, type a character, and silently mark the proposal
+ * stale — a dead end whose only exits are reject or a re-run (§3.6). The bar is
+ * therefore the notice as much as the decision, and it is one component in two
+ * contexts rather than a second one for the non-diff case, so what the two say
+ * cannot drift apart.
+ *
+ * Review is the only thing that differs between those two contexts, and it is
+ * absent with the diff already open on this proposal, because the diff *is* the
+ * review.
+ *
+ * Sticky, because a proposal can be pages long and the decision has to stay
+ * reachable without scrolling back.
+ */
+export default function AgentChangeBar({ docId }: AgentChangeBarProps) {
+  const proposal = useSelector((state) => state.ui.proposals.byDocId[docId]);
+  const agentPost = useSelector((state) => selectAgentPost(state, docId));
+  const comparing = useSelector((state) => state.ui.diff.new);
+  const { busyId, review, approve, reject, acceptPost, discardPost } =
+    useProposalActions();
+
+  if (proposal) {
+    const busy = busyId === proposal.id;
+    // The document moved off the base this was built on, so approval would 409
+    // (§3.6). The diff still means something — it is the left-hand side that has
+    // moved on — so the bar stays and loses its Approve button rather than
+    // disappearing and leaving no way to reject.
+    const stale = isProposalStale(proposal, proposal.head);
+
+    return (
+      <Bar
+        icon={<GitPullRequest size={ICON_SIZE.dense} />}
+        title={proposal.summary || "Proposed change"}
+        meta={
+          <>
+            <Chip
+              label={originLabel(proposal.origin)}
+              size="small"
+              sx={chipSx}
+            />
+            <DateDisplay date={proposal.proposedAt} variant="full" />
+            {stale && (
+              <Chip
+                label="Out of date"
+                size="small"
+                color="warning"
+                variant="outlined"
+                sx={chipSx}
+              />
+            )}
+          </>
+        }
+        note={stale && (
+          <Typography variant="micro" component="div" color="warning.main">
+            You saved after this was proposed, so it can no longer be applied.
+            Ask Claude again against the current content.
+          </Typography>
+        )}
+        actions={
+          <>
+            {
+              /* Only when the diff is not already on this proposal. Open, it
+                would be a button that asks for what is on screen; closed, it is
+                the whole reason the bar can be shown outside diff mode — read it
+                before deciding. */
+            }
+            {comparing !== proposal.id && (
+              <Button
+                size="small"
+                variant="text"
+                disabled={busy}
+                onClick={() => void review(proposal)}
+              >
+                Review
+              </Button>
+            )}
+            <Button
+              size="small"
+              variant="outlined"
+              color="inherit"
+              disabled={busy}
+              startIcon={<X size={ICON_SIZE.inline} />}
+              onClick={() => void reject(proposal)}
+            >
+              Reject
+            </Button>
+            {
+              /* Absent rather than disabled when stale: a disabled primary
+                button reads as "not yet", and there is no yet — the only exits
+                are reject or a re-run against current content (§3.6). */
+            }
+            {!stale && (
+              <Button
+                size="small"
+                variant="contained"
+                disabled={busy}
+                startIcon={<Check size={ICON_SIZE.inline} />}
+                onClick={() => void approve(proposal)}
+              >
+                Approve
+              </Button>
+            )}
+          </>
+        }
+      />
+    );
+  }
+
+  if (agentPost) {
+    const busy = busyId === agentPost.id;
+
+    return (
+      <Bar
+        icon={<FilePlus2 size={ICON_SIZE.dense} />}
+        title={agentPost.name || "Untitled"}
+        meta={
+          <>
+            {
+              /* The rail's line, verbatim: "lands normally" is not "goes live",
+                and the draft state is the part that is not obvious from the
+                editor being open on it (§3.7). */
+            }
+            <span>New draft, not published</span>
+            <Chip
+              label={originLabel(agentPost.agentOrigin)}
+              size="small"
+              sx={chipSx}
+            />
+            <DateDisplay date={agentPost.agentCreatedAt} variant="full" />
+          </>
+        }
+        actions={
+          <>
+            {
+              /* No Review. A create has no head to diff against — that is why it
+                lands rather than proposing — so the document on screen *is* the
+                whole of what there is to look at (§3.7). */
+            }
+            <Button
+              size="small"
+              variant="outlined"
+              color="error"
+              disabled={busy}
+              startIcon={<Trash2 size={ICON_SIZE.inline} />}
+              onClick={() => void discardPost(agentPost)}
+            >
+              Discard
+            </Button>
+            <Button
+              size="small"
+              variant="contained"
+              disabled={busy}
+              startIcon={<Check size={ICON_SIZE.inline} />}
+              onClick={() => void acceptPost(agentPost)}
+            >
+              Keep
+            </Button>
+          </>
+        }
+      />
+    );
+  }
+
+  return null;
+}
+
+/** Origin, and the proposal's staleness flag, at the size the meta line is. */
+const chipSx = {
+  height: 16,
+  typography: "micro",
+  "& .MuiChip-label": { px: 0.75 },
+} as const;
+
+/**
+ * The frame both states share: glyph, a headline, one line of provenance, and
+ * the decision on the right.
+ *
+ * Shared as a component rather than by copying the `sx` block, because the two
+ * branches differing in their padding or their sticky offset would read as two
+ * different notices about the same document.
+ */
+function Bar({
+  icon,
+  title,
+  meta,
+  note,
+  actions,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  meta: React.ReactNode;
+  note?: React.ReactNode;
+  actions: React.ReactNode;
+}) {
+  return (
+    <Box
+      sx={{
+        position: "sticky",
+        top: 0,
+        zIndex: 2,
+        display: "flex",
+        flexWrap: "wrap",
+        alignItems: "center",
+        gap: 1,
+        mb: 2,
+        px: 1.5,
+        py: 1,
+        border: "1px solid",
+        borderColor: "divider",
+        borderRadius: 2,
+        bgcolor: "background.paper",
+      }}
+    >
+      <Box sx={{ color: "text.secondary", display: "flex", flexShrink: 0 }}>
+        {icon}
+      </Box>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography variant="dense" component="div" sx={{ fontWeight: 600 }}>
+          {title}
+        </Typography>
+        <Typography
+          variant="micro"
+          component="div"
+          color="text.secondary"
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 0.75,
+          }}
+        >
+          {meta}
+        </Typography>
+        {note}
+      </Box>
+      <Box sx={{ display: "flex", gap: 1, flexShrink: 0 }}>{actions}</Box>
+    </Box>
+  );
+}

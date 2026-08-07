@@ -11,7 +11,6 @@ import { useSelector as useReduxSelector } from "react-redux";
 import ConnectedEditor from "@/components/ConnectedEditor";
 import SplashScreen from "@/components/shared/SplashScreen";
 import DiffView from "@/components/Diff";
-import ProposalReviewBar from "@/components/Diff/ProposalReviewBar";
 import { actions, postsSelectors, useDispatch, useSelector } from "@/store";
 import type { RootState } from "@/store";
 import { selectPaneById } from "@/store/selectors/layoutSelectors";
@@ -20,6 +19,7 @@ import { usePostLoader } from "./hooks/usePostLoader";
 import { useSave } from "./hooks/useSave";
 import { useScrollMemory } from "./hooks/useScrollMemory";
 import { EMPTY_EDITOR_STATE, type PaneMode, type Post } from "@/types";
+import AgentChangeBar from "./AgentChangeBar";
 import DocumentHeader from "./DocumentHeader";
 import PaneSkeleton from "./PaneSkeleton";
 import { triggerSave } from "./saveRegistry";
@@ -290,11 +290,13 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
           {
             /* Above the diff and outside it: a pending proposal is worth saying
               whether or not the diff is open, because typing under one silently
-              marks it stale (agent-change-indication §3.4). Still gated on
-              `isActive` — a hidden panel is `display: none`, and a sticky bar
+              marks it stale (agent-change-indication §3.4) — and an
+              agent-created post has no diff at all, so the bar is the only place
+              the editor offers Keep or Discard (agent-gating §3.7). Still gated
+              on `isActive` — a hidden panel is `display: none`, and a sticky bar
               inside one would be a second copy of the notice. */
           }
-          {isActive && <ProposalReviewBar docId={docId} />}
+          {isActive && <AgentChangeBar docId={docId} />}
           {showDiff && isActive && <DiffView />}
           <ConnectedEditor
             document={documentForEditor}

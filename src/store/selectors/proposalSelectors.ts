@@ -1,5 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 import type { RootState } from "@/store";
+import type { AgentCreatedPost } from "@/types";
 import { isProposalStale } from "@/lib/proposals";
 
 /* ------------------------------------------------------------------ */
@@ -40,6 +41,27 @@ export const selectAgentMarker = (
   }
   return state.ui.proposals.agentPostIds[docId] ? "created" : null;
 };
+
+/**
+ * The agent-created post a document *is*, if it is one (agent-gating.md §3.7).
+ *
+ * A scan of the array, which §4 refused for the tree-row case — and the reason
+ * it is admissible here is the caller, not the shape. A row asks once per row on
+ * every store change, so a scan there costs the whole list per row forever;
+ * `agentPostIds` exists for that question. This one is asked once per open pane,
+ * by a bar that is mounted at most twice, and only ever with a document id it is
+ * already rendering.
+ *
+ * The keyed mirror could not answer it in any case: it is a membership test, and
+ * the bar renders the post's name, origin and creation date. What it returns is
+ * the entry as it sits in the store, so `useSelector`'s reference comparison
+ * holds until a poll actually replaces the list.
+ */
+export const selectAgentPost = (
+  state: RootState,
+  docId: string,
+): AgentCreatedPost | null =>
+  state.ui.proposals.agentPosts.find((post) => post.id === docId) ?? null;
 
 /**
  * Every marked document, keyed by id, with the marker it carries.
