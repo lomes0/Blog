@@ -137,6 +137,14 @@ function removePost(state: AppState, id: string) {
       series.posts = series.posts.filter((post) => post.id !== id);
     }
   }
+  // A document that is gone cannot still be waiting on review. The proposal
+  // went with it server-side (the revision cascades), so leaving the flags
+  // behind would keep a badge counting work nobody can reach — and once
+  // `agentPostIds` answers per row, a stale key outlives the row that would
+  // have made it visible. Both helpers are no-ops when the id is not flagged,
+  // which is what lets the discard path call one of them first.
+  forgetProposal(state, id);
+  forgetAgentPost(state, id);
 }
 
 /**
@@ -258,12 +266,19 @@ function forgetProposal(state: AppState, documentId: string) {
   count.total = count.proposals + count.agentPosts;
 }
 
-/** The same, for an agent-created post that has been accepted or discarded. */
+/**
+ * The same, for an agent-created post that has been accepted or discarded.
+ *
+ * The keyed mirror is dropped in the same breath as the array entry: the two
+ * are one fact in two shapes, and a reader that found them disagreeing would
+ * have no way to tell which one is the truth.
+ */
 function forgetAgentPost(state: AppState, id: string) {
   const before = state.ui.proposals.agentPosts.length;
   state.ui.proposals.agentPosts = state.ui.proposals.agentPosts.filter(
     (post) => post.id !== id,
   );
+  delete state.ui.proposals.agentPostIds[id];
   if (state.ui.proposals.agentPosts.length === before) return;
   const { count } = state.ui.proposals;
   count.agentPosts = Math.max(0, count.agentPosts - 1);
@@ -302,6 +317,7 @@ const initialState: AppState = {
     proposals: {
       byDocId: {},
       agentPosts: [],
+      agentPostIds: {},
       count: { proposals: 0, agentPosts: 0, total: 0 },
       status: "idle",
       error: null,
@@ -851,8 +867,16 @@ export const appSlice = createSlice({
         for (const proposal of proposals) {
           byDocId[proposal.documentId] = proposal;
         }
+        // Both shapes are rebuilt from the same listing rather than patched, so
+        // a document whose proposal was approved elsewhere disappears from
+        // every reader in one assignment.
+        const agentPostIds: Record<string, true> = {};
+        for (const post of agentPosts) {
+          agentPostIds[post.id] = true;
+        }
         state.ui.proposals.byDocId = byDocId;
         state.ui.proposals.agentPosts = agentPosts;
+        state.ui.proposals.agentPostIds = agentPostIds;
         state.ui.proposals.count = count;
         state.ui.proposals.status = "idle";
         state.ui.proposals.error = null;

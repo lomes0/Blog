@@ -210,6 +210,17 @@ export interface ProposalCount {
 export interface ProposalsState {
   byDocId: Record<string, PendingProposal>;
   agentPosts: AgentCreatedPost[];
+  /**
+   * The same set as {@link agentPosts}, keyed for membership.
+   *
+   * Both shapes exist because the two readers ask different questions. The rail
+   * renders the posts in the order the server listed them, so it needs the
+   * array; a tree row asks only "is this id in there", and it asks once per row
+   * on every store change — a scan of the array would make that answer cost the
+   * whole list, per row, forever. Written by whatever writes the array, never
+   * on its own.
+   */
+  agentPostIds: Record<string, true>;
   count: ProposalCount;
   /**
    * `loading` is set by every poll, including the ones that refresh a list
