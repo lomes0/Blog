@@ -36,6 +36,7 @@ import {
   multiSelectSx,
 } from "@/theme/treeRow";
 import { AgentMarker } from "./AgentMarker";
+import { RowAgentActions } from "./RowAgentActions";
 
 const EMPTY_CHILDREN: Post[] = [];
 const EMPTY_TAB_ENTRIES: SubTabEntry[] = [];
@@ -262,6 +263,22 @@ export const PostItem = memo(
         disablePadding
         sx={{
           display: "block",
+          // Hover-reveal vocabulary: the marker gives way to the actions on hover,
+          // so the three-glyph set (marker + ✓ + ✗) never appears at once and the
+          // row fits its ~230px width with a label already in it. The marker's job
+          // is to be findable; once the pointer is on the row, it is found.
+          "& .agent-marker": {
+            display: "flex",
+          },
+          "& .agent-actions": {
+            display: "none",
+          },
+          "&:hover .agent-marker": {
+            display: "none",
+          },
+          "&:hover .agent-actions": {
+            display: "flex",
+          },
           "& .edit-btn": {
             opacity: 0,
             transition: "opacity 0.15s",
@@ -406,11 +423,30 @@ export const PostItem = memo(
                     }}
                   />
                 ))}
-            {sidebarOpen && !isRenaming && (
-              <AgentMarker
-                marker={agentMarker}
-                sx={{ ml: "auto", mr: 0.25 }}
-              />
+            {sidebarOpen && !isRenaming && agentMarker && (
+              <>
+                {/* The marker shows at rest; the actions replace it on hover. Only
+                    one of the two is visible at a time, so the row does not try to
+                    fit a marker + two action buttons + an edit button all at once. */}
+                <AgentMarker
+                  marker={agentMarker}
+                  className="agent-marker"
+                  sx={{ ml: "auto", mr: 0.25 }}
+                />
+                <Box
+                  className="agent-actions"
+                  sx={{ ml: "auto", display: "flex", alignItems: "center" }}
+                >
+                  {/* Hooks are confined to rows that actually have a marker: mounting
+                      useProposalActions (which calls useConfirm + useCommandRun) on
+                      every row in the tree would put those two hooks on every post,
+                      series and project, when only the marked rows need them. */}
+                  <RowAgentActions
+                    postId={post.id}
+                    marker={agentMarker}
+                  />
+                </Box>
+              </>
             )}
             {sidebarOpen && !isRenaming && !isEditing && (
               <Tooltip title="Edit" placement="right">
