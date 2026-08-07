@@ -287,12 +287,15 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
             }
             {isActive && tabs}
           </DocumentHeader>
-          {showDiff && isActive && (
-            <>
-              <ProposalReviewBar docId={docId} />
-              <DiffView />
-            </>
-          )}
+          {
+            /* Above the diff and outside it: a pending proposal is worth saying
+              whether or not the diff is open, because typing under one silently
+              marks it stale (agent-change-indication §3.4). Still gated on
+              `isActive` — a hidden panel is `display: none`, and a sticky bar
+              inside one would be a second copy of the notice. */
+          }
+          {isActive && <ProposalReviewBar docId={docId} />}
+          {showDiff && isActive && <DiffView />}
           <ConnectedEditor
             document={documentForEditor}
             editorRef={editorRef}

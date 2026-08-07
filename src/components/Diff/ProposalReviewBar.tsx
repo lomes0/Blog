@@ -14,16 +14,24 @@ interface ProposalReviewBarProps {
 }
 
 /**
- * Approve or reject the proposal the diff below is showing.
+ * Approve or reject the pending proposal on the open document.
  *
  * The "review whole" tier of docs/plans/agent-gating.md §3.5: the diff view
  * already compares any two revisions, so reviewing a proposal is that view plus
- * a decision. The bar is therefore an addition to the diff rather than a new
- * screen.
+ * a decision.
  *
- * It renders **only** when the diff's right-hand side is this document's pending
- * proposal. A diff between two ordinary history revisions has nothing to approve,
- * and offering the buttons anyway would be a live action on the wrong row.
+ * It renders whenever this document has a pending proposal — in or out of diff
+ * mode (docs/plans/agent-change-indication.md §3.4). It used to render only when
+ * the diff's right-hand side was that proposal, which left the one state that
+ * needs a warning as the one state with nothing on screen: you could open a
+ * document Claude had written against, type a character, and silently mark the
+ * proposal stale — a dead end whose only exits are reject or a re-run (§3.6).
+ * The bar is therefore the notice as much as the decision, and it is one
+ * component in two contexts rather than a second one for the non-diff case, so
+ * what the two say cannot drift apart.
+ *
+ * Review is the only thing that differs between them, and it is absent with the
+ * diff already open on this proposal, because the diff *is* the review.
  *
  * Sticky, because a proposal can be pages long and the decision has to stay
  * reachable without scrolling back.
@@ -31,9 +39,9 @@ interface ProposalReviewBarProps {
 export default function ProposalReviewBar({ docId }: ProposalReviewBarProps) {
   const proposal = useSelector((state) => state.ui.proposals.byDocId[docId]);
   const comparing = useSelector((state) => state.ui.diff.new);
-  const { busyId, approve, reject } = useProposalActions();
+  const { busyId, review, approve, reject } = useProposalActions();
 
-  if (!proposal || comparing !== proposal.id) return null;
+  if (!proposal) return null;
 
   const busy = busyId === proposal.id;
   // The document moved off the base this was built on, so approval would 409
@@ -106,6 +114,22 @@ export default function ProposalReviewBar({ docId }: ProposalReviewBarProps) {
         )}
       </Box>
       <Box sx={{ display: "flex", gap: 1, flexShrink: 0 }}>
+        {
+          /* Only when the diff is not already on this proposal. Open, it would
+            be a button that asks for what is on screen; closed, it is the whole
+            reason the bar can be shown outside diff mode — read it before
+            deciding. */
+        }
+        {comparing !== proposal.id && (
+          <Button
+            size="small"
+            variant="text"
+            disabled={busy}
+            onClick={() => void review(proposal)}
+          >
+            Review
+          </Button>
+        )}
         <Button
           size="small"
           variant="outlined"
