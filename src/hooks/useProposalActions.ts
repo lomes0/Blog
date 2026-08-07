@@ -1,15 +1,11 @@
 "use client";
 import { useCallback, useState } from "react";
-import { actions, useDispatch, useStore } from "@/store";
-import {
-  selectFocusedDocId,
-  selectPaneShowingDoc,
-} from "@/store/selectors/layoutSelectors";
+import { actions, useDispatch } from "@/store";
 import { useConfirm } from "@/hooks/useConfirm";
+import { useCloseDeletedDocument } from "@/hooks/useCloseDeletedDocument";
 import { documentCommands } from "@/commands";
 import { useCommandRun } from "@/commands/CommandProvider";
 import { reloadAfterApproval } from "@/components/EditDocument/proposalReload";
-import { WORKSPACE_ROUTE } from "@/lib/workspaceUrl";
 import type { AgentCreatedPost, PendingProposal } from "@/types";
 
 /**
@@ -29,11 +25,7 @@ export function useProposalActions() {
   const dispatch = useDispatch();
   const confirm = useConfirm();
   const run = useCommandRun();
-  // Read at the moment of acting, not as of a render: `discardPost` has to know
-  // which pane is showing a document *after* the delete has come back, and a
-  // subscription for that would re-render every consumer of this hook — the rail
-  // section and both panes' bars — on every workspace change.
-  const store = useStore();
+  const closeDeleted = useCloseDeletedDocument();
   const [busyId, setBusyId] = useState<string | null>(null);
 
   /**
@@ -117,54 +109,6 @@ export function useProposalActions() {
   }, [dispatch]);
 
   /**
-   * Take a just-deleted document out of the workspace.
-   *
-   * Two shapes, because a pane can hold a document two ways. As a **tab** it is
-   * one entry in a list the pane goes on without — the same `removeTab` the tab
-   * strip's own delete dispatches after `deletePost`. As a pane's **root** there
-   * is no pane left to show: a pane is defined by what it is rooted at, so the
-   * pane goes with it.
-   *
-   * Not routed through the `pane.close` command, and no command is added for it.
-   * `pane.close` refuses the last pane by design — "that is what leaving the
-   * editor does" — and the last pane is precisely the case here, since a
-   * discarded post is usually the only thing open. This is also not an action a
-   * user or the Copilot can ask for on its own; it is the second half of one,
-   * and `commands/__tests__/toolParity.test.ts` holds the registry to the AI tool
-   * surface.
-   */
-  const closeDiscarded = useCallback((docId: string) => {
-    const pane = selectPaneShowingDoc(store.getState(), docId);
-    if (!pane) return;
-    if (pane.rootId !== docId) {
-      dispatch(actions.removeTab({ paneId: pane.id, tabId: docId }));
-      return;
-    }
-    dispatch(actions.closePane(pane.id));
-
-    // The address bar still names the post that is gone, and the focus
-    // projection in `WorkspacePanes` will not repair it: that guard declines
-    // while the URL names a document no pane holds, because in every other case
-    // that means a navigation is in flight (`lib/workspaceUrl.ts`). Closing is
-    // the one way to reach that state deliberately, so — as in `pane.close` —
-    // the closer owns it.
-    //
-    // Read back rather than predicted: which pane inherits focus is
-    // `closePane`'s rule, and duplicating it here would be a second copy to keep
-    // in step.
-    //
-    // With no pane left there is nothing to point at. `/edit` with no id is the
-    // route's "Document Not Found" splash rather than an empty workspace, so
-    // rewriting to it would trade a blank editor for an error; the address is
-    // left naming the discarded post, where it only matters again on a reload —
-    // the same place every other delete in the app leaves it.
-    const nextDocId = selectFocusedDocId(store.getState());
-    if (!nextDocId || typeof window === "undefined") return;
-    if (!window.location.pathname.startsWith(`${WORKSPACE_ROUTE}/`)) return;
-    window.history.replaceState(null, "", `${WORKSPACE_ROUTE}/${nextDocId}`);
-  }, [dispatch, store]);
-
-  /**
    * Confirmed, unlike reject: this deletes a whole post rather than a proposal
    * nobody could reach. Rejecting costs nothing — Claude can write it again —
    * whereas a discarded post is gone, and the two buttons sit next to each other
@@ -172,9 +116,10 @@ export function useProposalActions() {
    *
    * It also has to close the document, and that belongs here rather than at
    * either call site: the bar discards the post the pane it lives in is showing,
-   * and the rail can discard one that happens to be open behind it. `removePost`
-   * drops the entity and does not touch `ui.workspace`, so without this the
-   * editor is left mounted on a document that no longer exists.
+   * and the rail can discard one that happens to be open behind it. What that
+   * takes is `useCloseDeletedDocument`, shared with every other delete — a
+   * discard *is* a delete, and the two answering differently would have been the
+   * drift this hook exists to avoid.
    */
   const discardPost = useCallback(async (post: AgentCreatedPost) => {
     const ok = await confirm({
@@ -190,12 +135,12 @@ export function useProposalActions() {
       // Nothing was deleted, so nothing should close. The slice has already
       // announced why.
       if (actions.discardAgentPost.rejected.match(result)) return false;
-      closeDiscarded(post.id);
+      closeDeleted(post.id);
       return true;
     } finally {
       setBusyId(null);
     }
-  }, [confirm, dispatch, closeDiscarded]);
+  }, [confirm, dispatch, closeDeleted]);
 
   return { busyId, review, approve, reject, acceptPost, discardPost };
 }

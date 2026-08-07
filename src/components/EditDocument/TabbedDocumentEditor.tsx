@@ -33,6 +33,7 @@ import EditorTabPanel from "./EditorTabPanel";
 import TabContextMenu from "./TabContextMenu";
 import { EMPTY_EDITOR_STATE, type PostCreateInput } from "@/types";
 import { useAsyncEffect } from "@/hooks/useAsyncEffect";
+import { useCloseDeletedDocument } from "@/hooks/useCloseDeletedDocument";
 import { selectPaneById } from "@/store/selectors/layoutSelectors";
 
 interface TabbedDocumentEditorProps {
@@ -75,6 +76,7 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     return doc?.tabLabel ?? doc?.name;
   });
   const run = useCommandRun();
+  const closeDeleted = useCloseDeletedDocument();
 
   const handleToggleMaximize = useCallback(() => {
     dispatch(actions.toggleMaximizePane(paneId));
@@ -257,8 +259,12 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
       next.delete(id);
       return next;
     });
-    dispatch(actions.removeTab({ paneId, tabId: id }));
-  }, [deleteTarget, dispatch, paneId]);
+    // `removeTab` used to be dispatched here directly, which was only ever
+    // right for a *child* tab: deleting the root left the pane rooted at a
+    // document that no longer exists, and the address bar naming it. The hook
+    // answers both shapes, and owns the route repair either way.
+    closeDeleted(id);
+  }, [deleteTarget, dispatch, closeDeleted]);
 
   const handleRename = useCallback(async (tabId: string, newName: string) => {
     const trimmed = newName.trim();

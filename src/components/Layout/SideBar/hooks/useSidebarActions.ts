@@ -17,6 +17,7 @@ import {
 } from "@/hooks/useInlineRename";
 import { documentCommands, paneCommands, seriesCommands } from "@/commands";
 import { useCommandRun } from "@/commands/CommandProvider";
+import { useCloseDeletedDocument } from "@/hooks/useCloseDeletedDocument";
 
 /**
  * Which field a post's inline rename writes to. The root document doubles as the
@@ -119,6 +120,7 @@ export function useSidebarActions(): SidebarActionsResult {
   const dispatch = useDispatch();
   const router = useRouter();
   const run = useCommandRun();
+  const closeDeleted = useCloseDeletedDocument();
   const documents = useSelector((state: RootState) =>
     postsSelectors.selectAll(state)
   );
@@ -245,12 +247,16 @@ export function useSidebarActions(): SidebarActionsResult {
       if (!documents?.some((doc) => doc.id === postId)) return;
       try {
         await dispatch(actions.deletePost(postId)).unwrap();
+        // Before the refresh: the sidebar is on screen *while* a pane may be
+        // showing what was just deleted, so this is the one delete surface
+        // where the workspace half is the common case rather than the corner.
+        closeDeleted(postId);
         router.refresh();
       } catch {
         // delete failed, skip refresh
       }
     },
-    [dispatch, closePostMenu, confirmDelete, documents, router],
+    [dispatch, closePostMenu, confirmDelete, documents, router, closeDeleted],
   );
 
   const handleCreatePost = useCallback(
