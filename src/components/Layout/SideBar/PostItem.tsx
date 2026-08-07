@@ -279,11 +279,19 @@ export const PostItem = memo(
           "&:hover .agent-actions": {
             display: "flex",
           },
-          "& .edit-btn": {
-            opacity: 0,
-            transition: "opacity 0.15s",
-          },
-          "&:hover .edit-btn": { opacity: 1 },
+          // The pen fades in on a plain row, where its reserved width costs
+          // nothing because nothing else is on the right. On a marked row it
+          // has to be absent rather than transparent: an `opacity: 0` button
+          // still holds its width, which pushed the marker a button-width in
+          // from the border and left it reading as mid-row rather than edge.
+          // Hidden the same way `.agent-actions` is, so the whole ✓ ✗ ✎ set
+          // arrives together.
+          "& .edit-btn": agentMarker
+            ? { display: "none" }
+            : { opacity: 0, transition: "opacity 0.15s" },
+          "&:hover .edit-btn": agentMarker
+            ? { display: "inline-flex" }
+            : { opacity: 1 },
         }}
       >
         <Tooltip title={sidebarOpen ? "" : docName} placement="right">
@@ -423,62 +431,25 @@ export const PostItem = memo(
                     }}
                   />
                 ))}
-            {/* The pen comes before the agent glyphs so that the agent glyphs
-                hold the row's right edge. The pen is only ever `opacity: 0`, not
-                unmounted, so with the old order it reserved its width at rest and
-                pushed the marker inboard — the marker read as floating in the
-                middle of the row instead of sitting on the edge.
-
-                No tooltip, for the reason `RowAgentActions` documents: placed
-                `right`, its popper landed on top of the next glyph and, being
-                portaled out of the row, dropped the `:hover` holding these
-                buttons open. `aria-label` still carries the name. */}
-            {sidebarOpen && !isRenaming && !isEditing && (
-              <IconButton
-                className="edit-btn"
-                aria-label="Edit"
-                size="small"
-                onClick={handleEdit}
-                sx={{
-                  p: 0.25,
-                  // Whichever of the two is leftmost takes the row's slack; two
-                  // `auto` margins would split it and leave a gap between them.
-                  // The pen is always the leftmost when it renders at all.
-                  ml: "auto",
-                  // Flush with the series doc-count badge above — cancelling the
-                  // button's own right padding — unless the agent glyphs have
-                  // taken that edge, in which case leave them a gap.
-                  mr: agentMarker ? 0.25 : -0.25,
-                  color: "text.secondary",
-                  "&:hover": { bgcolor: "action.hover" },
-                }}
-              >
-                <Pencil size={ICON_SIZE.micro} />
-              </IconButton>
-            )}
             {sidebarOpen && !isRenaming && agentMarker && (
               <>
                 {/* The marker shows at rest; the actions replace it on hover. Only
                     one of the two is visible at a time, so the row does not try to
                     fit a marker + two action buttons + an edit button all at once.
 
-                    `ml` only claims the slack when the pen is absent — the row
-                    being open in the editor is the one case where these are the
-                    only things on the right. Both sit flush with the row's edge:
-                    the marker has no padding of its own, and the ✗ inside the
-                    actions cancels its own. */}
+                    The marker takes the row's slack and sits flush with the edge:
+                    at rest the pen beside it is `display: none` rather than merely
+                    transparent (see the row's sx), so it reserves no width to push
+                    the marker inboard. On hover the reveal reads ✓ ✗ ✎, and the ✗
+                    cancels its own padding so the set still ends on the edge. */}
                 <AgentMarker
                   marker={agentMarker}
                   className="agent-marker"
-                  sx={{ ml: isEditing ? "auto" : 0 }}
+                  sx={{ ml: "auto", mr: 0 }}
                 />
                 <Box
                   className="agent-actions"
-                  sx={{
-                    ml: isEditing ? "auto" : 0,
-                    display: "flex",
-                    alignItems: "center",
-                  }}
+                  sx={{ ml: "auto", display: "flex", alignItems: "center" }}
                 >
                   {/* Hooks are confined to rows that actually have a marker: mounting
                       useProposalActions (which calls useConfirm + useCommandRun) on
@@ -490,6 +461,32 @@ export const PostItem = memo(
                   />
                 </Box>
               </>
+            )}
+            {/* No tooltip, for the reason `RowAgentActions` documents: placed
+                `right`, its popper landed on top of the next glyph and, being
+                portaled out of the row, dropped the `:hover` holding these
+                buttons open. `aria-label` still carries the name. */}
+            {sidebarOpen && !isRenaming && !isEditing && (
+              <IconButton
+                className="edit-btn"
+                aria-label="Edit"
+                size="small"
+                onClick={handleEdit}
+                sx={{
+                  p: 0.25,
+                  // Align the glyph's right edge with the series doc-count
+                  // badge above by cancelling the button's own right padding.
+                  // `auto` unless the agent glyphs to the left already claimed
+                  // the slack — two `auto` margins would split it and leave a
+                  // gap between them.
+                  ml: agentMarker ? 0 : "auto",
+                  mr: -0.25,
+                  color: "text.secondary",
+                  "&:hover": { bgcolor: "action.hover" },
+                }}
+              >
+                <Pencil size={ICON_SIZE.micro} />
+              </IconButton>
             )}
           </ListItemButton>
         </Tooltip>
