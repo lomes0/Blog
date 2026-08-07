@@ -54,7 +54,7 @@ const EditDocument: React.FC<React.PropsWithChildren> = ({ children }) => {
   // rails had already painted underneath and were covered up by it.
   //
   // `EditorSkeleton` is the right stand-in only where `children` are SSR'd
-  // content in an app-shell toolbar layout — Playground and Tutorial. `/edit`
+  // content in an app-shell toolbar layout — Playground. `/edit`
   // passes none (the layout renders `<EditDocument />` bare), so this arm was
   // the only one it ever took.
   const fallback = children

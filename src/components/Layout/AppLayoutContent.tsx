@@ -130,7 +130,7 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
             <EditorTopBar />
             {
               /* The shell's toolbar slot, for the routes that mount a lone
-                  editor (Playground, Tutorial). The workspace does not use it:
+                  editor (Playground). The workspace does not use it:
                   it nests its own provider and draws the target inside the
                   editor route — the pane's header, or the band above a split's
                   panes. */

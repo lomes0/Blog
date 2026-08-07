@@ -29,7 +29,7 @@ import { PANE_PAD_X, TOOLBAR_H } from "./paneChrome";
  * never matches a stand-in, and pretending otherwise buys nothing.
  *
  * `shared/EditorSkeleton` is the sibling of this, not a substitute: it draws an
- * app-shell `AppBar` toolbar, which is where Playground and Tutorial put theirs.
+ * app-shell `AppBar` toolbar, which is where Playground puts its own.
  * The workspace gives every pane its own toolbar inside `PaneHeader`, so a pane
  * needs this shape instead.
  */
