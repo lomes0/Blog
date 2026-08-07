@@ -423,32 +423,13 @@ export const PostItem = memo(
                     }}
                   />
                 ))}
-            {sidebarOpen && !isRenaming && agentMarker && (
-              <>
-                {/* The marker shows at rest; the actions replace it on hover. Only
-                    one of the two is visible at a time, so the row does not try to
-                    fit a marker + two action buttons + an edit button all at once. */}
-                <AgentMarker
-                  marker={agentMarker}
-                  className="agent-marker"
-                  sx={{ ml: "auto", mr: 0.25 }}
-                />
-                <Box
-                  className="agent-actions"
-                  sx={{ ml: "auto", display: "flex", alignItems: "center" }}
-                >
-                  {/* Hooks are confined to rows that actually have a marker: mounting
-                      useProposalActions (which calls useConfirm + useCommandRun) on
-                      every row in the tree would put those two hooks on every post,
-                      series and project, when only the marked rows need them. */}
-                  <RowAgentActions
-                    postId={post.id}
-                    marker={agentMarker}
-                  />
-                </Box>
-              </>
-            )}
-            {/* No tooltip, for the reason `RowAgentActions` documents: placed
+            {/* The pen comes before the agent glyphs so that the agent glyphs
+                hold the row's right edge. The pen is only ever `opacity: 0`, not
+                unmounted, so with the old order it reserved its width at rest and
+                pushed the marker inboard — the marker read as floating in the
+                middle of the row instead of sitting on the edge.
+
+                No tooltip, for the reason `RowAgentActions` documents: placed
                 `right`, its popper landed on top of the next glyph and, being
                 portaled out of the row, dropped the `:hover` holding these
                 buttons open. `aria-label` still carries the name. */}
@@ -460,21 +441,55 @@ export const PostItem = memo(
                 onClick={handleEdit}
                 sx={{
                   p: 0.25,
-                  // Align the glyph's right edge with the series doc-count
-                  // badge above by cancelling the button's own right padding.
-                  // `auto` unless the agent marker above already claimed the
-                  // slack — two `auto` margins would split it and leave a gap
-                  // between the marker and this button. It is still not the old
-                  // dirty-state flip: agent work appears once, on a poll, and
-                  // does not oscillate with typing.
-                  ml: agentMarker ? 0 : "auto",
-                  mr: -0.25,
+                  // Whichever of the two is leftmost takes the row's slack; two
+                  // `auto` margins would split it and leave a gap between them.
+                  // The pen is always the leftmost when it renders at all.
+                  ml: "auto",
+                  // Flush with the series doc-count badge above — cancelling the
+                  // button's own right padding — unless the agent glyphs have
+                  // taken that edge, in which case leave them a gap.
+                  mr: agentMarker ? 0.25 : -0.25,
                   color: "text.secondary",
                   "&:hover": { bgcolor: "action.hover" },
                 }}
               >
                 <Pencil size={ICON_SIZE.micro} />
               </IconButton>
+            )}
+            {sidebarOpen && !isRenaming && agentMarker && (
+              <>
+                {/* The marker shows at rest; the actions replace it on hover. Only
+                    one of the two is visible at a time, so the row does not try to
+                    fit a marker + two action buttons + an edit button all at once.
+
+                    `ml` only claims the slack when the pen is absent — the row
+                    being open in the editor is the one case where these are the
+                    only things on the right. Both sit flush with the row's edge:
+                    the marker has no padding of its own, and the ✗ inside the
+                    actions cancels its own. */}
+                <AgentMarker
+                  marker={agentMarker}
+                  className="agent-marker"
+                  sx={{ ml: isEditing ? "auto" : 0 }}
+                />
+                <Box
+                  className="agent-actions"
+                  sx={{
+                    ml: isEditing ? "auto" : 0,
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  {/* Hooks are confined to rows that actually have a marker: mounting
+                      useProposalActions (which calls useConfirm + useCommandRun) on
+                      every row in the tree would put those two hooks on every post,
+                      series and project, when only the marked rows need them. */}
+                  <RowAgentActions
+                    postId={post.id}
+                    marker={agentMarker}
+                  />
+                </Box>
+              </>
             )}
           </ListItemButton>
         </Tooltip>
