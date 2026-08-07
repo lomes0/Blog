@@ -25,11 +25,6 @@ interface AgentMarkerProps {
    * on an icon. Only the vocabulary — glyph, colour, label — is fixed here.
    */
   sx?: SxProps<Theme>;
-  /**
-   * CSS class for hover-reveal state (sidebar rows toggle between this marker
-   * and the action buttons on hover).
-   */
-  className?: string;
 }
 
 /**
@@ -47,7 +42,6 @@ export function AgentMarker({
   count,
   size = ICON_SIZE.micro,
   sx,
-  className,
 }: AgentMarkerProps) {
   if (!marker) return null;
 
@@ -86,7 +80,6 @@ export function AgentMarker({
         component="span"
         role="img"
         aria-label={label}
-        className={className}
         sx={{
           display: "flex",
           flexShrink: 0,

@@ -2,7 +2,6 @@
 import React, { memo, useCallback, useMemo } from "react";
 import {
   Box,
-  IconButton,
   ListItem,
   ListItemButton,
   ListItemIcon,
@@ -10,7 +9,7 @@ import {
   TextField,
   Tooltip,
 } from "@mui/material";
-import { File, Pencil } from "lucide-react";
+import { File } from "lucide-react";
 import { type RootState, useSelector } from "@/store";
 import {
   selectChildPostsByParent,
@@ -178,15 +177,6 @@ export const PostItem = memo(
       onToggleTabs(post.id);
     }, [onToggleTabs, post.id]);
 
-    // Navigate to edit programmatically rather than rendering a nested <a>.
-    // The row itself is already an anchor (to /view), and an <a> inside an <a>
-    // is invalid HTML that trips React's hydration validation.
-    const handleEdit = useCallback((e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      run(documentCommands.open, { id: post.id });
-    }, [run, post.id]);
-
     // Modifier-only selection: Ctrl/Cmd or Shift click selects this row and
     // suppresses navigation; a plain click opens the post in the workspace.
     //
@@ -263,35 +253,16 @@ export const PostItem = memo(
         disablePadding
         sx={{
           display: "block",
-          // Hover-reveal vocabulary: the marker gives way to the actions on hover,
-          // so the three-glyph set (marker + ✓ + ✗) never appears at once and the
-          // row fits its ~230px width with a label already in it. The marker's job
-          // is to be findable; once the pointer is on the row, it is found.
-          "& .agent-marker": {
-            display: "flex",
-          },
+          // Hover-reveal vocabulary: the marker is always on — it is what says
+          // an agent touched this document, and hiding it on hover took the
+          // answer away at the moment the user reached for it. ✓ ✗ appear to
+          // its left instead, so the label loses width only while hovered.
           "& .agent-actions": {
-            display: "none",
-          },
-          "&:hover .agent-marker": {
             display: "none",
           },
           "&:hover .agent-actions": {
             display: "flex",
           },
-          // The pen fades in on a plain row, where its reserved width costs
-          // nothing because nothing else is on the right. On a marked row it
-          // has to be absent rather than transparent: an `opacity: 0` button
-          // still holds its width, which pushed the marker a button-width in
-          // from the border and left it reading as mid-row rather than edge.
-          // Hidden the same way `.agent-actions` is, so the whole ✓ ✗ ✎ set
-          // arrives together.
-          "& .edit-btn": agentMarker
-            ? { display: "none" }
-            : { opacity: 0, transition: "opacity 0.15s" },
-          "&:hover .edit-btn": agentMarker
-            ? { display: "inline-flex" }
-            : { opacity: 1 },
         }}
       >
         <Tooltip title={sidebarOpen ? "" : docName} placement="right">
@@ -433,60 +404,39 @@ export const PostItem = memo(
                 ))}
             {sidebarOpen && !isRenaming && agentMarker && (
               <>
-                {/* The marker shows at rest; the actions replace it on hover. Only
-                    one of the two is visible at a time, so the row does not try to
-                    fit a marker + two action buttons + an edit button all at once.
-
-                    The marker takes the row's slack and sits flush with the edge:
-                    at rest the pen beside it is `display: none` rather than merely
-                    transparent (see the row's sx), so it reserves no width to push
-                    the marker inboard. On hover the reveal reads ✓ ✗ ✎, and the ✗
-                    cancels its own padding so the set still ends on the edge. */}
-                <AgentMarker
-                  marker={agentMarker}
-                  className="agent-marker"
-                  sx={{ ml: "auto", mr: 0 }}
-                />
+                {/* One group takes the row's slack, so the marker still ends flush
+                    with the edge whether or not the actions are showing — two
+                    separate `ml: "auto"` elements would split the slack between
+                    them and leave a gap. ✓ ✗ open to the marker's left; the ✗
+                    cancels its own right padding, so the group adds it back to
+                    keep a real gap before the glyph. */}
                 <Box
-                  className="agent-actions"
-                  sx={{ ml: "auto", display: "flex", alignItems: "center" }}
+                  sx={{
+                    ml: "auto",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
                 >
-                  {/* Hooks are confined to rows that actually have a marker: mounting
-                      useProposalActions (which calls useConfirm + useCommandRun) on
-                      every row in the tree would put those two hooks on every post,
-                      series and project, when only the marked rows need them. */}
-                  <RowAgentActions
-                    postId={post.id}
-                    marker={agentMarker}
-                  />
+                  <Box
+                    className="agent-actions"
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      mr: 0.75,
+                    }}
+                  >
+                    {/* Hooks are confined to rows that actually have a marker: mounting
+                        useProposalActions (which calls useConfirm + useCommandRun) on
+                        every row in the tree would put those two hooks on every post,
+                        series and project, when only the marked rows need them. */}
+                    <RowAgentActions
+                      postId={post.id}
+                      marker={agentMarker}
+                    />
+                  </Box>
+                  <AgentMarker marker={agentMarker} sx={{ mr: 0 }} />
                 </Box>
               </>
-            )}
-            {/* No tooltip, for the reason `RowAgentActions` documents: placed
-                `right`, its popper landed on top of the next glyph and, being
-                portaled out of the row, dropped the `:hover` holding these
-                buttons open. `aria-label` still carries the name. */}
-            {sidebarOpen && !isRenaming && !isEditing && (
-              <IconButton
-                className="edit-btn"
-                aria-label="Edit"
-                size="small"
-                onClick={handleEdit}
-                sx={{
-                  p: 0.25,
-                  // Align the glyph's right edge with the series doc-count
-                  // badge above by cancelling the button's own right padding.
-                  // `auto` unless the agent glyphs to the left already claimed
-                  // the slack — two `auto` margins would split it and leave a
-                  // gap between them.
-                  ml: agentMarker ? 0 : "auto",
-                  mr: -0.25,
-                  color: "text.secondary",
-                  "&:hover": { bgcolor: "action.hover" },
-                }}
-              >
-                <Pencil size={ICON_SIZE.micro} />
-              </IconButton>
             )}
           </ListItemButton>
         </Tooltip>
