@@ -209,16 +209,18 @@ const InlineCopilotBar: React.FC<InlineCopilotBarProps> = ({ documentId }) => {
         }}
         onBlur={handleBlur}
         sx={(theme) => ({
-          ...composerWrapperSx(theme),
+          ...composerWrapperSx(theme, resting),
           pointerEvents: "auto",
           width: resting ? RESTING_W : COLUMN_W,
           // Restated rather than appended to, so the whole set is legible in
           // one place. The first two are `composerWrapperSx`'s own, on the
-          // focus ring; the width rides the composer's timing so the card
-          // widens and unfolds as one move.
+          // focus ring; the radius is its own too, and rides the composer's
+          // timing along with the width so the card widens, unrounds and
+          // unfolds as one move.
           transition: [
             `border-color ${MOTION.fast}ms`,
             `box-shadow ${MOTION.fast}ms`,
+            `border-radius ${GROW}`,
             `width ${GROW}`,
           ].join(", "),
           // Always capped. `none` → a length is not an animatable pair, so the

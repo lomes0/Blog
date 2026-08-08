@@ -81,6 +81,15 @@ const C = {
   compactSurfacePadding: "6px",
   /** No top bias to correct: a single row is centred against the glyphs. */
   compactFieldPadding: "0 6px",
+  /**
+   * Idle radii. The handoff's 18px was drawn against a ~114px card; on the 48px
+   * strip the idle bar collapses to, the same figure eats most of the height
+   * either side and the thing reads as a pill rather than a composer. Scaled
+   * back to hold the *proportion* the handoff drew, keeping the 1px inset that
+   * makes the outer border and the inner surface meet.
+   */
+  compactWrapperRadius: "12px",
+  compactSurfaceRadius: "11px",
 } as const;
 
 /**
@@ -131,11 +140,13 @@ const modelNote = (model: AIModel): string => {
  */
 export const composerWrapperSx = (
   theme: Theme,
+  compact = false,
 ): SystemStyleObject<Theme> => ({
-  borderRadius: C.wrapperRadius,
+  borderRadius: compact ? C.compactWrapperRadius : C.wrapperRadius,
   border: "1px solid",
   borderColor: "divider",
-  transition: `border-color ${MOTION.fast}ms, box-shadow ${MOTION.fast}ms`,
+  transition:
+    `border-color ${MOTION.fast}ms, box-shadow ${MOTION.fast}ms, border-radius ${GROW}`,
   // Focused, the rule goes accent and picks up the §10 card ring — this is what
   // says "you are typing here".
   //
@@ -168,9 +179,9 @@ export const composerSurfaceSx = (
   compact = false,
 ): SystemStyleObject<Theme> => ({
   bgcolor: "background.input",
-  borderRadius: C.surfaceRadius,
+  borderRadius: compact ? C.compactSurfaceRadius : C.surfaceRadius,
   p: compact ? C.compactSurfacePadding : C.surfacePadding,
-  transition: `padding ${GROW}`,
+  transition: `padding ${GROW}, border-radius ${GROW}`,
   display: "flex",
   flexDirection: "column",
   gap: C.surfaceGap,
@@ -674,9 +685,17 @@ const Composer: React.FC<ComposerProps> = ({
 
       {
         /* Pushes voice and send to the right edge once the field is no longer
-          the thing doing it. */
+          the thing doing it.
+
+          Keyed to `inlineLayout`, not `isCompact`, for the same reason the
+          field's placement is: whichever of the two is elastic has to be the
+          one that is actually *in* this line. Keyed to `isCompact` it gave the
+          spacer up at the start of the collapse, while the field was still on
+          its own line — so send snapped left against the model pill for the
+          length of the animation and only travelled back once the field
+          rejoined the row. */
       }
-      <Box sx={{ flex: isCompact ? "0 0 0px" : "1 1 auto" }} />
+      <Box sx={{ flex: inlineLayout ? "0 0 0px" : "1 1 auto" }} />
 
       <Tooltip title="Voice input">
         <span>
