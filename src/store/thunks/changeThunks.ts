@@ -72,3 +72,58 @@ export const catchUpPosts = createApiThunk<CatchUpResult, void>(
   },
   { title: "Couldn't check for changes" },
 );
+
+/**
+ * Fetch the documents a live event named — Phase 3 of the same plan.
+ *
+ * The stream carries ids and never content (§10), so acting on an event means
+ * reading the row back through the ordinary authorized `PostBackend.get`. This
+ * is `catchUpPosts`' second half with the diff removed: the ids arrive already
+ * known, from `hooks/useChangeFeed.ts` after the coalescing window has decided
+ * how few of them there really are.
+ *
+ * **`data` is stripped here too, and for the same reason** — §4's rule that a
+ * background refresh updates list metadata only. A live event about the
+ * document you are currently editing is precisely the case that rule exists
+ * for: `applyPost` keeps whatever content was already loaded (`post.data ??
+ * existing.data`), so omitting `data` is what stops an agent's `apply_ops`
+ * announcement from replacing an open editor's content under the cursor.
+ *
+ * Guarded like the catch-up, minus the diff-specific one. Before `load()` has
+ * settled there is nothing to reconcile *into*: `loadPosts` is on its way with
+ * `setAll`, which will carry these ids anyway, so an event arriving in that
+ * window is dropped rather than raced.
+ *
+ * Returns the rows rather than reconciling them itself. The caller dispatches
+ * `reconcilePosts` — that action exists for this path (`store/app.ts`), and it
+ * lets one dispatch carry the window's deletions alongside its updates.
+ *
+ * Origin is deliberately *not* consulted. A second tab of the same account
+ * writes with `origin: "app"` exactly as this one does, and §1.2's third
+ * promise is that a rename from that tab reaches this one — so filtering the
+ * app's own origin out would trade a promise for a saved request. The cost is
+ * that this tab re-reads the metadata of rows it just wrote itself; that is one
+ * small `GET` per coalescing window, and what comes back is byte-identical to
+ * what the writing thunk already applied.
+ */
+export const fetchChangedPosts = createApiThunk<Post[], string[]>(
+  "app/fetchChangedPosts",
+  async (ids, thunkAPI) => {
+    const state: AppState = thunkAPI.getState();
+    if (!ids.length) return [];
+    if (!state.user) return [];
+    if (!state.ui.initialized || state.ui.postsLoading) return [];
+
+    const backend = backendFor(state.user);
+    const fetched = await Promise.all(
+      // Quietly, per row: an id can be deleted between the notification and
+      // this fetch, and that costs the row rather than the batch — the delete
+      // event is on its way behind it.
+      ids.map((id) => backend.get(id).catch(() => undefined)),
+    );
+    return fetched
+      .filter((post): post is Post => post !== undefined)
+      .map(({ data: _data, ...metadata }) => metadata);
+  },
+  { title: "Couldn't load a change" },
+);

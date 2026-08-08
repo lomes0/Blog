@@ -20,6 +20,7 @@ import { Box, Container } from "@mui/material";
 import { actions, type RootState, useDispatch, useSelector } from "@/store";
 import { selectFocusedDocId } from "@/store/selectors/layoutSelectors";
 import { useBackgroundRefresh } from "@/hooks/useBackgroundRefresh";
+import { useChangeFeed } from "@/hooks/useChangeFeed";
 import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
 import { useLayoutMode } from "@/contexts/LayoutModeContext";
 import { usePathname } from "next/navigation";
@@ -78,9 +79,13 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
     if (!initialized) dispatch(actions.load());
   }, [dispatch, initialized]);
 
-  // The app shell is the one place this belongs: what it fetches feeds the
+  // The app shell is the one place these belong: what they fetch feeds the
   // sidebar, the right rail and the review bar, and a second mount would be a
-  // second pair of requests on every window focus.
+  // second SSE connection per tab and a second pair of requests on every window
+  // focus. The feed is the primary signal and the poll is its fallback for when
+  // the stream is down (docs/plans/changes_detection.md §7) — both converge on
+  // the same catch-up, so having both cannot leave the store in two states.
+  useChangeFeed();
   useBackgroundRefresh();
 
   const railW = railMode === "full"

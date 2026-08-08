@@ -19,6 +19,7 @@ import {
   deleteSeries,
   discardAgentPost,
   duplicatePost,
+  fetchChangedPosts,
   forkPost,
   getPost,
   getPostById,
@@ -94,6 +95,7 @@ export const actions = {
   discardAgentPost,
 
   catchUpPosts,
+  fetchChangedPosts,
 };
 
 export const store = configureStore({

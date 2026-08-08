@@ -11,12 +11,33 @@ import { useCloseDeletedDocument } from "@/hooks/useCloseDeletedDocument";
  * a document changes the focused id in the same beat — three triggers, one
  * question. The guard is a floor on how often the question is *asked*, not a
  * timer: nothing here polls on its own.
+ *
+ * Widened from 3s when the SSE feed landed. At 3s this was the primary signal
+ * and had to be ready to answer on the next focus; now the stream answers
+ * within its coalescing window and this only covers the gaps the stream cannot
+ * — the minutes before `EventSource` gets its connection back, a proxy that
+ * swallowed the stream, a browser without one. A change that is genuinely
+ * missed is missed for as long as the stream stays down, and asking every 3s
+ * would not shorten that; it would only cost a request every time you alt-tab.
  */
-const MIN_INTERVAL_MS = 3000;
+const MIN_INTERVAL_MS = 30_000;
 
 /**
- * Notice that something wrote outside this tab — an agent in a terminal, or
- * you, in another window.
+ * The fallback for when the live feed is down — a catch-up on focus.
+ *
+ * `useChangeFeed` is the primary path now (docs/plans/changes_detection.md §7):
+ * a `NOTIFY` at the write, a `LISTEN` in the Next process and an SSE stream to
+ * this tab, which normally makes an outside write visible in under a second and
+ * leaves this hook with nothing to find. What it is still for is every window
+ * where that chain is not delivering — the seconds or minutes `EventSource`
+ * spends reconnecting after a laptop wakes or a deploy restarts Next, a proxy
+ * that buffers the stream away (§5), a Postgres the listener cannot reach.
+ *
+ * That is a fallback and not a redundancy, because the stream cannot be trusted
+ * to fail loudly: every one of those failures looks exactly like a quiet feed
+ * from here. So the question keeps being asked on focus — rarely, at
+ * {@link MIN_INTERVAL_MS} — and the answer is the same full-set reconcile that
+ * makes the feed correct in the first place.
  *
  * Two questions, asked together because they have the same trigger and the same
  * answer-shape:
@@ -46,14 +67,14 @@ const MIN_INTERVAL_MS = 3000;
  * to `useCloseDeletedDocument` — the same repair every user-initiated delete
  * already runs, not a second copy of its rules.
  *
- * **On SSE.** The earlier version of this hook ruled a stream out of scope, and
- * that has now been revisited rather than reversed: docs/plans/changes_detection.md
- * plans `NOTIFY` → `LISTEN` → SSE as phases 1–3, and this hook is what makes
- * them *correct* rather than what they replace. `NOTIFY` has no durability — a
- * dropped connection, a laptop sleep or a Next restart silently loses whatever
- * happened inside the window — so a full-set reconcile has to exist regardless,
- * and the stream only makes it rare. Until phase 3 lands this is the primary
- * path; after it, the fallback for when the stream is down.
+ * **On SSE.** The earliest version of this hook ruled a stream out of scope;
+ * phases 1–3 of docs/plans/changes_detection.md revisited that rather than
+ * reversing it, and this hook is what makes them *correct* rather than what
+ * they replace. `NOTIFY` has no durability — a dropped connection, a laptop
+ * sleep or a Next restart silently loses whatever happened inside the window —
+ * so a full-set reconcile has to exist regardless, and the stream only makes it
+ * rare. Both paths converge on `catchUpPosts`, so which one found a change
+ * makes no difference to what the store ends up holding.
  *
  * No interval either. A poll on a timer would keep asking while you are reading
  * something else in another window, which is precisely when the answer cannot

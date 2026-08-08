@@ -65,7 +65,7 @@ import {
   refreshProposals,
   rejectProposal,
 } from "./thunks/proposalThunks";
-import { catchUpPosts } from "./thunks/changeThunks";
+import { catchUpPosts, fetchChangedPosts } from "./thunks/changeThunks";
 import { alert, updateUser } from "./thunks/userThunks";
 import { importGuestDrafts } from "./thunks/importGuestDrafts";
 import { createApiThunk, type Failure } from "./thunks/createApiThunk";
@@ -842,6 +842,14 @@ export const appSlice = createSlice({
       .addCase(catchUpPosts.fulfilled, (state, action) => {
         reconcile(state, action.payload);
       })
+      // The live stream's half of the same fold, and quiet for the same reason.
+      // Only the shape of the question differs: an event names its ids, so
+      // there is nothing to diff — and nothing to delete either, since a
+      // deletion has no row to fetch and reaches the store through the
+      // `reconcilePosts` action instead.
+      .addCase(fetchChangedPosts.fulfilled, (state, action) => {
+        reconcile(state, { changed: action.payload, deletedIds: [] });
+      })
       .addCase(getPost.fulfilled, (state, action) => {
         applyPost(state.posts, state.series, action.payload);
       })
@@ -1159,7 +1167,7 @@ export {
   refreshProposals,
   rejectProposal,
 } from "./thunks/proposalThunks";
-export { catchUpPosts } from "./thunks/changeThunks";
+export { catchUpPosts, fetchChangedPosts } from "./thunks/changeThunks";
 export { alert, updateUser } from "./thunks/userThunks";
 export { importGuestDrafts } from "./thunks/importGuestDrafts";
 
