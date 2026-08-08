@@ -58,6 +58,19 @@ const C = {
   /** ~7 rows at 16px/1.55, the handoff's 180px cap. */
   maxRows: 7,
   minRows: 2,
+  /**
+   * Idle metrics. The composer at rest is one row — the field sits *between*
+   * the tool buttons and the model/send controls rather than above them, so
+   * the whole thing is a 34px control row inside 6px of padding.
+   *
+   * Not from the handoff, which only ever drew the active state. The radii and
+   * colours are unchanged; this trades the field's second row and the surface's
+   * generous top padding for the ~68px of document it was covering while
+   * nobody was typing.
+   */
+  compactSurfacePadding: "6px",
+  /** No top bias to correct: a single row is centred against the glyphs. */
+  compactFieldPadding: "0 6px",
 } as const;
 
 /** Brand colors — literal by nature, and the one thing the dot actually says. */
@@ -119,13 +132,21 @@ export const composerWrapperSx = (
   },
 });
 
-/** Inner surface — the field's own colour, its radius, padding and lift. */
+/**
+ * Inner surface — the field's own colour, its radius, padding and lift.
+ *
+ * `compact` is the idle inline bar, where the surface wraps a single control
+ * row and the handoff's 14px top padding would be most of the bar's height.
+ * Defaults to false, which is also what MUI passes when this is handed to `sx`
+ * as a bare function.
+ */
 export const composerSurfaceSx = (
   theme: Theme,
+  compact = false,
 ): SystemStyleObject<Theme> => ({
   bgcolor: "background.input",
   borderRadius: C.surfaceRadius,
-  p: C.surfacePadding,
+  p: compact ? C.compactSurfacePadding : C.surfacePadding,
   display: "flex",
   flexDirection: "column",
   gap: C.surfaceGap,
@@ -165,6 +186,17 @@ export interface ComposerProps {
   busy: boolean;
   canSend: boolean;
   placeholder: string;
+  /**
+   * Idle form: one row, field inline between the tools and the send button.
+   * The caller drives this off focus, so the roomy two-row form only exists
+   * while someone is actually typing in it.
+   */
+  compact?: boolean;
+  /**
+   * Shown instead of {@link placeholder} when compact. The full one names the
+   * open document, which does not fit a row that also holds six controls.
+   */
+  compactPlaceholder?: string;
   /** Disables every control and replaces the model picker with this text. */
   disabledReason?: string;
   inputRef?: React.Ref<HTMLTextAreaElement>;
@@ -182,9 +214,14 @@ export interface ComposerProps {
  * {@link composerWrapperSx} + {@link composerSurfaceSx}, because the inline bar
  * needs a transcript inside that same surface and the panel does not.
  *
- * The attach, `@` and voice buttons are the handoff's toolbar as specified;
- * only `/` is wired, since slash commands are the one feature behind them that
- * exists today. `@` seeds the field with the character it names.
+ * Has two forms. Compact is one row and is what the inline bar shows at rest;
+ * the full form adds the field's second row and moves the controls below it,
+ * and is what the panel always shows.
+ *
+ * The attach and voice buttons are the handoff's toolbar as specified; only `/`
+ * is wired, since slash commands are the one feature behind them that exists
+ * today. The `@` mention button is gone — it seeded a character no tool reads,
+ * and the compact row has no width to spend on it.
  */
 const Composer: React.FC<ComposerProps> = ({
   value,
@@ -195,6 +232,8 @@ const Composer: React.FC<ComposerProps> = ({
   busy,
   canSend,
   placeholder,
+  compact = false,
+  compactPlaceholder,
   disabledReason,
   inputRef,
   llmConfig,
@@ -214,6 +253,12 @@ const Composer: React.FC<ComposerProps> = ({
   const currentModel = AI_MODELS.find((m) => m.id === llmConfig.model);
   const providerColor = PROVIDER_COLOR[llmConfig.provider] ?? "#888";
 
+  // The model menu is portalled, so opening it moves focus out of the card and
+  // the caller — which reads compactness off focus — asks to shrink. Refusing
+  // here rather than reporting the menu upward keeps the menu's own anchor from
+  // sliding out from under it, and keeps that entire concern in this file.
+  const isCompact = compact && !modelMenuAnchor;
+
   /** Types a character into the field, as if the user had. */
   const seed = (char: string) => {
     onChange(value ? `${value}${char}` : char);
@@ -230,44 +275,248 @@ const Composer: React.FC<ComposerProps> = ({
     ...(halo ? { boxShadow: `0 0 0 3px ${alpha(color, 0.15)}` } : {}),
   });
 
-  return (
-    // Its own column rather than a fragment: inline, the surface's children are
-    // the transcript *and* this, so the field↔row gap has to belong here.
+  const field = (
     <Box
+      ref={setFieldEl}
       sx={{
-        display: "flex",
-        flexDirection: "column",
-        gap: C.surfaceGap,
-        flexShrink: 0,
+        p: isCompact ? C.compactFieldPadding : C.fieldPadding,
+        // Compact, the field is the row's only elastic element; `minWidth: 0`
+        // is what lets it actually give way instead of forcing the controls
+        // past the card's edge.
+        ...(isCompact ? { flex: 1, minWidth: 0 } : null),
       }}
     >
-      <Box ref={setFieldEl} sx={{ p: C.fieldPadding }}>
-        <InputBase
-          inputRef={inputRef}
-          multiline
-          minRows={C.minRows}
-          maxRows={C.maxRows}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={onKeyDown}
-          disabled={busy || disabled}
-          placeholder={placeholder}
-          inputProps={{ "aria-label": "Message Copilot" }}
+      <InputBase
+        inputRef={inputRef}
+        multiline
+        minRows={isCompact ? 1 : C.minRows}
+        maxRows={isCompact ? 1 : C.maxRows}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={onKeyDown}
+        disabled={busy || disabled}
+        placeholder={isCompact ? compactPlaceholder ?? placeholder : placeholder}
+        inputProps={{ "aria-label": "Message Copilot" }}
+        sx={{
+          p: 0,
+          width: "100%",
+          typography: "body1",
+          lineHeight: 1.55,
+          letterSpacing: "-0.005em",
+          color: "text.primary",
+          "& textarea::placeholder": {
+            color: "text.disabled",
+            opacity: 1,
+          },
+        }}
+      />
+    </Box>
+  );
+
+  const attachButton = (
+    <Tooltip title="Attach files">
+      <span>
+        <IconButton
+          disabled={disabled}
+          aria-label="Attach files"
+          sx={toolButtonSx}
+        >
+          <Plus size={ICON_SIZE.dense} />
+        </IconButton>
+      </span>
+    </Tooltip>
+  );
+
+  const slashButton = (
+    <Tooltip title="Slash commands">
+      <span>
+        <IconButton
+          disabled={disabled || busy}
+          onClick={() => seed("/")}
+          aria-label="Slash commands"
+          sx={glyphSx}
+        >
+          /
+        </IconButton>
+      </span>
+    </Tooltip>
+  );
+
+  const micButton = (
+    <Tooltip title="Voice input">
+      <span>
+        <IconButton
+          disabled={disabled}
+          aria-label="Voice input"
+          sx={toolButtonSx}
+        >
+          <Mic size={ICON_SIZE.dense} />
+        </IconButton>
+      </span>
+    </Tooltip>
+  );
+
+  // Compact drops the model's *name*, not the control: the provider dot and
+  // chevron still say which family is answering and still open the menu, and
+  // the accessible name is unchanged either way.
+  const modelControl = disabledReason
+    ? (
+      <Typography variant="micro" color="text.secondary" sx={{ px: 0.5 }}>
+        {disabledReason}
+      </Typography>
+    )
+    : (
+      <ButtonBase
+        onClick={(e) => setModelMenuAnchor(e.currentTarget)}
+        aria-haspopup="menu"
+        aria-expanded={Boolean(modelMenuAnchor)}
+        aria-label={`Model: ${
+          currentModel?.name ?? llmConfig.model
+        }. Change model`}
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: "7px",
+          height: C.toolButton,
+          pl: isCompact ? "8px" : "10px",
+          pr: isCompact ? "7px" : "9px",
+          borderRadius: C.toolRadius,
+          color: "text.secondary",
+          typography: "dense",
+          fontWeight: 500,
+          whiteSpace: "nowrap",
+          flexShrink: 0,
+          transition:
+            `background-color ${MOTION.fast}ms, color ${MOTION.fast}ms`,
+          "&:hover": { bgcolor: "action.hover", color: "text.primary" },
+          "&:focus-visible": {
+            outline: "none",
+            boxShadow: FOCUS_RING.chrome,
+          },
+        }}
+      >
+        <Box component="span" sx={dotSx(providerColor, true)} />
+        {!isCompact && (currentModel?.name ?? llmConfig.model)}
+        <ChevronDown
+          size={ICON_SIZE.micro}
+          style={{ opacity: 0.6, flexShrink: 0 }}
+        />
+      </ButtonBase>
+    );
+
+  const modelMenu = (
+    <Menu
+      anchorEl={modelMenuAnchor}
+      open={Boolean(modelMenuAnchor)}
+      onClose={() => setModelMenuAnchor(null)}
+      anchorOrigin={{ vertical: "top", horizontal: "left" }}
+      transformOrigin={{ vertical: "bottom", horizontal: "left" }}
+      // The handoff's popover metrics. §17.4 says a menu needs no paper
+      // blob; these two values are the exception it earns by being spec'd.
+      slotProps={{
+        paper: { sx: { width: C.menuWidth, borderRadius: C.menuRadius } },
+        list: { sx: { p: 0.75 } },
+      }}
+    >
+      {AI_MODELS.map((m) => (
+        <MenuItem
+          key={m.id}
+          role="menuitemradio"
+          aria-checked={m.id === llmConfig.model}
+          selected={m.id === llmConfig.model}
+          onClick={() => {
+            setLlmConfig({ provider: m.provider, model: m.id });
+            setModelMenuAnchor(null);
+          }}
           sx={{
-            p: 0,
-            width: "100%",
-            typography: "body1",
-            lineHeight: 1.55,
-            letterSpacing: "-0.005em",
+            gap: 1.25,
+            px: 1.25,
+            py: 1.125,
+            borderRadius: C.toolRadius,
+            alignItems: "center",
+          }}
+        >
+          <Box
+            component="span"
+            sx={dotSx(PROVIDER_COLOR[m.provider] ?? "#888", false)}
+          />
+          <Box sx={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+            <Typography variant="dense" sx={{ fontWeight: 500 }}>
+              {m.name}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {modelNote(m)}
+            </Typography>
+          </Box>
+        </MenuItem>
+      ))}
+    </Menu>
+  );
+
+  const sendSizeSx = {
+    width: C.sendButton,
+    height: C.sendButton,
+    p: 0,
+    borderRadius: C.sendRadius,
+    flexShrink: 0,
+  } as const;
+
+  const sendButton = busy
+    ? (
+      <Tooltip title="Stop">
+        <IconButton
+          onClick={onStop}
+          aria-label="Stop generating"
+          sx={{
+            ...sendSizeSx,
+            bgcolor: "action.selected",
             color: "text.primary",
-            "& textarea::placeholder": {
-              color: "text.disabled",
-              opacity: 1,
+            transition: `background-color ${MOTION.fast}ms`,
+            "&:hover": { bgcolor: "action.focus" },
+            "&:focus-visible": {
+              outline: "none",
+              boxShadow: FOCUS_RING.chrome,
             },
           }}
-        />
-      </Box>
+        >
+          <Square size={ICON_SIZE.inline} fill="currentColor" />
+        </IconButton>
+      </Tooltip>
+    )
+    : (
+      <IconButton
+        onClick={onSend}
+        disabled={!canSend}
+        aria-label="Send"
+        sx={{
+          ...sendSizeSx,
+          bgcolor: "primary.main",
+          color: "primary.contrastText",
+          boxShadow:
+            "0 6px 16px -6px rgba(var(--mui-palette-primary-mainChannel) / 0.8)",
+          transition: `background-color ${MOTION.fast}ms`,
+          "&:hover": { bgcolor: "primary.dark" },
+          "&:focus-visible": {
+            outline: "none",
+            boxShadow: FOCUS_RING.chrome,
+          },
+          // Dimmed rather than recoloured, so the row keeps its shape
+          // when there is nothing to send.
+          "&.Mui-disabled": {
+            bgcolor: "primary.main",
+            color: "primary.contrastText",
+            opacity: 0.45,
+            boxShadow: "none",
+            cursor: "default",
+          },
+        }}
+      >
+        <ArrowUp size={ICON_SIZE.dense} />
+      </IconButton>
+    );
 
+  const slashPopper = (
+    <>
       {
         /* Anchored to the field and portalled, so it is not clipped by the
           inline bar's rounded card the way an absolutely-positioned child
@@ -320,225 +569,78 @@ const Composer: React.FC<ComposerProps> = ({
           ))}
         </Paper>
       </Popper>
+    </>
+  );
 
-      {/* Control row: tools · model · spacer · voice · send */}
+  // Full form: the field owns a line, the controls sit beneath it separated
+  // into content tools and model context.
+  const stackedControls = (
+    <Box sx={{ display: "flex", alignItems: "center", gap: C.controlGap }}>
+      {attachButton}
+      {slashButton}
+
+      {/* Separates the content tools from the model context. */}
       <Box
-        sx={{ display: "flex", alignItems: "center", gap: C.controlGap }}
-      >
-        <Tooltip title="Attach files">
-          <span>
-            <IconButton
-              disabled={disabled}
-              aria-label="Attach files"
-              sx={toolButtonSx}
-            >
-              <Plus size={ICON_SIZE.dense} />
-            </IconButton>
-          </span>
-        </Tooltip>
-        <Tooltip title="Slash commands">
-          <span>
-            <IconButton
-              disabled={disabled || busy}
-              onClick={() => seed("/")}
-              aria-label="Slash commands"
-              sx={glyphSx}
-            >
-              /
-            </IconButton>
-          </span>
-        </Tooltip>
-        <Tooltip title="Mention a file">
-          <span>
-            <IconButton
-              disabled={disabled || busy}
-              onClick={() => seed("@")}
-              aria-label="Mention a file"
-              sx={glyphSx}
-            >
-              @
-            </IconButton>
-          </span>
-        </Tooltip>
+        sx={{
+          width: "1px",
+          height: 20,
+          bgcolor: "divider",
+          mx: 0.5,
+          flexShrink: 0,
+        }}
+      />
 
-        {/* Separates the content tools from the model context. */}
-        <Box
-          sx={{
-            width: "1px",
-            height: 20,
-            bgcolor: "divider",
-            mx: 0.5,
-            flexShrink: 0,
-          }}
-        />
+      {modelControl}
+      {modelMenu}
 
-        {disabledReason
-          ? (
-            <Typography variant="micro" color="text.secondary" sx={{ px: 0.5 }}>
-              {disabledReason}
-            </Typography>
-          )
-          : (
-            <ButtonBase
-              onClick={(e) => setModelMenuAnchor(e.currentTarget)}
-              aria-haspopup="menu"
-              aria-expanded={Boolean(modelMenuAnchor)}
-              aria-label={`Model: ${
-                currentModel?.name ?? llmConfig.model
-              }. Change model`}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: "7px",
-                height: C.toolButton,
-                pl: "10px",
-                pr: "9px",
-                borderRadius: C.toolRadius,
-                color: "text.secondary",
-                typography: "dense",
-                fontWeight: 500,
-                whiteSpace: "nowrap",
-                transition:
-                  `background-color ${MOTION.fast}ms, color ${MOTION.fast}ms`,
-                "&:hover": { bgcolor: "action.hover", color: "text.primary" },
-                "&:focus-visible": {
-                  outline: "none",
-                  boxShadow: FOCUS_RING.chrome,
-                },
-              }}
-            >
-              <Box component="span" sx={dotSx(providerColor, true)} />
-              {currentModel?.name ?? llmConfig.model}
-              <ChevronDown
-                size={ICON_SIZE.micro}
-                style={{ opacity: 0.6, flexShrink: 0 }}
-              />
-            </ButtonBase>
-          )}
+      <Box sx={{ flex: 1 }} />
 
-        <Menu
-          anchorEl={modelMenuAnchor}
-          open={Boolean(modelMenuAnchor)}
-          onClose={() => setModelMenuAnchor(null)}
-          anchorOrigin={{ vertical: "top", horizontal: "left" }}
-          transformOrigin={{ vertical: "bottom", horizontal: "left" }}
-          // The handoff's popover metrics. §17.4 says a menu needs no paper
-          // blob; these two values are the exception it earns by being spec'd.
-          slotProps={{
-            paper: { sx: { width: C.menuWidth, borderRadius: C.menuRadius } },
-            list: { sx: { p: 0.75 } },
-          }}
-        >
-          {AI_MODELS.map((m) => (
-            <MenuItem
-              key={m.id}
-              role="menuitemradio"
-              aria-checked={m.id === llmConfig.model}
-              selected={m.id === llmConfig.model}
-              onClick={() => {
-                setLlmConfig({ provider: m.provider, model: m.id });
-                setModelMenuAnchor(null);
-              }}
-              sx={{
-                gap: 1.25,
-                px: 1.25,
-                py: 1.125,
-                borderRadius: C.toolRadius,
-                alignItems: "center",
-              }}
-            >
-              <Box
-                component="span"
-                sx={dotSx(PROVIDER_COLOR[m.provider] ?? "#888", false)}
-              />
-              <Box
-                sx={{ display: "flex", flexDirection: "column", gap: "2px" }}
-              >
-                <Typography variant="dense" sx={{ fontWeight: 500 }}>
-                  {m.name}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {modelNote(m)}
-                </Typography>
-              </Box>
-            </MenuItem>
-          ))}
-        </Menu>
+      {micButton}
+      {sendButton}
+    </Box>
+  );
 
-        <Box sx={{ flex: 1 }} />
-
-        <Tooltip title="Voice input">
-          <span>
-            <IconButton
-              disabled={disabled}
-              aria-label="Voice input"
-              sx={toolButtonSx}
-            >
-              <Mic size={ICON_SIZE.dense} />
-            </IconButton>
-          </span>
-        </Tooltip>
-
-        {busy
-          ? (
-            <Tooltip title="Stop">
-              <IconButton
-                onClick={onStop}
-                aria-label="Stop generating"
-                sx={{
-                  width: C.sendButton,
-                  height: C.sendButton,
-                  p: 0,
-                  borderRadius: C.sendRadius,
-                  bgcolor: "action.selected",
-                  color: "text.primary",
-                  transition: `background-color ${MOTION.fast}ms`,
-                  "&:hover": { bgcolor: "action.focus" },
-                  "&:focus-visible": {
-                    outline: "none",
-                    boxShadow: FOCUS_RING.chrome,
-                  },
-                }}
-              >
-                <Square size={ICON_SIZE.inline} fill="currentColor" />
-              </IconButton>
-            </Tooltip>
-          )
-          : (
-            <IconButton
-              onClick={onSend}
-              disabled={!canSend}
-              aria-label="Send"
-              sx={{
-                width: C.sendButton,
-                height: C.sendButton,
-                p: 0,
-                borderRadius: C.sendRadius,
-                bgcolor: "primary.main",
-                color: "primary.contrastText",
-                boxShadow:
-                  "0 6px 16px -6px rgba(var(--mui-palette-primary-mainChannel) / 0.8)",
-                transition: `background-color ${MOTION.fast}ms`,
-                "&:hover": { bgcolor: "primary.dark" },
-                "&:focus-visible": {
-                  outline: "none",
-                  boxShadow: FOCUS_RING.chrome,
-                },
-                // Dimmed rather than recoloured, so the row keeps its shape
-                // when there is nothing to send.
-                "&.Mui-disabled": {
-                  bgcolor: "primary.main",
-                  color: "primary.contrastText",
-                  opacity: 0.45,
-                  boxShadow: "none",
-                  cursor: "default",
-                },
-              }}
-            >
-              <ArrowUp size={ICON_SIZE.dense} />
-            </IconButton>
-          )}
-      </Box>
+  return (
+    // Its own flex container rather than a fragment: inline, the surface's
+    // children are the transcript *and* this, so the gap between the field and
+    // whatever follows it has to belong here.
+    //
+    // Compact collapses that column into a single row — the same six controls,
+    // with the field wedged between them rather than stacked above. No divider
+    // and no spacer: the elastic field already separates the two groups.
+    <Box
+      sx={{
+        display: "flex",
+        flexShrink: 0,
+        ...(isCompact
+          ? {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: C.controlGap,
+          }
+          : { flexDirection: "column", gap: C.surfaceGap }),
+      }}
+    >
+      {isCompact
+        ? (
+          <>
+            {attachButton}
+            {slashButton}
+            {field}
+            {slashPopper}
+            {modelControl}
+            {modelMenu}
+            {micButton}
+            {sendButton}
+          </>
+        )
+        : (
+          <>
+            {field}
+            {slashPopper}
+            {stackedControls}
+          </>
+        )}
     </Box>
   );
 };
