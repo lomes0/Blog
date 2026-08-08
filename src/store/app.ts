@@ -65,6 +65,7 @@ import {
   refreshProposals,
   rejectProposal,
 } from "./thunks/proposalThunks";
+import { catchUpPosts } from "./thunks/changeThunks";
 import { alert, updateUser } from "./thunks/userThunks";
 import { importGuestDrafts } from "./thunks/importGuestDrafts";
 import { createApiThunk, type Failure } from "./thunks/createApiThunk";
@@ -129,6 +130,16 @@ function applyPost(
   }
 }
 
+/**
+ * Sort key for `posts.ids`: newest first.
+ *
+ * `postsAdapter` is created without a `sortComparer`, so list order is whatever
+ * `ids[]` holds and every writer maintains it by hand — `loadPosts` pre-sorts
+ * before `setAll`, `prependPost` splices to the front, and `reconcile` re-sorts
+ * after a background upsert.
+ */
+const updatedAtMs = (post: Post) => new Date(post.updatedAt).getTime();
+
 /** Drop a post from the store and from any series that lists it. */
 function removePost(state: AppState, id: string) {
   postsAdapter.removeOne(state.posts, id);
@@ -145,6 +156,48 @@ function removePost(state: AppState, id: string) {
   // which is what lets the discard path call one of them first.
   forgetProposal(state, id);
   forgetAgentPost(state, id);
+}
+
+/** What a background catch-up has learned: rows to upsert, rows proven gone. */
+export interface ReconcilePayload {
+  changed: Post[];
+  deletedIds: string[];
+}
+
+/**
+ * Fold a catch-up result into the store — docs/plans/changes_detection.md §4.
+ *
+ * Reached two ways, which is why it is a function rather than a reducer body:
+ * the `reconcilePosts` action (what the SSE phase will dispatch per event) and
+ * `catchUpPosts.fulfilled` (the poll's whole-set answer). Both mean the same
+ * thing and must not drift apart.
+ *
+ * Deliberately **not** `setAll`, which is what `loadPosts` uses: that discards
+ * every entity the response happens to omit and churns every row in a list the
+ * user may be reading. Deliberately not a raw `upsertMany` either — `applyPost`
+ * is what keeps `series[].posts` in sync and what preserves `data` and a longer
+ * `revisions` array, so an open document is not stripped of its content by a
+ * background refresh.
+ *
+ * The re-sort is load-bearing rather than tidiness: with no `sortComparer` on
+ * the adapter, `applyPost` leaves a touched post exactly where it was and
+ * `prependPost` puts a new one at the very front regardless of its date. Only
+ * an explicit sort lands `ids[]` in the same newest-first order `loadPosts`
+ * establishes. Skipped when nothing was upserted, since a removal cannot
+ * reorder what is left.
+ */
+function reconcile(state: AppState, payload: ReconcilePayload) {
+  for (const post of payload.changed) {
+    applyPost(state.posts, state.series, post);
+  }
+  for (const id of payload.deletedIds) {
+    removePost(state, id);
+  }
+  if (!payload.changed.length) return;
+  const { entities } = state.posts;
+  state.posts.ids.sort((a, b) =>
+    updatedAtMs(entities[b]) - updatedAtMs(entities[a])
+  );
 }
 
 /**
@@ -385,6 +438,18 @@ export const appSlice = createSlice({
       action: PayloadAction<{ old?: string; new?: string }>,
     ) => {
       state.ui.diff = { ...state.ui.diff, ...action.payload };
+    },
+
+    /**
+     * Upsert the named posts, drop the ones proven gone, touch nothing else.
+     *
+     * The store-side half of the change feed (docs/plans/changes_detection.md
+     * §4). Kept as a plain action as well as a thunk case because Phase 3's
+     * stream reconciles *per event* with ids it already holds, and that path
+     * has no fetch to hang a `fulfilled` case on.
+     */
+    reconcilePosts: (state, action: PayloadAction<ReconcilePayload>) => {
+      reconcile(state, action.payload);
     },
 
     // ── Workspace: panes ──────────────────────────────────────────────────
@@ -764,13 +829,18 @@ export const appSlice = createSlice({
       .addCase(loadPosts.fulfilled, (state, action) => {
         state.ui.postsLoading = false;
         const sorted = [...action.payload].sort((a, b) =>
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+          updatedAtMs(b) - updatedAtMs(a)
         );
         postsAdapter.setAll(state.posts, sorted);
       })
       .addCase(loadPosts.rejected, (state, action) => {
         state.ui.postsLoading = false;
         announceFailure(state, action.payload);
+      })
+      // Quiet by construction: no `.rejected` case, because a background
+      // refresh that fails is not news (§10) — the next focus asks again.
+      .addCase(catchUpPosts.fulfilled, (state, action) => {
+        reconcile(state, action.payload);
       })
       .addCase(getPost.fulfilled, (state, action) => {
         applyPost(state.posts, state.series, action.payload);
@@ -1089,6 +1159,7 @@ export {
   refreshProposals,
   rejectProposal,
 } from "./thunks/proposalThunks";
+export { catchUpPosts } from "./thunks/changeThunks";
 export { alert, updateUser } from "./thunks/userThunks";
 export { importGuestDrafts } from "./thunks/importGuestDrafts";
 

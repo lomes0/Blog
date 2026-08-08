@@ -26,6 +26,16 @@ export interface PaginatedDocuments {
 }
 
 // -----------------------------------------------------------------------
+// Documents – catch-up (GET /api/documents/changes)
+// -----------------------------------------------------------------------
+// The full id set the caller owns, two fields per row and no document bodies.
+// Unpaged on purpose: a hard delete is only visible as an id *missing* from the
+// complete set. See docs/plans/changes_detection.md §3 and §3.1.
+export interface DocumentChanges {
+  ids: { id: string; updatedAt: string }[];
+}
+
+// -----------------------------------------------------------------------
 // Series posts (PATCH /api/series/:id/posts)
 // -----------------------------------------------------------------------
 // Posts are appended to the series; manual position is controlled via `rank`,

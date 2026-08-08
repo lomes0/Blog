@@ -38,6 +38,33 @@ export const HOME_ROUTE = "/";
  * `commands/__tests__/toolParity.test.ts` holds the registry to the AI tool
  * surface.
  *
+ * ## Who calls it
+ *
+ * It is no longer only the second half of a delete *this* tab performed.
+ * `useBackgroundRefresh` runs the change-feed catch-up
+ * (docs/plans/changes_detection.md §3), and that reports deletions made
+ * somewhere else entirely — a second browser tab, an agent in a terminal — as
+ * ids missing from the full set. Those removals reach the store through
+ * `reconcilePosts`, which is a reducer and so cannot navigate, and they would
+ * otherwise strand a pane on a document that no longer exists: precisely the
+ * "Untitled" title, stale body and silently dropped saves described above, but
+ * arriving with no user action to attach a repair to. So the catch-up calls
+ * this for every id it proves gone, and the reducer stays pure.
+ *
+ * That is also why the repair is driven by *proven* deletions rather than by
+ * watching for a pane whose document is missing from the store. A pane can
+ * legitimately be rooted at a document the store does not hold yet: the
+ * workspace restore is gated on `workspaceHydrated` and deliberately **not** on
+ * `ui.initialized` (see `WorkspacePanes`), so on a cold load every restored
+ * pane predates `loadPosts` — and a collab document opened by deep link is
+ * absent until its own `getPost` lands. A "missing entity" watcher would close
+ * those panes out from under the user.
+ *
+ * Callers with a batch — a bulk delete, a catch-up — loop over ids and call
+ * this once each, rather than it taking a list. Each call is a no-op when no
+ * pane holds the document, and the navigation is the last thing that happens,
+ * so at most one of them ends up moving the address bar.
+ *
  * ## The address bar
  *
  * The focus projection in `WorkspacePanes` will not repair it: that guard

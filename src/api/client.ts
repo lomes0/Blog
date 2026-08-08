@@ -31,6 +31,7 @@ import type {
   ApiError,
   AttachmentData,
   CreateNoteInput,
+  DocumentChanges,
   MoveDocumentInput,
   MoveProjectInput,
   MoveSeriesInput,
@@ -181,6 +182,19 @@ export const apiClient = {
         cache: "no-store",
       });
     },
+
+    /**
+     * GET /api/documents/changes — the catch-up query (§3).
+     *
+     * Every document the caller owns, as `{ id, updatedAt }`. `no-store` for
+     * the same reason the proposal poll uses it: the whole job is to notice a
+     * write that happened since the last look, and a cached answer is the one
+     * state this cannot be in.
+     */
+    changes: (): Promise<DocumentChanges | undefined> =>
+      request<DocumentChanges>("/api/documents/changes", {
+        cache: "no-store",
+      }),
 
     /** GET /api/documents/:id */
     get: (

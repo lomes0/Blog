@@ -8,6 +8,7 @@ import {
   alert,
   approveProposal,
   appSlice,
+  catchUpPosts,
   createPost,
   createProject,
   createRevision,
@@ -91,6 +92,8 @@ export const actions = {
   rejectProposal,
   acceptAgentPost,
   discardAgentPost,
+
+  catchUpPosts,
 };
 
 export const store = configureStore({

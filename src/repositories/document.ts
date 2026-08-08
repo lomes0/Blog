@@ -311,6 +311,45 @@ const findDocumentsByAuthorId = async (
   };
 };
 
+/**
+ * Every document the author owns, as `{ id, updatedAt }` and nothing else.
+ *
+ * This backs `GET /api/documents/changes` — the catch-up query of
+ * docs/plans/changes_detection.md §3. The client diffs it against its store to
+ * learn what was created, updated and (§3.1) deleted while it was not looking.
+ *
+ * **Deliberately unpaged.** `AUTHOR_DOCUMENTS_PAGE_SIZE` caps the *listing*
+ * because that query joins revision metadata and returns whole documents; this
+ * one is two columns off the author's own index and no document bodies —
+ * hundreds of rows for a personal blog, and paging it would defeat the point,
+ * since a delete is only detectable as an id missing from the **full** set.
+ * Revisit if the document count makes the response large enough to notice.
+ *
+ * **`updatedAt` is the document row's own, and that is what the store holds.**
+ * Worth stating because it is easy to assume otherwise: `findDocument` does
+ * overwrite `updatedAt` with a revision's `createdAt`, but only on its
+ * single-revision branch, and `cloudBackend.get` overwrites it straight back
+ * with `findEditorDocument`'s (the document row's). The list path
+ * (`toCloudDocument`) never touches it at all. So both paths that populate the
+ * store agree with this query, and the diff does not produce false positives.
+ *
+ * Which also answers the question §3.2 raises: **a pending proposal does not
+ * move this timestamp.** `Document.updatedAt` is Prisma `@updatedAt`, so only a
+ * write to the *document* row bumps it, and `upsertProposal` writes `Revision`
+ * rows only. (Even on the branch where a revision's `createdAt` is used,
+ * `revisionsSelect` and `historyOf` both filter `proposedAt: null`, so a
+ * proposal could not surface there either.) §3.2 therefore stands unchanged and
+ * the reconcile must keep dispatching `refreshProposals()` alongside this — it
+ * is the only thing that can see an `apply_ops` that landed while the client
+ * was disconnected.
+ */
+const findDocumentIdsByAuthorId = async (authorId: string) =>
+  await prisma.document.findMany({
+    where: { authorId, type: PrismaDocumentType.DOCUMENT },
+    select: { id: true, updatedAt: true },
+    orderBy: { updatedAt: "desc" },
+  });
+
 const findPublishedDocumentsByAuthorId = async (authorId: string) => {
   const docs = await prisma.document.findMany({
     where: {
@@ -735,6 +774,7 @@ export {
   findCloudStorageUsageByAuthorId,
   findDocument,
   findDocumentChildren,
+  findDocumentIdsByAuthorId,
   findDocumentsByAuthorId,
   findEditorDocument,
   findPublishedDocuments,
