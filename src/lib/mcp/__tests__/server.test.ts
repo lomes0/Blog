@@ -46,8 +46,13 @@ const { createContentServer } = await import("../server");
 async function connect(
   resolveAuthorId: () => Promise<string>,
   scopes?: readonly ("read" | "propose")[],
+  checkRate?: (kind: "read" | "write") => {
+    allowed: boolean;
+    retryAfterSeconds: number;
+    remaining: number;
+  },
 ) {
-  const server = createContentServer({ resolveAuthorId, scopes });
+  const server = createContentServer({ resolveAuthorId, scopes, checkRate });
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: "test", version: "0" });
   await Promise.all([client.connect(clientSide), server.connect(serverSide)]);
@@ -153,6 +158,47 @@ describe("createContentServer", () => {
     expect(result.isError).toBe(true);
     expect(JSON.stringify(result.content)).toMatch(/not found/i);
     expect(proposeOps).not.toHaveBeenCalled();
+  });
+
+  it("counts reads and writes against separate budgets", async () => {
+    const checkRate = vi.fn((_kind: "read" | "write") => ({
+      allowed: true,
+      retryAfterSeconds: 0,
+      remaining: 5,
+    }));
+    const client = await connect(async () => "author-a", undefined, checkRate);
+
+    await client.callTool({ name: "list_posts", arguments: {} });
+    await client.callTool({
+      name: "apply_ops",
+      arguments: { id: "d", stateHash: "h", ops: [{ op: "delete_block", id: "b1" }] },
+    });
+
+    expect(checkRate.mock.calls.map((call) => call[0])).toEqual(["read", "write"]);
+  });
+
+  it("does no work at all when the budget is spent", async () => {
+    // The point of metering before the handler: a refused call must not cost a
+    // query. A limiter that fired after the read would bound the response rate
+    // and nothing else.
+    const client = await connect(async () => "author-a", undefined, () => ({
+      allowed: false,
+      retryAfterSeconds: 7,
+      remaining: 0,
+    }));
+
+    const result = await client.callTool({ name: "list_posts", arguments: {} });
+
+    expect(result.isError).toBe(true);
+    expect(JSON.stringify(result.content)).toMatch(/7s/);
+    expect(findMany).not.toHaveBeenCalled();
+  });
+
+  it("is unmetered when no budget is supplied", async () => {
+    // What the stdio process gets: its caller is already inside the machine.
+    const client = await connect(async () => "author-a");
+    await client.callTool({ name: "list_posts", arguments: {} });
+    expect(findMany).toHaveBeenCalledOnce();
   });
 
   it("resolves the author lazily, and at most once", async () => {

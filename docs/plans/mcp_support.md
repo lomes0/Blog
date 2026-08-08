@@ -1,8 +1,9 @@
 # Remote MCP support
 
-**Status: phases 1–3 shipped (8 Aug 2026); phases 4–6 proposed — and phase 4,
-rate limiting, is the one that must land before this endpoint is exposed to the
-internet.** Originally
+**Status: phases 1–4 shipped (8 Aug 2026); phases 5–6 proposed.** The endpoint
+works and is metered. Before pointing it at the public internet, phase 5 still
+owes it TLS enforcement — a bearer token over plain HTTP is the credential in
+cleartext. Originally
 measured against the tree at `b01e91a5`. Builds on the
 content bridge ([claude-code-lexical.md](./claude-code-lexical.md), phases 1–5
 shipped) and the proposal gating ([agent-gating.md](./agent-gating.md), phases
@@ -372,7 +373,7 @@ The cross-author check is the one §7 said was easiest to skip and hardest to
 trust from a single-author database. It ran against the same live server with
 two tokens, which is the only form of it worth having.
 
-### Phase 4 — Rate limiting
+### Phase 4 — Rate limiting — **SHIPPED (8 Aug 2026)**
 
 The first phase that is about strangers rather than shape. Minimum viable and
 honest:
@@ -388,6 +389,69 @@ honest:
 Also here: a request body cap. `create_post` bodies are unbounded today, and
 `next.config.ts` caps server _actions_ at 2MB but that does not cover route
 handlers.
+
+#### Shipped 8 Aug 2026
+
+`src/lib/rateLimit.ts` is the app's first rate limiter, written generic because
+the audit's next two users are `/api/completion` and `/api/copilot`.
+`src/lib/mcp/limits.ts` holds the numbers and says where they came from.
+
+**Three budgets, not one**, because they bound different failures:
+
+| Budget | Capacity / rate | Enforced | Refusal |
+| --- | --- | --- | --- |
+| Requests | 90 burst, 180/min | in the route, before parsing | HTTP 429 + `Retry-After` |
+| Reads | 60 burst, 120/min | per tool call | tool error naming the wait |
+| Writes | 10 burst, 20/min | per tool call | tool error naming the wait |
+
+The request budget is in the route because it must cover calls that never reach
+a tool — an `initialize` flood, malformed JSON-RPC. The read/write split is per
+*tool call* rather than per request because one HTTP request can carry more than
+one JSON-RPC message, so counting requests alone would undercount precisely the
+caller trying to take more than their share.
+
+Metering happens **before** the handler, wrapped around every registration, so
+the metered set is the registered set and a refused call costs no query.
+
+**A token bucket, not a fixed window.** A fixed window lets a caller spend a
+full budget at 0:59 and again at 1:00, so the real burst is twice the configured
+limit at every boundary. Continuous refill has no boundary to exploit and costs
+one subtraction.
+
+§8.3 answered as well as it can be for now: the numbers come from measured
+*shape*, not measured load — `npm run mcp:smoke` is ~12 calls end to end and
+editing one document is ~5, so a hard session over ten documents is ~50 calls
+spread over minutes. Both budgets sit far above that and a `while (true)` hits
+them in a second. **Revise from a real transcript once there is one; a
+legitimate session tripping a limit is the bug, not the session.**
+
+`MAX_BODY_BYTES` is 1 MiB, checked against `Content-Length` before anything is
+parsed → 413.
+
+Nine specs in `src/lib/__tests__/rateLimit.test.ts` (time is injected, so they
+are ordinary pure-function tests): burst then refuse, per-key isolation,
+continuous refill, never accumulating past capacity however long it idles,
+`Retry-After` rounded up and never zero, surviving a clock that goes backwards,
+refusing a nonsensical budget at construction, and evicting idle buckets rather
+than growing forever. Three more in the server spec: reads and writes hit
+separate budgets, a refused call reaches no query, and no budget means unmetered
+(what stdio gets).
+
+Verified against a running server:
+
+| Check | Result |
+| --- | --- |
+| 70 sequential reads (burst 60) | 62 allowed, 8 refused — the 2 extra are refill during the loop |
+| 200 requests, 25 at a time | 92 × 200, 108 × 429 |
+| The 429 itself | `Retry-After: 1`, `{"error":{"title":"Too Many Requests",…}}` |
+| 20 `apply_ops` (burst 10) | exactly 10 through, 10 refused |
+| 1 MiB + 500 bytes body | 413, nothing parsed |
+| After the burst | next request succeeds — the bucket recovers |
+
+**Still per-process.** Two containers serving one token get a budget each. That
+is honest for the single-container deployment
+docs/plans/prod-storage-decision.md chose, and wrong the moment the app scales
+out; `RateLimiter` is the seam a shared-store implementation drops into.
 
 ### Phase 5 — Hardening
 
@@ -462,9 +526,11 @@ author before trusting the check.
    a client at. Accepted cost: the endpoint cannot be firewalled or taken down
    without taking the blog with it — recoverable later with a reverse-proxy rule
    rather than a rewrite.
-3. **Rate limit numbers.** Needs a real one. A personal agent doing a read-heavy
-   editing session is maybe tens of reads and a handful of writes a minute; pick
-   from an actual session's transcript rather than from taste.
+3. **Rate limit numbers.** **Provisionally answered 8 Aug 2026** (phase 4):
+   90/180 requests, 60/120 reads, 10/20 writes, derived from the measured
+   *shape* of a session rather than from load, because there is none yet. Still
+   open in the sense that matters — revise from a real transcript, and treat a
+   legitimate session tripping a limit as the bug.
 4. **Does a token ever need `role: admin` semantics?** Current answer: no, and
    the schema should keep it unrepresentable.
 5. **Token management UI.** Deferred to script-only in phase 2. Is that

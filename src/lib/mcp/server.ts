@@ -50,6 +50,7 @@ import {
 // one part of the bridge the browser has no use for.
 import { BLOCK_DOC, blockSchema, opSchema } from "@/lib/content-bridge/schema";
 import { AGENT_SCOPES, type AgentScope } from "@/lib/agentTokens";
+import type { RateDecision } from "@/lib/rateLimit";
 
 /** Where a write from this server says it came from (`Revision.origin`). */
 const AGENT_ORIGIN = "claude-code";
@@ -67,6 +68,17 @@ export interface ContentServerOptions {
    * it through a refusal.
    */
   scopes?: readonly AgentScope[];
+  /**
+   * Spend one unit of this caller's budget for a read or a write, and say
+   * whether it was there to spend. Omitted means unmetered, which is what the
+   * stdio process gets — its caller is already inside the machine, and a limit
+   * there would only get in the way of the operator.
+   *
+   * Reads and writes are counted separately because they fail differently: a
+   * runaway read is wasted database time, while a runaway write fills the
+   * author's review rail with proposals someone has to reject by hand.
+   */
+  checkRate?: (kind: "read" | "write") => RateDecision;
   /**
    * Who this server is for. **This is the entire authorization model**, and
    * putting it here rather than in each tool is the point of the factory:
@@ -120,10 +132,36 @@ const sourceNote = (post: AgentReadState): string => {
  * request without knowing which they are in.
  */
 export function createContentServer(
-  { resolveAuthorId, scopes = AGENT_SCOPES }: ContentServerOptions,
+  { resolveAuthorId, scopes = AGENT_SCOPES, checkRate }: ContentServerOptions,
 ): McpServer {
   const server = new McpServer({ name: "blog-content", version: "0.2.0" });
   const mayPropose = scopes.includes("propose");
+
+  /**
+   * Wrap a tool handler in its budget.
+   *
+   * Every registration below goes through this, so the metered set is the
+   * registered set — there is no handler that could quietly not be counted.
+   * The refusal is a tool error rather than an HTTP status because by this
+   * point the request has been accepted and dispatched; the transport's status
+   * belongs to the coarse per-request limit the route applies before any of
+   * this runs.
+   */
+  const metered = <A extends unknown[], R>(
+    kind: "read" | "write",
+    handler: (...args: A) => Promise<R>,
+  ) =>
+  async (...args: A): Promise<R | ReturnType<typeof fail>> => {
+    const decision = checkRate?.(kind);
+    if (decision && !decision.allowed) {
+      return fail(
+        `Rate limit reached for ${kind}s on this token. Wait ` +
+          `${decision.retryAfterSeconds}s and try again. This is a budget, not ` +
+          `a refusal of the request itself — nothing was read or written.`,
+      );
+    }
+    return handler(...args);
+  };
 
   // Memoised per server, not per process: under stdio that saves a lookup per
   // call over a long-lived connection, and under HTTP the server is the request
@@ -161,7 +199,7 @@ export function createContentServer(
         "List the author's blog posts (id, title, handle, series, published, updated).",
       inputSchema: {},
     },
-    async () => {
+    metered("read", async () => {
       const authorId = await getAuthorId();
       const docs = await prisma.document.findMany({
         where: { authorId, type: DocumentType.DOCUMENT },
@@ -176,7 +214,7 @@ export function createContentServer(
         orderBy: { updatedAt: "desc" },
       });
       return json(docs);
-    },
+    }),
   );
 
   server.registerTool(
@@ -185,7 +223,7 @@ export function createContentServer(
       description: "List the author's series (id, title, description).",
       inputSchema: {},
     },
-    async () => {
+    metered("read", async () => {
       const authorId = await getAuthorId();
       const series = await prisma.series.findMany({
         where: { authorId },
@@ -193,7 +231,7 @@ export function createContentServer(
         orderBy: { rank: "asc" },
       });
       return json(series);
-    },
+    }),
   );
 
   // -------------------------------------------------------------------------
@@ -211,7 +249,7 @@ export function createContentServer(
         "stateHash that apply_ops requires.",
       inputSchema: { id: z.string().describe("Document id") },
     },
-    async ({ id }) => {
+    metered("read", async ({ id }) => {
       const authorId = await getAuthorId();
       const post = await loadPost(id, authorId);
       if (!post) return fail(`Post ${id} not found (or not yours).`);
@@ -232,7 +270,7 @@ export function createContentServer(
           formatOutline(result)
         }`,
       );
-    },
+    }),
   );
 
   server.registerTool(
@@ -249,7 +287,7 @@ export function createContentServer(
         ),
       },
     },
-    async ({ id, blocks }) => {
+    metered("read", async ({ id, blocks }) => {
       const authorId = await getAuthorId();
       const post = await loadPost(id, authorId);
       if (!post) return fail(`Post ${id} not found (or not yours).`);
@@ -265,7 +303,7 @@ export function createContentServer(
         pendingProposal: post.source === "proposal",
         ...(post.staleProposal ? { staleProposal: sourceNote(post).trim() } : {}),
       });
-    },
+    }),
   );
 
   server.registerTool(
@@ -276,7 +314,7 @@ export function createContentServer(
         "long, use outline then read_blocks.",
       inputSchema: { id: z.string().describe("Document id") },
     },
-    async ({ id }) => {
+    metered("read", async ({ id }) => {
       const authorId = await getAuthorId();
       const post = await loadPost(id, authorId);
       if (!post) return fail(`Post ${id} not found (or not yours).`);
@@ -288,7 +326,7 @@ export function createContentServer(
         ...(post.staleProposal ? { staleProposal: sourceNote(post).trim() } : {}),
         ...readAll(post.state),
       });
-    },
+    }),
   );
 
   server.registerTool(
@@ -303,7 +341,7 @@ export function createContentServer(
         limit: z.number().int().min(1).max(200).default(40),
       },
     },
-    async ({ query, id, limit }) => {
+    metered("read", async ({ query, id, limit }) => {
       const authorId = await getAuthorId();
       const docs = await prisma.document.findMany({
         where: {
@@ -373,7 +411,7 @@ export function createContentServer(
 
       if (hits.length === 0) return text(`No matches for "${query}".`);
       return json({ hits, truncated: hits.length >= limit });
-    },
+    }),
   );
 
   // -------------------------------------------------------------------------
@@ -420,7 +458,7 @@ export function createContentServer(
         ops: z.array(opSchema).min(1),
       },
     },
-    async ({ id, stateHash: expected, ops }) => {
+    metered("write", async ({ id, stateHash: expected, ops }) => {
       const authorId = await getAuthorId();
       // Read, apply and fold all happen in `proposeOps`; `ownedBy` is this
       // server's authorization, exactly as in `loadPost`. What is left here is
@@ -471,7 +509,7 @@ export function createContentServer(
           `it now return the proposed content rather than the live document.\n` +
           `stateHash: ${after.stateHash}\n\n${formatOutline(after)}`,
       );
-    },
+    }),
   );
 
   server.registerTool(
@@ -491,7 +529,7 @@ export function createContentServer(
         seriesId: z.string().optional().describe("Series id to file it under"),
       },
     },
-    async ({ title, blocks, seriesId }) => {
+    metered("write", async ({ title, blocks, seriesId }) => {
       const authorId = await getAuthorId();
       const result = await proposeNewPost({
         authorId,
@@ -517,7 +555,7 @@ export function createContentServer(
           `agent-created and awaiting the author's accept or discard. Nobody ` +
           `else can read it until they publish it.\nstateHash: ${result.stateHash}`,
       );
-    },
+    }),
   );
 
   return server;

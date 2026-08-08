@@ -11,15 +11,45 @@
 // itself, which is what a spec-conformant client wants for the GET a stateful
 // server would use for its notification stream.
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import { tokenRoute } from "@/lib/api-utils";
+import { ApiError, tokenRoute } from "@/lib/api-utils";
 import { isAgentScope } from "@/lib/agentTokens";
 import { createContentServer } from "@/lib/mcp/server";
+import {
+  MAX_BODY_BYTES,
+  readLimiter,
+  requestLimiter,
+  writeLimiter,
+} from "@/lib/mcp/limits";
 
 // Prisma, so not the edge runtime; and nothing here is ever cacheable.
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export const POST = tokenRoute(async (request, { token }) => {
+  // Before anything is parsed or dispatched. Both of these bound what a caller
+  // holding a valid token can cost — authentication already ran, so nobody
+  // reaches here anonymously, and neither is a security boundary (see
+  // `lib/rateLimit.ts`). They exist because a static credential does not expire
+  // when a browser closes, and an agent in a loop is the ordinary failure.
+  const declared = Number(request.headers.get("content-length") ?? 0);
+  if (declared > MAX_BODY_BYTES) {
+    throw new ApiError(
+      413,
+      "Request Too Large",
+      `The body may be at most ${MAX_BODY_BYTES} bytes.`,
+    );
+  }
+
+  const budget = requestLimiter.take(token.id);
+  if (!budget.allowed) {
+    throw new ApiError(
+      429,
+      "Too Many Requests",
+      `Slow down and retry in ${budget.retryAfterSeconds}s.`,
+      { "Retry-After": String(budget.retryAfterSeconds) },
+    );
+  }
+
   // A server per request, bound to this token's owner. Nothing about the author
   // is module state, so two requests carrying two tokens cannot see each
   // other's — the property `src/lib/mcp/__tests__/server.test.ts` pins.
@@ -29,6 +59,12 @@ export const POST = tokenRoute(async (request, { token }) => {
     // dropped rather than trusted: a scope the code does not implement must not
     // widen anything by being present.
     scopes: token.scopes.filter(isAgentScope),
+    // Per tool call rather than per request, and separately for reads and
+    // writes — one HTTP request can carry more than one JSON-RPC message, so
+    // counting requests alone would undercount exactly the caller trying to get
+    // more than their share.
+    checkRate: (kind) =>
+      (kind === "write" ? writeLimiter : readLimiter).take(token.id),
   });
 
   // Stateless: no `sessionIdGenerator`, so nothing is pinned to one instance

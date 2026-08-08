@@ -143,7 +143,9 @@ that is the half that fails silently: an unknown and a revoked token must be
 indistinguishable from outside, expiry is inclusive on the boundary, the stored
 hash never comes back to the caller, and a valid token whose owner is `disabled`
 is refused — the `requireUser` rule a bearer credential is the obvious way to
-miss.
+miss. `src/lib/__tests__/rateLimit.test.ts` covers the token bucket by injecting
+the clock rather than faking timers, which is why `take(key, now)` takes a time
+at all.
 
 All of these follow the same rule as `dragGeometry.ts`: the logic lives in an
 import-free module so it can be exercised without mounting anything. The DOM
@@ -285,7 +287,9 @@ API routes are in `src/app/api/`:
 - `/api/thumbnails/*`: Document thumbnails
 - `/api/health`: Liveness/readiness probe
 - `/api/mcp`: The remote MCP endpoint — the same eight tools as the stdio
-  server, authenticated by an agent token. POST only; stateless
+  server, authenticated by an agent token. POST only; stateless; three
+  token-bucket budgets per token (requests → 429, reads and writes separately →
+  a tool error), and a 1 MiB body cap
 
 Server actions have a 2MB body size limit (configured in `next.config.ts`).
 
