@@ -342,7 +342,22 @@ const markProposalsStale = async (
 /** What a caller must supply to fold one agent batch into the proposal. */
 export interface ProposalInput {
   documentId: string;
+  /** The *revision's* author: whoever the agent authenticated as. */
   authorId: string;
+  /**
+   * The **document's** owner, for the change feed's fan-out — the person
+   * entitled to review this, which is not always the person who wrote it.
+   *
+   * Defaults to `authorId`, which is the right answer on every path that
+   * predates `POST /api/documents/[id]/proposals`: `mcp/content-server.ts`
+   * scopes every read and write to `MCP_AUTHOR_ID`, so writer and owner are the
+   * same user. The HTTP route authorizes with `requireDocument(…, "write")`,
+   * which a *collaborator* satisfies — and announcing that batch to the
+   * collaborator would leave the owner's review rail silent until the next
+   * reconnect catch-up. See {@link upsertProposal}, which is where this
+   * distinction was predicted.
+   */
+  ownerId?: string;
   /** Id for the row if one has to be created. Ignored on a squash. */
   id?: string;
   /** The materialized state after this batch. */
@@ -538,13 +553,14 @@ const writeProposal = async (
  * `refreshProposals()`, which the reconnect sequence already runs (§3.2).
  *
  * `input.authorId` is the *revision's* author — whoever the agent authenticated
- * as. On every path that exists today that is also the document's owner
- * (`mcp/content-server.ts` scopes every read and write to `MCP_AUTHOR_ID`), so
- * it is the right subscriber to fan out to. If a second writer ever proposes
- * against someone else's document, this is the line that has to change: the
- * feed filters on who may *see* the event, which is the document's owner —
- * the same distinction `countPendingProposals` already draws by scoping through
- * `document.authorId`.
+ * as — and `input.ownerId` is the document's, which is what the feed actually
+ * filters on: it announces to whoever may *see* the event, the same distinction
+ * `countPendingProposals` draws by scoping through `document.authorId`. They
+ * coincide on the MCP path (single-user by `MCP_AUTHOR_ID`), and diverge the
+ * moment a collaborator's agent proposes against a document they do not own —
+ * which `POST /api/documents/[id]/proposals` permits, `write` being the mode
+ * that lets a collaborator propose and `own` the one that lets the owner commit.
+ * The fallback keeps every caller that has no second id to give correct.
  */
 const upsertProposal = async (
   input: ProposalInput,
@@ -554,7 +570,7 @@ const upsertProposal = async (
     kind: "proposal.upserted",
     id: record.documentId,
     revisionId: record.id,
-    authorId: input.authorId,
+    authorId: input.ownerId ?? input.authorId,
     origin: input.origin ?? APP_ORIGIN,
   });
   return record;

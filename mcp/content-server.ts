@@ -19,26 +19,24 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { randomUUID } from "node:crypto";
 import { DocumentType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { rankForAppend } from "@/repositories/ordering";
+// The read, the ops and the proposal write are shared with the in-app Copilot's
+// route — one execution of `applyOps` against one authoritative base, rather
+// than two implementations that happen to write the same columns. See
+// docs/plans/ai-surface-consolidation.md §4.4.1. What stays in this file is how
+// the result is *said* to Claude Code: the tool text below is MCP's, not shared.
 import {
-  findPendingProposal,
-  type ProposalRecord,
-  upsertProposal,
-} from "@/repositories/revision";
-import { isProposalStale, selectAgentRead } from "@/lib/proposals";
-import { changeNotification } from "@/lib/changes/notify";
+  type AgentReadState,
+  proposeNewPost,
+  proposeOps,
+  readAgentState,
+} from "@/lib/agentWrites";
 import {
-  applyOps,
-  emptyState,
   formatOutline,
   outline,
   readAll,
   readBlocks,
-  stateFromBlocks,
-  stateHash,
   walkBlocks,
   blockText,
   nodeToBlock,
@@ -96,125 +94,22 @@ const fail = (s: string) => ({
 /** Where a write from this process says it came from (`Revision.origin`). */
 const AGENT_ORIGIN = "claude-code";
 
-interface Loaded {
-  id: string;
-  name: string;
-  state: StoredState;
-  /**
-   * `Document.head` as it was when this state was read — the **base** a
-   * proposal records, not a precondition anything checks here.
-   *
-   * It used to be both: `saveRevision` moved `head` conditionally on it, and a
-   * miss meant an editor tab had saved underneath. Gating removed that write, so
-   * nothing in this process guards anything any more. The value's one job now is
-   * to be stored as `baseRevisionId` when the proposal is *created*, where it
-   * becomes `expectedHead` for approval's compare-and-set (§3.4) — which is why
-   * it is head rather than whatever row `state` was actually read from. Once a
-   * proposal exists those two differ, and a squash ignores this field entirely
-   * (§3.2).
-   */
-  base: string | null;
-  /**
-   * Which state was read: the committed document, or the document's pending
-   * proposal. Every read tool says so, because "the outline you are looking at
-   * is not what the blog is serving" is a fact the agent has to carry into what
-   * it tells the user.
-   */
-  source: "proposal" | "committed" | "empty";
-  /**
-   * True when this post has a pending proposal that was skipped because it went
-   * stale — the author saved after it was written, so it can no longer be
-   * approved (§3.6). What follows is the live document, and the next write
-   * replaces that proposal rather than folding into it.
-   */
-  staleProposal: boolean;
-}
-
 /**
- * Fetch one of the author's posts as an editor state.
+ * Fetch one of *this author's* posts as an editor state.
  *
- * **The pending proposal wins over `head`.** If a batch rewrote block 2, the
- * next `outline` has to show that rewrite, or its addresses describe a document
- * that no longer exists and the fold silently drops the earlier batch (§3.2).
- * `selectAgentRead` makes that choice, and keeps it apart from the `base` a
- * write records.
- *
- * **Unless the proposal has gone stale**, in which case the document wins — see
- * below, and §3.6.
+ * The read itself is `readAgentState` — the pending proposal wins over `head`
+ * unless it has gone stale, and the `base` a write records is kept apart from
+ * the state it read (§3.2, §3.6). What this wrapper adds is the whole of this
+ * process's authorization: `ownedBy` scopes the lookup to `MCP_AUTHOR_ID`, so a
+ * document belonging to anyone else is simply not found. Every read tool below
+ * goes through it, which is what makes that scoping total rather than
+ * remembered.
  */
-async function loadPost(id: string, authorId: string): Promise<Loaded | null> {
-  const doc = await prisma.document.findFirst({
-    where: { id, authorId, type: DocumentType.DOCUMENT },
-    select: { id: true, name: true, head: true },
-  });
-  if (!doc) return null;
+const loadPost = (
+  id: string,
+  authorId: string,
+): Promise<AgentReadState | null> => readAgentState(id, { ownedBy: authorId });
 
-  const pending = await findPendingProposal(doc.id);
-
-  // A *stale* proposal loses to the document (§3.6): the author has saved since
-  // it was written, so its content is built on a base that is no longer head and
-  // approval will refuse it. Reading it anyway would produce a second batch
-  // addressing blocks the author has already moved past, equally unapprovable —
-  // the "ask Claude again against current content" of §3.6 has to start with the
-  // agent reading the current content. `selectAgentRead` makes the same call
-  // from the same function; this one only decides whether the committed state is
-  // worth fetching, since it is the whole document state.
-  const usePending = !!pending && !isProposalStale(pending, doc.head);
-
-  // Only looked up when there is no proposal to read instead. Both arms filter
-  // `proposedAt: null`: the no-head fallback in particular used to be a bare
-  // "newest revision", and under gating the newest revision is usually the
-  // proposal — which would make this branch resolve it by accident, in the one
-  // case where the accident is indistinguishable from the decision until it is
-  // wrong.
-  const committed = usePending
-    ? null
-    : doc.head
-    ? await prisma.revision.findFirst({
-      where: { id: doc.head, proposedAt: null },
-      select: { id: true, data: true },
-    })
-    : await prisma.revision.findFirst({
-      where: { documentId: doc.id, proposedAt: null },
-      orderBy: { createdAt: "desc" },
-      select: { id: true, data: true },
-    });
-
-  const read = selectAgentRead({ head: doc.head, pending, committed });
-
-  // A post with no revision yet is an empty document, not an error — it can be
-  // written to like any other.
-  const data = read.revision?.data;
-  return {
-    id: doc.id,
-    name: doc.name,
-    state: (data as StoredState | undefined) ?? emptyState(),
-    base: read.base,
-    source: read.source,
-    staleProposal: read.staleProposal,
-  };
-}
-
-/**
- * Write the edited state as a **proposal**, leaving `Document.head` alone.
- *
- * This is the whole of the gate (§1): the write and the commit were already two
- * operations, and gating is a matter of not doing the second. The row goes to
- * storage with `proposedAt` set, where the app can show it and nothing that
- * serves the document will reach it; approval moves the pointer, rejection
- * deletes it.
- *
- * Successive batches squash into that one row rather than accumulating — see
- * `upsertProposal`, which does the `version` compare-and-set and re-folds on a
- * miss. `base` is used only if there is no proposal yet: on a squash the
- * original base is carried through untouched, which is the one invariant in this
- * design with no database constraint behind it (§3.2, §9).
- *
- * There is deliberately no guard here. The conditional `head` write this
- * replaced was what detected an editor tab saving underneath; that
- * compare-and-set has moved to approval time, where a human can resolve the
- * conflict (§3.8). The tool text must not claim otherwise.
- */
 /**
  * The one line a read tool adds about which state it is showing.
  *
@@ -223,7 +118,7 @@ async function loadPost(id: string, authorId: string): Promise<Loaded | null> {
  * still pending, when in fact the author has edited underneath it and that work
  * can no longer be approved (§3.6).
  */
-const sourceNote = (post: Loaded): string => {
+const sourceNote = (post: AgentReadState): string => {
   if (post.source === "proposal") {
     return "\n(showing this post's pending proposal, not the live document)";
   }
@@ -236,23 +131,6 @@ const sourceNote = (post: Loaded): string => {
   }
   return "";
 };
-
-async function proposeRevision(
-  documentId: string,
-  authorId: string,
-  state: StoredState,
-  ops: readonly unknown[],
-  base: string | null,
-): Promise<ProposalRecord> {
-  return upsertProposal({
-    documentId,
-    authorId,
-    data: state,
-    ops,
-    origin: AGENT_ORIGIN,
-    base,
-  });
-}
 
 const server = new McpServer({ name: "blog-content", version: "0.2.0" });
 
@@ -515,27 +393,31 @@ server.registerTool(
   },
   async ({ id, stateHash: expected, ops }) => {
     const authorId = await getAuthorId();
-    const post = await loadPost(id, authorId);
-    if (!post) return fail(`Post ${id} not found (or not yours).`);
-
-    let result;
-    try {
-      result = applyOps(post.state, expected, ops as Op[]);
-    } catch (error) {
-      return fail((error as Error).message);
+    // Read, apply and fold all happen in `proposeOps`; `ownedBy` is this
+    // process's authorization, exactly as in `loadPost`. What is left here is
+    // the sentence Claude Code reads back.
+    const result = await proposeOps({
+      documentId: id,
+      authorId,
+      ownedBy: authorId,
+      ops: ops as Op[],
+      stateHash: expected,
+      origin: AGENT_ORIGIN,
+    });
+    if (!result.ok) {
+      // "not-found" keeps this process's own wording, since here it means
+      // "no such post of yours" and not "no such row" — the shared module has
+      // no way to tell the two apart.
+      return fail(
+        result.reason === "not-found"
+          ? `Post ${id} not found (or not yours).`
+          : result.message,
+      );
     }
 
-    const proposal = await proposeRevision(
-      post.id,
-      authorId,
-      result.state,
-      ops,
-      post.base,
-    );
-
+    const { proposal } = result;
     const after = outline(result.state);
-    // `version` counts folds, so 0 means this call created the proposal.
-    const squashed = proposal.version > 0;
+    const squashed = result.outcome === "squashed";
     // The author saved after the earlier proposal was written, so that proposal
     // could never have been approved and this batch started over against the
     // current document (§3.6). Say it plainly: the earlier work is gone, and
@@ -549,8 +431,8 @@ server.registerTool(
       : "";
     return text(
       `Proposed ${result.changed} block change` +
-        `${result.changed === 1 ? "" : "s"} to "${post.name}". Nothing is ` +
-        `live: the document is unchanged, and this is ` +
+        `${result.changed === 1 ? "" : "s"} to "${result.document.name}". ` +
+        `Nothing is live: the document is unchanged, and this is ` +
         (squashed
           ? `folded into the pending proposal ${proposal.id} ` +
             `(batch ${proposal.version + 1})`
@@ -582,72 +464,29 @@ server.registerTool(
   },
   async ({ title, blocks, seriesId }) => {
     const authorId = await getAuthorId();
-    if (seriesId) {
-      const series = await prisma.series.findFirst({
-        where: { id: seriesId, authorId },
-        select: { id: true },
-      });
-      if (!series) return fail(`Series ${seriesId} not found (or not yours).`);
-    }
-
-    let state: StoredState;
-    try {
-      state = stateFromBlocks(blocks as WritableBlock[]);
-    } catch (error) {
-      return fail(`Could not build the document: ${(error as Error).message}`);
-    }
-
-    const id = randomUUID();
-    const revisionId = randomUUID();
-    const rank = await rankForAppend(prisma, {
+    const result = await proposeNewPost({
       authorId,
-      seriesId: seriesId ?? null,
-      parentId: null,
-    });
-    // The one write in this codebase that does not go through a repository, so
-    // it is the one hand-placed notify (docs/plans/changes_detection.md §2.1) —
-    // everything else the MCP server does reaches Postgres through
-    // `src/repositories/*`, which emits on its own. Inside the transaction, so
-    // the browser only hears about a post that actually committed. `null` means
-    // the payload could not be built; the create then goes ahead unannounced
-    // rather than failing, and §3's catch-up picks the post up.
-    const notification = changeNotification({
-      kind: "document.created",
-      id,
-      authorId,
+      title,
+      blocks: blocks as WritableBlock[],
       origin: AGENT_ORIGIN,
+      seriesId,
     });
-    await prisma.$transaction([
-      prisma.document.create({
-        data: {
-          id,
-          name: title,
-          authorId,
-          type: DocumentType.DOCUMENT,
-          rank,
-          seriesId: seriesId ?? null,
-          head: revisionId,
-          // A create has no head to withhold and overwrites nothing, so it
-          // lands — flagged, not gated (§3.7). The flag is what puts it in the
-          // author's accept-or-discard list; `published` already defaults to
-          // false, so "lands normally" is not "goes live".
-          agentCreatedAt: new Date(),
-          agentOrigin: AGENT_ORIGIN,
-        },
-      }),
-      prisma.revision.create({
-        data: { id: revisionId, documentId: id, authorId, data: state as object },
-      }),
-      ...(notification ? [notification] : []),
-    ]);
+    if (!result.ok) {
+      // Two refusals, and they read differently: a series that is not this
+      // author's is already a whole sentence, while a block the codecs would not
+      // build is a fragment that needs saying what it was trying to do.
+      return fail(
+        result.reason === "series-not-found"
+          ? result.message
+          : `Could not build the document: ${result.message}`,
+      );
+    }
 
     return text(
-      `Created post ${id} ("${title}") with ${blocks.length} block` +
-        `${blocks.length === 1 ? "" : "s"} — an unpublished draft, flagged ` +
+      `Created post ${result.id} ("${title}") with ${result.blockCount} block` +
+        `${result.blockCount === 1 ? "" : "s"} — an unpublished draft, flagged ` +
         `agent-created and awaiting the author's accept or discard. Nobody ` +
-        `else can read it until they publish it.\nstateHash: ${
-          stateHash(state)
-        }`,
+        `else can read it until they publish it.\nstateHash: ${result.stateHash}`,
     );
   },
 );

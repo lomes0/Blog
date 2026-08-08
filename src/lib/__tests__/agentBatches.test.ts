@@ -11,11 +11,22 @@
  * state and the earlier batch vanishes; two folds race and the later overwrites
  * the earlier; or the base is refreshed and approval overwrites *your* save with
  * no 409. So the loop is simulated here in full, over an in-memory stand-in for
- * the two tables, composing exactly the functions `mcp/content-server.ts`
- * composes — `selectHead`, `selectAgentRead`, `foldProposal` — rather than
- * asserting on each in isolation. The database half of the same test is a
- * throwaway script run against the real Postgres; what it adds over this is the
- * partial unique index and the `version` compare-and-set actually firing.
+ * the two tables, composing exactly the functions the write path composes —
+ * `selectHead`, `selectAgentRead`, `foldProposal` — rather than asserting on
+ * each in isolation. The database half of the same test is a throwaway script
+ * run against the real Postgres; what it adds over this is the partial unique
+ * index and the `version` compare-and-set actually firing.
+ *
+ * That write path is now `src/lib/agentWrites.ts` — `readAgentState` and
+ * `proposeOps`, shared by `mcp/content-server.ts` and
+ * `POST /api/documents/[id]/proposals` (docs/plans/ai-surface-consolidation.md
+ * §4.4.1). The simulation is deliberately **not** rewired onto it: those
+ * functions reach Postgres through the `@/lib/prisma` singleton, and standing a
+ * fake in for it would mean hand-writing the semantics of `findFirst`,
+ * `updateMany`-with-a-version-guard and `$transaction` — a *less* faithful model
+ * of the two tables than this one, and one that would quietly mock away the fold
+ * and the compare-and-set, which are the subject. What the extraction moved is
+ * where the composition lives, not what it composes.
  */
 import {
   foldProposal,
@@ -122,7 +133,7 @@ class Store {
 
 // ─── The two halves of one `apply_ops` call ──────────────────────────────────
 
-/** `loadPost`: resolve the state the agent addresses, and the base for a write. */
+/** `readAgentState`: the state the agent addresses, and the base for a write. */
 const read = (store: Store) => {
   const rows = store.all();
   const selection = selectHead(rows, store.head);
