@@ -22,7 +22,9 @@ import { fileURLToPath } from "url";
 // ─── Configuration ────────────────────────────────────────────────────────────
 
 const ROOT = resolve(fileURLToPath(new URL(".", import.meta.url)), "..");
-const PATTERNS = ["src/**/*.{ts,tsx}"];
+// See the note in check-theme.mjs: `packages/**` is covered ahead of the editor
+// extraction so the glob does not go blind when the files move.
+const PATTERNS = ["src/**/*.{ts,tsx}", "packages/**/*.{ts,tsx}"];
 
 /** Hook names whose first argument is a function whose body executes during render. */
 const EAGER_HOOKS = new Set([

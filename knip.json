@@ -5,9 +5,13 @@
     "prisma/**/*.ts",
     "scripts/**/*.mjs"
   ],
+  // `packages/**` is listed ahead of the editor extraction
+  // (docs/plans/haklex-adoption.md §4.3). Without it, every `@/editor` import
+  // becomes an unresolved reference the moment the files move.
   "project": [
     "src/**/*.{ts,tsx}",
-    "mcp/**/*.ts"
+    "mcp/**/*.ts",
+    "packages/**/*.{ts,tsx}"
   ],
   // All five are `require`d by the vendored `next-pwa/` in the repo root, which
   // is outside `project` and so invisible to knip's resolver: `index.js` pulls

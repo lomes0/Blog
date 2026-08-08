@@ -151,8 +151,18 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   distDir: process.env.BUILD_DIR || ".next",
   // Skip ESLint during build - run separately with `npm run lint`
+  //
+  // `dirs` is what `npm run lint` (`next lint`) actually walks. Its default is
+  // app/pages/components/lib/src, of which only `src` exists here — so
+  // `packages/` would be linted by nothing at all. Named explicitly ahead of
+  // the editor extraction (docs/plans/haklex-adoption.md §4.3).
+  //
+  // `mcp/` and `scripts/` are deliberately *not* listed. Neither has ever been
+  // linted, and `mcp/smoke.ts` is a CLI that legitimately prints (26 pre-existing
+  // `no-console` errors). Bringing them in is a separate decision from this one.
   eslint: {
     ignoreDuringBuilds: true,
+    dirs: ["src", "packages"],
   },
   // Skip TypeScript errors during build for faster builds (optional)
   // typescript: {

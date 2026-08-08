@@ -150,7 +150,11 @@ export default [
     // Scoped away from `src/app/api/**` only because a second
     // `no-restricted-syntax` block over the same files would replace the route
     // rules above rather than add to them — API routes have no UI colors.
-    files: ["src/**/*.{ts,tsx}"],
+    // `packages/**` is covered ahead of the editor extraction
+    // (docs/plans/haklex-adoption.md §4.3) — 32 of the editor's files use MUI,
+    // so a src-rooted glob would stop guarding them the moment they move. The
+    // api-route blocks above stay src-rooted: no route moves.
+    files: ["src/**/*.{ts,tsx}", "packages/**/*.{ts,tsx}"],
     ignores: ["src/app/api/**"],
     rules: {
       "no-restricted-syntax": ["error", {

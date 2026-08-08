@@ -2,6 +2,9 @@
   "name": "blog-simple",
   "private": true,
   "version": "0.7.0",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "postinstall": "patch-package",
     "dev": "next dev",

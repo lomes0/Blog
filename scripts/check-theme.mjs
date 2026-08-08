@@ -40,7 +40,10 @@ import { fileURLToPath } from "url";
 // ─── Configuration ────────────────────────────────────────────────────────────
 
 const ROOT = resolve(fileURLToPath(new URL(".", import.meta.url)), "..");
-const PATTERNS = ["src/**/*.css"];
+// `packages/**` is listed alongside `src/**` ahead of the editor extraction
+// (docs/plans/haklex-adoption.md §4.3): the moment `src/editor/theme.css` moves
+// to a workspace package, a src-rooted glob goes green by checking nothing.
+const PATTERNS = ["src/**/*.css", "packages/**/*.css"];
 
 /**
  * Each rule reports on the comment-stripped source, so this file's own prose
