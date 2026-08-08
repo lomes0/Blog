@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import type { Session } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import {
+  type AgentTokenSummary,
+  touchAgentToken,
+  verifyAgentToken,
+} from "@/lib/agentTokens";
 import type { z } from "zod";
 
 /**
@@ -15,19 +20,30 @@ export class ApiError extends Error {
   public readonly status: number;
   public readonly title: string;
   public readonly subtitle?: string;
+  /**
+   * Extra response headers. Exists for `WWW-Authenticate`, which RFC 7235 says
+   * a 401 should carry and which a client cannot infer from the body.
+   */
+  public readonly headers?: Record<string, string>;
 
-  constructor(status: number, title: string, subtitle?: string) {
+  constructor(
+    status: number,
+    title: string,
+    subtitle?: string,
+    headers?: Record<string, string>,
+  ) {
     super(subtitle ? `${title}: ${subtitle}` : title);
     this.name = "ApiError";
     this.status = status;
     this.title = title;
     this.subtitle = subtitle;
+    this.headers = headers;
   }
 
   toResponse(): NextResponse {
     return NextResponse.json(
       { error: { title: this.title, subtitle: this.subtitle } },
-      { status: this.status },
+      { status: this.status, headers: this.headers },
     );
   }
 }
@@ -78,6 +94,55 @@ async function optionalUser(): Promise<SessionUser | null> {
     );
   }
   return session.user;
+}
+
+// ─── Agent token helpers ─────────────────────────────────────────────────────
+
+/**
+ * The bearer credential on this request — or a thrown `ApiError`.
+ *
+ * Module-private for the same reason as `requireUser`: reach it through
+ * `tokenRoute`, so the auth requirement is stated where the handler is exported.
+ *
+ * **Every refusal answers the same 401.** `verifyAgentToken` distinguishes
+ * malformed from unknown from revoked from expired, and that distinction is for
+ * the server's log; returning it would tell anyone who asks that a given secret
+ * used to be a real token. The exception is `disabled`, which is a 403 matching
+ * `requireUser` — reaching it already required a valid credential, so it
+ * discloses nothing the caller did not have.
+ */
+async function requireAgentToken(request: Request): Promise<AgentTokenSummary> {
+  const [scheme, presented] = (request.headers.get("authorization") ?? "")
+    .split(" ");
+  const result = await verifyAgentToken(
+    /^Bearer$/i.test(scheme ?? "") ? presented ?? "" : "",
+  );
+
+  if (result.ok) {
+    // Throttled to once a minute inside, so this is usually no query at all.
+    await touchAgentToken(result.token);
+    return result.token;
+  }
+
+  if (result.reason === "disabled") {
+    throw new ApiError(
+      403,
+      "Account Disabled",
+      "Account is disabled for violating terms of service",
+    );
+  }
+  // Logged, never sent. `malformed` is noise (any stray header reaches it), so
+  // it is not worth a line; the other three describe a credential that was
+  // real, which is worth knowing about.
+  if (result.reason !== "malformed") {
+    console.error(`Agent token refused: ${result.reason}`);
+  }
+  throw new ApiError(
+    401,
+    "Unauthorized",
+    "A valid agent token is required",
+    { "WWW-Authenticate": "Bearer" },
+  );
 }
 
 /**
@@ -208,7 +273,7 @@ function logAndWrap(error: unknown, errorLabel?: string): NextResponse {
   );
 }
 
-type AuthMode = "public" | "user" | "optional";
+type AuthMode = "public" | "user" | "optional" | "token";
 
 /**
  * Shared body of the three wrappers below.
@@ -230,12 +295,16 @@ function route<P, Ctx>(
     try {
       const params = ((await props?.params) ?? {}) as P;
       const context = (
-        mode === "public" ? { params } : {
-          params,
-          user: mode === "user"
-            ? await requireUser(options?.signInMessage)
-            : await optionalUser(),
-        }
+        mode === "public"
+          ? { params }
+          : mode === "token"
+          ? { params, token: await requireAgentToken(request) }
+          : {
+            params,
+            user: mode === "user"
+              ? await requireUser(options?.signInMessage)
+              : await optionalUser(),
+          }
       ) as Ctx;
       return await handler(request, context);
     } catch (error) {
@@ -282,3 +351,28 @@ export const optionalUserRoute = <P = Params>(
   handler: Handler<{ params: P; user: SessionUser | null }>,
   options?: RouteOptions,
 ): NextRouteHandler<P> => route("optional", handler, options);
+
+/**
+ * A route authenticated by an agent token rather than a session cookie —
+ * `Authorization: Bearer blog_pat_…`. 401 on any bad credential, 403 when the
+ * owning account is disabled.
+ *
+ * A fourth wrapper rather than a `publicRoute` with a check inside it, because
+ * the value of this scheme is that `grep -rn "publicRoute" src/app/api` is the
+ * *complete* list of unauthenticated surfaces. An authenticated route listed
+ * among them would destroy the one thing the naming buys. It is not
+ * `userRoute` either: there is no session to resolve.
+ *
+ * `context.token` carries `userId` and `scopes`; there is deliberately no
+ * `context.user`. The one user-level rule — a disabled account — is applied
+ * during verification, and fetching the whole `User` row to satisfy a type
+ * would be a query per request for something no handler reads. A handler that
+ * needs more can fetch it from `token.userId`.
+ *
+ * @example
+ * export const POST = tokenRoute(async (request, { token }) => …);
+ */
+export const tokenRoute = <P = Params>(
+  handler: Handler<{ params: P; token: AgentTokenSummary }>,
+  options?: RouteOptions,
+): NextRouteHandler<P> => route("token", handler, options);

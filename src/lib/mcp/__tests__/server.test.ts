@@ -43,8 +43,11 @@ vi.mock("@/lib/agentWrites", () => ({
 const { createContentServer } = await import("../server");
 
 /** A client wired straight to a server built for `authorId`. */
-async function connect(resolveAuthorId: () => Promise<string>) {
-  const server = createContentServer({ resolveAuthorId });
+async function connect(
+  resolveAuthorId: () => Promise<string>,
+  scopes?: readonly ("read" | "propose")[],
+) {
+  const server = createContentServer({ resolveAuthorId, scopes });
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: "test", version: "0" });
   await Promise.all([client.connect(clientSide), server.connect(serverSide)]);
@@ -123,6 +126,33 @@ describe("createContentServer", () => {
       ownedBy: "author-a",
       documentId: "doc-1",
     });
+  });
+
+  it("hides the write tools from a read-only server", async () => {
+    const client = await connect(async () => "author-a", ["read"]);
+    const names = (await client.listTools()).tools.map((tool) => tool.name);
+
+    expect(names).not.toContain("apply_ops");
+    expect(names).not.toContain("create_post");
+    // The reads are all still there — a read-only token is not a crippled one.
+    expect(names).toContain("outline");
+    expect(names).toContain("search");
+  });
+
+  it("writes nothing when a read-only server is asked to", async () => {
+    // The refusal that matters is not the error message, it is that no proposal
+    // was written. A tool the server never registered cannot reach proposeOps
+    // at all, which is the point of gating at registration.
+    const client = await connect(async () => "author-a", ["read"]);
+
+    const result = await client.callTool({
+      name: "apply_ops",
+      arguments: { id: "doc-1", stateHash: "h_0", ops: [] },
+    });
+
+    expect(result.isError).toBe(true);
+    expect(JSON.stringify(result.content)).toMatch(/not found/i);
+    expect(proposeOps).not.toHaveBeenCalled();
   });
 
   it("resolves the author lazily, and at most once", async () => {

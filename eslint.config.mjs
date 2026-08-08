@@ -51,12 +51,13 @@ export default [
   },
   {
     // Route handlers must declare their auth requirement by naming one of the
-    // wrappers in `@/lib/api-utils` — `publicRoute`, `userRoute` or
-    // `optionalUserRoute`. That is the whole point of there being three of them:
-    // the unauthenticated surface of the app is `grep -rn "publicRoute"`, and a
-    // handler that checks nothing cannot be mistaken for one that is meant to be
-    // public. Resolving the session by hand reopens that gap, so the imports
-    // needed to do it are unavailable here.
+    // wrappers in `@/lib/api-utils` — `publicRoute`, `userRoute`,
+    // `optionalUserRoute` or `tokenRoute`. That is the whole point of there
+    // being four of them: the unauthenticated surface of the app is
+    // `grep -rn "publicRoute"`, and a handler that checks nothing cannot be
+    // mistaken for one that is meant to be public. Resolving the session by
+    // hand reopens that gap, so the imports needed to do it are unavailable
+    // here.
     //
     // NextAuth's own catch-all route is exempt: it *is* the auth handler.
     files: ["src/app/api/**/*.{ts,tsx}"],
@@ -68,7 +69,7 @@ export default [
             name: "next-auth",
             importNames: ["getServerSession"],
             message:
-              "Wrap the handler in publicRoute / userRoute / optionalUserRoute from @/lib/api-utils, which resolves the session and hands you `context.user`.",
+              "Wrap the handler in publicRoute / userRoute / optionalUserRoute / tokenRoute from @/lib/api-utils, which resolves the caller and hands you `context.user` (or `context.token`).",
           },
           {
             name: "@/lib/auth",
@@ -96,12 +97,12 @@ export default [
         selector:
           "ExportNamedDeclaration > FunctionDeclaration[id.name=/^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)$/]",
         message:
-          "Export the handler as `export const GET = userRoute(...)` (or publicRoute / optionalUserRoute) from @/lib/api-utils, so its auth requirement is stated in the source.",
+          "Export the handler as `export const GET = userRoute(...)` (or publicRoute / optionalUserRoute / tokenRoute) from @/lib/api-utils, so its auth requirement is stated in the source.",
       }, {
         selector:
           "ExportNamedDeclaration > VariableDeclaration > VariableDeclarator[id.name=/^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)$/] > :matches(ArrowFunctionExpression, FunctionExpression)",
         message:
-          "Wrap the handler in publicRoute / userRoute / optionalUserRoute from @/lib/api-utils instead of exporting a bare function, so its auth requirement is stated in the source.",
+          "Wrap the handler in publicRoute / userRoute / optionalUserRoute / tokenRoute from @/lib/api-utils instead of exporting a bare function, so its auth requirement is stated in the source.",
       }, {
         // `(await request.json()) as SomeType` is a cast, not a check: the type
         // says what a well-behaved client sends while the handler goes on to use

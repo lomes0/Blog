@@ -1,6 +1,8 @@
 # Remote MCP support
 
-**Status: phases 1–2 shipped (8 Aug 2026); phases 3–6 proposed.** Originally
+**Status: phases 1–3 shipped (8 Aug 2026); phases 4–6 proposed — and phase 4,
+rate limiting, is the one that must land before this endpoint is exposed to the
+internet.** Originally
 measured against the tree at `b01e91a5`. Builds on the
 content bridge ([claude-code-lexical.md](./claude-code-lexical.md), phases 1–5
 shipped) and the proposal gating ([agent-gating.md](./agent-gating.md), phases
@@ -280,7 +282,7 @@ plus the five refusal paths (unknown user, unknown scope, missing `--name`,
 malformed `--expires`, no command). The test row was deleted afterwards;
 `AgentToken` is back to 0 rows.
 
-### Phase 3 — `tokenRoute` and the endpoint
+### Phase 3 — `tokenRoute` and the endpoint — **SHIPPED (8 Aug 2026)**
 
 `tokenRoute` in `api-utils.ts` per §4.2, the three ESLint messages, and:
 
@@ -312,6 +314,63 @@ eight tools uses either. Record that trade here so a future session does not
 
 `GET` and `DELETE` on the same path should 405 rather than 404, so a
 spec-conformant client gets a legible answer.
+
+#### Shipped 8 Aug 2026 — how it differs from the sketch above
+
+**Same origin** (§8.2 decided): `/api/mcp` on the blog's own host, sharing its
+TLS and deployment. The cost is that the endpoint cannot be taken down
+independently of the blog; if that becomes a requirement it is a reverse-proxy
+rule, not a rewrite.
+
+- **No `context.user`.** The sketch destructured `{ user, token }`.
+  `verifyAgentToken` already applies the one user-level rule that matters — a
+  disabled account — so fetching the whole `User` row to satisfy a type would be
+  a query per request for something no handler reads. `token.userId` is what the
+  server is built from.
+- **Scopes gate at registration, not per call.** A server without `propose`
+  never registers `apply_ops` or `create_post`, so a read-only agent does not
+  see them in `tools/list` and plans around the limit instead of discovering it
+  through a refusal — and there is no per-tool check anyone can forget. Unknown
+  entries in the token's `scopes` (a free-form `text[]`) are filtered out rather
+  than trusted.
+- **`enableJsonResponse: true`.** All eight tools are request/response, so there
+  is no server-initiated notification to hold a stream open for — and a complete
+  `Response` is what lets the transport be closed as soon as it is built.
+  Without that close, every call leaks a transport for the life of the
+  container.
+- **`GET`/`DELETE` are simply not exported.** Next answers an unimplemented
+  method with 405 by itself, so the explicit handlers the sketch wanted are
+  unnecessary.
+- **`ApiError` grew an optional `headers`,** so the 401 can carry
+  `WWW-Authenticate: Bearer` as RFC 7235 asks.
+
+Two specs, because this is the auth surface CLAUDE.md warns has no automated
+coverage: `src/lib/__tests__/tokenRoute.test.ts` (7) pins that missing,
+malformed, unknown, revoked and expired all produce **one byte-identical 401**
+with `WWW-Authenticate`, that `disabled` is a distinguishable 403, and that the
+handler never runs without a token. `src/lib/mcp/__tests__/server.test.ts` gained
+two more: a read-only server hides the write tools, and asking it to write
+reaches `proposeOps` not at all.
+
+**§7 verified end to end** against `npm run dev` and the live database, then
+cleaned up (post deleted, all three tokens deleted, `AgentToken` back to 0 rows,
+the temporarily-disabled test account restored):
+
+| Check | Result |
+| --- | --- |
+| No header | 401 + `WWW-Authenticate: Bearer` |
+| Unknown token | 401, byte-identical to the above |
+| Revoked token | 401, byte-identical to the above |
+| Disabled owner | 403 `Account Disabled` |
+| Read-only token | `tools/list` returns 6, not 8 |
+| Read-only calling `apply_ops` | `Tool apply_ops not found`, nothing written |
+| **Two tokens, one server** | owner sees 206 posts, second author sees **0** |
+| Second author naming a post by id | "not found (or not yours)" |
+| Write path | `create_post` → `outline` → `apply_ops` proposes; `head` still points at a committed revision, 1 pending proposal |
+
+The cross-author check is the one §7 said was easiest to skip and hardest to
+trust from a single-author database. It ran against the same live server with
+two tokens, which is the only form of it worth having.
 
 ### Phase 4 — Rate limiting
 
@@ -398,9 +457,11 @@ author before trusting the check.
    credential per machine or job, each independently revocable — the alternative
    makes revoking the laptop's token also kill CI, which in practice means never
    revoking. `name` is what distinguishes them and is not unique (see phase 2).
-2. **Same origin or a subdomain?** `/api/mcp` on the blog's own origin is
-   simplest and shares TLS. A subdomain would let the endpoint be firewalled or
-   taken down independently of the blog. Cheap to decide now, expensive later.
+2. ~~**Same origin or a subdomain?**~~ **Decided 8 Aug 2026: same origin**,
+   `/api/mcp`. It shares the app's TLS and deployment and gives one URL to point
+   a client at. Accepted cost: the endpoint cannot be firewalled or taken down
+   without taking the blog with it — recoverable later with a reverse-proxy rule
+   rather than a rewrite.
 3. **Rate limit numbers.** Needs a real one. A personal agent doing a read-heavy
    editing session is maybe tens of reads and a handful of writes a minute; pick
    from an actual session's transcript rather than from taste.

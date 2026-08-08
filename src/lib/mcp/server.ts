@@ -49,11 +49,24 @@ import {
 // docs/plans/ai-surface-consolidation.md §4.1. Not from the barrel: it is the
 // one part of the bridge the browser has no use for.
 import { BLOCK_DOC, blockSchema, opSchema } from "@/lib/content-bridge/schema";
+import { AGENT_SCOPES, type AgentScope } from "@/lib/agentTokens";
 
 /** Where a write from this server says it came from (`Revision.origin`). */
 const AGENT_ORIGIN = "claude-code";
 
 export interface ContentServerOptions {
+  /**
+   * What this server may do. Defaults to everything, which is what the stdio
+   * process gets — its credential is the operating system.
+   *
+   * Enforced by **not registering** the write tools when `propose` is absent,
+   * rather than by a check inside each one. Two reasons, and the second is the
+   * one that matters: a caller cannot forget to check something that was never
+   * declared, and an agent holding a read-only token does not see `apply_ops`
+   * in `tools/list` at all, so it plans around the limit instead of discovering
+   * it through a refusal.
+   */
+  scopes?: readonly AgentScope[];
   /**
    * Who this server is for. **This is the entire authorization model**, and
    * putting it here rather than in each tool is the point of the factory:
@@ -107,9 +120,10 @@ const sourceNote = (post: AgentReadState): string => {
  * request without knowing which they are in.
  */
 export function createContentServer(
-  { resolveAuthorId }: ContentServerOptions,
+  { resolveAuthorId, scopes = AGENT_SCOPES }: ContentServerOptions,
 ): McpServer {
   const server = new McpServer({ name: "blog-content", version: "0.2.0" });
+  const mayPropose = scopes.includes("propose");
 
   // Memoised per server, not per process: under stdio that saves a lookup per
   // call over a long-lived connection, and under HTTP the server is the request
@@ -364,7 +378,14 @@ export function createContentServer(
 
   // -------------------------------------------------------------------------
   // Writing
+  //
+  // Everything below needs the `propose` scope. Returning early rather than
+  // nesting is deliberate: it makes "a read-only server is the one without
+  // these two tools" a fact about the file's shape, and leaves no branch where
+  // a write tool could later be added outside the guard.
   // -------------------------------------------------------------------------
+
+  if (!mayPropose) return server;
 
   server.registerTool(
     "apply_ops",

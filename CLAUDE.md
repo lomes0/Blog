@@ -284,15 +284,17 @@ API routes are in `src/app/api/`:
 - `/api/og`: Open Graph image generation
 - `/api/thumbnails/*`: Document thumbnails
 - `/api/health`: Liveness/readiness probe
+- `/api/mcp`: The remote MCP endpoint — the same eight tools as the stdio
+  server, authenticated by an agent token. POST only; stateless
 
 Server actions have a 2MB body size limit (configured in `next.config.ts`).
 
 #### Route conventions
 
-Every handler is wrapped in one of three route wrappers from
+Every handler is wrapped in one of four route wrappers from
 `src/lib/api-utils.ts`. The wrapper both handles errors — a thrown `ApiError`
 becomes a `{ error: { title, subtitle } }` response, anything else a 500 — and
-resolves the session, so `context.user` is only in scope if the route asked for
+resolves the caller, so `context.user` is only in scope if the route asked for
 it:
 
 - `userRoute` — requires a signed-in, non-disabled user; `context.user` is a
@@ -302,6 +304,13 @@ it:
 - `publicRoute` — no auth. **`grep -rn "publicRoute" src/app/api` is the
   complete list of unauthenticated surfaces**, which is the reason this is a
   separate name rather than the absence of a call.
+- `tokenRoute` — an `Authorization: Bearer blog_pat_…` agent token instead of a
+  session; `context.token` carries `userId` and `scopes`, and there is no
+  `context.user` (the disabled-account rule is applied during verification, and
+  fetching the row would be a query per request for something no handler reads).
+  Every bad credential gets the same 401 with `WWW-Authenticate: Bearer` —
+  unknown, revoked and expired must stay indistinguishable, or the endpoint
+  confirms which secrets were once real. Only `/api/mcp` uses it.
 
 `context.params` is already awaited. Pass the shape as the type argument:
 `userRoute<{ id: string }>(async (request, { params, user }) => …)`. Options go
