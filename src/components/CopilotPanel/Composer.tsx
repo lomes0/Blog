@@ -50,9 +50,17 @@ const C = {
   controlGap: 0.75, // 6px
   toolButton: 32,
   toolRadius: "9px",
-  /** 2px larger than the tool buttons, so it reads as the primary action. */
-  sendButton: 34,
-  sendRadius: "10px",
+  /**
+   * Send and stop, sized *with* the tool buttons rather than 2px over them.
+   *
+   * The handoff drew send larger to mark it as the primary action; by request
+   * it now shares the toolbar's box, and its fill and lift are what set it
+   * apart. Kept as their own names because that is the reason they are equal —
+   * so changing the tool buttons alone stays a decision rather than an
+   * accident.
+   */
+  sendButton: 32,
+  sendRadius: "9px",
   menuWidth: 268,
   menuRadius: "13px",
   /** ~7 rows at 16px/1.55, the handoff's 180px cap. */

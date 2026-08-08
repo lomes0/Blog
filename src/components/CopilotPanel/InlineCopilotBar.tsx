@@ -46,7 +46,7 @@ const MAX_H = "50vh";
  *
  * "Floats over content" is about the *middle* of a document passing beneath it;
  * the end still has to be reachable. Sized for the bar at rest — 6px of surface
- * padding either side of the 34px control row, the 1px border, and the
+ * padding either side of the 32px control row, the 1px border, and the
  * wrapper's 16px bottom padding, rounded up for slack.
  *
  * Deliberately *not* sized for the focused bar, which is ~68px taller: that
