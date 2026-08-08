@@ -62,8 +62,25 @@ export function stateFromBlocks(blocks: readonly WritableBlock[]): StoredState {
   return state;
 }
 
+/**
+ * Machine-recognizable reasons a batch was refused.
+ *
+ * Deliberately not "one per error": a code exists only where the *recovery*
+ * differs from "the request was wrong, fix it and send a different one". Today
+ * that is exactly one case. A bad address is recoverable the same way a stale
+ * state is — re-read, re-address, retry — and without a code it arrives at the
+ * caller as an undifferentiated `reason: "invalid"`, whose stated contract is
+ * that retrying will not help. That contract is right for a malformed op and
+ * wrong for this one, which is the whole reason the code is here.
+ */
+export type OpErrorCode = "block_not_found";
+
 export class OpError extends Error {
-  constructor(message: string, readonly opIndex: number) {
+  constructor(
+    message: string,
+    readonly opIndex: number,
+    readonly code?: OpErrorCode,
+  ) {
     super(`op ${opIndex + 1}: ${message}`);
     this.name = "OpError";
   }
@@ -130,8 +147,20 @@ function requireTarget(
   opIndex: number,
 ): Target {
   const target = targets.get(id);
-  if (!target) throw new OpError(`no block at "${id}"`, opIndex);
+  if (!target) {
+    // The recovery travels with the message, because on both surfaces this
+    // string is what the model reads back verbatim.
+    throw new OpError(
+      `no block at "${id}" — the address may come from an outdated read; ` +
+        `re-run outline or search and retry with a current address`,
+      opIndex,
+      "block_not_found",
+    );
+  }
   if (positionOf(target) === -1) {
+    // No code, on purpose. This one is not an outdated read: the batch itself
+    // deleted the block and then named it again, so re-reading changes nothing
+    // and only rewriting the batch does.
     throw new OpError(
       `block "${id}" was removed earlier in this batch`,
       opIndex,

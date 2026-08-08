@@ -101,6 +101,12 @@ export const COPILOT_AGENT_SYSTEM_PROMPT = (
   `what it just proposed. If a write is refused as stale, the state moved ` +
   `underneath you: read the outline again and redo the edit against the new ` +
   `addresses.\n` +
+  `A refusal refuses the whole batch — nothing was written, so never report a ` +
+  `refused edit as made, and never retry the same batch unchanged. A ` +
+  `block_not_found means that address no longer resolves: re-run the outline ` +
+  `and retry with a current one, rather than guessing a nearby address. A ` +
+  `refusal from a codec means the op was the wrong kind of edit for a real ` +
+  `block — fix the op, do not re-send it.\n` +
   `Some blocks cannot be rewritten, and the outline says so. [read-only] means ` +
   `no codec exists (a graph, a sketch, an image) — you may move or delete it ` +
   `by address, never rewrite it. [replace only] means the block has no single ` +

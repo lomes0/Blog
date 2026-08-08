@@ -59,6 +59,8 @@ import {
   type ApplyResult,
   emptyState,
   type Op,
+  OpError,
+  type OpErrorCode,
   StaleStateError,
   stateFromBlocks,
   stateHash,
@@ -210,11 +212,17 @@ export interface ProposeOpsInput {
  * callers have to tell them apart: a missing document is a 404, a moved state is
  * a 409 the agent recovers from by re-reading, and a malformed op is a 400 that
  * retrying will not fix.
+ *
+ * `code` is the exception inside that last one. `"block_not_found"` is an
+ * `invalid` by status and a `stale` by recovery — the ops were well-formed and
+ * the address was simply out of date — so it carries a name the surfaces can
+ * put in front of the message, rather than being told apart by matching prose.
+ * Absent means the plain reading holds: retrying unchanged fails identically.
  */
 export type AgentWriteRefusal =
   | { ok: false; reason: "not-found"; message: string }
   | { ok: false; reason: "stale"; message: string }
-  | { ok: false; reason: "invalid"; message: string };
+  | { ok: false; reason: "invalid"; message: string; code?: OpErrorCode };
 
 export interface ProposeOpsSuccess {
   ok: true;
@@ -281,11 +289,20 @@ export async function proposeOps(
   } catch (error) {
     const message = (error as Error).message;
     // `StaleStateError` is the recoverable one and says so in its own message;
-    // everything else out of `applyOps` (an `OpError` naming a block that is not
-    // there, an empty batch) describes a request that was wrong when it was
-    // made.
-    return error instanceof StaleStateError
-      ? { ok: false, reason: "stale", message }
+    // everything else out of `applyOps` (a malformed block, an empty batch)
+    // describes a request that was wrong when it was made.
+    //
+    // With one exception, which is why `code` is carried through: an op naming
+    // a block that is not there is a 400 by status and a re-read by recovery.
+    // Lumping it in unlabelled told the agent the opposite of what to do.
+    if (error instanceof StaleStateError) {
+      return { ok: false, reason: "stale", message };
+    }
+    const code: OpErrorCode | undefined = error instanceof OpError
+      ? error.code
+      : undefined;
+    return code
+      ? { ok: false, reason: "invalid", message, code }
       : { ok: false, reason: "invalid", message };
   }
 

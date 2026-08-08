@@ -13,7 +13,12 @@ import {
 // codecs that enforce it, and shared with `mcp/content-server.ts` so the two
 // agents cannot be told different things about the same document. See
 // docs/plans/ai-surface-consolidation.md §4.1.
-import { BLOCK_DOC, blockSchema, opSchema } from "@/lib/content-bridge/schema";
+import {
+  BLOCK_DOC,
+  blockSchema,
+  opSchema,
+  RECOVERY_DOC,
+} from "@/lib/content-bridge/schema";
 
 // Node runtime (not edge): auth uses the Prisma adapter, which cannot run on edge.
 
@@ -125,7 +130,9 @@ const documentWriteTools = {
       "Ops: set_text{id,text}, replace_block{id,block}, " +
       "insert_blocks{blocks,after|before|appendTo}, delete_block{id}, " +
       "move_block{id,after|before|appendTo}. " +
-      BLOCK_DOC,
+      BLOCK_DOC +
+      " " +
+      RECOVERY_DOC,
     inputSchema: z.object({
       id: docRef,
       stateHash: z

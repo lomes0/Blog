@@ -7,7 +7,7 @@
  * "re-serialized equivalently", identical. If that holds, the IR never needs to
  * grow a codec for those types on correctness grounds.
  */
-import { applyOps, type Op } from "@/lib/content-bridge/ops";
+import { applyOps, OpError, type Op } from "@/lib/content-bridge/ops";
 import { stateHash } from "@/lib/content-bridge/stateHash";
 import { nodeToBlock } from "@/lib/content-bridge/blocks";
 import { outline } from "@/lib/content-bridge/outline";
@@ -150,6 +150,53 @@ describe("applyOps — snapshot addressing", () => {
         { op: "set_text", id: "b2", text: "gone" },
       ])
     ).toThrow(/removed earlier in this batch/);
+  });
+});
+
+/**
+ * A refusal an agent cannot classify is a refusal it retries verbatim.
+ *
+ * A bad address is a 400 by status and a re-read by recovery, and everything
+ * downstream used to call it `reason: "invalid"` — whose whole contract is
+ * "retrying will not fix this". `code` is what lets the surfaces say which is
+ * which without matching on prose, so these two assertions are the seam.
+ */
+describe("applyOps — recoverable refusals", () => {
+  const thrownBy = (ops: Op[]): OpError => {
+    try {
+      apply(makeState(), ops);
+    } catch (error) {
+      return error as OpError;
+    }
+    throw new Error("expected the batch to be refused");
+  };
+
+  it("codes an address that does not resolve, and says how to recover", () => {
+    const error = thrownBy([{ op: "set_text", id: "b99", text: "nowhere" }]);
+    expect(error).toBeInstanceOf(OpError);
+    expect(error.code).toBe("block_not_found");
+    // The message travels verbatim to the model on both surfaces, so the
+    // instruction has to be in it and not only in the tool description.
+    expect(error.message).toMatch(/re-run outline or search/);
+  });
+
+  it("leaves a block deleted by this same batch uncoded", () => {
+    // Re-reading cannot help here: the batch itself removed the block, so the
+    // only fix is a different batch. Giving it the code would send the agent
+    // round a loop that re-reads and fails identically.
+    const error = thrownBy([
+      { op: "delete_block", id: "b2" },
+      { op: "set_text", id: "b2", text: "gone" },
+    ]);
+    expect(error).toBeInstanceOf(OpError);
+    expect(error.code).toBeUndefined();
+  });
+
+  it("leaves a codec refusal uncoded", () => {
+    // b3 is the kanban: a real block, but the wrong kind of edit. Also not an
+    // outdated address.
+    const error = thrownBy([{ op: "set_text", id: "b3", text: "flatten me" }]);
+    expect(error.code).toBeUndefined();
   });
 });
 

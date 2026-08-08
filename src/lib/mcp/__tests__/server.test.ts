@@ -133,6 +133,57 @@ describe("createContentServer", () => {
     });
   });
 
+  it("names a recoverable refusal in front of its message", async () => {
+    // `block_not_found` is an `invalid` by status and a re-read by recovery.
+    // The tool description tells the model what to do about that exact word,
+    // so the word has to actually reach it — an unlabelled message reads as
+    // the ordinary "you got it wrong, do not retry".
+    proposeOps.mockResolvedValue({
+      ok: false,
+      reason: "invalid",
+      code: "block_not_found",
+      message: 'op 1: no block at "b99" — the address may come from an ' +
+        "outdated read; re-run outline or search and retry with a current " +
+        "address",
+    });
+    const client = await connect(async () => "author-a");
+
+    const result = await client.callTool({
+      name: "apply_ops",
+      arguments: {
+        id: "doc-1",
+        stateHash: "h_0",
+        ops: [{ op: "set_text", id: "b99", text: "nowhere" }],
+      },
+    });
+
+    expect(result.isError).toBe(true);
+    const text = (result.content as { text: string }[])[0].text;
+    expect(text.startsWith("block_not_found: ")).toBe(true);
+  });
+
+  it("leaves an unrecoverable refusal unprefixed", async () => {
+    proposeOps.mockResolvedValue({
+      ok: false,
+      reason: "invalid",
+      message: "op 1: heading level must be 1-6",
+    });
+    const client = await connect(async () => "author-a");
+
+    const result = await client.callTool({
+      name: "apply_ops",
+      arguments: {
+        id: "doc-1",
+        stateHash: "h_0",
+        ops: [{ op: "delete_block", id: "b1" }],
+      },
+    });
+
+    const text = (result.content as { text: string }[])[0].text;
+    expect(text).not.toMatch(/^block_not_found/);
+    expect(text).toMatch(/heading level must be 1-6/);
+  });
+
   it("hides the write tools from a read-only server", async () => {
     const client = await connect(async () => "author-a", ["read"]);
     const names = (await client.listTools()).tools.map((tool) => tool.name);

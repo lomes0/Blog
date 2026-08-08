@@ -104,8 +104,16 @@ export const POST = userRoute<{ id: string }>(
         );
       }
       // An op naming a block that is not there, or one the codecs refuse.
-      // Retrying it unchanged fails identically.
-      throw new ApiError(400, "That edit could not be applied", result.message);
+      // Retrying it unchanged fails identically — but *why* differs, and the
+      // one recoverable case says so by name in front of the message. It stays
+      // a 400 rather than joining the 409 above: the state did not move, one
+      // address was simply wrong, and the subtitle is what the agent reads.
+      const code = result.reason === "invalid" ? result.code : undefined;
+      throw new ApiError(
+        400,
+        "That edit could not be applied",
+        code ? `${code}: ${result.message}` : result.message,
+      );
     }
 
     return NextResponse.json({

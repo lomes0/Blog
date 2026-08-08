@@ -36,7 +36,7 @@ export {
   stampBlockIds,
   stateFromBlocks,
 } from "./ops";
-export type { ApplyResult, InsertTarget, Op } from "./ops";
+export type { ApplyResult, InsertTarget, Op, OpErrorCode } from "./ops";
 export { formatOutline, outline, readAll, readBlocks } from "./outline";
 export type { BlocksRead, Outline, OutlineEntry } from "./outline";
 export { assertFresh, StaleStateError, stateHash } from "./stateHash";

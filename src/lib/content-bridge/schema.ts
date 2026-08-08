@@ -180,3 +180,34 @@ export const BLOCK_DOC =
   "by address, but not rewritten. set_text needs a single text field, so it " +
   "applies only to paragraph, heading, quote, summary, cell and code; a list, " +
   "table, layout, details or kanban is rewritten whole with replace_block.";
+
+/**
+ * What to do when a write is refused, appended to every tool description that
+ * takes ops.
+ *
+ * A refusal an agent cannot act on is a refusal it retries verbatim, or gives
+ * up on and reports as done. The two failures worth separating are the ones
+ * where re-reading fixes it and the ones where only rewriting the batch does —
+ * so this says which is which by the name that appears in the error, and says
+ * plainly that retrying unchanged is never the answer to either.
+ *
+ * Lives here, beside `BLOCK_DOC`, for the same reason: both agents must be told
+ * the same thing, and one string is the only way that stays true.
+ */
+export const RECOVERY_DOC =
+  "WHEN A WRITE IS REFUSED, the whole batch was refused — nothing was " +
+  "written, so there is no partial state to repair. Never retry an unchanged " +
+  "batch; the same input is refused identically. " +
+  "Refused as stale (the stateHash no longer matches): the document moved " +
+  "between your read and this write, so your addresses may name different " +
+  "blocks now. Read the outline again and rebuild the ops against the new " +
+  "addresses — do not reuse the old ones. " +
+  "block_not_found: that address does not resolve. Either the block moved or " +
+  "the address came from an outdated read. Re-run outline (or search) and " +
+  "retry with a current address, rather than guessing a neighbouring one. " +
+  "A block removed earlier in the same batch is different — re-reading will " +
+  "not help; drop the later op. " +
+  "Refused by a codec (\"has no codec\", \"no single text field\", " +
+  "\"needs columns\"): the op named a real block but the wrong kind of edit " +
+  "for it. Fix the shape — replace_block instead of set_text, or leave a " +
+  "read-only block alone — and send the corrected op.";

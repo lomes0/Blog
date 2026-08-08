@@ -48,7 +48,12 @@ import {
 // One copy now lives beside the codecs that enforce it — see
 // docs/plans/ai-surface-consolidation.md §4.1. Not from the barrel: it is the
 // one part of the bridge the browser has no use for.
-import { BLOCK_DOC, blockSchema, opSchema } from "@/lib/content-bridge/schema";
+import {
+  BLOCK_DOC,
+  blockSchema,
+  opSchema,
+  RECOVERY_DOC,
+} from "@/lib/content-bridge/schema";
 import { AGENT_SCOPES, type AgentScope } from "@/lib/agentTokens";
 import type { RateDecision } from "@/lib/rateLimit";
 
@@ -464,7 +469,9 @@ export function createContentServer(
         "Ops: set_text{id,text}, replace_block{id,block}, " +
         "insert_blocks{blocks,after|before|appendTo}, delete_block{id}, " +
         "move_block{id,after|before|appendTo}. " +
-        BLOCK_DOC,
+        BLOCK_DOC +
+        " " +
+        RECOVERY_DOC,
       inputSchema: {
         id: z.string().describe("Document id"),
         stateHash: z.string().describe(
@@ -490,11 +497,14 @@ export function createContentServer(
         // "not-found" keeps this server's own wording, since here it means
         // "no such post of yours" and not "no such row" — the shared module has
         // no way to tell the two apart.
-        return fail(
-          result.reason === "not-found"
-            ? `Post ${id} not found (or not yours).`
-            : result.message,
-        );
+        if (result.reason === "not-found") {
+          return fail(`Post ${id} not found (or not yours).`);
+        }
+        // The code goes in front of the prose so the recovery the tool
+        // description teaches is keyed on something exact, not on the model
+        // recognizing a sentence.
+        const code = result.reason === "invalid" ? result.code : undefined;
+        return fail(code ? `${code}: ${result.message}` : result.message);
       }
 
       const { proposal } = result;
