@@ -19,6 +19,21 @@ visualizations, and series organization. The application uses Prisma with
 PostgreSQL for data persistence, NextAuth for authentication, and Redux Toolkit
 for state management.
 
+## Editing the blog's content
+
+Asked to read or change a *post* — as opposed to the code that renders one —
+use the `blog-content` MCP tools, not the repo. Posts are rows in Postgres
+holding Lexical JSON; there is no file to open. Start with `outline` for the
+block addresses every other tool takes, and let the tool descriptions carry the
+rest — they are the reference, and they are already in context.
+
+Three things they do not say about themselves: only cloud content is visible
+(anything created while signed out lives in browser IndexedDB and never reaches
+the server), `apply_ops` proposes rather than commits (report an edit as
+awaiting the author, never as done), and there is no delete tool. Setup and the
+remaining caveats are in
+[docs/guides/claude-code-content.md](./docs/guides/claude-code-content.md).
+
 ## Development Commands
 
 ### Core Development

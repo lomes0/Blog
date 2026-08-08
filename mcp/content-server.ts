@@ -365,7 +365,14 @@ const BLOCK_DOC =
   "contents already there. " +
   "Inline formatting inside `text` uses **bold**, __italic__, `code`, " +
   "~~strike~~, ==highlight==, ++underline++, ^^sup^^, ,,sub,,, [link](url) and " +
-  "$latex$. Node types with no codec (math as a block, image, graph, sketch, " +
+  "$latex$. Italic is __, not *, so that no delimiter is a prefix of another. " +
+  "Text comes back from a read ESCAPED, and the escapes are part of the text: " +
+  "a backslash precedes any literal \\, `, [, ] or $, and any mark character " +
+  "that would otherwise open a run — most often a comma straight after a " +
+  "formatted run, since ,, is subscript. Carry those backslashes through " +
+  "unchanged when you rewrite a block; dropping one does not tidy the text up, " +
+  "it changes what the block says. " +
+  "Node types with no codec (math as a block, image, graph, sketch, " +
   "iframe, canvas, sticky) are read-only: they can be read, moved or deleted " +
   "by address, but not rewritten. set_text needs a single text field, so it " +
   "applies only to paragraph, heading, quote, summary, cell and code; a list, " +

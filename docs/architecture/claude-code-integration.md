@@ -5,8 +5,9 @@ and the in-app Copilot — sit on one shared layer, `src/lib/content-bridge/`,
 which addresses a Lexical document **by block**. Nothing converts documents to
 Markdown files any more.
 
-This is the architecture. For _how to drive it_ see
-[guides/claude-code-content.md](../guides/claude-code-content.md); for _why it
+This is the architecture. For _how to set it up_ see
+[guides/claude-code-content.md](../guides/claude-code-content.md) (driving it is
+documented in the tool descriptions themselves); for _why it
 is shaped this way_ see
 [plans/claude-code-lexical.md](../plans/claude-code-lexical.md) and
 [mcp/README.md](../../mcp/README.md).

@@ -8,8 +8,9 @@ and it authenticates to Claude via your normal Claude Code login — no API key.
 
 **To actually use it, start with
 [docs/guides/claude-code-content.md](../docs/guides/claude-code-content.md)** —
-setup, the read → write cycle, and what will trip you up. This file is the
-design rationale.
+setup and the caveats. How to drive the tools is in their own descriptions in
+`content-server.ts`, which the agent already has; this file is the design
+rationale.
 
 ## How it works
 
