@@ -15,7 +15,8 @@
  * the next node class cannot reintroduce it, because the failure is invisible:
  * the document still opens, it just quietly comes back different.
  *
- * The runtime half is `src/editor/nodes/__tests__/serialization.test.ts`, but
+ * The runtime half is
+ * `packages/editor/src/nodes/__tests__/serialization.test.ts`, but
  * it can only cover the classes that import without a DOM. This covers all of
  * them, by reading the source.
  *
@@ -25,7 +26,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const ROOT = new URL("..", import.meta.url).pathname;
-const NODES_DIR = join(ROOT, "src/editor/nodes");
+const NODES_DIR = join(ROOT, "packages/editor/src/nodes");
 
 /** Classes that legitimately do not implement one half themselves. */
 const EXEMPT = new Set([
@@ -82,6 +83,7 @@ function method(body, signature) {
 }
 
 const problems = [];
+let scanned = 0;
 
 for (const file of sourceFiles(NODES_DIR)) {
   const source = readFileSync(file, "utf8");
@@ -91,6 +93,7 @@ for (const file of sourceFiles(NODES_DIR)) {
     if (EXEMPT.has(klass.name)) continue;
     // Only node classes — everything else in these files is incidental.
     if (!/Node$/.test(klass.extends) && !/Node<|Node$/.test(klass.extends)) continue;
+    scanned++;
 
     const exportJSON = method(klass.body, "exportJSON(");
     if (exportJSON && !exportJSON.includes("super.exportJSON()")) {
@@ -123,9 +126,24 @@ if (problems.length > 0) {
   for (const problem of problems) console.error(`   ${problem}`);
   console.error(
     `\n   ${problems.length} problem(s). See ` +
-      `src/editor/nodes/__tests__/serialization.test.ts for what this protects.\n`,
+      `packages/editor/src/nodes/__tests__/serialization.test.ts for what this ` +
+      `protects.\n`,
   );
   process.exit(1);
 }
 
-console.log("✅  Every node class round-trips its own serialization.");
+// A checker that finds nothing to check reports the same "✅" as one that
+// checked everything. That is not hypothetical: NODES_DIR was repointed when
+// the editor moved to packages/editor, and a stale path here would have gone
+// green over an empty tree.
+if (scanned === 0) {
+  console.error(
+    `\n❌  No node classes found under ${relative(ROOT, NODES_DIR)} — ` +
+      `NODES_DIR is stale or the tree moved. This check was passing on nothing.\n`,
+  );
+  process.exit(1);
+}
+
+console.log(
+  `✅  Every node class round-trips its own serialization (${scanned} classes).`,
+);

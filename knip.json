@@ -1,18 +1,39 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  "entry": [
-    "src/app/**/{page,layout,route,template,error,loading,not-found,global-error,default,sitemap,robots,opengraph-image,icon,apple-icon,manifest}.{ts,tsx}",
-    "prisma/**/*.ts",
-    "scripts/**/*.mjs"
-  ],
-  // `packages/**` is listed ahead of the editor extraction
-  // (docs/plans/haklex-adoption.md §4.3). Without it, every `@/editor` import
-  // becomes an unresolved reference the moment the files move.
-  "project": [
-    "src/**/*.{ts,tsx}",
-    "mcp/**/*.ts",
-    "packages/**/*.{ts,tsx}"
-  ],
+  // `packages/*` is an npm workspace (see the root package.json), and knip
+  // follows that: a workspace's files belong to *its* config, not the root's.
+  // So the root `project` globs stop at the workspace boundary and each
+  // workspace must be configured by name — a root-level `packages/**` pattern
+  // silently matches nothing, which is what knip's "Refine project pattern (no
+  // matches)" hint was reporting during the editor extraction.
+  "workspaces": {
+    ".": {
+      "entry": [
+        "src/app/**/{page,layout,route,template,error,loading,not-found,global-error,default,sitemap,robots,opengraph-image,icon,apple-icon,manifest}.{ts,tsx}",
+        "prisma/**/*.ts",
+        "scripts/**/*.mjs"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "mcp/**/*.ts"
+      ]
+    },
+    // The editor package has no barrel yet — the app imports deep paths via the
+    // `@/editor/*` tsconfig alias — so every file is reachable and `project`
+    // alone describes it.
+    //
+    // `.{ts,tsx}` deliberately, not knip's default globs, which also take
+    // `.js`. The only JavaScript here is the vendored `utils/docx/mathml2omml`
+    // tree, third-party code we do not maintain; including it adds ~53 findings
+    // and one phantom unlisted dependency (`entities`) that no one will ever
+    // action. Same reasoning as the vendored Lexical playground code noted in
+    // CLAUDE.md: bulk, not bloat.
+    "packages/editor": {
+      "project": [
+        "src/**/*.{ts,tsx}"
+      ]
+    }
+  },
   // All five are `require`d by the vendored `next-pwa/` in the repo root, which
   // is outside `project` and so invisible to knip's resolver: `index.js` pulls
   // clean-webpack-plugin + workbox-webpack-plugin, `build-{custom,fallback}-worker.js`

@@ -24,6 +24,12 @@
       }
     ],
     "paths": {
+      "@/editor": [
+        "./packages/editor/src"
+      ],
+      "@/editor/*": [
+        "./packages/editor/src/*"
+      ],
       "@/*": [
         "./src/*"
       ],
