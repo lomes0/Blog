@@ -96,6 +96,17 @@ describe("outline", () => {
     expect(byId.get("b7")?.preview).toBe("page break");
   });
 
+  it("describes a page break under the type its node actually writes", () => {
+    // `PageBreakNode.getType()` is `"page-break"`; the descriptor only answered
+    // for `"pagebreak"`, which nothing has ever stored, so real page breaks
+    // read back as the raw type string. The fixture's unhyphenated spelling is
+    // still covered above — a descriptor is a read path, and both stay
+    // readable.
+    const state = makeState();
+    state.root.children = [{ type: "page-break", version: 1 }];
+    expect(outline(state).blocks[0].preview).toBe("page break");
+  });
+
   it("separates what can be replaced from what set_text accepts", () => {
     // Conflating these advertised a kanban as editable and then refused the
     // edit: it has no single text field, but replace_block works fine.

@@ -112,6 +112,12 @@ export function describeNode(node: SerializedNode): string {
     }
     case "horizontalrule":
       return "divider";
+    // `PageBreakNode.getType()` is `"page-break"`, and always has been — the
+    // unhyphenated arm was describing nothing, so every stored page break fell
+    // through to `default` and read back as its own type string. Both spellings
+    // are answered for the same reason `TABLE_TYPES` is a set: a descriptor is
+    // a read path, and the cost of keeping a spelling readable is one line.
+    case "page-break":
     case "pagebreak":
       return "page break";
     case "tablerow": {
