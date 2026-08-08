@@ -17,30 +17,32 @@ see [plans/claude-code-lexical.md](../plans/claude-code-lexical.md) and
 
 ```
 Claude Code (terminal)                    In-app Copilot (browser)
-        │ stdio / MCP                              │
-        ▼                                          ▼
-mcp/content-server.ts (stdio entry)      /api/copilot  (declares tool
-└─ src/lib/mcp/server.ts                 │  schemas only — no execute)
-   ├─ 8 tools, scoped to one author      │
-   └─ Prisma direct: no dev server,      ▼
-      no HTTP API                       copilotAgentExecutors.ts (client)
-        │                                ├─ reads auto-run
-        │                                ├─ writes = reviewable proposals
-        │                                └─ virtualRepo.ts: Redux + IndexedDB
-        │                                          │
-        └──────────────┬───────────────────────────┘
-                       ▼
+   │ stdio        │ HTTP                          │
+   ▼              ▼                               ▼
+mcp/           /api/mcp                  /api/copilot  (declares tool
+content-       ├─ agent token            │  schemas only — no execute)
+server.ts      ├─ scopes, budgets        │
+   │           └─ TLS or loopback        ▼
+   └──────┬───────┘                     copilotAgentExecutors.ts (client)
+          ▼                              ├─ reads auto-run
+   src/lib/mcp/server.ts                 ├─ writes = reviewable proposals
+   ├─ 8 tools, scoped to one author      └─ virtualRepo.ts: Redux + IndexedDB
+   └─ Prisma direct: no dev server                  │
+          │                                         │
+          └──────────────┬──────────────────────────┘
+                         ▼
             src/lib/content-bridge/     ← pure JSON, no DOM, no Lexical
             address · blockId · blocks · inline · ops · outline · stateHash
-                       │
-                       ▼
+                         │
+                         ▼
             Revision.data  (Lexical editor-state JSON)
             Document.head  (which revision is current)
 ```
 
 The bridge is the whole integration. Both agents get the same addressing, the
-same ops, the same guard; the two entry points differ only in transport, in what
-content they can see, and in whether a write needs human acceptance.
+same ops, the same guard; the three doors differ only in transport, in how they
+decide whose content it is, in what content they can see, and in whether a write
+needs human acceptance.
 
 ---
 
@@ -147,9 +149,14 @@ that window would simply be overwritten. The guard has to be in the database:
   `revisions`/`coauthors` writes are split off and replayed inside the same
   transaction on the row the guard has already locked. A miss throws
   `StaleHeadError`, which `PATCH /api/documents/[id]` answers as **409**.
-- `saveRevision` (`mcp/content-server.ts`) does the same `updateMany`-on-`head`
-  for agent writes, so an editor save landing between `outline` and `apply_ops`
-  is refused rather than overwritten.
+- **An agent write does not move `head` at all**, so there is nothing for it to
+  guard at write time — that is what gating changed. The compare-and-set moved
+  to *approval*: `proposeOps` records the head it read as the proposal's
+  `baseRevisionId`, and approving does `where: { id, head: expectedHead }` with
+  that value (`repositories/revision.ts`), never "whatever head is now". An
+  editor save landing between `outline` and `apply_ops` therefore does not
+  refuse the proposal; it makes it **stale**, and the next batch replaces it
+  rather than folding onto something approval could only reject.
 - The editor (`useSave.ts`) sends the head its **last successful save** wrote —
   not the head at load, because autosave mints a fresh revision id every
   `REVISION_SESSION_MS`. On a 409 it stops retrying (every retry would be
@@ -177,11 +184,11 @@ directory, so `claude` must be launched from the repo root. It runs
 `node --import tsx --env-file=.env mcp/content-server.ts` over stdio and talks
 **straight to Postgres** — no dev server, no `/api/*`.
 
-The eight tools and the transport are separate files, and the split is the
-whole of what a remote door would need (docs/plans/mcp_support.md):
+The eight tools and the transport are separate files, which is what let a second
+door be added without touching a tool (docs/plans/mcp_support.md):
 `createContentServer({ resolveAuthorId })` in `src/lib/mcp/server.ts` knows
 nothing about processes or the environment, and `mcp/content-server.ts` is only
-the 52 lines that resolve `MCP_AUTHOR_ID` and connect stdio.
+the ~50 lines that resolve `MCP_AUTHOR_ID` and connect stdio.
 
 **Authorization is one line of policy:** everything is filtered on whatever
 `resolveAuthorId` returns — under stdio, the user named by `MCP_AUTHOR_ID` (a
@@ -189,6 +196,29 @@ the 52 lines that resolve `MCP_AUTHOR_ID` and connect stdio.
 startup error). No tool takes an author from its arguments, so the server cannot
 read or write another author's content. This is personal, single-user tooling;
 there is no session and no API key.
+
+### The same tools over HTTP — `POST /api/mcp`
+
+The remote door, for a machine with no checkout. It builds the same server per
+request, with three things stdio does not have, because its caller is not
+already inside the machine:
+
+| | stdio | `/api/mcp` |
+| --- | --- | --- |
+| Who you are | `MCP_AUTHOR_ID` | the owner of the presented `AgentToken` |
+| What you may do | everything | the token's `scopes` — a read-only token is served six tools, not eight |
+| What you may spend | unmetered | three token-bucket budgets, and a 1 MiB body |
+| Transport | a pipe | HTTPS, or 426 (loopback and `MCP_ALLOW_INSECURE=1` excepted) |
+| Origin recorded | `claude-code` | `claude-code:<token name>` |
+
+Stateless: no session id, a server per request, closed when the request ends.
+Nothing about the author is module state, so two requests carrying two tokens
+cannot see each other's content — which is the property
+`src/lib/mcp/__tests__/server.test.ts` exists to pin.
+
+`tokenRoute` (`src/lib/api-utils.ts`) is a fourth route wrapper rather than a
+`publicRoute` with a check inside it, so `grep -rn "publicRoute" src/app/api`
+stays the complete list of unauthenticated surfaces.
 
 | Tool          | Purpose                                                               |
 | ------------- | --------------------------------------------------------------------- |

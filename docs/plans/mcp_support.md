@@ -1,8 +1,10 @@
 # Remote MCP support
 
-**Status: phases 1–5 shipped (8 Aug 2026); only phase 6 (docs and registration)
-remains.** The endpoint works, is metered, refuses cleartext and names which
-credential wrote. Originally
+**Status: COMPLETE — all six phases shipped 8 Aug 2026**, `baf435db`…. The
+endpoint works, is metered, refuses cleartext, names which credential wrote, and
+is documented. What is deliberately *not* done is in §8: no token-management UI
+(script only), and no OAuth, which is the line §4.1 draws and the only thing
+standing between this and other people's agents. Originally
 measured against the tree at `b01e91a5`. Builds on the
 content bridge ([claude-code-lexical.md](./claude-code-lexical.md), phases 1–5
 shipped) and the proposal gating ([agent-gating.md](./agent-gating.md), phases
@@ -519,7 +521,7 @@ Verified against a running server: loopback plain HTTP → 200 with
 the token's `lastUsedAt` was recorded. Both test posts and the token deleted
 afterwards.
 
-### Phase 6 — Docs and registration
+### Phase 6 — Docs and registration — **SHIPPED (8 Aug 2026)**
 
 Extend `docs/guides/claude-code-content.md` with a remote section — and keep it
 to setup and caveats, per the split that landed in `c96a2bc9`. The tool
@@ -530,6 +532,37 @@ remote entry there **must not contain the secret**. Either register at user
 scope (`claude mcp add --scope user`), or commit an entry that reads
 `${BLOG_MCP_TOKEN}` from the environment. State which, and make the guide show
 exactly one of them.
+
+#### Shipped 8 Aug 2026
+
+The guide is now Local / Remote / Caveats, still setup-only. §4.1 said to check
+the flag spelling before writing it down; `claude mcp add --help` confirms
+`--transport http … --header "Authorization: Bearer …"` verbatim.
+
+**The registration question dissolved.** `--scope` defaults to **`local`**, not
+`project` — the default already keeps the entry out of the committed
+`.mcp.json`. So the guide gives one command and one warning ("do not pass
+`--scope project`") rather than choosing between two workarounds. The
+`${BLOG_MCP_TOKEN}` indirection is not documented, because it would only matter
+for a config nobody now has a reason to write, and asserting an expansion
+feature without verifying it would be worse than omitting it.
+
+Also corrected, since both had been made wrong by phases 1–5:
+
+- **`mcp/README.md`** claimed the tools live in `content-server.ts`. They live
+  in `src/lib/mcp/server.ts`; that directory now holds only a stdio entry point.
+- **`docs/architecture/claude-code-integration.md`** showed one Claude Code
+  door. Its map now shows two, with a table of what `/api/mcp` adds that stdio
+  does not need.
+
+And one that was stale before this plan started, from the `agentWrites`
+extraction in `703e7b70`: the architecture doc described `saveRevision`
+(`mcp/content-server.ts`) doing an `updateMany`-on-`head` for agent writes.
+That function no longer exists and neither does that guard — gating removed the
+write. The compare-and-set moved to *approval*, against the proposal's recorded
+`baseRevisionId`, and an editor save between `outline` and `apply_ops` now makes
+a proposal **stale** rather than refusing it. Verified against
+`repositories/revision.ts` before rewriting.
 
 ## 6. What does not change
 

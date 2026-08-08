@@ -3,14 +3,21 @@
 Exposes this blog's Prisma/Lexical content to **Claude Code** as MCP tools, so
 Claude can navigate, read, write and create posts from the terminal.
 
-Personal, single-user use: everything is scoped to one author (`MCP_AUTHOR_ID`),
-and it authenticates to Claude via your normal Claude Code login — no API key.
+Personal, single-user use: everything is scoped to one author, and it
+authenticates to Claude via your normal Claude Code login — no API key.
+
+**The tools live in `src/lib/mcp/server.ts`, not in this directory.** They are
+built by `createContentServer({ resolveAuthorId })`, which knows nothing about
+transports; this directory holds only the stdio entry point that resolves
+`MCP_AUTHOR_ID` and connects a pipe. The other entry point is
+`POST /api/mcp`, which builds the same server from an agent token — see
+[docs/plans/mcp_support.md](../docs/plans/mcp_support.md). What differs between
+them is one function: where the author id comes from.
 
 **To actually use it, start with
 [docs/guides/claude-code-content.md](../docs/guides/claude-code-content.md)** —
-setup and the caveats. How to drive the tools is in their own descriptions in
-`content-server.ts`, which the agent already has; this file is the design
-rationale.
+setup and the caveats, for both. How to drive the tools is in their own
+descriptions, which the agent already has; this file is the design rationale.
 
 ## How it works
 
@@ -106,8 +113,12 @@ enumerating series is content, and the Copilot was missing it.
 
 Registered in `.mcp.json` at the repo root. Set the author:
 
-- `MCP_AUTHOR_ID` — a `User` id or email. Set in `.mcp.json`'s `env`.
+- `MCP_AUTHOR_ID` — a `User` id or email. Set in `.mcp.json`'s `env`, which is
+  why `npm run mcp:smoke` and `npm run mcp:token` need it exported by hand.
 - `DATABASE_URL` — loaded from `.env` via `--env-file`.
+
+The remote endpoint takes neither: it gets its author from the presented token
+and its database from the app it runs inside.
 
 ## Testing
 
