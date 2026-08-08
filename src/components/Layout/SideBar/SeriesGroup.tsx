@@ -9,7 +9,7 @@ import {
   TextField,
   Tooltip,
 } from "@mui/material";
-import { Folder, FolderOpen } from "lucide-react";
+import { FilePlus, Folder, FolderOpen } from "lucide-react";
 import type { Series } from "@/types";
 import type { SeriesGroupItem } from "@/utils/posts/seriesGrouping";
 import type {
@@ -21,6 +21,7 @@ import type { TreeDndResult } from "@/lib/tree/useTreeDnd";
 import { DRAG_MIME, dropPositionFromEvent } from "@/lib/dragDrop";
 import { PostItem } from "./PostItem";
 import { CountPill } from "./CountPill";
+import { RowCreateButton } from "./RowCreateButton";
 import { SB_FONT, SB_ITEM_RADIUS } from "./constants";
 import {
   chromeFocusRingSx,
@@ -251,6 +252,17 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
                   marker={groupMarker.marker}
                   count={groupMarker.count}
                   sx={{ ml: "auto", mr: 0.25 }}
+                />
+                {
+                  /* "New post in series", left of the count pill and clipped to
+                    nothing until the row is hovered — so the pill keeps the
+                    right edge it shares with every other row's trailing mark
+                    (see `ROW_CREATE_SLOT_MAX_W`). */
+                }
+                <RowCreateButton
+                  label="New post in series"
+                  icon={<FilePlus size={ICON_SIZE.inline} strokeWidth={2} />}
+                  onClick={() => itemActions.handleCreatePost(seriesId)}
                 />
                 {group.posts.length > 0 && (
                   <CountPill

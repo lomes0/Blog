@@ -41,18 +41,6 @@ import { AgentMarker as AgentMarkerComponent } from "./AgentMarker";
 /** Width of the leading rule stub before the tag title (the "── " lead-in). */
 const LEAD_RULE_W = 14;
 
-/**
- * Idle, the band's rule runs the full width — past the row's own right padding,
- * flush with the sidebar's border. Hover (or keyboard focus) retracts it by that
- * padding and opens the slot beside it, so the "new series" button appears in
- * space the rule gives back rather than space held empty for it.
- *
- * The slot is a `max-width` clip rather than a width, so the button keeps its
- * natural size (18px box + its own margins) and this stays a ceiling to animate
- * toward, not a second copy of those metrics.
- */
-const CREATE_SLOT_MAX_W = 32;
-
 interface ProjectGroupProps {
   item: ProjectGroupItem;
   isExpanded: boolean;
@@ -192,19 +180,9 @@ export const ProjectGroup: React.FC<ProjectGroupProps> = ({
               mr: groupMarker.marker ? 0 : -2,
               transition: `margin-right ${MOTION.fast}ms`,
             },
-            "& .tag-create-slot": {
-              display: "flex",
-              flexShrink: 0,
-              maxWidth: 0,
-              overflow: "hidden",
-              transition: `max-width ${MOTION.fast}ms`,
-            },
-            // `focus-within` as well as `hover`: the button is keyboard-
-            // reachable (DESIGN.md §9), and a clipped slot would swallow it.
+            // Retracted in step with the create slot opening beside it, so the
+            // two swap the same 16px rather than each animating on its own.
             "&:hover .tag-rule, &:focus-within .tag-rule": { mr: 0 },
-            "&:hover .tag-create-slot, &:focus-within .tag-create-slot": {
-              maxWidth: CREATE_SLOT_MAX_W,
-            },
           }}
         >
           {sidebarOpen && isRenaming
@@ -270,13 +248,11 @@ export const ProjectGroup: React.FC<ProjectGroupProps> = ({
                 count={groupMarker.count}
                 sx={{ mr: 0.25 }}
               />
-              <Box className="tag-create-slot">
-                <RowCreateButton
-                  label="New series in project"
-                  icon={<FolderPlus size={ICON_SIZE.inline} strokeWidth={2} />}
-                  onClick={() => seriesActions.handleCreateSeries(projectId)}
-                />
-              </Box>
+              <RowCreateButton
+                label="New series in project"
+                icon={<FolderPlus size={ICON_SIZE.inline} strokeWidth={2} />}
+                onClick={() => seriesActions.handleCreateSeries(projectId)}
+              />
             </>
           )}
         </ListItemButton>

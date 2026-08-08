@@ -61,6 +61,18 @@ const ROW_TINT = {
 export const ROW_TRANSITION = `background-color ${MOTION.fast}ms`;
 
 /**
+ * How wide a `.row-create-slot` may open. The slot holds the row's create
+ * button (`RowCreateButton`) and is clipped shut at rest, so a control that only
+ * exists on hover does not hold its width the rest of the time — the row's rule
+ * or count pill gets that space back instead.
+ *
+ * A `max-width` ceiling rather than a width: the button keeps its natural size
+ * (an 18px box plus its own margins, ~21px), and this stays one number to
+ * animate toward rather than a second copy of those metrics.
+ */
+export const ROW_CREATE_SLOT_MAX_W = 32;
+
+/**
  * The native-DnD insertion line: a 2px `primary.main` bar on the row edge the
  * dragged block would drop against.
  *
@@ -185,4 +197,18 @@ export const rowHoverRevealSx = {
   "&:hover .row-actions-btn": { opacity: 1 },
   "&:hover .row-date": { opacity: 0.45 },
   "&:hover .row-post-count": { opacity: 1 },
+  // The create button ("+") is the one reveal that also gives back its *space*:
+  // see `ROW_CREATE_SLOT_MAX_W`. `focus-within` as well as `hover`, because a
+  // clipped slot would swallow the button keyboard focus just moved to — the
+  // button's own `:focus-visible` opacity cannot un-clip its container.
+  "& .row-create-slot": {
+    display: "flex",
+    flexShrink: 0,
+    maxWidth: 0,
+    overflow: "hidden",
+    transition: `max-width ${MOTION.fast}ms`,
+  },
+  "&:hover .row-create-slot, &:focus-within .row-create-slot": {
+    maxWidth: ROW_CREATE_SLOT_MAX_W,
+  },
 } as const;
