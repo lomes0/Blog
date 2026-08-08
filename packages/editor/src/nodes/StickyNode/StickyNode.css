@@ -33,8 +33,27 @@
   pointer-events: none;
 }
 
+/* `margin-right: auto` and the print rule below were an `sx` on the MUI
+   `IconButton` this used to be (`mr: "auto"`, `displayPrint: "none"`). The
+   button is a plain `<button>` now — `.sticky-tools button` above was already
+   doing all of its painting, so an `ui/action-button` here would only have
+   fought that rule for the same result. In this row-reverse strip
+   `margin-right: auto` is what pushes the grip to the visual left. */
 .sticky-note-container .drag-btn {
   cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: auto;
+  padding: 5px;
+  border-radius: 50%;
+  color: inherit;
+}
+
+@media print {
+  .sticky-note-container .drag-btn {
+    display: none;
+  }
 }
 
 .sticky-note-container .drag-btn:active {

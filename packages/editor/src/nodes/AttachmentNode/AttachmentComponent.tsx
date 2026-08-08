@@ -15,8 +15,6 @@ import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext
 import { useLexicalNodeSelection } from "@lexical/react/useLexicalNodeSelection";
 import { mergeRegister } from "@lexical/utils";
 import { $isAttachmentNode } from ".";
-import { Box, CircularProgress, IconButton, Typography } from "@mui/material";
-import { alpha } from "@mui/material/styles";
 import {
   Archive,
   ChevronDown,
@@ -36,6 +34,8 @@ import { isTextFile } from "@/utils/languageDetection";
 import AttachmentPreview from "./AttachmentPreview";
 import { actions, useDispatch } from "@/store";
 import { ICON_SIZE } from "@/theme/icons";
+import { ActionButton, Spinner } from "../../ui";
+import * as css from "./styles.css";
 
 function getFileIcon(mimetype: string) {
   if (mimetype.startsWith("application/pdf")) return <FileText />;
@@ -239,49 +239,20 @@ export default function AttachmentComponent({
   }, [editor, nodeKey]);
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        width: "40%",
-        minWidth: 400,
-        my: 0.5,
-        userSelect: "none",
-      }}
-    >
-      <Box
-        // `grey.*` is spread once at the top of MUI's createPalette, outside
-        // the light/dark blocks, so grey.50 is #fafafa in both schemes — this
-        // chip rendered near-white on the dark canvas. `primary.50`/`.100` are
-        // worse than wrong: augmentColor only emits main/light/dark/
-        // contrastText, so `--mui-palette-primary-50` never exists and the
-        // selected fill silently dropped in *both* schemes. The action.* tints
-        // and alpha() below are scheme-aware and always defined.
-        sx={(theme) => ({
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 1,
-          px: 1.5,
-          py: 0.75,
-          bgcolor: isSelected
-            ? alpha(theme.palette.primary.main, 0.12)
-            : theme.palette.action.hover,
-          border: 1,
-          borderColor: isSelected ? "primary.main" : "divider",
-          borderBottom: expanded ? 0 : 1,
-          borderRadius: expanded ? "8px 8px 0 0" : 2,
-          cursor: "pointer",
-          transition: "all 0.15s ease",
-          "&:hover": {
-            bgcolor: isSelected
-              ? alpha(theme.palette.primary.main, 0.2)
-              : theme.palette.action.selected,
-            borderColor: isSelected ? "primary.main" : "text.disabled",
-            "& .attachment-actions": {
-              opacity: 1,
-            },
-          },
-        })}
+    <div className={css.root}>
+      {/*
+        The selected and expanded fills used to be read off the MUI theme here.
+        Two of them were bugs the tokens cannot reproduce: `grey.*` is spread
+        outside MUI's light/dark blocks, so `grey.50` is `#fafafa` in dark too,
+        and `primary.50`/`.100` resolve to nothing at all because
+        `augmentColor` only emits main/light/dark/contrastText. What replaces
+        them is the fill ladder and two mixes of `accent` — see
+        `styles.css.ts`.
+      */}
+      <div
+        className={css.chip}
+        data-selected={isSelected}
+        data-expanded={expanded}
         onClick={(e) => {
           if ((e.target as HTMLElement).closest("button")) {
             return;
@@ -292,129 +263,99 @@ export default function AttachmentComponent({
         }}
       >
         {/* File Icon */}
-        <Box
-          sx={{
-            color: "primary.main",
-            display: "flex",
-            alignItems: "center",
-            fontSize: 20,
-          }}
-        >
-          {getFileIcon(mimetype)}
-        </Box>
+        <span className={css.fileIcon}>{getFileIcon(mimetype)}</span>
 
         {/* File Info */}
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography
-            variant="body2"
-            noWrap
-            sx={{
-              fontWeight: 500,
-              lineHeight: 1.3,
-            }}
-          >
-            {filename}
-          </Typography>
-          <Typography
-            variant="caption"
-            sx={{
-              color: "text.secondary",
-              lineHeight: 1.2,
-            }}
-          >
+        <div className={css.fileInfo}>
+          <p className={css.filename}>{filename}</p>
+          <span className={css.meta}>
             {getFileType(mimetype, filename)} • {formatSize(size)}
-          </Typography>
-        </Box>
+          </span>
+        </div>
 
         {/* Actions */}
-        <Box
-          className="attachment-actions"
-          sx={{
-            display: "flex",
-            gap: 0.25,
-            opacity: isSelected ? 1 : 0.3,
-            transition: "opacity 0.15s ease",
-          }}
-        >
+        <div className={css.actions} data-selected={isSelected}>
           {isTextFile(mimetype, filename) && (
-            <IconButton
-              size="small"
+            <ActionButton
+              icon
+              size="md"
               onClick={handleCopy}
               title={copied ? "Copied!" : "Copy to clipboard"}
-              sx={{ p: 0.5 }}
+              aria-label="Copy to clipboard"
             >
               <Copy size={ICON_SIZE.dense} />
-            </IconButton>
+            </ActionButton>
           )}
-          <IconButton
-            size="small"
+          <ActionButton
+            icon
+            size="md"
             onClick={handleDownload}
             title="Download file"
+            aria-label="Download file"
             disabled={isDownloading}
-            sx={{ p: 0.5 }}
           >
             {isDownloading
-              ? <CircularProgress size={16} />
+              ? <Spinner size="sm" />
               : <Download size={ICON_SIZE.dense} />}
-          </IconButton>
-          <IconButton
-            size="small"
+          </ActionButton>
+          <ActionButton
+            icon
+            size="md"
             onClick={(e) => {
               e.stopPropagation();
               handleOpenInSidebar();
             }}
             title="Open in sidebar"
-            sx={{ p: 0.5 }}
+            aria-label="Open in sidebar"
           >
             <ExternalLink size={ICON_SIZE.dense} />
-          </IconButton>
+          </ActionButton>
           {!editing && isTextFile(mimetype, filename) && (
-            <IconButton
-              size="small"
+            <ActionButton
+              icon
+              size="md"
               onClick={(e) => {
                 e.stopPropagation();
                 handleEdit();
               }}
               title="Edit file"
-              sx={{
-                p: 0.5,
-                opacity: 1,
-                "&:hover": { bgcolor: "action.hover" },
-              }}
+              aria-label="Edit file"
             >
               <Pencil size={ICON_SIZE.dense} />
-            </IconButton>
+            </ActionButton>
           )}
           {isSelected && (
-            <IconButton
-              size="small"
+            <ActionButton
+              danger
+              icon
+              size="md"
               onClick={(e) => {
                 e.stopPropagation();
                 handleDelete();
               }}
-              color="error"
               title="Delete attachment"
-              sx={{ p: 0.5 }}
+              aria-label="Delete attachment"
             >
               <Trash2 size={ICON_SIZE.dense} />
-            </IconButton>
+            </ActionButton>
           )}
-          <IconButton
-            size="small"
+          <ActionButton
+            icon
+            size="md"
             onClick={handleToggleExpand}
             title={expanded ? "Collapse preview" : "Expand preview"}
-            sx={{ p: 0.5 }}
+            aria-label={expanded ? "Collapse preview" : "Expand preview"}
           >
             {expanded
               ? <ChevronUp size={ICON_SIZE.dense} />
               : <ChevronDown size={ICON_SIZE.dense} />}
-          </IconButton>
-        </Box>
-      </Box>
+          </ActionButton>
+        </div>
+      </div>
 
       {/* Preview section */}
       {(expanded || editing) && (
-        <Box>
+        <div>
           <AttachmentPreview
             url={url}
             filename={filename}
@@ -425,8 +366,8 @@ export default function AttachmentComponent({
             nodeKey={nodeKey}
             onOpenInSidebar={handleOpenInSidebar}
           />
-        </Box>
+        </div>
       )}
-    </Box>
+    </div>
   );
 }

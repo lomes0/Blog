@@ -5,15 +5,49 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import { Radio } from "@mui/material";
 import type { LexicalEditor } from "lexical";
 
 import { calculateZoomLevel } from "@lexical/utils";
 import * as React from "react";
 import { useRef } from "react";
+import { cx } from "../../ui";
+import { resizeHandle } from "./styles.css";
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
+}
+
+/**
+ * One resize grip.
+ *
+ * Was `<Radio checked>`, a MUI radio rendered purely for its dot; the
+ * `.image-resizer` rules in `index.css` then had to undo its icon and its
+ * padding. `handlePointerDown` already typed its event as
+ * `React.PointerEvent<HTMLButtonElement>` because `Radio` is a `ButtonBase`
+ * underneath, so the pointer plumbing is unchanged.
+ *
+ * Not focusable, and hidden from assistive tech: there is no keyboard resize,
+ * so the eight radio inputs this replaces were eight tab stops that did
+ * nothing. Upstream Lexical's playground renders these as plain `<div>`s for
+ * the same reason; a `<button>` is the closest focusable-by-default element,
+ * so it opts out explicitly.
+ */
+function Handle({
+  corner,
+  onPointerDown,
+}: {
+  corner: "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw";
+  onPointerDown: (event: React.PointerEvent<HTMLButtonElement>) => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-hidden="true"
+      tabIndex={-1}
+      className={cx(resizeHandle, "image-resizer", `image-resizer-${corner}`)}
+      onPointerDown={onPointerDown}
+    />
+  );
 }
 
 const Direction = {
@@ -268,16 +302,14 @@ export default function ImageResizer({
       {children}
       {showResizers && (
         <>
-          <Radio
-            checked={true}
-            className="image-resizer image-resizer-n"
+          <Handle
+            corner="n"
             onPointerDown={(event) => {
               handlePointerDown(event, Direction.north);
             }}
           />
-          <Radio
-            checked={true}
-            className="image-resizer image-resizer-ne"
+          <Handle
+            corner="ne"
             onPointerDown={(event) => {
               handlePointerDown(
                 event,
@@ -285,16 +317,14 @@ export default function ImageResizer({
               );
             }}
           />
-          <Radio
-            checked={true}
-            className="image-resizer image-resizer-e"
+          <Handle
+            corner="e"
             onPointerDown={(event) => {
               handlePointerDown(event, Direction.east);
             }}
           />
-          <Radio
-            checked={true}
-            className="image-resizer image-resizer-se"
+          <Handle
+            corner="se"
             onPointerDown={(event) => {
               handlePointerDown(
                 event,
@@ -302,16 +332,14 @@ export default function ImageResizer({
               );
             }}
           />
-          <Radio
-            checked={true}
-            className="image-resizer image-resizer-s"
+          <Handle
+            corner="s"
             onPointerDown={(event) => {
               handlePointerDown(event, Direction.south);
             }}
           />
-          <Radio
-            checked={true}
-            className="image-resizer image-resizer-sw"
+          <Handle
+            corner="sw"
             onPointerDown={(event) => {
               handlePointerDown(
                 event,
@@ -319,16 +347,14 @@ export default function ImageResizer({
               );
             }}
           />
-          <Radio
-            checked={true}
-            className="image-resizer image-resizer-w"
+          <Handle
+            corner="w"
             onPointerDown={(event) => {
               handlePointerDown(event, Direction.west);
             }}
           />
-          <Radio
-            checked={true}
-            className="image-resizer image-resizer-nw"
+          <Handle
+            corner="nw"
             onPointerDown={(event) => {
               handlePointerDown(
                 event,

@@ -66,6 +66,11 @@ export function getActionButtonClassName(options?: {
   size?: ActionButtonSize;
   icon?: boolean;
   rounded?: boolean;
+  danger?: boolean;
 }) {
-  return cx(css.actionButton(options), css.semanticClassNames.actionButton);
+  return cx(
+    css.actionButton(options),
+    css.semanticClassNames.actionButton,
+    options?.danger && css.semanticClassNames.actionButtonDanger,
+  );
 }

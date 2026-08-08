@@ -63,17 +63,18 @@
   pointer-events: none;
 }
 
+/* `color` is what the grip paints itself with — `styles.css.ts` fills it with
+   `currentColor` — so it stays the same custom property that draws the
+   selection outline above, and the two cannot drift.
+
+   The `.image-resizer svg` rule that used to follow is gone with the MUI
+   `Radio` it was undoing: it neutered the radio's icon (`min-width`, the
+   editor's image `filter`, a background) and there is no longer an svg here. */
 .LexicalTheme__image .image-resizer {
   position: absolute;
   touch-action: none;
   padding: 0;
   color: var(--doc-selection-accent) !important;
-}
-
-.LexicalTheme__image .image-resizer svg {
-  min-width: initial;
-  filter: none;
-  background-color: unset;
 }
 
 .LexicalTheme__image .image-resizer.image-resizer-n {

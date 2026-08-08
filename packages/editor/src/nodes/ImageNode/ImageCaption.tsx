@@ -8,8 +8,9 @@ import {
 } from "lexical";
 import { lazy, memo, Suspense, useEffect } from "react";
 import { editorConfig } from "./config";
-import { Typography } from "@mui/material";
 import { mergeRegister } from "@lexical/utils";
+import { cx } from "../../ui";
+import { captionPlaceholder } from "./styles.css";
 
 const NestedEditor = lazy(() => import("@/editor/NestedEditor"));
 
@@ -58,12 +59,9 @@ export function ImageCaption({
           initialEditor={editor}
           initialNodes={editorConfig.nodes}
           placeholder={
-            <Typography
-              color="text.secondary"
-              className="nested-placeholder"
-            >
+            <p className={cx("nested-placeholder", captionPlaceholder)}>
               Write a caption
-            </Typography>
+            </p>
           }
         />
       </Suspense>

@@ -1,13 +1,5 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import {
-  Alert,
-  Box,
-  Collapse,
-  IconButton,
-  Skeleton,
-  Typography,
-} from "@mui/material";
 import { ExternalLink, RefreshCw } from "lucide-react";
 import { NodeKey } from "lexical";
 import { detectLanguage } from "@/utils/languageDetection";
@@ -28,6 +20,8 @@ import "prismjs/components/prism-yaml";
 import "prismjs/components/prism-markdown";
 import "prismjs/components/prism-sql";
 import { ICON_SIZE } from "@/theme/icons";
+import { ActionButton, Alert } from "../../ui";
+import * as css from "./styles.css";
 
 interface AttachmentPreviewProps {
   url: string;
@@ -293,56 +287,54 @@ export default function AttachmentPreview({
   // Too large for inline preview
   if (isTooLarge) {
     return (
-      <Box sx={{ mt: 1, p: 2, bgcolor: "action.hover", borderRadius: 1 }}>
-        <Typography variant="body2" color="text.secondary">
+      <div className={css.tooLarge}>
+        <p className={css.tooLargeText}>
           ⚠️ File too large for inline preview ({(size / 1024 / 1024).toFixed(
             1,
           )} MB)
-        </Typography>
+        </p>
         {onOpenInSidebar && (
-          <IconButton
-            size="small"
+          <ActionButton
+            icon
+            size="md"
             onClick={onOpenInSidebar}
             title="Open in sidebar"
+            aria-label="Open in sidebar"
           >
             <ExternalLink size={ICON_SIZE.dense} />
-          </IconButton>
+          </ActionButton>
         )}
-      </Box>
+      </div>
     );
   }
 
   return (
-    <Collapse in={expanded} timeout="auto" unmountOnExit>
-      <Box
-        sx={{
-          border: 1,
-          borderColor: "divider",
-          borderRadius: "0 0 8px 8px",
-          bgcolor: "background.paper",
-          overflow: "hidden",
-        }}
-      >
-        {/* Content preview */}
-        <Box>
+    <div className={css.collapse} data-open={expanded}>
+      <div className={css.collapseInner}>
+        <div className={css.previewFrame}>
           {/* Loading state */}
           {contentState.loading && (
-            <Box sx={{ p: 2 }}>
-              <Skeleton variant="text" width="100%" />
-              <Skeleton variant="text" width="80%" />
-              <Skeleton variant="text" width="90%" />
-            </Box>
+            <div className={css.previewPadding}>
+              <div className={css.skeletonLine} style={{ width: "100%" }} />
+              <div className={css.skeletonLine} style={{ width: "80%" }} />
+              <div className={css.skeletonLine} style={{ width: "90%" }} />
+            </div>
           )}
 
           {/* Error state */}
           {contentState.error && (
             <Alert
-              severity="error"
-              sx={{ mb: 1 }}
+              variant="error"
               action={
-                <IconButton size="small" onClick={handleRefresh}>
+                <ActionButton
+                  icon
+                  size="md"
+                  onClick={handleRefresh}
+                  title="Retry"
+                  aria-label="Retry loading the preview"
+                >
                   <RefreshCw size={ICON_SIZE.dense} />
-                </IconButton>
+                </ActionButton>
               }
             >
               {contentState.error}
@@ -351,23 +343,9 @@ export default function AttachmentPreview({
 
           {/* Content */}
           {displayContent && (
-            <Box sx={{ position: "relative" }}>
+            <div className={css.codePaneWrapper}>
               {/* Code block */}
-              <Box
-                component="pre"
-                sx={{
-                  m: 0,
-                  p: 2,
-                  pt: 4,
-                  bgcolor: "action.hover",
-                  borderRadius: 1,
-                  overflow: "auto",
-                  maxHeight: 400,
-                  fontSize: "0.85rem",
-                  fontFamily: "monospace",
-                  lineHeight: 1.5,
-                }}
-              >
+              <pre className={css.codePane}>
                 {highlightedContent
                   ? (
                     <code
@@ -376,38 +354,26 @@ export default function AttachmentPreview({
                     />
                   )
                   : <code>{displayContent}</code>}
-              </Box>
+              </pre>
 
               {/* Truncation notice */}
               {isTruncated && (
-                <Box
-                  sx={{
-                    p: 1,
-                    bgcolor: "warning.light",
-                    color: "warning.contrastText",
-                    borderBottomLeftRadius: 4,
-                    borderBottomRightRadius: 4,
-                    textAlign: "center",
-                  }}
-                >
-                  <Typography variant="caption">
-                    Showing first {MAX_INLINE_LINES} lines.{" "}
-                    {onOpenInSidebar && (
-                      <Box
-                        component="span"
-                        sx={{ cursor: "pointer", textDecoration: "underline" }}
-                        onClick={onOpenInSidebar}
-                      >
-                        Open in sidebar
-                      </Box>
-                    )} to see full content.
-                  </Typography>
-                </Box>
+                <div className={css.warningBand}>
+                  Showing first {MAX_INLINE_LINES} lines.{" "}
+                  {onOpenInSidebar && (
+                    <span
+                      className={css.inlineLink}
+                      onClick={onOpenInSidebar}
+                    >
+                      Open in sidebar
+                    </span>
+                  )} to see full content.
+                </div>
               )}
-            </Box>
+            </div>
           )}
-        </Box>
-      </Box>
-    </Collapse>
+        </div>
+      </div>
+    </div>
   );
 }

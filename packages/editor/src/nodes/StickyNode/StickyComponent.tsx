@@ -3,7 +3,6 @@ import { LexicalEditor, NodeKey } from "lexical";
 import { useLexicalNodeSelection } from "@lexical/react/useLexicalNodeSelection";
 import { lazy, Suspense } from "react";
 import { editorConfig } from "./config";
-import { IconButton } from "@mui/material";
 import { GripVertical } from "lucide-react";
 import "./StickyNode.css";
 
@@ -21,18 +20,16 @@ export default function StickyComponent(
   return (
     <div className="sticky-note-container" draggable={isSelected}>
       <div className="sticky-tools">
-        <IconButton
+        <button
+          type="button"
           className="drag-btn"
-          sx={{ displayPrint: "none", mr: "auto" }}
-          color="inherit"
-          size="small"
           aria-label="Drag sticky note"
           title="Drag"
           onMouseDown={() => setSelected(true)}
           onMouseUp={() => setSelected(false)}
         >
           <GripVertical />
-        </IconButton>
+        </button>
       </div>
       <Suspense fallback={children}>
         <NestedEditor

@@ -1,19 +1,18 @@
 "use client";
 import { useCallback, useState } from "react";
-import {
-  Alert,
-  Box,
-  Button,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  Typography,
-} from "@mui/material";
 import { Save, X } from "lucide-react";
 import { ICON_SIZE } from "@/theme/icons";
+import {
+  ActionButton,
+  Alert,
+  Dialog,
+  DialogFooter,
+  DialogHeader,
+  DialogPopup,
+  DialogTitle,
+  Spinner,
+} from "../../ui";
+import * as css from "./styles.css";
 
 interface AttachmentEditorProps {
   initialContent: string;
@@ -85,166 +84,114 @@ export default function AttachmentEditor({
   const lineCount = content.split("\n").length;
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+    <div className={css.editorRoot}>
       {/* Header */}
-      <Box
-        sx={{
-          px: 2,
-          py: 1,
-          bgcolor: "warning.light",
-          color: "warning.contrastText",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <Typography variant="body2" fontWeight="medium">
+      <div className={css.editorHeader}>
+        <p className={css.editorHeaderTitle}>
           Editing: {filename}
           {isDirty && " (unsaved changes)"}
-        </Typography>
-        <Typography variant="caption">
+        </p>
+        <p className={css.editorHeaderHint}>
           Press Ctrl+S to save, Escape to cancel
-        </Typography>
-      </Box>
+        </p>
+      </div>
 
-      {/* Error display */}
+      {/*
+        The dismiss affordance is now an explicit action rather than MUI's
+        `onClose` prop, which rendered its own close button inside the alert.
+      */}
       {error && (
         <Alert
-          severity="error"
-          onClose={() => setError(null)}
-          sx={{ borderRadius: 0 }}
+          variant="error"
+          action={
+            <ActionButton
+              icon
+              size="md"
+              onClick={() => setError(null)}
+              title="Dismiss"
+              aria-label="Dismiss error"
+            >
+              <X size={ICON_SIZE.dense} />
+            </ActionButton>
+          }
         >
           {error}
         </Alert>
       )}
 
       {/* Editor area */}
-      <Box
-        sx={{
-          flex: 1,
-          display: "flex",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
+      <div className={css.editorBody}>
         {/* Line numbers */}
-        <Box
-          sx={{
-            width: 50,
-            // grey.* does not flip with the color scheme — see the note in
-            // AttachmentComponent. action.selected is the scheme-aware tint.
-            bgcolor: "action.selected",
-            borderRight: 1,
-            borderColor: "divider",
-            overflow: "hidden",
-            py: 1,
-            px: 0.5,
-            fontFamily: "monospace",
-            fontSize: "0.85rem",
-            lineHeight: 1.5,
-            color: "text.secondary",
-            textAlign: "right",
-            userSelect: "none",
-          }}
-        >
-          {Array.from(
-            { length: lineCount },
-            (_, i) => <Box key={i}>{i + 1}</Box>,
-          )}
-        </Box>
+        <div className={css.editorGutter}>
+          {Array.from({ length: lineCount }, (_, i) => <div key={i}>{i + 1}
+          </div>)}
+        </div>
 
         {/* Textarea */}
-        <Box
-          component="textarea"
+        <textarea
+          className={css.editorTextArea}
           value={content}
           onChange={(e) => setContent(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={isSaving}
-          sx={{
-            flex: 1,
-            p: 1,
-            m: 0,
-            border: "none",
-            outline: "none",
-            resize: "none",
-            fontFamily: "monospace",
-            fontSize: "0.85rem",
-            lineHeight: 1.5,
-            // `background.input` is this theme's field surface (#ffffff light /
-            // #363f52 dark), so the textarea stays lifted above the panel in
-            // both schemes rather than pinned to grey.50's fixed #fafafa.
-            bgcolor: "background.input",
-            color: "text.primary",
-            overflow: "auto",
-            "&:focus": {
-              outline: "none",
-            },
-            "&:disabled": {
-              bgcolor: "action.disabledBackground",
-              color: "text.disabled",
-            },
-          }}
           autoFocus
           spellCheck={false}
         />
-      </Box>
+      </div>
 
       {/* Footer with buttons */}
-      <Box
-        sx={{
-          p: 1,
-          borderTop: 1,
-          borderColor: "divider",
-          display: "flex",
-          gap: 1,
-          justifyContent: "flex-end",
-          bgcolor: "background.paper",
-        }}
-      >
-        <Button
-          variant="outlined"
-          color="inherit"
+      <div className={css.editorFooter}>
+        <ActionButton
+          variant="outline"
+          size="md"
           onClick={handleCancel}
           disabled={isSaving}
-          startIcon={<X size={ICON_SIZE.dense} />}
-          size="small"
         >
+          <X size={ICON_SIZE.dense} />
           Cancel
-        </Button>
-        <Button
-          variant="contained"
-          color="primary"
+        </ActionButton>
+        <ActionButton
+          variant="accent"
+          size="md"
           onClick={handleSave}
           disabled={isSaving || !isDirty}
-          startIcon={isSaving
-            ? <CircularProgress size={16} />
-            : <Save size={ICON_SIZE.dense} />}
-          size="small"
         >
+          {isSaving ? <Spinner size="sm" /> : <Save size={ICON_SIZE.dense} />}
           {isSaving ? "Saving..." : "Save"}
-        </Button>
-      </Box>
+        </ActionButton>
+      </div>
 
       {/* Confirm dialog */}
       <Dialog
         open={showConfirmDialog}
-        onClose={() => setShowConfirmDialog(false)}
+        onOpenChange={(open) => setShowConfirmDialog(open)}
       >
-        <DialogTitle>Discard changes?</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
+        <DialogPopup showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Discard changes?</DialogTitle>
+          </DialogHeader>
+          <div className={css.dialogBody}>
             You have unsaved changes. Are you sure you want to discard them?
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowConfirmDialog(false)}>
-            Keep Editing
-          </Button>
-          <Button onClick={handleConfirmCancel} color="error">
-            Discard Changes
-          </Button>
-        </DialogActions>
+          </div>
+          <DialogFooter>
+            <ActionButton
+              variant="outline"
+              size="md"
+              onClick={() => setShowConfirmDialog(false)}
+            >
+              Keep Editing
+            </ActionButton>
+            <ActionButton
+              danger
+              variant="outline"
+              size="md"
+              onClick={handleConfirmCancel}
+            >
+              Discard Changes
+            </ActionButton>
+          </DialogFooter>
+        </DialogPopup>
       </Dialog>
-    </Box>
+    </div>
   );
 }

@@ -2,7 +2,6 @@
 import { $getNodeByKey, NodeKey } from "lexical";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
-import { Box, IconButton, Tooltip } from "@mui/material";
 import { Trash2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import DraggableNote, {
@@ -23,6 +22,8 @@ import { useNotesZoom } from "@/hooks/useNotesZoom";
 import { useCanvasZoomShortcuts } from "@/hooks/useCanvasZoomShortcuts";
 import { NoteFrame } from "@/types/notes";
 import { ICON_SIZE } from "@/theme/icons";
+import { getActionButtonClassName, Tooltip } from "../../ui";
+import * as css from "./styles.css";
 import CanvasNoteEditor from "./CanvasNoteEditor";
 import {
   $asCanvasNode,
@@ -271,42 +272,33 @@ export default function CanvasComponent(
   });
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        height: liveHeight.height,
-        my: 2,
-        bgcolor: "background.paper",
-        border: "1px solid",
-        borderColor: "divider",
-        borderRadius: 2,
-        overflow: "hidden",
-        position: "relative",
-      }}
-    >
+    <div className={css.board} style={{ height: liveHeight.height }}>
       {isEditable && (
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-            px: 1.5,
-            py: 0.75,
-            borderBottom: "1px solid",
-            borderColor: "divider",
-            flexShrink: 0,
-          }}
-        >
+        <div className={css.toolbar}>
+          {/*
+            `AddNoteButton`, `ZoomControls`, `SelectionBar`, `SelectionMarquee`
+            and `DraggableNote` are app components (`src/components/
+            NotesCanvas/`) and stay on MUI — see the header of `styles.css.ts`
+            for why that seam is deliberate.
+          */}
           <AddNoteButton onAdd={handleAdd} />
           <ZoomControls zoom={zoom} />
-          <Box sx={{ flex: 1 }} />
-          <Tooltip title="Delete board">
-            <IconButton size="small" onClick={removeBoard} color="error">
+          <div className={css.toolbarSpacer} />
+          <Tooltip content="Delete board">
+            <button
+              type="button"
+              aria-label="Delete board"
+              className={getActionButtonClassName({
+                danger: true,
+                icon: true,
+                size: "md",
+              })}
+              onClick={removeBoard}
+            >
               <Trash2 size={ICON_SIZE.dense} />
-            </IconButton>
+            </button>
           </Tooltip>
-        </Box>
+        </div>
       )}
 
       {isEditable && (
@@ -322,54 +314,30 @@ export default function CanvasComponent(
         />
       )}
 
-      <Box
+      <div
         ref={scrollContainerRef}
         // Focusable so the clipboard shortcuts land on the board the author is
         // in — a document can hold several, alongside the host editor itself.
         tabIndex={isEditable ? 0 : undefined}
         onKeyDown={selection.handleKeyDown}
-        sx={(theme) => ({
-          flex: 1,
-          minHeight: 0,
-          overflow: "auto",
-          position: "relative",
-          outline: "none",
-          "&:focus-visible": {
-            outline: "2px solid",
-            outlineColor: "primary.main",
-            outlineOffset: "-2px",
-          },
-          backgroundImage:
-            `linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
-             linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px)`,
-          ...theme.applyStyles("dark", {
-            backgroundImage:
-              `linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-               linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px)`,
-          }),
-          backgroundSize: `${20 * scale}px ${20 * scale}px`,
-        })}
+        className={css.viewport}
+        style={{ backgroundSize: `${20 * scale}px ${20 * scale}px` }}
       >
         {/* Sizing div keeps the scrollbars honest about the scaled board */}
-        <Box
-          sx={{
+        <div
+          className={css.sizer}
+          style={{
             width: `${boardWidth * scale}px`,
             height: `${boardHeight * scale}px`,
-            minWidth: "100%",
-            minHeight: "100%",
-            position: "relative",
           }}
         >
-          <Box
+          <div
             onPointerDown={selection.handleBoardPointerDown}
-            sx={{
-              position: "absolute",
-              top: 0,
-              left: 0,
+            className={css.surface}
+            style={{
               width: `${boardWidth}px`,
               height: `${boardHeight}px`,
               transform: `scale(${scale})`,
-              transformOrigin: "top left",
             }}
           >
             {notes.map((note) => (
@@ -405,34 +373,17 @@ export default function CanvasComponent(
               </DraggableNote>
             ))}
             {selection.marquee && <SelectionMarquee rect={selection.marquee} />}
-          </Box>
-        </Box>
-      </Box>
+          </div>
+        </div>
+      </div>
 
       {isEditable && (
-        <Box
+        <div
+          className={css.resizeGrip}
           onPointerDown={liveHeight.startResize}
-          sx={{
-            height: 10,
-            flexShrink: 0,
-            cursor: "ns-resize",
-            borderTop: "1px solid",
-            borderColor: "divider",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            "&::after": {
-              content: '""',
-              width: 32,
-              height: 3,
-              borderRadius: 2,
-              bgcolor: "divider",
-            },
-            "&:hover::after": { bgcolor: "text.secondary" },
-          }}
         />
       )}
-    </Box>
+    </div>
   );
 }
 
