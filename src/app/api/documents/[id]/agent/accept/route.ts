@@ -27,7 +27,10 @@ export const POST = userRoute<{ id: string }>(
       subtitle: "You are not authorized to accept this document",
     });
 
-    const accepted = await acceptAgentDocument(userPost.id);
+    // The author comes from the document `requireDocument(…, "own")` just
+    // returned, never from the request: it is the change feed's fan-out key
+    // (docs/plans/changes_detection.md §2.3).
+    const accepted = await acceptAgentDocument(userPost.id, userPost.author.id);
 
     return NextResponse.json({ data: { id: userPost.id, accepted } });
   },

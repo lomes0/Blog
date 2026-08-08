@@ -1,6 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { rankBetween, ranksAfter } from "@/lib/ordering";
+import { APP_ORIGIN } from "@/lib/changes/events";
+import { notifyChange } from "@/lib/changes/notify";
 
 /**
  * Server-side ordering: compute `rank` keys against the live database and
@@ -141,6 +143,19 @@ export async function movePost(
   await db.document.update({
     where: { id: args.id },
     data: { seriesId, parentId, rank },
+  });
+
+  // `document.updated` — a move changes where the sidebar draws the row, which
+  // is a change the client answers exactly as it answers a rename (docs/plans/
+  // changes_detection.md §2.1). Emitted on `db`, so when this runs inside
+  // `moveDocumentTx` the notification commits with the move; `doc.authorId` is
+  // the row this function already had to read to compute the rank, so the
+  // payload costs no extra query.
+  await notifyChange(db, {
+    kind: "document.updated",
+    id: args.id,
+    authorId: doc.authorId,
+    origin: APP_ORIGIN,
   });
 }
 

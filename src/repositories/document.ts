@@ -11,6 +11,8 @@ import { validate } from "uuid";
 import { historyOf, selectHead } from "@/lib/proposals";
 import { getCachedRevision, markProposalsStale } from "./revision";
 import { rankForAppend, reRankIntoRoot } from "./ordering";
+import { APP_ORIGIN } from "@/lib/changes/events";
+import { changeNotification, notifyChange } from "@/lib/changes/notify";
 
 // ─── Shared select fragments ─────────────────────────────────────────────────
 
@@ -386,9 +388,25 @@ const createDocument = async (data: CreateDocumentInput) => {
   });
 
   // Ensure it's always a DOCUMENT type, not DIRECTORY
-  await prisma.document.create({
+  const create = prisma.document.create({
     data: { ...data, type: PrismaDocumentType.DOCUMENT, rank },
   });
+
+  // The create and its notification commit together (docs/plans/
+  // changes_detection.md §2.1): Postgres delivers a `NOTIFY` at COMMIT and
+  // discards it on rollback, so a create that fails cannot announce a post that
+  // does not exist. The ids are known before the write here, which is what lets
+  // this one be the array form the plan sketches.
+  const notification = changeNotification({
+    kind: "document.created",
+    id: data.id,
+    authorId: data.authorId,
+    origin: APP_ORIGIN,
+  });
+  const statements: Prisma.PrismaPromise<unknown>[] = [create];
+  if (notification) statements.push(notification);
+  await prisma.$transaction(statements);
+
   return findDocument(data.id);
 };
 
@@ -422,6 +440,34 @@ const literalHead = (
   return "set" in head ? head.set ?? null : undefined;
 };
 
+/**
+ * Re-read the document an update just wrote, and announce it on the change feed.
+ *
+ * The one emit site in this file that is **not** inside the write's transaction,
+ * and deliberately: `updateDocument` is addressed by *handle*, and two of its
+ * three arms are `updateMany` (the compare-and-set needs a `where` on `head`,
+ * which `update` will not take), which returns a count and no row. So the
+ * document's id and its author's are only knowable from the read this function
+ * already performs afterwards — emitting inside the transaction would mean
+ * adding a query to every save purely to fill in a payload.
+ *
+ * What that costs is one event if the process dies between COMMIT and this
+ * statement. That is the exact failure §3's catch-up exists to repair, and it
+ * is a far better trade than a round trip per save.
+ */
+const announceUpdate = async (handle: string) => {
+  const doc = await findDocument(handle, "all");
+  if (doc) {
+    await notifyChange(prisma, {
+      kind: "document.updated",
+      id: doc.id,
+      authorId: doc.author.id,
+      origin: APP_ORIGIN,
+    });
+  }
+  return doc;
+};
+
 const updateDocument = async (
   handle: string,
   data: Prisma.DocumentUncheckedUpdateInput,
@@ -453,13 +499,13 @@ const updateDocument = async (
   if (expectedHead === undefined) {
     if (nextHead === undefined) {
       await prisma.document.update({ where, data: docData });
-      return findDocument(handle, "all");
+      return announceUpdate(handle);
     }
     await prisma.$transaction(async (tx) => {
       await tx.document.update({ where, data: docData });
       await markProposalsStale(tx, where, nextHead);
     });
-    return findDocument(handle, "all");
+    return announceUpdate(handle);
   }
 
   // `updateMany` is the only shape that can carry the guard, because `head` is
@@ -500,7 +546,7 @@ const updateDocument = async (
     }
   });
 
-  return findDocument(handle, "all");
+  return announceUpdate(handle);
 };
 
 /**
@@ -511,6 +557,11 @@ const updateDocument = async (
  * duplicating is what happens *after* the delete: child tabs are promoted to
  * root by `onDelete: SetNull`, which leaves them holding ranks from a container
  * they are no longer in, so they have to be re-ranked into root here.
+ *
+ * It is also the single emit site for `document.deleted`, which is what makes it
+ * cover `deleteDocument` and `discardAgentDocument` at once — and the notify goes
+ * *inside* the caller's transaction, so a delete that rolls back cannot announce
+ * the removal of a post that is still there.
  */
 const deleteDocumentRow = async (
   tx: Prisma.TransactionClient,
@@ -529,6 +580,26 @@ const deleteDocumentRow = async (
   });
 
   await reRankIntoRoot(tx, doc.authorId, children.map((c) => c.id));
+
+  await notifyChange(tx, {
+    kind: "document.deleted",
+    id: doc.id,
+    authorId: doc.authorId,
+    origin: APP_ORIGIN,
+  });
+  // The promoted children moved container, and nothing else will say so: their
+  // rows survive, so a client that only heard about the delete would keep
+  // rendering them as tabs of a post that no longer exists until the next poll.
+  // Usually an empty list.
+  for (const child of children) {
+    await notifyChange(tx, {
+      kind: "document.updated",
+      id: child.id,
+      authorId: doc.authorId,
+      origin: APP_ORIGIN,
+    });
+  }
+
   return deleted;
 };
 
@@ -726,14 +797,33 @@ const findAgentCreatedDocuments = async (authorId: string) =>
  * accepting is not publishing (§3.7), and a flagged post is an ordinary
  * unpublished draft in every other respect.
  *
+ * `authorId` is a parameter rather than something this function looks up. The
+ * guarded `updateMany` returns a count and no row, so filling in the change
+ * feed's payload from here would mean a second query on a write that needs
+ * none — and the caller has the answer already: the route reaches this having
+ * passed `requireDocument(id, user, "own")`, which is precisely the proof that
+ * the signed-in user *is* the document's author. Getting it wrong would fan the
+ * event out to the wrong subscriber (§2.3), so it is taken from the authorized
+ * document rather than from anything in the request.
+ *
  * @returns true if a flag was cleared, false if the post was not flagged.
  */
-const acceptAgentDocument = async (id: string) => {
+const acceptAgentDocument = async (id: string, authorId: string) => {
   const { count } = await prisma.document.updateMany({
     where: { id, agentCreatedAt: { not: null } },
     data: { agentCreatedAt: null, agentOrigin: null },
   });
-  return count > 0;
+  if (count === 0) return false;
+
+  // Post-commit for the same reason as `announceUpdate`: `updateMany` reports a
+  // count, not a row. A lost event here is repaired by §3's catch-up.
+  await notifyChange(prisma, {
+    kind: "document.updated",
+    id,
+    authorId,
+    origin: APP_ORIGIN,
+  });
+  return true;
 };
 
 /**

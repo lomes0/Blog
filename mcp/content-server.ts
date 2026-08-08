@@ -29,6 +29,7 @@ import {
   upsertProposal,
 } from "@/repositories/revision";
 import { isProposalStale, selectAgentRead } from "@/lib/proposals";
+import { changeNotification } from "@/lib/changes/notify";
 import {
   applyOps,
   emptyState,
@@ -720,6 +721,19 @@ server.registerTool(
       seriesId: seriesId ?? null,
       parentId: null,
     });
+    // The one write in this codebase that does not go through a repository, so
+    // it is the one hand-placed notify (docs/plans/changes_detection.md §2.1) —
+    // everything else the MCP server does reaches Postgres through
+    // `src/repositories/*`, which emits on its own. Inside the transaction, so
+    // the browser only hears about a post that actually committed. `null` means
+    // the payload could not be built; the create then goes ahead unannounced
+    // rather than failing, and §3's catch-up picks the post up.
+    const notification = changeNotification({
+      kind: "document.created",
+      id,
+      authorId,
+      origin: AGENT_ORIGIN,
+    });
     await prisma.$transaction([
       prisma.document.create({
         data: {
@@ -741,6 +755,7 @@ server.registerTool(
       prisma.revision.create({
         data: { id: revisionId, documentId: id, authorId, data: state as object },
       }),
+      ...(notification ? [notification] : []),
     ]);
 
     return text(

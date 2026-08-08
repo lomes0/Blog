@@ -32,7 +32,14 @@ export const POST = userRoute<{ id: string; revisionId: string }>(
       subtitle: "You are not authorized to reject changes to this document",
     });
 
-    const rejected = await rejectProposal(userPost.id, params.revisionId);
+    // The author comes from the document `requireDocument(…, "own")` just
+    // returned, never from the request: it is the change feed's fan-out key
+    // (docs/plans/changes_detection.md §2.3).
+    const rejected = await rejectProposal(
+      userPost.id,
+      params.revisionId,
+      userPost.author.id,
+    );
     if (!rejected) {
       throw new ApiError(
         404,

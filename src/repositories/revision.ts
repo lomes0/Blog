@@ -10,6 +10,8 @@ import {
   planStaleMarking,
   type ProposalRowState,
 } from "@/lib/proposals";
+import { APP_ORIGIN } from "@/lib/changes/events";
+import { notifyChange } from "@/lib/changes/notify";
 
 /**
  * A revision as stored, including whether it is a pending agent proposal.
@@ -432,7 +434,7 @@ const toRecord = (
  * A **stale** pending row is the third answer: it is replaced rather than folded
  * onto (§3.6). See `foldProposal`.
  */
-const upsertProposal = async (
+const writeProposal = async (
   input: ProposalInput,
 ): Promise<ProposalRecord> => {
   const at = input.at ?? new Date();
@@ -517,6 +519,47 @@ const upsertProposal = async (
   );
 };
 
+/**
+ * {@link writeProposal}, plus the `proposal.upserted` event
+ * (docs/plans/changes_detection.md §2.1).
+ *
+ * The notify is **here rather than in the three arms** of the retry loop, and
+ * that is the point of the split: `create`, `replace` and `fold` are three
+ * different statements with three different shapes (a bare create, a two-
+ * statement array transaction, a version compare-and-set), so emitting inside
+ * each would be three call sites — and worse, an attempt that *lost* the race
+ * would announce a batch that never landed before going round again. Only the
+ * successful return reaches this line.
+ *
+ * It is post-commit rather than in-transaction for the same reason there is a
+ * retry loop at all: the write is one of three statements chosen at runtime,
+ * and the `fold` arm has no transaction to join. §3's catch-up repairs the
+ * crashed-in-between window — and for proposals specifically that is
+ * `refreshProposals()`, which the reconnect sequence already runs (§3.2).
+ *
+ * `input.authorId` is the *revision's* author — whoever the agent authenticated
+ * as. On every path that exists today that is also the document's owner
+ * (`mcp/content-server.ts` scopes every read and write to `MCP_AUTHOR_ID`), so
+ * it is the right subscriber to fan out to. If a second writer ever proposes
+ * against someone else's document, this is the line that has to change: the
+ * feed filters on who may *see* the event, which is the document's owner —
+ * the same distinction `countPendingProposals` already draws by scoping through
+ * `document.authorId`.
+ */
+const upsertProposal = async (
+  input: ProposalInput,
+): Promise<ProposalRecord> => {
+  const record = await writeProposal(input);
+  await notifyChange(prisma, {
+    kind: "proposal.upserted",
+    id: record.documentId,
+    revisionId: record.id,
+    authorId: input.authorId,
+    origin: input.origin ?? APP_ORIGIN,
+  });
+  return record;
+};
+
 export type ApproveResult =
   | { ok: true; head: string }
   | { ok: false; reason: "not-found" | "stale" | "conflict" };
@@ -549,7 +592,18 @@ const approveProposal = async (
   prisma.$transaction(async (tx): Promise<ApproveResult> => {
     const proposal = await tx.revision.findFirst({
       where: { id: revisionId, documentId, proposedAt: { not: null } },
-      select: { id: true, baseRevisionId: true, staleAt: true },
+      select: {
+        id: true,
+        baseRevisionId: true,
+        staleAt: true,
+        // For the change feed's payload, and taken from the *document* rather
+        // than the revision: the person entitled to hear that a proposal was
+        // resolved is the one who owns the document, the same line
+        // `countPendingProposals` and the approve route both already draw. It
+        // is an extra column on a query that had to run anyway, not an extra
+        // round trip.
+        document: { select: { authorId: true } },
+      },
     });
     if (!proposal) return { ok: false, reason: "not-found" };
 
@@ -567,6 +621,30 @@ const approveProposal = async (
     // `baseRevisionId` stay: approval keeps the batches (§3.3), and they are
     // the record of where this revision came from.
     await tx.revision.update({ where: { id: revisionId }, data: plan.patch });
+
+    // Only here, and inside the transaction: the three refusals above return
+    // without announcing, and a rollback discards these two notifications along
+    // with the write (docs/plans/changes_detection.md §2.1). Two events rather
+    // than one because approval is genuinely both things — the proposal stopped
+    // being pending, *and* `head` moved, so the document's content changed and
+    // any client holding it has to re-fetch. Leaving the second to be inferred
+    // from the first would put that reasoning in every consumer.
+    const authorId = proposal.document.authorId;
+    await notifyChange(tx, {
+      kind: "proposal.resolved",
+      id: documentId,
+      revisionId,
+      resolution: "approved",
+      authorId,
+      origin: APP_ORIGIN,
+    });
+    await notifyChange(tx, {
+      kind: "document.updated",
+      id: documentId,
+      authorId,
+      origin: APP_ORIGIN,
+    });
+
     return { ok: true, head: revisionId };
   });
 
@@ -577,12 +655,38 @@ const approveProposal = async (
  *
  * Returns false when there was no pending proposal by that id on that document,
  * so a double reject is a clean answer rather than a 500.
+ *
+ * `authorId` is a parameter for the same reason as `acceptAgentDocument`'s: this
+ * is a bare `deleteMany`, so there is no row left to read the document's owner
+ * off and no transaction to join, and the caller has already proved the answer
+ * — the route runs `requireDocument(id, user, "own")` before it gets here. The
+ * change feed fans out on that id (§2.3), so it comes from the authorized
+ * document and never from the request.
+ *
+ * The notify is conditional on `count > 0`: a second click on a rail button
+ * deleted nothing, and must not announce that it did. Rejecting leaves the
+ * document itself untouched — `head` never pointed at the proposal — so this is
+ * the one resolution that emits no `document.updated`.
  */
-const rejectProposal = async (documentId: string, revisionId: string) => {
+const rejectProposal = async (
+  documentId: string,
+  revisionId: string,
+  authorId: string,
+) => {
   const { count } = await prisma.revision.deleteMany({
     where: { id: revisionId, documentId, proposedAt: { not: null } },
   });
-  return count > 0;
+  if (count === 0) return false;
+
+  await notifyChange(prisma, {
+    kind: "proposal.resolved",
+    id: documentId,
+    revisionId,
+    resolution: "rejected",
+    authorId,
+    origin: APP_ORIGIN,
+  });
+  return true;
 };
 
 export {
