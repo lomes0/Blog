@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 import withBundleAnalyzer from "@next/bundle-analyzer";
+import { createVanillaExtractPlugin } from "@vanilla-extract/next-plugin";
 import withPWA from "./next-pwa";
+
+const withVanillaExtract = createVanillaExtractPlugin();
 
 // Cache duration constants (in seconds)
 const ONE_DAY = 24 * 60 * 60;
@@ -237,6 +240,28 @@ const nextConfig: NextConfig = {
   },
 };
 
+/**
+ * Wrapper order matters, and both of the inner two *chain* rather than replace.
+ *
+ * `withVanillaExtract` is innermost so that the `webpack:` fn above still runs:
+ * the plugin installs its loaders and `VanillaExtractPlugin`, then hands the
+ * config on —
+ *
+ *   if (typeof nextConfig.webpack === 'function') {
+ *     return nextConfig.webpack(config, options);
+ *   }
+ *
+ * (`@vanilla-extract/next-plugin/dist/…cjs.dev.js:261-263`). The vendored
+ * `next-pwa/index.js:63-64` does the same for whatever it wraps, so all three
+ * webpack contributions survive.
+ *
+ * **This build is webpack, deliberately.** `next dev` and `next build` are both
+ * run without `--turbopack` (see `package.json`). Adding that flag would drop
+ * every vanilla-extract style silently: the plugin's Turbopack support is
+ * `unstable_turbopack.mode: "off"` by default and requires Next >= 16 even when
+ * switched on (`…cjs.dev.js:159-163`), so on Next 15 it configures no Turbopack
+ * rule at all and `.css.ts` files compile to nothing.
+ */
 export default withBundleAnalyzer(withBundleAnalyzerConfig)(
-  withPWA(withPWAConfig)(nextConfig),
+  withPWA(withPWAConfig)(withVanillaExtract(nextConfig)),
 );

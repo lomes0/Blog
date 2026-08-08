@@ -8,6 +8,12 @@
 import type { EditorThemeClasses } from "lexical";
 
 import "./theme.css";
+// Side-effect only, and deliberately unread for now: the vanilla-extract token
+// contract has to be in the module graph for `:root`/`html.dark` to be emitted
+// at all. Phase 2 commit 1 ships the contract with no consumer — a zero-pixel
+// change — so that the component ports that follow are diffable on their own.
+// See ./styles/tokens.css.ts.
+import "./styles/tokens.css";
 
 const theme: EditorThemeClasses = {
   blockCursor: "LexicalTheme__blockCursor",
