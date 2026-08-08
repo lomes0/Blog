@@ -15,8 +15,8 @@ import type { InitialConfigType } from "@lexical/react/LexicalComposer";
 import type { CreateEditorArgs } from "lexical";
 import { htmlConfig } from "@/editor/utils/htmlConfig";
 import {
-  LexicalTableCellNode,
-  LexicalTableNode,
+  LegacyTableCellNode,
+  LegacyTableNode,
   LexicalTableRowNode,
 } from "@/editor/nodes/TableNode";
 import {
@@ -54,20 +54,22 @@ export const nestedEditorConfig = {
     CodeHighlightNode,
     TableNode,
     TableCellNode,
-    // Type aliases for tables stored before the rename. Import-only; see
-    // `nodes/TableNode/TableNode.ts`.
+    // Type aliases for tables stored before the rename. Kept identical to
+    // `editor/config.tsx` — see the note on `LegacyTableNode`.
     {
-      replace: LexicalTableNode,
-      with: (_node: LexicalTableNode) => new TableNode(),
+      replace: LegacyTableNode,
+      with: (_node: LegacyTableNode) => new TableNode(),
+      withKlass: TableNode,
     },
     {
-      replace: LexicalTableCellNode,
-      with: (node: LexicalTableCellNode) =>
+      replace: LegacyTableCellNode,
+      with: (node: LegacyTableCellNode) =>
         new TableCellNode(
           node.__headerState,
           node.__colSpan,
           node.__width,
         ),
+      withKlass: TableCellNode,
     },
     LexicalTableRowNode,
     AutoLinkNode,

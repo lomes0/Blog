@@ -67,8 +67,11 @@ export default function ImageComponent({
   const [isResizing, setIsResizing] = useState<boolean>(false);
   const [editor] = useLexicalComposerContext();
 
+  // KEY_ENTER_COMMAND's payload is `KeyboardEvent | null` — Lexical dispatches
+  // it with null from programmatic paths — and the command payload type became
+  // invariant in 0.49, so the handler must accept the null.
   const $onEnter = useCallback(
-    (event: KeyboardEvent) => {
+    (event: KeyboardEvent | null) => {
       const latestSelection = $getSelection();
       if (
         isSelected &&
@@ -78,7 +81,7 @@ export default function ImageComponent({
         if (showCaption) {
           // Move focus into nested editor
           $setSelection(null);
-          event.preventDefault();
+          event?.preventDefault();
           caption.focus();
           return true;
         }

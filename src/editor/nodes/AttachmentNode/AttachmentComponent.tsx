@@ -109,10 +109,13 @@ export default function AttachmentComponent({
     [isSelected, nodeKey],
   );
 
+  // KEY_ENTER_COMMAND's payload is `KeyboardEvent | null` — Lexical dispatches
+  // it with null from programmatic paths — and the command payload type became
+  // invariant in 0.49, so the handler must accept the null.
   const $onEnter = useCallback(
-    (event: KeyboardEvent) => {
+    (event: KeyboardEvent | null) => {
       if (isSelected && $isNodeSelection($getSelection())) {
-        event.preventDefault();
+        event?.preventDefault();
         const node = $getNodeByKey(nodeKey);
         if ($isAttachmentNode(node)) {
           node.toggleExpanded();

@@ -23,8 +23,8 @@ import type { InitialConfigType } from "@lexical/react/LexicalComposer";
 import type { CreateEditorArgs } from "lexical";
 import { htmlConfig } from "./utils/htmlConfig";
 import {
-  LexicalTableCellNode,
-  LexicalTableNode,
+  LegacyTableCellNode,
+  LegacyTableNode,
   LexicalTableRowNode,
 } from "@/editor/nodes/TableNode";
 import {
@@ -63,6 +63,20 @@ export const editorConfig = {
     // would overwrite this entry's replace, leaving runtime-created blocks as
     // base LexicalCodeNode — undetectable by the toolbar/chrome, which is the
     // bug this fixes.)
+    //
+    // Still true at Lexical 0.49, with two things worth recording:
+    //
+    // 1. Runtime creation increasingly goes through `$create`, which resolves
+    //    the registry entry and constructs `klass` — ours — directly, ignoring
+    //    the `with` fn (its own doc calls those deprecated). The fn is still
+    //    needed for the residual `$applyNodeReplacement` paths, which is what
+    //    `$createCodeNode` in `@lexical/code-core` still uses.
+    // 2. Dev builds now warn "Override for CodeNode specifies 'replace'
+    //    without 'withKlass'". We cannot satisfy it here and should not try:
+    //    registration asserts `replaceWithKlass.prototype instanceof klass`, a
+    //    *strict* subclass, which a same-class entry can never be. The table
+    //    entries below do carry `withKlass`, because there the replaced class
+    //    and the replacement are genuinely different classes.
     {
       replace: CodeNode,
       with: (node: LexicalCodeNode) => new CodeNode(node.getLanguage()),
@@ -70,20 +84,27 @@ export const editorConfig = {
     CodeHighlightNode,
     TableNode,
     TableCellNode,
-    // Type aliases for tables stored before the rename. Import-only; see
-    // `nodes/TableNode/TableNode.ts`.
+    // Type aliases for tables stored before the rename. `LegacyTableNode` owns
+    // the `"table"` registry slot and hands `importJSON` to `TableNode`; see
+    // the note on that class for why upstream's own class can no longer do it.
+    // `withKlass` does the other half: it makes upstream's `TableNode` resolve
+    // to ours for `registerNodeTransform` / `registerMutationListener`, which
+    // is what lets `@lexical/table`'s `registerTablePlugin` and
+    // `registerTableSelectionObserver` drive our subclasses.
     {
-      replace: LexicalTableNode,
-      with: (_node: LexicalTableNode) => new TableNode(),
+      replace: LegacyTableNode,
+      with: (_node: LegacyTableNode) => new TableNode(),
+      withKlass: TableNode,
     },
     {
-      replace: LexicalTableCellNode,
-      with: (node: LexicalTableCellNode) =>
+      replace: LegacyTableCellNode,
+      with: (node: LegacyTableCellNode) =>
         new TableCellNode(
           node.__headerState,
           node.__colSpan,
           node.__width,
         ),
+      withKlass: TableCellNode,
     },
     LexicalTableRowNode,
     AutoLinkNode,

@@ -19,6 +19,7 @@ import {
   $setSelection,
   COMMAND_PRIORITY_LOW,
   PASTE_COMMAND,
+  type PasteCommandType,
 } from "lexical";
 import { $convertFromMarkdownString } from ".";
 import { $isCodeNode } from "@lexical/code";
@@ -31,11 +32,17 @@ export default function MarkdownPlugin(): JSX.Element {
   useEffect(() => {
     return editor.registerCommand(
       PASTE_COMMAND,
-      (event: ClipboardEvent) => {
-        if (!event.clipboardData) return false;
-        const html = event.clipboardData.getData("text/html");
+      // PASTE_COMMAND's payload is `PasteCommandType`
+      // (ClipboardEvent | InputEvent | KeyboardEvent) and the payload type
+      // became invariant in 0.49, so the narrowing moves into the body.
+      (event: PasteCommandType) => {
+        const clipboardData = "clipboardData" in event
+          ? event.clipboardData
+          : null;
+        if (!clipboardData) return false;
+        const html = clipboardData.getData("text/html");
         if (html) return false;
-        const text = event.clipboardData.getData("text/plain");
+        const text = clipboardData.getData("text/plain");
         const selection = $getSelection();
         if (!$isRangeSelection(selection)) return false;
 

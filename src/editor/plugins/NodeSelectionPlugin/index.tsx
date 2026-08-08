@@ -25,6 +25,7 @@ import {
   Klass,
   LexicalNode,
   PASTE_COMMAND,
+  type PasteCommandType,
   SerializedElementNode,
   SerializedLexicalNode,
 } from "lexical";
@@ -353,11 +354,17 @@ export default function NodeSelectionPlugin({
         });
       };
 
-      // Handle paste via Lexical command
-      const onPaste = (event: ClipboardEvent): boolean => {
-        if (!event.clipboardData) return false;
+      // Handle paste via Lexical command. PASTE_COMMAND's payload is
+      // `PasteCommandType` (ClipboardEvent | InputEvent | KeyboardEvent) and
+      // the payload type became invariant in 0.49, so this cannot narrow to
+      // ClipboardEvent in the signature — only in the body.
+      const onPaste = (event: PasteCommandType): boolean => {
+        const clipboardData = "clipboardData" in event
+          ? event.clipboardData
+          : null;
+        if (!clipboardData) return false;
 
-        const lexicalData = event.clipboardData.getData(
+        const lexicalData = clipboardData.getData(
           "application/x-lexical-editor",
         );
         if (!lexicalData) {

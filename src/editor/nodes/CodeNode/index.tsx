@@ -1,20 +1,27 @@
 import { CodeNode as LexicalCodeNode, SerializedCodeNode } from "@lexical/code";
 import type {
-  DOMConversionMap,
   DOMExportOutput,
   EditorConfig,
   LexicalEditor,
   LexicalNode,
   NodeKey,
+  Spread,
 } from "lexical";
 
 /**
  * Extended SerializedCodeNode with width property.
+ *
+ * Must be a `type` (via `Spread`), not an `interface`. Lexical's
+ * `KlassConstructor` requires `static importJSON` to accept
+ * `SerializedLexicalNode & Record<string, unknown>`, and an interface — unlike
+ * a type alias — gets no implicit index signature, so it is not assignable to
+ * `Record<string, unknown>`. Declared as an interface this fails to satisfy
+ * `KlassConstructor` and takes the `config.tsx` replacement entry down with it.
  */
-export interface SerializedCodeNodeWithWidth extends SerializedCodeNode {
+export type SerializedCodeNodeWithWidth = Spread<{
   width?: string; // e.g., "80%", "600px", "100%"
   wrap?: boolean; // word-wrap (soft wrap) toggle
-}
+}, SerializedCodeNode>;
 
 /**
  * Custom CodeNode that renders robust line numbers for exported (view-mode)
@@ -204,12 +211,13 @@ export class CodeNode extends LexicalCodeNode {
     };
   }
 
-  /**
-   * Import from DOM (for paste operations).
-   */
-  static importDOM(): DOMConversionMap | null {
-    return LexicalCodeNode.importDOM();
-  }
+  // No `static importDOM` override. Upstream `CodeNode` declares its DOM
+  // conversions inside `$config()` rather than as a static method since 0.44,
+  // and Lexical only installs that config onto a class which does NOT own a
+  // static `importDOM` (`getStaticNodeConfig`). Declaring one here — even a
+  // passthrough to `LexicalCodeNode.importDOM()`, which no longer exists —
+  // would suppress the inherited `$config()` conversions and silently break
+  // pasting <pre>/<code>/GitHub code tables.
 }
 
 /**

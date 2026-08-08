@@ -32,8 +32,35 @@ export type SerializedTableCellNode = LexicalSerializedTableCellNode & {
   style: string;
 };
 
+/**
+ * Answers for cells stored under the pre-rename `type: "tablecell"`.
+ * See the note on `LegacyTableNode` for why this class exists at 0.49 and why
+ * it sits between upstream and `TableCellNode` rather than beside it.
+ */
+export class LegacyTableCellNode extends LexicalTableCellNode {
+  static getType(): string {
+    return "tablecell";
+  }
+
+  static clone(node: LegacyTableCellNode): LegacyTableCellNode {
+    return new LegacyTableCellNode(
+      node.__headerState,
+      node.__colSpan,
+      node.__width,
+      node.__key,
+    );
+  }
+
+  static importJSON(
+    serializedNode: LexicalSerializedTableCellNode,
+  ): TableCellNode {
+    // Pre-rename JSON has no `style`; our importJSON parses it unconditionally.
+    return TableCellNode.importJSON({ style: "", ...serializedNode });
+  }
+}
+
 /** @noInheritDoc */
-export class TableCellNode extends LexicalTableCellNode {
+export class TableCellNode extends LegacyTableCellNode {
   __style: string;
   // Persisted in every serialized table cell — see the note on TableNode.
   static getType(): string {
