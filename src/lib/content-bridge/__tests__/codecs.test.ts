@@ -14,6 +14,7 @@
 import { blockToNode, nodeToBlock } from "@/lib/content-bridge/blocks";
 import { applyOps, stateFromBlocks } from "@/lib/content-bridge/ops";
 import { outline } from "@/lib/content-bridge/outline";
+import { blockSchema } from "@/lib/content-bridge/schema";
 import { stateHash } from "@/lib/content-bridge/stateHash";
 import type {
   SerializedNode,
@@ -24,14 +25,155 @@ import type {
 const kids = (node: SerializedNode): SerializedNode[] =>
   (node.children as SerializedNode[]) ?? [];
 
+/**
+ * The zod mirror must accept whatever the codec is fed.
+ *
+ * `schema.ts` is what the agents are handed; the codec is what runs. A field
+ * one of them knows about and the other does not is invisible until an agent's
+ * write is refused for naming a field the codec would have round-tripped
+ * perfectly well — which is exactly how `attachment.expanded` came to work over
+ * stdio and not in the browser (ai-surface-consolidation.md §2.1). Asserted on
+ * the issue list rather than on `success` so a failure names the field.
+ */
+const accepted = (block: WritableBlock): void => {
+  const result = blockSchema.safeParse(block);
+  expect(result.success ? null : result.error.issues).toBeNull();
+};
+
 /** Build -> read -> build again. The second node must equal the first. */
 const rebuilds = (block: WritableBlock) => {
+  accepted(block);
   const node = blockToNode(block);
   const readBack = nodeToBlock(node);
   expect(readBack.type).not.toBe("opaque");
   expect(blockToNode(readBack as WritableBlock, node)).toEqual(node);
   return { node, readBack };
 };
+
+/**
+ * One fully-populated block per authorable type.
+ *
+ * A `Record` keyed on `WritableBlock["type"]` rather than a list, so that
+ * adding a type to the IR does not compile until it has a fixture here — which
+ * is where both obligations a graduated codec carries are checked: it
+ * round-trips (§4.6.1), and the zod mirror has an arm for it. Miss the second
+ * and the type is authorable in this file and nowhere an agent can reach.
+ */
+const FIXTURES = {
+  paragraph: { type: "paragraph", text: "a **bold** word" },
+  heading: { type: "heading", level: 3, text: "What we built" },
+  quote: { type: "quote", text: "as they say" },
+  code: { type: "code", language: "ts", code: "const x = 1;" },
+  list: {
+    type: "list",
+    listType: "bullet",
+    items: [
+      {
+        text: "outer **one**",
+        sublist: {
+          listType: "number",
+          items: [
+            { text: "inner a" },
+            {
+              text: "inner b",
+              sublist: {
+                listType: "check",
+                items: [{ text: "deep", checked: true }],
+              },
+            },
+          ],
+        },
+      },
+      { text: "outer two" },
+    ],
+  },
+  divider: { type: "divider" },
+  layout: {
+    type: "layout",
+    templateColumns: "2fr 1fr",
+    columns: [
+      [{ type: "paragraph", text: "left" }],
+      [{ type: "paragraph", text: "right" }, { type: "divider" }],
+    ],
+  },
+  details: {
+    type: "details",
+    summary: "Full **diff**",
+    open: false,
+    body: [{ type: "code", language: "diff", code: "- a\n+ b" }],
+  },
+  summary: { type: "summary", text: "Full **diff**" },
+  kanban: {
+    type: "kanban",
+    tasks: [
+      {
+        id: "t1",
+        name: "Draft",
+        description: "the opening",
+        stage: 0,
+        priority: "high",
+        tags: ["writing"],
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-02T00:00:00.000Z",
+      },
+      {
+        id: "t2",
+        name: "Ship",
+        stage: 2,
+        priority: "low",
+        tags: [],
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ],
+  },
+  attachment: {
+    type: "attachment",
+    url: "/api/attachments/abc",
+    filename: "report.pdf",
+    mimetype: "application/pdf",
+    size: 4096,
+    expanded: true,
+  },
+  table: {
+    type: "table",
+    rowCount: 0,
+    columnCount: 0,
+    headerRow: true,
+    rows: [
+      ["Name", "Count"],
+      ["apples", { text: "**3**", colSpan: 2 }],
+    ],
+  },
+  cell: {
+    type: "cell",
+    text: "a **bold** cell",
+    header: "both",
+    colSpan: 2,
+    rowSpan: 3,
+  },
+  // `satisfies` rather than an annotation: the Record is what makes a missing
+  // type a compile error, and the literal types are what let the per-type
+  // describes below read their own fixture back out of this table instead of
+  // restating it.
+} satisfies Record<WritableBlock["type"], WritableBlock>;
+
+describe("the zod mirror and the codecs describe the same block model", () => {
+  it.each(Object.entries(FIXTURES))(
+    "accepts and builds a fully-populated %s",
+    (_type, block) => {
+      accepted(block);
+      expect(() => blockToNode(block)).not.toThrow();
+    },
+  );
+
+  it("has one arm per authorable type and no others", () => {
+    const arms = blockSchema.options.map(
+      (option) => option.shape.type.value as string,
+    );
+    expect(arms.slice().sort()).toEqual(Object.keys(FIXTURES).sort());
+  });
+});
 
 describe("divider", () => {
   it("round-trips", () => {
@@ -52,14 +194,7 @@ describe("divider", () => {
 
 describe("attachment", () => {
   it("round-trips every field", () => {
-    const block: WritableBlock = {
-      type: "attachment",
-      url: "/api/attachments/abc",
-      filename: "report.pdf",
-      mimetype: "application/pdf",
-      size: 4096,
-      expanded: true,
-    };
+    const block = FIXTURES.attachment;
     const { node, readBack } = rebuilds(block);
     expect(node.type).toBe("attachment");
     expect(readBack).toMatchObject(block);
@@ -76,27 +211,7 @@ describe("attachment", () => {
 });
 
 describe("kanban", () => {
-  const tasks = [
-    {
-      id: "t1",
-      name: "Draft",
-      description: "the opening",
-      stage: 0,
-      priority: "high" as const,
-      tags: ["writing"],
-      createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-02T00:00:00.000Z",
-    },
-    {
-      id: "t2",
-      name: "Ship",
-      stage: 2,
-      priority: "low" as const,
-      tags: [],
-      createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z",
-    },
-  ];
+  const { tasks } = FIXTURES.kanban;
 
   it("round-trips tasks, ids and timestamps included", () => {
     const { node, readBack } = rebuilds({ type: "kanban", tasks });
@@ -129,14 +244,7 @@ describe("kanban", () => {
 });
 
 describe("layout", () => {
-  const block: WritableBlock = {
-    type: "layout",
-    templateColumns: "2fr 1fr",
-    columns: [
-      [{ type: "paragraph", text: "left" }],
-      [{ type: "paragraph", text: "right" }, { type: "divider" }],
-    ],
-  };
+  const block = FIXTURES.layout;
 
   it("builds a container of columns", () => {
     const node = blockToNode(block);
@@ -180,12 +288,7 @@ describe("layout", () => {
 });
 
 describe("details", () => {
-  const block: WritableBlock = {
-    type: "details",
-    summary: "Full **diff**",
-    open: false,
-    body: [{ type: "code", language: "diff", code: "- a\n+ b" }],
-  };
+  const block = FIXTURES.details;
 
   it("builds a summary and a content wrapper", () => {
     const node = blockToNode(block);
@@ -271,16 +374,7 @@ describe("authoring a whole document from blocks", () => {
 });
 
 describe("table", () => {
-  const block: WritableBlock = {
-    type: "table",
-    rowCount: 0,
-    columnCount: 0,
-    headerRow: true,
-    rows: [
-      ["Name", "Count"],
-      ["apples", { text: "**3**", colSpan: 2 }],
-    ],
-  };
+  const block = FIXTURES.table;
 
   const rowsOf = (node: SerializedNode) => kids(node).map((row) => kids(row));
 
@@ -385,29 +479,7 @@ describe("table cell", () => {
 });
 
 describe("nested lists", () => {
-  const nested: WritableBlock = {
-    type: "list",
-    listType: "bullet",
-    items: [
-      {
-        text: "outer **one**",
-        sublist: {
-          listType: "number",
-          items: [
-            { text: "inner a" },
-            {
-              text: "inner b",
-              sublist: {
-                listType: "check",
-                items: [{ text: "deep", checked: true }],
-              },
-            },
-          ],
-        },
-      },
-      { text: "outer two" },
-    ],
-  };
+  const nested = FIXTURES.list;
 
   it("round-trips three levels of nesting", () => {
     const { readBack } = rebuilds(nested);

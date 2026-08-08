@@ -46,6 +46,16 @@ import {
   type StoredState,
   type WritableBlock,
 } from "@/lib/content-bridge";
+// The input schemas and the block prose used to be declared here, and a second
+// time in `src/app/api/copilot/route.ts` for the in-app Copilot. They drifted.
+// One copy now lives beside the codecs that enforce it — see
+// docs/plans/ai-surface-consolidation.md §4.1. Not from the barrel: it is the
+// one part of the bridge the browser has no use for.
+import {
+  BLOCK_DOC,
+  blockSchema,
+  opSchema,
+} from "@/lib/content-bridge/schema";
 
 const AUTHOR_REF = process.env.MCP_AUTHOR_ID;
 if (!AUTHOR_REF) {
@@ -243,140 +253,6 @@ async function proposeRevision(
     base,
   });
 }
-
-// ---------------------------------------------------------------------------
-// Input schemas
-// ---------------------------------------------------------------------------
-
-const listItemSchema = z.object({
-  text: z.string(),
-  checked: z.boolean().optional(),
-  // Nesting is recursive, which zod cannot express inside a discriminated
-  // union without a lazy schema the JSON-Schema conversion would not survive.
-  // The codec validates the shape: {listType, items:[…]}.
-  sublist: z.unknown().optional(),
-});
-
-const kanbanTaskSchema = z.object({
-  name: z.string(),
-  description: z.string().optional(),
-  stage: z.number().int().min(0).default(0),
-  priority: z.enum(["low", "medium", "high"]).default("medium"),
-  tags: z.array(z.string()).optional(),
-});
-
-const blockSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("paragraph"), text: z.string() }),
-  z.object({
-    type: z.literal("heading"),
-    level: z.number().int().min(1).max(6),
-    text: z.string(),
-  }),
-  z.object({ type: z.literal("quote"), text: z.string() }),
-  z.object({
-    type: z.literal("code"),
-    language: z.string().default("plain"),
-    code: z.string(),
-  }),
-  z.object({
-    type: z.literal("list"),
-    listType: z.enum(["bullet", "number", "check"]).default("bullet"),
-    items: z.array(listItemSchema),
-  }),
-  z.object({ type: z.literal("divider") }),
-  z.object({ type: z.literal("summary"), text: z.string() }),
-  z.object({
-    type: z.literal("attachment"),
-    url: z.string(),
-    filename: z.string(),
-    mimetype: z.string().optional(),
-    size: z.number().optional(),
-    expanded: z.boolean().optional(),
-  }),
-  z.object({
-    type: z.literal("kanban"),
-    tasks: z.array(kanbanTaskSchema),
-  }),
-  // Containers nest, so their bodies are typed loosely here and validated by
-  // the codec. Zod cannot express the recursion inside a discriminated union
-  // without a lazy schema the MCP JSON-Schema conversion would not survive.
-  z.object({
-    type: z.literal("layout"),
-    templateColumns: z.string().default("1fr 1fr"),
-    columns: z.array(z.array(z.unknown())).optional(),
-  }),
-  z.object({
-    type: z.literal("details"),
-    summary: z.string(),
-    open: z.boolean().optional(),
-    body: z.array(z.unknown()).optional(),
-  }),
-  z.object({
-    type: z.literal("table"),
-    rows: z
-      .array(z.array(z.unknown()))
-      .optional()
-      .describe('Rows of cells; a cell is a string or {text, header, colSpan, rowSpan}'),
-    headerRow: z.boolean().optional(),
-  }),
-  z.object({
-    type: z.literal("cell"),
-    text: z.string(),
-    header: z.enum(["row", "column", "both"]).optional(),
-    colSpan: z.number().int().min(1).optional(),
-    rowSpan: z.number().int().min(1).optional(),
-  }),
-]);
-
-const placement = {
-  after: z.string().optional().describe("Place after this block"),
-  before: z.string().optional().describe("Place before this block"),
-  appendTo: z
-    .string()
-    .optional()
-    .describe('Append inside this container, or "root" for the document'),
-};
-
-const opSchema = z.discriminatedUnion("op", [
-  z.object({ op: z.literal("set_text"), id: z.string(), text: z.string() }),
-  z.object({ op: z.literal("replace_block"), id: z.string(), block: blockSchema }),
-  z.object({
-    op: z.literal("insert_blocks"),
-    blocks: z.array(blockSchema).min(1),
-    ...placement,
-  }),
-  z.object({ op: z.literal("delete_block"), id: z.string() }),
-  z.object({ op: z.literal("move_block"), id: z.string(), ...placement }),
-]);
-
-const BLOCK_DOC =
-  "Authorable block types: paragraph {text}, heading {level 1-6, text}, " +
-  "quote {text}, code {language, code}, list {listType bullet|number|check, " +
-  "items[{text, checked?, sublist?}]} where sublist is {listType, items[…]} " +
-  "for nesting, divider {}, " +
-  "attachment {url, filename, mimetype?, size?}, " +
-  "kanban {tasks[{name, description?, stage, priority low|medium|high, tags?}]}, " +
-  "layout {templateColumns e.g. \"1fr 1fr\", columns[[block,…],[block,…]]}, " +
-  "details {summary, open?, body[block,…]}, summary {text}, " +
-  "table {rows[[cell,…],…], headerRow?} where a cell is a plain string or " +
-  "{text, header row|column|both, colSpan, rowSpan}, and cell {text, header?}. " +
-  "For layout, details and table, columns/body/rows are required when " +
-  "inserting a new one and optional when replacing — omit them to keep the " +
-  "contents already there. " +
-  "Inline formatting inside `text` uses **bold**, __italic__, `code`, " +
-  "~~strike~~, ==highlight==, ++underline++, ^^sup^^, ,,sub,,, [link](url) and " +
-  "$latex$. Italic is __, not *, so that no delimiter is a prefix of another. " +
-  "Text comes back from a read ESCAPED, and the escapes are part of the text: " +
-  "a backslash precedes any literal \\, `, [, ] or $, and any mark character " +
-  "that would otherwise open a run — most often a comma straight after a " +
-  "formatted run, since ,, is subscript. Carry those backslashes through " +
-  "unchanged when you rewrite a block; dropping one does not tidy the text up, " +
-  "it changes what the block says. " +
-  "Node types with no codec (math as a block, image, graph, sketch, " +
-  "iframe, canvas, sticky) are read-only: they can be read, moved or deleted " +
-  "by address, but not rewritten. set_text needs a single text field, so it " +
-  "applies only to paragraph, heading, quote, summary, cell and code; a list, " +
-  "table, layout, details or kanban is rewritten whole with replace_block.";
 
 const server = new McpServer({ name: "blog-content", version: "0.2.0" });
 

@@ -1,0 +1,182 @@
+/**
+ * The zod mirror of the block IR, and the prose that describes it to a model.
+ *
+ * Both agent surfaces declare the same block model — `/api/copilot` for the
+ * in-app Copilot, `mcp/content-server.ts` for Claude Code — and until now each
+ * kept its own hand-written copy. They drifted, silently and in both
+ * directions: `attachment.expanded` was authorable over stdio and rejected in
+ * the browser, the two agents were told different things about
+ * `after`/`before`/`appendTo`, and the route's prose described an `attachment`
+ * with no `mimetype` and a kanban task with no `tags` that its own schema
+ * accepted. Every block type graduated under
+ * docs/plans/claude-code-lexical.md §4.6.1 had to be written twice or it worked
+ * on one agent and not the other. See docs/plans/ai-surface-consolidation.md
+ * §2.1.
+ *
+ * This lives beside the codecs rather than under `src/lib/ai/` because
+ * `blocks.ts` is what actually accepts or rejects a block; what follows is only
+ * a *description* of it, and a description drifting from the behaviour it
+ * describes is the whole failure mode. `__tests__/codecs.test.ts` feeds every
+ * fully-populated block to both, so graduating a type with only one of the two
+ * updated fails there rather than in front of an agent.
+ *
+ * Deliberately **not** re-exported from `./index`. That barrel is imported by
+ * the browser (`editor/utils/copilotAgentExecutors.ts`), which executes tool
+ * calls the server has already validated; re-exporting would put a validator
+ * into a bundle with nothing to validate. Import this path directly.
+ */
+import { z } from "zod";
+
+const listItemSchema = z.object({
+  text: z.string(),
+  checked: z.boolean().optional(),
+  // Nesting is recursive, which zod cannot express inside a discriminated
+  // union without a lazy schema neither the MCP JSON-Schema conversion nor the
+  // AI SDK's would survive. The codec validates the shape: {listType, items:[…]}.
+  sublist: z.unknown().optional(),
+});
+
+const kanbanTaskSchema = z.object({
+  name: z.string(),
+  description: z.string().optional(),
+  stage: z.number().int().min(0).default(0),
+  priority: z.enum(["low", "medium", "high"]).default("medium"),
+  tags: z.array(z.string()).optional(),
+});
+
+/**
+ * One authorable block. The union's arms are the writable half of `Block` in
+ * `types.ts`, minus the fields a read reports and a write cannot set
+ * (`readonlyText`, a table's `rowCount`/`columnCount`) — an object schema
+ * strips those rather than refusing, so a block handed straight back from a
+ * read is still a legal write.
+ */
+export const blockSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("paragraph"), text: z.string() }),
+  z.object({
+    type: z.literal("heading"),
+    level: z.number().int().min(1).max(6),
+    text: z.string(),
+  }),
+  z.object({ type: z.literal("quote"), text: z.string() }),
+  z.object({
+    type: z.literal("code"),
+    language: z.string().default("plain"),
+    code: z.string(),
+  }),
+  z.object({
+    type: z.literal("list"),
+    listType: z.enum(["bullet", "number", "check"]).default("bullet"),
+    items: z.array(listItemSchema),
+  }),
+  z.object({ type: z.literal("divider") }),
+  z.object({ type: z.literal("summary"), text: z.string() }),
+  z.object({
+    type: z.literal("attachment"),
+    url: z.string(),
+    filename: z.string(),
+    mimetype: z.string().optional(),
+    size: z.number().optional(),
+    expanded: z.boolean().optional(),
+  }),
+  z.object({ type: z.literal("kanban"), tasks: z.array(kanbanTaskSchema) }),
+  // Containers nest, so their bodies are typed loosely here and validated by
+  // the codec — zod cannot express the recursion inside a discriminated union
+  // without a lazy schema the JSON-Schema conversion would not survive.
+  z.object({
+    type: z.literal("layout"),
+    templateColumns: z.string().default("1fr 1fr"),
+    columns: z.array(z.array(z.unknown())).optional(),
+  }),
+  z.object({
+    type: z.literal("details"),
+    summary: z.string(),
+    open: z.boolean().optional(),
+    body: z.array(z.unknown()).optional(),
+  }),
+  z.object({
+    type: z.literal("table"),
+    rows: z
+      .array(z.array(z.unknown()))
+      .optional()
+      .describe(
+        "Rows of cells; a cell is a string or {text, header, colSpan, rowSpan}",
+      ),
+    headerRow: z.boolean().optional(),
+  }),
+  z.object({
+    type: z.literal("cell"),
+    text: z.string(),
+    header: z.enum(["row", "column", "both"]).optional(),
+    colSpan: z.number().int().min(1).optional(),
+    rowSpan: z.number().int().min(1).optional(),
+  }),
+]);
+
+/**
+ * Where an insert or a move lands. Spread into both ops that take it, so the
+ * three fields cannot be described one way for `insert_blocks` and another for
+ * `move_block`. Module-local: it reaches a caller only as part of `opSchema`.
+ */
+const placement = {
+  after: z.string().optional().describe("Place after this block"),
+  before: z.string().optional().describe("Place before this block"),
+  appendTo: z
+    .string()
+    .optional()
+    .describe('Append inside this container, or "root" for the document'),
+};
+
+export const opSchema = z.discriminatedUnion("op", [
+  z.object({ op: z.literal("set_text"), id: z.string(), text: z.string() }),
+  z.object({
+    op: z.literal("replace_block"),
+    id: z.string(),
+    block: blockSchema,
+  }),
+  z.object({
+    op: z.literal("insert_blocks"),
+    blocks: z.array(blockSchema).min(1),
+    ...placement,
+  }),
+  z.object({ op: z.literal("delete_block"), id: z.string() }),
+  z.object({ op: z.literal("move_block"), id: z.string(), ...placement }),
+]);
+
+/**
+ * The block model in prose, appended to every tool description that takes
+ * blocks.
+ *
+ * A JSON Schema says which fields exist; it does not say that italic is `__`
+ * rather than `*`, that a read hands text back escaped, or that a kanban has no
+ * single text field to `set_text`. Those are the things an agent gets wrong, so
+ * they are spelled out here — once, for both agents.
+ */
+export const BLOCK_DOC =
+  "Authorable block types: paragraph {text}, heading {level 1-6, text}, " +
+  "quote {text}, code {language, code}, list {listType bullet|number|check, " +
+  "items[{text, checked?, sublist?}]} where sublist is {listType, items[…]} " +
+  "for nesting, divider {}, " +
+  "attachment {url, filename, mimetype?, size?, expanded?}, " +
+  "kanban {tasks[{name, description?, stage, priority low|medium|high, tags?}]}, " +
+  'layout {templateColumns e.g. "1fr 1fr", columns[[block,…],[block,…]]}, ' +
+  "details {summary, open?, body[block,…]}, summary {text}, " +
+  "table {rows[[cell,…],…], headerRow?} where a cell is a plain string or " +
+  "{text, header row|column|both, colSpan, rowSpan}, and cell {text, header?}. " +
+  "For layout, details and table, columns/body/rows are required when " +
+  "inserting a new one and optional when replacing — omit them to keep the " +
+  "contents already there. " +
+  "Inline formatting inside `text` uses **bold**, __italic__, `code`, " +
+  "~~strike~~, ==highlight==, ++underline++, ^^sup^^, ,,sub,,, [link](url) and " +
+  "$latex$. Italic is __, not *, so that no delimiter is a prefix of another. " +
+  "Text comes back from a read ESCAPED, and the escapes are part of the text: " +
+  "a backslash precedes any literal \\, `, [, ] or $, and any mark character " +
+  "that would otherwise open a run — most often a comma straight after a " +
+  "formatted run, since ,, is subscript. Carry those backslashes through " +
+  "unchanged when you rewrite a block; dropping one does not tidy the text up, " +
+  "it changes what the block says. " +
+  "Node types with no codec (math as a block, image, graph, sketch, " +
+  "iframe, canvas, sticky) are read-only: they can be read, moved or deleted " +
+  "by address, but not rewritten. set_text needs a single text field, so it " +
+  "applies only to paragraph, heading, quote, summary, cell and code; a list, " +
+  "table, layout, details or kanban is rewritten whole with replace_block.";

@@ -9,6 +9,11 @@ import {
   buildCommandTools,
   commandToolsPromptSection,
 } from "@/lib/ai/commandTools";
+// The block model — schemas and prose alike — is declared once, beside the
+// codecs that enforce it, and shared with `mcp/content-server.ts` so the two
+// agents cannot be told different things about the same document. See
+// docs/plans/ai-surface-consolidation.md §4.1.
+import { BLOCK_DOC, blockSchema, opSchema } from "@/lib/content-bridge/schema";
 
 // Node runtime (not edge): auth uses the Prisma adapter, which cannot run on edge.
 
@@ -78,121 +83,6 @@ const readTools = {
     inputSchema: z.object({}),
   }),
 };
-
-const listItemSchema = z.object({
-  text: z.string(),
-  checked: z.boolean().optional(),
-  // Nesting is recursive, which zod cannot express inside a discriminated
-  // union without a lazy schema the JSON-Schema conversion would not survive.
-  // The codec validates the shape: {listType, items:[…]}.
-  sublist: z.unknown().optional(),
-});
-
-const kanbanTaskSchema = z.object({
-  name: z.string(),
-  description: z.string().optional(),
-  stage: z.number().int().min(0).default(0),
-  priority: z.enum(["low", "medium", "high"]).default("medium"),
-  tags: z.array(z.string()).optional(),
-});
-
-const blockSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("paragraph"), text: z.string() }),
-  z.object({
-    type: z.literal("heading"),
-    level: z.number().int().min(1).max(6),
-    text: z.string(),
-  }),
-  z.object({ type: z.literal("quote"), text: z.string() }),
-  z.object({
-    type: z.literal("code"),
-    language: z.string().default("plain"),
-    code: z.string(),
-  }),
-  z.object({
-    type: z.literal("list"),
-    listType: z.enum(["bullet", "number", "check"]).default("bullet"),
-    items: z.array(listItemSchema),
-  }),
-  z.object({ type: z.literal("divider") }),
-  z.object({ type: z.literal("summary"), text: z.string() }),
-  z.object({
-    type: z.literal("attachment"),
-    url: z.string(),
-    filename: z.string(),
-    mimetype: z.string().optional(),
-    size: z.number().optional(),
-  }),
-  z.object({ type: z.literal("kanban"), tasks: z.array(kanbanTaskSchema) }),
-  // Containers nest, so their bodies are loosely typed here and validated by
-  // the codec — zod cannot express the recursion inside a discriminated union
-  // without a lazy schema the JSON-Schema conversion would not survive.
-  z.object({
-    type: z.literal("layout"),
-    templateColumns: z.string().default("1fr 1fr"),
-    columns: z.array(z.array(z.unknown())).optional(),
-  }),
-  z.object({
-    type: z.literal("details"),
-    summary: z.string(),
-    open: z.boolean().optional(),
-    body: z.array(z.unknown()).optional(),
-  }),
-  z.object({
-    type: z.literal("table"),
-    rows: z
-      .array(z.array(z.unknown()))
-      .optional()
-      .describe(
-        "Rows of cells; a cell is a string or {text, header, colSpan, rowSpan}",
-      ),
-    headerRow: z.boolean().optional(),
-  }),
-  z.object({
-    type: z.literal("cell"),
-    text: z.string(),
-    header: z.enum(["row", "column", "both"]).optional(),
-    colSpan: z.number().int().min(1).optional(),
-    rowSpan: z.number().int().min(1).optional(),
-  }),
-]);
-
-const placement = {
-  after: z.string().optional(),
-  before: z.string().optional(),
-  appendTo: z.string().optional(),
-};
-
-const opSchema = z.discriminatedUnion("op", [
-  z.object({ op: z.literal("set_text"), id: z.string(), text: z.string() }),
-  z.object({
-    op: z.literal("replace_block"),
-    id: z.string(),
-    block: blockSchema,
-  }),
-  z.object({
-    op: z.literal("insert_blocks"),
-    blocks: z.array(blockSchema).min(1),
-    ...placement,
-  }),
-  z.object({ op: z.literal("delete_block"), id: z.string() }),
-  z.object({ op: z.literal("move_block"), id: z.string(), ...placement }),
-]);
-
-const BLOCK_DOC =
-  "Authorable blocks: paragraph {text}, heading {level 1-6, text}, quote " +
-  "{text}, code {language, code}, list {listType, items[{text, checked?, " +
-  "sublist?}]} where sublist is {listType, items[…]} for nesting, " +
-  "divider {}, summary {text}, attachment {url, filename}, kanban " +
-  "{tasks[{name, description?, stage, priority}]}, layout {templateColumns, " +
-  "columns[[block,…],…]}, details {summary, open?, body[block,…]}, " +
-  "table {rows[[cell,…],…], headerRow?} where a cell is a plain string or " +
-  "{text, header row|column|both, colSpan, rowSpan}, and cell {text, header?}. " +
-  "For layout, details and table, columns/body/rows are required when " +
-  "inserting and optional when replacing — omit them to keep the contents " +
-  "already there. Inline formatting " +
-  "inside text: **bold**, __italic__, `code`, ~~strike~~, ==highlight==, " +
-  "++underline++, ^^sup^^, ,,sub,,, [link](url), $latex$.";
 
 /**
  * Write tools that act on the *open* document. Withheld when the caller may

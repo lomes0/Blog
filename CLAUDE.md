@@ -73,7 +73,7 @@ globals; `compilerOptions.types` is deliberately left unset, because setting it
 would restrict resolution to only its entries and drop every other ambient
 package.
 
-Coverage is 21 specs, 393 tests: `src/lib/__tests__/ordering.test.ts`
+Coverage is 21 specs, 407 tests: `src/lib/__tests__/ordering.test.ts`
 (fractional rank keys),
 `src/components/Layout/SideBar/__tests__/
 dragGeometry.test.ts` (sidebar drag
@@ -98,7 +98,10 @@ byte-identical, plus snapshot addressing, atomicity and the freshness guard) and
 `outline.test.ts` (addressing, descriptors for blocks with no codec, and the
 content hash) and `codecs.test.ts` (a round-trip per graduated block type over a
 node with every optional field populated — the obligation
-docs/plans/claude-code-lexical.md §4.6.1 attaches to graduating one), and
+docs/plans/claude-code-lexical.md §4.6.1 attaches to graduating one — which now
+also feeds each of those nodes to the zod schema in `content-bridge/schema.ts`,
+so a type that gains a codec without gaining a schema arm, or the reverse, fails
+rather than working on one agent and not the other), and
 `src/editor/utils/__tests__/virtualRepo.test.ts` (the Copilot's view of the
 library — that a search hit carries a block address a later tool can act on,
 rather than a line number no other tool accepts). Two more cover phase 5:
