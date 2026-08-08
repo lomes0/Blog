@@ -39,7 +39,7 @@ const docRef = z
 
 const readTools = {
   // ---- read (auto-executed client-side) ----
-  list_documents: tool({
+  list_posts: tool({
     description:
       "List every post in the blog (metadata only: id, title, series). " +
       "Cheap — call this to discover what exists before reading bodies.",
@@ -52,14 +52,14 @@ const readTools = {
       "series, since a post only reveals the one it belongs to.",
     inputSchema: z.object({}),
   }),
-  search_documents: tool({
+  search: tool({
     description:
       "Search post titles and locally-available bodies for a case-insensitive " +
       "substring. Returns hits per BLOCK, each with the block address to read " +
       "or edit next.",
     inputSchema: z.object({ query: z.string() }),
   }),
-  outline_document: tool({
+  outline: tool({
     description:
       "Skeleton of a post: one line per block with its address, kind and a " +
       "preview, plus the stateHash. START HERE — it is far cheaper than " +
@@ -70,18 +70,18 @@ const readTools = {
   }),
   read_blocks: tool({
     description:
-      "Full content of specific blocks, by address from outline_document. " +
-      "Prefer this over read_document — it is how you work on a long article " +
+      "Full content of specific blocks, by address from outline. " +
+      "Prefer this over read_post — it is how you work on a long article " +
       "without reading all of it.",
     inputSchema: z.object({
       id: docRef,
       blocks: z.array(z.string()).min(1).describe('e.g. ["b2","b4.1"]'),
     }),
   }),
-  read_document: tool({
+  read_post: tool({
     description:
       "The whole post as nested blocks. Use for short documents; for anything " +
-      "long use outline_document then read_blocks.",
+      "long use outline then read_blocks.",
     inputSchema: z.object({ id: docRef }),
   }),
   get_selection: tool({
@@ -130,7 +130,7 @@ const documentWriteTools = {
  * one like it" is a reasonable thing to want.
  */
 const libraryWriteTools = {
-  create_document: tool({
+  create_post: tool({
     description:
       "Propose creating a new post from blocks. Produces real Lexical content " +
       "— proper code nodes, headings, lists and collapsibles — not fenced " +

@@ -130,16 +130,16 @@ export async function runReadTool(
   const ref = typeof input.id === "string" ? input.id : undefined;
 
   switch (name) {
-    case "list_documents":
+    case "list_posts":
       return { documents: listDocuments(getDocs()) };
 
     case "list_series":
       return { series: getSeries() };
 
-    case "search_documents":
+    case "search":
       return { hits: searchDocuments(getDocs(), String(input.query ?? "")) };
 
-    case "outline_document": {
+    case "outline": {
       const doc = await load(ref, editor, currentDocId);
       if (!doc) return { error: `No document ${ref ?? "is open"}.` };
       const result = outline(doc.state);
@@ -159,7 +159,7 @@ export async function runReadTool(
       return { id: doc.id, title: doc.title, ...readBlocks(doc.state, ids) };
     }
 
-    case "read_document": {
+    case "read_post": {
       const doc = await load(ref, editor, currentDocId);
       if (!doc) return { error: `No document ${ref ?? "is open"}.` };
       return { id: doc.id, title: doc.title, ...readAll(doc.state) };
@@ -204,7 +204,7 @@ async function applyWrite(
   editor: LexicalEditor | null,
   currentDocId: string,
 ): Promise<WriteResult> {
-  if (name === "create_document") {
+  if (name === "create_post") {
     const title = String(input.title ?? "Untitled");
     const blocks = Array.isArray(input.blocks)
       ? (input.blocks as WritableBlock[])

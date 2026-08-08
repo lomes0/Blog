@@ -141,9 +141,36 @@ describe("content tools", () => {
   // gap rather than a missing line.
   const prompt = COPILOT_AGENT_SYSTEM_PROMPT(null, null);
 
+  /**
+   * The names the CONTENT TOOLS section actually lists, one per `- name: …`
+   * line.
+   *
+   * Matched as listing entries rather than as substrings anywhere in the
+   * prompt, because since the §4.2 rename two tools are ordinary English words:
+   * `toContain("search")` and `toContain("outline")` are satisfied by the prose
+   * around them, so a half-finished rename would pass a substring check while
+   * the listing still advertised `search_documents`.
+   */
+  const listed = (prompt.split("CONTENT TOOLS\n")[1] ?? "")
+    .split("\n\n")[0]
+    .split("\n")
+    .filter((line) => line.startsWith("- "))
+    .map((line) => line.slice(2).split(":")[0]);
+
   it("names every content tool in the system prompt", () => {
     for (const name of [...READ_TOOLS, ...WRITE_TOOLS]) {
-      expect(prompt, `${name} is declared but never described`).toContain(name);
+      expect(listed, `${name} is declared but never described`).toContain(name);
+    }
+  });
+
+  it("describes no content tool it does not declare", () => {
+    // The other direction, and the one a rename breaks: a listing entry for a
+    // tool the request never sends is a capability the model will try to use
+    // and be told does not exist.
+    const declared = new Set<string>([...READ_TOOLS, ...WRITE_TOOLS]);
+    for (const name of listed) {
+      expect(declared.has(name), `${name} is described but never declared`)
+        .toBe(true);
     }
   });
 

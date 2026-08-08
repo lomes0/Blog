@@ -216,8 +216,13 @@ the only place both content stores and the live editor exist.
 
 - `src/lib/ai/copilotAgentTools.ts` is the dependency-free source of truth both
   sides agree on: `READ_TOOLS` auto-execute so the agent loop keeps flowing;
-  `WRITE_TOOLS` (`apply_ops`, `create_document`) surface as proposals the user
+  `WRITE_TOOLS` (`apply_ops`, `create_post`) surface as proposals the user
   accepts before anything is saved.
+- The content tool **names are the table above** — `list_posts`, `search`,
+  `outline`, `read_blocks`, `read_post`, `apply_ops`, `create_post`, plus
+  `list_series` and the browser-only `get_selection`. One operation, one name,
+  whichever agent is calling. Command tools carry a `command_` prefix, so they
+  cannot collide with the bare `search` / `outline`.
 - `src/editor/utils/virtualRepo.ts` is the Copilot's view of the library — pure
   synchronous functions over a Redux snapshot. Search hits carry a **block
   address** a later tool can act on. Cloud-only posts expose metadata and are

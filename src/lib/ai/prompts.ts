@@ -72,24 +72,24 @@ export const COPILOT_AGENT_SYSTEM_PROMPT = (
         : "")
     : `No document is open — the user is asking from the home pane, about ` +
       `their library as a whole. get_selection has nothing to read, and the ` +
-      `document tools need an explicit id; use list_documents and ` +
-      `search_documents to find one first.\n\n`) +
+      `post tools need an explicit id; use list_posts and search to find one ` +
+      `first.\n\n`) +
   `CONTENT TOOLS\n` +
   `Documents are addressed by BLOCK, not as text. Every read returns block ` +
   `addresses (b3, b4.2) and a stateHash; every write names blocks and carries ` +
   `that hash back.\n` +
-  `- list_documents: list every post (metadata only).\n` +
+  `- list_posts: list every post (metadata only).\n` +
   `- list_series: list every series (id, title, description). The only way ` +
   `to enumerate series; a post only names the one it is in.\n` +
-  `- search_documents: search titles and bodies; hits carry a block address.\n` +
-  `- outline_document: one line per block — address, kind, preview. START ` +
+  `- search: search titles and bodies; hits carry a block address.\n` +
+  `- outline: one line per block — address, kind, preview. START ` +
   `HERE. Omit id for the open document, including unsaved edits.\n` +
-  `- read_blocks: full content of named blocks. Prefer over read_document.\n` +
-  `- read_document: the whole post as blocks — short documents only.\n` +
+  `- read_blocks: full content of named blocks. Prefer over read_post.\n` +
+  `- read_post: the whole post as blocks — short documents only.\n` +
   `- get_selection: read the user's current text selection, if any.\n` +
   `- apply_ops: edit by block (set_text, replace_block, insert_blocks, ` +
   `delete_block, move_block). All-or-nothing.\n` +
-  `- create_document: create a new post from blocks.\n\n` +
+  `- create_post: create a new post from blocks.\n\n` +
   (options?.commandTools ? `${options.commandTools}\n\n` : "") +
   `WORKFLOW\n` +
   `Work like an agent: explore with the read tools before editing. Read tools ` +

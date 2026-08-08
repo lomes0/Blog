@@ -201,9 +201,20 @@ Blast radius, all of which must move together:
 - `src/lib/ai/prompts.ts` — the `CONTENT TOOLS` section of
   `COPILOT_AGENT_SYSTEM_PROMPT`, which lists every tool by name.
 - `src/components/CopilotPanel/CopilotMessage.tsx` — per-tool display labels.
-- `src/commands/series.ts` — `series.open`'s description names
-  `list_documents` in prose.
+- `src/commands/document.ts` — `document.create`'s description names
+  `create_document` in prose. (`series.open`'s named `list_documents` when this
+  was written; Phase 3 pointed it at the new `list_series` instead.)
+- `src/lib/ai/commandTools.ts` and `src/components/CopilotPanel/ActionPreview.tsx`
+  — both name content tools, the first in prose and the second in a `switch`.
+- Tool descriptions that name *other* tools: `read_blocks` says "by address from
+  `outline_document`", `read_document` says "use `outline_document` then
+  `read_blocks`". Left behind, these actively mislead the model.
 - `src/commands/__tests__/toolParity.test.ts` — imports the two name arrays.
+  Its "names every content tool in the system prompt" check is a substring
+  match, and after the rename two tool names are ordinary English words, so
+  `search` and `outline` pass against the surrounding prose. Match the listing
+  entries (`- name:`) instead, and assert the other direction too — a listing
+  line for a tool that is no longer declared is the half-done rename.
 - `docs/architecture/claude-code-integration.md` and the plans under
   `docs/plans/` that quote tool names.
 

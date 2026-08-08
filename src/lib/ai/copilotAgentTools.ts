@@ -8,6 +8,13 @@
  * the agent loop keeps flowing) vs. writes (surfaced as reviewable proposals the
  * user accepts before anything is saved). It is dependency-free so both the
  * server route and the browser can import it.
+ *
+ * The names are deliberately the same ones `mcp/content-server.ts` exposes to
+ * Claude Code — one operation, one name, whichever agent is calling. See
+ * docs/plans/ai-surface-consolidation.md §4.2; the `post` vocabulary won because
+ * "document" is the Prisma row and "post" is what the author calls it. A
+ * persisted thread from before that rename holds the old names; the chat renders
+ * an unrecognized tool from its wire name rather than blanking.
  */
 
 /**
@@ -19,12 +26,12 @@
  * parameter, so there is one less tool whose only difference is its subject.
  */
 export const READ_TOOLS = [
-  "list_documents",
+  "list_posts",
   "list_series",
-  "search_documents",
-  "outline_document",
+  "search",
+  "outline",
   "read_blocks",
-  "read_document",
+  "read_post",
   "get_selection",
 ] as const;
 
@@ -37,7 +44,7 @@ export const READ_TOOLS = [
  */
 export const WRITE_TOOLS = [
   "apply_ops",
-  "create_document",
+  "create_post",
 ] as const;
 
 export type ReadToolName = (typeof READ_TOOLS)[number];

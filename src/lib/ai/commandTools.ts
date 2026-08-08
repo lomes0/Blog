@@ -9,7 +9,7 @@
  *
  * Two things it is deliberately NOT:
  *
- * - **Not a replacement for the content tools.** `read_document`,
+ * - **Not a replacement for the content tools.** `read_post`,
  *   `apply_ops` and friends (`copilotAgentTools.ts`) operate on document
  *   *bodies* through the live Lexical editor and IndexedDB. They are not
  *   registry commands and forcing them into it would put a Lexical editor

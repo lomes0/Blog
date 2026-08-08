@@ -272,7 +272,7 @@ const ActionPreview: React.FC<ActionPreviewProps> = (
       );
     }
 
-    case "create_document": {
+    case "create_post": {
       const blocks = Array.isArray(input.blocks) ? input.blocks : [];
       return (
         <Box>

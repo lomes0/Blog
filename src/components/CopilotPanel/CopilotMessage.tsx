@@ -42,13 +42,13 @@ const asStr = (v: unknown): string => (typeof v === "string" ? v : "");
 /** One-line label for an auto-executed tool, for the activity trace. */
 function readTraceLabel(name: string, input: Record<string, unknown>): string {
   switch (name) {
-    case "list_documents":
+    case "list_posts":
       return "Listed all posts";
     case "list_series":
       return "Listed all series";
-    case "search_documents":
+    case "search":
       return `Searched “${asStr(input.query)}”`;
-    case "outline_document":
+    case "outline":
       return input.id
         ? `Outlined ${asStr(input.id)}`
         : "Outlined this document";
@@ -56,13 +56,18 @@ function readTraceLabel(name: string, input: Record<string, unknown>): string {
       const blocks = Array.isArray(input.blocks) ? input.blocks : [];
       return `Read ${blocks.length} block${blocks.length === 1 ? "" : "s"}`;
     }
-    case "read_document":
+    case "read_post":
       return input.id ? `Read ${asStr(input.id)}` : "Read this document";
     case "get_selection":
       return "Read the selection";
     default:
       // A command tool: its own title reads better than its wire name, and
       // there is nothing to hand-maintain here as commands are added.
+      //
+      // Also the landing place for a tool this build no longer has — a thread
+      // persisted before the §4.2 rename replays `read_document` and friends.
+      // The wire name with its underscores knocked out is not a label anyone
+      // wrote, but it is honest and it is not blank.
       return commandForTool(name)?.title ?? name.replace(/_/g, " ");
   }
 }

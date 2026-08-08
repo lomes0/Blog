@@ -69,7 +69,7 @@ const create = defineCommand<void>({
   title: "New post",
   description:
     "Open the 'new post' form. This only navigates — to create a post with " +
-    "content in one step, use the create_document file tool instead.",
+    "content in one step, use the create_post tool instead.",
   params: z.void(),
   effect: "read",
   scopes: ["workspace"],
