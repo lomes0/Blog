@@ -49,7 +49,10 @@ const ViewAttachment: React.FC<ViewAttachmentProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [truncated, setTruncated] = useState(false);
 
-  const canPreview = isTextFile(mimetype) && size < 1024 * 1024; // 1MB max
+  // The filename matters: uploads routinely arrive as `application/octet-stream`,
+  // and passing only the mimetype used to hide the preview for files the
+  // `/content` route would have served.
+  const canPreview = isTextFile(mimetype, filename) && size < 1024 * 1024; // 1MB max
   const language = detectLanguageFromFilename(filename);
 
   const fetchContent = useCallback(async () => {

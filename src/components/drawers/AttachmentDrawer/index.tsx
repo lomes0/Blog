@@ -3,8 +3,8 @@ import { useCallback } from "react";
 import { Box, IconButton, SwipeableDrawer, Typography } from "@mui/material";
 import { Paperclip, X } from "lucide-react";
 import { actions, RootState, useDispatch, useSelector } from "@/store";
-import { getLanguageDisplayName } from "@/utils/languageDetection";
-import { formatFileSize, isEditable } from "./attachmentUtils";
+import { getLanguageDisplayName, isEditable } from "@/utils/languageDetection";
+import { formatSize } from "@/utils/formatSize";
 import { useAttachmentContent } from "./useAttachmentContent";
 import AttachmentToolbar from "./AttachmentToolbar";
 import AttachmentContentViewer from "./AttachmentContentViewer";
@@ -77,7 +77,7 @@ export default function AttachmentDrawer() {
             </Typography>
             <Typography variant="caption" color="text.secondary">
               {languageDisplayName}
-              {fileSize !== null && ` • ${formatFileSize(fileSize)}`}
+              {fileSize !== null && ` • ${formatSize(fileSize)}`}
             </Typography>
           </Box>
           <IconButton onClick={handleClose}>

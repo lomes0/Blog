@@ -1,5 +1,10 @@
 /**
- * Language detection utilities for syntax highlighting
+ * What kind of file is this?
+ *
+ * Syntax-highlighting detection, plus the two predicates that decide whether an
+ * attachment may be previewed ({@link isTextFile}) or written back
+ * ({@link isEditable}). Both had a client copy and a server copy; they live here
+ * so the UI cannot offer an action the route will refuse, or hide one it allows.
  */
 
 // Map file extensions to Prism language identifiers
@@ -375,40 +380,239 @@ export function getLanguageDisplayName(language: string): string {
 }
 
 /**
- * Check if a MIME type represents a text-based file that can be previewed
- * @param mimetype - The MIME type of the file
- * @returns true if the file is text-based and can be previewed
+ * `application/*` types that are text despite not being `text/*`.
+ *
+ * Structured-syntax suffixes (`+json`, `+xml`) are handled separately below, so
+ * this list only needs the types that carry no suffix.
  */
-export function isTextFile(mimetype: string): boolean {
-  // All text/* types are text files
-  if (mimetype.startsWith("text/")) {
-    return true;
-  }
+const TEXT_APPLICATION_TYPES = new Set([
+  "application/json",
+  "application/javascript",
+  "application/x-javascript",
+  "application/typescript",
+  "application/x-typescript",
+  "application/xml",
+  "application/sql",
+  "application/x-sql",
+  "application/graphql",
+  "application/yaml",
+  "application/x-yaml",
+  "application/toml",
+  "application/x-toml",
+  "application/x-sh",
+  "application/x-shellscript",
+  "application/x-python",
+  "application/x-ruby",
+  "application/x-php",
+  "application/x-httpd-php",
+  "application/x-perl",
+]);
 
-  // Common text-based application types
-  const textApplicationTypes = [
-    "application/json",
-    "application/javascript",
-    "application/x-javascript",
-    "application/typescript",
-    "application/x-typescript",
-    "application/xml",
-    "application/xhtml+xml",
-    "application/sql",
-    "application/x-sql",
-    "application/graphql",
-    "application/yaml",
-    "application/x-yaml",
-    "application/toml",
-    "application/x-toml",
-    "application/x-sh",
-    "application/x-shellscript",
-    "application/x-python",
-    "application/x-ruby",
-    "application/x-php",
-    "application/x-httpd-php",
-    "application/x-perl",
-  ];
+/**
+ * Extensions that are text regardless of the MIME type an upload arrived with.
+ *
+ * Deliberately *not* derived from {@link extensionToLanguage}: that map answers
+ * "which Prism grammar highlights this", a narrower question. `.log`, `.csv` and
+ * `.env` are all readable text with no grammar to their name, and would drop out
+ * of a derived set.
+ */
+const TEXT_EXTENSIONS = new Set([
+  "txt",
+  "md",
+  "markdown",
+  "html",
+  "htm",
+  "css",
+  "scss",
+  "less",
+  "js",
+  "jsx",
+  "ts",
+  "tsx",
+  "mjs",
+  "cjs",
+  "json",
+  "xml",
+  "yaml",
+  "yml",
+  "sh",
+  "bash",
+  "zsh",
+  "fish",
+  "py",
+  "rb",
+  "php",
+  "java",
+  "c",
+  "cpp",
+  "h",
+  "hpp",
+  "cs",
+  "go",
+  "rs",
+  "swift",
+  "kt",
+  "scala",
+  "sql",
+  "graphql",
+  "gql",
+  "vue",
+  "svelte",
+  "astro",
+  "prisma",
+  "env",
+  "gitignore",
+  "dockerignore",
+  "editorconfig",
+  "eslintrc",
+  "prettierrc",
+  "babelrc",
+  "dockerfile",
+  "makefile",
+  "cmake",
+  "toml",
+  "ini",
+  "cfg",
+  "conf",
+  "log",
+  "csv",
+  "tsv",
+]);
 
-  return textApplicationTypes.includes(mimetype);
+/** Text files whose whole name is the type — they have no extension to check. */
+const EXTENSIONLESS_TEXT_FILES = new Set([
+  "dockerfile",
+  "makefile",
+  "gemfile",
+  "rakefile",
+  "procfile",
+  "jenkinsfile",
+  "vagrantfile",
+]);
+
+/**
+ * Whether a file can be read and previewed as text.
+ *
+ * **This is the only implementation.** There were three — this one, a stricter
+ * MIME-only copy behind the preview button in `AttachmentComponent`, and a
+ * looser one in `GET /api/attachments/[filename]/content` that gates whether the
+ * bytes are served at all. They disagreed in both directions, so a `.toml` or
+ * `.log` upload got no preview button for content the server would happily have
+ * returned, and a `.py` file stored as `application/octet-stream` previewed on
+ * one screen but not another.
+ *
+ * The union of the three is what survives, because the server's answer is the
+ * one that decides: a UI predicate stricter than the route can only hide
+ * readable content, and one looser can only offer a preview that 415s.
+ *
+ * @param mimetype - The MIME type the file was uploaded with.
+ * @param filename - Checked when given. Uploads routinely arrive as
+ *   `application/octet-stream`, and then the name is the only evidence there is;
+ *   omit it only where no name is in scope.
+ */
+export function isTextFile(mimetype: string, filename?: string): boolean {
+  if (mimetype.startsWith("text/")) return true;
+  if (TEXT_APPLICATION_TYPES.has(mimetype)) return true;
+
+  // RFC 6839 structured syntax suffixes: `application/ld+json`,
+  // `application/atom+xml` and friends are text by construction.
+  if (mimetype.endsWith("+json") || mimetype.endsWith("+xml")) return true;
+
+  if (filename === undefined) return false;
+
+  const baseName = filename.toLowerCase();
+  if (EXTENSIONLESS_TEXT_FILES.has(baseName)) return true;
+
+  const ext = baseName.split(".").pop() ?? "";
+  return TEXT_EXTENSIONS.has(ext);
+}
+
+/**
+ * Extensions an attachment may be *written* through, as opposed to merely read.
+ *
+ * A strict subset of {@link TEXT_EXTENSIONS}, and deliberately its own list
+ * rather than being derived from it: this one is a write policy, so widening it
+ * is a decision someone has to make on purpose. Deriving it would silently grant
+ * write access to every extension a future preview-only entry adds.
+ */
+const EDITABLE_EXTENSIONS = new Set([
+  "txt",
+  "md",
+  "markdown",
+  "html",
+  "htm",
+  "css",
+  "scss",
+  "less",
+  "js",
+  "jsx",
+  "ts",
+  "tsx",
+  "mjs",
+  "cjs",
+  "json",
+  "xml",
+  "yaml",
+  "yml",
+  "sh",
+  "bash",
+  "zsh",
+  "py",
+  "rb",
+  "php",
+  "java",
+  "c",
+  "cpp",
+  "h",
+  "hpp",
+  "cs",
+  "go",
+  "rs",
+  "swift",
+  "kt",
+  "scala",
+  "sql",
+  "graphql",
+  "gql",
+  "vue",
+  "svelte",
+  "astro",
+  "prisma",
+  "env",
+  "gitignore",
+  "dockerfile",
+  "makefile",
+  "toml",
+  "ini",
+  "cfg",
+  "conf",
+  "log",
+  "csv",
+  "tsv",
+]);
+
+/** Extensionless files the editor accepts writes to. */
+const EXTENSIONLESS_EDITABLE_FILES = new Set([
+  "dockerfile",
+  "makefile",
+  "gemfile",
+  "rakefile",
+  "procfile",
+]);
+
+/**
+ * Whether an attachment may be edited in place.
+ *
+ * **This is the only implementation.** `PUT /api/attachments/[filename]` and the
+ * attachment drawer's edit affordance each carried a verbatim copy of the same
+ * 53-entry set. They had not drifted yet — unlike {@link isTextFile}, which had
+ * three copies that disagreed — so this is the same list, shared before it
+ * could.
+ */
+export function isEditable(filename: string): boolean {
+  const baseName = filename.toLowerCase();
+  if (EXTENSIONLESS_EDITABLE_FILES.has(baseName)) return true;
+
+  const ext = baseName.split(".").pop() ?? "";
+  return EDITABLE_EXTENSIONS.has(ext);
 }

@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { downloadFile } from "@/utils/downloadFile";
 import { formatSize } from "@/utils/formatSize";
+import { isTextFile } from "@/utils/languageDetection";
 import AttachmentPreview from "./AttachmentPreview";
 import { actions, useDispatch } from "@/store";
 import { ICON_SIZE } from "@/theme/icons";
@@ -67,36 +68,6 @@ function getFileType(mimetype: string, filename: string): string {
   if (ext) return ext;
 
   return "File";
-}
-
-function isTextFile(mimetype: string, filename: string): boolean {
-  if (mimetype.startsWith("text/")) return true;
-  if (
-    mimetype.includes("json") || mimetype.includes("javascript") ||
-    mimetype.includes("typescript") || mimetype.includes("xml")
-  ) {
-    return true;
-  }
-  const ext = filename.split(".").pop()?.toLowerCase() || "";
-  const textExtensions = new Set([
-    "txt",
-    "md",
-    "markdown",
-    "js",
-    "jsx",
-    "ts",
-    "tsx",
-    "json",
-    "html",
-    "css",
-    "scss",
-    "py",
-    "sh",
-    "bash",
-    "yaml",
-    "yml",
-  ]);
-  return textExtensions.has(ext);
 }
 
 export default function AttachmentComponent({

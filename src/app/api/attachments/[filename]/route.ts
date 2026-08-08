@@ -13,84 +13,11 @@ import { NextResponse } from "next/server";
 import { readFile, writeFile } from "fs/promises";
 import { existsSync, statSync } from "fs";
 import { z } from "zod";
+import { isEditable } from "@/utils/languageDetection";
 
 export const dynamic = "force-dynamic";
 
 const editAttachmentSchema = z.object({ content: z.string() }).strict();
-
-// Text-based file extensions that can be edited
-const EDITABLE_EXTENSIONS = new Set([
-  "txt",
-  "md",
-  "markdown",
-  "html",
-  "htm",
-  "css",
-  "scss",
-  "less",
-  "js",
-  "jsx",
-  "ts",
-  "tsx",
-  "mjs",
-  "cjs",
-  "json",
-  "xml",
-  "yaml",
-  "yml",
-  "sh",
-  "bash",
-  "zsh",
-  "py",
-  "rb",
-  "php",
-  "java",
-  "c",
-  "cpp",
-  "h",
-  "hpp",
-  "cs",
-  "go",
-  "rs",
-  "swift",
-  "kt",
-  "scala",
-  "sql",
-  "graphql",
-  "gql",
-  "vue",
-  "svelte",
-  "astro",
-  "prisma",
-  "env",
-  "gitignore",
-  "dockerfile",
-  "makefile",
-  "toml",
-  "ini",
-  "cfg",
-  "conf",
-  "log",
-  "csv",
-  "tsv",
-]);
-
-function isEditableFile(filename: string): boolean {
-  const ext = filename.split(".").pop()?.toLowerCase() || "";
-  if (EDITABLE_EXTENSIONS.has(ext)) {
-    return true;
-  }
-  // Allow common config files without extensions
-  const baseName = filename.toLowerCase();
-  const configFiles = [
-    "dockerfile",
-    "makefile",
-    "gemfile",
-    "rakefile",
-    "procfile",
-  ];
-  return configFiles.includes(baseName);
-}
 
 export const GET = optionalUserRoute<{ filename: string }>(async (
   _request,
@@ -153,7 +80,7 @@ export const PUT = userRoute<{ filename: string }>(async (
   await requireAttachmentWrite(filename, user);
 
   // Check if file is editable
-  if (!isEditableFile(filename)) {
+  if (!isEditable(filename)) {
     throw new ApiError(415, "This file type cannot be edited");
   }
 
