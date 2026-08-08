@@ -14,13 +14,15 @@ import { ActiveEditorContext } from "@/contexts/ActiveEditorContext";
 import {
   applyProposal,
   runReadTool,
+  runWriteTool,
 } from "@/editor/utils/copilotAgentExecutors";
-import { isReadTool } from "@/lib/ai/copilotAgentTools";
+import { isReadTool, isWriteTool } from "@/lib/ai/copilotAgentTools";
 import {
   isAutoRunCommandTool,
   isProposalTool,
   runCommandTool,
 } from "@/lib/ai/commandTools";
+import { triggerSave } from "@/components/EditDocument/saveRegistry";
 import { useCommandContext } from "@/commands/CommandProvider";
 import { postsSelectors, useSelector } from "@/store";
 import CopilotMessage from "./CopilotMessage";
@@ -187,23 +189,30 @@ const CopilotChat: React.FC<CopilotChatProps> = (
   } = useChat({
     transport,
     // Resume the agent loop automatically once every tool call in the latest
-    // assistant message has a result. Auto-executed read tools satisfy this
-    // immediately; write proposals hold the loop until the user accepts (which
-    // fills their result), which is exactly the review gate we want.
+    // assistant message has a result. Auto-executed reads and content writes
+    // satisfy this immediately; a *command* proposal holds the loop until the
+    // user accepts (which fills its result), which is the review gate that
+    // family still needs.
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
-    // Read tools run automatically so the agent can explore the library; write
-    // tools are left pending (input-available) for the user to review + accept.
+    // Reads run automatically so the agent can explore the library. Content
+    // writes now run automatically too and land as pending proposals — the
+    // author answers them in `AgentChangeBar` or the rail rather than here
+    // (docs/plans/ai-surface-consolidation.md §4.4). Only mutating command tools
+    // are left pending (input-available) for the user to accept.
     // Do NOT await addToolOutput here — awaiting inside onToolCall can deadlock.
     onToolCall: ({ toolCall }) => {
       const name = toolCall.toolName;
       const isCommand = isAutoRunCommandTool(name);
-      if (!isReadTool(name) && !isCommand) return;
+      const isWrite = isWriteTool(name);
+      if (!isReadTool(name) && !isCommand && !isWrite) return;
       void (async () => {
         const input = (toolCall.input ?? {}) as Record<string, unknown>;
         let output: unknown;
         try {
           output = isCommand
             ? await runCommandTool(name, input, commandContextRef.current)
+            : isWrite
+            ? await runWriteTool(name, input, openDocId)
             : await runReadTool(
               name,
               input,
@@ -268,8 +277,9 @@ const CopilotChat: React.FC<CopilotChatProps> = (
     m.role === "assistant"
   )?.id;
 
+  // Command proposals only, since §4.4: a content write is proposed on the tool
+  // call and answered on the document, so there is nothing here to accept for it.
   const acceptAll = useCallback(async () => {
-    const editor = editorRefRef.current.current;
     for (const msg of messages) {
       const pending = msg.parts
         .filter(isToolUIPart)
@@ -279,8 +289,6 @@ const CopilotChat: React.FC<CopilotChatProps> = (
         const result = await applyProposal(
           getToolName(p),
           ((p as { input?: unknown }).input ?? {}) as Record<string, unknown>,
-          editor,
-          openDocId,
           commandContextRef.current,
         );
         await addToolOutputRef.current?.({
@@ -290,7 +298,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
         });
       }
     }
-  }, [messages, openDocId]);
+  }, [messages]);
 
   useEffect(() => {
     onRegisterAcceptAll(acceptAll);
@@ -307,14 +315,41 @@ const CopilotChat: React.FC<CopilotChatProps> = (
     onPendingCountChange(count);
   }, [acceptAll, messages, onRegisterAcceptAll, onPendingCountChange]);
 
-  const sendPrompt = useCallback((text: string) => {
-    if (!text.trim() || isLoading || disabledReason) return;
-    sendMessage({ text });
+  /**
+   * Flush every open editor before the turn starts (§4.4.3).
+   *
+   * A content write is built server-side from what storage holds, so unsaved
+   * edits would produce a proposal whose diff is against content the server
+   * never had. Flushing *here* rather than at the write is the whole point: the
+   * write now happens on the tool call rather than on an accept, so the agent's
+   * read and its write are seconds apart, and a save landing between them moves
+   * `head` and makes the server refuse its own agent's write on every turn.
+   *
+   * `triggerSave` rather than the open document's own save: the agent can be
+   * asked to edit a post held by another pane, and every one of them has to be
+   * on disk before it reads any of them. It resolves whether or not the save
+   * succeeded — an offline tab keeps its buffered record and the write is
+   * refused as stale, which is the honest outcome and is recoverable.
+   */
+  // `isLoading` cannot answer during the flush — the request has not been made
+  // yet — so a second Enter while a slow save is in flight would start a second
+  // turn. A ref rather than state: nothing renders differently for the few
+  // hundred milliseconds this covers.
+  const starting = useRef(false);
+  const sendPrompt = useCallback(async (text: string) => {
+    if (!text.trim() || isLoading || disabledReason || starting.current) return;
+    starting.current = true;
+    try {
+      await triggerSave();
+      sendMessage({ text });
+    } finally {
+      starting.current = false;
+    }
   }, [isLoading, sendMessage, disabledReason]);
 
   const handleSend = useCallback(() => {
     if (!input.trim() || isLoading) return;
-    sendPrompt(input);
+    void sendPrompt(input);
     setInput("");
   }, [input, isLoading, sendPrompt]);
 
@@ -332,7 +367,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
       return;
     }
     setInput("");
-    sendPrompt(cmd.prompt);
+    void sendPrompt(cmd.prompt);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -447,8 +482,9 @@ const CopilotChat: React.FC<CopilotChatProps> = (
                 color="text.secondary"
                 sx={{ maxWidth: 260, mx: "auto" }}
               >
-                I can read and search across all your posts and edit them. Every
-                change is shown as a preview you approve first.
+                I can read and search across all your posts and edit them. Edits
+                are proposed on the post itself — nothing changes until you
+                approve them there.
               </Typography>
             </Box>
           </Box>
@@ -472,9 +508,14 @@ const CopilotChat: React.FC<CopilotChatProps> = (
                 key={msg.id}
                 message={msg}
                 addToolOutput={genericAddToolOutput}
-                currentDocId={openDocId}
                 onRegenerate={!isLoading && msg.id === lastAssistantId
-                  ? () => regenerate({ messageId: msg.id })
+                  // Flushed like a fresh turn: a regeneration runs the same
+                  // tools against the same documents, and anything typed since
+                  // the last send is exactly what would make its writes stale.
+                  ? () =>
+                    void triggerSave().then(() =>
+                      regenerate({ messageId: msg.id })
+                    )
                   : undefined}
               />
             ))}

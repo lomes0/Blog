@@ -1,5 +1,5 @@
 "use client";
-import { useContext, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { UIMessage } from "ai";
 import { getToolName, isTextUIPart, isToolUIPart } from "ai";
 import {
@@ -11,16 +11,16 @@ import {
   Typography,
 } from "@mui/material";
 import { Check, Copy, RefreshCw, Search } from "lucide-react";
-import { ActiveEditorContext } from "@/contexts/ActiveEditorContext";
 import { applyProposal } from "@/editor/utils/copilotAgentExecutors";
 import {
   commandForTool,
-  isAutoRunTool,
   isProposalCommandTool,
   previewCommandTool,
+  toolDisposition,
 } from "@/lib/ai/commandTools";
 import { useCommandContext } from "@/commands/CommandProvider";
 import ActionPreview from "./ActionPreview";
+import AgentWriteResult from "./AgentWriteResult";
 import MarkdownText from "./MarkdownText";
 import { ICON_SIZE } from "@/theme/icons";
 
@@ -31,8 +31,6 @@ type AddToolOutput = (
 interface CopilotMessageProps {
   message: UIMessage;
   addToolOutput: AddToolOutput;
-  /** Id of the open document — writes to it apply through the live editor. */
-  currentDocId: string;
   /** Provided only for the latest assistant message; enables regenerate. */
   onRegenerate?: () => void;
 }
@@ -73,9 +71,8 @@ function readTraceLabel(name: string, input: Record<string, unknown>): string {
 }
 
 const CopilotMessage: React.FC<CopilotMessageProps> = (
-  { message, addToolOutput, currentDocId, onRegenerate },
+  { message, addToolOutput, onRegenerate },
 ) => {
-  const editorRef = useContext(ActiveEditorContext);
   const isUser = message.role === "user";
   const [copied, setCopied] = useState(false);
 
@@ -86,12 +83,27 @@ const CopilotMessage: React.FC<CopilotMessageProps> = (
   const textParts = message.parts.filter(isTextUIPart);
   const toolParts = message.parts.filter(isToolUIPart);
 
-  // Auto-run tools (content reads and `read` commands) show as a muted trace;
-  // everything else is a proposal the user accepts.
-  const readParts = toolParts.filter((p) => isAutoRunTool(getToolName(p)));
-  const writeParts = toolParts.filter((p) => !isAutoRunTool(getToolName(p)));
-  const pendingParts = writeParts.filter((p) => p.state === "input-available");
-  const appliedParts = writeParts.filter((p) => p.state === "output-available");
+  // Three families, not two, since §4.4 (see `toolDisposition`): reads are a
+  // muted trace, content writes report what they proposed and offer Review, and
+  // only mutating commands are still held here for an Accept. A tool this build
+  // no longer has — a thread persisted before the §4.2 rename — traces with the
+  // rest rather than blanking or offering an Accept nothing can honour.
+  const readParts = toolParts.filter((p) => {
+    const disposition = toolDisposition(getToolName(p));
+    return disposition === "read" || disposition === "unknown";
+  });
+  const contentWriteParts = toolParts.filter(
+    (p) => toolDisposition(getToolName(p)) === "write",
+  );
+  const proposalParts = toolParts.filter(
+    (p) => toolDisposition(getToolName(p)) === "proposal",
+  );
+  const pendingParts = proposalParts.filter(
+    (p) => p.state === "input-available",
+  );
+  const appliedParts = proposalParts.filter(
+    (p) => p.state === "output-available",
+  );
 
   const textContent = textParts.map((p) => p.text).join("");
 
@@ -149,8 +161,6 @@ const CopilotMessage: React.FC<CopilotMessageProps> = (
       const result = await applyProposal(
         getToolName(part),
         ((part as { input?: unknown }).input ?? {}) as Record<string, unknown>,
-        editorRef.current,
-        currentDocId,
         commandContextRef.current,
       );
       await addToolOutput({
@@ -228,7 +238,8 @@ const CopilotMessage: React.FC<CopilotMessageProps> = (
         </Box>
       )}
 
-      {(textContent || pendingParts.length > 0 || appliedParts.length > 0) && (
+      {(textContent || pendingParts.length > 0 || appliedParts.length > 0 ||
+        contentWriteParts.length > 0) && (
         <Box
           sx={{
             maxWidth: "85%",
@@ -247,6 +258,36 @@ const CopilotMessage: React.FC<CopilotMessageProps> = (
                 </Typography>
               )
               : <MarkdownText>{textContent}</MarkdownText>
+          )}
+
+          {
+            /* Content writes: already proposed, so this reports and offers
+              Review rather than asking for anything (§4.4.5). */
+          }
+          {contentWriteParts.length > 0 && (
+            <Box
+              sx={{
+                mt: textContent ? 1 : 0,
+                p: 1,
+                display: "flex",
+                flexDirection: "column",
+                gap: 1,
+                border: 1,
+                borderColor: "divider",
+                borderRadius: 1,
+                bgcolor: "background.paper",
+              }}
+            >
+              {contentWriteParts.map((p) => (
+                <AgentWriteResult
+                  key={p.toolCallId}
+                  toolName={getToolName(p)}
+                  state={p.state}
+                  output={(p as { output?: unknown }).output}
+                  errorText={(p as { errorText?: string }).errorText}
+                />
+              ))}
+            </Box>
           )}
 
           {pendingParts.length > 0 && (

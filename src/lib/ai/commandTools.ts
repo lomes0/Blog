@@ -142,19 +142,52 @@ export const isProposalCommandTool = (name: string): boolean =>
   commandForTool(name)?.effect === "mutate";
 
 /**
- * The two questions the chat UI actually asks of a tool call, across *both*
- * families: does it run on arrival, or does it wait for the user?
+ * What the chat does with a tool call, across *both* families.
  *
- * Content tools answer with a hand-maintained list because they are not
- * commands; command tools answer from `effect`. Everything downstream — the
- * activity trace, the pending count, "Accept all" — asks these rather than
- * either list, so a new command joins all of it for free.
+ * Three answers rather than two, because §4.4 of
+ * docs/plans/ai-surface-consolidation.md split what used to be one bucket:
+ *
+ * - **`read`** — resolved on arrival and fed back; nothing is written. Content
+ *   reads and `effect: "read"` commands (which observe or navigate) both
+ *   qualify, and they render as the muted activity trace.
+ * - **`write`** — *also* resolved on arrival, and this is the change: a content
+ *   write is no longer held in the transcript. It goes to
+ *   `POST /api/documents/[id]/proposals` immediately and lands as a pending
+ *   proposal, so the transcript reports what was proposed and offers Review,
+ *   while the decision itself is made in `AgentChangeBar` or the rail. Forcing
+ *   these into `read` would lose the reporting; leaving them in `proposal` would
+ *   put an Accept in the chat that no longer does anything.
+ * - **`proposal`** — held until the user accepts, in the chat, because there is
+ *   nowhere else to hold it: a `pane.split` has no document content and cannot
+ *   be a `Revision` row (§4.4.6). Mutating commands only.
+ * - **`unknown`** — a name this build does not have, which a persisted thread
+ *   from before a rename replays. Nothing can be run for it and nothing can be
+ *   accepted; it already carries its stored result, and the trace renders it
+ *   from its wire name rather than blanking.
+ *
+ * Everything downstream — the activity trace, the pending count, "Accept all" —
+ * asks this rather than either list, so a new command joins all of it for free.
  */
-export const isAutoRunTool = (name: string): boolean =>
-  isReadTool(name) || isAutoRunCommandTool(name);
+export type ToolDisposition = "read" | "write" | "proposal" | "unknown";
 
+export const toolDisposition = (name: string): ToolDisposition => {
+  if (isReadTool(name)) return "read";
+  if (isWriteTool(name)) return "write";
+  const effect = commandForTool(name)?.effect;
+  if (effect === "read") return "read";
+  if (effect === "mutate") return "proposal";
+  return "unknown";
+};
+
+/** Whether the chat resolves this call itself, without asking the user. */
+export const isAutoRunTool = (name: string): boolean => {
+  const disposition = toolDisposition(name);
+  return disposition === "read" || disposition === "write";
+};
+
+/** Whether the call waits in the transcript for an Accept. */
 export const isProposalTool = (name: string): boolean =>
-  isWriteTool(name) || isProposalCommandTool(name);
+  toolDisposition(name) === "proposal";
 
 /** Run a command tool call and return a JSON-serializable result. */
 export async function runCommandTool(

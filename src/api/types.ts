@@ -36,6 +36,41 @@ export interface DocumentChanges {
 }
 
 // -----------------------------------------------------------------------
+// Agent writes (POST /api/documents/:id/proposals, POST /api/documents/agent)
+// -----------------------------------------------------------------------
+// The in-app agent's two content writes, which go through the same
+// `src/lib/agentWrites.ts` the MCP server calls. See
+// docs/plans/ai-surface-consolidation.md §4.4.
+
+/** What a batch of block ops did to the document's one pending proposal. */
+export interface AgentProposalResult {
+  /** The document's own id — `params.id` may have been a handle. */
+  id: string;
+  /** The pending revision: the right-hand side of the review diff. */
+  proposalId: string;
+  /**
+   * `created` — this batch opened the proposal; `squashed` — it folded onto one
+   * that was already there; `replaced` — the proposal it found had gone stale
+   * (the author saved after it was written) and is gone. The last is the one the
+   * user has to hear about.
+   */
+  outcome: "created" | "squashed" | "replaced";
+  replaced: boolean;
+  /** How many blocks the batch touched. */
+  changed: number;
+  /** The token the next batch in this turn must carry back. */
+  stateHash: string;
+}
+
+/** A post an agent created: it lands, flagged, rather than proposing (§3.7). */
+export interface AgentPostResult {
+  id: string;
+  revisionId: string;
+  stateHash: string;
+  blockCount: number;
+}
+
+// -----------------------------------------------------------------------
 // Series posts (PATCH /api/series/:id/posts)
 // -----------------------------------------------------------------------
 // Posts are appended to the series; manual position is controlled via `rank`,

@@ -44,7 +44,14 @@ export function useProposalActions() {
    * first click opened the document with no diff and only a second one, against
    * a workspace that had settled, showed the review bar.
    */
-  const review = useCallback(async (proposal: PendingProposal) => {
+  const review = useCallback(async (
+    // Three fields rather than the whole row, so the Copilot transcript can
+    // offer Review from what its write just returned — a proposal id and the
+    // document it is against — without fabricating a listing row it does not
+    // have (docs/plans/ai-surface-consolidation.md §4.4.5). Every other caller
+    // passes a `PendingProposal`, which satisfies this.
+    proposal: Pick<PendingProposal, "id" | "documentId" | "head">,
+  ) => {
     await run(documentCommands.open, {
       id: proposal.documentId,
       mode: "write",

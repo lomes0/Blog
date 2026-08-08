@@ -254,21 +254,27 @@ const InlineCopilotBar: React.FC<InlineCopilotBarProps> = ({ documentId }) => {
               }}
             >
               <Box sx={{ flex: 1 }} />
+              {
+                /* Command proposals only — the panel's button carries the
+                  reasoning; the two say the same thing on purpose. */
+              }
               {pendingCount > 0 && (
-                <Button
-                  size="small"
-                  variant="contained"
-                  onClick={() => acceptAllRef.current?.()}
-                  sx={{
-                    textTransform: "none",
-                    typography: "micro",
-                    py: 0.25,
-                    px: 1,
-                    flexShrink: 0,
-                  }}
-                >
-                  Accept all
-                </Button>
+                <Tooltip title="Accept the actions Copilot has proposed">
+                  <Button
+                    size="small"
+                    variant="contained"
+                    onClick={() => acceptAllRef.current?.()}
+                    sx={{
+                      textTransform: "none",
+                      typography: "micro",
+                      py: 0.25,
+                      px: 1,
+                      flexShrink: 0,
+                    }}
+                  >
+                    Accept {pendingCount} action{pendingCount === 1 ? "" : "s"}
+                  </Button>
+                </Tooltip>
               )}
               <Tooltip title="Collapse (Esc)">
                 <IconButton

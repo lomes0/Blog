@@ -318,6 +318,29 @@ server refuse its own agent's write as stale on every turn.
 After the flush, the live editor state and `head` agree, so the existing
 read-tool behaviour stays correct without change.
 
+> **Correction, found while implementing.** The paragraph above is true and
+> insufficient, and shipping on it alone would have produced a feature that
+> broke on the second turn of every conversation.
+>
+> The flush reconciles the editor with `head`. But `proposeOps` reads through
+> `selectAgentRead`, which deliberately prefers the **pending proposal** over
+> head — that is the rule that lets a second batch see the first batch's work.
+> So once turn 1 leaves a proposal, turn 2's client-side read (live editor,
+> i.e. head) computes a `stateHash` the server's base does not share, and every
+> write in that turn is refused as stale. Permanently, until the author
+> approves or rejects: the agent cannot re-read its way out, because re-reading
+> returns the same head.
+>
+> The fix is that `load()` in `copilotAgentExecutors.ts` must mirror
+> `selectAgentRead` client-side — a non-stale pending proposal wins over the
+> editor, a stale one loses to the document — and judge staleness against the
+> store's *current* head rather than the proposal's snapshot, which closes the
+> race where the turn-start flush moves head just before the read.
+>
+> The general lesson: the client's notion of "the document" now has three
+> candidates, not two, and every one of them has to agree with what the server
+> will build the proposal on.
+
 #### 4.4.4 Creates land the way MCP's do
 
 `create_post` stops dispatching `createPost` directly. It sets `agentCreatedAt`

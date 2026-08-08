@@ -10,6 +10,10 @@
  */
 const KNOWN_ORIGINS: Record<string, string> = {
   "claude-code": "Claude Code",
+  // The in-app agent, since docs/plans/ai-surface-consolidation.md §4.4: its
+  // content writes are proposals in this table too, so the rail now has a second
+  // origin to name. Server-stamped by `POST /api/documents/[id]/proposals`.
+  copilot: "Copilot",
 };
 
 export function originLabel(origin: string | null | undefined): string {

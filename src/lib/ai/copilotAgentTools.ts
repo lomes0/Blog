@@ -36,7 +36,16 @@ export const READ_TOOLS = [
 ] as const;
 
 /**
- * Write tools: surfaced as proposals; applied only on user accept.
+ * Write tools: executed on arrival, like a read — but they change stored state.
+ *
+ * They are **not** chat proposals any more (docs/plans/
+ * ai-surface-consolidation.md §4.4). The call goes straight to
+ * `POST /api/documents/[id]/proposals`, which stores it as a pending proposal
+ * exactly as Claude Code's does; the author's one decision is in
+ * `AgentChangeBar` or the review rail, not in the transcript. So "write" here
+ * describes what the tool *does*, and no longer where the user answers it — see
+ * `toolDisposition` in `commandTools.ts` for the three-way split every UI reader
+ * asks.
  *
  * `edit_document` and `write_document` are gone. Both worked by rewriting a
  * document's entire body from Markdown; `apply_ops` names the blocks it

@@ -149,21 +149,30 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
           </Typography>
         </Box>
 
+        {
+          /* *Actions*, not edits. Since §4.4 a content write is proposed on the
+            tool call and answered on the document itself, so the only things
+            waiting in the transcript are command proposals — a pane split, a
+            rename, a theme change. "Accept all" would now read as covering the
+            edits as well, and it does not. */
+        }
         {pendingCount > 0 && (
-          <Button
-            size="small"
-            variant="contained"
-            onClick={handleAcceptAll}
-            sx={{
-              textTransform: "none",
-              typography: "micro",
-              py: 0.25,
-              px: 1,
-              flexShrink: 0,
-            }}
-          >
-            Accept all
-          </Button>
+          <Tooltip title="Accept the actions Copilot has proposed">
+            <Button
+              size="small"
+              variant="contained"
+              onClick={handleAcceptAll}
+              sx={{
+                textTransform: "none",
+                typography: "micro",
+                py: 0.25,
+                px: 1,
+                flexShrink: 0,
+              }}
+            >
+              Accept {pendingCount} action{pendingCount === 1 ? "" : "s"}
+            </Button>
+          </Tooltip>
         )}
 
         <Tooltip title="Conversation history">

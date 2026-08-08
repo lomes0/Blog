@@ -27,7 +27,11 @@ import type {
   User,
 } from "@/types";
 
+import type { Op, WritableBlock } from "@/lib/content-bridge";
+
 import type {
+  AgentPostResult,
+  AgentProposalResult,
   ApiError,
   AttachmentData,
   CreateNoteInput,
@@ -378,6 +382,46 @@ export const apiClient = {
         `/api/documents/${id}/agent/discard`,
         { method: "POST" },
       ),
+  },
+
+  // -------------------------------------------------------------------------
+  // Agent writes (docs/plans/ai-surface-consolidation.md §4.4)
+  // -------------------------------------------------------------------------
+  // The other side of the group above: `proposals` is what the *author* does
+  // about an agent's work, this is how the in-app agent's work gets there. Both
+  // routes are `src/lib/agentWrites.ts` with an HTTP door in front, so a Copilot
+  // edit and a Claude Code edit are one execution of `applyOps` against one
+  // base, not two implementations writing the same columns.
+  agent: {
+    /**
+     * POST /api/documents/:id/proposals — propose a block edit.
+     *
+     * `origin` is not a parameter: the route stamps it, so a page cannot label
+     * its write as another agent. Throws `ApiClientError` with `statusCode` 409
+     * when `stateHash` no longer matches the state the server would build on —
+     * the addresses have moved and the agent must re-read.
+     */
+    proposeOps: (
+      documentId: string,
+      body: { stateHash: string; ops: readonly Op[]; summary?: string },
+    ): Promise<AgentProposalResult | undefined> =>
+      request<AgentProposalResult>(`/api/documents/${documentId}/proposals`, {
+        method: "POST",
+        ...json(body),
+      }),
+
+    /** POST /api/documents/agent — create a post as an agent-flagged draft. */
+    createPost: (
+      body: {
+        title: string;
+        blocks: readonly WritableBlock[];
+        seriesId?: string;
+      },
+    ): Promise<AgentPostResult | undefined> =>
+      request<AgentPostResult>("/api/documents/agent", {
+        method: "POST",
+        ...json(body),
+      }),
   },
 
   // -------------------------------------------------------------------------

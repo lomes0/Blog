@@ -19,6 +19,7 @@ import {
   commandToolDescription,
   isAutoRunTool,
   isProposalTool,
+  toolDisposition,
   toolNameForCommand,
 } from "@/lib/ai/commandTools";
 import { READ_TOOLS, WRITE_TOOLS } from "@/lib/ai/copilotAgentTools";
@@ -171,6 +172,22 @@ describe("content tools", () => {
     for (const name of listed) {
       expect(declared.has(name), `${name} is described but never declared`)
         .toBe(true);
+    }
+  });
+
+  it("resolves a content write on arrival and holds no chat proposal for it", () => {
+    // The §4.4 decision, as an assertion: a content write is neither a read nor
+    // a chat proposal. Putting it back in `proposal` would leave an Accept in
+    // the transcript that no longer applies anything — the edit is already
+    // stored, and the author answers it on the document.
+    for (const name of WRITE_TOOLS) {
+      expect(toolDisposition(name)).toBe("write");
+      expect(isAutoRunTool(name)).toBe(true);
+      expect(isProposalTool(name)).toBe(false);
+    }
+    for (const name of READ_TOOLS) {
+      expect(toolDisposition(name)).toBe("read");
+      expect(isProposalTool(name)).toBe(false);
     }
   });
 

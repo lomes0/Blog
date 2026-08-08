@@ -18,9 +18,12 @@ import { BLOCK_DOC, blockSchema, opSchema } from "@/lib/content-bridge/schema";
 // Node runtime (not edge): auth uses the Prisma adapter, which cannot run on edge.
 
 // Tools are declared here (schemas only) but EXECUTED ON THE CLIENT — read
-// tools auto-run against the Redux store / live editor, write tools surface as
-// reviewable proposals. See src/lib/ai/copilotAgentTools.ts for the read/write
-// split the client enforces.
+// tools auto-run against the Redux store / live editor, and content writes run
+// on arrival too, landing as pending proposals the author reviews on the
+// document (docs/plans/ai-surface-consolidation.md §4.4). See
+// src/lib/ai/copilotAgentTools.ts for the read/write split the client enforces,
+// and `toolDisposition` in src/lib/ai/commandTools.ts for what the chat does
+// with each family.
 //
 // The *content* tools below are hand-written because they act on document
 // bodies through the live Lexical editor, which is not a command. Everything
@@ -96,18 +99,28 @@ const readTools = {
  * read that document but not write it — a signed-in visitor asking about
  * someone else's published post gets answers, not edit proposals.
  *
- * This is not the security boundary. Writes execute client-side through the
- * `updatePost` / `createPost` thunks, so they land on `/api/documents/[id]`,
- * which authorizes them independently. Withholding the tools here stops the
- * agent from proposing an edit that would only fail on accept.
+ * This is not the security boundary. The call executes client-side and lands on
+ * `POST /api/documents/[id]/proposals`, which authorizes it independently with
+ * `requireDocument(…, "write")`. Withholding the tool here stops the agent from
+ * attempting an edit that could only be refused.
  */
 const documentWriteTools = {
-  // ---- write (proposed; applied only on user accept) ----
+  // ---- write (proposed on the call; reviewed on the document) ----
   apply_ops: tool({
     description:
-      "Propose editing a post by block. Every op names an address from a read, " +
-      "and the batch carries that read's stateHash — if the document changed " +
-      "since (the user typed, say), the whole batch is refused and you re-read. " +
+      "PROPOSE a block-level edit to a post. The change is stored, but it does " +
+      "not become the document: it lands as a pending proposal for the author " +
+      "to approve or reject on the post itself. Report it as proposed, never " +
+      "as done. Successive calls on the same post squash into that one " +
+      "proposal, and every read of the post then returns the proposed content, " +
+      "so you can keep editing against your own work. If the author saved in " +
+      "an editor meanwhile, that proposal goes out of date and can no longer " +
+      "be approved: reads return the live document again, and the next call " +
+      "REPLACES the stale proposal rather than folding into it — say so, " +
+      "because the earlier change is then no longer pending. " +
+      "Every op names an address from a read, and the batch carries that " +
+      "read's stateHash — if the state you read has moved on, the whole batch " +
+      "is refused and you re-read. " +
       "Ops apply all-or-nothing, and blocks you do not name are left exactly " +
       "as they were, so you never need to restate the rest of the document. " +
       "Ops: set_text{id,text}, replace_block{id,block}, " +
@@ -132,9 +145,12 @@ const documentWriteTools = {
 const libraryWriteTools = {
   create_post: tool({
     description:
-      "Propose creating a new post from blocks. Produces real Lexical content " +
-      "— proper code nodes, headings, lists and collapsibles — not fenced " +
-      "Markdown in a paragraph. " +
+      "Create a new post from blocks. Produces real Lexical content — proper " +
+      "code nodes, headings, lists and collapsibles — not fenced Markdown in a " +
+      "paragraph. Unlike apply_ops, a create lands rather than proposing — " +
+      "there is nothing to overwrite — but it is flagged agent-created: it " +
+      "arrives as an unpublished draft awaiting the author's Keep or Discard, " +
+      "and nobody else can read it until it is published. " +
       BLOCK_DOC,
     inputSchema: z.object({
       title: z.string(),
@@ -228,7 +244,9 @@ export const POST = userRoute(async (req, { user }) => {
       ...buildCommandTools(),
     },
     // Agentic loop: the model explores with read tools (auto-resolved) and
-    // proposes edits over many steps. Writes pause the loop for user approval.
+    // proposes edits over many steps. Content writes resolve on arrival and are
+    // reviewed on the document; a mutating *command* pauses the loop for the
+    // user's accept in the chat.
     stopWhen: stepCountIs(40),
   });
 

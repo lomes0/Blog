@@ -10,11 +10,10 @@ interface ActionPreviewProps {
   /** Raw tool input arguments. */
   input: Record<string, unknown>;
   /**
-   * A command's own `preview()` summary, resolved by `CopilotMessage`.
+   * The command's own `preview()` summary, resolved by `CopilotMessage`.
    *
-   * Only command tools have one: the content tools' arguments *are* the
-   * preview (the old and new text), whereas a command's are ids, which say
-   * nothing on their own.
+   * A command's arguments are ids, which say nothing on their own — `preview()`
+   * is the command's answer to "what would accepting do".
    */
   summary?: string;
   /** Render against a colored (user) bubble — flips text colors. */
@@ -31,70 +30,16 @@ const TABLE_LABEL = (input: Record<string, unknown>): string => {
   return `${rows} × ${cols} table`;
 };
 
-const firstLine = (text: string, max = 70): string => {
-  const flat = text.replace(/\s+/g, " ").trim();
-  return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat;
-};
-
-/** One line describing a block the agent wants to write. */
-function describeBlock(value: unknown): string {
-  const block = value as Record<string, unknown>;
-  const type = asString(block?.type) || "block";
-  if (typeof block?.text === "string") {
-    return `${type}: ${firstLine(block.text)}`;
-  }
-  if (typeof block?.code === "string") {
-    return `${type}: ${firstLine(block.code)}`;
-  }
-  if (typeof block?.summary === "string") {
-    return `${type}: ${firstLine(block.summary)}`;
-  }
-  if (Array.isArray(block?.items)) {
-    return `${type} · ${block.items.length} items`;
-  }
-  if (Array.isArray(block?.tasks)) {
-    return `${type} · ${block.tasks.length} cards`;
-  }
-  return type;
-}
-
 /**
- * One line per operation.
+ * Renders a human-readable preview of a pending Copilot proposal so the user can
+ * see *what* accepting would do — not just the tool name.
  *
- * The agent names the blocks it changes rather than restating the document, so
- * a whole-body diff would be mostly unchanged text. The addresses are the
- * useful part — and "deletes b7" is what a user most needs to see before
- * accepting.
- */
-function describeOp(value: unknown): string {
-  const op = value as Record<string, unknown>;
-  const target = (): string =>
-    asString(op.after) || asString(op.before) || asString(op.appendTo) ||
-    "the end";
-
-  switch (asString(op.op)) {
-    case "set_text":
-      return `${asString(op.id)} → ${firstLine(asString(op.text))}`;
-    case "replace_block":
-      return `${asString(op.id)} replaced by ${describeBlock(op.block)}`;
-    case "insert_blocks": {
-      const blocks = Array.isArray(op.blocks) ? op.blocks : [];
-      return `insert ${blocks.length} block${
-        blocks.length === 1 ? "" : "s"
-      } at ${target()}: ${blocks.map(describeBlock).join("; ")}`;
-    }
-    case "delete_block":
-      return `delete ${asString(op.id)}`;
-    case "move_block":
-      return `move ${asString(op.id)} to ${target()}`;
-    default:
-      return asString(op.op) || "unknown operation";
-  }
-}
-
-/**
- * Renders a human-readable preview of a pending Copilot edit so the user can
- * see *what* will be inserted before accepting — not just the tool name.
+ * **Command proposals only, since docs/plans/ai-surface-consolidation.md §4.4.**
+ * Content writes used to render here as a list of ops; they are now proposed on
+ * the tool call and reviewed as a diff against the document, which is a better
+ * answer to "what changed" than a restatement of the ops — see
+ * `AgentWriteResult`. What is left is the family with no diff to offer, because
+ * a pane split is not a document state.
  */
 const ActionPreview: React.FC<ActionPreviewProps> = (
   { type, input, summary, onColoredBg },
@@ -251,36 +196,6 @@ const ActionPreview: React.FC<ActionPreviewProps> = (
 
     case "remove_node":
       return label("Remove this block", true);
-
-    case "apply_ops": {
-      const ops = Array.isArray(input.ops) ? input.ops : [];
-      // Say what each op does to which block. The agent names blocks rather
-      // than restating the document, so a diff of the whole body would be both
-      // huge and mostly unchanged — the addresses are the useful part, and
-      // "deletes b7" is the line a user most needs to notice before accepting.
-      const destructive = ops.some(
-        (op) => (op as { op?: string }).op === "delete_block",
-      );
-      return (
-        <Box>
-          {label(
-            `Edit ${ops.length} block${ops.length === 1 ? "" : "s"}`,
-            destructive,
-          )}
-          {snippet(ops.map(describeOp).join("\n"))}
-        </Box>
-      );
-    }
-
-    case "create_post": {
-      const blocks = Array.isArray(input.blocks) ? input.blocks : [];
-      return (
-        <Box>
-          {label(`New post · ${asString(input.title)}`)}
-          {snippet(blocks.map(describeBlock).join("\n"))}
-        </Box>
-      );
-    }
 
     default:
       return label(type.replace(/_/g, " "));
