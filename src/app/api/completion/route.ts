@@ -2,12 +2,11 @@ import { streamText } from "ai";
 import { match } from "ts-pattern";
 import { z } from "zod";
 import {
-  AI_OPTIONS,
+  AI_COMPLETION_ACTIONS,
   AI_PROVIDERS,
+  completionSystemPrompt,
   createProvider,
   getModelById,
-  getSystemPrompt,
-  getToneSystemPrompt,
 } from "@/lib/ai";
 import { ApiError, parseBody, userRoute } from "@/lib/api-utils";
 
@@ -18,7 +17,7 @@ import { ApiError, parseBody, userRoute } from "@/lib/api-utils";
 
 /**
  * What the editor's AI toolbar sends. Every field of it used to arrive as
- * `await req.json()` and then be cast — `option as AIOptionType` in particular,
+ * `await req.json()` and then be cast — the action id in particular,
  * which decided which system prompt the model was given. The ESLint rule that
  * bans that pattern under `src/app/api/**` matched only the identifier spelled
  * `request`, so naming the parameter `req` walked around it; the rule is now
@@ -35,12 +34,18 @@ import { ApiError, parseBody, userRoute } from "@/lib/api-utils";
  * contract with only one of them checked.
  */
 const completionBodySchema = z.object({
-  /** The text the option acts on: the selection, or the preceding prose. */
+  /** The text the action acts on: the selection, or the preceding prose. */
   prompt: z.string(),
-  option: z.enum(AI_OPTIONS),
+  /**
+   * Which canned instruction to run, by id from `src/lib/ai/actions.ts`. An
+   * *id*, not the instruction itself: the toolbar and the Copilot now share one
+   * wording, but the wording is still resolved server-side from the registry,
+   * so a request cannot hand the model a system prompt of its own choosing.
+   */
+  action: z.enum(AI_COMPLETION_ACTIONS),
   provider: z.enum(AI_PROVIDERS),
   model: z.string().min(1, "Model ID is required"),
-  /** The user's instruction; `zap` only. */
+  /** The user's instruction; `custom` only. */
   command: z.string().optional(),
   /**
    * `tone` only. Bounded but not enumerated: the toolbar's six tones are a menu,
@@ -51,13 +56,16 @@ const completionBodySchema = z.object({
 }).strict();
 
 export const POST = userRoute(async (request) => {
-  const { provider, model: modelId, prompt, option, command, tone } =
+  const { provider, model: modelId, prompt, action, command, tone } =
     await parseBody(request, completionBodySchema);
 
-  const systemPrompt = getSystemPrompt(option);
+  const systemPrompt = completionSystemPrompt(action, { tone });
 
-  const messages = match(option)
-    .with("zap", () => [
+  // Only `custom` shapes the *user* message differently — it carries the typed
+  // request ahead of the text. Everything else, `tone` included, differs only
+  // in the system prompt, which the registry already resolved above.
+  const messages = match(action)
+    .with("custom", () => [
       {
         role: "system" as const,
         content: systemPrompt,
@@ -65,16 +73,6 @@ export const POST = userRoute(async (request) => {
       {
         role: "user" as const,
         content: `${command}${prompt ? `\n${prompt}` : ""}`,
-      },
-    ])
-    .with("tone", () => [
-      {
-        role: "system" as const,
-        content: getToneSystemPrompt(tone ?? "neutral"),
-      },
-      {
-        role: "user" as const,
-        content: prompt,
       },
     ])
     .otherwise(() => [

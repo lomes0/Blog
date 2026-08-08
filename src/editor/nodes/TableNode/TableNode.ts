@@ -3,7 +3,6 @@ import {
   TableNode as LexicalTableNode,
 } from "@lexical/table";
 
-
 import type {
   BaseSelection,
   DOMConversionMap,

@@ -21,11 +21,11 @@ for state management.
 
 ## Editing the blog's content
 
-Asked to read or change a *post* — as opposed to the code that renders one —
-use the `blog-content` MCP tools, not the repo. Posts are rows in Postgres
-holding Lexical JSON; there is no file to open. Start with `outline` for the
-block addresses every other tool takes, and let the tool descriptions carry the
-rest — they are the reference, and they are already in context.
+Asked to read or change a _post_ — as opposed to the code that renders one — use
+the `blog-content` MCP tools, not the repo. Posts are rows in Postgres holding
+Lexical JSON; there is no file to open. Start with `outline` for the block
+addresses every other tool takes, and let the tool descriptions carry the rest —
+they are the reference, and they are already in context.
 
 Three things they do not say about themselves: only cloud content is visible
 (anything created while signed out lives in browser IndexedDB and never reaches
@@ -78,36 +78,35 @@ Coverage is 21 specs, 411 tests: `src/lib/__tests__/ordering.test.ts`
 `src/components/Layout/SideBar/__tests__/
 dragGeometry.test.ts` (sidebar drag
 thresholds — `dragGeometry.ts` is kept import-free precisely so it is testable
-without a browser),
-`src/store/__tests__/workspace.test.ts` (the `ui.workspace` reducers — pane
-focus, the one-document-one-pane invariant, dirty hoisting, and the URL replayed
-over a restored layout), `src/lib/__tests__/workspaceUrl.test.ts` (when the
-address bar may be rewritten to follow pane focus),
-`src/commands/__tests__/toolParity.test.ts` (that the AI tool surface stays
-derivable from the command registry — see docs/plans/workspace-panes.md §3.1),
+without a browser), `src/store/__tests__/workspace.test.ts` (the `ui.workspace`
+reducers — pane focus, the one-document-one-pane invariant, dirty hoisting, and
+the URL replayed over a restored layout),
+`src/lib/__tests__/workspaceUrl.test.ts` (when the address bar may be rewritten
+to follow pane focus), `src/commands/__tests__/toolParity.test.ts` (that the AI
+tool surface stays derivable from the command registry — see
+docs/plans/workspace-panes.md §3.1),
 `src/components/EditDocument/__tests__/tabFit.test.ts` (which pane tabs fit the
 strip and which fall into the overflow menu),
-`src/lib/__tests__/scrollMemory.test.ts` (restoring a
-document to where it was left — what a stored offset map may contain, and when a
-restore has settled versus is still waiting on content that has not rendered),
-and four for the content bridge (`src/lib/content-bridge/__tests__/`) —
-`inline.test.ts` (that a block's inline formatting survives a Markdown
-round-trip, over a corpus of literal marker characters plus 400 randomized
-runs), `ops.test.ts` (the plan's central claim: a block nobody named comes out
-byte-identical, plus snapshot addressing, atomicity and the freshness guard) and
-`outline.test.ts` (addressing, descriptors for blocks with no codec, and the
-content hash) and `codecs.test.ts` (a round-trip per graduated block type over a
-node with every optional field populated — the obligation
-docs/plans/claude-code-lexical.md §4.6.1 attaches to graduating one — which now
-also feeds each of those nodes to the zod schema in `content-bridge/schema.ts`,
-so a type that gains a codec without gaining a schema arm, or the reverse, fails
-rather than working on one agent and not the other), and
-`src/editor/utils/__tests__/virtualRepo.test.ts` (the Copilot's view of the
-library — that a search hit carries a block address a later tool can act on,
-rather than a line number no other tool accepts). Two more cover phase 5:
-`src/lib/content-bridge/__tests__/blockId.test.ts` (that a persistent id keeps
-naming its block after the tree shifts above it, that a write stamps only what
-it touched, and that a read never stamps) and
+`src/lib/__tests__/scrollMemory.test.ts` (restoring a document to where it was
+left — what a stored offset map may contain, and when a restore has settled
+versus is still waiting on content that has not rendered), and four for the
+content bridge (`src/lib/content-bridge/__tests__/`) — `inline.test.ts` (that a
+block's inline formatting survives a Markdown round-trip, over a corpus of
+literal marker characters plus 400 randomized runs), `ops.test.ts` (the plan's
+central claim: a block nobody named comes out byte-identical, plus snapshot
+addressing, atomicity and the freshness guard) and `outline.test.ts`
+(addressing, descriptors for blocks with no codec, and the content hash) and
+`codecs.test.ts` (a round-trip per graduated block type over a node with every
+optional field populated — the obligation docs/plans/claude-code-lexical.md
+§4.6.1 attaches to graduating one — which now also feeds each of those nodes to
+the zod schema in `content-bridge/schema.ts`, so a type that gains a codec
+without gaining a schema arm, or the reverse, fails rather than working on one
+agent and not the other), and `src/editor/utils/__tests__/virtualRepo.test.ts`
+(the Copilot's view of the library — that a search hit carries a block address a
+later tool can act on, rather than a line number no other tool accepts). Two
+more cover phase 5: `src/lib/content-bridge/__tests__/blockId.test.ts` (that a
+persistent id keeps naming its block after the tree shifts above it, that a
+write stamps only what it touched, and that a read never stamps) and
 `src/editor/nodes/__tests__/serialization.test.ts` (that a stored node survives
 a load — `importJSON` is the only parse path, so a class that does not delegate
 to `updateFromJSON` silently drops node state _and_ element format/indent/
@@ -134,9 +133,9 @@ not a spec — as is anything about `mcp/`, which has no test environment.
 All of these follow the same rule as `dragGeometry.ts`: the logic lives in an
 import-free module so it can be exercised without mounting anything. The DOM
 half of the scroll restore is
-`components/EditDocument/hooks/useScrollMemory.ts`, and it is uncovered:
-finding the right scroller and re-asserting an offset as content settles are
-both things only a real browser answers.
+`components/EditDocument/hooks/useScrollMemory.ts`, and it is uncovered: finding
+the right scroller and re-asserting an offset as content settles are both things
+only a real browser answers.
 
 The sidebar drag's browser half is `SideBar/SidebarResizeHandle.tsx` plus
 `SidebarDragPreview.tsx`, and it is uncovered for the same reason: pointer

@@ -25,8 +25,8 @@ production builds on the same port locally if you want to see the same data.
 
 ## The database rename
 
-The database carried the upstream project's name, inherited from the fork. It
-is now `blog-simple`, and the old name appears nowhere in the tree.
+The database carried the upstream project's name, inherited from the fork. It is
+now `blog-simple`, and the old name appears nowhere in the tree.
 
 The name is the handle for the store, so renaming it migrates nothing by itself
 — it opens a second, empty database and strands every draft in the old one.
@@ -39,13 +39,13 @@ What it did, per boot:
 1. Opened the old database without a version. If `onupgradeneeded` fired, the
    open had just created it, so there was nothing there — it deleted it again
    and stopped. One side effect outlived it: that probe leaves the name in the
-   origin's leveldb, so **grepping a browser profile on disk for a database
-   name proves nothing**. Only an `indexedDB.open` answers the question.
+   origin's leveldb, so **grepping a browser profile on disk for a database name
+   proves nothing**. Only an `indexedDB.open` answers the question.
 2. Diffed the keys in `documents`, `revisions`, `copilotThreads` and
    `pendingSaves` against the new database, copied what was missing, then
    deleted from the legacy database everything the new one was known to hold.
 3. Deleted the legacy database outright once nothing worth keeping was left —
-   ignoring `attachmentContent`, a cache the server still backs, but *not*
+   ignoring `attachmentContent`, a cache the server still backs, but _not_
    `notesCanvas`. That step, added last, is what let the migration finish
    instead of re-probing forever.
 

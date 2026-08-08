@@ -72,8 +72,7 @@ const readTools = {
     inputSchema: z.object({ id: docRef }),
   }),
   read_blocks: tool({
-    description:
-      "Full content of specific blocks, by address from outline. " +
+    description: "Full content of specific blocks, by address from outline. " +
       "Prefer this over read_post — it is how you work on a long article " +
       "without reading all of it.",
     inputSchema: z.object({

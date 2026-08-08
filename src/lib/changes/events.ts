@@ -167,7 +167,9 @@ export function encodeChangeEvent(event: ChangeEvent): string {
     origin: event.origin,
   };
 
-  if (event.kind === "proposal.upserted" || event.kind === "proposal.resolved") {
+  if (
+    event.kind === "proposal.upserted" || event.kind === "proposal.resolved"
+  ) {
     if (!isNonEmptyString(event.revisionId)) {
       throw new TypeError(`Change event ${event.kind} is missing revisionId`);
     }

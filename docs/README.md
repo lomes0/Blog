@@ -11,9 +11,9 @@ them.
 
 ## Getting started
 
-| File                                                             | Description                                                         |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------- |
-| [bootstrap.md](./bootstrap.md)                                   | From-zero local setup: Node, Docker Postgres, env                   |
+| File                                                             | Description                                                  |
+| ---------------------------------------------------------------- | ------------------------------------------------------------ |
+| [bootstrap.md](./bootstrap.md)                                   | From-zero local setup: Node, Docker Postgres, env            |
 | [guides/claude-code-content.md](./guides/claude-code-content.md) | Editing blog content from Claude Code: MCP setup and caveats |
 
 ## Guides

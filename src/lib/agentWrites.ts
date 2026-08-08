@@ -340,7 +340,11 @@ export type ProposeNewPostResult =
     stateHash: string;
     blockCount: number;
   }
-  | { ok: false; reason: "series-not-found" | "invalid-blocks"; message: string };
+  | {
+    ok: false;
+    reason: "series-not-found" | "invalid-blocks";
+    message: string;
+  };
 
 /**
  * Create a document from blocks. **This one lands** rather than proposing —

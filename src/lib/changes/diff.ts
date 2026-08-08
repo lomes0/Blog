@@ -70,7 +70,9 @@ export function diffCatchUp(
   remote: readonly ChangeStamp[],
 ): CatchUpDiff {
   const storedTimes = new Map<string, number>();
-  for (const entry of stored) storedTimes.set(entry.id, timeOf(entry.updatedAt));
+  for (const entry of stored) {
+    storedTimes.set(entry.id, timeOf(entry.updatedAt));
+  }
 
   const changedIds: string[] = [];
   const seen = new Set<string>();

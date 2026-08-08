@@ -495,9 +495,9 @@ carrying forward).
 - **`docs/plans/README.md`** — add this plan's row.
 - **`docs/README.md`** — check the index for links into anything deleted.
 - **Your memory files** — `verify-ui-in-browser.md` names `/playground` as the
-  harness target, and `fork-remnants.md` should record that this
-  second scrub happened and what it deliberately left (§1.2). Stale memory that
-  names a deleted route is worse than none.
+  harness target, and `fork-remnants.md` should record that this second scrub
+  happened and what it deliberately left (§1.2). Stale memory that names a
+  deleted route is worse than none.
 
 ---
 

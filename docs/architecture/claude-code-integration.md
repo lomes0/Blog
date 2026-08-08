@@ -7,9 +7,8 @@ Markdown files any more.
 
 This is the architecture. For _how to set it up_ see
 [guides/claude-code-content.md](../guides/claude-code-content.md) (driving it is
-documented in the tool descriptions themselves); for _why it
-is shaped this way_ see
-[plans/claude-code-lexical.md](../plans/claude-code-lexical.md) and
+documented in the tool descriptions themselves); for _why it is shaped this way_
+see [plans/claude-code-lexical.md](../plans/claude-code-lexical.md) and
 [mcp/README.md](../../mcp/README.md).
 
 ---

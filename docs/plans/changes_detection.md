@@ -23,20 +23,19 @@ no route handler runs, no `revalidatePath` fires, no cache tag flips.
 
 This is not a new discovery. `src/repositories/revision.ts:49-68` already
 records that nothing can call `revalidateTag("revision")` for exactly this
-reason, and that a cache *bypass* was chosen instead. This plan is the same root
+reason, and that a cache _bypass_ was chosen instead. This plan is the same root
 cause surfacing a second time, from the client end.
 
 **The reader loads once.** `actions.load()` is dispatched behind an
-`initialized` guard at
-`src/components/Layout/AppLayoutContent.tsx:77-79`, and `load` itself
-(`src/store/app.ts:337-349`) runs `loadPosts` → `loadSeries` → `loadProjects`
-exactly once per store lifetime. The sidebar renders purely from that snapshot
-(`src/components/Layout/SideBar/index.tsx:87-90`). Nothing re-reads it except
-explicit user mutations calling `router.refresh()`.
+`initialized` guard at `src/components/Layout/AppLayoutContent.tsx:77-79`, and
+`load` itself (`src/store/app.ts:337-349`) runs `loadPosts` → `loadSeries` →
+`loadProjects` exactly once per store lifetime. The sidebar renders purely from
+that snapshot (`src/components/Layout/SideBar/index.tsx:87-90`). Nothing
+re-reads it except explicit user mutations calling `router.refresh()`.
 
 The one existing bridge is `src/hooks/useProposalPoll.ts` — mounted app-wide,
 firing on `window.focus` and `visibilitychange`, throttled to 3s. It refreshes
-*proposal counts only*. Its header comment explicitly rules SSE out of scope for
+_proposal counts only_. Its header comment explicitly rules SSE out of scope for
 that phase (`useProposalPoll.ts:20-28`); this plan is where that decision gets
 revisited, not contradicted — the hook stays, and becomes the fallback path.
 
@@ -57,39 +56,39 @@ Four hops. Each is separately replaceable; hop 4 is the one that makes the
 design correct rather than merely fast.
 
 ```
-  mcp/content-server.ts ──┐
-  src/app/api/**  (app) ──┼──▶ SELECT pg_notify('blog_changes', payload)
-                          │        (inside the write transaction)
-                          │
-                          ▼
-                    ┌───────────┐
-                    │ Postgres  │  delivers on COMMIT
-                    └─────┬─────┘
-                          │  LISTEN blog_changes
-                          ▼
-        dedicated pg.Client (one per Next instance)
-                          │
-                          ▼
-                 in-memory emitter, per-user fan-out
-                          │
-                          ▼
-                 SSE  GET /api/events   (userRoute)
-                          │
-                          ▼
-                 EventSource in the browser
-                          │
-          ┌───────────────┴───────────────┐
-          ▼                               ▼
-   reconcile store by id        on (re)connect: catch-up
-                                GET /api/documents/changes
-                                + dispatch(refreshProposals())
+mcp/content-server.ts ──┐
+src/app/api/**  (app) ──┼──▶ SELECT pg_notify('blog_changes', payload)
+                        │        (inside the write transaction)
+                        │
+                        ▼
+                  ┌───────────┐
+                  │ Postgres  │  delivers on COMMIT
+                  └─────┬─────┘
+                        │  LISTEN blog_changes
+                        ▼
+      dedicated pg.Client (one per Next instance)
+                        │
+                        ▼
+               in-memory emitter, per-user fan-out
+                        │
+                        ▼
+               SSE  GET /api/events   (userRoute)
+                        │
+                        ▼
+               EventSource in the browser
+                        │
+        ┌───────────────┴───────────────┐
+        ▼                               ▼
+ reconcile store by id        on (re)connect: catch-up
+                              GET /api/documents/changes
+                              + dispatch(refreshProposals())
 ```
 
 ### 2.1 Hop 1 — `NOTIFY` at the write
 
 `NOTIFY` is transactional: Postgres delivers it at `COMMIT` and discards it on
 rollback. That is exactly the semantics we want, and it means the notify belongs
-*inside* the existing transaction, not after it.
+_inside_ the existing transaction, not after it.
 
 Note the practical trap: the `NOTIFY` statement does not accept bind parameters.
 Use the function form.
@@ -97,15 +96,17 @@ Use the function form.
 ```ts
 // mcp/content-server.ts — inside the create_post transaction
 await prisma.$transaction([
-  prisma.document.create({ /* … as today … */ }),
-  prisma.revision.create({ /* … as today … */ }),
+  prisma.document.create({/* … as today … */}),
+  prisma.revision.create({/* … as today … */}),
   prisma.$executeRaw`
-    SELECT pg_notify('blog_changes', ${JSON.stringify({
+    SELECT pg_notify('blog_changes', ${
+    JSON.stringify({
       kind: "document.created",
       id,
       authorId,
       origin: AGENT_ORIGIN,
-    })})
+    })
+  })
   `,
 ]);
 ```
@@ -122,12 +123,12 @@ Payload rules:
 
 Emit sites:
 
-| Site | Event |
-|---|---|
-| `mcp/content-server.ts` `create_post` | `document.created` |
+| Site                                                    | Event               |
+| ------------------------------------------------------- | ------------------- |
+| `mcp/content-server.ts` `create_post`                   | `document.created`  |
 | `mcp/content-server.ts` `apply_ops` → `proposeRevision` | `proposal.upserted` |
-| `src/repositories/revision.ts` approve / reject | `proposal.resolved` |
-| App document create / rename / delete / move routes | `document.*` |
+| `src/repositories/revision.ts` approve / reject         | `proposal.resolved` |
+| App document create / rename / delete / move routes     | `document.*`        |
 
 **Open decision.** The app's own routes could get this automatically via a
 Prisma client extension (`$extends` with a query hook on `document` /
@@ -197,13 +198,13 @@ Requirements:
   connection.
 - **No `id:` fields.** An earlier draft carried a watermark here so that
   `Last-Event-ID` could seed the catch-up — but the browser replays that header
-  to *this* endpoint, not to the catch-up fetch, so the client would have had to
+  to _this_ endpoint, not to the catch-up fetch, so the client would have had to
   track `event.lastEventId` by hand anyway. Moot now: the catch-up (§3) takes no
   cursor at all, so there is no starting point to seed.
 - **Clean up on `request.signal`.** Abort fires when the tab closes; without
   unsubscribing there, the emitter accumulates dead subscribers.
 
-*Verify:* that `userRoute` returns a streaming `Response` through unmodified and
+_Verify:_ that `userRoute` returns a streaming `Response` through unmodified and
 does not buffer it (`src/lib/api-utils.ts:271`). If it does buffer, the wrapper
 needs a pass-through case rather than the route needing an exemption.
 
@@ -248,9 +249,9 @@ return rows newer than it — fails twice:
   left to have a recent `updatedAt`.
 - **It has the timestamp race.** `updatedAt` is stamped when the statement runs
   but becomes visible at commit. A slow transaction surfaces a row whose
-  timestamp is *older* than a watermark the client has already advanced past,
-  and a cursor query then misses that row forever. The standard mitigation is
-  an overlap window — a tunable in service of a mechanism we do not need.
+  timestamp is _older_ than a watermark the client has already advanced past,
+  and a cursor query then misses that row forever. The standard mitigation is an
+  overlap window — a tunable in service of a mechanism we do not need.
 
 The full id set has neither problem, and the client diff against the store
 answers all three questions at once: an id the store does not hold is a create,
@@ -288,15 +289,15 @@ The document catch-up cannot see proposals, for a reason worth spelling out:
 `upsertProposal` (`src/repositories/revision.ts:435`) writes only `Revision`
 rows — it never touches `Document.updatedAt`. An `apply_ops` that lands while
 the client is disconnected moves nothing in the document table, so no
-document-shaped query — cursor or full set — will ever surface it. Same shape
-as the hard-delete problem: the signal is not in the table being asked.
+document-shaped query — cursor or full set — will ever surface it. Same shape as
+the hard-delete problem: the signal is not in the table being asked.
 
 The fix costs one dispatch, because the presentation layer already exists: the
 (re)connect sequence runs `refreshProposals()` alongside the document catch-up
 (§2.4). That is the same call the focus poll makes today, and §4's rule holds —
 the feed triggers the refresh, it does not duplicate it. Without this line,
-§1.2's second promise fails across every disconnect window while the rest of
-the design works perfectly.
+§1.2's second promise fails across every disconnect window while the rest of the
+design works perfectly.
 
 ## 4. Reconciling into the store
 
@@ -310,7 +311,7 @@ Add a dedicated reducer instead:
 ```ts
 // upsert the named ids, remove the ones the catch-up proves are gone,
 // and touch nothing else.
-reconcilePosts(state, { changed, deletedIds })
+reconcilePosts(state, { changed, deletedIds });
 ```
 
 **Ordering is manual, and the reducer must handle it.** `postsAdapter` is
@@ -318,35 +319,35 @@ created without a `sortComparer` (`src/store/app.ts:72`) — order is whatever
 `ids[]` holds, maintained by hand: `loadPosts` pre-sorts by `updatedAt`
 descending before `setAll`, and `prependPost` splices new ids to the front. A
 naive `upsertMany` therefore leaves a touched post where it already was and
-appends a new one at the *end* of the sidebar. `reconcilePosts` must place ids
+appends a new one at the _end_ of the sidebar. `reconcilePosts` must place ids
 explicitly — re-sorting `ids[]` after the upsert is enough at this scale — and
 the §8 spec asserts order, not just membership.
 
-**On not clobbering the open editor.** The reconcile deliberately updates *list
-metadata only* — `name`, `seriesId`, `rank`, `updatedAt`, `agentCreatedAt`. It
+**On not clobbering the open editor.** The reconcile deliberately updates _list
+metadata only_ — `name`, `seriesId`, `rank`, `updatedAt`, `agentCreatedAt`. It
 never force-reloads the content of an open document. This sidesteps the problem
 rather than solving it: Lexical holds editor state in the editor instance, not
 Redux, so as long as the feed does not push content, there is nothing to
-clobber. (It also matters because the dirty-tracking machinery —
-`dirtyDocIds`, `useDirtyTracking`, `selectIsDirty` — was deleted outright in the
-quiet-autosave work, so there is no longer a "this document is dirty" flag to
-consult even if we wanted one.)
+clobber. (It also matters because the dirty-tracking machinery — `dirtyDocIds`,
+`useDirtyTracking`, `selectIsDirty` — was deleted outright in the quiet-autosave
+work, so there is no longer a "this document is dirty" flag to consult even if
+we wanted one.)
 
-An agent proposal on the *currently open* document surfaces as a marker via the
+An agent proposal on the _currently open_ document surfaces as a marker via the
 existing proposal path (`refreshProposals`), which already knows how to present
 it. The change feed's job is to trigger that refresh, not to duplicate it.
 
 ## 5. Failure modes
 
-| Failure | Behaviour | Recovery |
-|---|---|---|
-| Postgres restarts | Listener errors, backs off | Reconnect → `resync` → clients catch up |
-| Next restarts | All SSE connections drop | `EventSource` auto-retries → catch-up on open |
-| Laptop sleeps | Connection dies silently | Retry on wake; `visibilitychange` poll as belt-and-braces |
-| Events missed while disconnected | Invisible at hop 1–3 | **Caught by §3** (documents) and §3.2 (proposals) — the whole reason they exist |
-| Proxy buffers the stream | No events, no error | `X-Accel-Buffering: no`; verify in the target deployment |
-| Connection pooler in txn mode | `LISTEN` silently never fires | §6 — must be checked, not assumed |
-| Subscriber leak | Memory growth | Unsubscribe on `request.signal` abort |
+| Failure                          | Behaviour                     | Recovery                                                                        |
+| -------------------------------- | ----------------------------- | ------------------------------------------------------------------------------- |
+| Postgres restarts                | Listener errors, backs off    | Reconnect → `resync` → clients catch up                                         |
+| Next restarts                    | All SSE connections drop      | `EventSource` auto-retries → catch-up on open                                   |
+| Laptop sleeps                    | Connection dies silently      | Retry on wake; `visibilitychange` poll as belt-and-braces                       |
+| Events missed while disconnected | Invisible at hop 1–3          | **Caught by §3** (documents) and §3.2 (proposals) — the whole reason they exist |
+| Proxy buffers the stream         | No events, no error           | `X-Accel-Buffering: no`; verify in the target deployment                        |
+| Connection pooler in txn mode    | `LISTEN` silently never fires | §6 — must be checked, not assumed                                               |
+| Subscriber leak                  | Memory growth                 | Unsubscribe on `request.signal` abort                                           |
 
 The pattern worth noticing: every row's recovery is either "EventSource retries"
 or "§3 catches up." That is the design working — hops 1–3 are an optimisation
@@ -356,11 +357,11 @@ over hop 4, and hop 4 is what makes it correct.
 
 **`LISTEN` does not survive a transaction-mode connection pooler.** PgBouncer in
 `transaction` mode, Supabase's `:6543` pooled port, Neon's pooled endpoint — all
-of them break it, and they break it *silently*: the connection succeeds, the
+of them break it, and they break it _silently_: the connection succeeds, the
 `LISTEN` succeeds, and notifications simply never arrive.
 
-Per `docs/plans/prod-storage-decision.md` the target is a container on Fly with a
-direct Postgres connection, which is fine. But the listener must use the
+Per `docs/plans/prod-storage-decision.md` the target is a container on Fly with
+a direct Postgres connection, which is fine. But the listener must use the
 **direct** `DATABASE_URL`, not a pooled one, and this needs confirming before
 release rather than discovering it in production.
 
@@ -412,7 +413,7 @@ consistent with how API authorization is already handled in this repo:
 - `pg` `LISTEN` delivery and reconnect.
 - The SSE stream itself, and the per-user filter in §2.3 — this one is
   security-relevant and must be exercised by hand with two accounts.
-- `EventSource` reconnect, and that the on-open catch-up (documents *and*
+- `EventSource` reconnect, and that the on-open catch-up (documents _and_
   proposals, §3.2) actually fires after it.
 
 > Before running anything against Postgres, check what is already serving 5432

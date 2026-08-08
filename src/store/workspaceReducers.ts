@@ -1,11 +1,6 @@
 import { PayloadAction } from "@reduxjs/toolkit";
 import { v4 as uuidv4 } from "uuid";
-import {
-  AppState,
-  MAX_PANES,
-  PaneMode,
-  WorkspacePane,
-} from "../types";
+import { AppState, MAX_PANES, PaneMode, WorkspacePane } from "../types";
 import {
   clampPaneRatio,
   emptyWorkspace,

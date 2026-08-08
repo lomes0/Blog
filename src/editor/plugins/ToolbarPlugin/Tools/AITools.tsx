@@ -11,6 +11,7 @@ import {
   KEY_DOWN_COMMAND,
   LexicalEditor,
   LexicalNode,
+  type RangeSelection,
   SELECTION_CHANGE_COMMAND,
   SerializedParagraphNode,
 } from "lexical";
@@ -33,13 +34,8 @@ import {
 import {
   ChevronDown,
   ChevronRight,
-  ChevronsDownUp,
-  ChevronsUpDown,
   Mic,
-  Minimize2,
   Monitor,
-  Play,
-  RefreshCcw,
   ScanSearch,
   Send,
   Sparkles,
@@ -56,9 +52,35 @@ import {
 } from "../../MarkdownPlugin";
 import { createHeadlessEditor } from "@lexical/headless";
 import { $generateNodesFromSerializedNodes } from "@lexical/clipboard";
-import { AI_MODELS, getModelById } from "@/lib/ai";
+import {
+  AI_MODELS,
+  AI_TONES,
+  AI_TOOLBAR_ACTIONS,
+  type AIActionToolbar,
+  getModelById,
+  type SelectionAIAction,
+} from "@/lib/ai";
+import { AI_ACTION_ICON } from "@/lib/ai/actionIcons";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { ICON_SIZE } from "@/theme/icons";
+
+/**
+ * The prose leading up to the caret, oldest first, capped at ~1KB.
+ *
+ * What `input: "precedingText"` actions are given instead of the selection:
+ * "continue writing" and a typed request both need the run-up, not the words
+ * under the cursor. Must be called inside an editor read or update.
+ */
+const $precedingText = (selection: RangeSelection): string => {
+  let currentNode: LexicalNode | null | undefined = selection.anchor.getNode();
+  let textContent = "";
+  while (currentNode && textContent.length < 1024) {
+    textContent = currentNode.getTextContent() + "\n\n" + textContent;
+    currentNode = currentNode.getPreviousSibling() ||
+      currentNode.getParent()?.getPreviousSibling();
+  }
+  return textContent;
+};
 
 const serializedParagraph: SerializedParagraphNode = {
   children: [],
@@ -92,15 +114,6 @@ export default function AITools(
     openMenu: handleToneMenuOpen,
     closeMenu: handleToneMenuClose,
   } = useMenuState();
-
-  const TONES = [
-    "Professional",
-    "Casual",
-    "Friendly",
-    "Academic",
-    "Persuasive",
-    "Direct",
-  ];
 
   const handleModelSelect = (modelId: string) => {
     const model = getModelById(modelId);
@@ -167,122 +180,74 @@ export default function AITools(
     handleSubmit();
   };
 
+  /**
+   * Read the text an action acts on and start the stream.
+   *
+   * One function for what used to be seven near-identical handlers. The two
+   * things that genuinely varied are now the action's own `toolbar` descriptor:
+   *
+   * - `input` — the selected text, or the prose leading up to the caret.
+   * - `result` — `"append"` collapses the selection to its end first, so the
+   *   stream lands *after* the selected text rather than replacing it. That
+   *   needs `editor.update`, because it moves the selection; `"replace"` reads
+   *   only, since the insertion effect writes over the selection as it stands.
+   */
+  const runCompletion = useCallback(
+    (
+      { input, result }: AIActionToolbar,
+      body: Record<string, string>,
+    ) => {
+      const run = (fn: () => void) =>
+        result === "append"
+          ? editor.update(fn)
+          : editor.getEditorState().read(fn);
+      run(() => {
+        const selection = $getSelection();
+        if (!$isRangeSelection(selection)) return;
+        const textContent = input === "selection"
+          ? selection.getTextContent()
+          : $precedingText(selection);
+        if (result === "append" && !selection.isCollapsed()) {
+          (selection.isBackward() ? selection.anchor : selection.focus)
+            .getNode().selectEnd();
+        }
+        const { provider, model } = llmConfig;
+        complete(textContent, { body: { ...body, provider, model } });
+      });
+    },
+    [editor, complete, llmConfig],
+  );
+
+  const handleAction = (action: SelectionAIAction) => {
+    handleClose();
+    runCompletion(action.toolbar, { action: action.id });
+  };
+
+  // The free-text field, not a registry action: the instruction is typed, so
+  // the id it sends is `custom` and the request carries the words with it. It
+  // reads the run-up rather than the selection, and still replaces.
   const handleSubmit = () => {
     const command = promptRef.current?.value;
     if (!command) return;
     handleClose();
-    editor.getEditorState().read(() => {
-      const selection = $getSelection();
-      if (!$isRangeSelection(selection)) return;
-      const anchorNode = selection.anchor.getNode();
-      let currentNode: LexicalNode | null | undefined = anchorNode;
-      let textContent = "";
-      while (currentNode && textContent.length < 1024) {
-        textContent = currentNode.getTextContent() + "\n\n" +
-          textContent;
-        currentNode = currentNode.getPreviousSibling() ||
-          currentNode.getParent()?.getPreviousSibling();
-      }
-      const { provider, model } = llmConfig;
-      complete(textContent, {
-        body: { option: "zap", command, provider, model },
-      });
-    });
-  };
-
-  const handleRewrite = () => {
-    handleClose();
-    editor.getEditorState().read(() => {
-      const selection = $getSelection();
-      if (!$isRangeSelection(selection)) return;
-      const textContent = selection.getTextContent();
-      const { provider, model } = llmConfig;
-      complete(textContent, {
-        body: { option: "improve", provider, model },
-      });
-    });
-  };
-
-  const handleShorter = () => {
-    handleClose();
-    editor.getEditorState().read(() => {
-      const selection = $getSelection();
-      if (!$isRangeSelection(selection)) return;
-      const textContent = selection.getTextContent();
-      const { provider, model } = llmConfig;
-      complete(textContent, {
-        body: { option: "shorter", provider, model },
-      });
-    });
-  };
-
-  const handleLonger = () => {
-    handleClose();
-    editor.getEditorState().read(() => {
-      const selection = $getSelection();
-      if (!$isRangeSelection(selection)) return;
-      const textContent = selection.getTextContent();
-      const { provider, model } = llmConfig;
-      complete(textContent, {
-        body: { option: "longer", provider, model },
-      });
-    });
-  };
-
-  const handleContinue = () => {
-    handleClose();
-    editor.update(() => {
-      const selection = $getSelection();
-      if (!$isRangeSelection(selection)) return;
-      const anchorNode = selection.anchor.getNode();
-      let currentNode: LexicalNode | null | undefined = anchorNode;
-      let textContent = "";
-      while (currentNode && textContent.length < 1024) {
-        textContent = currentNode.getTextContent() + "\n\n" +
-          textContent;
-        currentNode = currentNode.getPreviousSibling() ||
-          currentNode.getParent()?.getPreviousSibling();
-      }
-      const isCollapsed = selection.isCollapsed();
-      if (!isCollapsed) {
-        (selection.isBackward() ? selection.anchor : selection.focus)
-          .getNode().selectEnd();
-      }
-      const { provider, model } = llmConfig;
-      complete(textContent, {
-        body: { option: "continue", provider, model },
-      });
-    });
-  };
-
-  const handleOCR = () => {
-    handleClose();
-    editor.dispatchCommand(SET_DIALOGS_COMMAND, { ocr: { open: true } });
-  };
-
-  const handleSummarize = () => {
-    handleClose();
-    editor.getEditorState().read(() => {
-      const selection = $getSelection();
-      if (!$isRangeSelection(selection)) return;
-      const textContent = selection.getTextContent();
-      const { provider, model } = llmConfig;
-      complete(textContent, { body: { option: "summarize", provider, model } });
+    runCompletion({ input: "precedingText", result: "replace" }, {
+      action: "custom",
+      command,
     });
   };
 
   const handleChangeTone = (tone: string) => {
     handleToneMenuClose();
     handleClose();
-    editor.getEditorState().read(() => {
-      const selection = $getSelection();
-      if (!$isRangeSelection(selection)) return;
-      const textContent = selection.getTextContent();
-      const { provider, model } = llmConfig;
-      complete(textContent, {
-        body: { option: "tone", tone, provider, model },
-      });
+    runCompletion({ input: "selection", result: "replace" }, {
+      action: "tone",
+      tone,
     });
+  };
+
+  const handleOCR = () => {
+    handleClose();
+    editor.dispatchCommand(SET_DIALOGS_COMMAND, { ocr: { open: true } });
   };
 
   const convertMarkdownToJSON = useCallback((markdown: string) => {
@@ -566,48 +531,28 @@ export default function AITools(
             </IconButton>
           </ListItemIcon>
         </MenuItem>
-        <MenuItem disabled={isLoading} onClick={handleContinue}>
-          <ListItemIcon>
-            <Play />
-          </ListItemIcon>
-          <ListItemText>Continue Writing</ListItemText>
-        </MenuItem>
-        <MenuItem
-          disabled={isLoading || isCollapsed}
-          onClick={handleRewrite}
-        >
-          <ListItemIcon>
-            <RefreshCcw />
-          </ListItemIcon>
-          <ListItemText>Rewrite</ListItemText>
-        </MenuItem>
-        <MenuItem
-          disabled={isLoading || isCollapsed}
-          onClick={handleShorter}
-        >
-          <ListItemIcon>
-            <ChevronsDownUp />
-          </ListItemIcon>
-          <ListItemText>Shorter</ListItemText>
-        </MenuItem>
-        <MenuItem
-          disabled={isLoading || isCollapsed}
-          onClick={handleLonger}
-        >
-          <ListItemIcon>
-            <ChevronsUpDown />
-          </ListItemIcon>
-          <ListItemText>Longer</ListItemText>
-        </MenuItem>
-        <MenuItem
-          disabled={isLoading || isCollapsed}
-          onClick={handleSummarize}
-        >
-          <ListItemIcon>
-            <Minimize2 />
-          </ListItemIcon>
-          <ListItemText>Summarize</ListItemText>
-        </MenuItem>
+        {
+          /* One item per selection-scoped action, from the shared registry.
+            An action that reads the preceding prose rather than the selection
+            still runs on a bare caret, so only the selection-reading ones are
+            disabled when nothing is selected. */
+        }
+        {AI_TOOLBAR_ACTIONS.map((action) => {
+          const Icon = AI_ACTION_ICON[action.id];
+          return (
+            <MenuItem
+              key={action.id}
+              disabled={isLoading ||
+                (action.toolbar.input === "selection" && isCollapsed)}
+              onClick={() => handleAction(action)}
+            >
+              <ListItemIcon>
+                <Icon size={ICON_SIZE.default} />
+              </ListItemIcon>
+              <ListItemText>{action.label}</ListItemText>
+            </MenuItem>
+          );
+        })}
         <MenuItem
           disabled={isLoading || isCollapsed}
           onClick={handleToneMenuOpen}
@@ -635,7 +580,7 @@ export default function AITools(
         anchorOrigin={{ vertical: "top", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "left" }}
       >
-        {TONES.map((tone) => (
+        {AI_TONES.map((tone) => (
           <MenuItem
             key={tone}
             onClick={() => handleChangeTone(tone)}

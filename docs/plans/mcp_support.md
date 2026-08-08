@@ -17,8 +17,8 @@ on the public internet.
 The server is already written for this. Every one of the eight tools takes its
 author from `getAuthorId()` (`mcp/content-server.ts:61`) and filters every query
 on it; not one of them reads `process.env` directly, and not one trusts an id
-that arrives in its arguments. The authorization model is already
-"whatever `getAuthorId()` returns is the only content that exists."
+that arrives in its arguments. The authorization model is already "whatever
+`getAuthorId()` returns is the only content that exists."
 
 ```
 today     env MCP_AUTHOR_ID ──► getAuthorId() ──► 8 handlers ──► stdio
@@ -56,36 +56,38 @@ login is not). If none of those matter to you, stop here and use the ssh line.
 
 ## 3. What already exists
 
-| Asset | Where | What it gives us |
-| --- | --- | --- |
-| Author-parameterised handlers | all 8 `server.registerTool` calls | The tools need no edit at all |
-| Web-standard HTTP transport | `@modelcontextprotocol/sdk` ≥1.30, `server/webStandardStreamableHttp.js` | `Request`→`Response`, which is exactly an App Router handler. No Express adapter |
-| Stateless mode | same, `sessionIdGenerator` optional | Omit it and there is no session to pin to an instance |
-| Route wrapper scheme | `src/lib/api-utils.ts:224` `route()` | One private `route(mode, …)` with an `AuthMode` union — a fourth mode is an enum arm, not a parallel system |
-| Wrapper enforcement | `eslint.config.mjs:95` | A handler cannot be exported without declaring its auth |
-| Disabled-account refusal | `requireUser` (`api-utils.ts:49`) | The rule token auth must match |
-| Write gating | `agent-gating.md` phases 1–5 | A remote write proposes; it does not become the document |
-| Origin stamping | `Revision.origin = "claude-code"` | Half an audit trail already |
-| Change fan-out | `changeNotification` (`lib/changes/notify.ts`) | Already called by the server; in-process it gets *better* |
+| Asset                         | Where                                                                    | What it gives us                                                                                            |
+| ----------------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| Author-parameterised handlers | all 8 `server.registerTool` calls                                        | The tools need no edit at all                                                                               |
+| Web-standard HTTP transport   | `@modelcontextprotocol/sdk` ≥1.30, `server/webStandardStreamableHttp.js` | `Request`→`Response`, which is exactly an App Router handler. No Express adapter                            |
+| Stateless mode                | same, `sessionIdGenerator` optional                                      | Omit it and there is no session to pin to an instance                                                       |
+| Route wrapper scheme          | `src/lib/api-utils.ts:224` `route()`                                     | One private `route(mode, …)` with an `AuthMode` union — a fourth mode is an enum arm, not a parallel system |
+| Wrapper enforcement           | `eslint.config.mjs:95`                                                   | A handler cannot be exported without declaring its auth                                                     |
+| Disabled-account refusal      | `requireUser` (`api-utils.ts:49`)                                        | The rule token auth must match                                                                              |
+| Write gating                  | `agent-gating.md` phases 1–5                                             | A remote write proposes; it does not become the document                                                    |
+| Origin stamping               | `Revision.origin = "claude-code"`                                        | Half an audit trail already                                                                                 |
+| Change fan-out                | `changeNotification` (`lib/changes/notify.ts`)                           | Already called by the server; in-process it gets _better_                                                   |
 
 ### 3.1 What does not exist
 
 Verified by grep at `b01e91a5`:
 
-- **No token or API-key concept anywhere.** `prisma/schema.prisma` has
-  `Account` / `Session` / `VerificationToken`, all NextAuth's; the only
-  user-state levers are `role` and `disabled` (`schema.prisma:181,185`).
-- **No rate limiting anywhere.** `grep -rn "rateLimit\|ratelimit\|rate-limit"
+- **No token or API-key concept anywhere.** `prisma/schema.prisma` has `Account`
+  / `Session` / `VerificationToken`, all NextAuth's; the only user-state levers
+  are `role` and `disabled` (`schema.prisma:181,185`).
+- **No rate limiting anywhere.**
+  `grep -rn "rateLimit\|ratelimit\|rate-limit"
   src/` returns nothing.
 - **No security headers.** `src/middleware.ts` is a documented no-op, and its
   matcher excludes `/api` anyway.
-- **No test environment for `mcp/`.** CLAUDE.md says so explicitly; `mcp/smoke.ts`
-  is a live-database script, not a spec.
+- **No test environment for `mcp/`.** CLAUDE.md says so explicitly;
+  `mcp/smoke.ts` is a live-database script, not a spec.
 
 Three of those four are on the July production-readiness audit already. This
 plan does not get to treat them as somebody else's problem: an MCP endpoint is a
-*write* surface reachable with a static credential, which is strictly worse than
-the `/api/completion` exposure that audit called the biggest concrete money risk.
+_write_ surface reachable with a static credential, which is strictly worse than
+the `/api/completion` exposure that audit called the biggest concrete money
+risk.
 
 ## 4. The three decisions
 
@@ -117,8 +119,8 @@ mode, and §4.3 makes it unrepresentable rather than merely absent.
 
 The endpoint cannot be a `publicRoute` with a check inside it. CLAUDE.md and
 `api-utils.ts:250` both state the invariant that
-`grep -rn "publicRoute" src/app/api` is *the complete list of unauthenticated
-surfaces*, and the whole value of the scheme is that the list is trustworthy. A
+`grep -rn "publicRoute" src/app/api` is _the complete list of unauthenticated
+surfaces_, and the whole value of the scheme is that the list is trustworthy. A
 token-authenticated route listed among the public ones corrupts the one thing
 the naming buys.
 
@@ -172,8 +174,8 @@ Notes on each choice, because they are the security-relevant part:
 
 - **`hash` is unique and is what we look up by.** Hash the presented secret,
   query `where: { hash }`. One indexed equality, no prefix scan, and no timing
-  concern worth engineering around given the secret is 256 bits of CSPRNG.
-  The plaintext is shown once at mint and never stored.
+  concern worth engineering around given the secret is 256 bits of CSPRNG. The
+  plaintext is shown once at mint and never stored.
 - **`userId` is on the token, never in the request.** `getAuthorId()` becomes
   "the owner of the token that authenticated this request." There is no
   argument, header or body field by which a caller can name a different author.
@@ -197,10 +199,11 @@ Each phase is independently shippable and leaves the stdio server working.
 
 ### Phase 1 — Make the server a factory
 
-Wrap `mcp/content-server.ts` in `createContentServer({ resolveAuthorId, scopes })`
-returning the `McpServer`. The eight handler bodies move verbatim; `getAuthorId`
-becomes the injected resolver, memoised per server instance rather than per
-process. `mcp/content-server.ts` keeps a thin `main()` that builds one from
+Wrap `mcp/content-server.ts` in
+`createContentServer({ resolveAuthorId, scopes })` returning the `McpServer`.
+The eight handler bodies move verbatim; `getAuthorId` becomes the injected
+resolver, memoised per server instance rather than per process.
+`mcp/content-server.ts` keeps a thin `main()` that builds one from
 `MCP_AUTHOR_ID` and connects `StdioServerTransport`.
 
 No behaviour change. `npm run mcp:smoke` and `RUN_WRITE=1 npm run mcp:smoke`
@@ -228,7 +231,7 @@ src/app/api/mcp/route.ts
 ```
 
 ```ts
-export const runtime = "nodejs";        // Prisma
+export const runtime = "nodejs"; // Prisma
 export const dynamic = "force-dynamic"; // never cached
 
 export const POST = tokenRoute(async (request, { user, token }) => {
@@ -244,9 +247,9 @@ export const POST = tokenRoute(async (request, { user, token }) => {
 
 **Stateless deliberately** — no `sessionIdGenerator`. A new server per request
 costs nothing (the tools are stateless request/response), and it buys immunity
-from instance affinity if the deployment ever runs more than one container.
-What it gives up is server→client notification and resumable streams; nothing in
-the eight tools uses either. Record that trade here so a future session does not
+from instance affinity if the deployment ever runs more than one container. What
+it gives up is server→client notification and resumable streams; nothing in the
+eight tools uses either. Record that trade here so a future session does not
 "fix" it by adding sessions.
 
 `GET` and `DELETE` on the same path should 405 rather than 404, so a
@@ -266,7 +269,7 @@ honest:
 - 429 with `Retry-After`.
 
 Also here: a request body cap. `create_post` bodies are unbounded today, and
-`next.config.ts` caps server *actions* at 2MB but that does not cover route
+`next.config.ts` caps server _actions_ at 2MB but that does not cover route
 handlers.
 
 ### Phase 5 — Hardening
@@ -276,7 +279,7 @@ handlers.
   cleartext on the wire otherwise, and a static credential is the worst thing to
   put there.
 - **Stamp the token name into the audit trail.** `Revision.origin` is already
-  `"claude-code"`; make it carry *which* agent, so the app can say "proposed by
+  `"claude-code"`; make it carry _which_ agent, so the app can say "proposed by
   `laptop`" rather than "proposed by something."
 - **`lastUsedAt`** written on use — throttled to, say, one write a minute per
   token, so a chatty agent does not turn every read into a write.
@@ -339,9 +342,9 @@ author before trusting the check.
 2. **Same origin or a subdomain?** `/api/mcp` on the blog's own origin is
    simplest and shares TLS. A subdomain would let the endpoint be firewalled or
    taken down independently of the blog. Cheap to decide now, expensive later.
-3. **Rate limit numbers.** Needs a real one. A personal agent doing a
-   read-heavy editing session is maybe tens of reads and a handful of writes a
-   minute; pick from an actual session's transcript rather than from taste.
+3. **Rate limit numbers.** Needs a real one. A personal agent doing a read-heavy
+   editing session is maybe tens of reads and a handful of writes a minute; pick
+   from an actual session's transcript rather than from taste.
 4. **Does a token ever need `role: admin` semantics?** Current answer: no, and
    the schema should keep it unrepresentable.
 5. **Token management UI.** Deferred to script-only in phase 2. Is that

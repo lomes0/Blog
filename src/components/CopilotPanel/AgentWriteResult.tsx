@@ -1,6 +1,12 @@
 "use client";
 import type { ToolUIPart } from "ai";
-import { Alert, Box, Button, CircularProgress, Typography } from "@mui/material";
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  Typography,
+} from "@mui/material";
 import { GitPullRequest, GitPullRequestCreate } from "lucide-react";
 import { postsSelectors, useSelector } from "@/store";
 import { documentCommands } from "@/commands";
@@ -84,7 +90,9 @@ export default function AgentWriteResult(
       <Row>
         <CircularProgress size={ICON_SIZE.inline} />
         <Typography variant="dense" color="text.secondary">
-          {toolName === "create_post" ? "Creating a draft…" : "Proposing edits…"}
+          {toolName === "create_post"
+            ? "Creating a draft…"
+            : "Proposing edits…"}
         </Typography>
       </Row>
     );

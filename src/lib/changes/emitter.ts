@@ -187,7 +187,10 @@ export function reconnectDelayMs(
   const n = Number.isFinite(attempt) ? Math.max(0, Math.floor(attempt)) : 0;
   // Clamped before the shift, or `2 ** 1024` is `Infinity` and the arithmetic
   // below stops being arithmetic. Anything past the cap is the cap anyway.
-  const ceiling = Math.min(RECONNECT_MAX_MS, RECONNECT_BASE_MS * 2 ** Math.min(n, 20));
+  const ceiling = Math.min(
+    RECONNECT_MAX_MS,
+    RECONNECT_BASE_MS * 2 ** Math.min(n, 20),
+  );
   const fraction = clampUnit(random());
   return Math.round(ceiling / 2 + (ceiling / 2) * fraction);
 }

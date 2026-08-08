@@ -1,6 +1,6 @@
 import {
-  COALESCE_WINDOW_MS,
   type ChangeBatch,
+  COALESCE_WINDOW_MS,
   createChangeBatcher,
 } from "@/lib/changes/coalesce";
 import type { ChangeEvent } from "@/lib/changes/events";

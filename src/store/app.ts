@@ -196,7 +196,6 @@ function reconcile(state: AppState, payload: ReconcilePayload) {
   );
 }
 
-
 /**
  * Drop a document's pending proposal and keep the badge count honest.
  *

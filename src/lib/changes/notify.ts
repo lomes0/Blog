@@ -1,10 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import {
-  CHANGE_CHANNEL,
-  type ChangeEvent,
-  encodeChangeEvent,
-} from "./events";
+import { CHANGE_CHANNEL, type ChangeEvent, encodeChangeEvent } from "./events";
 
 /**
  * Hop 1 of the change feed: `NOTIFY` at the write —

@@ -1,25 +1,18 @@
 "use client";
 import { Box, Chip } from "@mui/material";
-import { ListPlus, SpellCheck, Text } from "lucide-react";
+import { type AIActionId, getAIAction } from "@/lib/ai";
+import { AI_ACTION_ICON } from "@/lib/ai/actionIcons";
 import { ICON_SIZE } from "@/theme/icons";
 
-const QUICK_ACTIONS = [
-  {
-    label: "Summarize doc",
-    prompt: "Summarize this document in 3 bullet points.",
-    icon: <Text size={ICON_SIZE.inline} />,
-  },
-  {
-    label: "Fix grammar",
-    prompt: "Fix any grammar and spelling mistakes.",
-    icon: <SpellCheck size={ICON_SIZE.inline} />,
-  },
-  {
-    label: "Add section",
-    prompt: "Suggest and add a new section to this document.",
-    icon: <ListPlus size={ICON_SIZE.inline} />,
-  },
-];
+/**
+ * Which actions the empty state features, and in what order.
+ *
+ * A curated shortlist, not a fourth definition of anything: the label and the
+ * prompt still come from the registry, and this only picks the few that fit a
+ * chip row. Typed against {@link AIActionId}, so retiring an action breaks the
+ * build here rather than rendering a blank chip.
+ */
+const FEATURED: AIActionId[] = ["summarize", "fix", "section"];
 
 interface QuickActionsProps {
   onSelect: (prompt: string) => void;
@@ -27,17 +20,24 @@ interface QuickActionsProps {
 
 const QuickActions: React.FC<QuickActionsProps> = ({ onSelect }) => (
   <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
-    {QUICK_ACTIONS.map((action) => (
-      <Chip
-        key={action.label}
-        label={action.label}
-        size="small"
-        variant="outlined"
-        icon={action.icon}
-        onClick={() => onSelect(action.prompt)}
-        sx={{ cursor: "pointer", typography: "caption" }}
-      />
-    ))}
+    {FEATURED.map((id) => {
+      const action = getAIAction(id);
+      if (!action) {
+        return null;
+      }
+      const Icon = AI_ACTION_ICON[id];
+      return (
+        <Chip
+          key={id}
+          label={action.label}
+          size="small"
+          variant="outlined"
+          icon={<Icon size={ICON_SIZE.inline} />}
+          onClick={() => onSelect(action.instruction)}
+          sx={{ cursor: "pointer", typography: "caption" }}
+        />
+      );
+    })}
   </Box>
 );
 

@@ -1,9 +1,9 @@
 import {
+  createSubscriberRegistry,
+  type FeedSignal,
   RECONNECT_BASE_MS,
   RECONNECT_MAX_MS,
-  createSubscriberRegistry,
   reconnectDelayMs,
-  type FeedSignal,
 } from "@/lib/changes/emitter";
 import type { ChangeEvent } from "@/lib/changes/events";
 

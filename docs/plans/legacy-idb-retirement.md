@@ -27,7 +27,7 @@ migration ran, so no calendar date for deleting the code is better than a guess.
 IndexedDB is origin-scoped and client-side, and there is no server-side
 migration to write. It is achievable because the applier is already portable:
 **the migration runs on every boot** (`src/indexeddb/index.ts:131`), so loading
-the app on an origin in a profile *is* applying it, on any device, any browser,
+the app on an origin in a profile _is_ applying it, on any device, any browser,
 any deployment. The two things missing are permanence and proof, and both are
 small.
 
@@ -41,12 +41,12 @@ meaningful once a visited profile stays fixed.
 At the start, a case-insensitive search for the upstream name returned 25
 matches in 12 files, in two groups:
 
-| Value                                   | Sites                                                         | Fate                                                                   |
-| --------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| The database name                       | `migrate.ts:12` + 3 uses                                      | **Deleted** (§3–§6), with `migrate.ts` + `migrationPlan.ts` + spec |
-| The two table `type` strings            | `TableNode/legacyTypes.ts:17-18`, `blocks.ts:206,210`, `address.ts:37` | First judged **permanent**; that was wrong — **deleted** (§10) |
-| Comments explaining the above           | `index.ts:54`, `legacyTypes.ts:13`, `blocks.ts:199`, `address.ts:35` | Stay; the two about the database name go with it                |
-| Git log, `docs/plans/*`, `docs/guides/*` | 11 sites                                                      | Historical record, not references                                      |
+| Value                                    | Sites                                                                  | Fate                                                               |
+| ---------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| The database name                        | `migrate.ts:12` + 3 uses                                               | **Deleted** (§3–§6), with `migrate.ts` + `migrationPlan.ts` + spec |
+| The two table `type` strings             | `TableNode/legacyTypes.ts:17-18`, `blocks.ts:206,210`, `address.ts:37` | First judged **permanent**; that was wrong — **deleted** (§10)     |
+| Comments explaining the above            | `index.ts:54`, `legacyTypes.ts:13`, `blocks.ts:199`, `address.ts:35`   | Stay; the two about the database name go with it                   |
+| Git log, `docs/plans/*`, `docs/guides/*` | 11 sites                                                               | Historical record, not references                                  |
 
 The deletable total is **445 lines**: `migrate.ts` (254), `migrationPlan.ts`
 (81), `__tests__/migrationPlan.test.ts` (110).
@@ -63,7 +63,7 @@ The legacy database is at version 5, so it holds `documents`, `revisions`,
 - **Undecided** — `notesCanvas`. Notes moved to Postgres and nothing has read
   the store since, but `migrate.ts:20-24` explicitly declined to decide whether
   pre-move notes are still owed to anyone. It is not in the current config at
-  all, so it exists *only* in the legacy database. **This plan forces that
+  all, so it exists _only_ in the legacy database. **This plan forces that
   decision** (§4.2), because deleting the database destroys it.
 
 ---
@@ -149,17 +149,17 @@ function deleteLegacyDatabase(): Promise<void> {
 the check happens inside the `try` and the deletion after the `finally`:
 
 ```ts
-  let spent = false;
-  try {
-    // …existing body; every `return` becomes `spent = await legacyIsSpent(legacy)`
-    // followed by a fall-through, so the drained paths reach the delete.
-    await drainLegacy(legacy, plans, written);
-    spent = await legacyIsSpent(legacy);
-  } finally {
-    legacy.close();
-    target?.close();
-  }
-  if (spent) await deleteLegacyDatabase();
+let spent = false;
+try {
+  // …existing body; every `return` becomes `spent = await legacyIsSpent(legacy)`
+  // followed by a fall-through, so the drained paths reach the delete.
+  await drainLegacy(legacy, plans, written);
+  spent = await legacyIsSpent(legacy);
+} finally {
+  legacy.close();
+  target?.close();
+}
+if (spent) await deleteLegacyDatabase();
 ```
 
 Once deleted, the next boot's probe takes the `onupgradeneeded` branch, deletes
@@ -183,11 +183,10 @@ as browser-only and uncovered. Add no spec; verify with §4.
 
 ### 3.7 The doc fix, same commit
 
-`docs/plans/upstream-scrub.md:512` still lists under *What this does not fix*:
+`docs/plans/upstream-scrub.md:512` still lists under _What this does not fix_:
 that `src/indexeddb/index.ts` still kept the upstream database name. That was
 overtaken by `7921af36` a week later — `index.ts:56` reads `"blog-simple"`. It
-was the only factually wrong reference in the repo. Rewrite it to
-point here.
+was the only factually wrong reference in the repo. Rewrite it to point here.
 
 ---
 
@@ -208,17 +207,17 @@ probe observes; the app acts.
 
 Verdicts:
 
-| Verdict      | Meaning                                      | Operator action                |
-| ------------ | -------------------------------------------- | ------------------------------ |
-| `CLEAN`      | No legacy database on this origin            | Nothing. Record it.            |
-| `SPENT`      | Present, but nothing worth keeping is left   | Boot the app once; re-probe    |
-| `PENDING`    | Migrated stores still hold records           | Load the app, reload, re-probe |
-| `NOTES_ONLY` | Only `notesCanvas` is left                   | §4.2, then re-probe            |
+| Verdict      | Meaning                                    | Operator action                |
+| ------------ | ------------------------------------------ | ------------------------------ |
+| `CLEAN`      | No legacy database on this origin          | Nothing. Record it.            |
+| `SPENT`      | Present, but nothing worth keeping is left | Boot the app once; re-probe    |
+| `PENDING`    | Migrated stores still hold records         | Load the app, reload, re-probe |
+| `NOTES_ONLY` | Only `notesCanvas` is left                 | §4.2, then re-probe            |
 
 `SPENT` replaces the `BLOCKED` verdict this plan first proposed. Blocking is not
 observable in a single probe — it is a property of a deletion attempt, not of
 the database — so the honest report is "nothing worth keeping is here, and the
-next boot removes it". Seeing `SPENT` *after* a boot is the diagnostic: either
+next boot removes it". Seeing `SPENT` _after_ a boot is the diagnostic: either
 another tab on the origin held the database open, or the build serving that
 origin predates §3.
 
@@ -257,23 +256,23 @@ Four constraints worth writing down rather than rediscovering:
   only proves an empty profile is empty. This is the trap the whole sweep turns
   on, because a meaningless pass is indistinguishable from a real one in the
   output. The harness warns loudly when the profile did not already exist.
-- Chromium will not attach to a profile another instance already has open.
-  Close it, or `rsync` the profile aside and probe the copy — a copy is also the
-  right answer when you would rather not have the app's migration write to a
-  live profile at all.
+- Chromium will not attach to a profile another instance already has open. Close
+  it, or `rsync` the profile aside and probe the copy — a copy is also the right
+  answer when you would rather not have the app's migration write to a live
+  profile at all.
 - To probe **without** booting the app, navigate to `/api/health` instead of the
   app root. It is the same origin, so IndexedDB is fully visible, but no app
   bundle loads and no migration runs. That is how you read a profile's true
   current state rather than the state your own probe just caused.
-- `:3000` is often a stale `next start` build. Check `ps aux | grep next` first —
-  and note that a dev server on another port is a **different origin**, so it
+- `:3000` is often a stale `next start` build. Check `ps aux | grep next` first
+  — and note that a dev server on another port is a **different origin**, so it
   cannot clean `:3000`'s databases no matter what code it serves.
 
 ### 4.4 Sweep per **origin**, not per machine
 
 IndexedDB is origin-scoped, so `http://localhost:3000` and the production domain
-each carry their own independent legacy database, on the same machine, in
-the same profile. A developer box that has run the app locally is a migration
+each carry their own independent legacy database, on the same machine, in the
+same profile. A developer box that has run the app locally is a migration
 population of its own. Enumerate origins × profiles, not machines.
 
 ---
@@ -284,16 +283,16 @@ population of its own. Enumerate origins × profiles, not machines.
 
 `migrate.ts` is browser-only and has no spec (CLAUDE.md says so). It was instead
 driven through its whole lifecycle against a real Chrome, 8 Aug 2026, on a
-throwaway profile seeded with a v5 legacy database holding a guest draft,
-a revision, a pending save, a cached attachment and a notes canvas:
+throwaway profile seeded with a v5 legacy database holding a guest draft, a
+revision, a pending save, a cached attachment and a notes canvas:
 
-| Step                       | Verdict      | What it establishes                                                     |
-| -------------------------- | ------------ | ----------------------------------------------------------------------- |
-| after seeding, boot the app | `NOTES_ONLY` | `documents`/`revisions`/`pendingSaves` drained to 0; `notesCanvas` held it back |
-| inspect the new database   | —            | draft, revision and pending save arrived in `blog-simple` v7; the attachment cache was **not** copied |
-| `--dump-notes`             | `NOTES_ONLY` | the canvas record written out as JSON; harness exited 1                 |
-| `legacyIdb.clearNotes()`   | `SPENT`      | nothing worth keeping left, database still present                      |
-| boot the app again         | `CLEAN`      | **database deleted**; harness exited 0                                  |
+| Step                        | Verdict      | What it establishes                                                                                   |
+| --------------------------- | ------------ | ----------------------------------------------------------------------------------------------------- |
+| after seeding, boot the app | `NOTES_ONLY` | `documents`/`revisions`/`pendingSaves` drained to 0; `notesCanvas` held it back                       |
+| inspect the new database    | —            | draft, revision and pending save arrived in `blog-simple` v7; the attachment cache was **not** copied |
+| `--dump-notes`              | `NOTES_ONLY` | the canvas record written out as JSON; harness exited 1                                               |
+| `legacyIdb.clearNotes()`    | `SPENT`      | nothing worth keeping left, database still present                                                    |
+| boot the app again          | `CLEAN`      | **database deleted**; harness exited 0                                                                |
 
 That is every branch of §3 — the gate holding while notes remain, the disposable
 store being ignored rather than blocking, and the deletion firing exactly once
@@ -301,18 +300,18 @@ the database is spent.
 
 ### 5.1 The population
 
-| Origin                  | Profile                        | Legacy DB          | Guest drafts | Date  |
-| ----------------------- | ------------------------------ | ------------------ | ------------ | ----- |
-| `http://localhost:3000` | Brave `Default`                | absent             | none         | 8 Aug |
-| `http://localhost:3000` | Chrome `Default`               | absent             | none         | 8 Aug |
-| `http://localhost:3000` | `~/.config/web-editor`         | absent             | none         | 8 Aug |
-| `http://localhost:3000` | `~/.config/bank`               | **present, empty** | none         | 8 Aug |
-| _(any deployed origin)_ | —                              | none exists        | —            | 8 Aug |
+| Origin                  | Profile                | Legacy DB          | Guest drafts | Date  |
+| ----------------------- | ---------------------- | ------------------ | ------------ | ----- |
+| `http://localhost:3000` | Brave `Default`        | absent             | none         | 8 Aug |
+| `http://localhost:3000` | Chrome `Default`       | absent             | none         | 8 Aug |
+| `http://localhost:3000` | `~/.config/web-editor` | absent             | none         | 8 Aug |
+| `http://localhost:3000` | `~/.config/bank`       | **present, empty** | none         | 8 Aug |
+| _(any deployed origin)_ | —                      | none exists        | —            | 8 Aug |
 
 **Enumerate profiles by searching the disk, not by listing browsers.** The first
 pass of this sweep checked Brave and Chrome's `Default` profiles and declared
 the population covered. It was wrong: two more Chromium profiles hold a
-`localhost:3000` origin, and the app's *primary* home is one of them —
+`localhost:3000` origin, and the app's _primary_ home is one of them —
 `~/.config/web-editor` is a Chrome app-mode window
 (`--app=http://localhost:3000 --user-data-dir=…`), not a normal browser profile,
 so nothing about it appears where you would look for browsers. The query that
@@ -327,10 +326,10 @@ Two results worth keeping:
 - **`web-editor`** holds `blog-simple` v7 with zero documents and zero
   revisions, which is what a signed-in user's profile should look like: the
   content is in Postgres. No legacy database at all.
-- **`bank`** holds a legacy database at **version 2** — a visit far
-  older than the v5 the migration was written against — with `documents` and
-  `revisions` both at **0 records**, and no `blog-simple` at all. Nothing was
-  ever stranded there. §7.5 covers what is left of it.
+- **`bank`** holds a legacy database at **version 2** — a visit far older than
+  the v5 the migration was written against — with `documents` and `revisions`
+  both at **0 records**, and no `blog-simple` at all. Nothing was ever stranded
+  there. §7.5 covers what is left of it.
 
 `PUBLIC_URL` and `NEXTAUTH_URL` are both `http://localhost:3000` in this
 checkout. `fly.toml` (app `blog-simple`, iad) and `vercel.json` are committed
@@ -353,14 +352,14 @@ Once every row in §5 reads `CLEAN`:
 1. Delete `src/indexeddb/migrate.ts`, `src/indexeddb/migrationPlan.ts`,
    `src/indexeddb/__tests__/migrationPlan.test.ts`.
 2. Remove the import and call at `src/indexeddb/index.ts:5,131`, and the comment
-   at `:52-57` (keep the sentence explaining that renaming migrates nothing —
-   it is the reason the current name must not change either).
+   at `:52-57` (keep the sentence explaining that renaming migrates nothing — it
+   is the reason the current name must not change either).
 3. Delete `scripts/legacy-idb-probe.js`, `scripts/check-legacy-idb.mjs` and the
    `check:legacy-idb` script. They exist to reach this point.
 4. CLAUDE.md: drop `migrate.ts` from the uncovered-modules paragraph and
    `migrationPlan.test.ts` from the spec inventory; correct the spec count.
-5. `docs/guides/notes-indexeddb-origins.md`: mark the migration retired, keep the
-   history.
+5. `docs/guides/notes-indexeddb-origins.md`: mark the migration retired, keep
+   the history.
 6. Memory: `fork-remnants.md` (renamed from the upstream-named file).
 
 `npm test`, `npx tsc --noEmit`, `npm run lint`, `npm run check:unused`.
@@ -387,8 +386,8 @@ four profiles on the only machine that has ever run it hold zero guest documents
 the recovery path is `git show` on this commit, not anything left in the tree.
 
 **7.5 One empty orphan is left behind, deliberately.** `~/.config/bank` still
-has an empty v2 legacy database, and with the migration deleted nothing
-will ever remove it. It holds no records, so it is untidiness rather than a
+has an empty v2 legacy database, and with the migration deleted nothing will
+ever remove it. It holds no records, so it is untidiness rather than a
 liability. Clearing it is one line in that profile's console on
 `http://localhost:3000` — `indexedDB.deleteDatabase(<old name>)` — and it is
 left to the author rather than done as a side effect here, because writing to an
@@ -413,8 +412,9 @@ has the files. The cost is one cold fetch per attachment after the deletion.
   Not worth trading for two constants; the cross-reference comments already do
   the job.
 - **Renaming `blog-simple`.** Same trap, one rename later. Don't.
-- **The `config.databaseName === LEGACY_DATABASE_NAME` guard** (`migrate.ts:209`)
-  is unreachable today. It goes with the file in Phase 4; leave it until then.
+- **The `config.databaseName === LEGACY_DATABASE_NAME` guard**
+  (`migrate.ts:209`) is unreachable today. It goes with the file in Phase 4;
+  leave it until then.
 
 ---
 
@@ -425,22 +425,22 @@ needed."** Wrong, and it would have been a data-loss bug. `attachmentContent` is
 populated on any profile that opened a document with an attachment, so that gate
 would never fire on the profiles that used the app most — and the obvious repair
 ("ignore stores we do not migrate") silently sweeps `notesCanvas` in with it,
-destroying the very records `MIGRATED_STORES` set aside. Not migrated and safe to
-destroy are two different questions; §3.2 answers them separately, which is why
-`DISPOSABLE_STORES` exists as its own list.
+destroying the very records `MIGRATED_STORES` set aside. Not migrated and safe
+to destroy are two different questions; §3.2 answers them separately, which is
+why `DISPOSABLE_STORES` exists as its own list.
 
 **9.2 "~15 lines."** It is ~110 changed, because the early returns at the old
-`migrate.ts:216,221` are the *common* path for an already-migrated profile and
-had to be routed through the new decision rather than past it. That restructure —
-`copyOutOfLegacy` — is most of the diff.
+`migrate.ts:216,221` are the _common_ path for an already-migrated profile and
+had to be routed through the new decision rather than past it. That restructure
+— `copyOutOfLegacy` — is most of the diff.
 
 **9.3 An on-disk `grep` for a database name is not evidence.** Brave's
 `http_localhost_3000.indexeddb.leveldb` contains the string, which looked like a
 surviving legacy database; the probe then reported `CLEAN`. The explanation is
-that `openLegacyDatabase` *creates* the database in order to find out whether it
-existed, then deletes the empty one it made — leaving the name in the leveldb log
-as a tombstone. The app's own probe writes the evidence that would convict it.
-Only an `indexedDB.open` answers this question.
+that `openLegacyDatabase` _creates_ the database in order to find out whether it
+existed, then deletes the empty one it made — leaving the name in the leveldb
+log as a tombstone. The app's own probe writes the evidence that would convict
+it. Only an `indexedDB.open` answers this question.
 
 **9.4 `BLOCKED` is not a verdict.** See §4.1.
 
@@ -474,10 +474,11 @@ permanent on this reasoning:
 > Data in `Revision` rows, guests' IndexedDB and `.zip` backups already on
 > users' disks, which `/api/import` accepts. No migration reaches a backup.
 
-Each clause is true of a deployed multi-user app. **This app was never deployed**
-(§5.1), which collapses every one of them: there are no users, so no disks, so
-no backups. The reasoning had been inherited from upstream's framing and
-restated three times without anyone asking how much data it actually described.
+Each clause is true of a deployed multi-user app. **This app was never
+deployed** (§5.1), which collapses every one of them: there are no users, so no
+disks, so no backups. The reasoning had been inherited from upstream's framing
+and restated three times without anyone asking how much data it actually
+described.
 
 ### 10.2 What the data said
 
@@ -485,12 +486,12 @@ A `LIKE '%…%'` scan over **every** `json`/`jsonb` column in the database —
 enumerated from `information_schema.columns` rather than guessed, which is what
 caught `Revision.ops` and `CopilotThread.messages`:
 
-| Column                  | Rows with the legacy spelling |
-| ----------------------- | ----------------------------- |
-| `Revision.data`         | **58** (across 5 documents)   |
-| `Revision.ops`          | 0                             |
-| `CopilotThread.messages` | 0                            |
-| `Note.content`          | 0                             |
+| Column                   | Rows with the legacy spelling |
+| ------------------------ | ----------------------------- |
+| `Revision.data`          | **58** (across 5 documents)   |
+| `Revision.ops`           | 0                             |
+| `CopilotThread.messages` | 0                             |
+| `Note.content`           | 0                             |
 
 `Document` has no JSON column at all — content lives only in `Revision`. Outside
 Postgres: every swept browser profile held zero documents (§5.1), and a scan of
@@ -522,7 +523,8 @@ addressed, with the alias classes already deleted.
 
 `legacyTypes.ts`, `legacyTypes.test.ts`, both alias classes, their registrations
 in `config.tsx` and `nestedConfig.tsx`, the legacy entries in `TABLE_TYPES` /
-`TABLE_CELL_TYPES` / `BLOCK_CONTAINERS`, and the legacy case in `codecs.test.ts`.
+`TABLE_CELL_TYPES` / `BLOCK_CONTAINERS`, and the legacy case in
+`codecs.test.ts`.
 
 `TABLE_TYPES` and `TABLE_CELL_TYPES` stay **sets** holding one element each.
 They are the read side, and the next rename will want somewhere to put the old

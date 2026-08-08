@@ -32,9 +32,24 @@ const doc = (over: Partial<ChangeEvent> = {}): ChangeEvent => ({
 describe("encodeChangeEvent", () => {
   test("carries id, authorId and origin on every kind", () => {
     const kinds: ChangeEvent[] = [
-      { kind: "document.created", id: "d1", authorId: "u1", origin: APP_ORIGIN },
-      { kind: "document.updated", id: "d1", authorId: "u1", origin: APP_ORIGIN },
-      { kind: "document.deleted", id: "d1", authorId: "u1", origin: APP_ORIGIN },
+      {
+        kind: "document.created",
+        id: "d1",
+        authorId: "u1",
+        origin: APP_ORIGIN,
+      },
+      {
+        kind: "document.updated",
+        id: "d1",
+        authorId: "u1",
+        origin: APP_ORIGIN,
+      },
+      {
+        kind: "document.deleted",
+        id: "d1",
+        authorId: "u1",
+        origin: APP_ORIGIN,
+      },
       {
         kind: "proposal.upserted",
         id: "d1",
@@ -151,7 +166,12 @@ describe("encodeChangeEvent", () => {
 describe("decodeChangeEvent", () => {
   test("round-trips every kind", () => {
     const events: ChangeEvent[] = [
-      { kind: "document.created", id: "d1", authorId: "u1", origin: APP_ORIGIN },
+      {
+        kind: "document.created",
+        id: "d1",
+        authorId: "u1",
+        origin: APP_ORIGIN,
+      },
       { kind: "document.deleted", id: "d2", authorId: "u2", origin: "cli" },
       {
         kind: "proposal.upserted",
@@ -187,8 +207,18 @@ describe("decodeChangeEvent", () => {
       "[]",
       '"a string"',
       JSON.stringify({ kind: "document.updated", id: "d1", authorId: "u1" }),
-      JSON.stringify({ kind: "series.updated", id: "s1", authorId: "u1", origin: "app" }),
-      JSON.stringify({ kind: "document.updated", id: "", authorId: "u1", origin: "app" }),
+      JSON.stringify({
+        kind: "series.updated",
+        id: "s1",
+        authorId: "u1",
+        origin: "app",
+      }),
+      JSON.stringify({
+        kind: "document.updated",
+        id: "",
+        authorId: "u1",
+        origin: "app",
+      }),
       JSON.stringify({
         kind: "proposal.upserted",
         id: "d1",

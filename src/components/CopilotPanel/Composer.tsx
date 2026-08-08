@@ -20,7 +20,7 @@ import type { AIModel } from "@/lib/ai/types";
 import { MONO_FONT } from "@/components/Layout/SideBar/constants";
 import { ICON_SIZE } from "@/theme/icons";
 import { FOCUS_RING, MOTION, SHADOW } from "@/theme/tokens";
-import type { SlashCommand } from "./slashCommands";
+import type { AIAction } from "@/lib/ai";
 
 /**
  * Metrics from the AI-composer design handoff (option 1a; the bundle is no
@@ -228,8 +228,8 @@ export interface ComposerProps {
   llmConfig: { provider: string; model: string };
   setLlmConfig: (config: { provider: string; model: string }) => void;
   slashOpen: boolean;
-  slashMatches: SlashCommand[];
-  onPickSlash: (command: SlashCommand) => void;
+  slashMatches: AIAction[];
+  onPickSlash: (action: AIAction) => void;
 }
 
 /**
@@ -643,10 +643,10 @@ const Composer: React.FC<ComposerProps> = ({
             borderRadius: C.menuRadius,
           }}
         >
-          {slashMatches.map((cmd, idx) => (
+          {slashMatches.map((action, idx) => (
             <Box
-              key={cmd.command}
-              onClick={() => onPickSlash(cmd)}
+              key={action.id}
+              onClick={() => onPickSlash(action)}
               sx={{
                 mx: 0.75,
                 px: 1.25,
@@ -662,10 +662,10 @@ const Composer: React.FC<ComposerProps> = ({
                 component="p"
                 sx={{ fontWeight: 500, fontFamily: MONO_FONT }}
               >
-                {cmd.command}
+                /{action.id}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                {cmd.description}
+                {action.description}
               </Typography>
             </Box>
           ))}

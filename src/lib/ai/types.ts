@@ -21,18 +21,6 @@ export interface AIModel {
   };
 }
 
-export const AI_OPTIONS = [
-  "improve",
-  "continue",
-  "shorter",
-  "longer",
-  "zap",
-  "summarize",
-  "tone",
-] as const;
-
-export type AIOptionType = typeof AI_OPTIONS[number];
-
 export interface AIProviderConfig {
   google: {
     apiKey?: string;

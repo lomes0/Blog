@@ -28,7 +28,7 @@ import { postsSelectors, useSelector } from "@/store";
 import CopilotMessage from "./CopilotMessage";
 import QuickActions from "./QuickActions";
 import Composer, { composerSurfaceSx, composerWrapperSx } from "./Composer";
-import { SLASH_COMMANDS, type SlashCommand } from "./slashCommands";
+import { AI_ACTIONS, type AIAction } from "@/lib/ai";
 import { loadCurrentThread, saveCurrentThread } from "./copilotStorage";
 import { WORKSPACE_SCOPE } from "@/types";
 import { ICON_SIZE } from "@/theme/icons";
@@ -354,20 +354,24 @@ const CopilotChat: React.FC<CopilotChatProps> = (
   }, [input, isLoading, sendPrompt]);
 
   // Slash-command autocomplete: active while the input is a single "/token".
+  //
+  // The menu is the shared AI action registry, keyed by id — the same list the
+  // editor toolbar draws from. A library-scoped action needs nothing to run;
+  // everything else acts on the open document and is hidden without one.
   const slashQuery = /^\/\S*$/.test(input) ? input.toLowerCase() : null;
-  const slashMatches = slashQuery === null ? [] : SLASH_COMMANDS
-    .filter((c) => documentId !== null || !c.needsDocument)
-    .filter((c) => c.command.startsWith(slashQuery));
+  const slashMatches = slashQuery === null ? [] : AI_ACTIONS
+    .filter((a) => documentId !== null || a.scope === "library")
+    .filter((a) => `/${a.id}`.startsWith(slashQuery));
   const slashOpen = slashMatches.length > 0 && !isLoading;
 
-  const pickSlashCommand = (cmd: SlashCommand) => {
+  const pickSlashCommand = (action: AIAction) => {
     // "/find" seeds the input for the user to complete; others send directly.
-    if (cmd.prompt.endsWith(" ")) {
-      setInput(cmd.prompt);
+    if (action.partial) {
+      setInput(action.instruction);
       return;
     }
     setInput("");
-    void sendPrompt(cmd.prompt);
+    void sendPrompt(action.instruction);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

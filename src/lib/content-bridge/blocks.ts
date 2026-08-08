@@ -201,7 +201,9 @@ const num = (value: unknown, fallback: number): number =>
  * to keep being readable — adding one here is how a rename stays survivable.
  */
 export const TABLE_TYPES: ReadonlySet<string> = new Set(["blog-table"]);
-export const TABLE_CELL_TYPES: ReadonlySet<string> = new Set(["blog-tablecell"]);
+export const TABLE_CELL_TYPES: ReadonlySet<string> = new Set([
+  "blog-tablecell",
+]);
 const TABLE_TYPE = "blog-table";
 const TABLE_CELL_TYPE = "blog-tablecell";
 const TABLE_ROW_TYPE = "tablerow";

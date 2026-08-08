@@ -44,11 +44,7 @@
  *   proposal went stale", which is reported on a *successful* write as
  *   `outcome: "replaced"`.
  */
-import {
-  $getSelection,
-  $isRangeSelection,
-  type LexicalEditor,
-} from "lexical";
+import { $getSelection, $isRangeSelection, type LexicalEditor } from "lexical";
 import { apiClient, ApiClientError } from "@/api";
 import { postsSelectors, store } from "@/store";
 import { getPost, refreshProposals } from "@/store/app";
@@ -413,7 +409,11 @@ export async function runWriteTool(
       return refusal(error);
     }
     if (!created) {
-      return { ok: false, reason: "error", message: "The post was not created." };
+      return {
+        ok: false,
+        reason: "error",
+        message: "The post was not created.",
+      };
     }
 
     // The row exists but nothing in the browser knows it yet. The change feed

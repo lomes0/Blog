@@ -3,8 +3,8 @@ import { Client, type Notification } from "pg";
 import { CHANGE_CHANNEL, decodeChangeEvent } from "./events";
 import {
   createSubscriberRegistry,
-  reconnectDelayMs,
   type FeedListener,
+  reconnectDelayMs,
   type SubscriberRegistry,
   type Unsubscribe,
 } from "./emitter";
@@ -181,8 +181,9 @@ async function connect(state: ChangeListenerState): Promise<void> {
   // identical — reconnect and resync.
   client.on("error", (error: Error) => drop("connection error", error));
   client.on("end", () => drop("connection closed"));
-  client.on("notification", (message: Notification) =>
-    handleNotification(state, message),
+  client.on(
+    "notification",
+    (message: Notification) => handleNotification(state, message),
   );
 
   try {
@@ -276,7 +277,9 @@ function handleNotification(
     const event = decodeChangeEvent(message.payload);
     if (!event) {
       console.warn(
-        `[changes] dropped an unreadable notification: ${message.payload.slice(0, 200)}`,
+        `[changes] dropped an unreadable notification: ${
+          message.payload.slice(0, 200)
+        }`,
       );
       return;
     }

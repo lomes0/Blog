@@ -1,8 +1,5 @@
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
-import {
-  TableCellNode,
-  TableNode,
-} from "./TableNode";
+import { TableCellNode, TableNode } from "./TableNode";
 import { ListItemNode, ListNode } from "@lexical/list";
 import { CodeHighlightNode, CodeNode } from "@lexical/code";
 import { AutoLinkNode, LinkNode } from "@lexical/link";

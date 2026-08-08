@@ -4,7 +4,6 @@ import {
   TableCellNode as LexicalTableCellNode,
 } from "@lexical/table";
 
-
 import type {
   DOMConversionMap,
   DOMConversionOutput,

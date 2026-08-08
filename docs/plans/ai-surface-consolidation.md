@@ -1,26 +1,26 @@
 # AI surface consolidation
 
-**Status:** proposed, 8 Aug 2026
-**Related:** [claude-code-lexical.md](./claude-code-lexical.md) (the block
-transport all of this rides on), [agent-gating.md](./agent-gating.md) (the
-proposal table), [workspace-panes.md](./workspace-panes.md) §3.1 (the command
-registry the Copilot's non-content tools are generated from).
+**Status:** proposed, 8 Aug 2026 **Related:**
+[claude-code-lexical.md](./claude-code-lexical.md) (the block transport all of
+this rides on), [agent-gating.md](./agent-gating.md) (the proposal table),
+[workspace-panes.md](./workspace-panes.md) §3.1 (the command registry the
+Copilot's non-content tools are generated from).
 
 ## 1. What exists
 
 Four AI surfaces, not three:
 
-| Surface           | Component            | Transport         | Tools                       | Threads    |
-| ----------------- | -------------------- | ----------------- | --------------------------- | ---------- |
-| Copilot panel     | `CopilotPanel`       | `/api/copilot`    | content + `command_*`       | persisted  |
-| Copilot inline    | `InlineCopilotBar`   | `/api/copilot`    | same                        | ephemeral  |
-| Editor toolbar AI | `AITools` (678L)     | `/api/completion` | **none** — text in, text out| none       |
-| Claude Code       | `mcp/content-server` | stdio             | content only, other names   | n/a        |
+| Surface           | Component            | Transport         | Tools                        | Threads   |
+| ----------------- | -------------------- | ----------------- | ---------------------------- | --------- |
+| Copilot panel     | `CopilotPanel`       | `/api/copilot`    | content + `command_*`        | persisted |
+| Copilot inline    | `InlineCopilotBar`   | `/api/copilot`    | same                         | ephemeral |
+| Editor toolbar AI | `AITools` (678L)     | `/api/completion` | **none** — text in, text out | none      |
+| Claude Code       | `mcp/content-server` | stdio             | content only, other names    | n/a       |
 
 Two of these are already one thing. `CopilotPanel` and `InlineCopilotBar` both
 render `CopilotChat`, differing by `variant` / `persist` / `showTranscript`
-props and their surrounding chrome. There is nothing to consolidate between
-them and this plan does not touch them.
+props and their surrounding chrome. There is nothing to consolidate between them
+and this plan does not touch them.
 
 `src/lib/content-bridge/` is the seam that worked: blocks, addressing, ops and
 `stateHash` are imported by both `editor/utils/copilotAgentExecutors.ts` (the
@@ -34,40 +34,39 @@ sharing changes that, and the tool descriptions already say so.
 
 ### 2.1 The zod schemas are copy-pasted, and drifting
 
-`blockSchema`, `opSchema`, `placement`, `listItemSchema`, `kanbanTaskSchema`
-and the `BLOCK_DOC` prose exist twice — `src/app/api/copilot/route.ts:82-195`
-and `mcp/content-server.ts:251-380`. Diffing them today:
+`blockSchema`, `opSchema`, `placement`, `listItemSchema`, `kanbanTaskSchema` and
+the `BLOCK_DOC` prose exist twice — `src/app/api/copilot/route.ts:82-195` and
+`mcp/content-server.ts:251-380`. Diffing them today:
 
 - MCP's `details` block accepts an `expanded` field; the route's does not.
 - MCP's `BLOCK_DOC` documents `mimetype?` / `size?` on attachments and `tags?`
   on kanban tasks; the route's omits all three.
 - The `placement` fields carry `.describe()` text on the MCP side and none on
-  the route side, so the two agents are told different things about
-  `after` / `before` / `appendTo`.
+  the route side, so the two agents are told different things about `after` /
+  `before` / `appendTo`.
 
 None of this was a decision. It is two copies aging apart, and every new block
-type graduated under
-[claude-code-lexical.md](./claude-code-lexical.md) §4.6.1 has to be written
-twice or it works on one agent and not the other.
+type graduated under [claude-code-lexical.md](./claude-code-lexical.md) §4.6.1
+has to be written twice or it works on one agent and not the other.
 
 ### 2.2 The same eight operations have two names
 
-| Operation            | Copilot            | MCP           |
-| -------------------- | ------------------ | ------------- |
-| enumerate posts      | `list_documents`   | `list_posts`  |
-| full-text search     | `search_documents` | `search`      |
-| block skeleton       | `outline_document` | `outline`     |
-| named blocks         | `read_blocks`      | `read_blocks` |
-| whole post           | `read_document`    | `read_post`   |
-| edit by block        | `apply_ops`        | `apply_ops`   |
-| new post             | `create_document`  | `create_post` |
-| enumerate series     | —                  | `list_series` |
-| user's text selection| `get_selection`    | —             |
+| Operation             | Copilot            | MCP           |
+| --------------------- | ------------------ | ------------- |
+| enumerate posts       | `list_documents`   | `list_posts`  |
+| full-text search      | `search_documents` | `search`      |
+| block skeleton        | `outline_document` | `outline`     |
+| named blocks          | `read_blocks`      | `read_blocks` |
+| whole post            | `read_document`    | `read_post`   |
+| edit by block         | `apply_ops`        | `apply_ops`   |
+| new post              | `create_document`  | `create_post` |
+| enumerate series      | —                  | `list_series` |
+| user's text selection | `get_selection`    | —             |
 
 Only two agree. The cost is not cosmetic: prompts, docs, the `CopilotMessage`
-label map and `commands/series.ts`'s own description all name tools in prose,
-so a reader (human or model) moving between the two has to re-learn a
-vocabulary that describes identical behaviour.
+label map and `commands/series.ts`'s own description all name tools in prose, so
+a reader (human or model) moving between the two has to re-learn a vocabulary
+that describes identical behaviour.
 
 ### 2.3 Capability gaps run both ways
 
@@ -80,13 +79,13 @@ vocabulary that describes identical behaviour.
 
 ### 2.4 "The AI edited my post" means two different things
 
-This is the largest divergence of the four, and the one with consequences
-beyond maintenance.
+This is the largest divergence of the four, and the one with consequences beyond
+maintenance.
 
 MCP writes land in the proposal table via `upsertProposal` and wait for the
 author to approve them in-app — that is the whole of
-[agent-gating.md](./agent-gating.md). In-app Copilot writes are proposals *in
-the chat UI*, and on accept they dispatch `updatePost` or set the live editor
+[agent-gating.md](./agent-gating.md). In-app Copilot writes are proposals _in
+the chat UI_, and on accept they dispatch `updatePost` or set the live editor
 state directly; they never touch that table.
 
 The in-app path therefore has none of what that plan built:
@@ -97,10 +96,10 @@ The in-app path therefore has none of what that plan built:
   proposal and the click.
 - **No staleness.** `planStaleMarking` never runs against a Copilot edit, so
   there is no state in which the app can say "you saved underneath this".
-- **No provenance.** `Revision.origin` is unset, so "which agent wrote this"
-  is answerable for Claude Code and not for the Copilot.
-- **No review surface.** `AgentChangeBar`, `ProposalsSection`, `AgentMarker`
-  and the `Diff` view exist and none of them ever see a Copilot edit.
+- **No provenance.** `Revision.origin` is unset, so "which agent wrote this" is
+  answerable for Claude Code and not for the Copilot.
+- **No review surface.** `AgentChangeBar`, `ProposalsSection`, `AgentMarker` and
+  the `Diff` view exist and none of them ever see a Copilot edit.
 - **No squash.** Three edits in one turn are three independent writes.
 
 So it is not that the two mechanisms differ in ceremony. One of them has the
@@ -108,8 +107,8 @@ safety properties and the other does not.
 
 ### 2.5 "AI action" is defined three times
 
-The idea of a canned instruction — summarize, fix grammar, improve — is
-spelled out independently in:
+The idea of a canned instruction — summarize, fix grammar, improve — is spelled
+out independently in:
 
 - `src/lib/ai/types.ts` `AIOptionType` + `src/lib/ai/prompts.ts`
   `SYSTEM_PROMPTS` — the toolbar's seven, selection-scoped, streamed in place.
@@ -143,10 +142,10 @@ Answered before this plan was written:
 3. **The `post` vocabulary wins.** MCP's names are the target; the Copilot
    renames to match.
 4. **The toolbar AI keeps its interaction** — select text, apply an action,
-   watch it stream in place — but its *definition* unifies with the Copilot's
+   watch it stream in place — but its _definition_ unifies with the Copilot's
    canned prompts.
 5. **The Copilot's content writes move onto the proposal infrastructure**, and
-   they share a *write function* with MCP rather than only a set of tables
+   they share a _write function_ with MCP rather than only a set of tables
    (§4.4). The agent proposes on the tool call, with no chat-side hold; the one
    decision the author makes is in `AgentChangeBar` or the rail, exactly as it
    is for Claude Code today.
@@ -167,14 +166,14 @@ It belongs next to the codecs rather than in `src/lib/ai/` because the codecs in
 `blocks.ts` are what actually accept or reject a block; the zod schema is a
 description of them and should sit where it can be kept honest.
 
-Reconcile the three drifted fields against what `blocks.ts` really round-trips
-— that is the arbiter, not either copy. Preserve the `.describe()` text; the
-route side is the one that lost it.
+Reconcile the three drifted fields against what `blocks.ts` really round-trips —
+that is the arbiter, not either copy. Preserve the `.describe()` text; the route
+side is the one that lost it.
 
 **Test:** extend `content-bridge/__tests__/codecs.test.ts` so the existing
-per-type round-trip also asserts the zod schema accepts the fully-populated
-node it feeds the codec. That makes graduating a block type fail loudly if only
-one of the two is updated, which is the failure §2.1 describes.
+per-type round-trip also asserts the zod schema accepts the fully-populated node
+it feeds the codec. That makes graduating a block type fail loudly if only one
+of the two is updated, which is the failure §2.1 describes.
 
 Risk: low. No behaviour change on either agent beyond the three fields being
 accepted in both places instead of one.
@@ -196,25 +195,26 @@ Blast radius, all of which must move together:
 
 - `src/app/api/copilot/route.ts` — the `readTools` / `libraryWriteTools` keys.
 - `src/lib/ai/copilotAgentTools.ts` — `READ_TOOLS` / `WRITE_TOOLS`.
-- `src/editor/utils/copilotAgentExecutors.ts` — the `runReadTool` switch and
-  the `applyWrite` branch.
+- `src/editor/utils/copilotAgentExecutors.ts` — the `runReadTool` switch and the
+  `applyWrite` branch.
 - `src/lib/ai/prompts.ts` — the `CONTENT TOOLS` section of
   `COPILOT_AGENT_SYSTEM_PROMPT`, which lists every tool by name.
 - `src/components/CopilotPanel/CopilotMessage.tsx` — per-tool display labels.
 - `src/commands/document.ts` — `document.create`'s description names
   `create_document` in prose. (`series.open`'s named `list_documents` when this
   was written; Phase 3 pointed it at the new `list_series` instead.)
-- `src/lib/ai/commandTools.ts` and `src/components/CopilotPanel/ActionPreview.tsx`
-  — both name content tools, the first in prose and the second in a `switch`.
-- Tool descriptions that name *other* tools: `read_blocks` says "by address from
+- `src/lib/ai/commandTools.ts` and
+  `src/components/CopilotPanel/ActionPreview.tsx` — both name content tools, the
+  first in prose and the second in a `switch`.
+- Tool descriptions that name _other_ tools: `read_blocks` says "by address from
   `outline_document`", `read_document` says "use `outline_document` then
   `read_blocks`". Left behind, these actively mislead the model.
-- `src/commands/__tests__/toolParity.test.ts` — imports the two name arrays.
-  Its "names every content tool in the system prompt" check is a substring
-  match, and after the rename two tool names are ordinary English words, so
-  `search` and `outline` pass against the surrounding prose. Match the listing
-  entries (`- name:`) instead, and assert the other direction too — a listing
-  line for a tool that is no longer declared is the half-done rename.
+- `src/commands/__tests__/toolParity.test.ts` — imports the two name arrays. Its
+  "names every content tool in the system prompt" check is a substring match,
+  and after the rename two tool names are ordinary English words, so `search`
+  and `outline` pass against the surrounding prose. Match the listing entries
+  (`- name:`) instead, and assert the other direction too — a listing line for a
+  tool that is no longer declared is the half-done rename.
 - `docs/architecture/claude-code-integration.md` and the plans under
   `docs/plans/` that quote tool names.
 
@@ -225,11 +225,11 @@ name rather than blanking — check it does before shipping.
 ### 4.3 Phase 3 — close the parity gaps
 
 **Copilot gains `list_series`**, matching MCP's. It is the missing half of
-`series.open`, and it is a read tool so it auto-runs and costs the agent
-nothing to try.
+`series.open`, and it is a read tool so it auto-runs and costs the agent nothing
+to try.
 
 **MCP gains nothing.** Recorded here as a decision rather than an omission:
-almost every command in the registry acts on the *browser's* workspace — open a
+almost every command in the registry acts on the _browser's_ workspace — open a
 pane, focus a tab, set a theme — and a stdio server has no session to perform
 them against. Exposing them would ship tools that fail. `get_selection` is the
 same argument in miniature: there is no cursor in a terminal. If Claude Code
@@ -242,18 +242,18 @@ rather than an oversight.
 ### 4.4 Phase 4 — one accept/reject mechanism
 
 The Copilot's content writes stop being a chat-local mechanism and become
-proposals, reviewed through the surfaces
-[agent-gating.md](./agent-gating.md) already built. This is the largest phase
-and should be treated as its own piece of work.
+proposals, reviewed through the surfaces [agent-gating.md](./agent-gating.md)
+already built. This is the largest phase and should be treated as its own piece
+of work.
 
-**Nothing on the review side is rebuilt.** `upsertProposal`, `foldProposal`,
-the squash and its CAS, `planStaleMarking`, the approve and reject routes,
+**Nothing on the review side is rebuilt.** `upsertProposal`, `foldProposal`, the
+squash and its CAS, `planStaleMarking`, the approve and reject routes,
 `useProposalActions`, `AgentChangeBar`, `ProposalsSection`, `AgentMarker`, the
 `Diff` view and the SSE change feed all take a second writer without
-modification — every one of them reads `origin` generically.
-`proposalLabels.ts` even anticipates it in as many words: "`claude-code` today,
-whatever proposes next tomorrow". Adding `"copilot": "Copilot"` to
-`KNOWN_ORIGINS` is the whole of the UI change.
+modification — every one of them reads `origin` generically. `proposalLabels.ts`
+even anticipates it in as many words: "`claude-code` today, whatever proposes
+next tomorrow". Adding `"copilot": "Copilot"` to `KNOWN_ORIGINS` is the whole of
+the UI change.
 
 One thing that looks like a blocker and is not: the Copilot never touches
 IndexedDB documents. `/api/copilot` is a `userRoute`, and `backendFor(user)`
@@ -265,8 +265,8 @@ agent can reach already has a `Revision` table behind it.
 Extract `src/lib/agentWrites.ts`:
 
 ```ts
-proposeOps({ documentId, authorId, ops, stateHash, origin, summary })
-proposeNewPost({ authorId, title, blocks, origin })
+proposeOps({ documentId, authorId, ops, stateHash, origin, summary });
+proposeNewPost({ authorId, title, blocks, origin });
 ```
 
 `proposeOps` is `content-server.ts:610-780` lifted out, unchanged in substance:
@@ -293,10 +293,10 @@ content-bridge with two repositories; the repositories stay row-level.
 `POST /api/documents/[id]/proposals`, `userRoute<{ id: string }>`, body
 validated with the shared `opSchema` from Phase 1.
 
-Authorize with `requireDocument(id, user, "write")` — deliberately *not* the
+Authorize with `requireDocument(id, user, "write")` — deliberately _not_ the
 `own` that the approve route uses. A collab editor may propose; only the owner
-may commit. That is the same line `lib/access.ts` already draws, and the
-approve route's comment explains why the stricter mode is right there.
+may commit. That is the same line `lib/access.ts` already draws, and the approve
+route's comment explains why the stricter mode is right there.
 
 Returns the proposal id and whether it created or squashed, so the chat can say
 which.
@@ -309,11 +309,11 @@ the agent sees. Once the proposal is built server-side from `head`, a document
 with unsaved edits produces a proposal whose diff is against content the server
 never had.
 
-Flush the open document through `useSave` when the **turn starts**, not when
-the write lands. Flushing at write time is too late: with the write happening on
-the tool call rather than on an accept, the agent's read and its write are
-seconds apart, and a save landing between them moves `head` and makes the
-server refuse its own agent's write as stale on every turn.
+Flush the open document through `useSave` when the **turn starts**, not when the
+write lands. Flushing at write time is too late: with the write happening on the
+tool call rather than on an accept, the agent's read and its write are seconds
+apart, and a save landing between them moves `head` and makes the server refuse
+its own agent's write as stale on every turn.
 
 After the flush, the live editor state and `head` agree, so the existing
 read-tool behaviour stays correct without change.
@@ -325,16 +325,16 @@ read-tool behaviour stays correct without change.
 > The flush reconciles the editor with `head`. But `proposeOps` reads through
 > `selectAgentRead`, which deliberately prefers the **pending proposal** over
 > head — that is the rule that lets a second batch see the first batch's work.
-> So once turn 1 leaves a proposal, turn 2's client-side read (live editor,
-> i.e. head) computes a `stateHash` the server's base does not share, and every
-> write in that turn is refused as stale. Permanently, until the author
-> approves or rejects: the agent cannot re-read its way out, because re-reading
-> returns the same head.
+> So once turn 1 leaves a proposal, turn 2's client-side read (live editor, i.e.
+> head) computes a `stateHash` the server's base does not share, and every write
+> in that turn is refused as stale. Permanently, until the author approves or
+> rejects: the agent cannot re-read its way out, because re-reading returns the
+> same head.
 >
 > The fix is that `load()` in `copilotAgentExecutors.ts` must mirror
 > `selectAgentRead` client-side — a non-stale pending proposal wins over the
 > editor, a stale one loses to the document — and judge staleness against the
-> store's *current* head rather than the proposal's snapshot, which closes the
+> store's _current_ head rather than the proposal's snapshot, which closes the
 > race where the turn-start flush moves head just before the read.
 >
 > The general lesson: the client's notion of "the document" now has three
@@ -361,7 +361,7 @@ Consequences to carry through, none of them optional:
 - `ActionPreview`'s per-op rendering is superseded by the diff for content ops.
   Keep it for command proposals, which still need it.
 - `pendingCount` and the **Accept all** buttons in `CopilotPanel` and
-  `InlineCopilotBar` now mean *command* proposals only. Relabel or they read as
+  `InlineCopilotBar` now mean _command_ proposals only. Relabel or they read as
   covering the edits.
 - A refused write — the author typed mid-turn — must say so readably in chat.
   This state did not previously exist in-app; `selectAgentRead`'s
@@ -398,15 +398,15 @@ rewrite stream into place. `/api/completion` stays; turning `improve` into an
 `apply_ops` proposal would add a review step nobody wants for "make this
 shorter" and lose the streaming.
 
-What unifies is the *definition*. `src/lib/ai/actions.ts`, in the spirit of
+What unifies is the _definition_. `src/lib/ai/actions.ts`, in the spirit of
 `commandRegistry`:
 
 ```ts
 interface AIAction {
-  id: string;                          // "improve", "summarize", "fixGrammar"
-  label: string;                       // "Improve writing"
-  scope: "selection" | "document";     // what it needs to run
-  instruction: string;                 // the one wording, used by both paths
+  id: string; // "improve", "summarize", "fixGrammar"
+  label: string; // "Improve writing"
+  scope: "selection" | "document"; // what it needs to run
+  instruction: string; // the one wording, used by both paths
   icon?: ReactNode;
 }
 ```
@@ -414,8 +414,8 @@ interface AIAction {
 - The toolbar renders `scope === "selection"` and posts the action's
   `instruction` as the system prompt to `/api/completion` — replacing the
   `SYSTEM_PROMPTS` lookup and the `AIOptionType` union.
-- The composer's `/` menu and the empty state's chips render from the same
-  list, sending `instruction` as a chat prompt — replacing `SLASH_COMMANDS` and
+- The composer's `/` menu and the empty state's chips render from the same list,
+  sending `instruction` as a chat prompt — replacing `SLASH_COMMANDS` and
   `QUICK_ACTIONS`.
 - `tone` stays parameterized rather than becoming one action per tone.
 
@@ -423,9 +423,9 @@ Net effect: summarize is worded once, and adding an action puts it in the
 toolbar and the Copilot at the same time.
 
 Deletes `SYSTEM_PROMPTS`, `SLASH_COMMANDS`, `QUICK_ACTIONS` and the
-`AIOptionType` union. `AITools.tsx` (678L) should lose most of its
-per-action handler duplication in the process — seven near-identical `complete()`
-calls collapse to one taking an action.
+`AIOptionType` union. `AITools.tsx` (678L) should lose most of its per-action
+handler duplication in the process — seven near-identical `complete()` calls
+collapse to one taking an action.
 
 Risk: medium. It is the phase that touches the most UI, and the toolbar's
 per-action behaviour (what it does with the streamed text, per option) needs
@@ -436,21 +436,21 @@ reading carefully before the handlers collapse.
 - Delete `COPILOT_SYSTEM_PROMPT` (§2.6). Confirm with `npm run check:unused`.
 - Give `/api/completion` a zod schema and `parseBody`, like every other route.
 - Widen the `no-restricted-syntax` rule in `eslint.config.mjs` so it catches
-  `.json()` on any request-shaped binding, not just one spelled `request`.
-  A rule the codebase can walk around by renaming a parameter is not the total
+  `.json()` on any request-shaped binding, not just one spelled `request`. A
+  rule the codebase can walk around by renaming a parameter is not the total
   guarantee the route conventions claim.
 
 ## 5. What this does not do
 
 - Does not merge the panel and the inline bar. They are already one component.
 - Does not give MCP the ability to drive the app (§4.3).
-- Does not unify the two content scopes — cloud-only vs cloud+local+live
-  editor is a property of where each agent runs.
+- Does not unify the two content scopes — cloud-only vs cloud+local+live editor
+  is a property of where each agent runs.
 - Does not put command proposals in the proposal table (§4.4.6).
 - Does not fold the toolbar AI into the block/proposal world. The streaming
-  in-place transform is a different and better interaction for what it does,
-  and it rewrites a selection the user is looking at rather than proposing a
-  change to a document they are not.
+  in-place transform is a different and better interaction for what it does, and
+  it rewrites a selection the user is looking at rather than proposing a change
+  to a document they are not.
 
 ## 6. Suggested order
 
@@ -466,6 +466,6 @@ reading carefully before the handlers collapse.
 6. **Phase 5** (AI action registry) — the most UI churn, and it depends on
    nothing above.
 
-Phases 1–3 are safe to land in any order. 4 and 5 each deserve their own
-branch and their own verification pass against the local Postgres, since
-neither is covered by an automated check on the API-authorization side.
+Phases 1–3 are safe to land in any order. 4 and 5 each deserve their own branch
+and their own verification pass against the local Postgres, since neither is
+covered by an automated check on the API-authorization side.
