@@ -24,7 +24,6 @@ import { SeriesGroup } from "./SeriesGroup";
 import { RowCreateButton } from "./RowCreateButton";
 import { SB_FONT } from "./constants";
 import { ICON_SIZE } from "@/theme/icons";
-import { MOTION } from "@/theme/tokens";
 import {
   chromeFocusRingSx,
   dropIndicatorSx,
@@ -63,7 +62,8 @@ interface ProjectGroupProps {
  * A project (tag) band in the sidebar tree, rendered as a **labeled divider** —
  * the title in `overline` style (uppercase,
  * tracked, muted — DESIGN.md §17.2 / §chrome section headers), a rule stretching
- * toward the right edge. The whole header is the toggle target (VS
+ * toward the right edge but stopping short of it, in the gap the hover-revealed
+ * "new series" button occupies. The whole header is the toggle target (VS
  * Code tree behavior); double-click renames inline, right-click opens the project
  * menu, and a series dropped onto it joins the band.
  */
@@ -170,19 +170,15 @@ export const ProjectGroup: React.FC<ProjectGroupProps> = ({
             ...(headerDropIndicator && dropIndicatorSx(headerDropIndicator)),
             ...chromeFocusRingSx(),
             ...rowHoverRevealSx,
-            // Rule out to the sidebar border; button hidden and taking no width.
-            // A negative margin here does not push the rule past the row — the
-            // rule is the flex-grow item, so it simply grows into the padding
-            // while everything after it stays put. Which is also why it is only
-            // applied when nothing follows: with an agent marker present the
-            // rule would grow straight through it.
-            "& .tag-rule": {
-              mr: groupMarker.marker ? 0 : -2,
-              transition: `margin-right ${MOTION.fast}ms`,
+            // The rule stops short of the border instead of running into it, and
+            // the create slot holds that gap open at rest — so the "new series"
+            // button fades in on hover with nothing moving to make room for it.
+            // This replaces the shared clip-shut slot rather than adding to it:
+            // no max-width, no transition, just the reserved width.
+            "& .row-create-slot": {
+              display: "flex",
+              flexShrink: 0,
             },
-            // Retracted in step with the create slot opening beside it, so the
-            // two swap the same 16px rather than each animating on its own.
-            "&:hover .tag-rule, &:focus-within .tag-rule": { mr: 0 },
           }}
         >
           {sidebarOpen && isRenaming
