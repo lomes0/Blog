@@ -8,6 +8,7 @@ import { defineConfig } from "vitest/config";
  * a `// @vitest-environment jsdom` docblock rather than slowing the whole run.
  */
 export default defineConfig({
+  oxc: { jsx: { runtime: "automatic" } },
   resolve: {
     // Mirrors the `@/*` path alias in tsconfig.json.
     //

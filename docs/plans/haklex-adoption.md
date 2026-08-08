@@ -1,10 +1,12 @@
 # Haklex adoption
 
-Status: **planned, not started.** Written 8 Aug 2026 from a read of
-`tmp/haklex` at `59850ebd` (v0.34.0, 5 Aug 2026, MIT). Reviewed the same day:
-measurements re-verified against both trees; the Lexical target (0.47 → 0.49),
-the `@lexical/html` patch-package obstacle (§3), and the src/-rooted checker
-globs (§4.3) were corrected as a result.
+Status: **phases 0, 1 and part of 5 shipped (8 Aug 2026); 2, 3, 4 not
+started.** Written 8 Aug 2026 from a read of `tmp/haklex` at `59850ebd`
+(v0.34.0, 5 Aug 2026, MIT). Reviewed the same day: measurements re-verified
+against both trees; the Lexical target (0.47 → 0.49), the `@lexical/html`
+patch-package obstacle (§3), and the src/-rooted checker globs (§4.3) were
+corrected as a result. See §10 for what execution actually found — including
+one live regression still open.
 
 Haklex is an AI-agent-native Lexical ecosystem — 40 packages, ~55k LOC,
 published to npm and consumed by three downstreams. This plan takes four things
@@ -364,3 +366,87 @@ each of those phases blinds it in a different way), `npm run build` +
 4. Their `messages-engine` (pluggable system/first-user/every-user/last-user
    context providers) is a prompt-assembly framework we may not need. Deferred,
    not rejected.
+
+## 10. Execution log (8 Aug 2026)
+
+### 10.1 What shipped
+
+| Phase | Commit | Note |
+| - | ------ | ---- |
+| 0 — Lexical 0.28 → 0.49 | `9c5d1b31` | plus `d5fd6577`, which repairs it |
+| 1a — checker groundwork | `58ddac8c` | no file moves; every glob probed |
+| 1b — the move | `f306652c` | 173 files, all R100 |
+| 5A — `check:codecs` | `aa779241` | lands green via a justified allowlist |
+| 5C — recovery contract | `077f37fe` | `block_not_found` is now retryable |
+
+Phase 5 deliverables **B** (`captureSelection`) and **D** (`describeCall`) are
+planned but not built. Phase 2's §9.2 was decided by the user: **restyle the
+chrome too**, not only the nodes.
+
+### 10.2 OPEN — the ``` markdown shortcut is broken
+
+**Live regression from the 0.49 upgrade, found in a browser, not yet fixed.**
+Typing ``` at the start of an empty paragraph should open a code block. It does
+not: the paragraph keeps the literal text and the editor throws
+`$getTextNodeOffset: invalid offset 3 for size 0 at key 5` (offset 3 is the
+three backticks).
+
+Swept in a real browser — **only the code block is affected.** `#`, `##`, `>`,
+`*`, `1.` and `---` all still convert correctly. The code block itself is
+healthy: the `/code` picker produces `<code data-language="javascript">`, Enter
+stays in one block, highlighting emits token spans, Tab indents inside.
+
+Leading hypothesis, unverified: 0.49 exports `MULTILINE_ELEMENT_TRANSFORMERS`
+separately from `ELEMENT_TRANSFORMERS`, and `registerMarkdownShortcuts` takes
+it as its own argument — so a transformer list assembled for 0.28 silently
+omits the CODE transform. Check `packages/editor/src/plugins/MarkdownPlugin/`
+against upstream 0.49's copy; it is vendored playground code and may have
+drifted the way `TablePlugin/LexicalTablePluginHelpers.ts` had.
+
+### 10.3 The lesson the table bug taught
+
+`9c5d1b31` introduced `LegacyTableNode`/`LegacyTableCellNode` to keep
+pre-rename JSON loading. It broke table insertion **completely**, and the suite
+stayed green — the tests called `importJSON` directly and never constructed
+through a live editor, so `errorOnTypeKlassMismatch` never ran. Only a browser
+found it.
+
+The rule that fell out, worth applying to every future node change: **a node
+test that never builds an editor is not testing registration.** The replacement
+specs build a headless editor over the real registry and insert through
+`$createTableNode()`.
+
+Second lesson, recorded in `legacy-idb-retirement.md` §10.6: those two classes
+had **already been deleted** hours earlier on documented evidence that the data
+they defended no longer exists. The upgrade reintroduced them unaware. A
+migration is only finished when the reason for the workaround is written where
+the workaround used to be.
+
+### 10.4 Corrections to this plan's own numbers
+
+- The test baseline was **465/27** when execution began, not the "411 tests, 21
+  specs" §3 and CLAUDE.md claim. It is 477/27 now.
+- §2.1's "~60 outward imports" measured **77**.
+- §4.3 lists three src/-rooted checkers that go blind. There are **more**:
+  `scripts/check-tdz.mjs`, and `next lint`'s default directory list, which
+  would have dropped `packages/` from linting entirely.
+- §9.1 (CanvasNode) was not a real choice. Its imports do not reach app
+  internals — `components/NotesCanvas` is editor-only UI with no non-editor
+  consumer and no store access. It stays in the package untouched.
+- §4.2's node-importable, no-CSS entrypoint **was not built** and is not needed
+  while the package stays TS-source-only compiled by Next. Producing it means
+  decoupling eager decorator imports and six node-level CSS imports.
+- §7.3's codec gap is **14 types**, not 11.
+- `describeCall` cannot be shared with MCP — the SDK carries no label channel,
+  so it is a Copilot-UI feature only.
+
+### 10.5 Not verified
+
+`npm run build` is red while `tmp/haklex` is present: `tsconfig.json` includes
+`**/*.ts`, so `next build` type-checks the gitignored reference checkout and
+dies on a missing devDep. Pre-existing, confirmed against `58ddac8c`.
+
+Still wants a human: a stored revision containing every custom node type,
+`/view/[id]` server HTML, the Diff view, and paste of `<pre>`/`<code>`/a GitHub
+code table (which now routes through `$config()` conversions rather than our
+deleted `importDOM` override).
