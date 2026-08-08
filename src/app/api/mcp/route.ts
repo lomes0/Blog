@@ -13,19 +13,36 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { ApiError, tokenRoute } from "@/lib/api-utils";
 import { isAgentScope } from "@/lib/agentTokens";
-import { createContentServer } from "@/lib/mcp/server";
+import { AGENT_ORIGIN, createContentServer } from "@/lib/mcp/server";
 import {
   MAX_BODY_BYTES,
   readLimiter,
   requestLimiter,
   writeLimiter,
 } from "@/lib/mcp/limits";
+import { isSecureTransport } from "@/lib/mcp/transportSecurity";
+import { agentOrigin } from "@/lib/proposalLabels";
 
 // Prisma, so not the edge runtime; and nothing here is ever cacheable.
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export const POST = tokenRoute(async (request, { token }) => {
+  // 426 rather than 403: the request is not forbidden, the protocol is. The
+  // token has already been read off the wire by the time we get here, so this
+  // does not protect *this* request — it stops the next thousand, and tells the
+  // operator plainly rather than quietly accepting a credential in cleartext.
+  if (!isSecureTransport(request)) {
+    throw new ApiError(
+      426,
+      "HTTPS Required",
+      "An agent token must not be sent over plain HTTP. Put the endpoint " +
+        "behind TLS, or set MCP_ALLOW_INSECURE=1 if the transport is already " +
+        "private (a tunnel or a private mesh).",
+      { Upgrade: "TLS/1.2, HTTP/1.1", Connection: "Upgrade" },
+    );
+  }
+
   // Before anything is parsed or dispatched. Both of these bound what a caller
   // holding a valid token can cost — authentication already ran, so nobody
   // reaches here anonymously, and neither is a security boundary (see
@@ -65,6 +82,10 @@ export const POST = tokenRoute(async (request, { token }) => {
     // more than their share.
     checkRate: (kind) =>
       (kind === "write" ? writeLimiter : readLimiter).take(token.id),
+    // Which credential proposed, not just that something did. When a token
+    // leaks, this is the difference between "an agent wrote this" and knowing
+    // what to revoke.
+    origin: agentOrigin(AGENT_ORIGIN, token.name),
   });
 
   // Stateless: no `sessionIdGenerator`, so nothing is pinned to one instance
@@ -79,7 +100,22 @@ export const POST = tokenRoute(async (request, { token }) => {
 
   await server.connect(transport);
   try {
-    return await transport.handleRequest(request);
+    const response = await transport.handleRequest(request);
+    // Read the body out before the `finally` closes the transport underneath
+    // it. `enableJsonResponse` means this is a complete buffer rather than a
+    // stream held open, so it costs one copy of a small payload and removes
+    // any question of ordering between the close and the read.
+    const body = await response.arrayBuffer();
+    // Every response here is one author's private content, keyed to a bearer
+    // token. `dynamic = "force-dynamic"` governs Next's own cache; this governs
+    // every proxy between here and the agent.
+    const headers = new Headers(response.headers);
+    headers.set("Cache-Control", "no-store, private");
+    return new Response(body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
   } finally {
     // Per-request server, per-request cleanup. Without this every call leaks a
     // transport and its listeners for the life of the container.

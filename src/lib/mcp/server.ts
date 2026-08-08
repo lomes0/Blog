@@ -53,7 +53,7 @@ import { AGENT_SCOPES, type AgentScope } from "@/lib/agentTokens";
 import type { RateDecision } from "@/lib/rateLimit";
 
 /** Where a write from this server says it came from (`Revision.origin`). */
-const AGENT_ORIGIN = "claude-code";
+export const AGENT_ORIGIN = "claude-code";
 
 export interface ContentServerOptions {
   /**
@@ -79,6 +79,16 @@ export interface ContentServerOptions {
    * author's review rail with proposals someone has to reject by hand.
    */
   checkRate?: (kind: "read" | "write") => RateDecision;
+  /**
+   * What a write from this server records as `Revision.origin`. Defaults to the
+   * bare agent name.
+   *
+   * The remote endpoint passes `agentOrigin(AGENT_ORIGIN, token.name)` so the
+   * review rail can say *which* credential proposed — "Claude Code (laptop)"
+   * rather than "Claude Code". When a token leaks, that line is the difference
+   * between knowing something wrote and knowing what to revoke.
+   */
+  origin?: string;
   /**
    * Who this server is for. **This is the entire authorization model**, and
    * putting it here rather than in each tool is the point of the factory:
@@ -132,7 +142,12 @@ const sourceNote = (post: AgentReadState): string => {
  * request without knowing which they are in.
  */
 export function createContentServer(
-  { resolveAuthorId, scopes = AGENT_SCOPES, checkRate }: ContentServerOptions,
+  {
+    resolveAuthorId,
+    scopes = AGENT_SCOPES,
+    checkRate,
+    origin = AGENT_ORIGIN,
+  }: ContentServerOptions,
 ): McpServer {
   const server = new McpServer({ name: "blog-content", version: "0.2.0" });
   const mayPropose = scopes.includes("propose");
@@ -469,7 +484,7 @@ export function createContentServer(
         ownedBy: authorId,
         ops: ops as Op[],
         stateHash: expected,
-        origin: AGENT_ORIGIN,
+        origin,
       });
       if (!result.ok) {
         // "not-found" keeps this server's own wording, since here it means
@@ -535,7 +550,7 @@ export function createContentServer(
         authorId,
         title,
         blocks: blocks as WritableBlock[],
-        origin: AGENT_ORIGIN,
+        origin,
         seriesId,
       });
       if (!result.ok) {

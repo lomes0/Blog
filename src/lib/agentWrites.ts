@@ -429,6 +429,11 @@ export async function proposeNewPost(
         documentId: id,
         authorId: input.authorId,
         data: state as object,
+        // Stamped here as well as on the document. `Document.agentOrigin`
+        // answers "who created this post", but a revision list is where you
+        // look to ask what wrote a particular state, and this one was arriving
+        // null while every revision `proposeOps` writes carried its origin.
+        origin: input.origin,
       },
     }),
     ...(notification ? [notification] : []),

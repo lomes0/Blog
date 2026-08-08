@@ -289,7 +289,10 @@ API routes are in `src/app/api/`:
 - `/api/mcp`: The remote MCP endpoint — the same eight tools as the stdio
   server, authenticated by an agent token. POST only; stateless; three
   token-bucket budgets per token (requests → 429, reads and writes separately →
-  a tool error), and a 1 MiB body cap
+  a tool error), a 1 MiB body cap, and **426 on plain HTTP to a non-loopback
+  host** unless `MCP_ALLOW_INSECURE=1` (a bearer token in cleartext is the
+  credential given away). Writes record `claude-code:<token name>` as their
+  origin, so the review rail says which credential proposed
 
 Server actions have a 2MB body size limit (configured in `next.config.ts`).
 
@@ -447,6 +450,13 @@ Optional:
   Must stay outside `public/` — see `src/lib/uploads.ts`; anything in the static
   tree is served with no session and no authorization check, bypassing
   `/api/attachments`. Point it at a mounted volume in production.
+- `MCP_AUTHOR_ID`: which user the **stdio** MCP server acts as (a `User` id or
+  email). Lives in `.mcp.json`'s `env`, not `.env` — export it by hand for
+  `npm run mcp:smoke` and `npm run mcp:token`.
+- `MCP_ALLOW_INSECURE=1`: accept an agent token at `/api/mcp` over plain HTTP to
+  a non-loopback host. Only for a transport that is already private — an ssh
+  tunnel, Tailscale, a proxy that forwards under a different header. Setting it
+  on a public deployment publishes the credential.
 
 ## Important Notes
 

@@ -1,9 +1,8 @@
 # Remote MCP support
 
-**Status: phases 1–4 shipped (8 Aug 2026); phases 5–6 proposed.** The endpoint
-works and is metered. Before pointing it at the public internet, phase 5 still
-owes it TLS enforcement — a bearer token over plain HTTP is the credential in
-cleartext. Originally
+**Status: phases 1–5 shipped (8 Aug 2026); only phase 6 (docs and registration)
+remains.** The endpoint works, is metered, refuses cleartext and names which
+credential wrote. Originally
 measured against the tree at `b01e91a5`. Builds on the
 content bridge ([claude-code-lexical.md](./claude-code-lexical.md), phases 1–5
 shipped) and the proposal gating ([agent-gating.md](./agent-gating.md), phases
@@ -453,7 +452,7 @@ is honest for the single-container deployment
 docs/plans/prod-storage-decision.md chose, and wrong the moment the app scales
 out; `RateLimiter` is the seam a shared-store implementation drops into.
 
-### Phase 5 — Hardening
+### Phase 5 — Hardening — **SHIPPED (8 Aug 2026)**
 
 - **Refuse a bearer token over plain HTTP** unless an explicit
   `MCP_ALLOW_INSECURE=1` opts local development out. "Give it the IP" means
@@ -467,6 +466,58 @@ out; `RateLimiter` is the seam a shared-store implementation drops into.
 - **Security headers** on the route (`Cache-Control: no-store` at minimum).
   Fixing `src/middleware.ts` wholesale is the audit's item, not this plan's, but
   this route must not wait for it.
+
+#### Shipped 8 Aug 2026
+
+**TLS.** `src/lib/mcp/transportSecurity.ts` — **426 Upgrade Required**, not 403:
+the request is not forbidden, the protocol is. Generous about what counts as
+safe, because a false refusal breaks a working setup while a false accept only
+fails to protect something the operator chose to expose — `x-forwarded-proto`
+(first entry, since a proxy chain appends), a direct `https:` URL, a loopback
+`Host`, or `MCP_ALLOW_INSECURE=1` for a tunnel or a private mesh. Note this
+cannot protect the request it refuses: the token was already on the wire. It
+stops the next thousand, and tells the operator rather than quietly accepting a
+credential in cleartext.
+
+**Origin.** `createContentServer` takes an `origin`, and the route passes
+`agentOrigin(AGENT_ORIGIN, token.name)` → `claude-code:laptop`, which
+`originLabel` renders as **"Claude Code (laptop)"**. Composer and parser both
+live in `src/lib/proposalLabels.ts` so the format has one definition. The
+instance is sanitised rather than rejected — this is a write path, and refusing
+a proposal because a token was named `a:b` would be worse than storing `a-b` —
+and `:` cannot survive inside either half, so a token name cannot fake a
+different agent.
+
+**Found and fixed while checking it:** `proposeNewPost` stamped
+`Document.agentOrigin` but passed no `origin` to its `prisma.revision.create`,
+so a post created by an agent had a head revision with `origin: null` while
+every revision `proposeOps` writes carried one. Pre-existing, not introduced
+here, and exactly the gap this phase is about — a revision list is where you
+look to ask what wrote a particular state.
+
+**Headers.** `Cache-Control: no-store, private` on every response.
+`dynamic = "force-dynamic"` governs Next's own cache; this governs every proxy
+between here and the agent. The body is now read to completion before the
+`finally` closes the transport — with `enableJsonResponse` it is a buffer, not a
+held-open stream, so this costs one copy and removes any ordering question.
+
+**`lastUsedAt`** needed nothing: `touchAgentToken`'s once-a-minute throttle
+landed with the module in phase 2.
+
+Sixteen new specs — `transportSecurity.test.ts` (7, environment passed as a
+parameter so nothing touches `process.env`) covers the proxy-chain ordering, a
+lookalike host like `localhost.evil.example` not counting as loopback, and
+`MCP_ALLOW_INSECURE` matching only the exact `"1"` so a stray `"0"` cannot
+disable it; `proposalLabels.test.ts` (9) covers round-tripping and the
+separator-smuggling case.
+
+Verified against a running server: loopback plain HTTP → 200 with
+`cache-control: no-store, private`; the same server with `Host: blog.example` →
+**426** with `Upgrade: TLS/1.2, HTTP/1.1`; adding `X-Forwarded-Proto: https` →
+200. A post created through the endpoint with a token named `laptop` stored
+`claude-code:laptop` on both the document and (after the fix) its revision, and
+the token's `lastUsedAt` was recorded. Both test posts and the token deleted
+afterwards.
 
 ### Phase 6 — Docs and registration
 
