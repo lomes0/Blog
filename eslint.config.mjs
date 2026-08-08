@@ -115,8 +115,21 @@ export default [
         //
         // Only `.json()` is restricted — `request.formData()` and `.text()` are
         // untouched, since the upload and export routes legitimately need them.
+        //
+        // The selector deliberately does *not* name the binding. It used to
+        // require `callee.object.name='request'`, which meant `/api/completion`
+        // slipped past the whole scheme for months by calling its parameter
+        // `req` — a rule a rename walks around is a suggestion. Nor does it
+        // require an `await`: `req.json().then(…)` reads the same body.
+        //
+        // What is left is "a no-argument `.json()` on something that is not a
+        // response". `arguments.length=0` is what separates reading a body from
+        // building one, so `NextResponse.json(payload)` is untouched; the name
+        // exclusion covers the one legitimate no-argument case, parsing what an
+        // outbound `fetch` returned. Name that binding `response`/`res`/`resp`
+        // and it is allowed — anything else is assumed to be the request.
         selector:
-          "AwaitExpression > CallExpression[callee.property.name='json'][callee.object.name='request']",
+          "CallExpression[callee.property.name='json'][arguments.length=0][callee.object.name!=/^(_?res|_?resp|_?response)$/]",
         message:
           "Use `parseBody(request, schema)` from @/lib/api-utils instead of request.json(), so the body is validated rather than cast. Declare a zod schema for what the route accepts (`.strict()` on updates, so a field you did not mean to expose is a 400 and not a silent write).",
       }],

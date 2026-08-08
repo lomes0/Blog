@@ -1,7 +1,7 @@
 import { convertToModelMessages, stepCountIs, streamText, tool } from "ai";
 import type { UIMessage } from "ai";
 import { z } from "zod";
-import { type AIProviderType, createProvider, getModelById } from "@/lib/ai";
+import { AI_PROVIDERS, createProvider, getModelById } from "@/lib/ai";
 import { ApiError, parseBody, userRoute } from "@/lib/api-utils";
 import { permitsDocument, requireDocument } from "@/lib/access";
 import { COPILOT_AGENT_SYSTEM_PROMPT } from "@/lib/ai/prompts";
@@ -153,7 +153,7 @@ const copilotBodySchema = z.object({
   documentTitle: z.string().optional(),
   /** `"<documentId>.md"` — the agent addresses posts as Markdown files. */
   currentPath: z.string().optional(),
-  provider: z.string(),
+  provider: z.enum(AI_PROVIDERS),
   model: z.string().min(1, "Model ID is required"),
 });
 
@@ -196,7 +196,7 @@ export const POST = userRoute(async (req, { user }) => {
     throw new ApiError(404, "Model not found", `Model '${modelId}' not found`);
   }
 
-  const providerInstance = createProvider(provider as AIProviderType);
+  const providerInstance = createProvider(provider);
   const modelInstance = providerInstance(model.id);
 
   const modelMessages = await convertToModelMessages(messages as UIMessage[]);

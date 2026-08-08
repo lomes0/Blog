@@ -1,25 +1,60 @@
 import { streamText } from "ai";
 import { match } from "ts-pattern";
+import { z } from "zod";
 import {
-  type AIOptionType,
-  type AIProviderType,
+  AI_OPTIONS,
+  AI_PROVIDERS,
   createProvider,
   getModelById,
   getSystemPrompt,
   getToneSystemPrompt,
 } from "@/lib/ai";
-import { ApiError, userRoute } from "@/lib/api-utils";
+import { ApiError, parseBody, userRoute } from "@/lib/api-utils";
 
 // Node runtime (not edge): `userRoute` reads the session through the Prisma
 // adapter, which cannot run on edge. `/api/copilot` is on Node for the same
 // reason. Leaving this open on edge meant anyone who found the route could spend
 // the deployment's model credits without signing in.
 
-export const POST = userRoute(async (req) => {
-  const body = await req.json();
-  const { provider, model: modelId, prompt, option, command, tone } = body;
+/**
+ * What the editor's AI toolbar sends. Every field of it used to arrive as
+ * `await req.json()` and then be cast — `option as AIOptionType` in particular,
+ * which decided which system prompt the model was given. The ESLint rule that
+ * bans that pattern under `src/app/api/**` matched only the identifier spelled
+ * `request`, so naming the parameter `req` walked around it; the rule is now
+ * widened (see eslint.config.mjs) and this is the route it was written for.
+ *
+ * `.strict()` because the sole caller is our own `useCompletion` hook, whose
+ * body is exactly `{ prompt, ...options.body }` — an unexpected key here means a
+ * client and a server that disagree about the request, and a 400 naming the
+ * field is a better way to learn that than a silently ignored argument.
+ *
+ * This schema replaces the `AICompletionRequest` interface that used to sit in
+ * `src/lib/ai/types.ts`: it described this body but was imported nowhere and
+ * enforced nothing, so keeping both would have been two statements of one
+ * contract with only one of them checked.
+ */
+const completionBodySchema = z.object({
+  /** The text the option acts on: the selection, or the preceding prose. */
+  prompt: z.string(),
+  option: z.enum(AI_OPTIONS),
+  provider: z.enum(AI_PROVIDERS),
+  model: z.string().min(1, "Model ID is required"),
+  /** The user's instruction; `zap` only. */
+  command: z.string().optional(),
+  /**
+   * `tone` only. Bounded but not enumerated: the toolbar's six tones are a menu,
+   * not the contract, and this string is interpolated into the *system* prompt,
+   * where an unbounded blob is worth refusing on its own.
+   */
+  tone: z.string().min(1).max(64).optional(),
+}).strict();
 
-  const systemPrompt = getSystemPrompt(option as AIOptionType);
+export const POST = userRoute(async (request) => {
+  const { provider, model: modelId, prompt, option, command, tone } =
+    await parseBody(request, completionBodySchema);
+
+  const systemPrompt = getSystemPrompt(option);
 
   const messages = match(option)
     .with("zap", () => [
@@ -53,16 +88,15 @@ export const POST = userRoute(async (req) => {
       },
     ]);
 
-  if (!modelId) {
-    throw new ApiError(400, "Bad Request", "Model ID is required");
-  }
-
+  // A missing or empty `model` is now the schema's 400, not a hand-written one.
+  // An id that is well-formed but unknown still is not: only the registry can
+  // say so.
   const model = getModelById(modelId);
   if (!model) {
     throw new ApiError(404, "Model not found", `Model '${modelId}' not found`);
   }
 
-  const providerInstance = createProvider(provider as AIProviderType);
+  const providerInstance = createProvider(provider);
   const modelInstance = providerInstance(model.id);
 
   const result = streamText({

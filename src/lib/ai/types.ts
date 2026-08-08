@@ -1,4 +1,10 @@
-export type AIProviderType = "google" | "anthropic" | "azure" | "ollama";
+// The unions are spelled as `as const` arrays rather than bare type unions so a
+// runtime validator can be built from the same list — `z.enum(AI_PROVIDERS)` in
+// `/api/completion` is the type, not a hand-copied restatement of it that drifts
+// the moment a provider is added.
+export const AI_PROVIDERS = ["google", "anthropic", "azure", "ollama"] as const;
+
+export type AIProviderType = typeof AI_PROVIDERS[number];
 
 export interface AIModel {
   id: string;
@@ -15,14 +21,17 @@ export interface AIModel {
   };
 }
 
-export type AIOptionType =
-  | "improve"
-  | "continue"
-  | "shorter"
-  | "longer"
-  | "zap"
-  | "summarize"
-  | "tone";
+export const AI_OPTIONS = [
+  "improve",
+  "continue",
+  "shorter",
+  "longer",
+  "zap",
+  "summarize",
+  "tone",
+] as const;
+
+export type AIOptionType = typeof AI_OPTIONS[number];
 
 export interface AIProviderConfig {
   google: {
@@ -38,13 +47,4 @@ export interface AIProviderConfig {
   ollama: {
     baseURL?: string;
   };
-}
-
-export interface AICompletionRequest {
-  prompt: string;
-  option: AIOptionType;
-  command?: string;
-  tone?: string;
-  provider: AIProviderType;
-  model: string;
 }
