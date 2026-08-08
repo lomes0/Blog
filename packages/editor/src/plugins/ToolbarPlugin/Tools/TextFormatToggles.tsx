@@ -1,5 +1,4 @@
 "use client";
-import * as React from "react";
 import {
   $getPreviousSelection,
   $getSelection,
@@ -17,23 +16,11 @@ import { $patchStyleText } from "@lexical/selection";
 import { IS_APPLE, mergeRegister } from "@lexical/utils";
 import { $isLinkNode } from "@lexical/link";
 import { useCallback, useEffect, useState } from "react";
+import { Toggle } from "@base-ui/react/toggle";
 import ColorPicker from "./ColorPicker";
 import { $isMathNode, MathNode } from "@/editor/nodes/MathNode";
 import { $patchStyle } from "@/editor/nodes/utils";
 import { $getSelectionStyleValueForProperty } from "@lexical/selection";
-import { SxProps, Theme } from "@mui/material/styles";
-import {
-  Box,
-  IconButton,
-  ListItemIcon,
-  ListItemText,
-  Menu,
-  MenuItem,
-  SvgIcon,
-  ToggleButton,
-  ToggleButtonGroup,
-  Typography,
-} from "@mui/material";
 import {
   Bold,
   Code,
@@ -48,23 +35,38 @@ import {
 import { getSelectedNode } from "@/editor/utils/getSelectedNode";
 import { SET_DIALOGS_COMMAND } from "../Dialogs/commands";
 import { ICON_SIZE } from "@/theme/icons";
+import {
+  cx,
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuShortcut,
+  DropdownMenuTrigger,
+  getActionButtonClassName,
+  Tooltip,
+  TooltipProvider,
+} from "@/editor/ui";
+import * as css from "./textFormatToggles.css";
 
 const Highlight = () => (
-  <SvgIcon viewBox="0 -960 960 960" fontSize="small">
-    <path
-      xmlns="http://www.w3.org/2000/svg"
-      d="M80 0v-160h800V0H80Zm504-480L480-584 320-424l103 104 161-160Zm-47-160 103 103 160-159-104-104-159 160Zm-84-29 216 216-189 190q-24 24-56.5 24T367-263l-27 23H140l126-125q-24-24-25-57.5t23-57.5l189-189Zm0 0 187-187q24-24 56.5-24t56.5 24l104 103q24 24 24 56.5T857-640L669-453 453-669Z"
-      fontSize="small"
-    />
-  </SvgIcon>
+  <svg
+    aria-hidden="true"
+    fill="currentColor"
+    height={ICON_SIZE.dense}
+    viewBox="0 -960 960 960"
+    width={ICON_SIZE.dense}
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M80 0v-160h800V0H80Zm504-480L480-584 320-424l103 104 161-160Zm-47-160 103 103 160-159-104-104-159 160Zm-84-29 216 216-189 190q-24 24-56.5 24T367-263l-27 23H140l126-125q-24-24-25-57.5t23-57.5l189-189Zm0 0 187-187q24-24 56.5-24t56.5 24l104 103q24 24 24 56.5T857-640L669-453 453-669Z" />
+  </svg>
 );
 
+/** One class for every button in the row, toggles and overflow alike. */
+const buttonClass = getActionButtonClassName({ size: "md", icon: true });
+
 export default function TextFormatToggles(
-  { editor, sx }: { editor: LexicalEditor; sx?: SxProps<Theme> | undefined },
+  { editor, className }: { editor: LexicalEditor; className?: string },
 ) {
-  const [overflowAnchor, setOverflowAnchor] = useState<HTMLElement | null>(
-    null,
-  );
   const [format, setFormat] = useState<{ [key: string]: boolean }>({});
   const [textColor, setTextColor] = useState<string>();
   const [backgroundColor, setBackgroundColor] = useState<string>();
@@ -85,10 +87,7 @@ export default function TextFormatToggles(
         highlight: selection.hasFormat("highlight"),
         link: $isLinkNode(parent) || $isLinkNode(node),
       });
-      const color = $getSelectionStyleValueForProperty(
-        selection,
-        "color",
-      );
+      const color = $getSelectionStyleValueForProperty(selection, "color");
       setTextColor(color);
       const backgroundColor = $getSelectionStyleValueForProperty(
         selection,
@@ -146,16 +145,9 @@ export default function TextFormatToggles(
     applyStyleText({ [styleKey]: value });
   }, [applyStyleText]);
 
-  const handleFormat = (event: React.MouseEvent<HTMLElement>) => {
-    const button = event.currentTarget as HTMLButtonElement;
-    if (!button) return;
-    editor.dispatchCommand(
-      FORMAT_TEXT_COMMAND,
-      button.value as TextFormatType,
-    );
-  };
-
-  const formatKeys = Object.keys(format).filter((key) => Boolean(format[key]));
+  const applyFormat = useCallback((fmt: TextFormatType) => {
+    editor.dispatchCommand(FORMAT_TEXT_COMMAND, fmt);
+  }, [editor]);
 
   useEffect(() => {
     return editor.registerCommand(
@@ -171,10 +163,7 @@ export default function TextFormatToggles(
         }
         if (code === "KeyH" && (ctrlKey || metaKey) && shiftKey) {
           event.preventDefault();
-          return editor.dispatchCommand(
-            FORMAT_TEXT_COMMAND,
-            "highlight",
-          );
+          return editor.dispatchCommand(FORMAT_TEXT_COMMAND, "highlight");
         }
         if (code === "KeyE" && (ctrlKey || metaKey)) {
           event.preventDefault();
@@ -182,10 +171,7 @@ export default function TextFormatToggles(
         }
         if (code === "KeyS" && (ctrlKey || metaKey) && shiftKey) {
           event.preventDefault();
-          return editor.dispatchCommand(
-            FORMAT_TEXT_COMMAND,
-            "strikethrough",
-          );
+          return editor.dispatchCommand(FORMAT_TEXT_COMMAND, "strikethrough");
         }
         return false;
       },
@@ -211,136 +197,156 @@ export default function TextFormatToggles(
   const openLinkDialog = () =>
     editor.dispatchCommand(SET_DIALOGS_COMMAND, { link: { open: true } });
 
-  const handleOverflowFormat = (fmt: TextFormatType) => {
-    editor.dispatchCommand(FORMAT_TEXT_COMMAND, fmt);
-    setOverflowAnchor(null);
-  };
+  const shortcut = (mac: string, other: string) => IS_APPLE ? mac : other;
 
   return (
-    <Box sx={{ display: "flex", alignItems: "center", ...sx }}>
-      <ToggleButtonGroup
-        size="small"
-        value={formatKeys}
-        onChange={handleFormat}
-        aria-label="text formatting"
-        id="text-format-toggles"
-      >
-        <ToggleButton
-          value="bold"
-          title={IS_APPLE ? "Bold (⌘B)" : "Bold (Ctrl+B)"}
-          aria-label={`Format text as bold. Shortcut: ${
-            IS_APPLE ? "⌘B" : "Ctrl+B"
-          }`}
+    /*
+     * One `TooltipProvider` for the whole row: in Base UI 1.7 the delay lives
+     * on the provider, and grouping it here is what makes a tooltip re-show
+     * instantly as the pointer travels along the toolbar instead of waiting out
+     * the delay again at every button.
+     */
+    <TooltipProvider closeDelay={0} delay={500}>
+      <div className={cx(css.bar, className)}>
+        <div
+          aria-label="text formatting"
+          className={css.group}
+          id="text-format-toggles"
+          role="group"
         >
-          <Bold size={ICON_SIZE.dense} />
-        </ToggleButton>
-        <ToggleButton
-          value="italic"
-          title={IS_APPLE ? "Italic (⌘I)" : "Italic (Ctrl+I)"}
-          aria-label={`Format text as italics. Shortcut: ${
-            IS_APPLE ? "⌘I" : "Ctrl+I"
-          }`}
-        >
-          <Italic size={ICON_SIZE.dense} />
-        </ToggleButton>
-        <ToggleButton
-          value="underline"
-          title={IS_APPLE ? "Underline (⌘U)" : "Underline (Ctrl+U)"}
-          aria-label={`Format text to underlined. Shortcut: ${
-            IS_APPLE ? "⌘U" : "Ctrl+U"
-          }`}
-        >
-          <Underline size={ICON_SIZE.dense} />
-        </ToggleButton>
-        <ToggleButton
-          value="link"
-          title={IS_APPLE ? "Insert Link (⌘K)" : "Insert Link (Ctrl+K)"}
-          aria-label={`Insert a link. Shortcut: ${IS_APPLE ? "⌘K" : "Ctrl+K"}`}
-          onClick={openLinkDialog}
-        >
-          <Link size={ICON_SIZE.dense} />
-        </ToggleButton>
+          <Tooltip content={`Bold (${shortcut("⌘B", "Ctrl+B")})`}>
+            <Toggle
+              aria-label={`Format text as bold. Shortcut: ${
+                shortcut("⌘B", "Ctrl+B")
+              }`}
+              className={buttonClass}
+              pressed={Boolean(format.bold)}
+              value="bold"
+              onPressedChange={() => applyFormat("bold")}
+            >
+              <Bold size={ICON_SIZE.dense} />
+            </Toggle>
+          </Tooltip>
+
+          <Tooltip content={`Italic (${shortcut("⌘I", "Ctrl+I")})`}>
+            <Toggle
+              aria-label={`Format text as italics. Shortcut: ${
+                shortcut("⌘I", "Ctrl+I")
+              }`}
+              className={buttonClass}
+              pressed={Boolean(format.italic)}
+              value="italic"
+              onPressedChange={() => applyFormat("italic")}
+            >
+              <Italic size={ICON_SIZE.dense} />
+            </Toggle>
+          </Tooltip>
+
+          <Tooltip content={`Underline (${shortcut("⌘U", "Ctrl+U")})`}>
+            <Toggle
+              aria-label={`Format text to underlined. Shortcut: ${
+                shortcut("⌘U", "Ctrl+U")
+              }`}
+              className={buttonClass}
+              pressed={Boolean(format.underline)}
+              value="underline"
+              onPressedChange={() => applyFormat("underline")}
+            >
+              <Underline size={ICON_SIZE.dense} />
+            </Toggle>
+          </Tooltip>
+
+          <Tooltip content={`Insert Link (${shortcut("⌘K", "Ctrl+K")})`}>
+            <Toggle
+              aria-label={`Insert a link. Shortcut: ${shortcut("⌘K", "Ctrl+K")}`}
+              className={buttonClass}
+              pressed={Boolean(format.link)}
+              value="link"
+              onPressedChange={openLinkDialog}
+            >
+              <Link size={ICON_SIZE.dense} />
+            </Toggle>
+          </Tooltip>
+        </div>
+
+        <span className={css.divider} />
+
+        {/*
+          Still the MUI color picker from `./ColorPicker` — it is shared with
+          TableTools, NoteTools and MathTools, all of which are MUI menus, so it
+          belongs to the tranche that restyles `Tools/` as a whole (see
+          docs/plans/haklex-adoption.md §9.2). `ui/color-picker` is ported and
+          waiting for it.
+        */}
         <ColorPicker
           onColorChange={onColorChange}
           textColor={textColor}
           backgroundColor={backgroundColor}
           onClose={restoreFocus}
         />
-      </ToggleButtonGroup>
 
-      {/* More formatting options */}
-      <IconButton
-        size="small"
-        title="More formatting"
-        aria-label="More formatting options"
-        onClick={(e) => setOverflowAnchor(e.currentTarget)}
-        sx={{ ml: 0.25 }}
-      >
-        <MoreHorizontal size={ICON_SIZE.dense} />
-      </IconButton>
-      <Menu
-        anchorEl={overflowAnchor}
-        open={Boolean(overflowAnchor)}
-        onClose={() => setOverflowAnchor(null)}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-        transformOrigin={{ vertical: "top", horizontal: "center" }}
-        sx={{ "& .MuiMenuItem-root": { minHeight: 36 } }}
-      >
-        <MenuItem
-          selected={format.highlight}
-          onClick={() => handleOverflowFormat("highlight")}
-        >
-          <ListItemIcon>
-            <Highlight />
-          </ListItemIcon>
-          <ListItemText>Highlight</ListItemText>
-          <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
-            {IS_APPLE ? "⌘⇧H" : "Ctrl+Shift+H"}
-          </Typography>
-        </MenuItem>
-        <MenuItem
-          selected={format.code}
-          onClick={() => handleOverflowFormat("code")}
-        >
-          <ListItemIcon>
-            <Code size={ICON_SIZE.dense} />
-          </ListItemIcon>
-          <ListItemText>Inline Code</ListItemText>
-          <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
-            {IS_APPLE ? "⌘E" : "Ctrl+E"}
-          </Typography>
-        </MenuItem>
-        <MenuItem
-          selected={format.strikethrough}
-          onClick={() => handleOverflowFormat("strikethrough")}
-        >
-          <ListItemIcon>
-            <Strikethrough size={ICON_SIZE.dense} />
-          </ListItemIcon>
-          <ListItemText>Strikethrough</ListItemText>
-          <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
-            {IS_APPLE ? "⌘⇧S" : "Ctrl+Shift+S"}
-          </Typography>
-        </MenuItem>
-        <MenuItem
-          selected={format.subscript}
-          onClick={() => handleOverflowFormat("subscript")}
-        >
-          <ListItemIcon>
-            <Subscript size={ICON_SIZE.dense} />
-          </ListItemIcon>
-          <ListItemText>Subscript</ListItemText>
-        </MenuItem>
-        <MenuItem
-          selected={format.superscript}
-          onClick={() => handleOverflowFormat("superscript")}
-        >
-          <ListItemIcon>
-            <Superscript size={ICON_SIZE.dense} />
-          </ListItemIcon>
-          <ListItemText>Superscript</ListItemText>
-        </MenuItem>
-      </Menu>
-    </Box>
+        <DropdownMenu>
+          <Tooltip content="More formatting">
+            <DropdownMenuTrigger
+              aria-label="More formatting options"
+              className={buttonClass}
+            >
+              <MoreHorizontal size={ICON_SIZE.dense} />
+            </DropdownMenuTrigger>
+          </Tooltip>
+          <DropdownMenuContent align="center" side="bottom">
+            <DropdownMenuCheckboxItem
+              checked={Boolean(format.highlight)}
+              closeOnClick
+              onCheckedChange={() => applyFormat("highlight")}
+            >
+              <Highlight />
+              Highlight
+              <DropdownMenuShortcut>
+                {shortcut("⌘⇧H", "Ctrl+Shift+H")}
+              </DropdownMenuShortcut>
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem
+              checked={Boolean(format.code)}
+              closeOnClick
+              onCheckedChange={() => applyFormat("code")}
+            >
+              <Code size={ICON_SIZE.dense} />
+              Inline Code
+              <DropdownMenuShortcut>
+                {shortcut("⌘E", "Ctrl+E")}
+              </DropdownMenuShortcut>
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem
+              checked={Boolean(format.strikethrough)}
+              closeOnClick
+              onCheckedChange={() => applyFormat("strikethrough")}
+            >
+              <Strikethrough size={ICON_SIZE.dense} />
+              Strikethrough
+              <DropdownMenuShortcut>
+                {shortcut("⌘⇧S", "Ctrl+Shift+S")}
+              </DropdownMenuShortcut>
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem
+              checked={Boolean(format.subscript)}
+              closeOnClick
+              onCheckedChange={() => applyFormat("subscript")}
+            >
+              <Subscript size={ICON_SIZE.dense} />
+              Subscript
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem
+              checked={Boolean(format.superscript)}
+              closeOnClick
+              onCheckedChange={() => applyFormat("superscript")}
+            >
+              <Superscript size={ICON_SIZE.dense} />
+              Superscript
+            </DropdownMenuCheckboxItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </TooltipProvider>
   );
 }

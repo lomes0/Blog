@@ -32,6 +32,7 @@ import { useToolbarSlot } from "@/contexts/ToolbarSlotContext";
 import { BlockFormatSelect } from "./Menus/BlockFormatSelect";
 import InsertToolMenu from "./Menus/InsertToolMenu";
 import TextFormatToggles from "./Tools/TextFormatToggles";
+import { noShrink } from "./toolbarLayout.css";
 import { $isMathNode } from "@/editor/nodes/MathNode";
 import MathTools from "./Tools/MathTools";
 import { $isImageNode } from "@/editor/nodes/ImageNode";
@@ -398,7 +399,7 @@ function ToolbarPlugin(
             {showTextFormatTools && (
               <TextFormatToggles
                 editor={activeEditor}
-                sx={{ flexShrink: 0 }}
+                className={noShrink}
               />
             )}
           </>

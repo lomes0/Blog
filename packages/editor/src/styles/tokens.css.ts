@@ -77,6 +77,34 @@ export const vars = createGlobalThemeContract({
     /** Selection, focus, the one saturated color in the editor. */
     accent: "ed-accent",
     /**
+     * Accent at low alpha — focus rings and the "this control is open" wash.
+     * haklex spells this `accentLight` and defines it as the accent hex with an
+     * `20` suffix; ours is the same idea through the channel variable, so it
+     * follows the palette rather than pinning a second blue.
+     */
+    accentSoft: "ed-accent-soft",
+    /** Legible ink *on* an accent fill. Not `bg` — the palette decides. */
+    accentContrast: "ed-accent-contrast",
+    /**
+     * Status colors, for `ui/alert`, `ui/badge` and the destructive variant of
+     * `ui/action-button`. haklex carries its own `alertInfo`/`alertWarning`/
+     * `alertCaution` hexes plus a second dark set; ours alias the four MUI
+     * severities the app already renders alerts with, so a status means the
+     * same thing inside the editor as outside it.
+     *
+     * Each has a `…Soft` companion — the same hue at the alpha a tinted
+     * background wants. Written through `…mainChannel` for the same reason as
+     * the fill ladder: one hue, two uses, no second literal.
+     */
+    danger: "ed-danger",
+    dangerSoft: "ed-danger-soft",
+    warning: "ed-warning",
+    warningSoft: "ed-warning-soft",
+    success: "ed-success",
+    successSoft: "ed-success-soft",
+    info: "ed-info",
+    infoSoft: "ed-info-soft",
+    /**
      * The 4-step interactive fill ladder — haklex's `fill` → `fillQuaternary`
      * scale (docs/plans/haklex-adoption.md §5.3), retinted to our slate palette
      * rather than imported with their neutral literals. This is the thing that
@@ -103,6 +131,39 @@ export const vars = createGlobalThemeContract({
     /** Dialogs and anything floating over the document. */
     modal: "ed-shadow-modal",
   },
+  /**
+   * Deliberately scheme-invariant values — DESIGN.md §19.3's "light islands",
+   * given a home instead of being inferred.
+   *
+   * A hue slider is the sRGB hue circle. A checkerboard is what "transparent"
+   * looks like. The ring around a picker thumb is white in both schemes
+   * because it sits on top of an arbitrary user-chosen color, not on the
+   * canvas. None of these may respond to the theme toggle, and every one of
+   * them is a raw literal that `npm run check:theme` is right to reject
+   * everywhere else.
+   *
+   * Putting them *here* is the point: they are assigned in both the light and
+   * the dark block below, identically, so "this does not change with the
+   * scheme" is a statement the contract makes out loud and `assignVars` type-
+   * checks — rather than a literal hidden in a component file, or a checker
+   * exemption that would also excuse the next real mistake.
+   */
+  constant: {
+    /** The sRGB hue circle, left to right. */
+    hueTrack: "ed-const-hue-track",
+    /** The same circle as a wheel, for the "custom color" swatch. */
+    hueWheel: "ed-const-hue-wheel",
+    /** Alpha checkerboard — what "transparent" looks like. */
+    checkerboard: "ed-const-checkerboard",
+    /** The white ring and dark halo around a picker thumb. */
+    thumbRing: "ed-const-thumb-ring",
+    thumbShadow: "ed-const-thumb-shadow",
+    /** Saturation/value square overlays: white to the left, black to the top. */
+    satWhite: "ed-const-sat-white",
+    satBlack: "ed-const-sat-black",
+    /** The dim behind a modal. */
+    scrim: "ed-const-scrim",
+  },
 });
 
 /**
@@ -119,10 +180,38 @@ const color = {
   bgSecondary: "var(--mui-palette-background-paper)",
   border: "var(--mui-palette-divider)",
   accent: "var(--mui-palette-primary-main)",
+  accentSoft: "rgba(var(--mui-palette-primary-mainChannel) / 0.24)",
+  accentContrast: "var(--mui-palette-primary-contrastText)",
+  danger: "var(--mui-palette-error-main)",
+  dangerSoft: "rgba(var(--mui-palette-error-mainChannel) / 0.12)",
+  warning: "var(--mui-palette-warning-main)",
+  warningSoft: "rgba(var(--mui-palette-warning-mainChannel) / 0.12)",
+  success: "var(--mui-palette-success-main)",
+  successSoft: "rgba(var(--mui-palette-success-mainChannel) / 0.12)",
+  info: "var(--mui-palette-info-main)",
+  infoSoft: "rgba(var(--mui-palette-info-mainChannel) / 0.12)",
   fill: "rgba(var(--mui-palette-text-primaryChannel) / 0.11)",
   fillSecondary: "rgba(var(--mui-palette-text-primaryChannel) / 0.08)",
   fillTertiary: "rgba(var(--mui-palette-text-primaryChannel) / 0.05)",
   fillQuaternary: "rgba(var(--mui-palette-text-primaryChannel) / 0.025)",
+};
+
+/**
+ * Assigned unchanged in both blocks below — that repetition *is* the
+ * declaration. See the `constant` group in the contract for why each one is
+ * here rather than in a component's `.css.ts`.
+ */
+const constant = {
+  hueTrack:
+    "linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%)",
+  hueWheel:
+    "conic-gradient(from 0deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)",
+  checkerboard: "repeating-conic-gradient(#ddd 0% 25%, #fff 0% 50%) 0 / 8px 8px",
+  thumbRing: "#ffffff",
+  thumbShadow: "rgba(0, 0, 0, 0.3)",
+  satWhite: "#ffffff",
+  satBlack: "#000000",
+  scrim: "rgba(0, 0, 0, 0.5)",
 };
 
 /**
@@ -143,8 +232,8 @@ const shadowDark = {
   modal: "0 18px 40px -24px #0b0d17",
 };
 
-createGlobalTheme(":root", vars, { color, shadow: shadowLight });
+createGlobalTheme(":root", vars, { color, shadow: shadowLight, constant });
 
 globalStyle("html.dark", {
-  vars: assignVars(vars, { color, shadow: shadowDark }),
+  vars: assignVars(vars, { color, shadow: shadowDark, constant }),
 });

@@ -23,7 +23,7 @@ import { getDOMRangeRect } from "@/editor/utils/getDOMRangeRect";
 import { getSelectedNode } from "@/editor/utils/getSelectedNode";
 import { setFloatingElemPosition } from "@/editor/utils/setFloatingElemPosition";
 import TextFormatToggles from "../ToolbarPlugin/Tools/TextFormatToggles";
-import { Paper } from "@mui/material";
+import { floatingToolbar } from "./styles.css";
 
 function FloatingToolbar(
   { editor, anchorElem }: { editor: LexicalEditor; anchorElem: HTMLElement },
@@ -147,21 +147,12 @@ function FloatingToolbar(
   }, [editor, updateFloatingToolbar]);
 
   return (
-    <Paper
-      className="floating-toolbar"
+    <div
+      className={`floating-toolbar ${floatingToolbar}`}
       ref={popupCharStylesEditorRef}
-      sx={{
-        display: ["none", "flex"],
-        position: "absolute",
-        top: 0,
-        left: 0,
-        zIndex: 1000,
-        willChange: "transform",
-        displayPrint: "none",
-      }}
     >
       <TextFormatToggles editor={editor} />
-    </Paper>
+    </div>
   );
 }
 
