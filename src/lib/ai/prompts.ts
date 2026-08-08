@@ -79,6 +79,8 @@ export const COPILOT_AGENT_SYSTEM_PROMPT = (
   `addresses (b3, b4.2) and a stateHash; every write names blocks and carries ` +
   `that hash back.\n` +
   `- list_documents: list every post (metadata only).\n` +
+  `- list_series: list every series (id, title, description). The only way ` +
+  `to enumerate series; a post only names the one it is in.\n` +
   `- search_documents: search titles and bodies; hits carry a block address.\n` +
   `- outline_document: one line per block — address, kind, preview. START ` +
   `HERE. Omit id for the open document, including unsaved edits.\n` +

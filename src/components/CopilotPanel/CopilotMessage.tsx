@@ -44,6 +44,8 @@ function readTraceLabel(name: string, input: Record<string, unknown>): string {
   switch (name) {
     case "list_documents":
       return "Listed all posts";
+    case "list_series":
+      return "Listed all series";
     case "search_documents":
       return `Searched “${asStr(input.query)}”`;
     case "outline_document":

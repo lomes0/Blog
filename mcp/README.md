@@ -81,6 +81,27 @@ delimiter is a prefix of another.
 Every write is saved as a **new** `Revision` with `Document.head` advanced, so
 history is preserved and you can diff an agent edit against what came before.
 
+## Content only, by decision
+
+The in-app Copilot has these tools *and* one generated from every command in
+`src/commands/` — open a pane, focus a tab, rename, set a theme. This server
+has none of them, and that is the boundary rather than a backlog: almost every
+one of those commands acts on the **browser's** workspace, and a stdio server
+has no session to perform it against. Exposing them would ship tools that fail.
+`get_selection` is the same argument in miniature — there is no cursor in a
+terminal.
+
+So the two surfaces are not drifting towards each other. They meet at content,
+which is why `src/lib/content-bridge/` is shared and the command registry is
+not. If Claude Code ever needs to drive the running app, that is a channel from
+this server to a live session — a feature with its own plan, not a matter of
+registering more tools here. See
+[docs/plans/ai-surface-consolidation.md](../docs/plans/ai-surface-consolidation.md)
+§4.3.
+
+Parity runs the other way too: `list_series` above exists in both, because
+enumerating series is content, and the Copilot was missing it.
+
 ## Configuration
 
 Registered in `.mcp.json` at the repo root. Set the author:

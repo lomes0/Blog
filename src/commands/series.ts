@@ -13,8 +13,8 @@ const open = defineCommand<SeriesRefParams>({
   id: "series.open",
   title: "Open series",
   description:
-    "Show the posts belonging to a series. `id` is a series id — the same id " +
-    "the list_documents tool reports as a post's series.",
+    "Show the posts belonging to a series. `id` is a series id — enumerate " +
+    "them with the list_series tool.",
   params: seriesRef,
   effect: "read",
   scopes: ["workspace", "series"],

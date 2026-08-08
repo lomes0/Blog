@@ -59,6 +59,19 @@ import {
 
 const getDocs = (): Post[] => postsSelectors.selectAll(store.getState());
 
+/**
+ * Series as the agent sees them: the same three fields `list_series` returns
+ * over MCP, in the order the store already holds (what the sidebar shows)
+ * rather than by `rank`, which is scoped to a project and so does not order the
+ * flat list this hands back.
+ */
+const getSeries = () =>
+  store.getState().series.map((s) => ({
+    id: s.id,
+    title: s.title,
+    description: s.description ?? null,
+  }));
+
 interface WriteResult {
   ok: boolean;
   message: string;
@@ -119,6 +132,9 @@ export async function runReadTool(
   switch (name) {
     case "list_documents":
       return { documents: listDocuments(getDocs()) };
+
+    case "list_series":
+      return { series: getSeries() };
 
     case "search_documents":
       return { hits: searchDocuments(getDocs(), String(input.query ?? "")) };

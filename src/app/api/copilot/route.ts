@@ -45,6 +45,13 @@ const readTools = {
       "Cheap — call this to discover what exists before reading bodies.",
     inputSchema: z.object({}),
   }),
+  list_series: tool({
+    description:
+      "List the author's series (id, title, description). The id this returns " +
+      "is what the series commands take — it is the only way to enumerate " +
+      "series, since a post only reveals the one it belongs to.",
+    inputSchema: z.object({}),
+  }),
   search_documents: tool({
     description:
       "Search post titles and locally-available bodies for a case-insensitive " +

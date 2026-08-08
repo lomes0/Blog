@@ -20,6 +20,7 @@
  */
 export const READ_TOOLS = [
   "list_documents",
+  "list_series",
   "search_documents",
   "outline_document",
   "read_blocks",

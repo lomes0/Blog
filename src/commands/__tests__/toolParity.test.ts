@@ -22,6 +22,7 @@ import {
   toolNameForCommand,
 } from "@/lib/ai/commandTools";
 import { READ_TOOLS, WRITE_TOOLS } from "@/lib/ai/copilotAgentTools";
+import { COPILOT_AGENT_SYSTEM_PROMPT } from "@/lib/ai/prompts";
 
 /** What every major provider accepts as a tool name. */
 const TOOL_NAME = /^[a-zA-Z0-9_-]{1,128}$/;
@@ -128,6 +129,28 @@ describe("generated tool list", () => {
       expect(isAutoRunTool(name)).toBe(command.effect === "read");
       expect(isProposalTool(name)).toBe(command.effect === "mutate");
     }
+  });
+});
+
+describe("content tools", () => {
+  // The command tools describe themselves into the prompt (`commandToolsPromptSection`);
+  // the content tools do not — their listing in COPILOT_AGENT_SYSTEM_PROMPT is
+  // hand-written, so it is the one place in the surface that can silently
+  // describe a tool set the request does not send. A tool the prompt never
+  // names is one the model rarely reaches for, which looks like a capability
+  // gap rather than a missing line.
+  const prompt = COPILOT_AGENT_SYSTEM_PROMPT(null, null);
+
+  it("names every content tool in the system prompt", () => {
+    for (const name of [...READ_TOOLS, ...WRITE_TOOLS]) {
+      expect(prompt, `${name} is declared but never described`).toContain(name);
+    }
+  });
+
+  it("names them legally and uniquely", () => {
+    const names = [...READ_TOOLS, ...WRITE_TOOLS];
+    expect(new Set(names).size).toBe(names.length);
+    for (const name of names) expect(name).toMatch(TOOL_NAME);
   });
 });
 
