@@ -9,10 +9,11 @@ the options it proposed: notes live in Postgres now (`prisma.notesCanvas`,
 IndexedDB store had no readers left and is no longer declared in
 `src/indexeddb/index.ts`.
 
-Whatever a browser still holds in that store is untouched — the migration below
-does not copy it and does not delete it. If notes created before the move to
-Postgres are still owed to anyone, that data is in the legacy database under the
-`notesCanvas` store, and recovering it is a separate job.
+The migration described below never copied that store, and refused to delete the
+legacy database while anything was left in it — so on a profile that held
+pre-move notes, the operator dumped them out as JSON before the sweep could
+finish (`docs/plans/legacy-idb-retirement.md` §4.2). That was the last decision
+the migration was deferring, and it is now closed.
 
 ## The origin rule still applies to everything else
 
@@ -28,34 +29,43 @@ The database was named `matheditor`, inherited from the project this app was
 forked from. It is now `blog-simple`.
 
 The name is the handle for the store, so renaming it migrates nothing by itself
-— it opens a second, empty database. `src/indexeddb/migrate.ts` is the copy that
-makes the rename safe, and it runs before `setupIndexedDB` sets the flag every
-store action waits on, so nothing can read or write mid-copy.
+— it opens a second, empty database and strands every draft in the old one.
+`src/indexeddb/migrate.ts` was the copy that made the rename safe. It ran on
+every boot from 1 Aug 2026 (`7921af36`) and was **retired on 8 Aug 2026**, once
+every profile had been swept and found clean.
 
-What it does, per boot:
+What it did, per boot:
 
-1. Opens `matheditor` without a version. If `onupgradeneeded` fires, the open
-   just created it, so there was nothing there — it deletes it again and stops.
-2. Diffs the keys in each of `documents`, `revisions`, `copilotThreads` and
-   `pendingSaves` against the new database, copies what is missing, and then
-   deletes from the legacy database everything the new one is now known to hold.
+1. Opened `matheditor` without a version. If `onupgradeneeded` fired, the open
+   had just created it, so there was nothing there — it deleted it again and
+   stopped. One side effect outlived it: that probe leaves the name in the
+   origin's leveldb, so **grepping a browser profile on disk for `matheditor`
+   proves nothing**. Only an `indexedDB.open` answers the question.
+2. Diffed the keys in `documents`, `revisions`, `copilotThreads` and
+   `pendingSaves` against the new database, copied what was missing, then
+   deleted from the legacy database everything the new one was known to hold.
+3. Deleted the legacy database outright once nothing worth keeping was left —
+   ignoring `attachmentContent`, a cache the server still backs, but *not*
+   `notesCanvas`. That step, added last, is what let the migration finish
+   instead of re-probing forever.
 
-Two consequences of that shape worth knowing:
+Three consequences of that shape worth knowing:
 
-- **It is idempotent, and it keeps running.** The app ships as a PWA, so a tab
-  on a stale service-worker bundle can still be writing to `matheditor` after
-  the new code is live. Those writes get picked up on the next visit. Once the
-  legacy database is drained the cost is one open and one `getAllKeys` per
-  store.
-- **Draining is what stops resurrection.** Without it, a guest draft deleted in
-  the new database would be copied back in on the next boot, forever.
+- **It was idempotent, and it kept running.** The app ships as a PWA, so a tab
+  on a stale service-worker bundle could still be writing to `matheditor` after
+  the new code was live; those writes were picked up on the next visit.
+- **Deleting the database was self-healing where a marker record would not have
+  been.** A stale write recreated the database, and the next boot migrated it
+  normally — a "already done" flag would have skipped it forever.
+- **Draining is what stopped resurrection.** Without it, a guest draft deleted
+  in the new database would have been copied back on the next boot, forever.
 
-`attachmentContent` is not copied: it caches file bodies the server still has,
-so it costs the most to move and buys a cold fetch.
+`attachmentContent` was never copied: it caches file bodies the server still
+has, so it cost the most to move and bought only a cold fetch.
 
-A record whose write fails — most plausibly a `ConstraintError` from the unique
-`handle` index on `documents` — is left in the legacy database rather than
-dropped, and logged. The failure mode is a retry, never a lost draft.
+A record whose write failed — most plausibly a `ConstraintError` from the unique
+`handle` index on `documents` — was left in the legacy database rather than
+dropped, and logged. The failure mode was a retry, never a lost draft.
 
 ## What the rename did _not_ remove
 
@@ -72,7 +82,8 @@ which is where a search for them should land. Current saves already emit
 `blog-*`, and `src/editor/nodes/TableNode/__tests__/legacyTypes.test.ts` imports
 the constants from that module to guard both spellings.
 
-The remaining mentions are this guide and `LEGACY_DATABASE_NAME` in
-`src/indexeddb/migrate.ts`. Those _can_ eventually go: once the legacy database
-is drained in practice, deleting `migrate.ts` and `migrationPlan.ts` takes the
-comment in `src/indexeddb/index.ts` and most of this page with it.
+The only remaining mentions are those two node type strings, their explanatory
+comments, their spec, this guide, and the git history. `LEGACY_DATABASE_NAME`
+went with `migrate.ts` and `migrationPlan.ts` on 8 Aug 2026;
+`docs/plans/legacy-idb-retirement.md` records the sweep that justified deleting
+them and the residual risk it accepted.

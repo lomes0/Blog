@@ -73,7 +73,7 @@ globals; `compilerOptions.types` is deliberately left unset, because setting it
 would restrict resolution to only its entries and drop every other ambient
 package.
 
-Coverage is eighteen specs, 357 tests: `src/lib/__tests__/ordering.test.ts`
+Coverage is 22 specs, 399 tests: `src/lib/__tests__/ordering.test.ts`
 (fractional rank keys),
 `src/components/Layout/SideBar/__tests__/
 dragGeometry.test.ts` (sidebar drag
@@ -89,10 +89,7 @@ address bar may be rewritten to follow pane focus),
 derivable from the command registry — see docs/plans/workspace-panes.md §3.1),
 `src/components/EditDocument/__tests__/tabFit.test.ts` (which pane tabs fit the
 strip and which fall into the overflow menu),
-`src/indexeddb/__tests__/migrationPlan.test.ts` (the key arithmetic behind the
-copy out of the fork's old IndexedDB database — that a finished migration
-re-copies nothing, and that a record is only released from the old database once
-the new one holds it), `src/lib/__tests__/scrollMemory.test.ts` (restoring a
+`src/lib/__tests__/scrollMemory.test.ts` (restoring a
 document to where it was left — what a stored offset map may contain, and when a
 restore has settled versus is still waiting on content that has not rendered),
 and four for the content bridge (`src/lib/content-bridge/__tests__/`) —
@@ -134,12 +131,11 @@ stale marking actually firing) is a throwaway script against the local Postgres,
 not a spec — as is anything about `mcp/`, which has no test environment.
 
 All of these follow the same rule as `dragGeometry.ts`: the logic lives in an
-import-free module so it can be exercised without mounting anything. The IDB
-half that needs a real browser is `src/indexeddb/migrate.ts`, and it is not
-covered — verify it against a profile that has the old database. The DOM half of
-the scroll restore is `components/EditDocument/hooks/useScrollMemory.ts`, also
-uncovered: finding the right scroller and re-asserting an offset as content
-settles are both things only a real browser answers.
+import-free module so it can be exercised without mounting anything. The DOM
+half of the scroll restore is
+`components/EditDocument/hooks/useScrollMemory.ts`, and it is uncovered:
+finding the right scroller and re-asserting an offset as content settles are
+both things only a real browser answers.
 
 The sidebar drag's browser half is `SideBar/SidebarResizeHandle.tsx` plus
 `SidebarDragPreview.tsx`, and it is uncovered for the same reason: pointer

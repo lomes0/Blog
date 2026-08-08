@@ -509,9 +509,13 @@ Worth stating so the plan is not mistaken for a full de-fork:
   `Copyright (c) 2022 Ibrahim El-bastawisi` — required, never delete it. It
   still has no second copyright line for you; adding one is a one-line change
   this plan does not schedule.
-- **`src/indexeddb/index.ts` keeps `databaseName: "matheditor"`** — renaming it
-  strands every guest's local drafts. Decided 30 Jul 2026, still correct,
-  documented in `docs/guides/notes-indexeddb-origins.md`.
+- ~~**`src/indexeddb/index.ts` keeps `databaseName: "matheditor"`** — renaming
+  it strands every guest's local drafts.~~ **Overtaken 1 Aug 2026** by
+  `7921af36`, which renamed it to `blog-simple` and added the copy that makes
+  the rename safe. The reasoning above was right about the danger and wrong that
+  it was unavoidable. Retiring the copy itself is
+  `docs/plans/legacy-idb-retirement.md`; the background stays in
+  `docs/guides/notes-indexeddb-origins.md`.
 - **~9.5k LOC of `src/editor` is vendored Lexical playground code** (Meta
   copyright header). It is upstream-authored in the strictest sense, but it is
   the editor, not demo content. Out of scope.

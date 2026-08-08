@@ -2,7 +2,6 @@
 import { IDB_KEY } from "./constants";
 import { getActions, getConnection } from "./idb";
 import { IndexedDBConfig } from "./interfaces";
-import { migrateLegacyDatabase } from "./migrate";
 import { Post, Revision } from "@/types";
 import type { SerializedEditorState } from "lexical";
 
@@ -50,10 +49,11 @@ export function getStore<T>(storeName: string) {
 
 const idbConfig = {
   // The name is the handle for the browser's IndexedDB store, so changing it
-  // migrates nothing on its own — it opens a second, empty database. The old
-  // name is `"matheditor"`, inherited from the project this app was forked
-  // from, and `migrateLegacyDatabase` below is what carries the contents over.
-  // Renaming again would need the same treatment.
+  // migrates nothing on its own — it opens a second, empty database and strands
+  // every draft in the old one. Renaming this would need a copy written first,
+  // the way the fork's old database was carried over in Aug 2026; that copy was
+  // retired once every profile had been swept, so there is nothing left to
+  // follow this one. See `docs/plans/legacy-idb-retirement.md`.
   databaseName: "blog-simple",
   // 7 adds `workspaces`; 6 added `copilotThreads`. Bumping the version is what
   // runs `onupgradeneeded`, which creates any store in this list the database
@@ -123,14 +123,8 @@ const idbConfig = {
   ],
 };
 
-// The migration runs before `setupIndexedDB`, and that ordering is the whole
-// guard: every store action waits on the `window[IDB_KEY]` flag that
-// `setupIndexedDB` sets, so nothing can read or write until the copy is done.
-// A failed migration still lets the app start — see `migrateLegacyDatabase`.
 if (typeof window !== "undefined") {
-  migrateLegacyDatabase(idbConfig)
-    .catch(console.error)
-    .finally(() => setupIndexedDB(idbConfig).catch(console.error));
+  setupIndexedDB(idbConfig).catch(console.error);
 }
 export const documentDB = getStore<Post>("documents");
 export const revisionDB = getStore<Revision>("revisions");
