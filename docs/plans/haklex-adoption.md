@@ -383,25 +383,29 @@ Phase 5 deliverables **B** (`captureSelection`) and **D** (`describeCall`) are
 planned but not built. Phase 2's §9.2 was decided by the user: **restyle the
 chrome too**, not only the nodes.
 
-### 10.2 OPEN — the ``` markdown shortcut is broken
+### 10.2 FIXED — the ``` markdown shortcut (`3760c2a7`)
 
-**Live regression from the 0.49 upgrade, found in a browser, not yet fixed.**
-Typing ``` at the start of an empty paragraph should open a code block. It does
-not: the paragraph keeps the literal text and the editor throws
-`$getTextNodeOffset: invalid offset 3 for size 0 at key 5` (offset 3 is the
-three backticks).
+Typing ``` stopped opening a code block at 0.49; the paragraph kept the literal
+backticks and the editor threw `$getTextNodeOffset: invalid offset 3 for size
+0`. Only the code block was affected — `#`, `##`, `>`, `*`, `1.` and `---` all
+still converted, and the `/code` picker path was healthy throughout.
 
-Swept in a real browser — **only the code block is affected.** `#`, `##`, `>`,
-`*`, `1.` and `---` all still convert correctly. The code block itself is
-healthy: the `/code` picker produces `<code data-language="javascript">`, Enter
-stays in one block, highlighting emits token spans, Tab indents inside.
+**The hypothesis recorded here first — a transformer list assembled for 0.28
+omitting `MULTILINE_ELEMENT_TRANSFORMERS` — was wrong.** The list is correct and
+`CODE` is in it. The culprit was `MarkdownShortcutEnhancementPlugin`, which is
+*ours*, not vendored: it fires on the space/enter key **before** the character
+is inserted, which is why it coexists with `@lexical/markdown`'s multiline
+transformer rather than being replaced by it. It emptied the trigger text node
+and then passed the still-stale selection — anchored at offset 3 — to
+`$setBlocksType`. 0.49 validates an offset past the end of a node where 0.28
+tolerated it, so reading it threw and aborted the update. The `---` branch
+survived only because it removes the parent and dispatches a command instead of
+reusing the selection.
 
-Leading hypothesis, unverified: 0.49 exports `MULTILINE_ELEMENT_TRANSFORMERS`
-separately from `ELEMENT_TRANSFORMERS`, and `registerMarkdownShortcuts` takes
-it as its own argument — so a transformer list assembled for 0.28 silently
-omits the CODE transform. Check `packages/editor/src/plugins/MarkdownPlugin/`
-against upstream 0.49's copy; it is vendored playground code and may have
-drifted the way `TablePlugin/LexicalTablePluginHelpers.ts` had.
+The logic now lives in `blockShortcuts.ts` and runs against a headless editor.
+That move is the actual lesson: it was unreachable inside a `useEffect`, which
+is why a broken shortcut shipped green — the same shape of failure as the table
+bug in §10.3, and the second one this upgrade produced.
 
 ### 10.3 The lesson the table bug taught
 
