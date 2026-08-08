@@ -1,5 +1,4 @@
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
-import { TableCellNode, TableNode } from "./TableNode";
 import { ListItemNode, ListNode } from "@lexical/list";
 import { CodeHighlightNode, CodeNode } from "@lexical/code";
 import { AutoLinkNode, LinkNode } from "@lexical/link";
@@ -14,11 +13,7 @@ import { LayoutContainerNode, LayoutItemNode } from "./LayoutNode";
 import type { InitialConfigType } from "@lexical/react/LexicalComposer";
 import type { CreateEditorArgs } from "lexical";
 import { htmlConfig } from "@/editor/utils/htmlConfig";
-import {
-  LegacyTableCellNode,
-  LegacyTableNode,
-  LexicalTableRowNode,
-} from "@/editor/nodes/TableNode";
+import { TABLE_NODES } from "@/editor/nodes/TableNode";
 import {
   DetailsContainerNode,
   DetailsContentNode,
@@ -52,26 +47,9 @@ export const nestedEditorConfig = {
     QuoteNode,
     CodeNode,
     CodeHighlightNode,
-    TableNode,
-    TableCellNode,
-    // Type aliases for tables stored before the rename. Kept identical to
-    // `editor/config.tsx` — see the note on `LegacyTableNode`.
-    {
-      replace: LegacyTableNode,
-      with: (_node: LegacyTableNode) => new TableNode(),
-      withKlass: TableNode,
-    },
-    {
-      replace: LegacyTableCellNode,
-      with: (node: LegacyTableCellNode) =>
-        new TableCellNode(
-          node.__headerState,
-          node.__colSpan,
-          node.__width,
-        ),
-      withKlass: TableCellNode,
-    },
-    LexicalTableRowNode,
+    // The same constant `editor/config.tsx` spreads, not a copy of it — see the
+    // note in `TableNode/registration.ts`.
+    ...TABLE_NODES,
     AutoLinkNode,
     LinkNode,
     HorizontalRuleNode,

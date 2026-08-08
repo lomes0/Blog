@@ -1,5 +1,4 @@
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
-import { TableCellNode, TableNode } from "./nodes/TableNode";
 import { ListItemNode, ListNode } from "@lexical/list";
 import { CodeHighlightNode, CodeNode as LexicalCodeNode } from "@lexical/code";
 import { CodeNode } from "./nodes/CodeNode";
@@ -22,11 +21,7 @@ import { LayoutContainerNode, LayoutItemNode } from "./nodes/LayoutNode";
 import type { InitialConfigType } from "@lexical/react/LexicalComposer";
 import type { CreateEditorArgs } from "lexical";
 import { htmlConfig } from "./utils/htmlConfig";
-import {
-  LegacyTableCellNode,
-  LegacyTableNode,
-  LexicalTableRowNode,
-} from "@/editor/nodes/TableNode";
+import { TABLE_NODES } from "@/editor/nodes/TableNode";
 import {
   DetailsContainerNode,
   DetailsContentNode,
@@ -55,58 +50,42 @@ export const editorConfig = {
     //
     // Lexical keys its registry by node type string, one entry per type. Import
     // (parseSerializedNode) uses entry.klass.importJSON — so klass MUST be our
-    // CodeNode to restore width/wrap. Runtime creation (markdown ```, paste) goes
-    // through @lexical/code's $createCodeNode -> $applyNodeReplacement, keyed on
-    // the shared "code" type — so the entry MUST also carry a `replace` fn to
-    // upgrade those base nodes. The only entry shape giving both klass=CodeNode
-    // and a replace fn is `replace: CodeNode`. (A separate `CodeNode` list item
-    // would overwrite this entry's replace, leaving runtime-created blocks as
-    // base LexicalCodeNode — undetectable by the toolbar/chrome, which is the
-    // bug this fixes.)
+    // CodeNode to restore width/wrap. The only entry shape giving both
+    // klass=CodeNode and a replace fn is `replace: CodeNode`. (A separate
+    // `CodeNode` list item would overwrite this entry's replace, leaving
+    // runtime-created blocks as base LexicalCodeNode — undetectable by the
+    // toolbar/chrome, which is the bug this fixes.)
     //
-    // Still true at Lexical 0.49, with two things worth recording:
+    // **This is not the shape the table entries use, and the difference is not
+    // a style choice.** Owning a type string upstream also constructs is only
+    // safe when upstream constructs it through `$create`, which resolves the
+    // registry entry and instantiates `klass` — ours — directly. At 0.49
+    // `$createCodeNode` in `@lexical/code-core` is
+    // `$create(CodeNode).setLanguage(…)`, so it lands on ours and the
+    // constructor's `errorOnTypeKlassMismatch` is satisfied. `@lexical/table`
+    // still writes `$applyNodeReplacement(new TableNode())`, where the `new`
+    // runs first — so its slots must hold upstream's own classes or every
+    // insertion throws. See `nodes/TableNode/registration.ts`.
     //
-    // 1. Runtime creation increasingly goes through `$create`, which resolves
-    //    the registry entry and constructs `klass` — ours — directly, ignoring
-    //    the `with` fn (its own doc calls those deprecated). The fn is still
-    //    needed for the residual `$applyNodeReplacement` paths, which is what
-    //    `$createCodeNode` in `@lexical/code-core` still uses.
-    // 2. Dev builds now warn "Override for CodeNode specifies 'replace'
-    //    without 'withKlass'". We cannot satisfy it here and should not try:
-    //    registration asserts `replaceWithKlass.prototype instanceof klass`, a
-    //    *strict* subclass, which a same-class entry can never be. The table
-    //    entries below do carry `withKlass`, because there the replaced class
-    //    and the replacement are genuinely different classes.
+    // Because `$create` ignores the `with` fn, the fn here only covers the
+    // residual `$applyNodeReplacement` paths (a plain @lexical/code node
+    // arriving from somewhere that still builds one). Keep it.
+    //
+    // Dev builds warn "Override for CodeNode specifies 'replace' without
+    // 'withKlass'". We cannot satisfy it here and should not try: registration
+    // asserts `replaceWithKlass.prototype instanceof klass`, a *strict*
+    // subclass, which a same-class entry can never be. The table entries do
+    // carry `withKlass`, because there the replaced class and the replacement
+    // are genuinely different classes.
     {
       replace: CodeNode,
       with: (node: LexicalCodeNode) => new CodeNode(node.getLanguage()),
     },
     CodeHighlightNode,
-    TableNode,
-    TableCellNode,
-    // Type aliases for tables stored before the rename. `LegacyTableNode` owns
-    // the `"table"` registry slot and hands `importJSON` to `TableNode`; see
-    // the note on that class for why upstream's own class can no longer do it.
-    // `withKlass` does the other half: it makes upstream's `TableNode` resolve
-    // to ours for `registerNodeTransform` / `registerMutationListener`, which
-    // is what lets `@lexical/table`'s `registerTablePlugin` and
-    // `registerTableSelectionObserver` drive our subclasses.
-    {
-      replace: LegacyTableNode,
-      with: (_node: LegacyTableNode) => new TableNode(),
-      withKlass: TableNode,
-    },
-    {
-      replace: LegacyTableCellNode,
-      with: (node: LegacyTableCellNode) =>
-        new TableCellNode(
-          node.__headerState,
-          node.__colSpan,
-          node.__width,
-        ),
-      withKlass: TableCellNode,
-    },
-    LexicalTableRowNode,
+    // Our two subclasses, upstream's three classes, and the `replace` entries
+    // that join them. One shared constant because the shape is load-bearing and
+    // getting it wrong throws on every table insertion — see the note there.
+    ...TABLE_NODES,
     AutoLinkNode,
     LinkNode,
     HorizontalRuleNode,

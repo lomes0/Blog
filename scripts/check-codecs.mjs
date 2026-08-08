@@ -110,12 +110,6 @@ const OPAQUE_ALLOWLIST = {
     "same: a notes-domain structure reached as a block",
   "page-break":
     "no attributes at all. A codec could only encode `{}`, which buys an agent nothing it cannot already do by moving or deleting the block",
-
-  // --- Pre-rename aliases. ---
-  table:
-    "legacy alias class: answers for the pre-rename `type` string and hands importJSON to `blog-table`, which has the codec. No stored revision still carries it (docs/plans/upstream-scrub.md)",
-  tablecell:
-    "legacy alias for `blog-tablecell`, same as `table`",
 };
 
 // ---------------------------------------------------------------------------

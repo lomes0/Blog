@@ -89,6 +89,16 @@ property.** A comment asserting that data cannot be migrated is worth one
 `count(*)` before it is believed. Here the check took seconds and retired a
 constraint that had been treated as permanent.
 
+**The aliases came back once, hours later, and broke the editor.** The Lexical
+0.28 → 0.49 upgrade (`9c5d1b31`) reintroduced them to defend "legacy documents",
+without knowing the migration above had already emptied that set — and the
+reintroduction was fatal rather than merely redundant, because a class that owns
+a type string upstream itself constructs makes every table insertion throw. See
+`packages/editor/src/nodes/TableNode/registration.ts` for the mechanism and
+`docs/plans/legacy-idb-retirement.md` §10.6 for the sequence. The second lesson,
+then: **a migration is only finished when the reason for the workaround is
+written where the workaround used to be**, or the next change re-derives it.
+
 Nothing in the tree now carries the upstream name — code, docs or memory.
 `docs/plans/legacy-idb-retirement.md` records both halves, and the pre-migration
 rows are backed up under `var/backups/`.

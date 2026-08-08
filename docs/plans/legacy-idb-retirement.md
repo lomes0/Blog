@@ -537,3 +537,59 @@ procedure rather than a permanent obligation.
 data cannot be migrated is worth one `count(*)` before it is believed. This one
 had been load-bearing for weeks; checking it took under a minute and turned a
 permanent constraint into a 58-row `UPDATE`.
+
+### 10.6 The aliases came back the same evening, and broke table insertion
+
+Added 8 Aug 2026, hours after §10.4.
+
+`9c5d1b31` (Lexical 0.28 → 0.49) reintroduced `LegacyTableNode` /
+`LegacyTableCellNode`. Its reasoning was sound for the world it assumed: at 0.49
+upstream declares itself through `$config()` and has no own `static importJSON`,
+so the synthesized one is `s => new klass().updateFromJSON(s)` — plain
+construction — and the `{ replace: LexicalTableNode, with: … }` entry that used
+to catch legacy JSON on import stopped firing. The commit did not know §10 had
+already emptied the set that entry was protecting.
+
+**The reintroduction was fatal, not merely redundant.** `LexicalNode`'s
+constructor calls `errorOnTypeKlassMismatch` on *every* construction, and
+`@lexical/table` builds its nodes as `$applyNodeReplacement(new TableNode())` —
+the `new` first. So a class other than upstream's in the `"table"` slot makes
+every table insertion throw before replacement can run:
+
+```
+Create node: Type table in node TableNode does not match
+registered node LegacyTableNode with the same type
+```
+
+followed by a cascading `TypeError` in `$garbageCollectDetachedDeepChildNodes`.
+The four tests the commit added all called `importJSON` directly, so the
+constructor guard never ran against a live editor and they stayed green while
+the editor was unusable.
+
+**You cannot register a different class under a type string upstream itself
+constructs.** The contrast worth keeping is the `CodeNode` entry in
+`config.tsx`, which *does* own a shared type string and is fine — because
+`$createCodeNode` at 0.49 is `$create(CodeNode)`, and `$create` resolves the
+registry entry and instantiates `klass` directly rather than constructing
+upstream's class first.
+
+**Fixed by reverting to the `{ replace: LexicalTableNode, withKlass: TableNode }`
+shape and deleting the aliases again — with no migration seam to replace them.**
+A load-time JSON rewrite was considered and rejected: there is no single parse
+seam (stored state reaches Lexical through the composer config, three ad-hoc
+`parseEditorState` sites in the edit panel, three headless generators and ~7
+nested-node `importJSON` sites, and the content bridge never touches Lexical at
+all), so it would have been four independent hooks plus a `stateHash` change
+invalidating agent read→write round trips — permanent surface defending data
+§10.2 proved does not exist. The residual behaviour is now asserted rather than
+assumed: pre-rename JSON loads as an upstream node, keeping its text, chrome and
+node state but not the id/style our subclasses model. Two specs in
+`packages/editor/src/nodes/__tests__/serialization.test.ts` pin it, one of them
+by inserting a table through `$createTableNodeWithDimensions` over the real
+registry array.
+
+That array is now a single exported constant,
+`packages/editor/src/nodes/TableNode/registration.ts`, spread by both
+`config.tsx` and `nestedConfig.tsx` instead of pasted into each. It carries the
+whole explanation, and it is what made the registry testable — the `.tsx` config
+modules do not parse under vitest.

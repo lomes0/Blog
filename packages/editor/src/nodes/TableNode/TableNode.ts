@@ -61,49 +61,8 @@ function wrapTableElement(
   return wrapperElement;
 }
 
-/**
- * Answers for tables stored under the pre-rename `type: "table"`.
- *
- * Until Lexical 0.44 the upgrade needed no class of its own: upstream
- * `TableNode.importJSON` called `$createTableNode()`, which routes through
- * `$applyNodeReplacement`, so the `{ replace: LexicalTableNode, with: … }`
- * entry in `config.tsx` caught the node on the way out. At 0.49 upstream
- * declares itself through `$config()` and has no own `static importJSON`; the
- * one Lexical synthesizes is `s => new klass().updateFromJSON(s)` — plain
- * construction, no replacement. Legacy JSON would therefore load as an
- * upstream `TableNode`, losing id/style/float/alignment and re-exporting as
- * `"table"`.
- *
- * So the registry entry for `"table"` needs a klass whose `importJSON` hands
- * off to ours. It sits *between* upstream and `TableNode` rather than beside
- * it because `withKlass` requires a strict subclass
- * (`LexicalEditor` node registration: `replaceWithKlass.prototype instanceof
- * klass`), and `withKlass` is what lets `registerNodeTransform` /
- * `registerMutationListener` on upstream's `TableNode` reach ours — which is
- * how `@lexical/table`'s own `registerTablePlugin` finds our subclass.
- */
-export class LegacyTableNode extends LexicalTableNode {
-  static getType(): string {
-    return "table";
-  }
-
-  static clone(node: LegacyTableNode): LegacyTableNode {
-    return new LegacyTableNode(node.__key);
-  }
-
-  static importJSON(serializedNode: LexicalSerializedTableNode): TableNode {
-    // Pre-rename JSON carries neither field; without the defaults they would
-    // reach the DOM as the string "undefined".
-    return TableNode.importJSON({
-      style: "",
-      id: "",
-      ...serializedNode,
-    });
-  }
-}
-
 /** @noInheritDoc */
-export class TableNode extends LegacyTableNode {
+export class TableNode extends LexicalTableNode {
   __style: string;
   __id: string;
   // `getType()` is the discriminator Lexical writes into the `type` field of
@@ -136,8 +95,12 @@ export class TableNode extends LegacyTableNode {
     const node = $createTableNode();
     node.setFormat(_serializedNode.format);
     node.setDirection(_serializedNode.direction);
-    node.setStyle(_serializedNode.style);
-    node.setId(_serializedNode.id);
+    // `exportJSON` is not the only writer of this shape: `src/lib/content-
+    // bridge/blocks.ts` composes table JSON field by field for an agent's
+    // writes. Default rather than trust, because an absent field arrives as
+    // `undefined` and reaches the DOM as the literal string "undefined".
+    node.setStyle(_serializedNode.style ?? "");
+    node.setId(_serializedNode.id ?? "");
     node.setRowStriping(_serializedNode.rowStriping || false);
     node.setColWidths(_serializedNode.colWidths);
     return node.updateFromJSON(_serializedNode);

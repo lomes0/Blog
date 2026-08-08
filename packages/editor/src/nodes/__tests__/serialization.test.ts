@@ -36,13 +36,8 @@ import {
   DetailsContentNode,
   DetailsSummaryNode,
 } from "@/editor/nodes/DetailsNode";
-import {
-  LegacyTableCellNode,
-  LegacyTableNode,
-  LexicalTableRowNode,
-  TableCellNode,
-  TableNode,
-} from "@/editor/nodes/TableNode";
+import { TABLE_NODES } from "@/editor/nodes/TableNode";
+import { $createTableNodeWithDimensions } from "@lexical/table";
 
 const blockId = createState("blockId", {
   parse: (v: unknown) => (typeof v === "string" ? v : ""),
@@ -167,20 +162,88 @@ describe("custom element nodes survive a load", () => {
 });
 
 /**
- * Tables stored before the rename carry `type: "table"` / `"tablecell"`, and
- * must come back as our subclasses — anything else silently loses the id,
- * style, float and alignment those classes model, and re-exports under the old
- * type string.
+ * The table registry, exercised the way the app actually uses it.
  *
- * The upgrade used to need no class of its own: upstream's `importJSON` went
- * through `$createTableNode()` -> `$applyNodeReplacement`, so the `replace`
- * entry caught it. At 0.49 upstream declares itself via `$config()` with no own
- * `static importJSON`, and the synthesized one is plain construction — no
- * replacement. `LegacyTableNode` / `LegacyTableCellNode` own those type strings
- * now and hand off to ours; without them this parses to upstream nodes and the
- * types below come back as `"table"` / `"tablecell"`.
+ * This is the half the four `importJSON` tests it replaces could not see. They
+ * called `importJSON` directly, so `LexicalNode`'s constructor guard —
+ * `errorOnTypeKlassMismatch`, which fires on *every* construction and compares
+ * the registered `klass` for a type against the class being constructed — never
+ * ran against a live editor. They passed green while inserting a table threw:
+ *
+ *     Create node: Type table in node TableNode does not match registered node
+ *     LegacyTableNode with the same type
+ *
+ * `@lexical/table` builds its nodes as `$applyNodeReplacement(new TableNode())`
+ * — the `new` first, replacement second — so the guard fires before replacement
+ * can run. Nothing but upstream's own class may hold the `"table"` /
+ * `"tablecell"` slots. Insert through upstream's own creator, over the same
+ * registry array the two configs spread, and that is unmissable.
  */
-describe("tables stored before the rename load as our subclasses", () => {
+describe("a table can be inserted through @lexical/table's own creators", () => {
+  const insert = () => {
+    const editor = createHeadlessEditor({
+      namespace: "serialization-table-insert",
+      nodes: TABLE_NODES,
+      onError: (e) => {
+        throw e;
+      },
+    });
+    editor.update(
+      () => {
+        // Routes through $createTableNode, $createTableRowNode and
+        // $createTableCellNode — all three of upstream's
+        // `$applyNodeReplacement(new …)` paths in one call.
+        $getRoot().append($createTableNodeWithDimensions(2, 2, true));
+      },
+      { discrete: true },
+    );
+    const out = editor.getEditorState().toJSON() as unknown as {
+      root: { children: Record<string, unknown>[] };
+    };
+    const table = out.root.children[0];
+    const row = (table.children as Record<string, unknown>[])[0];
+    const cell = (row.children as Record<string, unknown>[])[0];
+    return { table, row, cell };
+  };
+
+  it("does not throw", () => {
+    expect(insert).not.toThrow();
+  });
+
+  it("produces our subclasses, not upstream's", () => {
+    const { table, row, cell } = insert();
+    expect(table.type).toBe("blog-table");
+    expect(cell.type).toBe("blog-tablecell");
+    // Never renamed — upstream both owns and serializes this one.
+    expect(row.type).toBe("tablerow");
+  });
+
+  it("the fields our subclasses model arrive defaulted, not undefined", () => {
+    const { table, cell } = insert();
+    expect(table).toMatchObject({ style: "", id: "" });
+    expect(cell).toMatchObject({ style: "" });
+  });
+});
+
+/**
+ * What now happens to JSON carrying the pre-rename `"table"` / `"tablecell"`
+ * type strings — asserted rather than assumed, because it is a decision.
+ *
+ * There is no alias class and no load-time migration. `docs/plans/
+ * legacy-idb-retirement.md` §10 established that this data does not exist: all
+ * 58 stored revisions carrying those strings were rewritten, every other JSON
+ * column counted zero, every browser profile on the only machine that has ever
+ * run this app held zero guest documents, and a filesystem scan found no export
+ * bundles. §10.4 deleted the aliases on that evidence; `9c5d1b31` reintroduced
+ * them without it, and that is what broke insertion.
+ *
+ * So the residual behaviour is graceful degradation, not support: upstream's
+ * class holds the slot, so such JSON *loads* — text and structure survive — but
+ * comes back under the old type without the id/style our subclasses model. This
+ * test exists to make that visible, and to make a third reintroduction of an
+ * alias class a deliberate act rather than an obvious-looking fix.
+ */
+describe("pre-rename table JSON degrades rather than throwing", () => {
   const LEGACY_STATE = {
     root: {
       type: "root",
@@ -234,32 +297,15 @@ describe("tables stored before the rename load as our subclasses", () => {
     },
   };
 
-  const roundTripLegacy = () => {
+  const loadLegacy = () => {
     const editor = createHeadlessEditor({
       namespace: "serialization-legacy-table",
-      nodes: [
-        TableNode,
-        TableCellNode,
-        {
-          replace: LegacyTableNode,
-          with: (_node: LegacyTableNode) => new TableNode(),
-          withKlass: TableNode,
-        },
-        {
-          replace: LegacyTableCellNode,
-          with: (node: LegacyTableCellNode) =>
-            new TableCellNode(node.__headerState, node.__colSpan, node.__width),
-          withKlass: TableCellNode,
-        },
-        LexicalTableRowNode,
-      ] as (Klass<LexicalNode> | LexicalNodeReplacement)[],
+      nodes: TABLE_NODES,
       onError: (e) => {
         throw e;
       },
     });
-    editor.setEditorState(
-      editor.parseEditorState(JSON.stringify(LEGACY_STATE)),
-    );
+    editor.setEditorState(editor.parseEditorState(JSON.stringify(LEGACY_STATE)));
     const out = editor.getEditorState().toJSON() as unknown as {
       root: { children: Record<string, unknown>[] };
     };
@@ -269,24 +315,18 @@ describe("tables stored before the rename load as our subclasses", () => {
     return { table, cell };
   };
 
-  const { table, cell } = roundTripLegacy();
-
-  it("a legacy table re-exports as blog-table", () => {
-    expect(table.type).toBe("blog-table");
+  it("loads without throwing", () => {
+    expect(loadLegacy).not.toThrow();
   });
 
-  it("a legacy cell re-exports as blog-tablecell", () => {
-    expect(cell.type).toBe("blog-tablecell");
+  it("stays on the old type strings — it is not upgraded", () => {
+    const { table, cell } = loadLegacy();
+    expect(table.type).toBe("table");
+    expect(cell.type).toBe("tablecell");
   });
 
-  it("the fields our subclasses model are present and defaulted", () => {
-    // Absent from pre-rename JSON — they must not arrive as `undefined`, which
-    // reaches the DOM as the literal string.
-    expect(table).toMatchObject({ style: "", id: "" });
-    expect(cell).toMatchObject({ style: "" });
-  });
-
-  it("the upgrade does not cost chrome or node state", () => {
+  it("keeps its content, chrome and node state", () => {
+    const { table, cell } = loadLegacy();
     expect(table).toMatchObject({ format: "center", direction: "ltr" });
     expect(table.$).toEqual({ blockId: "id_table" });
     expect(cell.$).toEqual({ blockId: "id_cell" });

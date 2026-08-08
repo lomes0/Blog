@@ -32,35 +32,8 @@ export type SerializedTableCellNode = LexicalSerializedTableCellNode & {
   style: string;
 };
 
-/**
- * Answers for cells stored under the pre-rename `type: "tablecell"`.
- * See the note on `LegacyTableNode` for why this class exists at 0.49 and why
- * it sits between upstream and `TableCellNode` rather than beside it.
- */
-export class LegacyTableCellNode extends LexicalTableCellNode {
-  static getType(): string {
-    return "tablecell";
-  }
-
-  static clone(node: LegacyTableCellNode): LegacyTableCellNode {
-    return new LegacyTableCellNode(
-      node.__headerState,
-      node.__colSpan,
-      node.__width,
-      node.__key,
-    );
-  }
-
-  static importJSON(
-    serializedNode: LexicalSerializedTableCellNode,
-  ): TableCellNode {
-    // Pre-rename JSON has no `style`; our importJSON parses it unconditionally.
-    return TableCellNode.importJSON({ style: "", ...serializedNode });
-  }
-}
-
 /** @noInheritDoc */
-export class TableCellNode extends LegacyTableCellNode {
+export class TableCellNode extends LexicalTableCellNode {
   __style: string;
   // Persisted in every serialized table cell — see the note on TableNode.
   static getType(): string {
@@ -103,7 +76,10 @@ export class TableCellNode extends LegacyTableCellNode {
     );
     cellNode.__rowSpan = rowSpan;
     cellNode.__backgroundColor = serializedNode.backgroundColor || null;
-    cellNode.__style = serializedNode.style;
+    // Absent on a cell the content bridge composed — `cellNode()` in
+    // `src/lib/content-bridge/blocks.ts` carries `style` through from a
+    // previous cell but never mints one. See the note in `TableNode.importJSON`.
+    cellNode.__style = serializedNode.style ?? "";
     // set the background color from the style for selection highlight in base lexical node
     const styles = getStyleObjectFromRawCSS(cellNode.__style);
     const backgroundColor = styles["background-color"];

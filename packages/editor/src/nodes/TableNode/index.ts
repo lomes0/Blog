@@ -7,13 +7,8 @@ export {
 export {
   $createTableCellNode,
   $isTableCellNode,
-  LegacyTableCellNode,
   TableCellNode,
 } from "./TableCellNode";
 export type { SerializedTableNode } from "./TableNode";
-export {
-  $createTableNode,
-  $isTableNode,
-  LegacyTableNode,
-  TableNode,
-} from "./TableNode";
+export { $createTableNode, $isTableNode, TableNode } from "./TableNode";
+export { TABLE_NODES } from "./registration";
