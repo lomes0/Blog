@@ -1,7 +1,10 @@
 # Haklex adoption
 
 Status: **planned, not started.** Written 8 Aug 2026 from a read of
-`tmp/haklex` at `59850ebd` (v0.34.0, 5 Aug 2026, MIT).
+`tmp/haklex` at `59850ebd` (v0.34.0, 5 Aug 2026, MIT). Reviewed the same day:
+measurements re-verified against both trees; the Lexical target (0.47 → 0.49),
+the `@lexical/html` patch-package obstacle (§3), and the src/-rooted checker
+globs (§4.3) were corrected as a result.
 
 Haklex is an AI-agent-native Lexical ecosystem — 40 packages, ~55k LOC,
 published to npm and consumed by three downstreams. This plan takes four things
@@ -15,7 +18,7 @@ Four workstreams, in dependency order:
 
 | # | Workstream | Depends on |
 | - | ---------- | ---------- |
-| 0 | Lexical 0.28 → 0.47 | — |
+| 0 | Lexical 0.28 → 0.49 | — |
 | 1 | Extract `src/editor` into a workspace package | 0 |
 | 2 | Vanilla-extract + Base UI inside that package | 1 |
 | 3 | Component upgrades — code block, image, nested doc, code snippet | 2 |
@@ -113,15 +116,17 @@ attribute nothing set. See DESIGN.md §19 and the header comment in that script.
 
 This is a hard constraint on phase 2, spelled out in §4.2.
 
-### 2.5 Haklex is 19 minors ahead on Lexical
+### 2.5 Haklex is 21 minors ahead on Lexical
 
-They are on **0.47**; we are on **0.28**. They import `@lexical/code-core` and
+They are on **0.49** — `^0.49.0` on every one of the 55+ `lexical` entries
+across their package.json files; re-check their floor when phase 0 actually
+starts. We are on **0.28**. They import `@lexical/code-core` and
 `@lexical/extension`, neither of which exists in our version. We import
 `@lexical/code` (15 sites) and `@lexical/utils` (46 sites).
 
 Nothing from haklex ports without this. It is phase 0 for that reason.
 
-## 3. Phase 0 — Lexical 0.28 → 0.47
+## 3. Phase 0 — Lexical 0.28 → 0.49
 
 **Do this first and alone.** It touches every node class and is the phase most
 likely to surface surprises; bundling it with anything else makes the diff
@@ -133,8 +138,13 @@ Known signals, not a complete list — start with a spike, not an upgrade:
   `@lexical/code-core`. Our `config.tsx` has a delicate `{ replace: CodeNode,
   with: … }` entry whose comment explains why that exact shape is the only one
   giving both `klass` and a replace fn. **Re-verify that comment's claim against
-  0.47's registry semantics before touching it.**
+  0.49's registry semantics before touching it.**
 - `@lexical/extension` is new and is where haklex gets `HorizontalRuleNode`.
+- `patches/@lexical+html+0.28.0.patch` is pinned to the outgoing version —
+  patch-package will refuse it the moment `@lexical/html` moves. Re-read what it
+  patches and either re-roll it against 0.49 or confirm upstream fixed it and
+  retire it. Either way, also delete the stale `@lexical+html+0.21.0.patch`
+  sitting next to it, which should have gone with the last upgrade.
 - `createState` / `$getState` / `$setState` already exist in 0.28 (we use them),
   so §2.3 survives the upgrade — but confirm the `$` serialization key is
   unchanged, because `blockId.ts`, `check:nodes` and the whole content-bridge
@@ -181,9 +191,21 @@ reason we do not need haklex's static/edit split.
 
 ### 4.3 Gate
 
-Pure code motion. `npx tsc --noEmit`, `npm run lint`, `npm test`,
-`npm run check:nodes`, `npm run check:theme` all green, and **no visual diff** —
-if anything moves on screen, phase 1 did too much.
+Pure code motion — except that three checks are hard-rooted at `src/` and must
+be repointed in the same commit, or they go green by checking nothing:
+
+- `scripts/check-theme.mjs` has `PATTERNS = ["src/**/*.css"]`. Once `theme.css`
+  moves, it goes blind **in this phase** — §5.2's `.css.ts` blindness is a
+  second, separate problem that arrives in phase 2.
+- `scripts/check-node-serialization.mjs` has `NODES_DIR = src/editor/nodes`.
+- `vitest.config.mts` has `include: ["src/**/__tests__/**/*.test.{ts,tsx}"]` —
+  any spec that moves with the package silently drops out of `npm test` while
+  the run stays green.
+
+Gate: `npx tsc --noEmit`, `npm run lint`, `npm run check:nodes`,
+`npm run check:theme` all green; `npm test` green **at the same test count as
+before the move — assert the number (411 at time of writing), not the color**;
+and **no visual diff** — if anything moves on screen, phase 1 did too much.
 
 ## 5. Phase 2 — vanilla-extract + Base UI in the editor
 
@@ -215,10 +237,11 @@ Per §2.4: the vanilla-extract theme **must** key its dark contract to
 - **Not** a `data-theme` attribute — haklex's `ColorSchemeContext` /
   `portal-theme.tsx` do it their way; ours must be adapted, not copied.
 
-`scripts/check-theme.mjs` globs `src/**/*.css` and will go **blind** to
-`.css.ts` files. Phase 2 is not done until it can see them — either teach it the
-vanilla-extract output or add a sibling check. Shipping phase 2 with the checker
-blind reintroduces exactly the failure it was written for.
+`scripts/check-theme.mjs` (repointed at the package during phase 1, §4.3)
+parses only `.css` files and will go **blind** to `.css.ts`. Phase 2 is not
+done until it can see them — either teach it the vanilla-extract output or add
+a sibling check. Shipping phase 2 with the checker blind reintroduces exactly
+the failure it was written for.
 
 ### 5.3 Token layer
 
@@ -324,8 +347,9 @@ proposal path. Exercise the routes against local Postgres by hand — and read t
 docker warning in CLAUDE.md before starting anything on `5432`.
 
 Per phase: `npx tsc --noEmit`, `npm run lint`, `npm test`, `npm run check:nodes`
-(phases 0, 1, 3), `npm run check:theme` (phases 1, 2 — and see §5.2 about it
-going blind), `npm run build` + `next start` (phase 2).
+(phases 0, 1, 3), `npm run check:theme` (phases 1, 2 — and see §4.3 and §5.2:
+each of those phases blinds it in a different way), `npm run build` +
+`next start` (phase 2).
 
 ## 9. Open questions
 
