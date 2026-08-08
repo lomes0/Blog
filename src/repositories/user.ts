@@ -14,6 +14,19 @@ const findUserByEmail = async (email: string) => {
   });
 };
 
+/**
+ * Resolve a user the way the *operator* names one: a `User` id or an email.
+ *
+ * Distinct from `findUser`, which takes an id or a public handle — that is how
+ * a URL names a user. This is how `MCP_AUTHOR_ID` and the agent-token CLI do
+ * it, neither of which has a URL to work from.
+ */
+const findUserByRef = async (ref: string) => {
+  return prisma.user.findUnique({
+    where: validate(ref) ? { id: ref } : { email: ref },
+  });
+};
+
 const createUser = async (data: Prisma.UserCreateInput) => {
   return prisma.user.create({ data });
 };
@@ -31,4 +44,11 @@ const deleteUser = async (id: string) => {
   });
 };
 
-export { createUser, deleteUser, findUser, findUserByEmail, updateUser };
+export {
+  createUser,
+  deleteUser,
+  findUser,
+  findUserByEmail,
+  findUserByRef,
+  updateUser,
+};

@@ -136,7 +136,14 @@ database or a subprocess. It pins the authorization claim rather than the
 plumbing — two servers in one process get two different authors, a write passes
 its resolved author as `ownedBy`, and `tools/list` costs no user lookup. What is
 still script-only is anything that needs the live database: `npm run mcp:smoke`
-(export `MCP_AUTHOR_ID` — the value lives in `.mcp.json`, not `.env`).
+(export `MCP_AUTHOR_ID` — the value lives in `.mcp.json`, not `.env`) and
+`npm run mcp:token`. `src/lib/__tests__/agentTokens.test.ts` covers the
+credential those will use, and deliberately covers the *refusal* side, because
+that is the half that fails silently: an unknown and a revoked token must be
+indistinguishable from outside, expiry is inclusive on the boundary, the stored
+hash never comes back to the caller, and a valid token whose owner is `disabled`
+is refused — the `requireUser` rule a bearer credential is the obvious way to
+miss.
 
 All of these follow the same rule as `dragGeometry.ts`: the logic lives in an
 import-free module so it can be exercised without mounting anything. The DOM
@@ -187,6 +194,11 @@ The application uses PostgreSQL with the following core models:
 - **Revision**: Version history for documents, stored as JSON
 - **DocumentCoauthers**: Many-to-many relationship for collaborative editing
 - **Account/Session/VerificationToken**: NextAuth models
+- **AgentToken**: bearer credentials for the (not yet built) remote MCP
+  endpoint — many per user, each independently revocable. Only the SHA-256 of a
+  secret is stored, `userId` lives on the token and never arrives in a request,
+  and revoked rows are kept rather than deleted. Mint and revoke with
+  `npm run mcp:token`; see docs/plans/mcp_support.md §4.3
 
 ### Local vs Cloud Storage
 

@@ -18,7 +18,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "mcp:server": "node --import tsx --env-file=.env mcp/content-server.ts",
-    "mcp:smoke": "node --import tsx mcp/smoke.ts"
+    "mcp:smoke": "node --import tsx mcp/smoke.ts",
+    "mcp:token": "node --import tsx --env-file=.env prisma/scripts/agent-token.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "3.0.9",

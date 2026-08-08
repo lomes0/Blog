@@ -1,6 +1,6 @@
 # Remote MCP support
 
-**Status: phase 1 shipped (8 Aug 2026); phases 2–6 proposed.** Originally
+**Status: phases 1–2 shipped (8 Aug 2026); phases 3–6 proposed.** Originally
 measured against the tree at `b01e91a5`. Builds on the
 content bridge ([claude-code-lexical.md](./claude-code-lexical.md), phases 1–5
 shipped) and the proposal gating ([agent-gating.md](./agent-gating.md), phases
@@ -236,12 +236,49 @@ the transport optional is what made them reachable. What they pin is §1's
 claim: two servers in one process get two different authors, a write passes its
 resolved author as `ownedBy`, and `tools/list` costs no user lookup.
 
-### Phase 2 — Tokens
+### Phase 2 — Tokens — **SHIPPED (8 Aug 2026)**
 
-Migration for `AgentToken`. A `scripts/mint-agent-token.mjs` that takes a user
-ref, a name and scopes, prints the secret once. Revocation and listing in the
-same script. This matches the existing admin story (psql-only, per the audit) —
-a management UI is deferred, not forgotten (§8).
+`AgentToken` per §4.3 (migration `20260808165956_add_agent_token`, purely
+additive — one new table, nothing altered), **many per user** as §8.1 asked.
+`src/lib/agentTokens.ts` holds the lifecycle and
+`prisma/scripts/agent-token.ts` is a thin CLI over it:
+
+```bash
+npm run mcp:token -- mint you@example.com --name laptop
+npm run mcp:token -- mint you@example.com --name ci --scopes read --expires 90d
+npm run mcp:token -- list you@example.com
+npm run mcp:token -- revoke <token-id>
+```
+
+Deviations, again deliberate:
+
+- **The whole lifecycle is in the module, not just minting.** Splitting
+  `verifyAgentToken` into phase 3 would mean the hash written by one phase and
+  read by another, which is the drift the module exists to prevent. Phase 3 now
+  only has to write the wrapper.
+- **`prisma/scripts/*.ts`, not `scripts/*.mjs`.** `scripts/` holds the
+  `check:*` linters, none of which touch the database; `prisma/scripts/` already
+  holds `backfill-ranks.ts`, which does. It also gets to import from `src/`.
+- **Names are not unique.** Revocation is by id. A uniqueness constraint would
+  mean re-minting "laptop" after revoking it needed a different name, because
+  revoked rows are kept.
+- **`findUserByRef` landed in `repositories/user.ts`**, since the CLI and
+  `mcp/content-server.ts` both resolve "an id or an email" and were about to
+  hold two copies of it. Distinct from `findUser`, which takes an id or a
+  *handle* — that is how a URL names a user, not how an operator does.
+
+`src/lib/__tests__/agentTokens.test.ts` (14 specs) pins the refusal side, which
+is the half that fails silently: a malformed secret never reaches the database,
+an unknown and a revoked token are indistinguishable from outside, expiry is
+inclusive on the boundary, revoked beats expired in the reported state, the
+hash never comes back to the caller, and **a valid token whose owner is
+`disabled` is refused** — the `requireUser` rule that a credential outliving
+its account is the obvious way to miss.
+
+Verified against the live database end to end: mint → list → revoke → list,
+plus the five refusal paths (unknown user, unknown scope, missing `--name`,
+malformed `--expires`, no command). The test row was deleted afterwards;
+`AgentToken` is back to 0 rows.
 
 ### Phase 3 — `tokenRoute` and the endpoint
 
@@ -357,9 +394,10 @@ author before trusting the check.
 
 ## 8. Open questions
 
-1. **One token per user, or many?** The schema allows many and the `name` field
-   assumes it. Confirm — if it is really one, `name` and half the management
-   story disappear.
+1. ~~**One token per user, or many?**~~ **Decided 8 Aug 2026: many.** One
+   credential per machine or job, each independently revocable — the alternative
+   makes revoking the laptop's token also kill CI, which in practice means never
+   revoking. `name` is what distinguishes them and is not unique (see phase 2).
 2. **Same origin or a subdomain?** `/api/mcp` on the blog's own origin is
    simplest and shares TLS. A subdomain would let the endpoint be firewalled or
    taken down independently of the blog. Cheap to decide now, expensive later.

@@ -12,8 +12,8 @@
 // by MCP_AUTHOR_ID (a User id or email); the server never reads or writes other
 // authors' content. Requires DATABASE_URL.
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { prisma } from "@/lib/prisma";
 import { createContentServer } from "@/lib/mcp/server";
+import { findUserByRef } from "@/repositories/user";
 
 const AUTHOR_REF = process.env.MCP_AUTHOR_ID;
 if (!AUTHOR_REF) {
@@ -21,15 +21,9 @@ if (!AUTHOR_REF) {
   process.exit(1);
 }
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 /** Resolve MCP_AUTHOR_ID (id or email) to a User id. */
 async function resolveAuthorId(): Promise<string> {
-  const where = UUID_RE.test(AUTHOR_REF!)
-    ? { id: AUTHOR_REF! }
-    : { email: AUTHOR_REF! };
-  const user = await prisma.user.findUnique({ where, select: { id: true } });
+  const user = await findUserByRef(AUTHOR_REF!);
   if (!user) throw new Error(`No user matches MCP_AUTHOR_ID=${AUTHOR_REF}`);
   return user.id;
 }

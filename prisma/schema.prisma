@@ -192,9 +192,64 @@ model User {
   projects       Project[] // User's projects for grouping series
   notesCanvases  NotesCanvas[] // User's note canvases
   copilotThreads CopilotThread[] // User's Copilot conversations
+  agentTokens    AgentToken[] // Bearer credentials for the remote MCP endpoint
 
   @@index([email])
   @@index([handle])
+}
+
+/// A bearer credential that lets an agent reach this user's content over HTTP
+/// without a browser session — see docs/plans/mcp_support.md §4.3.
+///
+/// The whole security argument for preferring this over OAuth rests on one
+/// property, so it is worth stating where the columns are: **`userId` lives on
+/// the token and never arrives in a request.** The MCP server takes its author
+/// from whoever authenticated, and no tool accepts an author as an argument, so
+/// there is no way to spell "act as someone else". A leaked token is scoped to
+/// its owner's own posts, in a system where an agent write is already a
+/// proposal rather than a commit.
+model AgentToken {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  // Cascade so deleting an account cannot leave live credentials behind — the
+  // self-serve account deletion the July audit wants would otherwise ship a
+  // hole.
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Human label, for the audit trail and for choosing which one to revoke:
+  /// "laptop", "ci". Deliberately not unique — revocation is by id, and a
+  /// uniqueness constraint would mean re-minting "laptop" after revoking it
+  /// needed a different name, since revoked rows are kept (below).
+  name String
+
+  /// SHA-256 (hex) of the presented secret. The plaintext is shown once at mint
+  /// and never stored, so a database leak does not hand over working
+  /// credentials.
+  ///
+  /// Unsalted and unstretched on purpose: the input is 32 bytes of CSPRNG, not
+  /// a password. There is no dictionary to run and nothing to slow down, and a
+  /// plain hash is what lets the lookup be a single indexed equality rather
+  /// than a scan that compares candidates one at a time.
+  hash String @unique
+
+  /// What this token may do: "read" (list/outline/read/search) and "propose"
+  /// (apply_ops, create_post). A plain string list rather than an enum, matching
+  /// `User.role` — the set will grow, and growing it should not be a migration.
+  scopes String[]
+
+  createdAt DateTime @default(now())
+
+  /// Throttled to at most one write a minute per token, so a chatty agent does
+  /// not turn every read into a write (mcp_support.md phase 5).
+  lastUsedAt DateTime?
+
+  expiresAt DateTime?
+
+  /// Set rather than deleting the row: a revoked token's `lastUsedAt` is
+  /// evidence about what a leaked credential did, and deleting destroys it.
+  revokedAt DateTime?
+
+  @@index([userId])
 }
 
 model DocumentCoauthors {
