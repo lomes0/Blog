@@ -79,6 +79,12 @@ interface CopilotChatProps {
    * conversation is still there when it reopens.
    */
   showTranscript?: boolean;
+  /**
+   * Draws the composer in its idle one-row form. The inline bar drives this off
+   * focus so the roomy two-row composer only exists while it is being typed in;
+   * the panel, which owns its column outright, never sets it.
+   */
+  compactComposer?: boolean;
 }
 
 const CopilotChat: React.FC<CopilotChatProps> = (
@@ -94,6 +100,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
     onMessageCountChange,
     inputRef,
     showTranscript = true,
+    compactComposer = false,
   },
 ) => {
   const isInline = variant === "inline";
@@ -375,6 +382,8 @@ const CopilotChat: React.FC<CopilotChatProps> = (
       busy={isLoading}
       canSend={canSend}
       placeholder={placeholder}
+      compact={compactComposer}
+      compactPlaceholder="Ask Copilot…"
       disabledReason={disabledReason}
       inputRef={inputRef}
       llmConfig={llmConfig}
