@@ -128,7 +128,15 @@ the second batch reads the live document and _replaces_ the stale proposal
 rather than folding onto something approval could only refuse. The database half
 of all this (the partial unique index, the `version` compare-and-set and the
 stale marking actually firing) is a throwaway script against the local Postgres,
-not a spec — as is anything about `mcp/`, which has no test environment.
+not a spec. The MCP server is no longer in that category:
+`src/lib/mcp/__tests__/server.test.ts` builds one with
+`createContentServer({ resolveAuthorId })` and drives it over the SDK's
+`InMemoryTransport` against mocked Prisma, so the tools are reachable without a
+database or a subprocess. It pins the authorization claim rather than the
+plumbing — two servers in one process get two different authors, a write passes
+its resolved author as `ownedBy`, and `tools/list` costs no user lookup. What is
+still script-only is anything that needs the live database: `npm run mcp:smoke`
+(export `MCP_AUTHOR_ID` — the value lives in `.mcp.json`, not `.env`).
 
 All of these follow the same rule as `dragGeometry.ts`: the logic lives in an
 import-free module so it can be exercised without mounting anything. The DOM

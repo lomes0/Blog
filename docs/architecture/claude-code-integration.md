@@ -19,10 +19,11 @@ see [plans/claude-code-lexical.md](../plans/claude-code-lexical.md) and
 Claude Code (terminal)                    In-app Copilot (browser)
         │ stdio / MCP                              │
         ▼                                          ▼
-mcp/content-server.ts                    /api/copilot  (declares tool
-├─ 8 tools, scoped to MCP_AUTHOR_ID      │  schemas only — no execute)
-└─ Prisma direct: no dev server,         ▼
-   no HTTP API                          copilotAgentExecutors.ts (client)
+mcp/content-server.ts (stdio entry)      /api/copilot  (declares tool
+└─ src/lib/mcp/server.ts                 │  schemas only — no execute)
+   ├─ 8 tools, scoped to one author      │
+   └─ Prisma direct: no dev server,      ▼
+      no HTTP API                       copilotAgentExecutors.ts (client)
         │                                ├─ reads auto-run
         │                                ├─ writes = reviewable proposals
         │                                └─ virtualRepo.ts: Redux + IndexedDB
@@ -169,17 +170,25 @@ writes are deliberately never folded into the editor's open revision.
 
 ---
 
-## Entry point 1 — MCP server (`mcp/content-server.ts`)
+## Entry point 1 — MCP server (`src/lib/mcp/server.ts`)
 
 Registered in `.mcp.json` at the repo root; Claude Code picks it up per project
 directory, so `claude` must be launched from the repo root. It runs
 `node --import tsx --env-file=.env mcp/content-server.ts` over stdio and talks
 **straight to Postgres** — no dev server, no `/api/*`.
 
-**Authorization is one line of policy:** everything is filtered on the user
-named by `MCP_AUTHOR_ID` (a `User` id or email, resolved once at first use). The
-server never reads or writes another author's content. This is personal,
-single-user tooling; there is no session and no API key.
+The eight tools and the transport are separate files, and the split is the
+whole of what a remote door would need (docs/plans/mcp_support.md):
+`createContentServer({ resolveAuthorId })` in `src/lib/mcp/server.ts` knows
+nothing about processes or the environment, and `mcp/content-server.ts` is only
+the 52 lines that resolve `MCP_AUTHOR_ID` and connect stdio.
+
+**Authorization is one line of policy:** everything is filtered on whatever
+`resolveAuthorId` returns — under stdio, the user named by `MCP_AUTHOR_ID` (a
+`User` id or email, resolved before the transport connects, so a bad value is a
+startup error). No tool takes an author from its arguments, so the server cannot
+read or write another author's content. This is personal, single-user tooling;
+there is no session and no API key.
 
 | Tool          | Purpose                                                               |
 | ------------- | --------------------------------------------------------------------- |

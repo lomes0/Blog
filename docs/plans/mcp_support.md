@@ -1,6 +1,7 @@
 # Remote MCP support
 
-**Status: proposed.** Measured against the tree at `b01e91a5`. Builds on the
+**Status: phase 1 shipped (8 Aug 2026); phases 2–6 proposed.** Originally
+measured against the tree at `b01e91a5`. Builds on the
 content bridge ([claude-code-lexical.md](./claude-code-lexical.md), phases 1–5
 shipped) and the proposal gating ([agent-gating.md](./agent-gating.md), phases
 1–5 shipped). Nothing in `src/lib/content-bridge/` changes, and none of the
@@ -197,23 +198,43 @@ greppable in logs and recognisable by secret scanners.
 
 Each phase is independently shippable and leaves the stdio server working.
 
-### Phase 1 — Make the server a factory
+### Phase 1 — Make the server a factory — **SHIPPED (8 Aug 2026)**
 
-Wrap `mcp/content-server.ts` in
-`createContentServer({ resolveAuthorId, scopes })` returning the `McpServer`.
-The eight handler bodies move verbatim; `getAuthorId` becomes the injected
-resolver, memoised per server instance rather than per process.
-`mcp/content-server.ts` keeps a thin `main()` that builds one from
-`MCP_AUTHOR_ID` and connects `StdioServerTransport`.
+`createContentServer({ resolveAuthorId })` in **`src/lib/mcp/server.ts`**, with
+the eight handler bodies moved verbatim and `getAuthorId` becoming the injected
+resolver, memoised per server rather than per process. `mcp/content-server.ts`
+is now 52 lines: resolve `MCP_AUTHOR_ID`, build one, connect stdio.
 
-No behaviour change. `npm run mcp:smoke` and `RUN_WRITE=1 npm run mcp:smoke`
-must both pass unchanged — that is the phase's acceptance test.
+Three deviations from what this section originally said, all deliberate:
 
-**Bonus this unlocks:** with a factory and the SDK's in-memory transport pair,
-`mcp/` becomes testable for the first time. Phase 1 should land at least one
-spec that drives a server over `InMemoryTransport` against a stubbed resolver,
-because "no test environment" stops being true the moment the process boundary
-is optional.
+- **`src/lib/mcp/`, not `mcp/`.** The dependency direction is already
+  mcp → src (`@/lib/agentWrites`, `@/lib/content-bridge`, `@/lib/prisma`), so
+  the factory belongs on the src side or phase 3's route imports backwards out
+  of the Next tree. It also puts the spec where `vitest.config.mts` looks
+  (`include: src/**/__tests__/**`).
+- **No `scopes` option yet.** It would be a parameter nothing reads until
+  phase 3. The options object is the seam; adding the field then is one line.
+- **The stdio entry resolves eagerly**, before connecting the transport, so a
+  `MCP_AUTHOR_ID` matching no user is a startup error rather than a refusal on
+  whichever tool the agent calls first — which is what
+  `docs/guides/claude-code-content.md` already claimed happened. The factory's
+  own resolver stays lazy, because a per-request server should not pay a lookup
+  for a `tools/list` that reads nothing.
+
+Acceptance, run against the container already on 5432: `npm run mcp:smoke` and
+`RUN_WRITE=1 npm run mcp:smoke` both pass — create, outline, propose, the stale
+hash refused, a second batch squashed into one proposal at version 1, `head`
+unmoved, cleanup. (Both need `MCP_AUTHOR_ID` exported; the script passes
+`--env-file=.env` to the child, but the value lives in `.mcp.json`. That is
+pre-existing, and worth fixing when phase 6 touches the docs.)
+
+**The bonus landed too:** `src/lib/mcp/__tests__/server.test.ts` drives a real
+`Client` over `InMemoryTransport` against a stubbed resolver and mocked Prisma —
+five specs, no database, no subprocess. `mcp/` had no test environment at all
+because the tools hung off a module-level singleton bound to an env var; making
+the transport optional is what made them reachable. What they pin is §1's
+claim: two servers in one process get two different authors, a write passes its
+resolved author as `ownedBy`, and `tools/list` costs no user lookup.
 
 ### Phase 2 — Tokens
 
