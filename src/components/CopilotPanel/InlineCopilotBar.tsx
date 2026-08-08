@@ -6,14 +6,25 @@ import { usePathname } from "next/navigation";
 import { useSelector } from "@/store";
 import { useAIModel } from "@/contexts/AIModelContext";
 import { ICON_SIZE } from "@/theme/icons";
+import { MOTION } from "@/theme/tokens";
 import CopilotChat from "./CopilotChat";
-import { composerSurfaceSx, composerWrapperSx } from "./Composer";
+import { composerSurfaceSx, composerWrapperSx, GROW } from "./Composer";
 
 /**
  * The design handoff's 760px content column, which it says should match the
  * chat thread's width.
  */
 const COLUMN_W = "min(760px, 100%)";
+
+/**
+ * How wide the bar sits while it is nothing but the resting strip.
+ *
+ * A fraction of {@link COLUMN_W} rather than its own figure, so it stays 65% of
+ * the thing it shrinks from whether that is the 760px cap or a narrower
+ * viewport. Full width for a one-line prompt read as a claim on the page the
+ * idle bar has not earned; it takes the column back the moment it is used.
+ */
+const RESTING_W = `calc(${COLUMN_W} * 0.65)`;
 
 /**
  * Cap on the conversation's height. Half the viewport keeps the document behind
@@ -159,6 +170,11 @@ const InlineCopilotBar: React.FC<InlineCopilotBarProps> = ({ documentId }) => {
   if (!hasInlineCopilotBar(pathname)) return null;
 
   const expanded = messageCount > 0 && !collapsed;
+  // The bar as a bar: no focus, no transcript, nothing to make room for. Both
+  // the narrower card and the tighter surface hang off this rather than off
+  // focus alone, because a conversation you are only reading still wants the
+  // full column.
+  const resting = !focused && !expanded;
 
   return (
     <Box
@@ -195,7 +211,16 @@ const InlineCopilotBar: React.FC<InlineCopilotBarProps> = ({ documentId }) => {
         sx={(theme) => ({
           ...composerWrapperSx(theme),
           pointerEvents: "auto",
-          width: COLUMN_W,
+          width: resting ? RESTING_W : COLUMN_W,
+          // Restated rather than appended to, so the whole set is legible in
+          // one place. The first two are `composerWrapperSx`'s own, on the
+          // focus ring; the width rides the composer's timing so the card
+          // widens and unfolds as one move.
+          transition: [
+            `border-color ${MOTION.fast}ms`,
+            `box-shadow ${MOTION.fast}ms`,
+            `width ${GROW}`,
+          ].join(", "),
           // Always capped. `none` → a length is not an animatable pair, so the
           // old conditional could never have eased anything; the card grows
           // with its content and stops here.
@@ -214,7 +239,7 @@ const InlineCopilotBar: React.FC<InlineCopilotBarProps> = ({ documentId }) => {
             // Tight padding only when the surface *is* the resting strip. With
             // a transcript above the composer it goes back to the handoff's
             // metrics, which are what the messages need to breathe.
-            ...composerSurfaceSx(theme, !focused && !expanded),
+            ...composerSurfaceSx(theme, resting),
             minHeight: 0,
             overflow: "hidden",
           })}

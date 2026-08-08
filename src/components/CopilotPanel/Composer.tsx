@@ -87,8 +87,11 @@ const C = {
  * One duration and one curve for every part of the open/close move, so the
  * padding, the field and the model label read as a single gesture rather than
  * three things that happen to fire together.
+ *
+ * Exported because the inline bar's card animates its width on the same switch,
+ * and two timings that had to agree would eventually stop agreeing.
  */
-const GROW = `${MOTION.base}ms ${MOTION.easing}`;
+export const GROW = `${MOTION.base}ms ${MOTION.easing}`;
 
 /** Brand colors — literal by nature, and the one thing the dot actually says. */
 const PROVIDER_COLOR: Record<string, string> = {
