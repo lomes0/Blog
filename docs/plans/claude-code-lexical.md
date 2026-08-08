@@ -468,12 +468,12 @@ and it was wrong in two places — see the note after the table.
 | `list`, including 1893 nested                                  | 6070  | **graduated**, nesting and all               |
 | `horizontalrule`                                               | 1785  | **graduated** as `divider`                   |
 | `layout-item`                                                  | 741   | opaque (structural; you address _into_ it)   |
-| `blog-tablecell` + `matheditor-tablecell`                      | 5943  | opaque — **the biggest remaining gap**       |
+| `blog-tablecell`                                               | 5943  | opaque — **the biggest remaining gap**       |
 | `tablerow`                                                     | 1357  | opaque                                       |
 | `layout-container`                                             | 247   | **graduated** as `layout`                    |
 | `attachment`                                                   | 164   | graduated, but see below                     |
 | `canvas`                                                       | 131   | §4.6.3                                       |
-| `blog-table` + `matheditor-table`                              | 263   | opaque — ~263 tables                         |
+| `blog-table`                                                   | 263   | opaque — ~263 tables                         |
 | `image`                                                        | 67    | §4.6.3                                       |
 | `sketch`                                                       | 64    | never (§tier 3)                              |
 | `graph`                                                        | 10    | never                                        |

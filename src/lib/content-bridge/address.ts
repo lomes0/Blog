@@ -31,10 +31,8 @@ export const BLOCK_CONTAINERS: ReadonlySet<string> = new Set([
   // Tables descend to their rows and rows to their cells, but a cell is a
   // *leaf*: it carries its own text (see `blocks.ts`), so addressing through
   // to the paragraph inside would double the depth of every table in an
-  // outline and give two addresses for one piece of content. Both the current
-  // and pre-rename spellings, because the old one is data in stored revisions.
+  // outline and give two addresses for one piece of content.
   "blog-table",
-  "matheditor-table",
   "tablerow",
 ]);
 

@@ -481,8 +481,8 @@ Sticky notes, series) is still shipped, because no editor node was in scope.
 `docs/README.md` links nothing that was deleted.
 
 Memory updated: `verify-ui-in-browser` (the harness target, phase 4) and
-`matheditor-fork-remnants` (this scrub, its locked scope, and the three traps
-worth carrying forward).
+`fork-remnants` (this scrub, its locked scope, and the three traps worth
+carrying forward).
 
 - **`README.md`** — the Features list is still upstream's framing. Since every
   node stays it is not _wrong_, but check it claims nothing the app no longer
@@ -495,7 +495,7 @@ worth carrying forward).
 - **`docs/plans/README.md`** — add this plan's row.
 - **`docs/README.md`** — check the index for links into anything deleted.
 - **Your memory files** — `verify-ui-in-browser.md` names `/playground` as the
-  harness target, and `matheditor-fork-remnants.md` should record that this
+  harness target, and `fork-remnants.md` should record that this
   second scrub happened and what it deliberately left (§1.2). Stale memory that
   names a deleted route is worse than none.
 
@@ -509,12 +509,13 @@ Worth stating so the plan is not mistaken for a full de-fork:
   `Copyright (c) 2022 Ibrahim El-bastawisi` — required, never delete it. It
   still has no second copyright line for you; adding one is a one-line change
   this plan does not schedule.
-- ~~**`src/indexeddb/index.ts` keeps `databaseName: "matheditor"`** — renaming
-  it strands every guest's local drafts.~~ **Overtaken 1 Aug 2026** by
-  `7921af36`, which renamed it to `blog-simple` and added the copy that makes
-  the rename safe. The reasoning above was right about the danger and wrong that
-  it was unavoidable. Retiring the copy itself is
-  `docs/plans/legacy-idb-retirement.md`; the background stays in
+- ~~**`src/indexeddb/index.ts` keeps the upstream database name** — renaming it
+  strands every guest's local drafts.~~ **Overtaken.** `7921af36` (1 Aug 2026)
+  renamed it to `blog-simple` with a copy that made the rename safe, and the
+  copy was itself retired on 8 Aug 2026. The last two upstream `type` strings
+  went the same day, by rewriting the 58 stored revisions that carried them.
+  Nothing upstream-named is left in the tree. See
+  `docs/plans/legacy-idb-retirement.md` and
   `docs/guides/notes-indexeddb-origins.md`.
 - **~9.5k LOC of `src/editor` is vendored Lexical playground code** (Meta
   copyright header). It is upstream-authored in the strictest sense, but it is

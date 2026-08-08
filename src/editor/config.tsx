@@ -1,7 +1,5 @@
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
 import {
-  LegacyTableCellNode,
-  LegacyTableNode,
   TableCellNode,
   TableNode,
 } from "./nodes/TableNode";
@@ -77,8 +75,6 @@ export const editorConfig = {
     TableCellNode,
     // Type aliases for tables stored before the rename. Import-only; see
     // `nodes/TableNode/TableNode.ts`.
-    LegacyTableNode,
-    LegacyTableCellNode,
     {
       replace: LexicalTableNode,
       with: (_node: LexicalTableNode) => new TableNode(),

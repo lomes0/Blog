@@ -73,14 +73,12 @@ globals; `compilerOptions.types` is deliberately left unset, because setting it
 would restrict resolution to only its entries and drop every other ambient
 package.
 
-Coverage is 22 specs, 399 tests: `src/lib/__tests__/ordering.test.ts`
+Coverage is 21 specs, 393 tests: `src/lib/__tests__/ordering.test.ts`
 (fractional rank keys),
 `src/components/Layout/SideBar/__tests__/
 dragGeometry.test.ts` (sidebar drag
 thresholds — `dragGeometry.ts` is kept import-free precisely so it is testable
-without a browser), `src/editor/nodes/TableNode/__tests__/legacyTypes.test.ts`
-(that stored tables still parse under both their current and pre-rename `type`
-strings — it builds a headless editor, so it stays DOM-free),
+without a browser),
 `src/store/__tests__/workspace.test.ts` (the `ui.workspace` reducers — pane
 focus, the one-document-one-pane invariant, dirty hoisting, and the URL replayed
 over a restored layout), `src/lib/__tests__/workspaceUrl.test.ts` (when the

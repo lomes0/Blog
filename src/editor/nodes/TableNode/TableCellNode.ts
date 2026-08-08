@@ -4,7 +4,6 @@ import {
   TableCellNode as LexicalTableCellNode,
 } from "@lexical/table";
 
-import { LEGACY_TABLE_CELL_TYPE } from "./legacyTypes";
 
 import type {
   DOMConversionMap,
@@ -169,29 +168,6 @@ export class TableCellNode extends LexicalTableCellNode {
       super.updateDOM(prevNode) ||
       prevNode.__style !== this.__style
     );
-  }
-}
-
-/**
- * Read-only alias for {@link LEGACY_TABLE_CELL_TYPE} — see `LegacyTableNode`,
- * which this mirrors exactly. Register the pair or neither: a table whose cells
- * have no registered type fails to parse just as hard as one whose table does.
- */
-export class LegacyTableCellNode extends TableCellNode {
-  static getType(): string {
-    return LEGACY_TABLE_CELL_TYPE;
-  }
-
-  static clone(node: TableCellNode): TableCellNode {
-    return TableCellNode.clone(node);
-  }
-
-  static importJSON(serializedNode: SerializedTableCellNode): TableCellNode {
-    return TableCellNode.importJSON(serializedNode);
-  }
-
-  static importDOM(): DOMConversionMap | null {
-    return null;
   }
 }
 

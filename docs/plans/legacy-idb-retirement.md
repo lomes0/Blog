@@ -1,14 +1,14 @@
-# Retiring the fork's IndexedDB database, once and for all
+# Retiring the fork's name, once and for all
 
-**Status:** COMPLETE, 8 Aug 2026 — all four phases landed in one pass. Finishes
-what `7921af36` (1 Aug 2026) started: that commit renamed the database off the
-fork and copied the contents over, but left a migration that could never report
-itself finished. Phase 1 made a profile retire itself, Phase 2 built the tools
-to prove an origin clean, Phase 3 swept every origin that exists, and Phase 4
-deleted all of it — 445 lines of migration plus the tools.
+**Status:** COMPLETE, 8 Aug 2026. §§0–9 retire the **IndexedDB database name**:
+Phase 1 made a profile retire itself, Phase 2 built the tools to prove an origin
+clean, Phase 3 swept every origin that exists, Phase 4 deleted all of it — 445
+lines plus the tools. **§10 then retires the two Lexical table `type` strings**,
+which §7.3 had declared permanent; that judgement was wrong, and 58 rows of
+`UPDATE` disposed of it.
 
-`rg -i matheditor` over `src/` now returns exactly the two table `type` strings,
-their explanatory comments and their two specs. The database name is gone.
+The upstream name now appears **nowhere in the tree** — not in code, docs or
+memory. Only git history still carries it.
 
 §9 records where this plan's own analysis was wrong and what corrected it.
 
@@ -38,12 +38,13 @@ meaningful once a visited profile stays fixed.
 
 ## 1. What is actually left
 
-`rg -i matheditor` returns 25 matches in 12 files. Only one group is retirable:
+At the start, a case-insensitive search for the upstream name returned 25
+matches in 12 files, in two groups:
 
 | Value                                   | Sites                                                         | Fate                                                                   |
 | --------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `"matheditor"` (database name)          | `migrate.ts:12` + 3 uses                                      | **This plan deletes it**, with `migrate.ts` + `migrationPlan.ts` + spec |
-| `"matheditor-table"` / `-tablecell`     | `TableNode/legacyTypes.ts:17-18`, `blocks.ts:206,210`, `address.ts:37` | **Never.** Data in `.zip` backups `/api/import` still accepts  |
+| The database name                       | `migrate.ts:12` + 3 uses                                      | **Deleted** (§3–§6), with `migrate.ts` + `migrationPlan.ts` + spec |
+| The two table `type` strings            | `TableNode/legacyTypes.ts:17-18`, `blocks.ts:206,210`, `address.ts:37` | First judged **permanent**; that was wrong — **deleted** (§10) |
 | Comments explaining the above           | `index.ts:54`, `legacyTypes.ts:13`, `blocks.ts:199`, `address.ts:35` | Stay; the two about the database name go with it                |
 | Git log, `docs/plans/*`, `docs/guides/*` | 11 sites                                                      | Historical record, not references                                      |
 
@@ -183,9 +184,9 @@ as browser-only and uncovered. Add no spec; verify with §4.
 ### 3.7 The doc fix, same commit
 
 `docs/plans/upstream-scrub.md:512` still lists under *What this does not fix*:
-"`src/indexeddb/index.ts` keeps `databaseName: "matheditor"`". That was
+that `src/indexeddb/index.ts` still kept the upstream database name. That was
 overtaken by `7921af36` a week later — `index.ts:56` reads `"blog-simple"`. It
-is the only factually wrong `matheditor` reference in the repo. Rewrite it to
+was the only factually wrong reference in the repo. Rewrite it to
 point here.
 
 ---
@@ -271,7 +272,7 @@ Four constraints worth writing down rather than rediscovering:
 ### 4.4 Sweep per **origin**, not per machine
 
 IndexedDB is origin-scoped, so `http://localhost:3000` and the production domain
-each carry their own independent `matheditor` database, on the same machine, in
+each carry their own independent legacy database, on the same machine, in
 the same profile. A developer box that has run the app locally is a migration
 population of its own. Enumerate origins × profiles, not machines.
 
@@ -283,7 +284,7 @@ population of its own. Enumerate origins × profiles, not machines.
 
 `migrate.ts` is browser-only and has no spec (CLAUDE.md says so). It was instead
 driven through its whole lifecycle against a real Chrome, 8 Aug 2026, on a
-throwaway profile seeded with a v5 `matheditor` database holding a guest draft,
+throwaway profile seeded with a v5 legacy database holding a guest draft,
 a revision, a pending save, a cached attachment and a notes canvas:
 
 | Step                       | Verdict      | What it establishes                                                     |
@@ -326,7 +327,7 @@ Two results worth keeping:
 - **`web-editor`** holds `blog-simple` v7 with zero documents and zero
   revisions, which is what a signed-in user's profile should look like: the
   content is in Postgres. No legacy database at all.
-- **`bank`** holds a legacy `matheditor` database at **version 2** — a visit far
+- **`bank`** holds a legacy database at **version 2** — a visit far
   older than the v5 the migration was written against — with `documents` and
   `revisions` both at **0 records**, and no `blog-simple` at all. Nothing was
   ever stranded there. §7.5 covers what is left of it.
@@ -360,7 +361,7 @@ Once every row in §5 reads `CLEAN`:
    `migrationPlan.test.ts` from the spec inventory; correct the spec count.
 5. `docs/guides/notes-indexeddb-origins.md`: mark the migration retired, keep the
    history.
-6. Memory `matheditor-fork-remnants.md`: three load-bearing strings become two.
+6. Memory: `fork-remnants.md` (renamed from the upstream-named file).
 
 `npm test`, `npx tsc --noEmit`, `npm run lint`, `npm run check:unused`.
 
@@ -386,18 +387,17 @@ four profiles on the only machine that has ever run it hold zero guest documents
 the recovery path is `git show` on this commit, not anything left in the tree.
 
 **7.5 One empty orphan is left behind, deliberately.** `~/.config/bank` still
-has an empty `matheditor` v2 database, and with the migration deleted nothing
+has an empty v2 legacy database, and with the migration deleted nothing
 will ever remove it. It holds no records, so it is untidiness rather than a
 liability. Clearing it is one line in that profile's console on
-`http://localhost:3000` — `indexedDB.deleteDatabase("matheditor")` — and it is
+`http://localhost:3000` — `indexedDB.deleteDatabase(<old name>)` — and it is
 left to the author rather than done as a side effect here, because writing to an
 unrelated browser profile is not something a cleanup should do uninvited.
 
-**7.3 The table `type` strings stay forever.** `matheditor-table` and
-`matheditor-tablecell` are in `.zip` backups on people's disks that
-`/api/import` still accepts. No migration reaches them. After Phase 4, `rg -i
-matheditor` should return those two strings, their explanatory comments, their
-specs, and history — nothing else.
+**7.3 ~~The table `type` strings stay forever.~~ Retired the same day — see
+§10.** This section claimed they were in `.zip` backups on people's disks that
+`/api/import` accepts, so no migration could reach them. Every clause was true
+in general and false here.
 
 **7.4 `attachmentContent` is destroyed, not migrated.** By design; the server
 has the files. The cost is one cold fetch per attachment after the deletion.
@@ -434,7 +434,7 @@ destroy are two different questions; §3.2 answers them separately, which is why
 had to be routed through the new decision rather than past it. That restructure —
 `copyOutOfLegacy` — is most of the diff.
 
-**9.3 An on-disk `grep` for `matheditor` is not evidence.** Brave's
+**9.3 An on-disk `grep` for a database name is not evidence.** Brave's
 `http_localhost_3000.indexeddb.leveldb` contains the string, which looked like a
 surviving legacy database; the probe then reported `CLEAN`. The explanation is
 that `openLegacyDatabase` *creates* the database in order to find out whether it
@@ -456,3 +456,82 @@ browsers you have installed.** An app-mode `--user-data-dir` is invisible to the
 second approach and is exactly where a single-user app's data lives.
 
 **9.5 puppeteer-core was the wrong reach.** See §4.3.
+
+---
+
+## 10. The other half — retiring the two node `type` strings
+
+Added 8 Aug 2026, after §7.3 above was challenged rather than accepted.
+
+### 10.1 The claim, and why it was wrong
+
+The two table `type` strings were renamed in `f5ef8e66` using compat aliases:
+`LegacyTableNode` / `LegacyTableCellNode`, whose `getType()` returned the old
+spelling and whose `importJSON` delegated to the real class, so Lexical had a
+class for stored content and upgraded it on next save. The aliases were declared
+permanent on this reasoning:
+
+> Data in `Revision` rows, guests' IndexedDB and `.zip` backups already on
+> users' disks, which `/api/import` accepts. No migration reaches a backup.
+
+Each clause is true of a deployed multi-user app. **This app was never deployed**
+(§5.1), which collapses every one of them: there are no users, so no disks, so
+no backups. The reasoning had been inherited from upstream's framing and
+restated three times without anyone asking how much data it actually described.
+
+### 10.2 What the data said
+
+A `LIKE '%…%'` scan over **every** `json`/`jsonb` column in the database —
+enumerated from `information_schema.columns` rather than guessed, which is what
+caught `Revision.ops` and `CopilotThread.messages`:
+
+| Column                  | Rows with the legacy spelling |
+| ----------------------- | ----------------------------- |
+| `Revision.data`         | **58** (across 5 documents)   |
+| `Revision.ops`          | 0                             |
+| `CopilotThread.messages` | 0                            |
+| `Note.content`          | 0                             |
+
+`Document` has no JSON column at all — content lives only in `Revision`. Outside
+Postgres: every swept browser profile held zero documents (§5.1), and a scan of
+the filesystem for export bundles (zips containing `assets/attachments` or
+`documents/*.json`) found none. **58 rows was the entire population in
+existence.**
+
+### 10.3 The migration
+
+Backed up first — `var/backups/revisions-*.json`, gitignored — then:
+
+```sql
+UPDATE "Revision"
+   SET data = replace(data::text, '<old-table-type>', 'blog-table')::jsonb
+ WHERE data::text LIKE '%<old-table-type>%';
+```
+
+One `replace` covers both spellings: the cell type has the table type as a
+prefix, so rewriting the shorter one turns the longer into `blog-tablecell` in
+the same pass. 58 rows updated, all four counts then zero.
+
+Verified by re-reading every migrated row and comparing it against the backup
+with the same replacement applied in Python: **0 rows differed beyond the
+rename**. Then end-to-end through the real codec — `outline` on a migrated
+document rendered its table as `6 rows × 2 columns` with rows and cells
+addressed, with the alias classes already deleted.
+
+### 10.4 What went
+
+`legacyTypes.ts`, `legacyTypes.test.ts`, both alias classes, their registrations
+in `config.tsx` and `nestedConfig.tsx`, the legacy entries in `TABLE_TYPES` /
+`TABLE_CELL_TYPES` / `BLOCK_CONTAINERS`, and the legacy case in `codecs.test.ts`.
+
+`TABLE_TYPES` and `TABLE_CELL_TYPES` stay **sets** holding one element each.
+They are the read side, and the next rename will want somewhere to put the old
+spelling for as long as it takes to migrate — which is now a known, short
+procedure rather than a permanent obligation.
+
+### 10.5 The lesson
+
+**"Unreachable" is a measurement, not a property.** A comment asserting that
+data cannot be migrated is worth one `count(*)` before it is believed. This one
+had been load-bearing for weeks; checking it took under a minute and turned a
+permanent constraint into a 58-row `UPDATE`.

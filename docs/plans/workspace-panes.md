@@ -798,7 +798,7 @@ worth ~half a day.
 ## 10. Test coverage
 
 There is no automated coverage of any of this today, and the three existing
-specs are pure-logic (`ordering`, `dragGeometry`, `legacyTypes`).
+specs are pure-logic (`ordering`, `dragGeometry`, `scrollMemory`).
 
 Two additions are worth making — both DOM-free, both matching the existing
 convention of keeping logic in import-light modules precisely so it is testable:

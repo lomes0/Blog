@@ -3,7 +3,6 @@ import {
   TableNode as LexicalTableNode,
 } from "@lexical/table";
 
-import { LEGACY_TABLE_TYPE } from "./legacyTypes";
 
 import type {
   BaseSelection,
@@ -69,8 +68,10 @@ export class TableNode extends LexicalTableNode {
   __id: string;
   // `getType()` is the discriminator Lexical writes into the `type` field of
   // every serialized node and dispatches on when reading one back, so this
-  // string is baked into stored content. Renaming it is safe only because
-  // `LegacyTableNode` below still answers for the old spelling.
+  // string is baked into stored content. Renaming it means rewriting every
+  // stored revision that carries the old one in the same change — Lexical
+  // throws on a `type` it has no class for. That was done once already, when
+  // the fork's spellings were retired; see docs/plans/upstream-scrub.md.
   static getType(): string {
     return "blog-table";
   }
@@ -214,44 +215,6 @@ export class TableNode extends LexicalTableNode {
     } catch {
       return false;
     }
-  }
-}
-
-/**
- * Read-only alias for {@link LEGACY_TABLE_TYPE}, the type string this node
- * carried before the fork's name was scrubbed.
- *
- * Every table saved before that rename — in a Revision row, in a guest's
- * IndexedDB, in a `.zip` backup already on someone's disk — still carries it,
- * and Lexical throws on a `type` it has no entry for. Registering this
- * alongside `TableNode` gives that string an entry again.
- *
- * It only ever acts as an import entry point: `importJSON` delegates to
- * `TableNode`, which builds a real `TableNode`, so what lands in the editor is
- * the current class and the next save writes the current type. No instance of
- * this class is ever constructed, and `importDOM` is dropped so it cannot
- * register a second, competing conversion for `<table>`.
- *
- * The delegating statics are declared rather than inherited because Lexical
- * checks for them with `hasOwnProperty` at registration and warns per editor.
- *
- * Keep it. Migrating the database would not reach the backups.
- */
-export class LegacyTableNode extends TableNode {
-  static getType(): string {
-    return LEGACY_TABLE_TYPE;
-  }
-
-  static clone(node: TableNode): TableNode {
-    return TableNode.clone(node);
-  }
-
-  static importJSON(serializedNode: SerializedTableNode): TableNode {
-    return TableNode.importJSON(serializedNode);
-  }
-
-  static importDOM(): DOMConversionMap | null {
-    return null;
   }
 }
 

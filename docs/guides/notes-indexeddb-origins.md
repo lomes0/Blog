@@ -25,8 +25,8 @@ production builds on the same port locally if you want to see the same data.
 
 ## The database rename
 
-The database was named `matheditor`, inherited from the project this app was
-forked from. It is now `blog-simple`.
+The database carried the upstream project's name, inherited from the fork. It
+is now `blog-simple`, and the old name appears nowhere in the tree.
 
 The name is the handle for the store, so renaming it migrates nothing by itself
 — it opens a second, empty database and strands every draft in the old one.
@@ -36,11 +36,11 @@ every profile had been swept and found clean.
 
 What it did, per boot:
 
-1. Opened `matheditor` without a version. If `onupgradeneeded` fired, the open
-   had just created it, so there was nothing there — it deleted it again and
-   stopped. One side effect outlived it: that probe leaves the name in the
-   origin's leveldb, so **grepping a browser profile on disk for `matheditor`
-   proves nothing**. Only an `indexedDB.open` answers the question.
+1. Opened the old database without a version. If `onupgradeneeded` fired, the
+   open had just created it, so there was nothing there — it deleted it again
+   and stopped. One side effect outlived it: that probe leaves the name in the
+   origin's leveldb, so **grepping a browser profile on disk for a database
+   name proves nothing**. Only an `indexedDB.open` answers the question.
 2. Diffed the keys in `documents`, `revisions`, `copilotThreads` and
    `pendingSaves` against the new database, copied what was missing, then
    deleted from the legacy database everything the new one was known to hold.
@@ -52,8 +52,8 @@ What it did, per boot:
 Three consequences of that shape worth knowing:
 
 - **It was idempotent, and it kept running.** The app ships as a PWA, so a tab
-  on a stale service-worker bundle could still be writing to `matheditor` after
-  the new code was live; those writes were picked up on the next visit.
+  on a stale service-worker bundle could still be writing to the old database
+  after the new code was live; those writes were picked up on the next visit.
 - **Deleting the database was self-healing where a marker record would not have
   been.** A stale write recreated the database, and the next boot migrated it
   normally — a "already done" flag would have skipped it forever.
@@ -67,23 +67,28 @@ A record whose write failed — most plausibly a `ConstraintError` from the uniq
 `handle` index on `documents` — was left in the legacy database rather than
 dropped, and logged. The failure mode was a retry, never a lost draft.
 
-## What the rename did _not_ remove
+## The node `type` strings went the same way — and the reasoning was wrong
 
-Searching the tree for the old name still returns hits, and they are
-load-bearing. Two Lexical node type strings are baked into stored content —
-`Revision` rows in Postgres, documents in IndexedDB, and `.zip` backups already
-on users' disks, which `/api/import` accepts. Lexical throws on a `type` it has
-no class for, so `LegacyTableNode` and `LegacyTableCellNode` stay registered as
-import aliases, and no migration can retire them: it would not reach the
-backups.
+Two Lexical table node `type` strings carried the upstream spelling. They were
+renamed with **compat aliases** (`LegacyTableNode` / `LegacyTableCellNode`,
+registered so Lexical had a class for the old `type`), on the argument that the
+old spelling was unreachable data — in `Revision` rows, in guests' IndexedDB and
+in `.zip` backups "already on users' disks" that `/api/import` accepts. The
+conclusion drawn was that no migration could ever retire them.
 
-Both strings are declared once, in `src/editor/nodes/TableNode/legacyTypes.ts`,
-which is where a search for them should land. Current saves already emit
-`blog-*`, and `src/editor/nodes/TableNode/__tests__/legacyTypes.test.ts` imports
-the constants from that module to guard both spellings.
+**That was false, and it survived several readings before anyone checked.** The
+app was never deployed, so there were no users and no backups: the entire
+population was one Postgres database. A `LIKE '%…%'` scan over every json/jsonb
+column found **58 rows in `Revision.data`, across 5 documents**, and nothing
+anywhere else — no IndexedDB content, no export bundle on disk. One `UPDATE`
+rewrote them, verified byte-identical except the rename, and the aliases,
+`legacyTypes.ts` and its spec were deleted on 8 Aug 2026.
 
-The only remaining mentions are those two node type strings, their explanatory
-comments, their spec, this guide, and the git history. `LEGACY_DATABASE_NAME`
-went with `migrate.ts` and `migrationPlan.ts` on 8 Aug 2026;
-`docs/plans/legacy-idb-retirement.md` records the sweep that justified deleting
-them and the residual risk it accepted.
+The lesson generalises past this repo: **"unreachable" is a measurement, not a
+property.** A comment asserting that data cannot be migrated is worth one
+`count(*)` before it is believed. Here the check took seconds and retired a
+constraint that had been treated as permanent.
+
+Nothing in the tree now carries the upstream name — code, docs or memory.
+`docs/plans/legacy-idb-retirement.md` records both halves, and the pre-migration
+rows are backed up under `var/backups/`.

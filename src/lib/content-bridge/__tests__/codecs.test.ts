@@ -382,51 +382,6 @@ describe("table cell", () => {
       readonlyText: true,
     });
   });
-
-  it("reads the pre-rename spellings, which are data in stored revisions", () => {
-    const legacy: SerializedNode = {
-      type: "matheditor-table",
-      version: 1,
-      children: [
-        {
-          type: "tablerow",
-          version: 1,
-          children: [
-            {
-              type: "matheditor-tablecell",
-              version: 1,
-              headerState: 1,
-              children: [
-                {
-                  type: "paragraph",
-                  version: 1,
-                  children: [{
-                    type: "text",
-                    version: 1,
-                    text: "old",
-                    detail: 0,
-                    format: 0,
-                    mode: "normal",
-                    style: "",
-                  }],
-                },
-              ],
-            },
-          ],
-        },
-      ],
-    };
-    expect(nodeToBlock(legacy)).toEqual({
-      type: "table",
-      rowCount: 1,
-      columnCount: 1,
-    });
-    expect(nodeToBlock(kids(kids(legacy)[0])[0])).toEqual({
-      type: "cell",
-      text: "old",
-      header: "row",
-    });
-  });
 });
 
 describe("nested lists", () => {

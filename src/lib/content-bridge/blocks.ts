@@ -191,24 +191,17 @@ const num = (value: unknown, fallback: number): number =>
   typeof value === "number" && Number.isFinite(value) ? value : fallback;
 
 /**
- * The table `type` strings, both spellings.
+ * The table `type` strings.
  *
  * These are hardcoded rather than read from `TableNode.getType()` on purpose:
  * importing a node class here would drag the editor's browser-only
  * dependencies into a module that has to run in a bare Node process (see
- * `types.ts`). The `matheditor-*` spellings are *data* sitting in stored
- * revisions, guests' IndexedDB and `.zip` backups — see
- * `src/editor/nodes/TableNode/legacyTypes.ts` for why they can never be
- * retired. Reads accept both; writes always produce the current one.
+ * `types.ts`). They are sets rather than constants because these are the
+ * spellings *read* out of stored revisions, and a `type` that ever ships has
+ * to keep being readable — adding one here is how a rename stays survivable.
  */
-export const TABLE_TYPES: ReadonlySet<string> = new Set([
-  "blog-table",
-  "matheditor-table",
-]);
-export const TABLE_CELL_TYPES: ReadonlySet<string> = new Set([
-  "blog-tablecell",
-  "matheditor-tablecell",
-]);
+export const TABLE_TYPES: ReadonlySet<string> = new Set(["blog-table"]);
+export const TABLE_CELL_TYPES: ReadonlySet<string> = new Set(["blog-tablecell"]);
 const TABLE_TYPE = "blog-table";
 const TABLE_CELL_TYPE = "blog-tablecell";
 const TABLE_ROW_TYPE = "tablerow";
