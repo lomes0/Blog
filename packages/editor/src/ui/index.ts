@@ -23,6 +23,28 @@
  * which are a CJK-publishing feature, and the `code-block`, `checkbox`,
  * `collapsible`, `animated-tabs`, `status-dot`, `viewport-gate` and
  * `quote-attribution` components, which no phase asks for yet.
+ *
+ * **`npm run check:unused` reports most of this directory, and that is the
+ * expected state, not a backlog.** At the end of phase 2, 256 of knip's 532
+ * findings sit under `ui/` — 124 distinct symbols, two thirds of them the
+ * `XProps` aliases a wrapper needs in order to be wrapped. They are not dead
+ * code by knip's usual meaning: this is a *ported vendor surface*, kept
+ * complete on purpose so haklex's phase-3 and phase-4 components compile
+ * against it unmodified. Trimming it to what phase 2 happens to call would
+ * mean re-porting each piece at the moment it is needed, and re-deriving the
+ * Base UI 1.7 adaptations recorded on each component (see `select`, `tooltip`,
+ * `combobox`) a second time.
+ *
+ * So the triage for anything under `ui/` is **keep, with this as the reason**,
+ * and the findings stay visible rather than being silenced in `knip.json` —
+ * an ignore entry here would also hide a primitive that phase 3 lands and
+ * nothing ever calls. Three groups are entirely unconsumed today and are the
+ * clearest case: `combobox` (nothing in the editor is a searchable select
+ * yet), the low-level `Popover*`/`Tooltip*` parts under the `Tooltip` /
+ * `ColorPicker` convenience wrappers, and `Sheet` / `ScrollArea` / `ActionBar`.
+ *
+ * Everything *outside* `ui/` gets ordinary treatment: an unused export there
+ * is deleted or unexported. `utils/useColorScheme.ts` is the phase-2 example.
  */
 
 export { cx } from "./cx";

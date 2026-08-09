@@ -73,7 +73,7 @@ globals; `compilerOptions.types` is deliberately left unset, because setting it
 would restrict resolution to only its entries and drop every other ambient
 package.
 
-Coverage is 21 specs, 411 tests: `src/lib/__tests__/ordering.test.ts`
+Coverage is 28 specs, 485 tests: `src/lib/__tests__/ordering.test.ts`
 (fractional rank keys),
 `src/components/Layout/SideBar/__tests__/
 dragGeometry.test.ts` (sidebar drag
@@ -101,13 +101,15 @@ optional field populated — the obligation docs/plans/claude-code-lexical.md
 §4.6.1 attaches to graduating one — which now also feeds each of those nodes to
 the zod schema in `content-bridge/schema.ts`, so a type that gains a codec
 without gaining a schema arm, or the reverse, fails rather than working on one
-agent and not the other), and `src/editor/utils/__tests__/virtualRepo.test.ts`
+agent and not the other), and
+`packages/editor/src/utils/__tests__/virtualRepo.test.ts`
 (the Copilot's view of the library — that a search hit carries a block address a
 later tool can act on, rather than a line number no other tool accepts). Two
 more cover phase 5: `src/lib/content-bridge/__tests__/blockId.test.ts` (that a
 persistent id keeps naming its block after the tree shifts above it, that a
 write stamps only what it touched, and that a read never stamps) and
-`src/editor/nodes/__tests__/serialization.test.ts` (that a stored node survives
+`packages/editor/src/nodes/__tests__/serialization.test.ts` (that a stored node
+survives
 a load — `importJSON` is the only parse path, so a class that does not delegate
 to `updateFromJSON` silently drops node state _and_ element format/indent/
 direction; five classes did). `npm run check:nodes` enforces the same rule
@@ -147,6 +149,16 @@ miss. `src/lib/__tests__/rateLimit.test.ts` covers the token bucket by injecting
 the clock rather than faking timers, which is why `take(key, now)` takes a time
 at all.
 
+Nine more the list above does not walk through, named so the count and the list
+agree: `src/lib/changes/__tests__/` (`coalesce`, `diff`, `emitter`, `events` —
+the change feed), `src/lib/__tests__/tokenRoute.test.ts` and
+`src/lib/mcp/__tests__/transportSecurity.test.ts` (the agent-token wrapper and
+the plain-HTTP refusal), `src/lib/__tests__/proposalLabels.test.ts`,
+`src/store/__tests__/reconcile.test.ts`, and
+`packages/editor/src/plugins/MarkdownPlugin/__tests__/blockShortcuts.test.ts`
+(the ``` regression in docs/plans/haklex-adoption.md §10.2, moved out of a
+`useEffect` so it could be tested at all).
+
 All of these follow the same rule as `dragGeometry.ts`: the logic lives in an
 import-free module so it can be exercised without mounting anything. The DOM
 half of the scroll restore is
@@ -174,9 +186,10 @@ running the app against the local Postgres and exercising the routes directly.
 > (`pg_lsclusters`), and is not the one the app talks to.
 
 Type-check and lint with `npx tsc --noEmit` and `npm run lint`. After touching
-anything in `src/editor/nodes/`, run `npm run check:nodes`. For UI changes also
-run `npm run check:theme`, which catches colors that do not respond to the
-light/dark toggle (DESIGN.md §19).
+anything in `packages/editor/src/nodes/`, run `npm run check:nodes`. For UI
+changes also run `npm run check:theme`, which catches colors that do not respond
+to the light/dark toggle (DESIGN.md §19) — it reads `.css`, `.css.ts` and the
+editor's `--ed-*` contract alike.
 
 ## Architecture
 
@@ -371,15 +384,30 @@ become a path on disk.
 
 ### Lexical Editor
 
-The rich text editor is built with Lexical (`src/editor/`):
+The rich text editor is a workspace package, `packages/editor` — not part of
+`src/`. The `@/editor/*` alias points at `packages/editor/src/*`, so import
+paths read the same as before the extraction (docs/plans/haklex-adoption.md §4).
+
+**It is on a different design system to the rest of the app, deliberately.** The
+app shell is MUI + DESIGN.md; the editor package is vanilla-extract + Base UI
+against its own `--ed-*` token contract in
+`packages/editor/src/styles/tokens.css.ts`, so that haklex's component code
+ports in unrewritten (§5). The package has zero `@mui/*` imports and an ESLint
+`no-restricted-imports` rule in `eslint.config.mjs` keeps it that way. The
+`--ed-*` colors alias `--mui-palette-*`, so the two systems share one palette
+and one dark-mode switch (`html.dark`) without sharing a component library —
+DESIGN.md §19 governs both. Base UI primitives live in `packages/editor/src/ui`;
+add to that directory rather than reaching back across the seam.
 
 **Editor Structure:**
 
 - `Editor.tsx`: Main editor component
 - `config.tsx`: Editor configuration and theme
-- `theme.css` / `theme.tsx`: Styling and theming
+- `theme.css` / `theme.tsx`: Content styling (the document's own CSS, which is
+  not on the `--ed-*` contract — it is what `exportDOM` and `/view` also render)
+- `styles/tokens.css.ts`: the `--ed-*` chrome contract
 
-**Custom Nodes** (`src/editor/nodes/`):
+**Custom Nodes** (`packages/editor/src/nodes/`):
 
 - Math equations (MathLive integration)
 - Graphs (Geogebra integration)
@@ -388,7 +416,7 @@ The rich text editor is built with Lexical (`src/editor/`):
 - Horizontal rules, Page breaks
 - Collapsible sections, Sticky notes
 
-**Plugins** (`src/editor/plugins/`):
+**Plugins** (`packages/editor/src/plugins/`):
 
 - Core: FloatingToolbar, DragDropPastePlugin, SavePlugin
 - Content: MathPlugin, GraphPlugin, SketchPlugin, ImagePlugin, AttachmentPlugin

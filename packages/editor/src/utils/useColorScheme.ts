@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 
-export type ColorScheme = "light" | "dark";
+type ColorScheme = "light" | "dark";
 
 /**
  * Read the active color scheme off `html.dark` — the class MUI's
@@ -13,8 +13,13 @@ export type ColorScheme = "light" | "dark";
  * and drags MUI back into a package that is being taken off it; the class is
  * also the same thing every stylesheet and every `.css.ts` in here keys off,
  * so a component and its styles cannot disagree.
+ *
+ * Deliberately not exported: `useColorScheme` below is the only caller, and a
+ * one-shot read is the wrong tool for a component — it does not re-render when
+ * the toggle flips. Export it when something genuinely outside a render needs
+ * the answer.
  */
-export function readColorScheme(): ColorScheme {
+function readColorScheme(): ColorScheme {
   if (typeof document === "undefined") return "light";
   return document.documentElement.classList.contains("dark") ? "dark" : "light";
 }

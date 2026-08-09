@@ -50,6 +50,10 @@ This project uses **Material UI (MUI) v6** with Emotion.\
 Do **not** introduce Radix, shadcn/ui, Tailwind, Chakra, or any other UI
 library.
 
+**One exception, and it is a whole directory:** `packages/editor` is on Base UI
++ vanilla-extract, deliberately. See §1.1 — that section, not this line, is the
+scope statement for everything below.
+
 ```
 @mui/material       ^6.5.0
 @mui/icons-material ^6.4.8
@@ -84,6 +88,37 @@ MUI CSS variables are enabled with
 > in-app theme toggle. This rule stood here in prose for a year and was
 > nonetheless broken across the whole editor; it is now enforced by
 > `npm run check:theme`. See §19.
+
+### 1.1 Scope — this file governs the app shell, not the editor package
+
+`packages/editor` is deliberately **not** on MUI. It draws on `@base-ui/react` +
+vanilla-extract against its own token contract, `--ed-*` in
+`packages/editor/src/styles/tokens.css.ts`, with the primitives in
+`packages/editor/src/ui`. That split was decided in
+docs/plans/haklex-adoption.md §5 and carried out over phase 2's seven commits,
+so haklex's component code ports in unrewritten; an ESLint
+`no-restricted-imports` rule bans `@mui/*` under `packages/**` to keep it from
+rotting back.
+
+The accepted cost, recorded here so nobody rediscovers it as a bug: **DESIGN.md
+no longer describes the editor's interior.** A rule below that names `sx`,
+`src/theme/components.ts` or a `--mui-palette-*` variable is about the shell.
+
+Three things still bind both, and none of them is optional:
+
+- **§19 is authoritative for both.** The `--ed-*` contract keys its dark block
+  to `html.dark` and nothing else — not `prefers-color-scheme`, not a
+  `data-theme` attribute, which is the precise shape of the bug §19.1 records.
+  `npm run check:theme` reads `.css.ts` as well as `.css`, and fails a `.css.ts`
+  that reintroduces either.
+- **One palette.** The `--ed-*` colors _alias_ `--mui-palette-*` rather than
+  restating hexes, so the editor cannot drift from the palette in §2. Only the
+  two shadows carry scheme-specific literals.
+- **§9 states and §10 accessibility** are a review checklist, not a token set,
+  and apply wherever a component is written.
+
+Everything else in the editor — spacing, radius, hover scale, focus ring —
+answers to the `--ed-*` contract. Read that file, not this one.
 
 ---
 
@@ -399,7 +434,7 @@ src/components/
 | Edit view wrapper      | `EditDocument`                          |
 | Bin / soft-delete UI   | `TrashBin`                              |
 | Sticky notes canvas    | `NotesCanvas`                           |
-| Rich text editor       | `Editor` (Lexical-based, `src/editor/`) |
+| Rich text editor       | `Editor` (Lexical, `packages/editor/` — see §1.1) |
 
 ---
 
@@ -582,10 +617,19 @@ empty-state illustrations). Never change stroke width in dense UI.
 
 ### Migration note
 
-`SvgIcon` from `@mui/material` (not `@mui/icons-material`) remains in use in
-`src/editor/plugins/ToolbarPlugin/Tools/TableTools.tsx` for 31 custom Google
-Material Symbols paths. This is intentional. The `@mui/icons-material` package
-has been removed; `@mui/material` stays.
+The `@mui/icons-material` package has been removed; `@mui/material` stays for
+the app shell.
+
+`SvgIcon` from `@mui/material` used to hold the 31 custom Google Material
+Symbols paths in the editor's table menu. That is **no longer true** — phase 2
+took `packages/editor` off MUI entirely (§1.1), and those marks are now plain
+`<svg>` elements with the two things the wrapper contributed — the glyph size
+(`fontSize="small"` → `ICON_SIZE.dense`) and, for four of them, an `sx`
+rotation — written as attributes. See
+`packages/editor/src/plugins/ToolbarPlugin/Tools/TableTools.tsx`,
+`Tools/ImageTools.tsx` and `ComponentPickerPlugin/index.tsx`, which each carry
+the note where the import used to be. `SvgIcon` has no remaining call site
+anywhere in the tree.
 
 ---
 
@@ -801,7 +845,7 @@ no-ops:
 
 - **`[theme="dark"]`** — nothing has set that attribute since the color-theme
   toggle was removed in `bc20ee77` (Jul 2024). ~90 lines of tuned dark styling
-  sat in `editor/theme.css` matching nothing for two years, and `0adc7ae7` then
+  sat in `packages/editor/src/theme.css` matching nothing for two years, and `0adc7ae7` then
   deleted the `@media` block that _was_ working, as a "duplicate" of it.
 - **`prefers-color-scheme`** — reads the OS preference and ignores the in-app
   toggle, so it disagrees with the rest of the app the moment a reader overrides
@@ -842,12 +886,12 @@ inferred. Two shapes, both already in use:
   ```
 
   `html.dark .sticky-note` outranks `html.dark`, so this is order-independent.
-  See the `--doc-*` block in `editor/theme.css`.
+  See the `--doc-*` block in `packages/editor/src/theme.css`.
 
 ### 19.4 Lexical renders through two layers — check both
 
 9 of 14 node families are `DecoratorNode`s whose `decorate()` returns React. The
-`.attachment-*`-style classes in `editor/theme.css` come from `exportDOM`, so
+`.attachment-*`-style classes in `packages/editor/src/theme.css` come from `exportDOM`, so
 they style **exported HTML, print, and the pre-hydration render** — not what you
 see while editing or reading a post. Fixing `theme.css` alone left attachments
 light through two separate commits. When restyling an editor feature, find its

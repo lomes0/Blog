@@ -1,12 +1,13 @@
 # Haklex adoption
 
-Status: **phases 0, 1 and part of 5 shipped (8 Aug 2026); 2, 3, 4 not
+Status: **phases 0, 1, 2 and part of 5 shipped (8–9 Aug 2026); 3 and 4 not
 started.** Written 8 Aug 2026 from a read of `tmp/haklex` at `59850ebd`
 (v0.34.0, 5 Aug 2026, MIT). Reviewed the same day: measurements re-verified
 against both trees; the Lexical target (0.47 → 0.49), the `@lexical/html`
 patch-package obstacle (§3), and the src/-rooted checker globs (§4.3) were
-corrected as a result. See §10 for what execution actually found — including
-one live regression still open.
+corrected as a result. See §10 for what execution actually found — §10.6 is the
+phase 2 log, and it is where the list of things still wanting a human at a
+browser lives.
 
 Haklex is an AI-agent-native Lexical ecosystem — 40 packages, ~55k LOC,
 published to npm and consumed by three downstreams. This plan takes four things
@@ -355,14 +356,19 @@ each of those phases blinds it in a different way), `npm run build` +
 
 ## 9. Open questions
 
-1. **`CanvasNode`** — slot inversion, or leave it app-registered? Decide by
-   reading the 8 imports (§4.2). Affects whether phase 1 is pure motion.
-2. **Does phase 2 restyle the chrome, or only the nodes?** ToolbarPlugin is
-   7.5k LOC and holds 23 of the 32 MUI files. Restyling it is most of phase 2's
-   cost; leaving it MUI means the toolbar and the content it edits are drawn by
-   two systems. Not decided.
-3. **`ComponentPickerPlugin` (703 LOC) vs their slash menu (588).** Theirs is
-   sectioned and keyword-scored. Not obviously better — compare before porting.
+Three of the four are now answered; the answers are left in place rather than
+deleted, because each records a decision someone will otherwise re-open.
+
+1. ~~**`CanvasNode`** — slot inversion, or leave it app-registered?~~
+   **Answered in §10.4: not a real choice.** Its imports do not reach app
+   internals, so it stays in the package untouched.
+2. ~~**Does phase 2 restyle the chrome, or only the nodes?**~~ **Decided by the
+   user before phase 2 began: restyle the chrome too.** That is why phase 2 is
+   seven commits (§10.6.1); leaving ToolbarPlugin on MUI would have meant the
+   toolbar and the content it edits drawn by two systems.
+3. ~~**`ComponentPickerPlugin` (703 LOC) vs their slash menu (588).**~~
+   **Decided in `239ce363`: restyle ours, do not port theirs.** Sectioning and
+   keyword scoring are a product change, not a styling one — see §10.6.3.
 4. Their `messages-engine` (pluggable system/first-user/every-user/last-user
    context providers) is a prompt-assembly framework we may not need. Deferred,
    not rejected.
@@ -376,6 +382,7 @@ each of those phases blinds it in a different way), `npm run build` +
 | 0 — Lexical 0.28 → 0.49 | `9c5d1b31` | plus `d5fd6577`, which repairs it |
 | 1a — checker groundwork | `58ddac8c` | no file moves; every glob probed |
 | 1b — the move | `f306652c` | 173 files, all R100 |
+| 2 — vanilla-extract + Base UI | `73a1e1c9`…`266e6974` + this one | seven commits; see §10.6 |
 | 5A — `check:codecs` | `aa779241` | lands green via a justified allowlist |
 | 5C — recovery contract | `077f37fe` | `block_not_found` is now retryable |
 
@@ -429,7 +436,8 @@ the workaround used to be.
 ### 10.4 Corrections to this plan's own numbers
 
 - The test baseline was **465/27** when execution began, not the "411 tests, 21
-  specs" §3 and CLAUDE.md claim. It is 477/27 now.
+  specs" §3 and CLAUDE.md claim. It is **485/28** at the end of phase 2, and
+  CLAUDE.md now says so.
 - §2.1's "~60 outward imports" measured **77**.
 - §4.3 lists three src/-rooted checkers that go blind. There are **more**:
   `scripts/check-tdz.mjs`, and `next lint`'s default directory list, which
@@ -446,11 +454,174 @@ the workaround used to be.
 
 ### 10.5 Not verified
 
-`npm run build` is red while `tmp/haklex` is present: `tsconfig.json` includes
-`**/*.ts`, so `next build` type-checks the gitignored reference checkout and
-dies on a missing devDep. Pre-existing, confirmed against `58ddac8c`.
+`npm run build` was red while `tmp/haklex` is present: `tsconfig.json` includes
+`**/*.ts`, so `next build` type-checked the gitignored reference checkout and
+died on a missing devDep. Pre-existing, confirmed against `58ddac8c`, and
+**fixed** in `95a482d5` — the checkout is excluded now, and every phase 2 commit
+built green.
 
 Still wants a human: a stored revision containing every custom node type,
 `/view/[id]` server HTML, the Diff view, and paste of `<pre>`/`<code>`/a GitHub
 code table (which now routes through `$config()` conversions rather than our
 deleted `importDOM` override).
+
+### 10.6 Phase 2 execution log (8–9 Aug 2026)
+
+**Done. `packages/editor` has zero `@mui/*` imports** — the 32 files §2.2
+counted are all converted, and the only remaining matches in the package are
+four prose comments in the utils that replaced them. §9.2 was decided by the
+user before work began (**restyle the chrome too**), which is what made this
+seven commits rather than three.
+
+#### 10.6.1 The seven commits
+
+| # | Commit | What it did |
+| - | ------ | ----------- |
+| 1 | `73a1e1c9` | Build wiring + the `--ed-*` token contract. Zero pixels: the point was to retire the whole toolchain risk — vanilla-extract's webpack plugin under the PWA and bundle-analyzer wrappers, production output, `webpackBuildWorker` — before a component moved. Taught `check:theme` to read `.css.ts`, which §5.2 makes a precondition for the phase. |
+| 2 | `0b7caf6d` | `ui/` — the ported haklex primitives kit — and `FloatingToolbar`. First pixels, first Base UI. |
+| 3 | `051db1f3` | The node layer: `nodes/` goes 8 MUI files → 0. This is the commit phase 3 structurally needs, since the Shiki code block and the image upgrade land there. |
+| 4 | `b4fa76b2` | All ten toolbar dialogs. Added `text-field`, `switch`, `radio-group` to the kit and `Dialogs/parts.tsx` for the header/body/footer arrangement the ten had each rebuilt. |
+| 5 | `239ce363` | The menus, the two selects and the slash picker — the tranche the plan called highest-risk for the smallest diff. |
+| 6 | `266e6974` | `ToolbarPlugin/index` and the eight `Tools/`. Deleted `toolbar.css`, every rule of which addressed MUI class names. |
+| 7 | this one | No pixels. The rot guard, the knip triage, and the stale prose in CLAUDE.md / DESIGN.md / `next.config.ts`. |
+
+The gate held at **485 tests / 28 files, `tsc` 0** at every one of the seven —
+which is also the honest reading of it: nothing in the suite touches the chrome,
+so a green suite was never evidence about this phase. `check:theme` grew from 22
+to 29 `.css.ts` files across the seven, and that checker _is_ evidence, because
+it fails on a scheme-invariant color in a `.css.ts`.
+
+#### 10.6.2 The rot guard (commit 7)
+
+`eslint.config.mjs` now bans `@mui/*` under `packages/**` via
+`no-restricted-imports`, scoped to `packages/**` rather than to the editor by
+name so a second package inherits the rule instead of rediscovering it. Probed
+in both directions per the standard phase 1a set: a `@mui/material` barrel
+import, an `@mui/material/Box` deep path, a type-only `@mui/material/styles`
+import and an `@mui/system` import each fail lint under `packages/editor/src`,
+and the same imports under `src/lib` stay green — the app shell keeps MUI, and
+`modularizeImports` in `next.config.ts` still earns its keep for the 131 files
+there that import from the barrel.
+
+#### 10.6.3 What this plan got wrong
+
+Collected from the seven commit messages, worst first:
+
+- **The kit's `select` and `dropdown-menu` encode "this is a form field", and
+  that is wrong for a toolbar control.** `alignItemWithTrigger` overlays the
+  popup on its trigger and the `--anchor-width` clamp sizes the popup to the
+  trigger — right for a dialog's field, and it would have cut "Numbered List" in
+  half against a 60px toolbar trigger. Both are inherited *haklex* choices, not
+  Base UI defaults, so porting the kit faithfully imported a decision nobody
+  made for this call site.
+- **`finalFocus={false}` is load-bearing, and its absence would have been
+  green.** MUI restored focus to the trigger synchronously, so the editor's own
+  `setTimeout(0) → editor.focus()` always ran last. Base UI returns focus *after
+  a 100ms exit animation* — i.e. after our timeout — and would have quietly
+  stolen the caret back to the trigger on every font/size change, with `tsc`,
+  lint and 485 tests all passing. Turning it off makes the editor's `restoreFocus`
+  the only thing deciding where the caret lands.
+- **A `.css.ts` may not share its stem with a `.css` in the same directory.**
+  TypeScript resolves `./toolbar.css` to the `.ts`; webpack resolves it to the
+  literal `.css`. The exported class is `undefined` at runtime with every
+  checker green. `check:unused` caught it, not a gate. Six plain stylesheets
+  remain in the package, each one paste away from the same thing — commit 6
+  retired the trap for `ToolbarPlugin/` by deleting `toolbar.css` outright.
+- **A Base UI `Popover` opened from inside a `Menu.Popup` is not in that menu's
+  floating tree.** The first click in the popover reads as an outside press and
+  closes the menu underneath it. This is *structural*, not cosmetic: it is why
+  Table and Note carry their colour triggers in the toolbar row beside the menu
+  button instead of as a row inside it (colour is one click away now, not two),
+  and why AI's Change Tone and model lists became real submenus.
+- **`Menu.Popup` has `finalFocus` but no `initialFocus`.** One capability is
+  lost with no replacement: AITools' `onFocusVisible` forwarding is gone, so its
+  prompt field is reached by Tab rather than by arrow key.
+- **Base UI 1.7 disagrees with what haklex compiles against (`>=1.5.0`) in four
+  places**, all found on first compile: `className` is
+  `string | ((state) => string)` on every part, and haklex interpolates it into
+  a template — which stringifies a *function* into the class attribute (~11 type
+  errors; a `mergeClass` helper handles it); tooltip delay lives on `Provider`,
+  not `Root`; and `Select.Root` / `Combobox.Root` are generic *functions*, so
+  taking `ComponentProps` of them (as haklex does) collapses to
+  `<unknown, false>` and silently loses both the value type and the `multiple`
+  overload.
+- **§5.3's token list was incomplete.** The contract also needs semantic status
+  colors (danger/warning/success/info plus soft companions, `accentSoft`,
+  `accentContrast`) — `alert`, `badge` and `action-button` cannot be ported
+  without them, and haklex ships them as literals. It also gained a `constant`
+  group for values that deliberately do *not* respond to the scheme (the colour
+  picker's hue track, the alpha checkerboard), so that intent is something
+  `assignVars` type-checks rather than a per-line checker exemption.
+- **Radio was the wrong target for the image resize handles**, contrary to the
+  plan: they render checked unconditionally, are never grouped, and Base UI's
+  `Radio` would need a `RadioGroup` and carry radio semantics into something
+  that has none. A plain button matches the existing `HTMLButtonElement`
+  typing.
+- **§9.3 is decided: the slash menu is a restyle, not a port.** haklex's
+  sectioned, keyword-scored menu was deliberately not adopted — that is a
+  product decision, not a styling one. `ComponentPicker`'s
+  `LexicalTypeaheadMenuPlugin` wiring, "/" trigger match, option table, filter
+  and `onSelectOption` are all outside the phase 2 diff.
+- Two outward imports went that the plan did not count on: `useMenuState` (all
+  five menus own their open state now) and `useFixedBodyScroll` (Base UI's
+  `Dialog` locks scroll itself). Both stay in `src/hooks` — three app files
+  still use `useMenuState`.
+
+#### 10.6.4 What phase 2 deliberately did not do
+
+- **`knip` is not silenced.** 256 of its 532 findings sit under
+  `packages/editor/src/ui` — 124 distinct symbols, two thirds of them `XProps`
+  aliases. The triage for that directory is *keep, with a reason*, and the
+  reason is in the barrel's header comment: it is a ported vendor surface kept
+  complete so phase 3 and phase 4 compile against it unmodified. Trimming it to
+  what phase 2 happens to call would mean re-deriving the Base UI 1.7
+  adaptations above a second time. Three groups are wholly unconsumed today and
+  are the clearest case: `combobox`, the low-level `Popover*`/`Tooltip*` parts
+  under the convenience wrappers, and `Sheet` / `ScrollArea` / `ActionBar`.
+  Outside `ui/` the ordinary rule applies — `utils/useColorScheme.ts`'s
+  `readColorScheme` was unexported rather than kept.
+- **`Skeleton` and `Collapse` stayed local to `AttachmentNode`** rather than
+  entering `ui/`. That directory means "haklex's set"; two components invented
+  for one call site each would make it stop meaning that.
+- **The §4.2 node-importable, no-CSS entrypoint still does not exist**, and is
+  still not needed while the package is TS-source-only compiled by Next.
+
+#### 10.6.5 Still wants a human at a browser
+
+Every item here is a claim no gate in this repo can make. The suite is
+`environment: "node"` and does not mount the editor.
+
+1. **The three focus contracts.** That the caret returns to the document after a
+   font or size change, after Escape, and after an outside press — the
+   `finalFocus={false}` decision above is precisely the kind that passes every
+   check and fails on screen. Likewise that `Menu` closes restore focus through
+   `onOpenChange` rather than through the three call sites that used to remember
+   to.
+2. **The colour pickers.** Four call sites were adapted rather than preserved
+   (the kit's picker is full HSV + hex + eyedropper and could not keep the old
+   `toggle="menuitem"` signature), and two of them moved out of their menus for
+   the floating-tree reason in §10.6.3.
+3. **Dark mode over the whole restyled surface.** `check:theme` proves no
+   *literal* is scheme-invariant; it cannot prove the result is legible. Two
+   known live issues sit here: `CanvasComponent`'s tool strip is drawn from two
+   token sets, because `AddNoteButton` and `ZoomControls` live in
+   `src/components/NotesCanvas` on the app side (declared, not a bug — the
+   contract aliases the MUI palette rather than redefining it), and
+   `.sticky-tools` inherits `text-primary` inside the light-yellow sticky
+   island, so the grip glyph goes near-white in dark. The latter is a §19.3
+   island violation, pre-existing (the MUI `IconButton` inherited the same
+   value) but now sitting in a file phase 2 touched.
+4. **The in-popup size stepper.** It is a header `div`, not a `Select.Item`,
+   because Base UI moves focus between registered items and a number input
+   inside one is an input you cannot type into. Its wrapper swallows every key
+   but Escape and Tab, since typeahead and list navigation are registered on the
+   *popup* — a digit would both type and jump the highlight. Worth confirming by
+   hand that nothing else was swallowed with them.
+5. **The live font preview.** MUI's per-item `onFocusVisible` is what made
+   arrow-keying apply fonts as you go. Base UI has no highlight event, so this
+   is now `onFocus` plus a `:focus-visible` test — and that guard is
+   load-bearing, not decorative: `highlightItemOnHover` defaults true, so
+   without it merely sweeping the pointer down the list rewrites the document.
+6. **Print.** `FloatingToolbar`'s below-600px hide and print hide were `sx`
+   shorthands carrying real behaviour and are now spelled out in CSS.
+7. The §10.5 list is unchanged and still open.

@@ -178,7 +178,14 @@ const nextConfig: NextConfig = {
     // Use webpack for consistency
     webpackBuildWorker: true,
   },
-  // Add modularizeImports for deterministic MUI component imports
+  // Deterministic MUI component imports: rewrite the `@mui/material` barrel to
+  // per-component paths so the barrel's whole surface is not pulled in.
+  //
+  // Still earning its keep after the editor came off MUI
+  // (docs/plans/haklex-adoption.md §5): the app shell keeps MUI, and 131 files
+  // under `src/` still import from the barrel. What changed is its reach —
+  // `packages/**` is now MUI-free and lint-enforced, so this transform no
+  // longer touches the editor at all.
   modularizeImports: {
     "@mui/material": {
       transform: "@mui/material/{{member}}",

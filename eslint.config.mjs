@@ -188,4 +188,37 @@ export default [
       }],
     },
   },
+  {
+    // The editor package is deliberately off MUI (docs/plans/haklex-adoption.md
+    // §5). It draws on vanilla-extract + Base UI against the `--ed-*` contract
+    // in `packages/editor/src/styles/tokens.css.ts`; the app shell keeps MUI and
+    // DESIGN.md. That split is the *point* — haklex's components port in
+    // unrewritten, and phase 2 spent seven commits removing every one of the 32
+    // MUI files that stood in the way.
+    //
+    // A single `@mui/*` import back across that line is not one component out of
+    // step: it reinstates the two-systems problem inside the package that was
+    // just freed of it — two token sets, two hover scales and two focus rings in
+    // one surface — and it re-couples an extracted package to `src/`'s theme.
+    // Nothing here needs it: `utils/useColorScheme.ts` reads the scheme off
+    // `html.dark` instead of `useTheme().palette.mode`, `utils/useMediaQuery.ts`
+    // and `utils/debounce.ts` replace their `@mui/material` counterparts, and
+    // the `--ed-*` colors alias `--mui-palette-*` so the palettes cannot drift
+    // without importing anything.
+    //
+    // Scoped to `packages/**` rather than to the editor by name so a second
+    // package inherits the rule instead of rediscovering it.
+    files: ["packages/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": ["error", {
+        patterns: [
+          {
+            group: ["@mui/*", "@mui/*/**"],
+            message:
+              "packages/** is MUI-free on purpose (docs/plans/haklex-adoption.md §5). Use the Base UI kit in packages/editor/src/ui and the --ed-* tokens in packages/editor/src/styles/tokens.css.ts; for the color scheme use utils/useColorScheme (html.dark), not useTheme().palette.mode. If a primitive is missing, add it to ui/ — do not reach back into the app shell's design system.",
+          },
+        ],
+      }],
+    },
+  },
 ];
