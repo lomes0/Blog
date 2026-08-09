@@ -216,7 +216,7 @@ export default function FontSelect({ editor }: { editor: LexicalEditor }) {
         value={fontFamily}
       >
         <SelectTrigger aria-label="font family" className={css.selectTrigger}>
-          <SelectValue>
+          <SelectValue className={css.triggerValue}>
             {(value: string | null) => {
               const label =
                 FONT_FAMILY_OPTIONS.find(([option]) => option === value)?.[1] ??

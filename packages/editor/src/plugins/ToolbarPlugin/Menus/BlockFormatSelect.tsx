@@ -257,7 +257,7 @@ export function BlockFormatSelect({ editor, blockType }: {
       value={blockType}
     >
       <SelectTrigger aria-label="block type" className={css.selectTrigger}>
-        <SelectValue>
+        <SelectValue className={css.triggerValue}>
           {(value: BlockType | null) => {
             const option = BLOCK_OPTIONS.find((entry) => entry.value === value);
             if (!option) return null;

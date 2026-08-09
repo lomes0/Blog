@@ -41,17 +41,36 @@ export const selectTrigger = style({
 });
 
 /**
+ * The icon and the word inside a trigger, on one line.
+ *
+ * `Select.Value` renders a plain inline wrapper, so without this the block-level
+ * label below drops onto its own row and the trigger grows to two lines inside a
+ * 52px toolbar. Laying the wrapper out as a flex row is what keeps the label
+ * beside its icon; `minWidth: 0` is what lets the label's ellipsis engage
+ * instead of the wrapper refusing to shrink.
+ */
+export const triggerValue = style({
+  display: "inline-flex",
+  alignItems: "center",
+  gap: SPACE.xs,
+  minWidth: 0,
+  overflow: "hidden",
+});
+
+/**
  * The trigger's word — "Normal", "Roboto". Hidden on a narrow viewport, where
  * the icon alone identifies the control and the toolbar needs the width.
  */
 export const triggerLabel = style({
   display: "none",
-  maxWidth: "9ch",
+  maxWidth: "12ch",
   overflow: "hidden",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
   "@media": {
-    [UP_SM]: { display: "block" },
+    // inline-block, not block: this sits inside `triggerValue`'s flex row, and
+    // a block child there is what put the label under its icon.
+    [UP_SM]: { display: "inline-block" },
   },
 });
 
