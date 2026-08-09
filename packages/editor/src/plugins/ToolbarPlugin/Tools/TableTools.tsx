@@ -13,19 +13,6 @@ import {
   LexicalEditor,
 } from "lexical";
 import { useCallback, useEffect, useState } from "react";
-import { useMenuState } from "@/hooks/useMenuState";
-import {
-  Button,
-  Divider,
-  ListItemIcon,
-  ListItemText,
-  Menu,
-  MenuItem,
-  SvgIcon,
-  ToggleButton,
-  ToggleButtonGroup,
-  Typography,
-} from "@mui/material";
 import {
   $deleteTableColumn__EXPERIMENTAL,
   $deleteTableRow__EXPERIMENTAL,
@@ -62,6 +49,25 @@ import {
   Trash2,
 } from "lucide-react";
 import { ICON_SIZE } from "@/theme/icons";
+import {
+  cx,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  getActionButtonClassName,
+} from "@/editor/ui";
+import * as menuCss from "../Menus/menus.css";
+import * as css from "./tools.css";
+
+/** The same labelled trigger as `Insert`, `Note` and `AI` — see `menus.css`. */
+const triggerClass = cx(
+  getActionButtonClassName({ variant: "outline", size: "lg" }),
+  menuCss.menuTrigger,
+);
+
+const toggleClass = getActionButtonClassName({ size: "md", icon: true });
 
 function computeSelectionCount(selection: TableSelection): {
   columns: number;
@@ -110,116 +116,102 @@ function $selectLastDescendant(node: ElementNode): void {
   }
 }
 
+/**
+ * The Material Symbols marks this menu uses, as plain `<svg>` rather than MUI's
+ * `SvgIcon`. Two things came from that wrapper and both are now attributes:
+ * the glyph size (`fontSize="small"`) and, for four of them, a rotation that
+ * was an `sx`. Everything else was already the raw path.
+ *
+ * The size passed here is only the intrinsic one — inside a menu row
+ * `ui/menu.css`'s `applyItemSvgStyles` sizes the icon column, and that is
+ * deliberate: the caller sizes a toolbar glyph, the menu sizes its own.
+ */
+const Mark = (
+  { d, rotate }: { d: string; rotate?: number },
+) => (
+  <svg
+    aria-hidden="true"
+    fill="currentColor"
+    height={ICON_SIZE.dense}
+    style={rotate ? { transform: `rotate(${rotate}deg)` } : undefined}
+    viewBox="0 -960 960 960"
+    width={ICON_SIZE.dense}
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d={d} />
+  </svg>
+);
+
 const FormatImageRight = () => (
-  <SvgIcon viewBox="0 -960 960 960" fontSize="small">
-    <path
-      xmlns="http://www.w3.org/2000/svg"
-      d="M450-285v-390h390v390H450Zm60-60h270v-270H510v270ZM120-120v-60h720v60H120Zm0-165v-60h270v60H120Zm0-165v-60h270v60H120Zm0-165v-60h270v60H120Zm0-165v-60h720v60H120Z"
-    />
-  </SvgIcon>
+  <Mark d="M450-285v-390h390v390H450Zm60-60h270v-270H510v270ZM120-120v-60h720v60H120Zm0-165v-60h270v60H120Zm0-165v-60h270v60H120Zm0-165v-60h270v60H120Zm0-165v-60h720v60H120Z" />
 );
 
 const FormatImageLeft = () => (
-  <SvgIcon viewBox="0 -960 960 960" fontSize="small">
-    <path
-      xmlns="http://www.w3.org/2000/svg"
-      d="M120-285v-390h390v390H120Zm60-60h270v-270H180v270Zm-60-435v-60h720v60H120Zm450 165v-60h270v60H570Zm0 165v-60h270v60H570Zm0 165v-60h270v60H570ZM120-120v-60h720v60H120Z"
-    />
-  </SvgIcon>
+  <Mark d="M120-285v-390h390v390H120Zm60-60h270v-270H180v270Zm-60-435v-60h720v60H120Zm450 165v-60h270v60H570Zm0 165v-60h270v60H570Zm0 165v-60h270v60H570ZM120-120v-60h720v60H120Z" />
 );
 
 const CellMerge = () => (
-  <SvgIcon viewBox="0 -960 960 960" fontSize="small">
-    <path d="M120-120v-240h80v160h160v80H120Zm480 0v-80h160v-160h80v240H600ZM287-327l-57-56 57-57H80v-80h207l-57-57 57-56 153 153-153 153Zm386 0L520-480l153-153 57 56-57 57h207v80H673l57 57-57 56ZM120-600v-240h240v80H200v160h-80Zm640 0v-160H600v-80h240v240h-80Z" />
-  </SvgIcon>
+  <Mark d="M120-120v-240h80v160h160v80H120Zm480 0v-80h160v-160h80v240H600ZM287-327l-57-56 57-57H80v-80h207l-57-57 57-56 153 153-153 153Zm386 0L520-480l153-153 57 56-57 57h207v80H673l57 57-57 56ZM120-600v-240h240v80H200v160h-80Zm640 0v-160H600v-80h240v240h-80Z" />
 );
 
 const TextRotationNone = () => (
-  <SvgIcon viewBox="0 -960 960 960" fontSize="small">
-    <path d="M160-200v-80h528l-42-42 56-56 138 138-138 138-56-56 42-42H160Zm116-200 164-440h80l164 440h-76l-38-112H392l-40 112h-76Zm138-176h132l-64-182h-4l-64 182Z" />
-  </SvgIcon>
+  <Mark d="M160-200v-80h528l-42-42 56-56 138 138-138 138-56-56 42-42H160Zm116-200 164-440h80l164 440h-76l-38-112H392l-40 112h-76Zm138-176h132l-64-182h-4l-64 182Z" />
 );
 
 const TextRotationVertical = () => (
-  <SvgIcon viewBox="0 -960 960 960" fontSize="small">
-    <path d="m436-320 164-440h80l164 440h-76l-40-112H552l-40 112h-76Zm138-176h132l-64-182h-4l-64 182ZM240-160 100-300l56-56 44 42v-526h80v526l44-42 56 56-140 140Z" />
-  </SvgIcon>
+  <Mark d="m436-320 164-440h80l164 440h-76l-40-112H552l-40 112h-76Zm138-176h132l-64-182h-4l-64 182ZM240-160 100-300l56-56 44 42v-526h80v526l44-42 56 56-140 140Z" />
 );
 
 const AddRowAbove = () => (
-  <SvgIcon viewBox="0 -960 960 960" fontSize="small">
-    <path d="M200-160h560v-240H200v240Zm640 80H120v-720h160v80h-80v240h560v-240h-80v-80h160v720ZM480-480Zm0 80v-80 80Zm0 0Zm-40-240v-80h-80v-80h80v-80h80v80h80v80h-80v80h-80Z" />
-  </SvgIcon>
+  <Mark d="M200-160h560v-240H200v240Zm640 80H120v-720h160v80h-80v240h560v-240h-80v-80h160v720ZM480-480Zm0 80v-80 80Zm0 0Zm-40-240v-80h-80v-80h80v-80h80v80h80v80h-80v80h-80Z" />
 );
 
 const AddRowBelow = () => (
-  <SvgIcon viewBox="0 -960 960 960" fontSize="small">
-    <path d="M200-560h560v-240H200v240Zm-80 400v-720h720v720H680v-80h80v-240H200v240h80v80H120Zm360-320Zm0-80v80-80Zm0 0ZM440-80v-80h-80v-80h80v-80h80v80h80v80h-80v80h-80Z" />
-  </SvgIcon>
+  <Mark d="M200-560h560v-240H200v240Zm-80 400v-720h720v720H680v-80h80v-240H200v240h80v80H120Zm360-320Zm0-80v80-80Zm0 0ZM440-80v-80h-80v-80h80v-80h80v80h80v80h-80v80h-80Z" />
 );
 
 const AddColumnLeft = () => (
-  <SvgIcon viewBox="0 -960 960 960" fontSize="small">
-    <path d="M800-200v-560H560v560h240Zm-640 80v-160h80v80h240v-560H240v80h-80v-160h720v720H160Zm320-360Zm80 0h-80 80Zm0 0ZM160-360v-80H80v-80h80v-80h80v80h80v80h-80v80h-80Z" />
-  </SvgIcon>
+  <Mark d="M800-200v-560H560v560h240Zm-640 80v-160h80v80h240v-560H240v80h-80v-160h720v720H160Zm320-360Zm80 0h-80 80Zm0 0ZM160-360v-80H80v-80h80v-80h80v80h80v80h-80v80h-80Z" />
 );
 
 const AddColumnRight = () => (
-  <SvgIcon viewBox="0 -960 960 960" fontSize="small">
-    <path d="M160-760v560h240v-560H160ZM80-120v-720h720v160h-80v-80H480v560h240v-80h80v160H80Zm400-360Zm-80 0h80-80Zm0 0Zm320 120v-80h-80v-80h80v-80h80v80h80v80h-80v80h-80Z" />
-  </SvgIcon>
+  <Mark d="M160-760v560h240v-560H160ZM80-120v-720h720v160h-80v-80H480v560h240v-80h80v160H80Zm400-360Zm-80 0h80-80Zm0 0Zm320 120v-80h-80v-80h80v-80h80v80h80v80h-80v80h-80Z" />
 );
 
 const RemoveRow = () => (
-  <SvgIcon viewBox="0 -960 960 960" fontSize="small">
-    <path d="M560-280H120v-400h720v120h-80v-40H200v240h360v80Zm-360-80v-240 240Zm440 104 84-84-84-84 56-56 84 84 84-84 56 56-83 84 83 84-56 56-84-83-84 83-56-56Z" />
-  </SvgIcon>
+  <Mark d="M560-280H120v-400h720v120h-80v-40H200v240h360v80Zm-360-80v-240 240Zm440 104 84-84-84-84 56-56 84 84 84-84 56 56-83 84 83 84-56 56-84-83-84 83-56-56Z" />
 );
 
 const RemoveColumn = () => (
-  <SvgIcon
-    viewBox="0 -960 960 960"
-    sx={{ transform: "rotate(90deg)" }}
-    fontSize="small"
-  >
-    <path d="M560-280H120v-400h720v120h-80v-40H200v240h360v80Zm-360-80v-240 240Zm440 104 84-84-84-84 56-56 84 84 84-84 56 56-83 84 83 84-56 56-84-83-84 83-56-56Z" />
-  </SvgIcon>
+  <Mark
+    d="M560-280H120v-400h720v120h-80v-40H200v240h360v80Zm-360-80v-240 240Zm440 104 84-84-84-84 56-56 84 84 84-84 56 56-83 84 83 84-56 56-84-83-84 83-56-56Z"
+    rotate={90}
+  />
 );
 
 const RemoveRowHeader = () => (
-  <SvgIcon viewBox="0 -960 960 960" fontSize="small">
-    <path d="M120-280v-400h720v400H120Zm80-80h560v-240H200v240Zm0 0v-240 240Z" />
-  </SvgIcon>
+  <Mark d="M120-280v-400h720v400H120Zm80-80h560v-240H200v240Zm0 0v-240 240Z" />
 );
 
 const RemoveColumnHeader = () => (
-  <SvgIcon
-    viewBox="0 -960 960 960"
-    sx={{ transform: "rotate(90deg)" }}
-    fontSize="small"
-  >
-    <path d="M120-280v-400h720v400H120Zm80-80h560v-240H200v240Zm0 0v-240 240Z" />
-  </SvgIcon>
+  <Mark
+    d="M120-280v-400h720v400H120Zm80-80h560v-240H200v240Zm0 0v-240 240Z"
+    rotate={90}
+  />
 );
 
 const AddRowHeader = () => (
-  <SvgIcon
-    viewBox="0 -960 960 960"
-    sx={{ transform: "rotate(45deg)" }}
-    fontSize="small"
-  >
-    <path d="m272-104-38-38-42 42q-19 19-46.5 19.5T100-100q-19-19-19-46t19-46l42-42-38-40 554-554q12-12 29-12t29 12l112 112q12 12 12 29t-12 29L272-104Zm172-396L216-274l58 58 226-228-56-56Z" />
-  </SvgIcon>
+  <Mark
+    d="m272-104-38-38-42 42q-19 19-46.5 19.5T100-100q-19-19-19-46t19-46l42-42-38-40 554-554q12-12 29-12t29 12l112 112q12 12 12 29t-12 29L272-104Zm172-396L216-274l58 58 226-228-56-56Z"
+    rotate={45}
+  />
 );
 
 const AddColumnHeader = () => (
-  <SvgIcon
-    viewBox="0 -960 960 960"
-    sx={{ transform: "rotate(-45deg)" }}
-    fontSize="small"
-  >
-    <path d="m272-104-38-38-42 42q-19 19-46.5 19.5T100-100q-19-19-19-46t19-46l42-42-38-40 554-554q12-12 29-12t29 12l112 112q12 12 12 29t-12 29L272-104Zm172-396L216-274l58 58 226-228-56-56Z" />
-  </SvgIcon>
+  <Mark
+    d="m272-104-38-38-42 42q-19 19-46.5 19.5T100-100q-19-19-19-46t19-46l42-42-38-40 554-554q12-12 29-12t29 12l112 112q12 12 12 29t-12 29L272-104Zm172-396L216-274l58 58 226-228-56-56Z"
+    rotate={-45}
+  />
 );
 
 const $getSelectedTableCell = (editor: LexicalEditor): TableCellNode | null => {
@@ -279,7 +271,7 @@ export default function TableTools(
   const [tableCellStyle, setTableCellStyle] = useState<
     Record<string, string> | null
   >(null);
-  const { anchorEl, menuOpen: open, openMenu, closeMenu } = useMenuState();
+  const [open, setOpen] = useState(false);
   const textColor = tableCellStyle?.color;
   const backgroundColor = tableCellStyle?.["background-color"];
 
@@ -438,33 +430,33 @@ export default function TableTools(
     }, 0);
   }, [editor]);
 
-  const handleClose = useCallback(() => {
-    closeMenu();
-    restoreFocus();
-  }, [closeMenu, restoreFocus]);
-
+  /*
+   * The three deletes used to call `handleClose()` from inside their
+   * `editor.update` — that call was `closeMenu()` plus `restoreFocus()`, and
+   * closing is now the menu's own job: `Menu.Item` closes on click. What is
+   * left of it lives in `handleOpenChange` below, which runs on *every* close
+   * (item, Escape, outside press) rather than only on the three that
+   * remembered to ask. The table commands themselves are untouched.
+   */
   const deleteTableRowAtSelection = useCallback(() => {
     editor.update(() => {
       $deleteTableRow__EXPERIMENTAL();
-      handleClose();
     });
-  }, [editor, handleClose]);
+  }, [editor]);
 
   const deleteTableAtSelection = useCallback(() => {
     if (tableCellNode === null) return;
     editor.update(() => {
       node.selectPrevious();
       node.remove();
-      handleClose();
     });
-  }, [editor, node, tableCellNode, handleClose]);
+  }, [editor, node, tableCellNode]);
 
   const deleteTableColumnAtSelection = useCallback(() => {
     editor.update(() => {
       $deleteTableColumn__EXPERIMENTAL();
-      handleClose();
     });
-  }, [editor, handleClose]);
+  }, [editor]);
 
   const getTableRowHeaderState = useCallback(() => {
     if (tableCellNode === null) return TableCellHeaderStates.NO_STATUS;
@@ -669,274 +661,202 @@ export default function TableTools(
     });
   }
 
-  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
-    openMenu(event);
-    editor.getEditorState().read(() => {
-      const tableCell = $getSelectedTableCell(editor);
-      setTableCellNode(tableCell);
-    });
+  /**
+   * What `handleClick` was: reading the cell under the caret at the moment the
+   * menu opens, because everything in the menu acts on that cell. It moves onto
+   * the open transition so it also runs when the menu is opened from the
+   * keyboard, which the click handler never covered.
+   */
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (next) {
+      editor.getEditorState().read(() => {
+        setTableCellNode($getSelectedTableCell(editor));
+      });
+    } else {
+      restoreFocus();
+    }
   };
 
   return (
     <>
-      <Button
-        id="table-tools-button"
-        aria-controls={open ? "table-tools-menu" : undefined}
-        aria-haspopup="true"
-        aria-expanded={open ? "true" : undefined}
-        variant="outlined"
-        onClick={handleClick}
-        startIcon={<Table size={ICON_SIZE.dense} />}
-        endIcon={<ChevronDown size={ICON_SIZE.dense} />}
-        sx={{
-          color: "text.primary",
-          borderColor: "divider",
-          p: 1,
-          minWidth: 0,
-          height: 36,
-          "& .MuiButton-startIcon": { mr: { xs: 0, sm: 1 }, ml: 0 },
-          "& .MuiButton-endIcon": { mr: 0, ml: 0 },
-          "& .MuiButton-endIcon > svg": { fontSize: 20 },
-        }}
-      >
-        <Typography
-          variant="button"
-          sx={{ display: { xs: "none", sm: "block" } }}
+      <DropdownMenu open={open} onOpenChange={handleOpenChange}>
+        <DropdownMenuTrigger aria-label="Table options" className={triggerClass}>
+          <Table size={ICON_SIZE.inline} />
+          <span className={menuCss.triggerLabel}>Table</span>
+          <ChevronDown size={ICON_SIZE.inline} />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="center"
+          aria-label="Formatting options for table"
+          side="bottom"
         >
-          Table
-        </Typography>
-      </Button>
-      <Menu
-        id="table-tools-menu"
-        aria-label="Formatting options for table"
-        anchorEl={anchorEl}
-        open={open}
-        onClose={handleClose}
-        anchorOrigin={{
-          vertical: "bottom",
-          horizontal: "center",
-        }}
-        transformOrigin={{
-          vertical: "top",
-          horizontal: "center",
-        }}
-        sx={{
-          "& .MuiMenu-paper": { minWidth: 240 },
-          "& .MuiMenuItem-root": { minHeight: 36 },
-          "& .MuiBackdrop-root": { userSelect: "none" },
-        }}
-      >
-        <MenuItem>
-          <ToggleButtonGroup
-            size="small"
-            sx={{ width: "100%", justifyContent: "center" }}
+          {/*
+            The two icon rows are plain rows rather than menu items — a row of
+            three buttons cannot also be one stop in Base UI's composite list.
+            See `menuToggleRow` in `tools.css.ts`.
+          */}
+          <div
+            aria-label="table alignment"
+            className={css.menuToggleRow}
+            role="group"
           >
-            <ToggleButton
-              value="align-left"
-              key="align-left"
-              selected={formatType === "left"}
-              onClick={() => {
-                updateFormat("left");
-              }}
+            <button
+              aria-label="Align left"
+              aria-pressed={formatType === "left"}
+              className={toggleClass}
+              type="button"
+              onClick={() => updateFormat("left")}
             >
               <AlignLeft size={ICON_SIZE.dense} />
-            </ToggleButton>
-            <ToggleButton
-              value="align-center"
-              key="align-center"
-              selected={formatType === "center"}
-              onClick={() => {
-                updateFormat("center");
-              }}
+            </button>
+            <button
+              aria-label="Align center"
+              aria-pressed={formatType === "center"}
+              className={toggleClass}
+              type="button"
+              onClick={() => updateFormat("center")}
             >
               <AlignCenter size={ICON_SIZE.dense} />
-            </ToggleButton>,
-            <ToggleButton
-              value="align-right"
-              key="align-right"
-              selected={formatType === "right"}
-              onClick={() => {
-                updateFormat("right");
-              }}
+            </button>
+            <button
+              aria-label="Align right"
+              aria-pressed={formatType === "right"}
+              className={toggleClass}
+              type="button"
+              onClick={() => updateFormat("right")}
             >
               <AlignRight size={ICON_SIZE.dense} />
-            </ToggleButton>
-          </ToggleButtonGroup>
-        </MenuItem>
-        <MenuItem>
-          <ToggleButtonGroup
-            size="small"
-            sx={{ width: "100%", justifyContent: "center" }}
+            </button>
+          </div>
+          <div
+            aria-label="table position"
+            className={css.menuToggleRow}
+            role="group"
           >
-            <ToggleButton
-              value="float-left"
-              key="float-left"
-              selected={float === "left"}
-              onClick={() => {
-                updateFloat("left");
-              }}
+            <button
+              aria-label="Float left"
+              aria-pressed={float === "left"}
+              className={toggleClass}
+              type="button"
+              onClick={() => updateFloat("left")}
             >
               <FormatImageLeft />
-            </ToggleButton>
-            <ToggleButton
-              value="align-justify"
-              key="align-justify"
-              selected={formatType === "justify" ||
+            </button>
+            <button
+              aria-label="Justify"
+              className={toggleClass}
+              type="button"
+              aria-pressed={formatType === "justify" ||
                 (formatType === "" && float === "none")}
-              onClick={() => {
-                updateFormat("justify");
-              }}
+              onClick={() => updateFormat("justify")}
             >
               <AlignLeft size={ICON_SIZE.dense} />
-            </ToggleButton>,
-            <ToggleButton
-              value="float-right"
-              key="float-right"
-              selected={float === "right"}
-              onClick={() => {
-                updateFloat("right");
-              }}
+            </button>
+            <button
+              aria-label="Float right"
+              aria-pressed={float === "right"}
+              className={toggleClass}
+              type="button"
+              onClick={() => updateFloat("right")}
             >
               <FormatImageRight />
-            </ToggleButton>
-          </ToggleButtonGroup>
-        </MenuItem>
-        <Divider />
+            </button>
+          </div>
+          <DropdownMenuSeparator />
 
-        <MenuItem
-          onClick={handleCellMerge}
-          disabled={!canMergeCells && !canUnmergeCell}
-        >
-          <ListItemIcon>
+          <DropdownMenuItem
+            disabled={!canMergeCells && !canUnmergeCell}
+            onClick={handleCellMerge}
+          >
             <CellMerge />
-          </ListItemIcon>
-          <ListItemText>
             {canUnmergeCell ? "Unmerge cell" : "Merge cells"}
-          </ListItemText>
-        </MenuItem>
-        <MenuItem onClick={toggleCellWritingMode}>
-          <ListItemIcon>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={toggleCellWritingMode}>
             {getCellWritingMode() === ""
               ? <TextRotationVertical />
               : <TextRotationNone />}
-          </ListItemIcon>
-          <ListItemText>
             Make {getCellWritingMode() === "" ? "Vertical" : "Horizontal"}
-          </ListItemText>
-        </MenuItem>
-        <ColorPicker
-          onColorChange={updateCellColor}
-          toggle="menuitem"
-          label="Cell color"
-          textColor={textColor}
-          backgroundColor={backgroundColor}
-        />
-        <MenuItem onClick={() => toggleTableRowIsHeader()}>
-          <ListItemIcon>
-            {(getTableRowHeaderState() &
-                TableCellHeaderStates.ROW) ===
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => toggleTableRowIsHeader()}>
+            {(getTableRowHeaderState() & TableCellHeaderStates.ROW) ===
                 TableCellHeaderStates.ROW
               ? <RemoveRowHeader />
               : <AddRowHeader />}
-          </ListItemIcon>
-          <ListItemText>
-            {(getTableRowHeaderState() &
-                TableCellHeaderStates.ROW) ===
+            {(getTableRowHeaderState() & TableCellHeaderStates.ROW) ===
                 TableCellHeaderStates.ROW
               ? "Remove"
               : "Add"} row header
-          </ListItemText>
-        </MenuItem>
-        <MenuItem onClick={() => toggleTableColumnIsHeader()}>
-          <ListItemIcon>
-            {(getTableColumnHeaderState() &
-                TableCellHeaderStates.COLUMN) ===
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => toggleTableColumnIsHeader()}>
+            {(getTableColumnHeaderState() & TableCellHeaderStates.COLUMN) ===
                 TableCellHeaderStates.COLUMN
               ? <RemoveColumnHeader />
               : <AddColumnHeader />}
-          </ListItemIcon>
-          <ListItemText>
-            {(getTableColumnHeaderState() &
-                TableCellHeaderStates.COLUMN) ===
+            {(getTableColumnHeaderState() & TableCellHeaderStates.COLUMN) ===
                 TableCellHeaderStates.COLUMN
               ? "Remove"
               : "Add"} column header
-          </ListItemText>
-        </MenuItem>
-        <MenuItem onClick={toggleRowStriping}>
-          <ListItemIcon>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={toggleRowStriping}>
             <Grid3x3
               size={ICON_SIZE.dense}
               style={{ transform: "rotate(45deg)" }}
             />
-          </ListItemIcon>
-          <ListItemText>
             {getTableRowStriping() ? "Remove" : "Add"} row striping
-          </ListItemText>
-        </MenuItem>
-        <Divider />
-        <MenuItem onClick={() => insertTableRowAtSelection(false)}>
-          <ListItemIcon>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => insertTableRowAtSelection(false)}>
             <AddRowAbove />
-          </ListItemIcon>
-          <ListItemText>
-            Insert{" "}
-            {selectionCounts.rows === 1
+            Insert {selectionCounts.rows === 1
               ? "row"
               : `${selectionCounts.rows} rows`} above
-          </ListItemText>
-        </MenuItem>
-        <MenuItem onClick={() => insertTableRowAtSelection(true)}>
-          <ListItemIcon>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => insertTableRowAtSelection(true)}>
             <AddRowBelow />
-          </ListItemIcon>
-          <ListItemText>
-            Insert{" "}
-            {selectionCounts.rows === 1
+            Insert {selectionCounts.rows === 1
               ? "row"
               : `${selectionCounts.rows} rows`} below
-          </ListItemText>
-        </MenuItem>
-        <MenuItem onClick={() => insertTableColumnAtSelection(false)}>
-          <ListItemIcon>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => insertTableColumnAtSelection(false)}>
             <AddColumnLeft />
-          </ListItemIcon>
-          <ListItemText>
             Insert {selectionCounts.columns === 1
               ? "column"
               : `${selectionCounts.columns} columns`} left
-          </ListItemText>
-        </MenuItem>
-        <MenuItem onClick={() => insertTableColumnAtSelection(true)}>
-          <ListItemIcon>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => insertTableColumnAtSelection(true)}>
             <AddColumnRight />
-          </ListItemIcon>
-          <ListItemText>
             Insert {selectionCounts.columns === 1
               ? "column"
               : `${selectionCounts.columns} columns`} right
-          </ListItemText>
-        </MenuItem>
-        <Divider />
-        <MenuItem onClick={deleteTableColumnAtSelection}>
-          <ListItemIcon>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={deleteTableColumnAtSelection}>
             <RemoveColumn />
-          </ListItemIcon>
-          <ListItemText>Delete column</ListItemText>
-        </MenuItem>
-        <MenuItem onClick={deleteTableRowAtSelection}>
-          <ListItemIcon>
+            Delete column
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={deleteTableRowAtSelection}>
             <RemoveRow />
-          </ListItemIcon>
-          <ListItemText>Delete row</ListItemText>
-        </MenuItem>
-        <MenuItem onClick={deleteTableAtSelection}>
-          <ListItemIcon>
+            Delete row
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={deleteTableAtSelection}>
             <Trash2 size={ICON_SIZE.dense} />
-          </ListItemIcon>
-          <ListItemText>Delete Table</ListItemText>
-        </MenuItem>
-      </Menu>
+            Delete Table
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {/*
+        Out of the menu and into the toolbar row — a `Popover` opened from
+        inside a `Menu.Popup` closes the menu under it. See the header of
+        `ColorPicker.tsx`.
+      */}
+      <ColorPicker
+        backgroundColor={backgroundColor}
+        label="Cell"
+        onClose={restoreFocus}
+        onColorChange={updateCellColor}
+        textColor={textColor}
+      />
     </>
   );
 }

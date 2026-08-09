@@ -6,8 +6,6 @@ import { $isGraphNode, GraphNode } from "@/editor/nodes/GraphNode";
 import { $patchStyle, getStyleObjectFromCSS } from "@/editor/nodes/utils";
 import { useCallback, useEffect, useState } from "react";
 import { SET_DIALOGS_COMMAND } from "../Dialogs/commands";
-import { SxProps, Theme } from "@mui/material/styles";
-import { Box, SvgIcon, ToggleButton, ToggleButtonGroup } from "@mui/material";
 import {
   AlignLeft,
   Captions,
@@ -19,32 +17,54 @@ import {
 } from "lucide-react";
 import { $isIFrameNode, IFrameNode } from "@/editor/nodes/IFrameNode";
 import { ICON_SIZE } from "@/theme/icons";
+import { getActionButtonClassName, Tooltip, TooltipProvider } from "@/editor/ui";
+import * as css from "./tools.css";
 
+/**
+ * MUI's `SvgIcon` was doing two things here — sizing the glyph from the theme's
+ * `fontSize="small"`, and carrying the `viewBox`. Both are attributes on a
+ * plain `<svg>`, which is what the rest of the ported toolbar already uses (the
+ * `Graph` mark in `Menus/InsertToolMenu`, `Highlight` in `TextFormatToggles`).
+ */
 const FormatImageRight = () => (
-  <SvgIcon viewBox="0 -960 960 960" fontSize="small">
-    <path
-      xmlns="http://www.w3.org/2000/svg"
-      d="M450-285v-390h390v390H450Zm60-60h270v-270H510v270ZM120-120v-60h720v60H120Zm0-165v-60h270v60H120Zm0-165v-60h270v60H120Zm0-165v-60h270v60H120Zm0-165v-60h720v60H120Z"
-      fontSize="small"
-    />
-  </SvgIcon>
+  <svg
+    aria-hidden="true"
+    fill="currentColor"
+    height={ICON_SIZE.dense}
+    viewBox="0 -960 960 960"
+    width={ICON_SIZE.dense}
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M450-285v-390h390v390H450Zm60-60h270v-270H510v270ZM120-120v-60h720v60H120Zm0-165v-60h270v60H120Zm0-165v-60h270v60H120Zm0-165v-60h270v60H120Zm0-165v-60h720v60H120Z" />
+  </svg>
 );
 
 const FormatImageLeft = () => (
-  <SvgIcon viewBox="0 -960 960 960" fontSize="small">
-    <path
-      xmlns="http://www.w3.org/2000/svg"
-      d="M120-285v-390h390v390H120Zm60-60h270v-270H180v270Zm-60-435v-60h720v60H120Zm450 165v-60h270v60H570Zm0 165v-60h270v60H570Zm0 165v-60h270v60H570ZM120-120v-60h720v60H120Z"
-      fontSize="small"
-    />
-  </SvgIcon>
+  <svg
+    aria-hidden="true"
+    fill="currentColor"
+    height={ICON_SIZE.dense}
+    viewBox="0 -960 960 960"
+    width={ICON_SIZE.dense}
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M120-285v-390h390v390H120Zm60-60h270v-270H180v270Zm-60-435v-60h720v60H120Zm450 165v-60h270v60H570Zm0 165v-60h270v60H570Zm0 165v-60h270v60H570ZM120-120v-60h720v60H120Z" />
+  </svg>
 );
 
+/**
+ * The class rather than `ActionButton`, for the reason the kit documents on
+ * `getActionButtonClassName`: every button here is a tooltip trigger, and
+ * Base UI's `render` hands the trigger a ref that only a real DOM element can
+ * take. `aria-pressed` is what the recipe keys its selected state off, so the
+ * toggles need nothing beyond it.
+ */
+const buttonClass = getActionButtonClassName({ size: "md", icon: true });
+
 export default function ImageTools(
-  { editor, node, sx }: {
+  { editor, node }: {
     editor: LexicalEditor;
     node: ImageNode | GraphNode | SketchNode | IFrameNode;
-    sx?: SxProps<Theme> | undefined;
   },
 ) {
   const openImageDialog = () =>
@@ -97,113 +117,119 @@ export default function ImageTools(
 
   const isImageNode = node.__type === "image";
   const isFiltered = style?.filter === "auto";
+  const showCaption = node.getShowCaption();
+  const float = style?.float;
 
   return (
-    <>
-      <ToggleButtonGroup
-        size="small"
-        sx={{
-          ...sx,
-          bgcolor: "background.default",
-        }}
-      >
-        <ToggleButton value="edit" key="edit" onClick={openDialog}>
-          <Pencil size={ICON_SIZE.dense} />
-        </ToggleButton>
+    /* One provider for the row, so a tooltip re-shows instantly as the pointer
+       travels along it — see the note in `TextFormatToggles`. */
+    <TooltipProvider closeDelay={0} delay={500}>
+      <div className={css.toolGroup}>
+        <Tooltip content="Edit">
+          <button
+            aria-label="Edit"
+            className={buttonClass}
+            type="button"
+            onClick={openDialog}
+          >
+            <Pencil size={ICON_SIZE.dense} />
+          </button>
+        </Tooltip>
         {isImageNode && (
-          <ToggleButton
-            value="sketch"
-            key="sketch"
-            onClick={openSketchDialog}
-          >
-            <PenLine size={ICON_SIZE.dense} />
-          </ToggleButton>
+          <Tooltip content="Annotate">
+            <button
+              aria-label="Annotate"
+              className={buttonClass}
+              type="button"
+              onClick={openSketchDialog}
+            >
+              <PenLine size={ICON_SIZE.dense} />
+            </button>
+          </Tooltip>
         )}
-        <ToggleButton
-          value="delete"
-          onClick={() => {
-            editor.update(() => {
-              node.selectPrevious();
-              node.remove();
-            });
-          }}
-        >
-          <Trash2 size={ICON_SIZE.dense} />
-        </ToggleButton>
-      </ToggleButtonGroup>
-      <Box
-        sx={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 0.5,
-          position: ["static", "static"],
-          justifyContent: ["center", "start"],
-          zIndex: 1000,
-        }}
-      >
-        <ToggleButtonGroup
-          size="small"
-          sx={{ bgcolor: "background.default" }}
-        >
-          <ToggleButton
-            value="caption"
-            key="caption"
-            selected={node.getShowCaption()}
-            onClick={toggleShowCaption}
-          >
-            {node.getShowCaption()
-              ? <Captions size={ICON_SIZE.dense} />
-              : <CaptionsOff size={ICON_SIZE.dense} />}
-          </ToggleButton>
-          <ToggleButton
-            value="filter-toggle"
-            key="filter-toggle"
-            selected={isFiltered}
+        <Tooltip content="Delete">
+          <button
+            aria-label="Delete"
+            className={buttonClass}
+            type="button"
             onClick={() => {
-              updateStyle({
-                "filter": isFiltered ? "none" : "auto",
+              editor.update(() => {
+                node.selectPrevious();
+                node.remove();
               });
             }}
           >
-            <Contrast size={ICON_SIZE.dense} />
-          </ToggleButton>
-        </ToggleButtonGroup>
-        <ToggleButtonGroup
-          size="small"
-          sx={{ bgcolor: "background.default" }}
-        >
-          <ToggleButton
-            value="float-left"
-            key="float-left"
-            selected={style?.float === "left"}
-            onClick={() => {
-              updateStyle({ "float": "left" });
-            }}
-          >
-            <FormatImageLeft />
-          </ToggleButton>
-          <ToggleButton
-            value="float-none"
-            key="float-none"
-            selected={!style?.float || style?.float === "none"}
-            onClick={() => {
-              updateStyle({ "float": "none" });
-            }}
-          >
-            <AlignLeft size={ICON_SIZE.dense} />
-          </ToggleButton>
-          <ToggleButton
-            value="float-right"
-            key="float-right"
-            selected={style?.float === "right"}
-            onClick={() => {
-              updateStyle({ "float": "right" });
-            }}
-          >
-            <FormatImageRight />
-          </ToggleButton>
-        </ToggleButtonGroup>
-      </Box>
-    </>
+            <Trash2 size={ICON_SIZE.dense} />
+          </button>
+        </Tooltip>
+      </div>
+
+      <div className={css.toolCluster}>
+        <div className={css.toolGroup}>
+          <Tooltip content={showCaption ? "Hide caption" : "Show caption"}>
+            <button
+              aria-label="Toggle caption"
+              aria-pressed={showCaption}
+              className={buttonClass}
+              type="button"
+              onClick={toggleShowCaption}
+            >
+              {showCaption
+                ? <Captions size={ICON_SIZE.dense} />
+                : <CaptionsOff size={ICON_SIZE.dense} />}
+            </button>
+          </Tooltip>
+          <Tooltip content="Adapt to color scheme">
+            <button
+              aria-label="Adapt to color scheme"
+              aria-pressed={isFiltered}
+              className={buttonClass}
+              type="button"
+              onClick={() => {
+                updateStyle({ "filter": isFiltered ? "none" : "auto" });
+              }}
+            >
+              <Contrast size={ICON_SIZE.dense} />
+            </button>
+          </Tooltip>
+        </div>
+
+        <div className={css.toolGroup}>
+          <Tooltip content="Float left">
+            <button
+              aria-label="Float left"
+              aria-pressed={float === "left"}
+              className={buttonClass}
+              type="button"
+              onClick={() => updateStyle({ "float": "left" })}
+            >
+              <FormatImageLeft />
+            </button>
+          </Tooltip>
+          <Tooltip content="Inline">
+            <button
+              aria-label="Inline"
+              aria-pressed={!float || float === "none"}
+              className={buttonClass}
+              type="button"
+              onClick={() => updateStyle({ "float": "none" })}
+            >
+              <AlignLeft size={ICON_SIZE.dense} />
+            </button>
+          </Tooltip>
+          <Tooltip content="Float right">
+            <button
+              aria-label="Float right"
+              aria-pressed={float === "right"}
+              className={buttonClass}
+              type="button"
+              onClick={() => updateStyle({ "float": "right" })}
+            >
+              <FormatImageRight />
+            </button>
+          </Tooltip>
+        </div>
+      </div>
+    </TooltipProvider>
   );
 }

@@ -1,19 +1,6 @@
 "use client";
 import { LexicalEditor } from "lexical";
 import { useEffect, useState } from "react";
-import { useMenuState } from "@/hooks/useMenuState";
-import {
-  Button,
-  Divider,
-  ListItemIcon,
-  ListItemText,
-  Menu,
-  MenuItem,
-  SvgIcon,
-  ToggleButton,
-  ToggleButtonGroup,
-  Typography,
-} from "@mui/material";
 import { ChevronDown, StickyNote, Trash2 } from "lucide-react";
 import {
   $getNodeStyleValueForProperty,
@@ -22,24 +9,51 @@ import {
 import ColorPicker from "./ColorPicker";
 import { StickyNode } from "@/editor/nodes/StickyNode";
 import { ICON_SIZE } from "@/theme/icons";
+import {
+  cx,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  getActionButtonClassName,
+} from "@/editor/ui";
+import * as menuCss from "../Menus/menus.css";
+import * as css from "./tools.css";
 
 const FormatImageRight = () => (
-  <SvgIcon viewBox="0 -960 960 960" fontSize="small">
-    <path
-      xmlns="http://www.w3.org/2000/svg"
-      d="M450-285v-390h390v390H450Zm60-60h270v-270H510v270ZM120-120v-60h720v60H120Zm0-165v-60h270v60H120Zm0-165v-60h270v60H120Zm0-165v-60h270v60H120Zm0-165v-60h720v60H120Z"
-    />
-  </SvgIcon>
+  <svg
+    aria-hidden="true"
+    fill="currentColor"
+    height={ICON_SIZE.dense}
+    viewBox="0 -960 960 960"
+    width={ICON_SIZE.dense}
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M450-285v-390h390v390H450Zm60-60h270v-270H510v270ZM120-120v-60h720v60H120Zm0-165v-60h270v60H120Zm0-165v-60h270v60H120Zm0-165v-60h270v60H120Zm0-165v-60h720v60H120Z" />
+  </svg>
 );
 
 const FormatImageLeft = () => (
-  <SvgIcon viewBox="0 -960 960 960" fontSize="small">
-    <path
-      xmlns="http://www.w3.org/2000/svg"
-      d="M120-285v-390h390v390H120Zm60-60h270v-270H180v270Zm-60-435v-60h720v60H120Zm450 165v-60h270v60H570Zm0 165v-60h270v60H570Zm0 165v-60h270v60H570ZM120-120v-60h720v60H120Z"
-    />
-  </SvgIcon>
+  <svg
+    aria-hidden="true"
+    fill="currentColor"
+    height={ICON_SIZE.dense}
+    viewBox="0 -960 960 960"
+    width={ICON_SIZE.dense}
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M120-285v-390h390v390H120Zm60-60h270v-270H180v270Zm-60-435v-60h720v60H120Zm450 165v-60h270v60H570Zm0 165v-60h270v60H570Zm0 165v-60h270v60H570ZM120-120v-60h720v60H120Z" />
+  </svg>
 );
+
+/** The same labelled trigger as `Insert`, `Table` and `AI` — see `menus.css`. */
+const triggerClass = cx(
+  getActionButtonClassName({ variant: "outline", size: "lg" }),
+  menuCss.menuTrigger,
+);
+
+const toggleClass = getActionButtonClassName({ size: "md", icon: true });
 
 export default function NoteTools(
   { editor, node }: { editor: LexicalEditor; node: StickyNode },
@@ -47,7 +61,7 @@ export default function NoteTools(
   const [float, setFloat] = useState<string>();
   const [textColor, setTextColor] = useState<string>();
   const [backgroundColor, setBackgroundColor] = useState<string>();
-  const { anchorEl, menuOpen: open, openMenu, closeMenu } = useMenuState();
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     editor.getEditorState().read(() => {
@@ -67,7 +81,6 @@ export default function NoteTools(
     editor.update(() => {
       node.selectPrevious();
       node.remove();
-      handleClose();
     });
   };
 
@@ -93,15 +106,18 @@ export default function NoteTools(
     });
   }
 
-  const handleClick = openMenu;
-
   const restoreFocus = () => {
     setTimeout(() => node.focus(), 0);
   };
 
-  const handleClose = () => {
-    closeMenu();
-    restoreFocus();
+  /**
+   * The menu owns its open state now, so what used to be `handleClose` is this:
+   * `Menu.Item` closes on click by itself, and every close — item, Escape,
+   * outside press — comes back through here to put focus on the note.
+   */
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (!next) restoreFocus();
   };
 
   useEffect(() => {
@@ -110,96 +126,64 @@ export default function NoteTools(
       node.select();
     });
   }, [open, editor, node]);
+
   return (
     <>
-      <Button
-        id="note-tools-button"
-        aria-controls={open ? "note-tools-menu" : undefined}
-        aria-haspopup="true"
-        aria-expanded={open ? "true" : undefined}
-        variant="outlined"
-        onClick={handleClick}
-        startIcon={<StickyNote size={ICON_SIZE.dense} />}
-        endIcon={<ChevronDown size={ICON_SIZE.dense} />}
-        sx={{
-          color: "text.primary",
-          borderColor: "divider",
-          p: 1,
-          minWidth: 0,
-          height: 36,
-          "& .MuiButton-startIcon": { mr: { xs: 0, sm: 1 }, ml: 0 },
-          "& .MuiButton-endIcon": { mr: 0, ml: 0 },
-          "& .MuiButton-endIcon > svg": { fontSize: 20 },
-        }}
-      >
-        <Typography
-          variant="button"
-          sx={{ display: { xs: "none", sm: "block" } }}
+      <DropdownMenu open={open} onOpenChange={handleOpenChange}>
+        <DropdownMenuTrigger aria-label="Note options" className={triggerClass}>
+          <StickyNote size={ICON_SIZE.inline} />
+          <span className={menuCss.triggerLabel}>Note</span>
+          <ChevronDown size={ICON_SIZE.inline} />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="center"
+          aria-label="Formatting options for note"
+          side="bottom"
         >
-          Note
-        </Typography>
-      </Button>
-      <Menu
-        id="note-tools-menu"
-        aria-label="Formatting options for note"
-        anchorEl={anchorEl}
-        open={open}
-        onClose={handleClose}
-        anchorOrigin={{
-          vertical: "bottom",
-          horizontal: "center",
-        }}
-        transformOrigin={{
-          vertical: "top",
-          horizontal: "center",
-        }}
-        sx={{
-          "& .MuiMenuItem-root": { minHeight: 36 },
-          "& .MuiBackdrop-root": { userSelect: "none" },
-        }}
-      >
-        <MenuItem>
-          <ToggleButtonGroup
-            size="small"
-            sx={{ width: "100%", justifyContent: "center" }}
+          <div
+            aria-label="note position"
+            className={css.menuToggleRow}
+            role="group"
           >
-            <ToggleButton
-              value="float-left"
-              key="float-left"
-              selected={float === "left"}
-              onClick={() => {
-                updateFloat("left");
-              }}
+            <button
+              aria-label="Float left"
+              aria-pressed={float === "left"}
+              className={toggleClass}
+              type="button"
+              onClick={() => updateFloat("left")}
             >
               <FormatImageLeft />
-            </ToggleButton>
-            <ToggleButton
-              value="float-right"
-              key="float-right"
-              selected={float === "right"}
-              onClick={() => {
-                updateFloat("right");
-              }}
+            </button>
+            <button
+              aria-label="Float right"
+              aria-pressed={float === "right"}
+              className={toggleClass}
+              type="button"
+              onClick={() => updateFloat("right")}
             >
               <FormatImageRight />
-            </ToggleButton>
-          </ToggleButtonGroup>
-        </MenuItem>
-        <Divider />
-        <ColorPicker
-          onColorChange={updateNoteColor}
-          toggle="menuitem"
-          label="Note color"
-          textColor={textColor}
-          backgroundColor={backgroundColor}
-        />
-        <MenuItem onClick={deleteNode}>
-          <ListItemIcon>
+            </button>
+          </div>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={deleteNode}>
             <Trash2 size={ICON_SIZE.dense} />
-          </ListItemIcon>
-          <ListItemText>Delete Note</ListItemText>
-        </MenuItem>
-      </Menu>
+            Delete Note
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {/*
+        Out of the menu and into the toolbar row. A Base UI `Popover` opened
+        from inside a `Menu.Popup` is not part of that menu's floating tree, so
+        the first click in it would read as an outside press and close the menu
+        underneath — see the header of `ColorPicker.tsx`.
+      */}
+      <ColorPicker
+        backgroundColor={backgroundColor}
+        label="Note"
+        onClose={restoreFocus}
+        onColorChange={updateNoteColor}
+        textColor={textColor}
+      />
     </>
   );
 }

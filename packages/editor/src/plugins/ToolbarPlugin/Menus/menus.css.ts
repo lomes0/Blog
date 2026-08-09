@@ -124,8 +124,15 @@ export const popupHeader = style({
   borderBottom: `1px solid ${vars.color.border}`,
 });
 
-/** `InsertToolMenu`'s trigger: the kit's `lg` outline button, toolbar weight. */
-export const insertTrigger = style({
+/**
+ * A labelled menu trigger: the kit's `lg` outline button, toolbar weight.
+ *
+ * Shared by `InsertToolMenu` and by the three `Tools/` menus (Table, Note, AI),
+ * which drew the same shape as four separate MUI `sx` blocks. `triggerLabel`
+ * above is the other half of it — the word that disappears on a narrow
+ * viewport, which each of those four also spelled out for itself.
+ */
+export const menuTrigger = style({
   fontWeight: 500,
   paddingLeft: "10px",
   paddingRight: SPACE.sm,

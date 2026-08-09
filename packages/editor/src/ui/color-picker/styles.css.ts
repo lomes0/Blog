@@ -55,6 +55,19 @@ export const triggerBar = style({
   borderRadius: 1,
 });
 
+/**
+ * The `fill` variant's chip. A background-colour control that drew the same
+ * lettered rule as the text one would be two identical buttons doing different
+ * things; a filled square is what every editor uses for the second of the pair.
+ * The border keeps a white or `inherit` fill visible against the toolbar.
+ */
+export const triggerFill = style({
+  width: 14,
+  height: 14,
+  borderRadius: RADIUS.sm,
+  border: `1px solid ${vars.color.border}`,
+});
+
 export const triggerChevron = style({
   width: 12,
   height: 12,

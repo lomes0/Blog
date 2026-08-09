@@ -57,6 +57,16 @@ const indicator = style({
 export const checkboxIndicator = indicator;
 export const radioIndicator = indicator;
 
+/** A row that opens a nested menu: room on the right for the chevron. */
+export const subTrigger = itemWithIndicator;
+
+/** The chevron itself. `applyItemSvgStyles` already sizes and tints it. */
+export const subIndicator = style({
+  position: "absolute",
+  right: SPACE.sm,
+  pointerEvents: "none",
+});
+
 /** Trailing text on a menu row — the keyboard shortcut column. */
 export const shortcut = style({
   marginLeft: "auto",

@@ -35,6 +35,24 @@ export interface ColorPickerProps {
   onSelect: (color: string) => void;
   /** Presets to offer; defaults to the built-in eleven. */
   presets?: { name: string; value: string }[];
+  /**
+   * Accessible name for the trigger. haklex has one picker per editor and
+   * needs none; a toolbar that carries a text *and* a background control side
+   * by side has two triggers that would otherwise be indistinguishable.
+   */
+  label?: string;
+  /**
+   * What the trigger draws. `"text"` is haklex's — a letter over a coloured
+   * rule, the universal text-colour affordance. `"fill"` is a filled chip, for
+   * the background-colour twin, which must not look like the same control.
+   */
+  variant?: "text" | "fill";
+  /**
+   * Told when the popup opens and closes. The editor's callers need both ends:
+   * one reads the current colour off a MathLive field as the popup opens, and
+   * every one of them puts the document selection back when it closes.
+   */
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function ColorPicker({
@@ -42,6 +60,9 @@ export function ColorPicker({
   onSelect,
   className,
   presets = PRESET_COLORS,
+  label = "Color",
+  variant = "text",
+  onOpenChange,
 }: ColorPickerProps) {
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<"preset" | "picker">("preset");
@@ -53,6 +74,7 @@ export function ColorPicker({
   const handleOpenChange = (next: boolean) => {
     setOpen(next);
     if (!next) setView("preset");
+    onOpenChange?.(next);
   };
 
   const handlePreset = (value: string) => {
@@ -68,20 +90,33 @@ export function ColorPicker({
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
+        aria-label={label}
         className={cx(css.trigger, className)}
         render={
           <button type="button" onMouseDown={(e) => e.preventDefault()} />
         }
       >
-        <span className={css.triggerLabel}>
-          <span className={css.triggerLetter} style={{ color: displayColor }}>
-            A
-          </span>
-          <span
-            className={css.triggerBar}
-            style={{ backgroundColor: displayColor }}
-          />
-        </span>
+        {variant === "fill"
+          ? (
+            <span
+              className={css.triggerFill}
+              style={{ backgroundColor: displayColor }}
+            />
+          )
+          : (
+            <span className={css.triggerLabel}>
+              <span
+                className={css.triggerLetter}
+                style={{ color: displayColor }}
+              >
+                A
+              </span>
+              <span
+                className={css.triggerBar}
+                style={{ backgroundColor: displayColor }}
+              />
+            </span>
+          )}
         <ChevronDown className={css.triggerChevron} />
       </PopoverTrigger>
 

@@ -124,6 +124,8 @@ export type {
   DropdownMenuRadioGroupProps,
   DropdownMenuRadioItemProps,
   DropdownMenuSeparatorProps,
+  DropdownMenuSubProps,
+  DropdownMenuSubTriggerProps,
   DropdownMenuTriggerProps,
 } from "./dropdown-menu";
 export {
@@ -137,6 +139,8 @@ export {
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "./dropdown-menu";
 

@@ -1,17 +1,35 @@
 "use client";
 import { LexicalEditor } from "lexical";
 import { useCallback, useEffect, useState } from "react";
-import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 import {
   $isCodeNode,
   CodeNode as CustomCodeNode,
 } from "@/editor/nodes/CodeNode";
+import type { SegmentedControlItem } from "@/editor/ui";
+import { SegmentedControl } from "@/editor/ui";
 
 /**
  * Floating-toolbar tools for a selected code block. Language selection now
  * lives in the per-block authoring header (CodeActionMenuPlugin); this keeps
  * only the block-width controls.
+ *
+ * The four widths were an exclusive `ToggleButtonGroup`, which is what the
+ * kit's `SegmentedControl` is — one choice out of a short, fixed list, with a
+ * sliding indicator instead of four separately shaded buttons. It also brings
+ * roving-tabindex arrow navigation, which the MUI group did not have.
  */
+const WIDTHS = ["25%", "50%", "75%", "100%"];
+
+/**
+ * Typed as `string` rather than left to infer a union of the four literals: the
+ * width comes back off the node as an arbitrary `string`, so a narrower type
+ * here would only be a cast at the boundary.
+ */
+const ITEMS: SegmentedControlItem<string>[] = WIDTHS.map((value) => ({
+  value,
+  label: value,
+}));
+
 export default function CodeTools(
   { editor, node }: { editor: LexicalEditor; node: CustomCodeNode },
 ) {
@@ -35,24 +53,11 @@ export default function CodeTools(
   }, [node, editor]);
 
   return (
-    <ToggleButtonGroup
-      size="small"
-      exclusive
+    <SegmentedControl
+      items={ITEMS}
+      onChange={handleWidthChange}
+      size="md"
       value={currentWidth}
-      sx={{ bgcolor: "background.default" }}
-    >
-      <ToggleButton value="25%" onClick={() => handleWidthChange("25%")}>
-        25%
-      </ToggleButton>
-      <ToggleButton value="50%" onClick={() => handleWidthChange("50%")}>
-        50%
-      </ToggleButton>
-      <ToggleButton value="75%" onClick={() => handleWidthChange("75%")}>
-        75%
-      </ToggleButton>
-      <ToggleButton value="100%" onClick={() => handleWidthChange("100%")}>
-        100%
-      </ToggleButton>
-    </ToggleButtonGroup>
+    />
   );
 }

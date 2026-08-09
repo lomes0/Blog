@@ -3,7 +3,6 @@ import "@fontsource/hanken-grotesk/400.css";
 import "@fontsource/hanken-grotesk/500.css";
 import "@fontsource/hanken-grotesk/600.css";
 import "@fontsource/hanken-grotesk/700.css";
-import "./toolbar.css";
 import {
   $getNodeByKey,
   $getSelection,
@@ -32,7 +31,7 @@ import { useToolbarSlot } from "@/contexts/ToolbarSlotContext";
 import { BlockFormatSelect } from "./Menus/BlockFormatSelect";
 import InsertToolMenu from "./Menus/InsertToolMenu";
 import TextFormatToggles from "./Tools/TextFormatToggles";
-import { noShrink } from "./toolbarLayout.css";
+import * as css from "./toolbarLayout.css";
 import { $isMathNode } from "@/editor/nodes/MathNode";
 import MathTools from "./Tools/MathTools";
 import { $isImageNode } from "@/editor/nodes/ImageNode";
@@ -51,7 +50,12 @@ import {
   TableDialog,
 } from "./Dialogs";
 import { $isStickyNode, StickyNode } from "@/editor/nodes/StickyNode";
-import { Box, Divider, IconButton, Tooltip } from "@mui/material";
+import {
+  cx,
+  getActionButtonClassName,
+  Tooltip,
+  TooltipProvider,
+} from "@/editor/ui";
 import { Link, Redo, RotateCcw, Undo } from "lucide-react";
 import { $isIFrameNode } from "@/editor/nodes/IFrameNode";
 import { $findMatchingParent, IS_APPLE } from "@lexical/utils";
@@ -83,6 +87,13 @@ const blockTypeToBlockName = {
   number: "Numbered List",
   paragraph: "Normal",
 };
+
+/**
+ * The class rather than `ActionButton`: every one of these is a tooltip
+ * trigger, and Base UI's `render` hands the trigger a ref that only a real DOM
+ * element can take.
+ */
+const buttonClass = getActionButtonClassName({ size: "md", icon: true });
 
 interface ToolbarPluginProps {
   isActive?: boolean;
@@ -310,140 +321,129 @@ function ToolbarPlugin(
   }, [isDialogOpen, activeEditor]);
 
   const toolbarContent = (
-    <Box
-      className="editor-toolbar"
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        px: 1.5,
-        py: 0.5,
-        bgcolor: "background.default",
-        borderBottom: 1,
-        borderColor: "divider",
-        displayPrint: "none",
-        overflow: "hidden",
-      }}
-    >
-      {/* Left spacer — centers the toolbar content */}
-      <Box sx={{ flex: 1 }} />
+    /*
+     * One provider for the whole bar — in Base UI 1.7 the delay lives on the
+     * provider, and grouping it makes a tooltip re-show instantly as the
+     * pointer travels along the row instead of waiting the delay out again at
+     * every button. The tools mounted below bring their own for the same
+     * reason; nesting is how a group inherits the setting.
+     */
+    <TooltipProvider closeDelay={0} delay={500}>
+      <div className={cx("editor-toolbar", css.bar)}>
+        {/* Left spacer — centers the toolbar content */}
+        <div className={css.spacer} />
 
-      {/* Undo / Redo */}
-      <Box sx={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
-        {onReset && (
-          <Tooltip title="Reset to last saved">
-            <span>
-              <IconButton
+        {/* Undo / Redo */}
+        <div className={css.cluster}>
+          {onReset && (
+            <Tooltip content="Reset to last saved">
+              <button
                 aria-label="Reset to last saved"
+                className={buttonClass}
+                type="button"
                 onClick={onReset}
               >
                 <RotateCcw
                   size={ICON_SIZE.dense}
                   style={{ transform: "translateY(1px)" }}
                 />
-              </IconButton>
-            </span>
+              </button>
+            </Tooltip>
+          )}
+          <Tooltip content={IS_APPLE ? "Undo (⌘Z)" : "Undo (Ctrl+Z)"}>
+            <button
+              aria-label="Undo"
+              className={buttonClass}
+              disabled={!canUndo}
+              type="button"
+              onClick={() =>
+                activeEditor.dispatchCommand(UNDO_COMMAND, undefined)}
+            >
+              <Undo size={ICON_SIZE.dense} />
+            </button>
           </Tooltip>
-        )}
-        <IconButton
-          title={IS_APPLE ? "Undo (⌘Z)" : "Undo (Ctrl+Z)"}
-          aria-label="Undo"
-          disabled={!canUndo}
-          onClick={() => activeEditor.dispatchCommand(UNDO_COMMAND, undefined)}
-        >
-          <Undo size={ICON_SIZE.dense} />
-        </IconButton>
-        <IconButton
-          title={IS_APPLE ? "Redo (⌘Y)" : "Redo (Ctrl+Y)"}
-          aria-label="Redo"
-          disabled={!canRedo}
-          onClick={() => activeEditor.dispatchCommand(REDO_COMMAND, undefined)}
-        >
-          <Redo size={ICON_SIZE.dense} />
-        </IconButton>
-      </Box>
+          <Tooltip content={IS_APPLE ? "Redo (⌘Y)" : "Redo (Ctrl+Y)"}>
+            <button
+              aria-label="Redo"
+              className={buttonClass}
+              disabled={!canRedo}
+              type="button"
+              onClick={() =>
+                activeEditor.dispatchCommand(REDO_COMMAND, undefined)}
+            >
+              <Redo size={ICON_SIZE.dense} />
+            </button>
+          </Tooltip>
+        </div>
 
-      <Divider orientation="vertical" flexItem sx={{ mx: 1, my: 0.75 }} />
+        <span className={css.divider} />
 
-      {/* Scrollable center section */}
-      <Box
-        sx={{
-          display: "flex",
-          gap: 0.5,
-          overflow: "auto",
-          alignItems: "center",
-          "&::-webkit-scrollbar": { display: "none" },
-          scrollbarWidth: "none",
-        }}
-      >
-        {showMathTools && (
-          <MathTools editor={activeEditor} node={selectedNode} />
-        )}
-        {showImageTools && (
-          <ImageTools editor={activeEditor} node={selectedNode} />
-        )}
-        {showTextTools && (
+        {/* Scrollable center section */}
+        <div className={css.scroller}>
+          {showMathTools && (
+            <MathTools editor={activeEditor} node={selectedNode} />
+          )}
+          {showImageTools && (
+            <ImageTools editor={activeEditor} node={selectedNode} />
+          )}
+          {showTextTools && (
+            <>
+              {blockType in blockTypeToBlockName && (
+                <BlockFormatSelect blockType={blockType} editor={activeEditor} />
+              )}
+              {showCodeTools && (
+                <CodeTools editor={activeEditor} node={selectedNode} />
+              )}
+              {showTextFormatTools && <FontSelect editor={activeEditor} />}
+              {showTableTools && (
+                <TableTools editor={activeEditor} node={selectedTable} />
+              )}
+              {showNoteTools && (
+                <NoteTools editor={editor} node={selectedSticky} />
+              )}
+              {showTextFormatTools && (
+                <TextFormatToggles
+                  editor={activeEditor}
+                  className={css.noShrink}
+                />
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Insert + Link + AI — always visible alongside text tools */}
+        {showTextTools && showTextFormatTools && (
           <>
-            {blockType in blockTypeToBlockName && (
-              <BlockFormatSelect blockType={blockType} editor={activeEditor} />
-            )}
-            {showCodeTools && (
-              <CodeTools editor={activeEditor} node={selectedNode} />
-            )}
-            {showTextFormatTools && <FontSelect editor={activeEditor} />}
-            {showTableTools && (
-              <TableTools editor={activeEditor} node={selectedTable} />
-            )}
-            {showNoteTools && (
-              <NoteTools editor={editor} node={selectedSticky} />
-            )}
-            {showTextFormatTools && (
-              <TextFormatToggles
-                editor={activeEditor}
-                className={noShrink}
-              />
-            )}
+            <span className={css.divider} />
+            <div className={css.cluster}>
+              <InsertToolMenu editor={activeEditor} />
+              <Tooltip
+                content={IS_APPLE ? "Insert Link (⌘K)" : "Insert Link (Ctrl+K)"}
+              >
+                <button
+                  aria-label="Insert link"
+                  className={buttonClass}
+                  type="button"
+                  onClick={() =>
+                    activeEditor.dispatchCommand(SET_DIALOGS_COMMAND, {
+                      link: { open: true },
+                    })}
+                >
+                  <Link size={ICON_SIZE.dense} />
+                </button>
+              </Tooltip>
+            </div>
+            <span className={css.divider} />
+            <div className={css.cluster}>
+              <AITools editor={activeEditor} />
+            </div>
           </>
         )}
-      </Box>
 
-      {/* Insert + Link + AI — always visible alongside text tools */}
-      {showTextTools && showTextFormatTools && (
-        <>
-          <Divider orientation="vertical" flexItem sx={{ mx: 1, my: 0.75 }} />
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 0.5,
-              flexShrink: 0,
-            }}
-          >
-            <InsertToolMenu editor={activeEditor} />
-            <Tooltip
-              title={IS_APPLE ? "Insert Link (⌘K)" : "Insert Link (Ctrl+K)"}
-            >
-              <IconButton
-                size="small"
-                aria-label="Insert link"
-                onClick={() =>
-                  activeEditor.dispatchCommand(SET_DIALOGS_COMMAND, {
-                    link: { open: true },
-                  })}
-              >
-                <Link size={ICON_SIZE.dense} />
-              </IconButton>
-            </Tooltip>
-          </Box>
-          <Divider orientation="vertical" flexItem sx={{ mx: 1, my: 0.75 }} />
-          <Box sx={{ flexShrink: 0 }}>
-            <AITools editor={activeEditor} />
-          </Box>
-        </>
-      )}
-
-      {/* Right spacer */}
-      <Box sx={{ flex: 1 }} />
-    </Box>
+        {/* Right spacer */}
+        <div className={css.spacer} />
+      </div>
+    </TooltipProvider>
   );
 
   return (

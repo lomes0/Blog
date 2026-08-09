@@ -68,7 +68,7 @@ const Graph = () => (
  */
 const triggerClass = cx(
   getActionButtonClassName({ variant: "outline", size: "lg" }),
-  css.insertTrigger,
+  css.menuTrigger,
 );
 
 export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
@@ -91,8 +91,9 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
     /*
      * No `useMenuState` any more: Base UI's `Menu.Root` owns the open state and
      * its `Positioner` anchors to the `Trigger` itself, so the anchor element
-     * the hook existed to hold has nowhere to go. The hook stays where it is —
-     * three files under `Tools/` are still MUI menus and still need it.
+     * the hook existed to hold has nowhere to go. Nothing in this package needs
+     * it as of the `Tools/` tranche; `src/hooks/useMenuState.ts` stays where it
+     * is because three app-side menus still do.
      */
     <DropdownMenu>
       <DropdownMenuTrigger aria-label="Insert" className={triggerClass}>

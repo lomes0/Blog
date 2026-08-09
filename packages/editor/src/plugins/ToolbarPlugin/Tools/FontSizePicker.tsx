@@ -1,16 +1,33 @@
+"use client";
 import { Minus, Plus } from "lucide-react";
-import { Box, IconButton, SxProps, TextField, Theme } from "@mui/material";
+import type { KeyboardEvent } from "react";
 import { useCallback } from "react";
+import { NumberStepperField, StepperButton } from "@/editor/ui";
 import { ICON_SIZE } from "@/theme/icons";
+import * as css from "./tools.css";
 
 const MIN_ALLOWED_FONT_SIZE = 8;
 const MAX_ALLOWED_FONT_SIZE = 72;
 
-export const FontSizePicker = ({ fontSize, updateFontSize, onBlur, sx }: {
+/**
+ * Keys the stepper keeps for itself.
+ *
+ * It is mounted inside a Base UI select popup (`Menus/FontSelect`) as well as
+ * in the toolbar proper, and that popup runs typeahead over its items — so an
+ * unguarded digit would both type and jump the highlight. Escape and Tab are
+ * how you *leave*, so they travel.
+ *
+ * What used to be here as well, and is now gone: an `input.closest("li")`
+ * branch that focused the enclosing MUI `MenuItem` on ArrowDown. Base UI's
+ * items are `div`s, so the query has matched nothing since the menus were
+ * ported and the branch was dead code rather than behaviour.
+ */
+const POPUP_KEYS = new Set(["Escape", "Tab"]);
+
+export const FontSizePicker = ({ fontSize, updateFontSize, onBlur }: {
   fontSize: string;
   updateFontSize: (fontSize: number) => void;
   onBlur: () => void;
-  sx?: SxProps<Theme> | undefined;
 }) => {
   const increaseFontSize = useCallback(() => {
     const currentFontSize = parseInt(fontSize);
@@ -64,107 +81,65 @@ export const FontSizePicker = ({ fontSize, updateFontSize, onBlur, sx }: {
     updateFontSize(updatedFontSize);
   }, [fontSize, updateFontSize]);
 
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape") return onBlur();
+    if (!POPUP_KEYS.has(event.key)) event.stopPropagation();
+  };
+
   return (
-    (
-      <Box
-        sx={{ display: "flex", alignItems: "center", ...sx }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <IconButton
+    <NumberStepperField
+      aria-label="font size"
+      autoComplete="off"
+      className={css.fontSizeInput}
+      decrement={
+        <StepperButton
+          aria-label="decrease font size"
           disabled={parseInt(fontSize) <= MIN_ALLOWED_FONT_SIZE}
           onClick={(e) => {
             e.stopPropagation();
             decreaseFontSize();
             onBlur();
           }}
-          aria-label="decrease font size"
         >
           <Minus size={ICON_SIZE.dense} />
-        </IconButton>
-        <TextField
-          hiddenLabel
-          variant="outlined"
-          size="small"
-          autoComplete="off"
-          spellCheck="false"
-          sx={{
-            width: 40,
-            fieldset: { borderColor: "divider" },
-            "& .MuiInputBase-root": {
-              borderRadius: 0,
-              "&:hover .MuiOutlinedInput-notchedOutline": {
-                borderColor: "primary.main",
-              },
-            },
-            "& .MuiInputBase-input": {
-              px: 0.5,
-              py: "6.5px",
-              textAlign: "center",
-              MozAppearance: "textfield",
-              "&::-webkit-inner-spin-button, &::-webkit-outer-spin-button": {
-                appearance: "none",
-                margin: 0,
-              },
-            },
-          }}
-          type="number"
-          value={parseInt(fontSize) || ""}
-          onChange={(e) => {
-            updateFontSize(parseInt(e.target.value || "0") % 100);
-            e.target.focus();
-          }}
-          onClick={(e) => e.stopPropagation()}
-          onBlur={(e) => {
-            const inputValue = parseInt(e.target.value || "0") %
-              100;
-            const prevValue = parseInt(fontSize);
-            if (inputValue !== prevValue) return;
-            if (inputValue < MIN_ALLOWED_FONT_SIZE) {
-              updateFontSize(
-                MIN_ALLOWED_FONT_SIZE,
-              );
-            }
-            if (inputValue > MAX_ALLOWED_FONT_SIZE) {
-              updateFontSize(
-                MAX_ALLOWED_FONT_SIZE,
-              );
-            }
-          }}
-          slotProps={{
-            htmlInput: {
-              min: MIN_ALLOWED_FONT_SIZE,
-              max: MAX_ALLOWED_FONT_SIZE,
-              onKeyDown: (e: KeyboardEvent) => {
-                const input = e
-                  .currentTarget as HTMLInputElement;
-                const isEscaping = e.key === "Escape";
-                if (isEscaping) return onBlur();
-                const isNavigatingUp = e.key === "ArrowUp";
-                const isNavigatingDown = e.key === "ArrowDown";
-                if (!isNavigatingUp && !isNavigatingDown) {
-                  e
-                    .stopPropagation();
-                }
-                const menuItem = input.closest("li");
-                if (!menuItem) return;
-                if (isNavigatingDown) menuItem.focus();
-              },
-              "aria-label": "font size",
-            },
-          }}
-        />
-        <IconButton
+        </StepperButton>
+      }
+      increment={
+        <StepperButton
+          aria-label="increase font size"
           disabled={parseInt(fontSize) >= MAX_ALLOWED_FONT_SIZE}
           onClick={(e) => {
             e.stopPropagation();
             increaseFontSize();
             onBlur();
           }}
-          aria-label="increase font size"
         >
           <Plus size={ICON_SIZE.dense} />
-        </IconButton>
-      </Box>
-    )
+        </StepperButton>
+      }
+      max={MAX_ALLOWED_FONT_SIZE}
+      min={MIN_ALLOWED_FONT_SIZE}
+      rootClassName={css.fontSizeRoot}
+      spellCheck="false"
+      type="number"
+      value={parseInt(fontSize) || ""}
+      onBlur={(e) => {
+        const inputValue = parseInt(e.target.value || "0") % 100;
+        const prevValue = parseInt(fontSize);
+        if (inputValue !== prevValue) return;
+        if (inputValue < MIN_ALLOWED_FONT_SIZE) {
+          updateFontSize(MIN_ALLOWED_FONT_SIZE);
+        }
+        if (inputValue > MAX_ALLOWED_FONT_SIZE) {
+          updateFontSize(MAX_ALLOWED_FONT_SIZE);
+        }
+      }}
+      onChange={(e) => {
+        updateFontSize(parseInt(e.target.value || "0") % 100);
+        e.target.focus();
+      }}
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={handleKeyDown}
+    />
   );
 };

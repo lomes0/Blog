@@ -4,7 +4,7 @@
  * `PortalThemeWrapper` dropped — see `ui/tooltip/index.tsx` for why.
  */
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
-import { Check } from "lucide-react";
+import { Check, ChevronRight } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
 import { cx, mergeClass } from "../cx";
 import * as css from "./styles.css";
@@ -95,6 +95,41 @@ export type DropdownMenuItemProps =
   & { className?: string };
 export function DropdownMenuItem({ className, ...props }: DropdownMenuItemProps) {
   return <MenuPrimitive.Item className={mergeClass(css.item, className)} {...props} />;
+}
+
+export type DropdownMenuSubProps = ComponentProps<
+  typeof MenuPrimitive.SubmenuRoot
+>;
+
+/**
+ * A nested menu. Not in haklex, which has no submenus — added because MUI's
+ * shape for one was a *second* `<Menu>` anchored by hand to the item that
+ * opened it, and that shape has no Base UI equivalent: an unrelated popup
+ * opened from inside a menu counts as an outside press and closes the menu it
+ * came from. `SubmenuRoot` joins the same floating tree, so the parent stays
+ * open, arrow keys cross the boundary, and Escape unwinds one level at a time.
+ */
+export function DropdownMenuSub(props: DropdownMenuSubProps) {
+  return <MenuPrimitive.SubmenuRoot {...props} />;
+}
+
+export type DropdownMenuSubTriggerProps =
+  & ComponentProps<typeof MenuPrimitive.SubmenuTrigger>
+  & { className?: string };
+
+/** The row that opens a `DropdownMenuSub`: an item with a trailing chevron. */
+export function DropdownMenuSubTrigger(
+  { className, children, ...props }: DropdownMenuSubTriggerProps,
+) {
+  return (
+    <MenuPrimitive.SubmenuTrigger
+      className={cx(css.item, css.subTrigger, className)}
+      {...props}
+    >
+      {children}
+      <ChevronRight className={css.subIndicator} />
+    </MenuPrimitive.SubmenuTrigger>
+  );
 }
 
 export type DropdownMenuSeparatorProps = ComponentProps<

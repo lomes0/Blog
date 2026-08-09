@@ -8,27 +8,7 @@ import {
 } from "@/editor/nodes/utils";
 import ColorPicker, { backgroundPalette, textPalette } from "./ColorPicker";
 import type { MathfieldElement } from "mathlive";
-import useFixedBodyScroll from "@/hooks/useFixedBodyScroll";
-import { SxProps, Theme } from "@mui/material/styles";
-import {
-  Box,
-  Button,
-  Collapse,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  IconButton,
-  LinearProgress,
-  Paper,
-  SvgIcon,
-  TextField,
-  ToggleButton,
-  ToggleButtonGroup,
-  Typography,
-} from "@mui/material";
 import { Menu, Pencil, PenLine, Save, Trash2 } from "lucide-react";
-import { useTheme } from "@mui/material/styles";
 import { ANNOUNCE_COMMAND } from "@/editor/commands";
 import { Announcement } from "@/types";
 
@@ -40,6 +20,23 @@ import type {
 import useOnlineStatus from "@/hooks/useOnlineStatus";
 import { FontSizePicker } from "./FontSizePicker";
 import { ICON_SIZE } from "@/theme/icons";
+import {
+  ActionButton,
+  Dialog,
+  DialogBody,
+  DialogFooter,
+  DialogHeader,
+  DialogPopup,
+  DialogTitle,
+  getActionButtonClassName,
+  TextAreaField,
+  Tooltip,
+  TooltipProvider,
+} from "@/editor/ui";
+import { useColorScheme } from "@/editor/utils/useColorScheme";
+import { dismissRequest, IndeterminateProgress } from "../Dialogs/parts";
+import * as dialogCss from "../Dialogs/styles.css";
+import * as css from "./tools.css";
 
 const Excalidraw = dynamic<ExcalidrawProps>(
   () =>
@@ -50,14 +47,27 @@ const Excalidraw = dynamic<ExcalidrawProps>(
 );
 
 const WolframIcon = () => (
-  <SvgIcon viewBox="0 0 20 20" fontSize="small">
-    <path
-      d="M15.33 10l2.17-2.47-3.19-.71.33-3.29-3 1.33L10 2 8.35 4.86l-3-1.33.32 3.29-3.17.71L4.67 10 2.5 12.47l3.19.71-.33 3.29 3-1.33L10 18l1.65-2.86 3 1.33-.32-3.29 3.19-.71zm-2.83 1.5h-5v-1h5zm0-2h-5v-1h5z"
-      fill="currentColor"
-    >
-    </path>
-  </SvgIcon>
+  <svg
+    aria-hidden="true"
+    fill="currentColor"
+    height={ICON_SIZE.dense}
+    viewBox="0 0 20 20"
+    width={ICON_SIZE.dense}
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M15.33 10l2.17-2.47-3.19-.71.33-3.29-3 1.33L10 2 8.35 4.86l-3-1.33.32 3.29-3.17.71L4.67 10 2.5 12.47l3.19.71-.33 3.29 3-1.33L10 18l1.65-2.86 3 1.33-.32-3.29 3.19-.71zm-2.83 1.5h-5v-1h5zm0-2h-5v-1h5z" />
+  </svg>
 );
+
+/**
+ * Wolfram's orange. It stays an inline literal, exactly where the `sx` that
+ * preceded it was, because it is a brand mark rather than a theme colour — see
+ * the note beside `drawPanel` in `tools.css.ts` for why it may not move into a
+ * stylesheet.
+ */
+const WOLFRAM_ORANGE = "#f96932";
+
+const buttonClass = getActionButtonClassName({ size: "md", icon: true });
 
 const FASTAPI_URL = process.env.NEXT_PUBLIC_FASTAPI_URL;
 
@@ -73,14 +83,18 @@ export const useCallbackRefState = () => {
 };
 
 export default function MathTools(
-  { editor, node, sx }: {
+  { editor, node }: {
     editor: LexicalEditor;
     node: MathNode;
-    sx?: SxProps<Theme> | undefined;
   },
 ) {
   const [value, setValue] = useState<string | null>(null);
-  const theme = useTheme();
+  /*
+   * The scheme off `html.dark` rather than `useTheme().palette.mode`. Excalidraw
+   * cannot read our CSS, so it is one of the few places that genuinely needs
+   * the answer in JS — see `utils/useColorScheme.ts`.
+   */
+  const colorScheme = useColorScheme();
   const isOnline = useOnlineStatus();
   const [excalidrawAPI, excalidrawAPIRefCallback] = useCallbackRefState();
   const [fontSize, setFontSize] = useState("16px");
@@ -194,7 +208,7 @@ export default function MathTools(
   }, [node, editor]);
 
   const [open, setOpen] = useState(false);
-  const mathfieldValueRef = useRef<HTMLInputElement | null>(null);
+  const mathfieldValueRef = useRef<HTMLTextAreaElement | null>(null);
   const openEditDialog = () => {
     setOpen(true);
   };
@@ -237,7 +251,7 @@ export default function MathTools(
   }, [node, value]);
 
   const updateFormData = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       e.target.focus();
       setFormData({ ...formData, [e.target.name]: e.target.value });
       if (mathfieldRef.current) {
@@ -279,8 +293,6 @@ export default function MathTools(
       setValue(null);
     }, 0);
   }, [node, editor]);
-
-  useFixedBodyScroll(open);
 
   const annouunce = useCallback((announcement: Announcement) => {
     editor.dispatchCommand(ANNOUNCE_COMMAND, announcement);
@@ -336,237 +348,202 @@ export default function MathTools(
     handleClose();
   }, [excalidrawAPI, node, ocr, editor, handleClose]);
 
-  const handleToggle = (
-    event: React.MouseEvent<HTMLElement>,
-    value: string | null,
-  ) => {
-    setValue(value);
-    if (value === "draw") {
+  /**
+   * What MUI's exclusive `ToggleButtonGroup.onChange` did, now called by the
+   * one button that relied on it. `null` means "deselected", which is the
+   * signal to give focus back to the math field.
+   */
+  const handleToggle = (next: string | null) => {
+    setValue(next);
+    if (next === "draw") {
       setTimeout(() => window.mathVirtualKeyboard.hide(), 0);
     }
-    if (value === null) restoreFocus();
+    if (next === null) restoreFocus();
   };
 
   return (
-    <>
-      <ToggleButtonGroup
-        size="small"
-        sx={{ position: "relative", ...sx }}
-        exclusive
-      >
-        <ToggleButton value="edit" onClick={openEditDialog}>
-          <Pencil size={ICON_SIZE.dense} />
-        </ToggleButton>
+    <TooltipProvider closeDelay={0} delay={500}>
+      <div className={css.anchoredToolGroup}>
+        <Tooltip content="Edit LaTeX">
+          <button
+            aria-label="Edit LaTeX"
+            className={buttonClass}
+            type="button"
+            onClick={openEditDialog}
+          >
+            <Pencil size={ICON_SIZE.dense} />
+          </button>
+        </Tooltip>
+        {/*
+          Escape closes this one. It is the exception `dismissRequest`
+          documents — the LaTeX box holds a draft of something the document
+          already has, so dismissing it loses an edit, not the work.
+        */}
         <Dialog
           open={open}
-          onClose={handleClose}
-          maxWidth="md"
-          sx={{ "& .MuiDialog-paper": { width: "100%" } }}
+          onOpenChange={dismissRequest(handleClose, { escapeCloses: true })}
         >
-          <form onSubmit={handleEdit}>
-            <DialogTitle>Edit LaTeX</DialogTitle>
-            <DialogContent>
-              <TextField
-                margin="normal"
-                size="small"
-                fullWidth
-                multiline
-                id="value"
-                value={formData.value}
-                onChange={updateFormData}
-                label="Latex Value"
-                name="value"
-                autoFocus
-                inputRef={mathfieldValueRef}
-              />
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                }}
-              >
-                <Typography
-                  variant="button"
-                  component="h3"
-                  color="text.secondary"
-                  sx={{ my: 1 }}
+          <DialogPopup initialFocus={mathfieldValueRef} size="md">
+            <form onSubmit={handleEdit}>
+              <DialogHeader>
+                <DialogTitle>Edit LaTeX</DialogTitle>
+              </DialogHeader>
+              <DialogBody>
+                <div className={dialogCss.form}>
+                  <TextAreaField
+                    id="value"
+                    label="Latex Value"
+                    name="value"
+                    ref={mathfieldValueRef}
+                    value={formData.value}
+                    onChange={updateFormData}
+                  />
+                  <div className={css.mathPreview}>
+                    <h3 className={dialogCss.sectionHeading}>Preview</h3>
+                    <math-field ref={mathfieldRef} value={formData.value}
+                      read-only
+                    >
+                    </math-field>
+                  </div>
+                </div>
+              </DialogBody>
+              <DialogFooter>
+                <ActionButton onClick={handleClose} size="lg" variant="outline">
+                  Cancel
+                </ActionButton>
+                <ActionButton
+                  onClick={handleEdit}
+                  size="lg"
+                  type="submit"
+                  variant="accent"
                 >
-                  Preview
-                </Typography>
-                <math-field
-                  ref={mathfieldRef}
-                  value={formData.value}
-                  style={{ width: "auto", margin: "0 auto" }}
-                  read-only
-                >
-                </math-field>
-              </Box>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={handleClose}>Cancel</Button>
-              <Button type="submit" onClick={handleEdit}>
-                Save
-              </Button>
-            </DialogActions>
-          </form>
+                  Save
+                </ActionButton>
+              </DialogFooter>
+            </form>
+          </DialogPopup>
         </Dialog>
-        <ToggleButton
-          value="delete"
-          onClick={() => {
-            editor.update(() => {
-              node.selectPrevious();
-              node.remove();
-            });
-          }}
-        >
-          <Trash2 size={ICON_SIZE.dense} />
-        </ToggleButton>
-      </ToggleButtonGroup>
-      <Box
-        id="math-tools"
-        sx={{
-          ...sx,
-          display: "flex",
-          gap: 0.5,
-          position: ["static", "static"],
-          justifyContent: ["center", "start"],
-          zIndex: 1000,
-        }}
-      >
-        <ToggleButtonGroup
-          size="small"
-          exclusive
-          value={value}
-          onChange={handleToggle}
-          sx={{ bgcolor: "background.default" }}
-        >
-          <ToggleButton
-            value="wolfram"
-            onClick={openWolfram}
-            disabled={!isOnline}
-            sx={{ color: isOnline ? "#f96932" : undefined }}
-          >
-            <WolframIcon />
-          </ToggleButton>
-          <ToggleButton
-            component="label"
-            value="draw"
-            disabled={!isOnline}
-          >
-            <PenLine size={ICON_SIZE.dense} />
-          </ToggleButton>
-          {value === "draw" && (
-            <Collapse in={value === "draw"}>
-              <Paper
-                sx={{
-                  position: ["fixed", "absolute"],
-                  top: ["auto", 56],
-                  bottom: [0.5, "auto"],
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  width: "calc(100% - 2px)",
-                  height: 294.5,
-                  maxWidth: 1000,
-                  border: "1px solid",
-                  borderColor: theme.palette.divider,
-                  zIndex: 1000,
-                  "& .layer-ui__wrapper, .App-toolbar .Stack > :not(:nth-child(7),:nth-child(10)), .mobile-misc-tools-container, .App-bottom-bar, .popover, .LaserToolOverlay":
-                    { display: "none !important" },
-                  "& canvas": { borderRadius: 1 },
-                }}
-              >
-                <Excalidraw
-                  excalidrawAPI={excalidrawAPIRefCallback}
-                  initialData={{
-                    elements: [],
-                    appState: {
-                      activeTool: {
-                        type: "freedraw",
-                        lastActiveTool: null,
-                        customType: null,
-                        locked: true,
-                      },
-                      currentItemStrokeWidth: 0.5,
-                    },
-                  }}
-                  theme={theme.palette.mode}
-                  langCode="en"
-                />
-                <IconButton
-                  onClick={handleFreeHand}
-                  sx={{
-                    position: "absolute",
-                    bottom: 8,
-                    right: 8,
-                    zIndex: 1000,
-                  }}
-                  disabled={loading}
-                >
-                  <Save size={ICON_SIZE.dense} />
-                </IconButton>
-                <LinearProgress
-                  sx={{
-                    visibility: loading ? "visible" : "hidden",
-                    position: "absolute",
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    zIndex: 1000,
-                  }}
-                />
-              </Paper>
-            </Collapse>
-          )}
-        </ToggleButtonGroup>
-        <FontSizePicker
-          fontSize={fontSize}
-          updateFontSize={updateFontSize}
-          onBlur={restoreFocus}
-          sx={{ bgcolor: "background.default" }}
-        />
-        <ToggleButtonGroup
-          size="small"
-          sx={{ bgcolor: "background.default" }}
-          exclusive
-          value={value}
-          onChange={handleToggle}
-        >
-          <ColorPicker
-            onColorChange={onColorChange}
-            onClose={handleClose}
-            textColor={textColor}
-            backgroundColor={backgroundColor}
-            onOpen={readMathfieldColor}
-          />
-          <ToggleButton
-            value="menu"
-            onClick={(e) => {
-              const mathfield = editor.getElementByKey(node.__key)
-                ?.querySelector("math-field") as
-                  | MathfieldElement
-                  | null;
-              if (!mathfield) return;
-              const x = e.currentTarget.getBoundingClientRect().left;
-              const y = e.currentTarget.getBoundingClientRect().top +
-                40;
-              mathfield.showMenu({
-                location: { x, y },
-                modifiers: {
-                  alt: false,
-                  control: false,
-                  shift: false,
-                  meta: false,
-                },
+        <Tooltip content="Delete">
+          <button
+            aria-label="Delete"
+            className={buttonClass}
+            type="button"
+            onClick={() => {
+              editor.update(() => {
+                node.selectPrevious();
+                node.remove();
               });
-              setTimeout(() => {
-                setValue(null);
-              }, 0);
             }}
           >
-            <Menu size={ICON_SIZE.dense} />
-          </ToggleButton>
-        </ToggleButtonGroup>
-      </Box>
-    </>
+            <Trash2 size={ICON_SIZE.dense} />
+          </button>
+        </Tooltip>
+      </div>
+      <div className={css.toolCluster} id="math-tools">
+        <div className={css.toolGroup}>
+          <Tooltip content="Open in WolframAlpha">
+            <button
+              aria-label="Open in WolframAlpha"
+              className={buttonClass}
+              disabled={!isOnline}
+              style={isOnline ? { color: WOLFRAM_ORANGE } : undefined}
+              type="button"
+              onClick={openWolfram}
+            >
+              <WolframIcon />
+            </button>
+          </Tooltip>
+          <Tooltip content="Draw an equation">
+            <button
+              aria-label="Draw an equation"
+              aria-pressed={value === "draw"}
+              className={buttonClass}
+              disabled={!isOnline}
+              type="button"
+              onClick={() => handleToggle(value === "draw" ? null : "draw")}
+            >
+              <PenLine size={ICON_SIZE.dense} />
+            </button>
+          </Tooltip>
+          {value === "draw" && (
+            <div className={css.drawPanel}>
+              <Excalidraw
+                excalidrawAPI={excalidrawAPIRefCallback}
+                initialData={{
+                  elements: [],
+                  appState: {
+                    activeTool: {
+                      type: "freedraw",
+                      lastActiveTool: null,
+                      customType: null,
+                      locked: true,
+                    },
+                    currentItemStrokeWidth: 0.5,
+                  },
+                }}
+                langCode="en"
+                theme={colorScheme}
+              />
+              <button
+                aria-label="Recognise the drawing"
+                className={`${buttonClass} ${css.drawSave}`}
+                disabled={loading}
+                type="button"
+                onClick={handleFreeHand}
+              >
+                <Save size={ICON_SIZE.dense} />
+              </button>
+              <div className={css.drawProgress}>
+                <IndeterminateProgress active={loading} />
+              </div>
+            </div>
+          )}
+        </div>
+        <FontSizePicker
+          fontSize={fontSize}
+          onBlur={restoreFocus}
+          updateFontSize={updateFontSize}
+        />
+        <div className={css.toolGroup}>
+          <ColorPicker
+            backgroundColor={backgroundColor}
+            onClose={handleClose}
+            onColorChange={onColorChange}
+            onOpen={readMathfieldColor}
+            textColor={textColor}
+          />
+          <Tooltip content="More math commands">
+            <button
+              aria-label="More math commands"
+              className={buttonClass}
+              type="button"
+              onClick={(e) => {
+                const mathfield = editor.getElementByKey(node.__key)
+                  ?.querySelector("math-field") as
+                    | MathfieldElement
+                    | null;
+                if (!mathfield) return;
+                const x = e.currentTarget.getBoundingClientRect().left;
+                const y = e.currentTarget.getBoundingClientRect().top + 40;
+                mathfield.showMenu({
+                  location: { x, y },
+                  modifiers: {
+                    alt: false,
+                    control: false,
+                    shift: false,
+                    meta: false,
+                  },
+                });
+                setTimeout(() => {
+                  setValue(null);
+                }, 0);
+              }}
+            >
+              <Menu size={ICON_SIZE.dense} />
+            </button>
+          </Tooltip>
+        </div>
+      </div>
+    </TooltipProvider>
   );
 }

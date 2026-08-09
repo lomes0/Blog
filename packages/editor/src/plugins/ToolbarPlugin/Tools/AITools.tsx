@@ -18,29 +18,14 @@ import {
 import { mergeRegister } from "@lexical/utils";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { useMenuState } from "@/hooks/useMenuState";
-import {
-  Box,
-  Button,
-  CircularProgress,
-  IconButton,
-  ListItemIcon,
-  ListItemText,
-  Menu,
-  MenuItem,
-  TextField,
-  Typography,
-} from "@mui/material";
 import {
   ChevronDown,
-  ChevronRight,
   Mic,
   Monitor,
   ScanSearch,
   Send,
   Sparkles,
 } from "lucide-react";
-import { SxProps, Theme } from "@mui/material/styles";
 import { useCompletion } from "@ai-sdk/react";
 import { SET_DIALOGS_COMMAND } from "../Dialogs/commands";
 import { ANNOUNCE_COMMAND, UPDATE_DOCUMENT_COMMAND } from "@/editor/commands";
@@ -63,6 +48,20 @@ import {
 import { AI_ACTION_ICON } from "@/lib/ai/actionIcons";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { ICON_SIZE } from "@/theme/icons";
+import {
+  AutoResizeTextArea,
+  cx,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+  getActionButtonClassName,
+  Spinner,
+} from "@/editor/ui";
+import * as menuCss from "../Menus/menus.css";
+import * as css from "./tools.css";
 
 /**
  * The prose leading up to the caret, oldest first, capped at ~1KB.
@@ -93,38 +92,48 @@ const serializedParagraph: SerializedParagraphNode = {
   textStyle: "",
 };
 
-export default function AITools(
-  { editor, sx: _sx }: { editor: LexicalEditor; sx?: SxProps<Theme> },
-) {
+/**
+ * Keys the prompt field keeps for itself while it is mounted inside the menu
+ * popup — the same rule, and the same two exceptions, as the font-size stepper
+ * inside the font popup. Base UI runs typeahead and list navigation on the
+ * popup, so an unguarded keystroke would both type and move the highlight.
+ */
+const POPUP_KEYS = new Set(["Escape", "Tab"]);
+
+/** The same labelled trigger as `Insert`, `Table` and `Note` — see `menus.css`. */
+const triggerClass = cx(
+  getActionButtonClassName({ variant: "outline", size: "lg" }),
+  menuCss.menuTrigger,
+);
+
+const sendButtonClass = cx(
+  getActionButtonClassName({ size: "md", icon: true }),
+  css.promptSend,
+);
+
+export default function AITools({ editor }: { editor: LexicalEditor }) {
   const [llmConfig, setLlmConfig] = useLocalStorage("llm", {
     provider: "google",
     model: "gemini-2.5-flash",
   });
 
-  const { anchorEl, menuOpen: open, openMenu, closeMenu } = useMenuState();
-  const {
-    anchorEl: modelMenuAnchor,
-    menuOpen: modelMenuOpen,
-    openMenu: handleModelMenuClick,
-    closeMenu: handleModelMenuClose,
-  } = useMenuState();
-  const {
-    anchorEl: toneMenuAnchor,
-    menuOpen: toneMenuOpen,
-    openMenu: handleToneMenuOpen,
-    closeMenu: handleToneMenuClose,
-  } = useMenuState();
+  /*
+   * `useMenuState` is gone from this file — and, with it, from the package.
+   * Base UI's `Menu.Root` owns the open state and its positioner anchors to the
+   * trigger, so the anchor element the hook existed to hold has nowhere to go.
+   * What is still local state is only what the *editor* needs to know: the menu
+   * is open, so hold the selection and put it back on the way out.
+   */
+  const [open, setOpen] = useState(false);
 
   const handleModelSelect = (modelId: string) => {
     const model = getModelById(modelId);
     if (model) {
       setLlmConfig({ provider: model.provider, model: model.id });
     }
-    handleModelMenuClose();
   };
 
-  const handleClose = useCallback(() => {
-    closeMenu();
+  const restoreSelection = useCallback(() => {
     setTimeout(() => {
       editor.update(() => {
         const selection = $getSelection() || $getPreviousSelection();
@@ -137,7 +146,22 @@ export default function AITools(
         },
       });
     }, 0);
-  }, [editor, closeMenu]);
+  }, [editor]);
+
+  /**
+   * Closing from something that is *not* a menu item — the send button, or
+   * Enter in the prompt field. A `Menu.Item` closes the menu itself, and that
+   * path lands in `handleOpenChange` instead.
+   */
+  const handleClose = useCallback(() => {
+    setOpen(false);
+    restoreSelection();
+  }, [restoreSelection]);
+
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (!next) restoreSelection();
+  };
 
   const promptRef = useRef<HTMLTextAreaElement>(null);
 
@@ -164,15 +188,8 @@ export default function AITools(
   const offsetRef = useRef(0);
 
   const handlePrompt = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    const textarea = e.currentTarget;
-    const isNavigatingUp = textarea.selectionStart === 0 &&
-      e.key === "ArrowUp";
-    const isNavigatingDown =
-      textarea.selectionStart === textarea.value.length &&
-      e.key === "ArrowDown";
-    if (!isNavigatingUp && !isNavigatingDown) e.stopPropagation();
-    if (isNavigatingDown) textarea.closest("li")?.focus();
-    const command = textarea.value;
+    if (!POPUP_KEYS.has(e.key)) e.stopPropagation();
+    const command = e.currentTarget.value;
     const isSubmit = e.key === "Enter" && !e.shiftKey &&
       command.trim().length > 0;
     if (!isSubmit) return;
@@ -218,8 +235,15 @@ export default function AITools(
     [editor, complete, llmConfig],
   );
 
+  /*
+   * The `handleClose()` these three used to open with is gone: they are all
+   * reached from a `Menu.Item`, which closes the menu on click, and the
+   * selection restore that was the other half of it now runs from
+   * `handleOpenChange` on *every* close. The restore is still scheduled in a
+   * timeout, so the completion below it reads the live selection first — the
+   * ordering the old code depended on, unchanged.
+   */
   const handleAction = (action: SelectionAIAction) => {
-    handleClose();
     runCompletion(action.toolbar, { action: action.id });
   };
 
@@ -237,8 +261,6 @@ export default function AITools(
   };
 
   const handleChangeTone = (tone: string) => {
-    handleToneMenuClose();
-    handleClose();
     runCompletion({ input: "selection", result: "replace" }, {
       action: "tone",
       tone,
@@ -246,7 +268,6 @@ export default function AITools(
   };
 
   const handleOCR = () => {
-    handleClose();
     editor.dispatchCommand(SET_DIALOGS_COMMAND, { ocr: { open: true } });
   };
 
@@ -385,152 +406,76 @@ export default function AITools(
   };
 
   return (
-    <>
-      <Button
-        id="ai-tools-button"
-        aria-controls={open ? "ai-tools-menu" : undefined}
-        aria-haspopup="true"
-        aria-expanded={open ? "true" : undefined}
-        variant="outlined"
-        onClick={openMenu}
-        startIcon={<Sparkles size={ICON_SIZE.inline} />}
-        endIcon={isLoading
-          ? <CircularProgress size={14} color="inherit" />
-          : <ChevronDown size={ICON_SIZE.dense} />}
-        // Colors deliberately absent: `#ai-tools-button` in toolbar.css owns
-        // them via the scheme-aware --tb-* tokens, and an id selector outranks
-        // emotion's class anyway.
-        sx={{
-          boxShadow: "none",
-          border: "1px solid",
-          borderColor: "divider",
-          bgcolor: "transparent",
-          textTransform: "none",
-          fontWeight: 500,
-          typography: "dense",
-          px: 1.5,
-          height: 34,
-          minWidth: 0,
-          whiteSpace: "nowrap",
-          "&:hover": {
-            boxShadow: "none",
-            bgcolor: "action.hover",
-            borderColor: "divider",
-          },
-          "& .MuiButton-startIcon": { mr: 0.75, ml: 0 },
-          "& .MuiButton-endIcon": { ml: 0.5, mr: 0 },
-        }}
+    <DropdownMenu open={open} onOpenChange={handleOpenChange}>
+      <DropdownMenuTrigger
+        aria-label="AI"
+        className={triggerClass}
         disabled={isLoading}
       >
+        <Sparkles size={ICON_SIZE.inline} />
         AI
-      </Button>
-      <Menu
-        id="ai-tools-menu"
+        {isLoading
+          ? <Spinner size="sm" />
+          : <ChevronDown size={ICON_SIZE.inline} />}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="center"
         aria-label="Formatting options for ai"
-        anchorEl={anchorEl}
-        open={open}
-        onClose={handleClose}
-        anchorOrigin={{
-          vertical: "bottom",
-          horizontal: "center",
-        }}
-        transformOrigin={{
-          vertical: "top",
-          horizontal: "center",
-        }}
-        sx={{
-          "& .MuiList-root": { pt: 0 },
-          "& .MuiBackdrop-root": { userSelect: "none" },
-          "& .MuiMenuItem-root": { minHeight: 36 },
-        }}
+        side="bottom"
       >
-        {/* Model selector header */}
-        <MenuItem
-          onClick={handleModelMenuClick}
-          sx={{
-            borderBottom: "1px solid",
-            borderColor: "divider",
-            bgcolor: "action.hover",
-            mb: 0.5,
-            justifyContent: "space-between",
-            gap: 2,
-            "&:hover": { bgcolor: "action.selected" },
-          }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            {currentModel && getProviderIcon(currentModel.provider)}
-            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+        {/*
+          The model picker was a second `<Menu>` anchored by hand to this row.
+          It is a real submenu now — see `DropdownMenuSub` for why an unrelated
+          popup cannot be opened from inside a menu.
+        */}
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger className={css.modelRow}>
+            <span className={css.modelName}>
+              {currentModel && getProviderIcon(currentModel.provider)}
               {currentModel?.name || "Model"}
-            </Typography>
-          </Box>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <Typography variant="caption" color="text.secondary">
-              Change
-            </Typography>
-            <ChevronDown
-              size={ICON_SIZE.inline}
-              style={{ color: "var(--mui-palette-text-secondary)" }}
-            />
-          </Box>
-        </MenuItem>
-        <MenuItem
-          sx={{
-            p: 0,
-            mb: 1,
-            flexDirection: "column",
-            backgroundColor: "transparent !important",
-          }}
-          disableRipple
-          disableTouchRipple
-          onFocusVisible={(e) => {
-            const currentTarget = e.currentTarget;
-            const relatedTarget = e.relatedTarget;
-            setTimeout(() => {
-              const promptInput = promptRef.current;
-              const isPromptFocused = document.activeElement === promptInput;
-              if (isPromptFocused) return;
-              if (relatedTarget !== promptInput) {
-                promptInput?.focus();
-              } else currentTarget.nextElementSibling?.focus();
-            }, 0);
-          }}
-          disabled={isLoading}
-        >
-          <TextField
-            multiline
-            hiddenLabel
-            variant="filled"
-            size="small"
-            placeholder="What to do?"
-            inputRef={promptRef}
+            </span>
+            <span className={css.modelChange}>Change</span>
+          </DropdownMenuSubTrigger>
+          <DropdownMenuContent align="start" side="right">
+            {AI_MODELS.map((model) => (
+              <DropdownMenuItem
+                key={model.id}
+                onClick={() => handleModelSelect(model.id)}
+              >
+                {getProviderIcon(model.provider)}
+                {model.name}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenuSub>
+
+        {/*
+          Not a `Menu.Item`: Base UI moves DOM focus between items, and a field
+          that joins that list is one the keyboard cannot type into. Same
+          reasoning as the font-size stepper in `Menus/menus.css.ts`.
+        */}
+        <div className={css.promptRow}>
+          <AutoResizeTextArea
+            aria-label="What to do?"
             autoComplete="off"
+            className={css.promptInput}
+            disabled={isLoading}
+            placeholder="What to do?"
+            ref={promptRef}
             spellCheck="false"
-            sx={{
-              flexGrow: 1,
-              width: 256,
-              "& .MuiInputBase-root": {
-                paddingRight: 9,
-                flexGrow: 1,
-              },
-            }}
-            slotProps={{
-              htmlInput: {
-                onKeyDown: handlePrompt,
-              },
-            }}
+            onKeyDown={handlePrompt}
           />
-          <ListItemIcon
-            sx={{ position: "absolute", right: 4, bottom: 6 }}
+          <button
+            aria-label="Send"
+            className={sendButtonClass}
+            disabled={isLoading}
+            type="button"
+            onClick={handleSubmit}
           >
-            <IconButton
-              onClick={handleSubmit}
-              disabled={isLoading}
-              size="small"
-            >
-              <Send />
-            </IconButton>
-          </ListItemIcon>
-        </MenuItem>
+            <Send size={ICON_SIZE.dense} />
+          </button>
+        </div>
+
         {
           /* One item per selection-scoped action, from the shared registry.
             An action that reads the preceding prose rather than the selection
@@ -540,84 +485,41 @@ export default function AITools(
         {AI_TOOLBAR_ACTIONS.map((action) => {
           const Icon = AI_ACTION_ICON[action.id];
           return (
-            <MenuItem
+            <DropdownMenuItem
               key={action.id}
+              onClick={() => handleAction(action)}
               disabled={isLoading ||
                 (action.toolbar.input === "selection" && isCollapsed)}
-              onClick={() => handleAction(action)}
             >
-              <ListItemIcon>
-                <Icon size={ICON_SIZE.default} />
-              </ListItemIcon>
-              <ListItemText>{action.label}</ListItemText>
-            </MenuItem>
+              <Icon size={ICON_SIZE.default} />
+              {action.label}
+            </DropdownMenuItem>
           );
         })}
-        <MenuItem
-          disabled={isLoading || isCollapsed}
-          onClick={handleToneMenuOpen}
-        >
-          <ListItemIcon>
-            <Mic />
-          </ListItemIcon>
-          <ListItemText>Change Tone</ListItemText>
-          <ChevronRight size={ICON_SIZE.dense} style={{ marginLeft: "auto" }} />
-        </MenuItem>
-        <MenuItem
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger disabled={isLoading || isCollapsed}>
+            <Mic size={ICON_SIZE.dense} />
+            Change Tone
+          </DropdownMenuSubTrigger>
+          <DropdownMenuContent align="start" side="right">
+            {AI_TONES.map((tone) => (
+              <DropdownMenuItem
+                key={tone}
+                onClick={() => handleChangeTone(tone)}
+              >
+                {tone}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenuSub>
+        <DropdownMenuItem
           disabled={isLoading || !isCollapsed}
           onClick={handleOCR}
         >
-          <ListItemIcon>
-            <ScanSearch />
-          </ListItemIcon>
-          <ListItemText>Image to Text</ListItemText>
-        </MenuItem>
-      </Menu>
-      <Menu
-        anchorEl={toneMenuAnchor}
-        open={toneMenuOpen}
-        onClose={handleToneMenuClose}
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
-        transformOrigin={{ vertical: "top", horizontal: "left" }}
-      >
-        {AI_TONES.map((tone) => (
-          <MenuItem
-            key={tone}
-            onClick={() => handleChangeTone(tone)}
-          >
-            <ListItemText>{tone}</ListItemText>
-          </MenuItem>
-        ))}
-      </Menu>
-      <Menu
-        id="ai-model-menu"
-        anchorEl={modelMenuAnchor}
-        open={modelMenuOpen}
-        onClose={handleModelMenuClose}
-        anchorOrigin={{
-          vertical: "bottom",
-          horizontal: "left",
-        }}
-        transformOrigin={{
-          vertical: "top",
-          horizontal: "left",
-        }}
-      >
-        {AI_MODELS.map((model) => (
-          <MenuItem
-            key={model.id}
-            selected={model.id === llmConfig.model}
-            onClick={() => handleModelSelect(model.id)}
-          >
-            <ListItemIcon>
-              {getProviderIcon(model.provider)}
-            </ListItemIcon>
-            <ListItemText>
-              {model.name}
-            </ListItemText>
-          </MenuItem>
-        ))}
-      </Menu>
-    </>
+          <ScanSearch size={ICON_SIZE.dense} />
+          Image to Text
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

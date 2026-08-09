@@ -1,15 +1,37 @@
 "use client";
-import * as React from "react";
-import {
-  ListItemIcon,
-  ListItemText,
-  Menu,
-  MenuItem,
-  ToggleButton,
-} from "@mui/material";
-import { Circle, Eraser, Palette, X } from "lucide-react";
-import { ICON_SIZE } from "@/theme/icons";
+/**
+ * The toolbar's text- and background-colour pair.
+ *
+ * ## What changed, and why the call sites changed with it
+ *
+ * This was one MUI `Menu` holding both palettes as a 28-cell grid, opened from
+ * a single palette-icon toggle, with a `toggle="menuitem"` mode for the two
+ * places it was mounted *inside* another menu. Per docs/plans/haklex-adoption.md
+ * §6 the kit adopts haklex's picker rather than restyling ours, and haklex's is
+ * one control for one colour — so the shape here is two of them.
+ *
+ * That is why the `toggle`/`menuitem` mode is gone rather than ported. A
+ * Base UI `Popover` opened from inside a `Menu.Popup` is not part of that
+ * menu's floating tree, so the first click inside the popover reads as an
+ * outside press and closes the menu underneath it. `TableTools` and
+ * `NoteTools` therefore carry these two triggers in the toolbar row beside
+ * their menu button instead of as a row inside it — which also makes the
+ * colours one click away rather than two.
+ *
+ * What the swap buys, beyond the retint: a custom colour. haklex's picker
+ * flips to a full HSV view with a hex field and an eyedropper, so the palette
+ * below is a set of presets rather than the only colours reachable.
+ */
+import { ColorPicker as SwatchPicker } from "@/editor/ui";
+import * as css from "./tools.css";
 
+/**
+ * Unchanged from the MUI version, and deliberately still exported as bare hex
+ * strings: `MathTools` asks MathLive `queryStyle({ color })` once per entry to
+ * find which one a selection already carries, so the array is a lookup table as
+ * well as a palette. These are content — the colours a writer sets on their own
+ * text — not theme, so they are literals in both schemes by design.
+ */
 export const textPalette = [
   "#d7170b",
   "#fe8a2b",
@@ -44,122 +66,91 @@ export const backgroundPalette = [
   "#ffffff",
 ];
 
+/** Names in palette order, for the swatch buttons' accessible labels. */
+const HUE_NAMES = [
+  "Red",
+  "Orange",
+  "Yellow",
+  "Lime",
+  "Green",
+  "Cyan",
+  "Blue",
+  "Purple",
+  "Pink",
+];
+
+const TEXT_NEUTRAL_NAMES = ["Black", "Dark grey", "Grey", "Light grey", "White"];
+const BACKGROUND_NEUTRAL_NAMES = [
+  "Charcoal",
+  "Grey",
+  "Light grey",
+  "Off white",
+  "White",
+];
+
+/**
+ * `"inherit"` first, which is what the old grid's ✕ and eraser cells wrote —
+ * the kit draws it as `currentColor`, so "no colour of its own" looks like the
+ * surrounding text rather than like another swatch.
+ */
+function toPresets(palette: string[], neutralNames: string[]) {
+  const names = [...HUE_NAMES, ...neutralNames];
+  return [
+    { name: "Default", value: "inherit" },
+    ...palette.map((value, index) => ({
+      name: names[index] ?? value,
+      value,
+    })),
+  ];
+}
+
+const TEXT_PRESETS = toPresets(textPalette, TEXT_NEUTRAL_NAMES);
+const BACKGROUND_PRESETS = toPresets(backgroundPalette, BACKGROUND_NEUTRAL_NAMES);
+
 export default function ColorPicker(
   {
     onColorChange,
     onOpen,
     onClose,
-    toggle = "togglebutton",
-    label = "Color",
+    label,
     textColor,
     backgroundColor,
   }: {
+    /** `key` is `"text"` or `"background"` — unchanged from the MUI version. */
     onColorChange: (key: string, value: string) => void;
     onOpen?: () => void;
     onClose?: () => void;
-    toggle?: "togglebutton" | "menuitem";
+    /** Names what is being coloured: "Cell", "Note". Absent for running text. */
     label?: string;
     textColor?: string;
     backgroundColor?: string;
   },
 ) {
-  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
-  const open = Boolean(anchorEl);
-  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
-    event.preventDefault();
-    setAnchorEl(open ? null : event.currentTarget);
-    if (!open) onOpen?.();
-  };
-  const handleClose = () => {
-    setAnchorEl(null);
-    onClose?.();
-  };
-  const onChange = (key: string, value: string) => {
-    onColorChange(key, value);
+  const name = (what: string) =>
+    label ? `${label} ${what} color` : `${what} color`;
+
+  const handleOpenChange = (open: boolean) => {
+    if (open) onOpen?.();
+    else onClose?.();
   };
 
   return (
-    <>
-      {toggle === "menuitem" && (
-        <MenuItem onClick={handleClick}>
-          <ListItemIcon>
-            <Palette />
-          </ListItemIcon>
-          <ListItemText>{label}</ListItemText>
-        </MenuItem>
-      )}
-      {toggle === "togglebutton" && (
-        <ToggleButton
-          size="small"
-          value="color"
-          onClick={handleClick}
-          className="MuiToggleButtonGroup-grouped MuiToggleButtonGroup-groupedHorizontal"
-          selected={open}
-        >
-          <Palette size={ICON_SIZE.dense} />
-        </ToggleButton>
-      )}
-      <Menu
-        anchorEl={anchorEl}
-        open={open}
-        onClose={handleClose}
-        disableRestoreFocus
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-        transformOrigin={{ vertical: "top", horizontal: "center" }}
-        sx={{
-          "ul": {
-            pt: 0,
-            display: "flex",
-            flexWrap: "wrap",
-            width: 280,
-          },
-          "& .MuiBackdrop-root": { userSelect: "none" },
-        }}
-      >
-        {textPalette.map((color, index) => (
-          <MenuItem
-            key={index}
-            onClick={(_e) => {
-              onChange("text", color);
-            }}
-            selected={color === textColor}
-          >
-            <Circle style={{ color }} />
-          </MenuItem>
-        ))}
-        <MenuItem
-          key="clear-color"
-          onClick={(_e) => {
-            onChange("text", "inherit");
-          }}
-          selected={textColor === "inherit"}
-        >
-          <X />
-        </MenuItem>
-        {backgroundPalette.map((color, index) => (
-          <MenuItem
-            key={index}
-            onClick={(_e) => {
-              onChange("background", color);
-            }}
-            selected={color === backgroundColor}
-          >
-            <Circle
-              fill={color}
-              color={color}
-            />
-          </MenuItem>
-        ))}
-        <MenuItem
-          key="clear-background"
-          onClick={(_e) => {
-            onChange("background", "inherit");
-          }}
-          selected={backgroundColor === "inherit"}
-        >
-          <Eraser />
-        </MenuItem>
-      </Menu>
-    </>
+    <div className={css.colorPair}>
+      <SwatchPicker
+        currentColor={textColor ?? ""}
+        label={name("text")}
+        onOpenChange={handleOpenChange}
+        onSelect={(value) => onColorChange("text", value)}
+        presets={TEXT_PRESETS}
+      />
+      <SwatchPicker
+        currentColor={backgroundColor ?? ""}
+        label={name("background")}
+        onOpenChange={handleOpenChange}
+        onSelect={(value) => onColorChange("background", value)}
+        presets={BACKGROUND_PRESETS}
+        variant="fill"
+      />
+    </div>
   );
 }
