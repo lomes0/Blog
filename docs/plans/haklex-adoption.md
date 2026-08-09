@@ -1,7 +1,9 @@
 # Haklex adoption
 
-Status: **phases 0, 1, 2 and part of 5 shipped (8–9 Aug 2026); 3 and 4 not
-started.** Written 8 Aug 2026 from a read of `tmp/haklex` at `59850ebd`
+Status: **DONE — all five workstreams shipped 8–9 Aug 2026.** Phases 3 and 4
+were substantially re-scoped during execution on evidence; §10.7 and §10.8 say
+what was cut and why. Nothing in §3–§7 should be read as a to-do list without
+reading §10 first — several of its recommendations turned out to be wrong. Written 8 Aug 2026 from a read of `tmp/haklex` at `59850ebd`
 (v0.34.0, 5 Aug 2026, MIT). Reviewed the same day: measurements re-verified
 against both trees; the Lexical target (0.47 → 0.49), the `@lexical/html`
 patch-package obstacle (§3), and the src/-rooted checker globs (§4.3) were
@@ -750,3 +752,62 @@ for a pending proposal as a non-owner on a *published* document (expect 403);
 and the visual half — the `<del>`/`<ins>` block bands in both schemes, kanban
 and sketch through `htmr`, and a changed table cell rendering as a one-cell
 table.
+
+### 10.9 Phase 5 (B and D) and the close of the plan
+
+`aa779241` check:codecs · `077f37fe` recovery contract · `80722068` per-tool
+labels · `f58d50df` selection context. All four §7.3 items shipped.
+
+§7.3's `describeCall` asks for the labels in `src/lib/mcp/server.ts` too. It
+does not apply: MCP has no label channel, `registerTool` carries no such field,
+and Claude Code renders the call itself. Recorded as a comment where someone
+would go looking for the hook.
+
+§7.3's selection item assumes haklex's unconditional block ids. Ours are
+stamped only on blocks an agent has written, so structural-address fallback is
+the common path, not an edge case — and a `bN` address names a *position*, so a
+pending proposal that inserted above the selection puts it one block off.
+Stamping on read would fix that and move `stateHash`, refusing the next write.
+That is why the prompt makes `read_blocks` mandatory before editing.
+
+### 10.10 Final state
+
+660 tests / 36 files (411/21 when the plan was written — that figure was
+already stale then). `tsc` clean, lint clean, `check:nodes` 19 classes,
+`check:codecs` 13 encodable + 12 allowlisted of 25, `check:theme` 37 style
+files, `check:tdz` clean, `npm run build` green.
+
+Three checkers exist now that did not when this plan was written, and each was
+added because a real hole was found rather than anticipated: `check:codecs`
+(§10.1), the `.css.ts` half of `check:theme` (§10.6), and the
+`no-restricted-imports` ban on `@mui/*` under `packages/**` (§10.6).
+
+**The recurring lesson, stated once.** Four separate bugs shipped or nearly
+shipped with every gate green, and all four had the same shape — logic no spec
+could reach:
+
+- the table alias registration, whose tests called `importJSON` directly and
+  never constructed through a live editor (§10.3);
+- the ``` shortcut, whose logic lived inside a `useEffect` (§10.2);
+- `finalFocus`, where Base UI's focus return would have raced the caret restore
+  (§10.6.3);
+- the select trigger wrapping onto two lines, which no gate covers at all.
+
+Only the first three were caught by writing a test that could see them; the
+fourth needed a browser. The fix each time was to move the logic somewhere a
+spec could construct the situation — `blockShortcuts.ts`, `registration.ts`,
+`imageLayout.ts`, `proposalDiff.ts`, `captureSelection.ts` are all that move.
+
+**Deliberately not done, with reasons in place:** live Shiki (§10.7), the
+nested-doc and code-snippet nodes (§10.7), haklex's diff overlay and
+`review-engine` (§10.8), their image field model and resizer (§10.7), jotai,
+CodeMirror, LiteXML, the block drag handle, the in-browser agent loop, and the
+static/edit node split.
+
+**What still wants a human**, collected from §10.5, §10.6.5, §10.7 and §10.8 —
+none of it is covered by any gate: a stored revision containing every custom
+node type; `/view/[id]` in both schemes, particularly with percent-width and
+aligned images (cached, so it needs a re-save); the caret surviving every menu
+and popover close path; partial proposal approval end to end against local
+Postgres, including a squash mid-review and the `collab`-account 403; and the
+`<del>`/`<ins>` block bands with kanban and sketch rendered through `htmr`.
