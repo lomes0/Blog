@@ -1,18 +1,10 @@
+"use client";
 import { $isMathNode } from "@/editor/nodes/MathNode";
 import { $patchStyle } from "@/editor/nodes/utils";
 import {
   $getSelectionStyleValueForProperty,
   $patchStyleText,
 } from "@lexical/selection";
-import {
-  Box,
-  ListItemIcon,
-  ListItemText,
-  MenuItem,
-  Select,
-  SelectChangeEvent,
-  useMediaQuery,
-} from "@mui/material";
 import {
   $getPreviousSelection,
   $getSelection,
@@ -22,16 +14,49 @@ import {
   LexicalEditor,
   SELECTION_CHANGE_COMMAND,
 } from "lexical";
+import type { FocusEvent, KeyboardEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useTheme } from "@mui/material/styles";
 import { mergeRegister } from "@lexical/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/editor/ui";
+import { useMediaQuery } from "@/editor/utils/useMediaQuery";
 import { FontSizePicker } from "../Tools/FontSizePicker";
+import * as css from "./menus.css";
+
+const FONT_FAMILY_OPTIONS = [
+  ["Roboto", "Roboto"],
+  ["KaTeX_Main", "KaTeX"],
+  ["Virgil", "Virgil"],
+  ["Cascadia", "Cascadia"],
+  ["Courier New", "Courier New"],
+  ["Georgia", "Georgia"],
+];
+
+/** MUI's `theme.breakpoints.up("md")`, transcribed — see `useMediaQuery`. */
+const UP_MD = "(min-width: 900px)";
+
+/**
+ * Keys the font-size stepper keeps for itself while it is mounted inside the
+ * select popup.
+ *
+ * Base UI's list navigation and typeahead are registered on the popup, so an
+ * unguarded keystroke inside the stepper does two things at once: a digit both
+ * types and jumps the highlight to a font starting with that digit, and an
+ * arrow both steps the size and moves the highlight (which, with the preview
+ * below, would apply a font nobody asked for). Everything is stopped except the
+ * two keys that are how you *leave* — Escape closes the popup, Tab moves on.
+ */
+const POPUP_KEYS = new Set(["Escape", "Tab"]);
 
 export default function FontSelect({ editor }: { editor: LexicalEditor }) {
   const [fontSize, setFontSize] = useState<string>("16px");
   const [fontFamily, setFontFamily] = useState<string>("Roboto");
-  const theme = useTheme();
-  const matches = useMediaQuery(theme.breakpoints.up("md"));
+  const matches = useMediaQuery(UP_MD);
   const shouldMergeHistoryRef = useRef(false);
 
   const updateToolbar = useCallback(() => {
@@ -129,24 +154,6 @@ export default function FontSelect({ editor }: { editor: LexicalEditor }) {
     applyStyleText({ "font-family": value });
   }, [applyStyleText]);
 
-  const onFontFamilySelect = useCallback(
-    (e: SelectChangeEvent) => {
-      const value = (e.target as HTMLSelectElement).value;
-      if (!value) return;
-      updateFontFamily(value);
-    },
-    [updateFontFamily],
-  );
-
-  const FONT_FAMILY_OPTIONS = [
-    ["Roboto", "Roboto"],
-    ["KaTeX_Main", "KaTeX"],
-    ["Virgil", "Virgil"],
-    ["Cascadia", "Cascadia"],
-    ["Courier New", "Courier New"],
-    ["Georgia", "Georgia"],
-  ];
-
   const restoreFocus = useCallback(() => {
     setTimeout(() => {
       editor.update(() => {
@@ -167,113 +174,102 @@ export default function FontSelect({ editor }: { editor: LexicalEditor }) {
     restoreFocus();
   }, [restoreFocus]);
 
+  /**
+   * Live preview while arrowing through the list — the behaviour MUI expressed
+   * as `onFocusVisible` on each `MenuItem`, and the reason
+   * `shouldMergeHistoryRef` exists: a sweep down the list writes one style
+   * patch per stop, and they collapse into a single undo step only because
+   * `applyStyleText` tags them `history-merge` until the selection moves.
+   *
+   * Base UI has no highlight event, but its `useListNavigation` is not virtual:
+   * the highlighted item genuinely holds DOM focus, so `onFocus` is the same
+   * signal. The `:focus-visible` test is what keeps it a *keyboard* preview —
+   * items are also focused on hover (`highlightItemOnHover`, on by default),
+   * and without the test merely sweeping the pointer down the list would
+   * rewrite the document.
+   */
+  const previewOnKeyboardFocus = (option: string) =>
+  (event: FocusEvent<HTMLElement>) => {
+    if (!event.currentTarget.matches(":focus-visible")) return;
+    if (fontFamily === option) return;
+    updateFontFamily(option);
+  };
+
+  const containKeys = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!POPUP_KEYS.has(event.key)) event.stopPropagation();
+  };
+
+  const options = FONT_FAMILY_OPTIONS.find(([option]) => option === fontFamily)
+    ? FONT_FAMILY_OPTIONS
+    : [...FONT_FAMILY_OPTIONS, [fontFamily, fontFamily]];
+
   return (
-    <Box sx={{ display: "flex", gap: 0.5 }}>
-      <Select
-        size="small"
-        sx={{
-          fieldset: { borderColor: "divider" },
-          "& .MuiSelect-select": {
-            display: "flex !important",
-            alignItems: "center",
-            pl: 1,
-            pr: "28px !important",
-            py: 1,
-            minHeight: "0 !important",
-            height: "20px !important",
-          },
-          "& .MuiSelect-icon": { m: 0, fontSize: 20 },
-          "& .MuiListItemIcon-root": {
-            mr: { sm: 0.5 },
-            minWidth: 20,
-          },
-          "& .MuiListItemText-root": {
-            display: { xs: "none", sm: "flex" },
-          },
-          "&:hover .MuiOutlinedInput-notchedOutline": {
-            borderColor: "primary.main",
-          },
+    <div className={css.row}>
+      <Select<string>
+        onOpenChange={(open) => {
+          if (!open) handleClose();
         }}
-        MenuProps={{
-          slotProps: {
-            root: {
-              sx: {
-                "& .MuiBackdrop-root": { userSelect: "none" },
-                "& .MuiList-root": { pt: 0 },
-                "& .MuiMenuItem-root": { minHeight: 36 },
-              },
-            },
-          },
+        onValueChange={(value) => {
+          if (!value) return;
+          updateFontFamily(value);
         }}
-        onChange={onFontFamilySelect}
         value={fontFamily}
-        onClose={handleClose}
-        inputProps={{ "aria-label": "font family" }}
       >
-        <MenuItem
-          disableRipple
-          disableTouchRipple
-          divider
-          onFocusVisible={(e) => {
-            const currentTarget = e.currentTarget;
-            const relatedTarget = e.relatedTarget;
-            setTimeout(() => {
-              const promptInput = currentTarget.querySelector(
-                'input[type="number"]',
+        <SelectTrigger aria-label="font family" className={css.selectTrigger}>
+          <SelectValue>
+            {(value: string | null) => {
+              const label =
+                FONT_FAMILY_OPTIONS.find(([option]) => option === value)?.[1] ??
+                  value;
+              return (
+                <>
+                  <span
+                    className={css.fontSample}
+                    style={{ fontFamily: value ?? undefined }}
+                  >
+                    Aa
+                  </span>
+                  <span
+                    className={css.triggerLabel}
+                    style={{ fontFamily: value ?? undefined }}
+                  >
+                    {label}
+                  </span>
+                </>
               );
-              const isPromptFocused = document.activeElement === promptInput;
-              if (isPromptFocused) return;
-              if (relatedTarget !== promptInput) {
-                promptInput?.focus();
-              } else currentTarget.nextElementSibling?.focus();
-            }, 0);
-          }}
-          sx={{ justifyContent: "center" }}
-        >
-          <FontSizePicker
-            fontSize={fontSize}
-            updateFontSize={updateFontSize}
-            onBlur={() => {}}
-          />
-        </MenuItem>
-        {FONT_FAMILY_OPTIONS.map(([option, text]) => (
-          <MenuItem
-            key={option}
-            value={option}
-            onFocusVisible={(_e) => {
-              if (fontFamily !== option) {
-                updateFontFamily(
-                  option,
-                );
-              }
             }}
-          >
-            <ListItemIcon
-              sx={{ fontFamily: option, fontWeight: 500 }}
-              color="action"
+          </SelectValue>
+        </SelectTrigger>
+        {/* See `BlockFormatSelect` for why the popup is neither item-aligned
+            nor allowed to claim focus when it closes. */}
+        <SelectContent
+          alignItemWithTrigger={false}
+          className={css.popupSurface}
+          finalFocus={false}
+        >
+          <div className={css.popupHeader} onKeyDown={containKeys}>
+            <FontSizePicker
+              fontSize={fontSize}
+              updateFontSize={updateFontSize}
+              onBlur={() => {}}
+            />
+          </div>
+          {options.map(([option, text]) => (
+            <SelectItem
+              key={option}
+              label={text}
+              onFocus={previewOnKeyboardFocus(option)}
+              value={option}
             >
-              Aa
-            </ListItemIcon>
-            <ListItemText sx={{ "& *": { fontFamily: option } }}>
-              {text}
-            </ListItemText>
-          </MenuItem>
-        ))}
-        {!FONT_FAMILY_OPTIONS.find(([option]) => option === fontFamily) && (
-          <MenuItem value={fontFamily}>
-            <ListItemIcon
-              sx={{ fontFamily: fontFamily, fontWeight: 500 }}
-              color="action"
-            >
-              Aa
-            </ListItemIcon>
-            <ListItemText
-              sx={{ "& *": { fontFamily: fontFamily } }}
-            >
-              {fontFamily}
-            </ListItemText>
-          </MenuItem>
-        )}
+              <span className={css.fontSample} style={{ fontFamily: option }}>
+                Aa
+              </span>
+              <span className={css.optionLabel} style={{ fontFamily: option }}>
+                {text}
+              </span>
+            </SelectItem>
+          ))}
+        </SelectContent>
       </Select>
       {matches && (
         <FontSizePicker
@@ -282,6 +278,6 @@ export default function FontSelect({ editor }: { editor: LexicalEditor }) {
           onBlur={restoreFocus}
         />
       )}
-    </Box>
+    </div>
   );
 }

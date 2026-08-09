@@ -1,6 +1,4 @@
 "use client";
-import React from "react";
-import { useMenuState } from "@/hooks/useMenuState";
 import { LexicalEditor } from "lexical";
 import {
   HorizontalRuleNode,
@@ -19,15 +17,6 @@ import { CanvasNode } from "@/editor/nodes/CanvasNode";
 import { INSERT_CANVAS_COMMAND } from "@/editor/plugins/CanvasPlugin";
 import { PageBreakNode } from "@/editor/nodes/PageBreakNode";
 import { INSERT_PAGE_BREAK } from "@/editor/plugins/PageBreakPlugin";
-import {
-  Button,
-  ListItemIcon,
-  ListItemText,
-  Menu,
-  MenuItem,
-  SvgIcon,
-  Typography,
-} from "@mui/material";
 import {
   Brush,
   ChevronDown,
@@ -49,21 +38,40 @@ import { DetailsContainerNode } from "@/editor/nodes/DetailsNode";
 import { INSERT_DETAILS_COMMAND } from "@/editor/plugins/DetailsPlugin";
 import { AttachmentNode } from "@/editor/nodes/AttachmentNode";
 import { ICON_SIZE } from "@/theme/icons";
+import {
+  cx,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuShortcut,
+  DropdownMenuTrigger,
+  getActionButtonClassName,
+} from "@/editor/ui";
+import * as css from "./menus.css";
 
 const Graph = () => (
-  <SvgIcon viewBox="0 0 512 512" fontSize="small">
+  <svg
+    aria-hidden="true"
+    fill="currentColor"
+    height={ICON_SIZE.dense}
+    viewBox="0 0 512 512"
+    width={ICON_SIZE.dense}
+    xmlns="http://www.w3.org/2000/svg"
+  >
     <path d="M500.364,244.365h-37.248c12.695-18.223,27.124-31.674,42.415-39.273c5.76-2.851,8.099-9.844,5.248-15.593    c-2.851-5.76-9.821-8.122-15.593-5.248c-24.041,11.927-45.894,34.804-63.185,66.129c-22.726,41.146-52.166,63.802-82.909,63.802    c-26.077,0-51.188-16.465-72.087-46.545H384c6.423,0,11.636-5.201,11.636-11.636c0-6.435-5.213-11.636-11.636-11.636H267.636v-128    h11.636c4.701,0,8.948-2.828,10.752-7.18s0.803-9.356-2.525-12.684l-23.273-23.273c-4.55-4.55-11.904-4.55-16.454,0L224.5,96.502    c-3.328,3.328-4.329,8.332-2.525,12.684s6.051,7.18,10.752,7.18h11.636V218.09c-23.599-28.323-51.7-43.543-81.455-43.543    c-37.876,0-72.972,24.879-99.607,69.818H11.636C5.213,244.365,0,249.567,0,256.001c0,6.435,5.213,11.636,11.636,11.636h37.248    C36.189,285.86,21.76,299.312,6.47,306.911c-5.76,2.851-8.099,9.844-5.248,15.593c2.025,4.108,6.144,6.47,10.426,6.47    c1.734,0,3.503-0.384,5.167-1.21C40.855,315.836,62.708,292.959,80,261.633c22.726-41.158,52.166-63.814,82.909-63.814    c26.077,0,51.188,16.465,72.087,46.545H128c-6.423,0-11.636,5.201-11.636,11.636c0,6.435,5.213,11.636,11.636,11.636h116.364    v162.909c0,6.435,5.213,11.636,11.636,11.636s11.636-5.201,11.636-11.636V293.913c23.599,28.323,51.7,43.543,81.455,43.543    c37.876,0,72.972-24.879,99.607-69.818h51.665c6.423,0,11.636-5.201,11.636-11.636C512,249.567,506.787,244.365,500.364,244.365z" />
-  </SvgIcon>
+  </svg>
+);
+
+/**
+ * The trigger is the kit's `lg` outline button so it stands 36px tall, level
+ * with the two selects beside it — MUI's was 34.
+ */
+const triggerClass = cx(
+  getActionButtonClassName({ variant: "outline", size: "lg" }),
+  css.insertTrigger,
 );
 
 export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
-  const {
-    anchorEl,
-    menuOpen: open,
-    openMenu: handleClick,
-    closeMenu: handleClose,
-  } = useMenuState();
-
   const openImageDialog = () =>
     editor.dispatchCommand(SET_DIALOGS_COMMAND, { image: { open: true } });
   const openTableDialog = () =>
@@ -80,278 +88,130 @@ export default function InsertToolMenu({ editor }: { editor: LexicalEditor }) {
     editor.dispatchCommand(SET_DIALOGS_COMMAND, { attachment: { open: true } });
 
   return (
-    <>
-      <Button
-        id="insert-button"
-        aria-controls={open ? "insert-menu" : undefined}
-        aria-haspopup="true"
-        aria-expanded={open ? "true" : undefined}
-        aria-label="Insert"
-        onClick={handleClick}
-        startIcon={<Plus size={ICON_SIZE.inline} />}
-        endIcon={<ChevronDown size={ICON_SIZE.inline} />}
-        sx={{
-          color: "text.secondary",
-          textTransform: "none",
-          fontWeight: 500,
-          typography: "dense",
-          px: 1.25,
-          height: 34,
-          minWidth: 0,
-          border: "1px solid",
-          borderColor: "divider",
-          bgcolor: "transparent",
-          "&:hover": { bgcolor: "action.hover", borderColor: "divider" },
-          "& .MuiButton-startIcon": { mr: 0.5, ml: 0 },
-          "& .MuiButton-endIcon": { ml: 0.25, mr: 0 },
-        }}
-        variant="outlined"
-      >
+    /*
+     * No `useMenuState` any more: Base UI's `Menu.Root` owns the open state and
+     * its `Positioner` anchors to the `Trigger` itself, so the anchor element
+     * the hook existed to hold has nowhere to go. The hook stays where it is —
+     * three files under `Tools/` are still MUI menus and still need it.
+     */
+    <DropdownMenu>
+      <DropdownMenuTrigger aria-label="Insert" className={triggerClass}>
+        <Plus size={ICON_SIZE.inline} />
         Insert
-      </Button>
-      <Menu
-        id="insert-menu"
-        aria-labelledby="insert-button"
-        anchorEl={anchorEl}
-        open={open}
-        onClose={handleClose}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-        transformOrigin={{ vertical: "top", horizontal: "center" }}
-        sx={{
-          "& .MuiBackdrop-root": { userSelect: "none" },
-          "& .MuiMenuItem-root": { minHeight: 36 },
-        }}
-      >
+        <ChevronDown size={ICON_SIZE.inline} />
+      </DropdownMenuTrigger>
+      {/* Items close the menu themselves — Base UI's `Menu.Item` does it on
+          click, which is what every `handleClose()` call here used to be. */}
+      <DropdownMenuContent align="center" side="bottom">
         {editor.hasNode(HorizontalRuleNode) && (
-          <MenuItem
-            onClick={() => {
-              editor.dispatchCommand(
-                INSERT_HORIZONTAL_RULE_COMMAND,
-                undefined,
-              );
-              handleClose();
-            }}
+          <DropdownMenuItem
+            onClick={() =>
+              editor.dispatchCommand(INSERT_HORIZONTAL_RULE_COMMAND, undefined)}
           >
-            <ListItemIcon>
-              <Minus size={ICON_SIZE.dense} />
-            </ListItemIcon>
-            <ListItemText>Divider</ListItemText>
-            <Typography variant="body2" color="text.secondary">
-              ---
-            </Typography>
-          </MenuItem>
+            <Minus size={ICON_SIZE.dense} />
+            Divider
+            <DropdownMenuShortcut>---</DropdownMenuShortcut>
+          </DropdownMenuItem>
         )}
         {editor.hasNode(PageBreakNode) && (
-          <MenuItem
-            onClick={() => {
-              editor.dispatchCommand(
-                INSERT_PAGE_BREAK,
-                undefined,
-              );
-              handleClose();
-            }}
+          <DropdownMenuItem
+            onClick={() => editor.dispatchCommand(INSERT_PAGE_BREAK, undefined)}
           >
-            <ListItemIcon>
-              <Scissors size={ICON_SIZE.dense} />
-            </ListItemIcon>
-            <ListItemText>Page</ListItemText>
-            <Typography variant="body2" color="text.secondary">
-              /page
-            </Typography>
-          </MenuItem>
+            <Scissors size={ICON_SIZE.dense} />
+            Page
+            <DropdownMenuShortcut>/page</DropdownMenuShortcut>
+          </DropdownMenuItem>
         )}
         {editor.hasNode(MathNode) && (
-          <MenuItem
-            onClick={() => {
-              editor.dispatchCommand(INSERT_MATH_COMMAND, {
-                value: "",
-              });
-              handleClose();
-            }}
+          <DropdownMenuItem
+            onClick={() =>
+              editor.dispatchCommand(INSERT_MATH_COMMAND, { value: "" })}
           >
-            <ListItemIcon>
-              <Sigma size={ICON_SIZE.dense} />
-            </ListItemIcon>
-            <ListItemText>Math</ListItemText>
-            <Typography variant="body2" color="text.secondary">
-              $$
-            </Typography>
-          </MenuItem>
+            <Sigma size={ICON_SIZE.dense} />
+            Math
+            <DropdownMenuShortcut>$$</DropdownMenuShortcut>
+          </DropdownMenuItem>
         )}
         {editor.hasNode(GraphNode) && (
-          <MenuItem
-            onClick={() => {
-              openGraphDialog();
-              handleClose();
-            }}
-          >
-            <ListItemIcon>
-              <Graph />
-            </ListItemIcon>
-            <ListItemText>Graph</ListItemText>
-            <Typography variant="body2" color="text.secondary">
-              /plot
-            </Typography>
-          </MenuItem>
+          <DropdownMenuItem onClick={openGraphDialog}>
+            <Graph />
+            Graph
+            <DropdownMenuShortcut>/plot</DropdownMenuShortcut>
+          </DropdownMenuItem>
         )}
         {editor.hasNode(SketchNode) && (
-          <MenuItem
-            onClick={() => {
-              openSketchDialog();
-              handleClose();
-            }}
-          >
-            <ListItemIcon>
-              <Brush size={ICON_SIZE.dense} />
-            </ListItemIcon>
-            <ListItemText>Sketch</ListItemText>
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{ ml: 1 }}
-            >
-              /sketch
-            </Typography>
-          </MenuItem>
+          <DropdownMenuItem onClick={openSketchDialog}>
+            <Brush size={ICON_SIZE.dense} />
+            Sketch
+            <DropdownMenuShortcut>/sketch</DropdownMenuShortcut>
+          </DropdownMenuItem>
         )}
         {editor.hasNode(ImageNode) && (
-          <MenuItem
-            onClick={() => {
-              openImageDialog();
-              handleClose();
-            }}
-          >
-            <ListItemIcon>
-              <Image size={ICON_SIZE.dense} />
-            </ListItemIcon>
-            <ListItemText>Image</ListItemText>
-            <Typography variant="body2" color="text.secondary">
-              /img
-            </Typography>
-          </MenuItem>
+          <DropdownMenuItem onClick={openImageDialog}>
+            <Image size={ICON_SIZE.dense} />
+            Image
+            <DropdownMenuShortcut>/img</DropdownMenuShortcut>
+          </DropdownMenuItem>
         )}
         {editor.hasNode(AttachmentNode) && (
-          <MenuItem
-            onClick={() => {
-              openAttachmentDialog();
-              handleClose();
-            }}
-          >
-            <ListItemIcon>
-              <Paperclip size={ICON_SIZE.dense} />
-            </ListItemIcon>
-            <ListItemText>Attachment</ListItemText>
-            <Typography variant="body2" color="text.secondary">
-              /attach
-            </Typography>
-          </MenuItem>
+          <DropdownMenuItem onClick={openAttachmentDialog}>
+            <Paperclip size={ICON_SIZE.dense} />
+            Attachment
+            <DropdownMenuShortcut>/attach</DropdownMenuShortcut>
+          </DropdownMenuItem>
         )}
         {editor.hasNode(TableNode) && (
-          <MenuItem
-            onClick={() => {
-              openTableDialog();
-              handleClose();
-            }}
-          >
-            <ListItemIcon>
-              <Table size={ICON_SIZE.dense} />
-            </ListItemIcon>
-            <ListItemText>Table</ListItemText>
-            <Typography variant="body2" color="text.secondary">
-              /3x3
-            </Typography>
-          </MenuItem>
+          <DropdownMenuItem onClick={openTableDialog}>
+            <Table size={ICON_SIZE.dense} />
+            Table
+            <DropdownMenuShortcut>/3x3</DropdownMenuShortcut>
+          </DropdownMenuItem>
         )}
         {editor.hasNode(LayoutContainerNode) && (
-          <MenuItem
-            onClick={() => {
-              openLayoutDialog();
-              handleClose();
-            }}
-          >
-            <ListItemIcon>
-              <Columns2 size={ICON_SIZE.dense} />
-            </ListItemIcon>
-            <ListItemText>Columns</ListItemText>
-            <Typography variant="body2" color="text.secondary">
-              /col
-            </Typography>
-          </MenuItem>
+          <DropdownMenuItem onClick={openLayoutDialog}>
+            <Columns2 size={ICON_SIZE.dense} />
+            Columns
+            <DropdownMenuShortcut>/col</DropdownMenuShortcut>
+          </DropdownMenuItem>
         )}
         {editor.hasNode(StickyNode) && (
-          <MenuItem
-            onClick={() => {
-              editor.dispatchCommand(
-                INSERT_STICKY_COMMAND,
-                undefined,
-              );
-              handleClose();
-            }}
+          <DropdownMenuItem
+            onClick={() =>
+              editor.dispatchCommand(INSERT_STICKY_COMMAND, undefined)}
           >
-            <ListItemIcon>
-              <StickyNote size={ICON_SIZE.dense} />
-            </ListItemIcon>
-            <ListItemText>Note</ListItemText>
-            <Typography variant="body2" color="text.secondary">
-              /note
-            </Typography>
-          </MenuItem>
+            <StickyNote size={ICON_SIZE.dense} />
+            Note
+            <DropdownMenuShortcut>/note</DropdownMenuShortcut>
+          </DropdownMenuItem>
         )}
         {editor.hasNode(CanvasNode) && (
-          <MenuItem
-            onClick={() => {
-              editor.dispatchCommand(
-                INSERT_CANVAS_COMMAND,
-                undefined,
-              );
-              handleClose();
-            }}
+          <DropdownMenuItem
+            onClick={() =>
+              editor.dispatchCommand(INSERT_CANVAS_COMMAND, undefined)}
           >
-            <ListItemIcon>
-              <LayoutDashboard size={ICON_SIZE.dense} />
-            </ListItemIcon>
-            <ListItemText>Notes Canvas</ListItemText>
-            <Typography variant="body2" color="text.secondary">
-              /canvas
-            </Typography>
-          </MenuItem>
+            <LayoutDashboard size={ICON_SIZE.dense} />
+            Notes Canvas
+            <DropdownMenuShortcut>/canvas</DropdownMenuShortcut>
+          </DropdownMenuItem>
         )}
         {editor.hasNode(IFrameNode) && (
-          <MenuItem
-            onClick={() => {
-              openIFrameDialog();
-              handleClose();
-            }}
-          >
-            <ListItemIcon>
-              <Globe size={ICON_SIZE.dense} />
-            </ListItemIcon>
-            <ListItemText>IFrame</ListItemText>
-            <Typography variant="body2" color="text.secondary">
-              /iframe
-            </Typography>
-          </MenuItem>
+          <DropdownMenuItem onClick={openIFrameDialog}>
+            <Globe size={ICON_SIZE.dense} />
+            IFrame
+            <DropdownMenuShortcut>/iframe</DropdownMenuShortcut>
+          </DropdownMenuItem>
         )}
         {editor.hasNode(DetailsContainerNode) && (
-          <MenuItem
-            onClick={() => {
-              editor.dispatchCommand(
-                INSERT_DETAILS_COMMAND,
-                undefined,
-              );
-              handleClose();
-            }}
+          <DropdownMenuItem
+            onClick={() =>
+              editor.dispatchCommand(INSERT_DETAILS_COMMAND, undefined)}
           >
-            <ListItemIcon>
-              <ChevronDown size={ICON_SIZE.dense} />
-            </ListItemIcon>
-            <ListItemText>Details</ListItemText>
-            <Typography variant="body2" color="text.secondary">
-              /details
-            </Typography>
-          </MenuItem>
+            <ChevronDown size={ICON_SIZE.dense} />
+            Details
+            <DropdownMenuShortcut>/details</DropdownMenuShortcut>
+          </DropdownMenuItem>
         )}
-      </Menu>
-    </>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

@@ -21,13 +21,6 @@ import {
 } from "lexical";
 
 import {
-  ListItemIcon,
-  ListItemText,
-  MenuItem,
-  Select,
-  SvgIcon,
-} from "@mui/material";
-import {
   AlignLeft,
   Code,
   List,
@@ -36,40 +29,41 @@ import {
   Quote,
 } from "lucide-react";
 import { $isTableSelection } from "@/editor/nodes/TableNode";
-import { useCallback } from "react";
+import { ReactNode, useCallback } from "react";
 import { ICON_SIZE } from "@/theme/icons";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/editor/ui";
+import * as css from "./menus.css";
+
+const HeadingGlyph = ({ path }: { path: string }) => (
+  <svg
+    aria-hidden="true"
+    fill="currentColor"
+    height={ICON_SIZE.dense}
+    viewBox="0 96 960 960"
+    width={ICON_SIZE.dense}
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d={path} />
+  </svg>
+);
 
 const H1 = () => (
-  <SvgIcon viewBox="0 96 960 960" fontSize="small">
-    <path
-      xmlns="http://www.w3.org/2000/svg"
-      d="M200 776V376h60v170h180V376h60v400h-60V606H260v170h-60Zm500 0V436h-80v-60h140v400h-60Z"
-    />
-  </SvgIcon>
+  <HeadingGlyph path="M200 776V376h60v170h180V376h60v400h-60V606H260v170h-60Zm500 0V436h-80v-60h140v400h-60Z" />
 );
 const H2 = () => (
-  <SvgIcon viewBox="0 96 960 960" fontSize="small">
-    <path
-      xmlns="http://www.w3.org/2000/svg"
-      d="M120 776V376h60v170h180V376h60v400h-60V606H180v170h-60Zm420 0V606q0-24.75 17.625-42.375T600 546h180V436H540v-60h240q25 0 42.5 17.625T840 436v110q0 24.75-17.625 42.375T780 606H600v110h240v60H540Z"
-    />
-  </SvgIcon>
+  <HeadingGlyph path="M120 776V376h60v170h180V376h60v400h-60V606H180v170h-60Zm420 0V606q0-24.75 17.625-42.375T600 546h180V436H540v-60h240q25 0 42.5 17.625T840 436v110q0 24.75-17.625 42.375T780 606H600v110h240v60H540Z" />
 );
 const H3 = () => (
-  <SvgIcon viewBox="0 96 960 960" fontSize="small">
-    <path
-      xmlns="http://www.w3.org/2000/svg"
-      d="M120 776V376h60v170h180V376h60v400h-60V606H180v170h-60Zm420 0v-60h240V606H620v-60h160V436H540v-60h240q25 0 42.5 17.625T840 436v280q0 24.75-17.625 42.375T780 776H540Z"
-    />
-  </SvgIcon>
+  <HeadingGlyph path="M120 776V376h60v170h180V376h60v400h-60V606H180v170h-60Zm420 0v-60h240V606H620v-60h160V436H540v-60h240q25 0 42.5 17.625T840 436v280q0 24.75-17.625 42.375T780 776H540Z" />
 );
 const H4 = () => (
-  <SvgIcon viewBox="0 96 960 960" fontSize="small">
-    <path
-      xmlns="http://www.w3.org/2000/svg"
-      d="M120 776V376h60v170h180V376h60v400h-60V606H180v170h-60Zm620 0V646H540V376h60v210h140V376h60v210h80v60h-80v130h-60Z"
-    />
-  </SvgIcon>
+  <HeadingGlyph path="M120 776V376h60v170h180V376h60v400h-60V606H180v170h-60Zm620 0V646H540V376h60v210h140V376h60v210h80v60h-80v130h-60Z" />
 );
 
 export type BlockType =
@@ -83,6 +77,28 @@ export type BlockType =
   | "h4"
   | "number"
   | "paragraph";
+
+/**
+ * One list, read by both the trigger and the popup.
+ *
+ * MUI let the trigger re-render the selected `MenuItem`'s children, so the two
+ * could not drift; Base UI's `Select.Value` renders whatever it is given, so
+ * the shared table is what keeps that property.
+ */
+const BLOCK_OPTIONS: ReadonlyArray<
+  { value: BlockType; label: string; icon: ReactNode }
+> = [
+  { value: "paragraph", label: "Normal", icon: <AlignLeft size={ICON_SIZE.dense} /> },
+  { value: "h1", label: "Heading 1", icon: <H1 /> },
+  { value: "h2", label: "Heading 2", icon: <H2 /> },
+  { value: "h3", label: "Heading 3", icon: <H3 /> },
+  { value: "h4", label: "Heading 4", icon: <H4 /> },
+  { value: "bullet", label: "Bullet List", icon: <List size={ICON_SIZE.dense} /> },
+  { value: "number", label: "Numbered List", icon: <ListOrdered size={ICON_SIZE.dense} /> },
+  { value: "check", label: "Check List", icon: <ListChecks size={ICON_SIZE.dense} /> },
+  { value: "quote", label: "Quote", icon: <Quote size={ICON_SIZE.dense} /> },
+  { value: "code", label: "CodeBlock", icon: <Code size={ICON_SIZE.dense} /> },
+];
 
 export function BlockFormatSelect({ editor, blockType }: {
   blockType: BlockType;
@@ -186,7 +202,14 @@ export function BlockFormatSelect({ editor, blockType }: {
     }
   };
 
-  const handleClose = useCallback(() => {
+  /**
+   * Every one of the formatters above runs against `$getSelection()`, which
+   * outlives the popup — but DOM focus does not, so it has to be put back or
+   * the caret vanishes after every use. Unchanged from the MUI version, and
+   * still deferred a tick: the format update has to land before the selection
+   * it produced is cloned forward.
+   */
+  const restoreFocus = useCallback(() => {
     setTimeout(() => {
       editor.update(() => {
         const selection = $getSelection() || $getPreviousSelection();
@@ -201,103 +224,73 @@ export function BlockFormatSelect({ editor, blockType }: {
     }, 0);
   }, [editor]);
 
+  const applyBlockType = (next: BlockType | null) => {
+    switch (next) {
+      case "paragraph":
+        return formatParagraph();
+      case "h1":
+      case "h2":
+      case "h3":
+      case "h4":
+        return formatHeading(next);
+      case "bullet":
+        return formatBulletList();
+      case "number":
+        return formatNumberedList();
+      case "check":
+        return formatCheckList();
+      case "quote":
+        return formatQuote();
+      case "code":
+        return formatCode();
+      default:
+        return;
+    }
+  };
+
   return (
-    <Select
+    <Select<BlockType>
+      onOpenChange={(open) => {
+        if (!open) restoreFocus();
+      }}
+      onValueChange={applyBlockType}
       value={blockType}
-      size="small"
-      onClose={handleClose}
-      sx={{
-        fieldset: { borderColor: "divider" },
-        "& .MuiSelect-select": {
-          display: "flex !important",
-          alignItems: "center",
-          pl: 1,
-          pr: "28px !important",
-          py: 1,
-          minHeight: "0 !important",
-          height: "20px !important",
-        },
-        "& .MuiSelect-icon": { m: 0, fontSize: 20 },
-        "& .MuiListItemIcon-root": { mr: { sm: 0.5 }, minWidth: 20 },
-        "& .MuiListItemText-root": {
-          display: { xs: "none", sm: "flex" },
-        },
-        "&:hover .MuiOutlinedInput-notchedOutline": {
-          borderColor: "primary.main",
-        },
-      }}
-      MenuProps={{
-        slotProps: {
-          root: {
-            sx: {
-              "& .MuiBackdrop-root": { userSelect: "none" },
-              "& .MuiMenuItem-root": { minHeight: 36 },
-            },
-          },
-        },
-      }}
-      inputProps={{ "aria-label": "block type" }}
     >
-      <MenuItem value="paragraph" onClick={formatParagraph}>
-        <ListItemIcon>
-          <AlignLeft size={ICON_SIZE.dense} />
-        </ListItemIcon>
-        <ListItemText>Normal</ListItemText>
-      </MenuItem>
-      <MenuItem value="h1" onClick={() => formatHeading("h1")}>
-        <ListItemIcon>
-          <H1 />
-        </ListItemIcon>
-        <ListItemText>Heading 1</ListItemText>
-      </MenuItem>
-      <MenuItem value="h2" onClick={() => formatHeading("h2")}>
-        <ListItemIcon>
-          <H2 />
-        </ListItemIcon>
-        <ListItemText>Heading 2</ListItemText>
-      </MenuItem>
-      <MenuItem value="h3" onClick={() => formatHeading("h3")}>
-        <ListItemIcon>
-          <H3 />
-        </ListItemIcon>
-        <ListItemText>Heading 3</ListItemText>
-      </MenuItem>
-      <MenuItem value="h4" onClick={() => formatHeading("h4")}>
-        <ListItemIcon>
-          <H4 />
-        </ListItemIcon>
-        <ListItemText>Heading 4</ListItemText>
-      </MenuItem>
-      <MenuItem value="bullet" onClick={formatBulletList}>
-        <ListItemIcon>
-          <List size={ICON_SIZE.dense} />
-        </ListItemIcon>
-        <ListItemText>Bullet List</ListItemText>
-      </MenuItem>
-      <MenuItem value="number" onClick={formatNumberedList}>
-        <ListItemIcon>
-          <ListOrdered size={ICON_SIZE.dense} />
-        </ListItemIcon>
-        <ListItemText>Numbered List</ListItemText>
-      </MenuItem>
-      <MenuItem value="check" onClick={formatCheckList}>
-        <ListItemIcon>
-          <ListChecks size={ICON_SIZE.dense} />
-        </ListItemIcon>
-        <ListItemText>Check List</ListItemText>
-      </MenuItem>
-      <MenuItem value="quote" onClick={formatQuote}>
-        <ListItemIcon>
-          <Quote size={ICON_SIZE.dense} />
-        </ListItemIcon>
-        <ListItemText>Quote</ListItemText>
-      </MenuItem>
-      <MenuItem value="code" onClick={formatCode}>
-        <ListItemIcon>
-          <Code size={ICON_SIZE.dense} />
-        </ListItemIcon>
-        <ListItemText>CodeBlock</ListItemText>
-      </MenuItem>
+      <SelectTrigger aria-label="block type" className={css.selectTrigger}>
+        <SelectValue>
+          {(value: BlockType | null) => {
+            const option = BLOCK_OPTIONS.find((entry) => entry.value === value);
+            if (!option) return null;
+            return (
+              <>
+                <span className={css.optionIcon}>{option.icon}</span>
+                <span className={css.triggerLabel}>{option.label}</span>
+              </>
+            );
+          }}
+        </SelectValue>
+      </SelectTrigger>
+      {/*
+        `alignItemWithTrigger` would slide the popup so the selected row sits
+        over the trigger, which is Base UI's native-`<select>` behaviour and not
+        what this control had: MUI's outlined `Select` drops its menu below the
+        field. `finalFocus={false}` because focus belongs to the editor when
+        this closes, not to the trigger — `restoreFocus` is the only thing that
+        should decide, and letting Base UI also aim at the trigger makes the two
+        race.
+      */}
+      <SelectContent
+        alignItemWithTrigger={false}
+        className={css.popupSurface}
+        finalFocus={false}
+      >
+        {BLOCK_OPTIONS.map((option) => (
+          <SelectItem key={option.value} label={option.label} value={option.value}>
+            <span className={css.optionIcon}>{option.icon}</span>
+            <span className={css.optionLabel}>{option.label}</span>
+          </SelectItem>
+        ))}
+      </SelectContent>
     </Select>
   );
 }
