@@ -65,6 +65,14 @@ const theme: EditorThemeClasses = {
     h6: "LexicalTheme__h6",
   },
   image: "LexicalTheme__image",
+  /**
+   * A figure carrying an explicit display width (`width: N%` in its style
+   * string). The width itself is an inline style `ImageNode.createDOM` sets;
+   * this class is what makes the picture *inside* the figure stretch to it —
+   * that part has to be a stylesheet rule, because the figure's children are
+   * built by React while editing and by `exportDOM` on the server.
+   */
+  imageSized: "LexicalTheme__imageSized",
   darkModeFilter: "LexicalTheme__darkModeFilter",
   indent: "LexicalTheme__indent",
   layoutContainer: "LexicalTheme__layoutContainer",

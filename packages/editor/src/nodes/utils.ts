@@ -3,6 +3,11 @@ import {
   addClassNamesToElement,
   removeClassNamesFromElement,
 } from "@lexical/utils";
+import {
+  figureInlineStyle,
+  readAlignment,
+  readDisplayWidth,
+} from "./imageLayout";
 
 export const CSS_TO_STYLES: Map<string, Record<string, string>> = new Map();
 
@@ -149,4 +154,56 @@ export function floatWrapperElement(
   }
   removeClassNamesFromElement(dom, ...removeClasses);
   addClassNamesToElement(dom, ...addClasses);
+}
+
+/**
+ * Everything an image figure's `__style` string says about the `<figure>`
+ * itself, applied to it.
+ *
+ * Called by `ImageNode.createDOM` and `ImageNode.updateDOM`, so the two cannot
+ * drift — and, because `LexicalNode.exportDOM` is `createDOM(editor._config,
+ * editor)` and every `exportDOM` on `ImageNode`, `GraphNode`, `SketchNode` and
+ * `IFrameNode` routes through it, this is also the one place that decides what
+ * the published page at `/view/[id]` looks like.
+ *
+ * It lives here rather than beside its caller for the reason
+ * `SideBar/dragGeometry.ts` set: `ImageNode/index.tsx` reaches
+ * `MathComponent`'s module-level `window.MathfieldElement` through its
+ * caption's editor config, so nothing in that file can be constructed outside
+ * a browser. This module imports `lexical` and a DOM, and no more.
+ *
+ * Four things ride the one style string:
+ *
+ *  - `float` → the theme's float classes, which wrap the following text.
+ *  - `filter: auto` → the dark-mode filter class.
+ *  - `width: N%` → an inline width, plus the theme's `imageSized` class so the
+ *    picture inside stretches to the box rather than staying at its stored
+ *    pixel size. The figure's children are built by React while editing and by
+ *    `exportDOM` on the server, so that last part has to be a stylesheet rule;
+ *    it is the one piece of this that is not an inline style.
+ *  - `margin-inline` → alignment, deliberately ignored while the figure
+ *    floats: a floated box is positioned by the float, and an auto margin on it
+ *    is inert.
+ *
+ * The inline style is written as a whole attribute rather than property by
+ * property, so that `updateDOM` replaces it wholesale instead of having to
+ * remember which properties the previous state set.
+ */
+export function applyFigureLayout(
+  element: HTMLElement,
+  config: EditorConfig,
+  css: string,
+): void {
+  const style = getStyleObjectFromRawCSS(css);
+  const float = style.float;
+  floatWrapperElement(element, config, float);
+  element.classList.toggle(config.theme.darkModeFilter, style.filter === "auto");
+  const width = readDisplayWidth(style);
+  const isFloating = float === "left" || float === "right";
+  const align = isFloating ? null : readAlignment(style);
+  const sizedClass: string | undefined = config.theme.imageSized;
+  if (sizedClass) element.classList.toggle(sizedClass, width !== null);
+  const inlineStyle = figureInlineStyle(width, align);
+  if (inlineStyle) element.setAttribute("style", inlineStyle);
+  else element.removeAttribute("style");
 }

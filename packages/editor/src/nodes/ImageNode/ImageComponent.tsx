@@ -36,6 +36,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import ImageResizer from "./ImageResizer";
 import ImageCaption from "./ImageCaption";
 import { $isImageNode } from ".";
+import { $patchStyle } from "../utils";
+import { widthPatch } from "../imageLayout";
 
 export default function ImageComponent({
   src,
@@ -221,12 +223,44 @@ export default function ImageComponent({
       const node = $getNodeByKey(nodeKey);
       if (!$isImageNode(node)) return;
       node.setWidthAndHeight(nextWidth, nextHeight);
+      // Dragging a handle states an absolute size, so it *replaces* a percent
+      // display width rather than fighting it. The two are different tools for
+      // the same property and the resizer's whole geometry is in pixels
+      // (`getBoundingClientRect` in, `style.width = Npx` out): keeping the
+      // percent would mean the figure snapped back to it the moment the drag
+      // committed, which is the one outcome nobody would call correct. The
+      // *alignment* survives — it is not a size.
+      $patchStyle(node, widthPatch(null));
     });
   };
 
   const onResizeStart = () => {
     setIsResizing(true);
   };
+
+  /**
+   * Drop the imperative size the resize drag left behind, once the committed
+   * one has rendered.
+   *
+   * `ImageResizer` writes `style.width` straight onto the picture during a drag
+   * and does not clear it on release — deliberately, because the node's new
+   * width has not reached the `width` attribute yet and clearing early would
+   * flash the old size. Nothing ever removed it afterwards, which was harmless
+   * while pixels were the only vocabulary: the leftover always agreed with the
+   * attribute beside it. It stops being harmless with percent widths, because
+   * an inline `width: 620px` on the picture outranks the stylesheet rule that
+   * stretches it to a percent-sized figure — so a drag would quietly disable
+   * the width control for the rest of the session.
+   *
+   * Running on the committed `width`/`height` is what makes it safe: by then
+   * React has rendered the new attributes, so there is nothing to flash to.
+   */
+  useEffect(() => {
+    const element = imageRef.current;
+    if (!element) return;
+    element.style.removeProperty("width");
+    element.style.removeProperty("height");
+  }, [width, height]);
 
   const onLoad = useCallback(() => {
     editor.getEditorState().read(() => {

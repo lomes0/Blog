@@ -2,6 +2,7 @@
 import {
   $parseSerializedNode,
   $setState,
+  HISTORY_MERGE_TAG,
   LexicalEditor,
   SKIP_SCROLL_INTO_VIEW_TAG,
 } from "lexical";
@@ -9,10 +10,26 @@ import { $isImageNode, ImageNode } from "@/editor/nodes/ImageNode";
 import { $isSketchNode, SketchNode } from "@/editor/nodes/SketchNode";
 import { $isGraphNode, GraphNode } from "@/editor/nodes/GraphNode";
 import { $patchStyle, getStyleObjectFromCSS } from "@/editor/nodes/utils";
-import { useCallback, useEffect, useState } from "react";
+import {
+  type ImageLayout,
+  layoutPatch,
+  readDisplayWidth,
+  readLayout,
+  snapWidth,
+  tickOffset,
+  WIDTH_MAX,
+  WIDTH_MIN,
+  WIDTH_PRESETS,
+  widthPatch,
+} from "@/editor/nodes/imageLayout";
+import type { ChangeEvent, CSSProperties, MouseEvent } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SET_DIALOGS_COMMAND } from "../Dialogs/commands";
 import {
+  AlignCenterVertical,
+  AlignEndVertical,
   AlignLeft,
+  AlignStartVertical,
   Captions,
   CaptionsOff,
   Contrast,
@@ -21,11 +38,20 @@ import {
   ExternalLink,
   Pencil,
   PenLine,
+  Scaling,
   Trash2,
 } from "lucide-react";
 import { $isIFrameNode, IFrameNode } from "@/editor/nodes/IFrameNode";
 import { ICON_SIZE } from "@/theme/icons";
-import { getActionButtonClassName, Tooltip, TooltipProvider } from "@/editor/ui";
+import {
+  cx,
+  getActionButtonClassName,
+  Popover,
+  PopoverPanel,
+  PopoverTrigger,
+  Tooltip,
+  TooltipProvider,
+} from "@/editor/ui";
 import { ANNOUNCE_COMMAND } from "@/editor/commands";
 import { blockIdState } from "@/lib/content-bridge";
 import {
@@ -76,6 +102,37 @@ const FormatImageLeft = () => (
  * toggles need nothing beyond it.
  */
 const buttonClass = getActionButtonClassName({ size: "md", icon: true });
+
+/** `Auto` and the four percent presets — text, not glyphs, so `icon: false`. */
+const presetClass = getActionButtonClassName({ size: "sm" });
+
+/**
+ * Keep the figure selected when a control inside the portaled panel is
+ * clicked. `mousedown`'s default is what moves focus, and this toolbar is only
+ * mounted while the node selection exists. Same guard as `ui/color-picker`'s
+ * swatches, and as haklex's `stopMouseDown`.
+ */
+const keepSelection = (event: MouseEvent) => {
+  event.preventDefault();
+};
+
+/**
+ * The three alignments, which are **not** the three floats above them.
+ *
+ * A float takes the figure out of flow so the following text wraps around it;
+ * an alignment leaves it a block of its own and only says where in the content
+ * column it sits. They are mutually exclusive — `layoutPatch` writes one and
+ * clears the other — which is why both rows read their pressed state from the
+ * single `ImageLayout` value rather than from `float` and `margin-inline`
+ * separately.
+ */
+const ALIGNMENTS = [
+  { layout: "align-left", label: "Align left", Icon: AlignStartVertical },
+  { layout: "align-center", label: "Center", Icon: AlignCenterVertical },
+  { layout: "align-right", label: "Align right", Icon: AlignEndVertical },
+] as const satisfies ReadonlyArray<
+  { layout: ImageLayout; label: string; Icon: typeof AlignStartVertical }
+>;
 
 /**
  * Hand a URL to the browser's downloader.
@@ -149,15 +206,27 @@ export default function ImageTools(
    * `selectPrevious()`, so the caret genuinely moves and the reader should be
    * taken to where it landed.
    */
-  const updateNode = useCallback((run: () => void) => {
-    editor.update(run, { tag: SKIP_SCROLL_INTO_VIEW_TAG });
+  const updateNode = useCallback((run: () => void, merge = false) => {
+    editor.update(run, {
+      // `merge` is for the width slider only: a drag emits an update per step,
+      // and without it a single gesture would leave one undo entry per pixel
+      // travelled. The *first* step is deliberately not merged — a merged
+      // first step would fold the whole drag into whatever the author did
+      // before touching the image, so undoing the resize would also undo that.
+      tag: merge
+        ? [SKIP_SCROLL_INTO_VIEW_TAG, HISTORY_MERGE_TAG]
+        : SKIP_SCROLL_INTO_VIEW_TAG,
+    });
   }, [editor]);
 
-  function updateStyle(newStyle: Record<string, string | null>) {
-    setStyle({ ...style, ...newStyle });
+  function updateStyle(
+    newStyle: Record<string, string | null>,
+    merge = false,
+  ) {
+    setStyle((previous) => ({ ...previous, ...newStyle }));
     updateNode(() => {
       $patchStyle(node, newStyle);
-    });
+    }, merge);
   }
 
   const toggleShowCaption = () => {
@@ -258,7 +327,65 @@ export default function ImageTools(
   const canOpen = isOpenableImageSrc(src);
   const isFiltered = style?.filter === "auto";
   const showCaption = node.getShowCaption();
-  const float = style?.float;
+  const layout = readLayout(style ?? {});
+
+  /**
+   * Percent width is offered for pictures, not for iframes.
+   *
+   * An image, a sketch and a graph are all rendered as an `<img>` or an
+   * `<svg>` with an intrinsic aspect ratio, so a figure narrowed to 50% takes
+   * its height down with it and the picture is simply smaller. An `<iframe>`
+   * has no intrinsic ratio: its height is the `height` attribute `exportDOM`
+   * writes in pixels, so narrowing the figure would letterbox a video rather
+   * than scale it. Sizing an embed correctly means an aspect-ratio box around
+   * the iframe, which is a different change from this one.
+   *
+   * The *alignment* half is offered for all four — it moves a figure without
+   * touching its size, so an iframe is no different.
+   */
+  const canSetWidth = !$isIFrameNode(node);
+  const width = readDisplayWidth(style ?? {});
+
+  const [layoutOpen, setLayoutOpen] = useState(false);
+
+  /* Same reason `NoteTools` re-selects on menu open: the panel is portaled, and
+     the toolbar is only mounted while the node is selected. */
+  useEffect(() => {
+    if (!layoutOpen) return;
+    updateNode(() => {
+      node.select();
+    });
+  }, [layoutOpen, node, updateNode]);
+
+  /**
+   * The width the slider shows. `dragWidth` is the value of the gesture in
+   * progress: the committed one arrives back through `style` a render later,
+   * and reading only that would make the thumb stutter behind the pointer.
+   */
+  const [dragWidth, setDragWidth] = useState<number | null>(null);
+  const merging = useRef(false);
+  const sliderValue = dragWidth ?? width ?? WIDTH_MAX;
+  const fill = `${
+    ((sliderValue - WIDTH_MIN) / (WIDTH_MAX - WIDTH_MIN)) * 100
+  }%`;
+
+  const setWidth = (percent: number | null) => {
+    setDragWidth(null);
+    merging.current = false;
+    updateStyle(widthPatch(percent));
+  };
+
+  const slideWidth = (event: ChangeEvent<HTMLInputElement>) => {
+    const next = snapWidth(Number(event.target.value));
+    setDragWidth(next);
+    updateStyle(widthPatch(next), merging.current);
+    merging.current = true;
+  };
+
+  const endSlide = () => {
+    setDragWidth(null);
+    merging.current = false;
+  };
 
   return (
     /* One provider for the row, so a tooltip re-shows instantly as the pointer
@@ -368,40 +495,165 @@ export default function ImageTools(
           </Tooltip>
         </div>
 
-        <div className={css.toolGroup}>
-          <Tooltip content="Float left">
+        {/*
+          Text wrap. These three write `float`, and the labels say "wrap"
+          rather than "float" because that is the only thing that distinguishes
+          them from the alignment row inside the panel next door — see the
+          comment on `ALIGNMENTS`.
+        */}
+        <div aria-label="Text wrap" className={css.toolGroup} role="group">
+          <Tooltip content="Wrap text on the left">
             <button
-              aria-label="Float left"
-              aria-pressed={float === "left"}
+              aria-label="Wrap text on the left"
+              aria-pressed={layout === "float-left"}
               className={buttonClass}
               type="button"
-              onClick={() => updateStyle({ "float": "left" })}
+              onClick={() => updateStyle(layoutPatch("float-left"))}
             >
               <FormatImageLeft />
             </button>
           </Tooltip>
-          <Tooltip content="Inline">
+          <Tooltip content="No text wrap">
             <button
-              aria-label="Inline"
-              aria-pressed={!float || float === "none"}
+              aria-label="No text wrap"
+              aria-pressed={layout === "none"}
               className={buttonClass}
               type="button"
-              onClick={() => updateStyle({ "float": "none" })}
+              onClick={() => updateStyle(layoutPatch("none"))}
             >
               <AlignLeft size={ICON_SIZE.dense} />
             </button>
           </Tooltip>
-          <Tooltip content="Float right">
+          <Tooltip content="Wrap text on the right">
             <button
-              aria-label="Float right"
-              aria-pressed={float === "right"}
+              aria-label="Wrap text on the right"
+              aria-pressed={layout === "float-right"}
               className={buttonClass}
               type="button"
-              onClick={() => updateStyle({ "float": "right" })}
+              onClick={() => updateStyle(layoutPatch("float-right"))}
             >
               <FormatImageRight />
             </button>
           </Tooltip>
+        </div>
+
+        <div className={css.toolGroup}>
+          <Popover open={layoutOpen} onOpenChange={setLayoutOpen}>
+            {/*
+              No `Tooltip` wrapper, and `render` rather than a bare trigger:
+              both follow `ui/color-picker`, the kit's other toolbar popover.
+              The `mousedown` default is what would move focus out of the
+              editor, and the toolbar is only mounted while the figure is
+              selected — so every control in the panel below cancels it too.
+            */}
+            <PopoverTrigger
+              aria-label={canSetWidth ? "Size and position" : "Position"}
+              className={buttonClass}
+              render={<button type="button" onMouseDown={keepSelection} />}
+              title={canSetWidth ? "Size and position" : "Position"}
+            >
+              {canSetWidth
+                ? <Scaling size={ICON_SIZE.dense} />
+                : <AlignCenterVertical size={ICON_SIZE.dense} />}
+            </PopoverTrigger>
+            <PopoverPanel
+              align="center"
+              className={css.layoutPanel}
+              side="bottom"
+            >
+              <div className={css.layoutSection}>
+                <span className={css.layoutLabel}>Position</span>
+                <div
+                  aria-label="Position"
+                  className={css.layoutRow}
+                  role="group"
+                >
+                  {ALIGNMENTS.map(({ layout: value, label, Icon }) => (
+                    <button
+                      aria-label={label}
+                      aria-pressed={layout === value}
+                      className={cx(buttonClass, css.layoutOption)}
+                      key={value}
+                      title={label}
+                      type="button"
+                      onClick={() => updateStyle(layoutPatch(value))}
+                      onMouseDown={keepSelection}
+                    >
+                      <Icon size={ICON_SIZE.dense} />
+                    </button>
+                  ))}
+                </div>
+                <p className={css.layoutHint}>
+                  Position moves the figure within the column and leaves it a
+                  block of its own. To make text run alongside it, use wrap.
+                </p>
+              </div>
+
+              {canSetWidth && (
+                <div className={css.layoutSection}>
+                  <span className={css.layoutLabel}>Width</span>
+                  <div className={css.layoutRow}>
+                    <button
+                      aria-label="Natural width"
+                      aria-pressed={width === null}
+                      className={cx(presetClass, css.widthPreset)}
+                      type="button"
+                      onClick={() => setWidth(null)}
+                      onMouseDown={keepSelection}
+                    >
+                      Auto
+                    </button>
+                    {WIDTH_PRESETS.map((preset) => (
+                      <button
+                        aria-label={`${preset} percent`}
+                        aria-pressed={width === preset}
+                        className={cx(presetClass, css.widthPreset)}
+                        key={preset}
+                        type="button"
+                        onClick={() => setWidth(preset)}
+                        onMouseDown={keepSelection}
+                      >
+                        {preset}%
+                      </button>
+                    ))}
+                  </div>
+                  <div className={css.layoutRow}>
+                    <span className={css.sizeSliderWrap}>
+                      <input
+                        aria-label="Width, percent of the content column"
+                        className={css.sizeSlider}
+                        max={WIDTH_MAX}
+                        min={WIDTH_MIN}
+                        step={1}
+                        style={{ "--fill": fill } as CSSProperties}
+                        type="range"
+                        value={sliderValue}
+                        onBlur={endSlide}
+                        onChange={slideWidth}
+                        onKeyUp={endSlide}
+                        /* Stopped, not prevented: cancelling the default here
+                           would stop the thumb from being dragged at all. */
+                        onMouseDown={(event) => event.stopPropagation()}
+                        onPointerUp={endSlide}
+                      />
+                      {WIDTH_PRESETS.map((preset) => (
+                        <span
+                          className={css.sizeSliderTick}
+                          key={preset}
+                          style={{ left: tickOffset(preset) }}
+                        />
+                      ))}
+                    </span>
+                    <span className={css.sizeValue}>
+                      {width === null && dragWidth === null
+                        ? "Auto"
+                        : `${sliderValue}%`}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </PopoverPanel>
+          </Popover>
         </div>
       </div>
     </TooltipProvider>

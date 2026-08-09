@@ -33,7 +33,7 @@ import ImageComponent from "./ImageComponent";
 import htmr from "htmr";
 import { JSX } from "react";
 import {
-  floatWrapperElement,
+  applyFigureLayout,
   getCSSFromStyleObject,
   getStyleObjectFromRawCSS,
 } from "../utils";
@@ -293,12 +293,7 @@ export class ImageNode extends DecoratorNode<JSX.Element> {
     const theme = config.theme;
     const className = theme.image;
     if (className) element.className = className;
-    const style = getStyleObjectFromRawCSS(this.getStyle());
-    const float = style.float;
-    floatWrapperElement(element, config, float);
-    const filter = style.filter;
-    const isFiltered = filter === "auto";
-    element.classList.toggle(config.theme.darkModeFilter, isFiltered);
+    applyFigureLayout(element, config, this.getStyle());
     if (this.__id) element.id = this.__id;
     this.__caption._parentEditor = editor;
     return element;
@@ -310,12 +305,7 @@ export class ImageNode extends DecoratorNode<JSX.Element> {
     config: EditorConfig,
   ): boolean {
     if (this.__style !== prevNode.__style) {
-      const style = getStyleObjectFromRawCSS(this.getStyle());
-      const float = style.float;
-      floatWrapperElement(dom, config, float);
-      const filter = style.filter;
-      const isFiltered = filter === "auto";
-      dom.classList.toggle(config.theme.darkModeFilter, isFiltered);
+      applyFigureLayout(dom, config, this.getStyle());
     }
     if (prevNode.__id !== this.__id) {
       dom.id = this.__id;

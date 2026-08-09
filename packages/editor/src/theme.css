@@ -897,6 +897,35 @@ iframe {
   margin-bottom: 0.5rem;
 }
 
+/* A figure given an explicit display width (`width: N%`, an inline style set by
+   `ImageNode.createDOM`) is a box the picture fills, rather than a shrink-wrap
+   around a picture at its stored pixel size.
+
+   This is the one part of the width feature that cannot be an inline style:
+   the figure's children are rendered by React while editing — `figure >
+   .image-control-wrapper > img` — and by `exportDOM` on the server, where they
+   are `figure > img`. Both shapes are matched below; the child combinators keep
+   a picture inside the *caption* out of it.
+
+   The `max-width` reset comes after the float rules above deliberately: equal
+   specificity, so source order decides, and an explicit width the author chose
+   should not be silently halved by the float cap. */
+.LexicalTheme__image.LexicalTheme__imageSized {
+  max-width: 100%;
+}
+
+.LexicalTheme__imageSized > .image-control-wrapper {
+  width: 100%;
+}
+
+.LexicalTheme__imageSized > .image-control-wrapper > img,
+.LexicalTheme__imageSized > .image-control-wrapper > svg,
+.LexicalTheme__imageSized > img,
+.LexicalTheme__imageSized > svg {
+  width: 100%;
+  height: auto;
+}
+
 .LexicalTheme__image:not(.LexicalTheme__darkModeFilter) svg {
   background-color: white;
 }
