@@ -69,3 +69,115 @@ export const isWriteTool = (name: string): name is WriteToolName =>
   WRITE_SET.has(name);
 export const isAgentTool = (name: string): name is AgentToolName =>
   READ_SET.has(name) || WRITE_SET.has(name);
+
+// ─── Labels ──────────────────────────────────────────────────────────────────
+
+/**
+ * Each tool says what it did, rather than the UI guessing from the first
+ * argument (docs/plans/haklex-adoption.md §7.3).
+ *
+ * This lives beside the name lists, not in the chat, for the same reason the
+ * lists do: it is the one module both the server route and the browser import,
+ * so a tool cannot be described one way in the transcript and another anywhere
+ * else. The `satisfies Record<AgentToolName, …>` below is what makes that
+ * total — a name added to READ_TOOLS or WRITE_TOOLS with no describer does not
+ * compile, so the label can never quietly fall back to the wire name for a
+ * tool this build actually has.
+ *
+ * There is no MCP half to this. Claude Code renders a tool call from its own
+ * side and the SDK's `registerTool` carries no label field, so `mcp/server.ts`
+ * has nowhere to put one; §7.3's mention of it does not apply.
+ */
+type ToolInput = Record<string, unknown>;
+
+const str = (value: unknown): string => typeof value === "string" ? value : "";
+
+const count = (n: number, noun: string): string =>
+  `${n} ${noun}${n === 1 ? "" : "s"}`;
+
+/**
+ * Up to `limit` block addresses an op batch names, as a phrase.
+ *
+ * `insert_blocks` names no block of its own, so it is described by the anchor
+ * it lands against — which is the address the author would look for.
+ */
+const opTargets = (input: ToolInput, limit = 2): string => {
+  const ops = Array.isArray(input.ops) ? input.ops : [];
+  const seen: string[] = [];
+  for (const op of ops) {
+    if (typeof op !== "object" || op === null) continue;
+    const o = op as ToolInput;
+    const target = str(o.id) || str(o.after) || str(o.before) ||
+      str(o.appendTo);
+    if (target && !seen.includes(target)) seen.push(target);
+  }
+  if (seen.length === 0) return "";
+  const shown = seen.slice(0, limit);
+  const rest = seen.length - shown.length;
+  const list = shown.length === 2 ? `${shown[0]} and ${shown[1]}` : shown[0];
+  return rest > 0
+    ? ` to ${shown.join(", ")} and ${rest} other${rest === 1 ? "" : "s"}`
+    : ` to ${list}`;
+};
+
+const opCount = (input: ToolInput): number =>
+  Array.isArray(input.ops) ? input.ops.length : 0;
+
+/**
+ * Completed-tense label per tool. Keyed by name so the Record is exhaustive;
+ * see the note above.
+ */
+const DESCRIBERS = {
+  list_posts: () => "Listed all posts",
+  list_series: () => "Listed all series",
+  search: (input) => `Searched “${str(input.query)}”`,
+  outline: (input) =>
+    input.id ? `Outlined ${str(input.id)}` : "Outlined this document",
+  read_blocks: (input) =>
+    `Read ${
+      count(Array.isArray(input.blocks) ? input.blocks.length : 0, "block")
+    }`,
+  read_post: (input) =>
+    input.id ? `Read ${str(input.id)}` : "Read this document",
+  get_selection: () => "Read the selection",
+  apply_ops: (input) =>
+    `Proposed ${count(opCount(input), "edit")}${opTargets(input)}`,
+  create_post: (input) =>
+    input.title ? `Created “${str(input.title)}”` : "Created a draft",
+} satisfies Record<AgentToolName, (input: ToolInput) => string>;
+
+/** In-flight variants, for the two writes — the only calls with a visible wait. */
+const PENDING_DESCRIBERS = {
+  apply_ops: (input) =>
+    `Proposing ${count(opCount(input), "edit")}${opTargets(input)}…`,
+  create_post: (input) =>
+    input.title ? `Creating “${str(input.title)}”…` : "Creating a draft…",
+} satisfies Record<WriteToolName, (input: ToolInput) => string>;
+
+const lookup = (
+  table: Record<string, (input: ToolInput) => string>,
+  name: string,
+): ((input: ToolInput) => string) | undefined => table[name];
+
+/**
+ * What a finished tool call did, in one line.
+ *
+ * An unrecognized name — a thread persisted before the §4.2 rename replays
+ * `read_document` and friends — keeps its wire name with the underscores
+ * knocked out. Not a label anyone wrote, but honest and never blank.
+ */
+export const describeToolCall = (name: string, input?: unknown): string => {
+  const args = (input ?? {}) as ToolInput;
+  const describe = lookup(DESCRIBERS, name);
+  return describe ? describe(args) : name.replace(/_/g, " ");
+};
+
+/** The same, while the call is still running. */
+export const describePendingToolCall = (
+  name: string,
+  input?: unknown,
+): string => {
+  const args = (input ?? {}) as ToolInput;
+  const describe = lookup(PENDING_DESCRIBERS, name);
+  return describe ? describe(args) : describeToolCall(name, args);
+};

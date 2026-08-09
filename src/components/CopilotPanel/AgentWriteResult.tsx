@@ -12,6 +12,7 @@ import { postsSelectors, useSelector } from "@/store";
 import { documentCommands } from "@/commands";
 import { useCommandRun } from "@/commands/CommandProvider";
 import { useProposalActions } from "@/hooks/useProposalActions";
+import { describePendingToolCall } from "@/lib/ai/copilotAgentTools";
 import {
   type AgentWriteOutcome,
   asAgentWriteOutcome,
@@ -21,6 +22,12 @@ import { ICON_SIZE } from "@/theme/icons";
 interface AgentWriteResultProps {
   /** `apply_ops` or `create_post` — the two content writes. */
   toolName: string;
+  /**
+   * The call's arguments, so the in-flight line can say *what* is being
+   * written rather than only that something is. The tool answers that itself
+   * (`describePendingToolCall`); this component does not read the shape.
+   */
+  input?: unknown;
   /**
    * The tool part's state, which is also this component's loading flag. Taken
    * from the SDK's own union rather than restated: it is an open enum, and a
@@ -62,7 +69,7 @@ interface AgentWriteResultProps {
  *   and retrying it unchanged fails identically.
  */
 export default function AgentWriteResult(
-  { toolName, state, output, errorText }: AgentWriteResultProps,
+  { toolName, input, state, output, errorText }: AgentWriteResultProps,
 ) {
   const run = useCommandRun();
   const { review } = useProposalActions();
@@ -90,9 +97,7 @@ export default function AgentWriteResult(
       <Row>
         <CircularProgress size={ICON_SIZE.inline} />
         <Typography variant="dense" color="text.secondary">
-          {toolName === "create_post"
-            ? "Creating a draft…"
-            : "Proposing edits…"}
+          {describePendingToolCall(toolName, input)}
         </Typography>
       </Row>
     );

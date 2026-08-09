@@ -18,6 +18,7 @@ import {
   previewCommandTool,
   toolDisposition,
 } from "@/lib/ai/commandTools";
+import { describeToolCall, isAgentTool } from "@/lib/ai/copilotAgentTools";
 import { useCommandContext } from "@/commands/CommandProvider";
 import ActionPreview from "./ActionPreview";
 import AgentWriteResult from "./AgentWriteResult";
@@ -35,39 +36,21 @@ interface CopilotMessageProps {
   onRegenerate?: () => void;
 }
 
-const asStr = (v: unknown): string => (typeof v === "string" ? v : "");
-
-/** One-line label for an auto-executed tool, for the activity trace. */
+/**
+ * One-line label for an auto-executed tool, for the activity trace.
+ *
+ * Two registries answer this, and neither is maintained here: a content tool
+ * describes itself in `copilotAgentTools.ts` (§7.3), and a command tool has a
+ * `title` already. The command branch stays local because `commandTools.ts`
+ * imports `@/commands`, which the shared module must not.
+ *
+ * A tool this build no longer has — a thread persisted before the §4.2 rename
+ * replays `read_document` and friends — falls through both and comes back from
+ * `describeToolCall` as its wire name with the underscores knocked out.
+ */
 function readTraceLabel(name: string, input: Record<string, unknown>): string {
-  switch (name) {
-    case "list_posts":
-      return "Listed all posts";
-    case "list_series":
-      return "Listed all series";
-    case "search":
-      return `Searched “${asStr(input.query)}”`;
-    case "outline":
-      return input.id
-        ? `Outlined ${asStr(input.id)}`
-        : "Outlined this document";
-    case "read_blocks": {
-      const blocks = Array.isArray(input.blocks) ? input.blocks : [];
-      return `Read ${blocks.length} block${blocks.length === 1 ? "" : "s"}`;
-    }
-    case "read_post":
-      return input.id ? `Read ${asStr(input.id)}` : "Read this document";
-    case "get_selection":
-      return "Read the selection";
-    default:
-      // A command tool: its own title reads better than its wire name, and
-      // there is nothing to hand-maintain here as commands are added.
-      //
-      // Also the landing place for a tool this build no longer has — a thread
-      // persisted before the §4.2 rename replays `read_document` and friends.
-      // The wire name with its underscores knocked out is not a label anyone
-      // wrote, but it is honest and it is not blank.
-      return commandForTool(name)?.title ?? name.replace(/_/g, " ");
-  }
+  if (isAgentTool(name)) return describeToolCall(name, input);
+  return commandForTool(name)?.title ?? describeToolCall(name, input);
 }
 
 const CopilotMessage: React.FC<CopilotMessageProps> = (
@@ -282,6 +265,7 @@ const CopilotMessage: React.FC<CopilotMessageProps> = (
                 <AgentWriteResult
                   key={p.toolCallId}
                   toolName={getToolName(p)}
+                  input={(p as { input?: unknown }).input}
                   state={p.state}
                   output={(p as { output?: unknown }).output}
                   errorText={(p as { errorText?: string }).errorText}
