@@ -625,3 +625,59 @@ Every item here is a claim no gate in this repo can make. The suite is
 6. **Print.** `FloatingToolbar`'s below-600px hide and print hide were `sx`
    shorthands carrying real behaviour and are now spelled out in CSS.
 7. The §10.5 list is unchanged and still open.
+
+### 10.7 Phase 3 execution log (9 Aug 2026) — three of four workstreams cut
+
+Shipped: `c47d9a7b` (image actions + replace preview), `b5bedb2d` (percent
+width + alignment). Roughly 400 executable lines against §6's projected 3,714.
+
+**§6.1 live Shiki — cut, permanently. Do not re-propose.** Not on cost: on
+correctness. `@lexical/code-shiki` exists and would be a one-line swap, but its
+tokenizer does `node.setStyle(stringifyTokenStyle(...))` — inline hex colours
+from a single theme — and `CodeHighlightNode` extends `TextNode`, whose
+`__style` **serializes**. A live Shiki highlighter therefore bakes one theme's
+`color:#…` literals into stored document JSON: dark mode renders light-theme
+colours, with every checker green, because `check:theme` reads stylesheets and
+not revisions. It is the failure class of §2.4 and DESIGN.md §19 moved somewhere
+nothing can see it. Shiki's dual-theme CSS-variables mode lives only in
+`codeToHtml`, not in the Lexical tokenizer. **Haklex do not use Shiki for live
+editing either** — their edit path is CodeMirror; Shiki appears only in their
+static renderer. Our live path already themes correctly in both schemes through
+`highlightType` classes over `--tok-*` variables.
+
+The one safe use survives as a deferred option: a **server-side** post-process
+of the cached `/view` HTML in `getRevisionHtml`, dual themes keyed by one
+`html.dark` rule, shiki never reaching the client bundle. Worth doing when
+someone reports an unhighlighted language; not before.
+
+**§6.2 image — mostly already closed.** We had resize, float, a rich *nested
+Lexical* caption (richer than their plain string), Excalidraw annotate (richer
+than their annotation surface) and OCR (they have nothing). What was genuinely
+missing was duplicate/download/open, a replace preview, percent width and
+align — all now shipped. Deliberately skipped: their resizer (percent-based, and
+our subclasses render applets and iframes where px is load-bearing), the hover
+toolbar (a UX philosophy change carrying §10.6.3's floating-tree traps),
+thumbhash (an upload-pipeline project, not a node feature), and the crop modal.
+
+**§6.3 nested doc and code snippet — cut, and the reasons are structural.**
+Nested doc stores an entire `SerializedEditorState` in a node, which cannot be
+spelled in the block IR, so it would land on `OPAQUE_ALLOWLIST` — creating
+documents whose interiors agents cannot read. `check:codecs` would pass and the
+mission of §7.3 would fail. It also duplicates a hierarchy the app already has
+(`parentId`/children, rendered as a tab strip at `/view`), and we already run
+three nested composers via `NestedEditor.tsx`. Code snippet would bring the
+whole `@codemirror/*` family as a second editor framework beside Lexical, for a
+multi-file presentation widget on a blog that has a code block already. The
+`slot.ts` seam §6.3 wanted designed once has **no consumers** — its only claimed
+one was `CanvasNode`, resolved in §10.4 as needing no seam.
+
+**What the plan got wrong, beyond the above:** §6.2 did not mention that
+`GraphNode`, `SketchNode` and `IFrameNode` all extend `ImageNode` and enumerate
+its fields positionally — the single biggest hazard in the phase, and the reason
+both features ride the existing `__style` string instead of new serialized
+fields. §6.2's codec worry was misplaced: `image` is allowlisted, not
+graduated, so layout changes hit `exportDOM` and `check:nodes`, never
+`check:codecs`. And haklex's `isSafeImageSrc`, which §6.2 implies is worth
+taking, is a deny-list that admits `" javascript:"`, `"\0javascript:"`,
+`"java\tscript:"` and every unenumerated scheme; ours is an allow-list and the
+spec pins each bypass by name.
