@@ -681,3 +681,72 @@ graduated, so layout changes hit `exportDOM` and `check:nodes`, never
 taking, is a deny-list that admits `" javascript:"`, `"\0javascript:"`,
 `"java\tscript:"` and every unenumerated scheme; ours is an allow-list and the
 spec pins each bypass by name.
+
+### 10.8 Phase 4 execution log (9 Aug 2026) — the UI was not ported
+
+Shipped: `6d8515d5` (block diff), `5aa4a3b9` (partial approval), `758b7c68`
+(the review surface). 624 tests / 34 files, from 543/31 at the phase's start.
+
+**§7's premise — "this is a UI port, not an addressing change" — is half
+right, and the half it gets wrong is the important one.** The addressing claim
+is verified: our block ids and theirs are the same `NodeState` mechanism, still
+true at 0.49. But the UI must *not* be ported.
+
+`DiffReviewOverlayPlugin` inserts decorator nodes into the live editor with
+`editor.update()`. Our autosave fires on every update — including the plugin's
+own insertion — serializes the whole state, and posts it as a revision, which
+moves `head`, which calls `markProposalsStale`. So opening a review would write
+review scaffolding into the document *and* make the proposal being reviewed
+unapprovable. That is the deterministic first-render behaviour, not a race.
+haklex's only guard is `projectAgentDiffNodesToFactualState` on the agent-read
+path; their `exportJSON` serializes the nodes in full. **Their design is
+"don't persist", enforced by having no save button.** Ours autosaves on every
+keystroke.
+
+**`review-engine.ts` (417 LOC) is not needed at all.** It computes
+`anchorBeforeId`/`anchorAfterId` because their review state is *ops not yet
+applied*, so a proposed insert's landing place must be derived in a live,
+mutating document. Ours is **materialized**: the pending `Revision.data` is the
+document with every insert already in place and every touched node id-stamped
+by `applyOps`. Document order *is* the positioning. Their
+`applyOpsToSnapshot` is also strictly weaker than our `applyOps` — top-level
+children only, no moves, no `set_text`, no containers, no freshness guard, and
+it silently continues on a missing target where ours throws `block_not_found`.
+
+What replaced the port: a pure `proposalDiff.ts` (align by blockId with an
+LCS-restricted fallback, recursing through `BLOCK_CONTAINERS`), server-side
+partial approval, and an app-side surface rendered where the diff already
+renders. Roughly 800 new lines against a ~1,290-line port, and no new node type.
+
+**Partial accept resolved as apply-selected-and-close.** Splitting the proposal
+— approve half, leave a pending remainder — was rejected: the remainder needs a
+*new* `baseRevisionId` on a row that already exists, which is the silent
+clobber §3.2 forbids, and two pending rows would exist for the length of the
+transaction, which `revision_one_pending_per_document` refuses. Refused hunks
+are discarded, on `rejectProposal`'s own rationale.
+
+**A real hole found and fixed on the way**: plain approval had no `version`
+guard, so a batch squashing between the read and the update was promoted to
+head unreviewed. Both paths now fence on it. `version` fences the row,
+`baseRevisionId` fences the document, and CLAUDE.md's warning that neither
+substitutes for the other resolves cleanly that way.
+
+**Corrections to §7's own numbers:** the six files it names measure as stated
+(417/112/43/460/25/33), but the portable surface also includes two renderers,
+`diff-node-state.ts` and styles — ~1,290 LOC, not ~1,090. §7.2's instruction to
+delete the Diff write-path fallback first was already done. And `Revision.ops`,
+which agent-gating §3.3 stored "to make per-block approval cheap later", turns
+out to be the wrong basis for it: op addresses were resolved against each
+batch's own read state, so a subset replayed against base fails on any chained
+op. Diffing the two materialized states gives the net hunks for free. `ops`
+stays what it already is — provenance, read by nothing.
+
+**Still wants a human, against local Postgres and a signed-in session:**
+refuse two of five hunks and approve, confirming head holds exactly the three
+accepted blocks; the same with a squash mid-review (expect `proposal-moved`,
+not a silent apply); a second account on a `collab` document (expect 403 on
+approve — the case `write` would have let through); `GET /api/revisions/[id]`
+for a pending proposal as a non-owner on a *published* document (expect 403);
+and the visual half — the `<del>`/`<ins>` block bands in both schemes, kanban
+and sketch through `htmr`, and a changed table cell rendering as a one-cell
+table.
