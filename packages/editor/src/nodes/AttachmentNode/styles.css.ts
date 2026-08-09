@@ -321,9 +321,9 @@ export const editorFooter = style({
   backgroundColor: vars.color.bgSecondary,
 });
 
-/**
- * Padding only — the ink and the type size come from `ui/dialog`'s own
- * `description`, and two single-class rules setting the same property would be
- * decided by stylesheet order rather than by intent.
+/*
+ * `dialogBody` used to live here — padding only, because the ink and the type
+ * size come from `ui/dialog`. It is now `ui/dialog`'s own `DialogBody`, which
+ * the ten toolbar dialogs needed as well and which adds the scroll region a
+ * long dialog wants.
  */
-export const dialogBody = style({ padding: `0 ${SPACE.lg} ${SPACE.md}` });

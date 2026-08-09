@@ -1,14 +1,22 @@
+"use client";
 import { ClipboardPaste, FileUp } from "lucide-react";
 import type { ChangeEvent } from "react";
 import {
-  Button,
+  ActionButton,
   Dialog,
-  DialogActions,
-  DialogContent,
+  DialogBody,
+  DialogFooter,
+  DialogHeader,
+  DialogPopup,
   DialogTitle,
-  LinearProgress,
-  TextField,
-} from "@mui/material";
+  TextAreaField,
+} from "../../../ui";
+import {
+  dismissRequest,
+  FilePickerButton,
+  IndeterminateProgress,
+} from "./parts";
+import * as css from "./styles.css";
 import {
   $createParagraphNode,
   $createTextNode,
@@ -144,60 +152,58 @@ const OCRDialog: React.FC<{ editor: LexicalEditor }> = ({ editor }) => {
   return (
     <Dialog
       open
-      maxWidth="md"
-      sx={{ "& .MuiDialog-paper": { width: "100%" } }}
-      onClose={closeDialog}
+      onOpenChange={dismissRequest(closeDialog, { escapeCloses: true })}
     >
-      <DialogTitle>Image to Text</DialogTitle>
-      <DialogContent>
-        <Button
-          variant="outlined"
-          sx={{ my: 1, mr: 1 }}
-          startIcon={<FileUp size={ICON_SIZE.dense} />}
-          component="label"
-          disabled={loading}
-        >
-          Upload Image
-          <input
-            type="file"
-            hidden
-            accept="image/*"
-            onChange={handleFilesChange}
-            autoFocus
+      <DialogPopup size="lg">
+        <DialogHeader>
+          <DialogTitle>Image to Text</DialogTitle>
+        </DialogHeader>
+        <DialogBody>
+          <div className={css.form}>
+            <div className={css.inlineRow}>
+              <FilePickerButton
+                accept="image/*"
+                disabled={loading}
+                onFiles={handleFilesChange}
+              >
+                <FileUp size={ICON_SIZE.dense} />
+                Upload Image
+              </FilePickerButton>
+              <ActionButton
+                disabled={loading}
+                onClick={readFromClipboard}
+                size="lg"
+                variant="outline"
+              >
+                <ClipboardPaste size={ICON_SIZE.dense} />
+                Paste from Clipboard
+              </ActionButton>
+            </div>
+            <TextAreaField
+              disabled={loading}
+              id="value"
+              label="Result"
+              name="value"
+              onChange={updateFormData}
+              value={formData.value}
+            />
+            <IndeterminateProgress active={loading} />
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          <ActionButton onClick={closeDialog} size="lg" variant="outline">
+            Cancel
+          </ActionButton>
+          <ActionButton
             disabled={loading}
-          />
-        </Button>
-        <Button
-          variant="outlined"
-          sx={{ my: 1 }}
-          startIcon={<ClipboardPaste size={ICON_SIZE.dense} />}
-          onClick={readFromClipboard}
-          disabled={loading}
-        >
-          Paste from Clipboard
-        </Button>
-        <TextField
-          margin="normal"
-          size="small"
-          fullWidth
-          multiline
-          id="value"
-          value={formData.value}
-          onChange={updateFormData}
-          label="Result"
-          name="value"
-          disabled={loading}
-        />
-        <LinearProgress
-          sx={{ visibility: loading ? "visible" : "hidden" }}
-        />
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={closeDialog}>Cancel</Button>
-        <Button type="submit" onClick={handleSubmit} disabled={loading}>
-          Save
-        </Button>
-      </DialogActions>
+            onClick={handleSubmit}
+            size="lg"
+            variant="accent"
+          >
+            Save
+          </ActionButton>
+        </DialogFooter>
+      </DialogPopup>
     </Dialog>
   );
 };

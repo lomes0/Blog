@@ -8,16 +8,18 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { $isSketchNode } from "@/editor/nodes/SketchNode";
 import { SET_DIALOGS_COMMAND } from "../commands";
 import { getImageDimensions } from "@/editor/nodes/utils";
-import { useTheme } from "@mui/material/styles";
-import { debounce } from "@mui/material/utils";
+import { debounce } from "@/editor/utils/debounce";
+import { useColorScheme } from "@/editor/utils/useColorScheme";
 import {
-  Box,
-  Button,
-  CircularProgress,
+  ActionButton,
   Dialog,
-  DialogActions,
-  DialogContent,
-} from "@mui/material";
+  DialogBody,
+  DialogFooter,
+  DialogPopup,
+  Spinner,
+} from "../../../../ui";
+import { dismissRequest } from "../parts";
+import * as css from "../styles.css";
 import dynamic from "next/dynamic";
 import { ImageNode } from "@/editor/nodes/ImageNode";
 import { ALERT_COMMAND } from "@/editor/commands";
@@ -73,7 +75,7 @@ function SketchDialog(
 ) {
   const [excalidrawAPI, excalidrawAPIRefCallback] = useCallbackRefState();
   const [lastSceneVersion, setLastSceneVersion] = useState(0);
-  const theme = useTheme();
+  const colorScheme = useColorScheme();
 
   const loadSceneOrLibraryRef = useRef<() => Promise<void>>(async () => {});
   loadSceneOrLibraryRef.current = loadSceneOrLibrary;
@@ -183,7 +185,7 @@ function SketchDialog(
     );
     return excalidrawAPI?.updateScene({
       elements,
-      appState: { theme: theme.palette.mode },
+      appState: { theme: colorScheme },
     });
   }
 
@@ -247,7 +249,7 @@ function SketchDialog(
           setLastSceneVersion(getSceneVersion(elements));
           excalidrawAPI?.updateScene({
             elements,
-            appState: { theme: theme.palette.mode },
+            appState: { theme: colorScheme },
           });
         } else {
           const contents = await loadSceneOrLibraryFromBlob(
@@ -266,7 +268,7 @@ function SketchDialog(
               ...(contents.data as unknown as Parameters<
                 ExcalidrawImperativeAPI["updateScene"]
               >[0]),
-              appState: { theme: theme.palette.mode },
+              appState: { theme: colorScheme },
             });
           } else if (contents.type === MIME_TYPES.excalidrawlib) {
             excalidrawAPI?.updateLibrary({
@@ -355,7 +357,7 @@ function SketchDialog(
                 locked: true,
               },
               currentItemStrokeWidth: 0.5,
-              theme: theme.palette.mode,
+              theme: colorScheme,
             },
           });
         }
@@ -402,6 +404,17 @@ function SketchDialog(
   const handleCloseRef = useRef(handleClose);
   handleCloseRef.current = handleClose;
 
+  /*
+   * `body.fullscreen` used to be added by MUI's `TransitionProps.onEntered`.
+   * The kit's dialog has no enter transition to hang it off — and it never
+   * needed one: the class is wanted for as long as this component is mounted,
+   * which is exactly what an effect with a cleanup says.
+   */
+  useEffect(() => {
+    document.body.classList.add("fullscreen");
+    return () => document.body.classList.remove("fullscreen");
+  }, []);
+
   useEffect(() => {
     const navigation = (window as Window & {
       navigation?: {
@@ -427,57 +440,59 @@ function SketchDialog(
 
     navigation.addEventListener("navigate", preventBackNavigation);
     return () => {
-      document.body.classList.remove("fullscreen");
       navigation.removeEventListener("navigate", preventBackNavigation);
     };
   }, []);
 
   return (
+    /*
+     * `modal={false}` — deliberate, and the one place this port departs from
+     * the kit's default. Excalidraw is a whole application with its own focus
+     * management, its own keyboard map and its own dark theme, and this dialog
+     * additionally has to let the app's *MUI* alert dialog open on top of it
+     * (the discard/restore prompts below). A Base UI focus trap plus `inert`
+     * on everything outside this popup fights both. Nothing is reachable
+     * behind a dialog that fills the viewport, so the trap buys nothing here;
+     * `disablePointerDismissal` keeps a stray click from throwing the drawing
+     * away.
+     */
     <Dialog
+      disablePointerDismissal
+      modal={false}
       open
-      fullScreen={true}
-      onClose={handleClose}
-      disableEscapeKeyDown
-      TransitionProps={{
-        onEntered() {
-          document.body.classList.add("fullscreen");
-        },
-      }}
+      onOpenChange={dismissRequest(handleClose)}
     >
-      <DialogContent sx={{ p: 0, overflow: "hidden" }}>
-        {loading && (
-          <Box
-            sx={{
-              display: "flex",
-              height: "100%",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <CircularProgress size={36} disableShrink />
-          </Box>
-        )}
-        <Excalidraw
-          excalidrawAPI={excalidrawAPIRefCallback}
-          theme={theme.palette.mode}
-          onLibraryChange={onLibraryChange}
-          onChange={saveToLocalStorage}
-          langCode="en"
-        />
-        {excalidrawAPI && (
-          <AddLibraries
-            excalidrawAPI={excalidrawAPI}
-          />
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button autoFocus onClick={handleClose}>
-          Cancel
-        </Button>
-        <Button onClick={handleSubmit}>
-          {!node ? "Insert" : "Update"}
-        </Button>
-      </DialogActions>
+      <DialogPopup fullScreen="always" showCloseButton={false}>
+        <DialogBody flush>
+          {loading && (
+            <div className={css.appletLoading}>
+              <Spinner />
+            </div>
+          )}
+          <div className={css.appletHost}>
+            <Excalidraw
+              excalidrawAPI={excalidrawAPIRefCallback}
+              theme={colorScheme}
+              onLibraryChange={onLibraryChange}
+              onChange={saveToLocalStorage}
+              langCode="en"
+            />
+          </div>
+          {excalidrawAPI && (
+            <AddLibraries
+              excalidrawAPI={excalidrawAPI}
+            />
+          )}
+        </DialogBody>
+        <DialogFooter>
+          <ActionButton onClick={handleClose} size="lg" variant="outline">
+            Cancel
+          </ActionButton>
+          <ActionButton onClick={handleSubmit} size="lg" variant="accent">
+            {!node ? "Insert" : "Update"}
+          </ActionButton>
+        </DialogFooter>
+      </DialogPopup>
     </Dialog>
   );
 }

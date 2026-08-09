@@ -220,6 +220,22 @@ export const actionButton = recipe({
         },
       },
     },
+    /*
+     * …and at rest, on the two variants that draw their own ink. haklex's
+     * `danger` only tinted on hover, which reads as an ordinary button until
+     * the pointer is already on it — the opposite of what a destructive
+     * control should do. Scoped to `ghost`/`outline` because `solid` and
+     * `accent` paint their foreground *on* a filled surface, where red text
+     * would be unreadable rather than emphatic.
+     */
+    {
+      variants: { danger: true, variant: "ghost" },
+      style: { color: vars.color.danger },
+    },
+    {
+      variants: { danger: true, variant: "outline" },
+      style: { color: vars.color.danger },
+    },
   ],
   defaultVariants: {
     variant: "ghost",

@@ -2,20 +2,19 @@
 import type { LexicalEditor } from "lexical";
 import { memo, useState } from "react";
 import { SET_DIALOGS_COMMAND } from "./commands";
-import { useTheme } from "@mui/material/styles";
 import {
-  Box,
-  Button,
-  CircularProgress,
+  ActionButton,
   Dialog,
-  DialogActions,
-  DialogContent,
+  DialogBody,
+  DialogFooter,
+  DialogHeader,
+  DialogPopup,
   DialogTitle,
-  Divider,
+  Spinner,
   TextField,
-  Typography,
-  useMediaQuery,
-} from "@mui/material";
+} from "../../../ui";
+import { dismissRequest, FilePickerButton } from "./parts";
+import * as css from "./styles.css";
 import { FileUp, Paperclip, Plus } from "lucide-react";
 import { ANNOUNCE_COMMAND } from "@/editor/commands";
 import { INSERT_ATTACHMENT_COMMAND } from "@/editor/plugins/AttachmentPlugin";
@@ -23,8 +22,6 @@ import { apiClient } from "@/api";
 import { ICON_SIZE } from "@/theme/icons";
 
 function AttachmentDialog({ editor }: { editor: LexicalEditor }) {
-  const theme = useTheme();
-  const fullScreen = useMediaQuery(theme.breakpoints.down("md"));
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [blankFilename, setBlankFilename] = useState("untitled.txt");
@@ -187,107 +184,95 @@ function AttachmentDialog({ editor }: { editor: LexicalEditor }) {
   };
 
   return (
-    <Dialog
-      open
-      fullScreen={fullScreen}
-      onClose={handleClose}
-      aria-labelledby="attachment-dialog-title"
-      disableEscapeKeyDown
-    >
-      <DialogTitle id="attachment-dialog-title">
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Paperclip size={ICON_SIZE.dense} />
-          Attach File
-        </Box>
-      </DialogTitle>
-      <DialogContent>
-        <Box sx={{ mt: 1, minWidth: 300 }}>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Attach any file to your post. Maximum file size: 10MB
-          </Typography>
+    <Dialog open onOpenChange={dismissRequest(handleClose)}>
+      <DialogPopup fullScreen="mobile">
+        <DialogHeader>
+          <DialogTitle>
+            <span className={css.titleRow}>
+              <Paperclip size={ICON_SIZE.dense} />
+              Attach File
+            </span>
+          </DialogTitle>
+        </DialogHeader>
+        <DialogBody>
+          <div className={css.form}>
+            <p className={css.helpText}>
+              Attach any file to your post. Maximum file size: 10MB
+            </p>
 
-          <Button
-            variant="outlined"
-            fullWidth
-            sx={{ my: 2, py: 2 }}
-            startIcon={isUploading
-              ? <CircularProgress size={20} />
-              : <FileUp size={ICON_SIZE.dense} />}
-            component="label"
-            disabled={isUploading}
-          >
-            {selectedFile ? selectedFile.name : "Select File"}
-            <input
-              type="file"
-              hidden
-              onChange={handleFileChange}
+            <FilePickerButton
+              className={css.blockButton}
               disabled={isUploading}
-            />
-          </Button>
-
-          {selectedFile && (
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="body2">
-                <strong>File:</strong> {selectedFile.name}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Size:</strong> {(selectedFile.size / 1024).toFixed(2)}
-                {" "}
-                KB
-              </Typography>
-              <Typography variant="body2">
-                <strong>Type:</strong> {selectedFile.type || "Unknown"}
-              </Typography>
-            </Box>
-          )}
-
-          <Divider sx={{ my: 3 }}>
-            <Typography variant="body2" color="text.secondary">
-              OR
-            </Typography>
-          </Divider>
-
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            Create a blank file to edit inline
-          </Typography>
-
-          <Box sx={{ display: "flex", gap: 1 }}>
-            <TextField
-              size="small"
-              fullWidth
-              value={blankFilename}
-              onChange={(e) => setBlankFilename(e.target.value)}
-              placeholder="filename.txt"
-              disabled={isUploading}
-              label="Filename"
-            />
-            <Button
-              variant="outlined"
-              sx={{ minWidth: 120 }}
-              startIcon={isUploading
-                ? <CircularProgress size={20} />
-                : <Plus size={ICON_SIZE.dense} />}
-              onClick={handleCreateBlank}
-              disabled={!blankFilename.trim() || isUploading}
+              onFiles={handleFileChange}
             >
-              Create
-            </Button>
-          </Box>
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClose} disabled={isUploading}>
-          Cancel
-        </Button>
-        <Button
-          onClick={handleSubmit}
-          variant="contained"
-          disabled={!selectedFile || isUploading}
-          startIcon={isUploading ? <CircularProgress size={20} /> : undefined}
-        >
-          {isUploading ? "Uploading..." : "Attach"}
-        </Button>
-      </DialogActions>
+              {isUploading
+                ? <Spinner size="sm" />
+                : <FileUp size={ICON_SIZE.dense} />}
+              {selectedFile ? selectedFile.name : "Select File"}
+            </FilePickerButton>
+
+            {selectedFile && (
+              <div>
+                <p className={css.metaText}>
+                  <strong>File:</strong> {selectedFile.name}
+                </p>
+                <p className={css.metaText}>
+                  <strong>Size:</strong>{" "}
+                  {(selectedFile.size / 1024).toFixed(2)} KB
+                </p>
+                <p className={css.metaText}>
+                  <strong>Type:</strong> {selectedFile.type || "Unknown"}
+                </p>
+              </div>
+            )}
+
+            <div className={css.orDivider}>OR</div>
+
+            <p className={css.helpText}>Create a blank file to edit inline</p>
+
+            <div className={css.inlineRow}>
+              <TextField
+                disabled={isUploading}
+                label="Filename"
+                onChange={(e) => setBlankFilename(e.target.value)}
+                placeholder="filename.txt"
+                rootClassName={css.grow}
+                value={blankFilename}
+              />
+              <ActionButton
+                disabled={!blankFilename.trim() || isUploading}
+                onClick={handleCreateBlank}
+                size="lg"
+                variant="outline"
+              >
+                {isUploading
+                  ? <Spinner size="sm" />
+                  : <Plus size={ICON_SIZE.dense} />}
+                Create
+              </ActionButton>
+            </div>
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          <ActionButton
+            disabled={isUploading}
+            onClick={handleClose}
+            size="lg"
+            variant="outline"
+          >
+            Cancel
+          </ActionButton>
+          <ActionButton
+            disabled={!selectedFile || isUploading}
+            onClick={handleSubmit}
+            size="lg"
+            variant="accent"
+          >
+            {isUploading && <Spinner size="sm" />}
+            {isUploading ? "Uploading..." : "Attach"}
+          </ActionButton>
+        </DialogFooter>
+      </DialogPopup>
     </Dialog>
   );
 }

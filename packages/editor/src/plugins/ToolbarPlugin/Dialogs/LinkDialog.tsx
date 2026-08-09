@@ -6,25 +6,35 @@ import {
   isHTMLElement,
   LexicalEditor,
 } from "lexical";
-import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { SET_DIALOGS_COMMAND } from "./commands";
 import {
-  Button,
+  ActionButton,
   Dialog,
-  DialogActions,
-  DialogContent,
+  DialogBody,
+  DialogFooter,
+  DialogHeader,
+  DialogPopup,
   DialogTitle,
-  FormControl,
-  FormControlLabel,
-  InputLabel,
-  ListItemIcon,
-  MenuItem,
-  Radio,
+  FieldLabelText,
+  RadioField,
   RadioGroup,
   Select,
-  SelectChangeEvent,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   TextField,
-} from "@mui/material";
+} from "../../../ui";
+import { dismissRequest } from "./parts";
+import * as css from "./styles.css";
 import { type LinkNode, TOGGLE_LINK_COMMAND } from "@lexical/link";
 import { Unlink } from "lucide-react";
 import { $isImageNode } from "@/editor/nodes/ImageNode";
@@ -40,6 +50,7 @@ function LinkDialog(
   const [rel, setRel] = useState<string | null>("external");
   const [target, setTarget] = useState<string | null>("_blank");
   const [figure, setFigure] = useState<string>("self");
+  const urlRef = useRef<HTMLInputElement>(null);
 
   const figures = useMemo(() => {
     const editorState = editor.getEditorState();
@@ -95,8 +106,7 @@ function LinkDialog(
     setUrl(url);
   };
 
-  const updateRel = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value;
+  const updateRel = (value: string) => {
     setRel(value);
     const nodeRel = node?.__rel ?? "external";
     const defaultUrl = value === "bookmark" ? getBookmarkUrl() : "https://";
@@ -111,16 +121,16 @@ function LinkDialog(
     setTarget(target);
   };
 
-  const updateFigure = (event: SelectChangeEvent) => {
-    const value = event.target.value;
+  const updateFigure = (value: string | null) => {
+    if (value === null) return;
     setFigure(value);
     if (value === "self") setTarget("_self");
     else setTarget(null);
   };
 
   // Widened to SyntheticEvent because this is both the Button's onClick and the
-  // dialog paper's onSubmit, and MUI types that paper as a div even under
-  // `component: "form"` — so React 19.2 hands it a SubmitEvent<HTMLDivElement>.
+  // popup's own onSubmit — `DialogPopup` is rendered as a `<form>`, so React
+  // hands the handler a SubmitEvent while the buttons hand it a MouseEvent.
   // preventDefault is all this needs, and every synthetic event has it.
   const handleSubmit = (event: React.SyntheticEvent) => {
     event.preventDefault();
@@ -201,111 +211,96 @@ function LinkDialog(
     });
   };
 
+  const figurePreview = (key: string) => {
+    if (key === "self") return <>Self</>;
+    if (key === "none") return <>None</>;
+    return (
+      <span
+        className={css.figurePreview}
+        dangerouslySetInnerHTML={{ __html: figures.get(key).outerHTML }}
+      />
+    );
+  };
+
   return (
-    <Dialog
-      open
-      onClose={handleClose}
-      aria-labelledby="link-dialog-title"
-      disableEscapeKeyDown
-      fullWidth
-      maxWidth="sm"
-      slotProps={{ paper: { component: "form", onSubmit: handleSubmit } }}
-    >
-      <DialogTitle id="link-dialog-title">
-        Insert Link
-      </DialogTitle>
-      <DialogContent>
-        <RadioGroup
-          row
-          aria-label="orientation"
-          value={rel}
-          onChange={updateRel}
-        >
-          <FormControlLabel
-            value="external"
-            control={<Radio />}
-            label="External"
-          />
-          <FormControlLabel
-            value="bookmark"
-            control={<Radio />}
-            label="Internal"
-          />
-        </RadioGroup>
-        <TextField
-          margin="normal"
-          size="small"
-          fullWidth
-          value={url}
-          onChange={updateUrl}
-          label="URL"
-          autoFocus
-          autoComplete="off"
-          inputRef={(input) => {
-            if (input) setTimeout(() => input.focus(), 0);
-          }}
-        />
-        {rel === "bookmark" &&
-          (
-            <FormControl fullWidth margin="normal">
-              <InputLabel>Figure</InputLabel>
-              <Select
-                size="small"
-                fullWidth
-                value={figure}
-                onChange={updateFigure}
-                label="Figure"
-              >
-                <MenuItem value="self">Self</MenuItem>
-                <MenuItem value="none">None</MenuItem>
-                {[...figures.keys()].map((key) => (
-                  <MenuItem key={key} value={key}>
-                    <ListItemIcon
-                      sx={{
-                        display: "block",
-                        width: "100%",
-                        "& figure": {
-                          "& img, & svg": {
-                            width: 40,
-                          },
-                        },
-                        "& figcaption": {
-                          display: "none",
-                        },
-                        "& table": {
-                          tableLayout: "auto",
-                          margin: 0,
-                          float: "none",
-                        },
-                      }}
-                      dangerouslySetInnerHTML={{
-                        __html: figures.get(key).outerHTML,
-                      }}
-                    />
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+    <Dialog open onOpenChange={dismissRequest(handleClose)}>
+      <DialogPopup
+        initialFocus={urlRef}
+        render={<form onSubmit={handleSubmit} />}
+        size="md"
+      >
+        <DialogHeader>
+          <DialogTitle>Insert Link</DialogTitle>
+        </DialogHeader>
+        <DialogBody>
+          <div className={css.form}>
+            <RadioGroup<string>
+              aria-label="Link kind"
+              onValueChange={updateRel}
+              row
+              value={rel ?? "external"}
+            >
+              <RadioField label="External" value="external" />
+              <RadioField label="Internal" value="bookmark" />
+            </RadioGroup>
+            <TextField
+              autoComplete="off"
+              label="URL"
+              onChange={updateUrl}
+              ref={urlRef}
+              value={url}
+            />
+            {rel === "bookmark" && (
+              <div className={css.form}>
+                <FieldLabelText id="link-figure-label">Figure</FieldLabelText>
+                <Select<string> onValueChange={updateFigure} value={figure}>
+                  <SelectTrigger aria-labelledby="link-figure-label">
+                    <SelectValue>
+                      {(value: string | null) =>
+                        value ? figurePreview(value) : null}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="self">Self</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
+                    {[...figures.keys()].map((key) => (
+                      <SelectItem key={key} value={key}>
+                        {figurePreview(key)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          {node && (
+            <ActionButton
+              className={css.footerStart}
+              danger
+              onClick={handleDelete}
+              size="lg"
+              variant="outline"
+            >
+              <Unlink size={ICON_SIZE.dense} />
+              Unlink
+            </ActionButton>
           )}
-      </DialogContent>
-      <DialogActions>
-        {node && (
-          <Button
-            onClick={handleDelete}
-            startIcon={<Unlink size={ICON_SIZE.dense} />}
-            color="error"
-            sx={{ mr: "auto" }}
+          <ActionButton onClick={handleClose} size="lg" variant="outline">
+            Cancel
+          </ActionButton>
+          <ActionButton
+            disabled={!url}
+            onClick={handleSubmit}
+            size="lg"
+            type="submit"
+            variant="accent"
           >
-            Unlink
-          </Button>
-        )}
-        <Button onClick={handleClose}>
-          Cancel
-        </Button>
-        <Button onClick={handleSubmit} disabled={!url}>
-          Confirm
-        </Button>
-      </DialogActions>
+            Confirm
+          </ActionButton>
+        </DialogFooter>
+      </DialogPopup>
     </Dialog>
   );
 }

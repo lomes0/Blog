@@ -3,23 +3,25 @@ import type { LexicalEditor } from "lexical";
 import React, { memo, useState } from "react";
 import { SET_DIALOGS_COMMAND } from "./commands";
 import {
+  ActionButton,
   Badge,
-  Box,
-  Button,
   Dialog,
-  DialogActions,
-  DialogContent,
+  DialogBody,
+  DialogFooter,
+  DialogHeader,
+  DialogPopup,
   DialogTitle,
-  ListItemIcon,
-  ListItemText,
-  MenuItem,
+  FieldLabelText,
   Select,
-  Typography,
-} from "@mui/material";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../../ui";
+import { dismissRequest } from "./parts";
+import * as css from "./styles.css";
 import { useAIModel } from "@/contexts/AIModelContext";
-import { AlignLeft } from "lucide-react";
 import { AI_MODELS } from "@/lib/ai";
-import { ICON_SIZE } from "@/theme/icons";
 
 function AIDialog({ editor }: { editor: LexicalEditor }) {
   const { llm, setLlm } = useAIModel();
@@ -43,118 +45,63 @@ function AIDialog({ editor }: { editor: LexicalEditor }) {
     closeDialog();
   };
 
+  const selectModel = (id: string | null) => {
+    const model = AI_MODELS.find((candidate) => candidate.id === id);
+    if (!model) return;
+    setFormData({ provider: model.provider, model: model.id });
+  };
+
   return (
-    <Dialog
-      open
-      fullWidth
-      maxWidth="xs"
-      onClose={handleClose}
-      aria-labelledby="ai-dialog-title"
-      disableEscapeKeyDown
-    >
-      <DialogTitle id="ai-dialog-title">
-        Configure AI Models
-      </DialogTitle>
-      <DialogContent>
-        <Box
-          component="form"
-          onSubmit={handleSubmit}
-          noValidate
-          sx={{ mt: 1 }}
-        >
-          <Typography
-            variant="button"
-            component="h3"
-            color="text.secondary"
-            sx={{ my: 1 }}
-          >
-            Language Model
-          </Typography>
-          <Select
-            value={formData.model}
-            size="small"
-            fullWidth
-            sx={{
-              "& .MuiSelect-select": {
-                display: "flex !important",
-                alignItems: "center",
-                py: 0.5,
-              },
-              "& .MuiListItemIcon-root": {
-                mr: 0.5,
-                minWidth: 20,
-              },
-              fieldset: { borderColor: "divider" },
-              "&:hover .MuiOutlinedInput-notchedOutline": {
-                borderColor: "primary.main",
-              },
-            }}
-            MenuProps={{
-              slotProps: {
-                root: {
-                  sx: {
-                    "& .MuiBackdrop-root": {
-                      userSelect: "none",
-                    },
-                    "& .MuiMenuItem-root": {
-                      minHeight: 36,
-                    },
-                  },
-                },
-              },
-            }}
-            inputProps={{ "aria-label": "Language Model" }}
-          >
-            {AI_MODELS.map((model) => (
-              <MenuItem
-                key={model.id}
-                value={model.id}
-                onClick={() =>
-                  setFormData({ provider: model.provider, model: model.id })}
+    <Dialog open onOpenChange={dismissRequest(handleClose)}>
+      <DialogPopup>
+        <DialogHeader>
+          <DialogTitle>Configure AI Models</DialogTitle>
+        </DialogHeader>
+        <DialogBody>
+          <form className={css.form} noValidate onSubmit={handleSubmit}>
+            <div className={css.form}>
+              <FieldLabelText id="ai-model-label">
+                Language Model
+              </FieldLabelText>
+              <Select<string>
+                onValueChange={selectModel}
+                value={formData.model}
               >
-                <ListItemIcon>
-                  <AlignLeft size={ICON_SIZE.dense} />
-                </ListItemIcon>
-                <ListItemText>{model.name}</ListItemText>
-                {model.metadata?.fast && (
-                  <Badge
-                    color="success"
-                    badgeContent="Fast"
-                    sx={{
-                      ml: 1,
-                      "& .MuiBadge-badge": {
-                        position: "static",
-                        transform: "none",
-                      },
-                    }}
-                  />
-                )}
-                {model.metadata?.reason && (
-                  <Badge
-                    color="warning"
-                    badgeContent="Reason"
-                    sx={{
-                      ml: 1,
-                      "& .MuiBadge-badge": {
-                        position: "static",
-                        transform: "none",
-                      },
-                    }}
-                  />
-                )}
-              </MenuItem>
-            ))}
-          </Select>
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button autoFocus onClick={handleClose}>
-          Cancel
-        </Button>
-        <Button onClick={handleSubmit}>
-          Save
-        </Button>
-      </DialogActions>
+                <SelectTrigger aria-labelledby="ai-model-label">
+                  <SelectValue>
+                    {(value: string | null) =>
+                      AI_MODELS.find((model) => model.id === value)?.name ??
+                        value}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {AI_MODELS.map((model) => (
+                    <SelectItem key={model.id} value={model.id}>
+                      <span className={css.modelRow}>
+                        <span className={css.modelName}>{model.name}</span>
+                        {model.metadata?.fast && (
+                          <Badge size="sm" variant="success">Fast</Badge>
+                        )}
+                        {model.metadata?.reason && (
+                          <Badge size="sm" variant="warning">Reason</Badge>
+                        )}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </form>
+        </DialogBody>
+        <DialogFooter>
+          <ActionButton onClick={handleClose} size="lg" variant="outline">
+            Cancel
+          </ActionButton>
+          <ActionButton onClick={handleSubmit} size="lg" variant="accent">
+            Save
+          </ActionButton>
+        </DialogFooter>
+      </DialogPopup>
     </Dialog>
   );
 }

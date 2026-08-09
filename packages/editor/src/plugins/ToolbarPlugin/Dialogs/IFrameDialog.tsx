@@ -1,28 +1,27 @@
 "use client";
 import type { LexicalEditor } from "lexical";
-import React, { memo, useEffect, useState } from "react";
+import React, { memo, useEffect, useRef, useState } from "react";
 import { SET_DIALOGS_COMMAND } from "./commands";
-import { useTheme } from "@mui/material/styles";
 import {
-  Box,
-  Button,
+  ActionButton,
   Dialog,
-  DialogActions,
-  DialogContent,
+  DialogBody,
+  DialogFooter,
+  DialogHeader,
+  DialogPopup,
   DialogTitle,
-  FormControlLabel,
-  Switch,
+  SwitchField,
   TextField,
-  useMediaQuery,
-} from "@mui/material";
+} from "../../../ui";
+import { dismissRequest } from "./parts";
+import * as css from "./styles.css";
 import { INSERT_IFRAME_COMMAND } from "@/editor/plugins/IFramePlugin";
 import { IFrameNode } from "@/editor/nodes/IFrameNode";
 
 function IFrameDialog(
   { editor, node }: { editor: LexicalEditor; node: IFrameNode | null },
 ) {
-  const theme = useTheme();
-  const fullScreen = useMediaQuery(theme.breakpoints.down("md"));
+  const srcRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     src: "",
     altText: "iframe",
@@ -59,9 +58,7 @@ function IFrameDialog(
 
   const updateFormData = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
-    if (name === "showCaption") {
-      setFormData({ ...formData, [name]: event.target.checked });
-    } else setFormData({ ...formData, [name]: value });
+    setFormData({ ...formData, [name]: value });
   };
 
   const handleSubmit = (
@@ -89,85 +86,65 @@ function IFrameDialog(
   };
 
   return (
-    <Dialog
-      open
-      fullScreen={fullScreen}
-      onClose={handleClose}
-      aria-labelledby="iFrame-dialog-title"
-      disableEscapeKeyDown
-    >
-      <DialogTitle id="iFrame-dialog-title">
-        Insert IFrame
-      </DialogTitle>
-      <DialogContent>
-        <Box
-          component="form"
-          onSubmit={handleSubmit}
-          noValidate
-          sx={{ mt: 1 }}
-        >
-          <TextField
-            margin="normal"
-            size="small"
-            fullWidth
-            value={formData.src}
-            onChange={updateFormData}
-            label="Embed URL"
-            name="src"
-            autoComplete="src"
-            autoFocus
-          />
-          <TextField
-            margin="normal"
-            size="small"
-            fullWidth
-            value={formData.altText}
-            onChange={updateFormData}
-            label="Alt Text"
-            name="altText"
-            autoComplete="altText"
-          />
-          <TextField
-            margin="normal"
-            size="small"
-            fullWidth
-            value={formData.width}
-            onChange={updateFormData}
-            label="Width"
-            name="width"
-            autoComplete="width"
-          />
-          <TextField
-            margin="normal"
-            size="small"
-            fullWidth
-            value={formData.height}
-            onChange={updateFormData}
-            label="Height"
-            name="height"
-            autoComplete="height"
-          />
-          <FormControlLabel
-            control={
-              <Switch
-                checked={formData.showCaption}
-                onChange={updateFormData}
-              />
-            }
-            label="Show Caption"
-            name="showCaption"
-          />
-          <Button hidden type="submit" />
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClose}>
-          Cancel
-        </Button>
-        <Button onClick={handleSubmit} disabled={!formData.src}>
-          Confirm
-        </Button>
-      </DialogActions>
+    <Dialog open onOpenChange={dismissRequest(handleClose)}>
+      <DialogPopup fullScreen="mobile" initialFocus={srcRef}>
+        <DialogHeader>
+          <DialogTitle>Insert IFrame</DialogTitle>
+        </DialogHeader>
+        <DialogBody>
+          <form className={css.form} noValidate onSubmit={handleSubmit}>
+            <TextField
+              autoComplete="off"
+              label="Embed URL"
+              name="src"
+              onChange={updateFormData}
+              ref={srcRef}
+              value={formData.src}
+            />
+            <TextField
+              autoComplete="off"
+              label="Alt Text"
+              name="altText"
+              onChange={updateFormData}
+              value={formData.altText}
+            />
+            <TextField
+              autoComplete="off"
+              label="Width"
+              name="width"
+              onChange={updateFormData}
+              value={formData.width}
+            />
+            <TextField
+              autoComplete="off"
+              label="Height"
+              name="height"
+              onChange={updateFormData}
+              value={formData.height}
+            />
+            <SwitchField
+              checked={formData.showCaption}
+              label="Show Caption"
+              name="showCaption"
+              onCheckedChange={(showCaption) =>
+                setFormData({ ...formData, showCaption })}
+            />
+          </form>
+        </DialogBody>
+        <DialogFooter>
+          <ActionButton onClick={handleClose} size="lg" variant="outline">
+            Cancel
+          </ActionButton>
+          <ActionButton
+            disabled={!formData.src}
+            onClick={handleSubmit}
+            size="lg"
+            variant="accent"
+          >
+            Confirm
+          </ActionButton>
+        </DialogFooter>
+      </DialogPopup>
     </Dialog>
   );
 }

@@ -9,15 +9,17 @@ import { memo, useCallback, useEffect, useId, useRef, useState } from "react";
 import { SET_DIALOGS_COMMAND } from "./commands";
 import Script from "next/script";
 import { getImageDimensions } from "@/editor/nodes/utils";
-import { debounce } from "@mui/material/utils";
+import { debounce } from "@/editor/utils/debounce";
 import {
-  Box,
-  Button,
-  CircularProgress,
+  ActionButton,
   Dialog,
-  DialogActions,
-  DialogContent,
-} from "@mui/material";
+  DialogBody,
+  DialogFooter,
+  DialogPopup,
+  Spinner,
+} from "../../../ui";
+import { dismissRequest } from "./parts";
+import * as css from "./styles.css";
 import { ALERT_COMMAND } from "@/editor/commands";
 import { v4 as uuid } from "uuid";
 
@@ -241,6 +243,17 @@ function GraphDialog(
 
   const loading = !geogebraAPI;
 
+  /*
+   * `body.fullscreen` used to be added by MUI's `TransitionProps.onEntered`.
+   * The kit's dialog has no enter transition to hang it off — and it never
+   * needed one: the class is wanted for as long as this component is mounted,
+   * which is exactly what an effect with a cleanup says.
+   */
+  useEffect(() => {
+    document.body.classList.add("fullscreen");
+    return () => document.body.classList.remove("fullscreen");
+  }, []);
+
   useEffect(() => {
     const navigation =
       (window as Window & { navigation?: NavigationEventTarget }).navigation;
@@ -262,40 +275,37 @@ function GraphDialog(
   }, [handleClose]);
 
   return (
+    /*
+     * `modal={false}` — see the note on `SketchDialog`. A full-screen dialog
+     * that has to coexist with the app's own (MUI, modal) alert dialog cannot
+     * also be trapping focus and marking the rest of the document inert.
+     */
     <Dialog
+      disablePointerDismissal
+      modal={false}
       open
-      fullScreen
-      onClose={handleClose}
-      disableEscapeKeyDown
-      TransitionProps={{
-        onEntered() {
-          document.body.classList.add("fullscreen");
-        },
-      }}
+      onOpenChange={dismissRequest(handleClose)}
     >
-      <DialogContent sx={{ p: 0, overflow: "hidden" }}>
-        {loading && (
-          <Box
-            sx={{
-              display: "flex",
-              height: "100%",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <CircularProgress size={36} disableShrink />
-          </Box>
-        )}
-        <GeogebraApplet parameters={parameters} />
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClose}>
-          Cancel
-        </Button>
-        <Button onClick={handleSubmit}>
-          {!node ? "Insert" : "Update"}
-        </Button>
-      </DialogActions>
+      <DialogPopup fullScreen="always" showCloseButton={false}>
+        <DialogBody flush>
+          {loading && (
+            <div className={css.appletLoading}>
+              <Spinner />
+            </div>
+          )}
+          <div className={css.appletHost}>
+            <GeogebraApplet parameters={parameters} />
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          <ActionButton onClick={handleClose} size="lg" variant="outline">
+            Cancel
+          </ActionButton>
+          <ActionButton onClick={handleSubmit} size="lg" variant="accent">
+            {!node ? "Insert" : "Update"}
+          </ActionButton>
+        </DialogFooter>
+      </DialogPopup>
     </Dialog>
   );
 }

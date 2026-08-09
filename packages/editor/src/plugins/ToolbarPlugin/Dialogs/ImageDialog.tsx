@@ -5,25 +5,24 @@ import {
   INSERT_IMAGE_COMMAND,
   InsertImagePayload,
 } from "@/editor/plugins/ImagePlugin";
-import { memo, useEffect, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { isMimeType, mediaFileReader } from "@lexical/utils";
 import { ImageNode } from "@/editor/nodes/ImageNode";
 import { SET_DIALOGS_COMMAND } from "./commands";
 import { getImageDimensions } from "@/editor/nodes/utils";
-import { useTheme } from "@mui/material/styles";
 import {
-  Box,
-  Button,
+  ActionButton,
   Dialog,
-  DialogActions,
-  DialogContent,
+  DialogBody,
+  DialogFooter,
+  DialogHeader,
+  DialogPopup,
   DialogTitle,
-  FormControlLabel,
-  Switch,
+  SwitchField,
   TextField,
-  Typography,
-  useMediaQuery,
-} from "@mui/material";
+} from "../../../ui";
+import { dismissRequest, FilePickerButton } from "./parts";
+import * as css from "./styles.css";
 import { FileUp } from "lucide-react";
 import { ANNOUNCE_COMMAND } from "@/editor/commands";
 import { ICON_SIZE } from "@/theme/icons";
@@ -39,8 +38,7 @@ const ACCEPTABLE_IMAGE_TYPES = [
 function ImageDialog(
   { editor, node }: { editor: LexicalEditor; node: ImageNode | null },
 ) {
-  const theme = useTheme();
-  const fullScreen = useMediaQuery(theme.breakpoints.down("md"));
+  const srcRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState<InsertImagePayload>({
     src: "",
     altText: "",
@@ -87,11 +85,6 @@ function ImageDialog(
       } catch {
         setFormData({ ...formData, [name]: value });
       }
-    } else if (name === "showCaption") {
-      setFormData({
-        ...formData,
-        [name]: (event.target as HTMLInputElement).checked,
-      });
     } else {
       setFormData({ ...formData, [name]: value });
     }
@@ -152,104 +145,75 @@ function ImageDialog(
   };
 
   return (
-    <Dialog
-      open
-      fullScreen={fullScreen}
-      onClose={handleClose}
-      aria-labelledby="image-dialog-title"
-      disableEscapeKeyDown
-    >
-      <DialogTitle id="image-dialog-title">
-        Insert Image
-      </DialogTitle>
-      <DialogContent>
-        <Box component="form" noValidate sx={{ mt: 1 }}>
-          <Typography variant="h6" sx={{ mt: 1 }}>
-            From URL
-          </Typography>
-          <TextField
-            type="url"
-            margin="normal"
-            size="small"
-            fullWidth
-            value={formData.src}
-            onChange={updateFormData}
-            label="Image URL"
-            name="src"
-            autoComplete="src"
-            autoFocus
-          />
-          <Typography variant="h6" sx={{ mt: 1 }}>
-            From File
-          </Typography>
-          <Button
-            variant="outlined"
-            sx={{ my: 2 }}
-            startIcon={<FileUp size={ICON_SIZE.dense} />}
-            component="label"
-          >
-            Upload File
-            <input
-              type="file"
-              hidden
-              accept="image/*"
-              onChange={(e) => loadImage(e.target.files)}
-              autoFocus
+    <Dialog open onOpenChange={dismissRequest(handleClose)}>
+      <DialogPopup fullScreen="mobile" initialFocus={srcRef}>
+        <DialogHeader>
+          <DialogTitle>Insert Image</DialogTitle>
+        </DialogHeader>
+        <DialogBody>
+          <form className={css.form} noValidate>
+            <h3 className={css.sectionHeading}>From URL</h3>
+            <TextField
+              autoComplete="off"
+              label="Image URL"
+              name="src"
+              onChange={updateFormData}
+              ref={srcRef}
+              type="url"
+              value={formData.src}
             />
-          </Button>
-          <TextField
-            margin="normal"
-            size="small"
-            fullWidth
-            value={formData.altText}
-            onChange={updateFormData}
-            label="Alt Text"
-            name="altText"
-            autoComplete="altText"
-          />
-          <TextField
-            margin="normal"
-            size="small"
-            fullWidth
-            value={formData.width}
-            onChange={updateFormData}
-            label="Width"
-            name="width"
-            autoComplete="width"
-          />
-          <TextField
-            margin="normal"
-            size="small"
-            fullWidth
-            value={formData.height}
-            onChange={updateFormData}
-            label="Height"
-            name="height"
-            autoComplete="height"
-          />
-          <FormControlLabel
-            control={
-              <Switch
-                checked={formData.showCaption}
-                onChange={updateFormData}
-              />
-            }
-            label="Show Caption"
-            name="showCaption"
-          />
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClose}>
-          Cancel
-        </Button>
-        <Button
-          disabled={isDisabled}
-          onClick={handleSubmit}
-        >
-          Confirm
-        </Button>
-      </DialogActions>
+            <h3 className={css.sectionHeading}>From File</h3>
+            <FilePickerButton
+              accept="image/*"
+              onFiles={(e) => loadImage(e.target.files)}
+            >
+              <FileUp size={ICON_SIZE.dense} />
+              Upload File
+            </FilePickerButton>
+            <TextField
+              autoComplete="off"
+              label="Alt Text"
+              name="altText"
+              onChange={updateFormData}
+              value={formData.altText}
+            />
+            <TextField
+              autoComplete="off"
+              label="Width"
+              name="width"
+              onChange={updateFormData}
+              value={formData.width}
+            />
+            <TextField
+              autoComplete="off"
+              label="Height"
+              name="height"
+              onChange={updateFormData}
+              value={formData.height}
+            />
+            <SwitchField
+              checked={formData.showCaption}
+              label="Show Caption"
+              name="showCaption"
+              onCheckedChange={(showCaption) =>
+                setFormData({ ...formData, showCaption })}
+            />
+          </form>
+        </DialogBody>
+        <DialogFooter>
+          <ActionButton onClick={handleClose} size="lg" variant="outline">
+            Cancel
+          </ActionButton>
+          <ActionButton
+            disabled={isDisabled}
+            onClick={handleSubmit}
+            size="lg"
+            variant="accent"
+          >
+            Confirm
+          </ActionButton>
+        </DialogFooter>
+      </DialogPopup>
     </Dialog>
   );
 }

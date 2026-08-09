@@ -6,6 +6,7 @@ import {
   ActionButton,
   Alert,
   Dialog,
+  DialogBody,
   DialogFooter,
   DialogHeader,
   DialogPopup,
@@ -170,9 +171,9 @@ export default function AttachmentEditor({
           <DialogHeader>
             <DialogTitle>Discard changes?</DialogTitle>
           </DialogHeader>
-          <div className={css.dialogBody}>
+          <DialogBody>
             You have unsaved changes. Are you sure you want to discard them?
-          </div>
+          </DialogBody>
           <DialogFooter>
             <ActionButton
               variant="outline"

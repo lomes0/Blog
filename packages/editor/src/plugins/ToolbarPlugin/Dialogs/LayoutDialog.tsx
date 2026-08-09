@@ -3,21 +3,20 @@ import type { LexicalEditor } from "lexical";
 import { INSERT_LAYOUT_COMMAND } from "@/editor/plugins/LayoutPlugin";
 import React, { memo } from "react";
 import { SET_DIALOGS_COMMAND } from "./commands";
-import { useTheme } from "@mui/material/styles";
 import {
-  Box,
-  Button,
+  ActionButton,
   Dialog,
-  DialogActions,
-  DialogContent,
+  DialogBody,
+  DialogFooter,
+  DialogHeader,
+  DialogPopup,
   DialogTitle,
-  FormControl,
-  FormControlLabel,
-  FormLabel,
-  Radio,
+  RadioField,
   RadioGroup,
-  useMediaQuery,
-} from "@mui/material";
+  RadioGroupLabel,
+} from "../../../ui";
+import { dismissRequest } from "./parts";
+import * as css from "./styles.css";
 
 const LAYOUTS = [
   { label: "2 columns (equal width)", value: "1fr 1fr" },
@@ -28,8 +27,6 @@ const LAYOUTS = [
 ];
 
 function LayoutDialog({ editor }: { editor: LexicalEditor }) {
-  const theme = useTheme();
-  const fullScreen = useMediaQuery(theme.breakpoints.down("md"));
   const [formData, setFormData] = React.useState({
     layout: LAYOUTS[0].value,
   });
@@ -55,57 +52,39 @@ function LayoutDialog({ editor }: { editor: LexicalEditor }) {
   };
 
   return (
-    <Dialog
-      open
-      fullScreen={fullScreen}
-      onClose={handleClose}
-      aria-labelledby="layout-dialog-title"
-      disableEscapeKeyDown
-    >
-      <DialogTitle id="layout-dialog-title">
-        Insert Layout
-      </DialogTitle>
-      <DialogContent>
-        <Box
-          component="form"
-          onSubmit={handleSubmit}
-          noValidate
-          sx={{ mt: 1 }}
-        >
-          <FormControl>
-            <FormLabel id="column-layout-group-label">
-              Column Layout
-            </FormLabel>
-            <RadioGroup
-              aria-labelledby="column-layout-group-label"
-              name="layouts"
-              value={formData.layout}
-              onChange={(event) =>
-                setFormData({
-                  ...formData,
-                  layout: event.target.value,
-                })}
-            >
-              {LAYOUTS.map(({ label, value }) => (
-                <FormControlLabel
-                  key={value}
-                  value={value}
-                  label={label}
-                  control={<Radio />}
-                />
-              ))}
-            </RadioGroup>
-          </FormControl>
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button autoFocus onClick={handleClose}>
-          Cancel
-        </Button>
-        <Button onClick={handleSubmit}>
-          Insert
-        </Button>
-      </DialogActions>
+    <Dialog open onOpenChange={dismissRequest(handleClose)}>
+      <DialogPopup fullScreen="mobile">
+        <DialogHeader>
+          <DialogTitle>Insert Layout</DialogTitle>
+        </DialogHeader>
+        <DialogBody>
+          <form className={css.form} noValidate onSubmit={handleSubmit}>
+            <div>
+              <RadioGroupLabel id="column-layout-group-label">
+                Column Layout
+              </RadioGroupLabel>
+              <RadioGroup<string>
+                aria-labelledby="column-layout-group-label"
+                name="layouts"
+                onValueChange={(layout) => setFormData({ ...formData, layout })}
+                value={formData.layout}
+              >
+                {LAYOUTS.map(({ label, value }) => (
+                  <RadioField key={value} label={label} value={value} />
+                ))}
+              </RadioGroup>
+            </div>
+          </form>
+        </DialogBody>
+        <DialogFooter>
+          <ActionButton onClick={handleClose} size="lg" variant="outline">
+            Cancel
+          </ActionButton>
+          <ActionButton onClick={handleSubmit} size="lg" variant="accent">
+            Insert
+          </ActionButton>
+        </DialogFooter>
+      </DialogPopup>
     </Dialog>
   );
 }

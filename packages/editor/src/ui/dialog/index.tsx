@@ -36,20 +36,43 @@ export function DialogBackdrop({ className, ...props }: DialogBackdropProps) {
   );
 }
 
+/** The width the popup takes once the viewport is wide enough to have one. */
+export type DialogSize = "xs" | "sm" | "md" | "lg";
+
+/**
+ * When the popup gives up its corners and fills the viewport.
+ *
+ * `"mobile"` is the answer for an ordinary form dialog and is decided by a CSS
+ * media query in `styles.css.ts`, not by a JS breakpoint hook — see the note
+ * on `MOBILE` there for why that distinction is worth a prop.
+ */
+export type DialogFullScreen = "never" | "mobile" | "always";
+
 export type DialogPopupProps =
-  & ComponentProps<typeof DialogPrimitive.Popup>
-  & { showCloseButton?: boolean; className?: string; children?: ReactNode };
+  & Omit<ComponentProps<typeof DialogPrimitive.Popup>, "className">
+  & {
+    showCloseButton?: boolean;
+    className?: string;
+    children?: ReactNode;
+    size?: DialogSize;
+    fullScreen?: DialogFullScreen;
+  };
 
 export function DialogPopup({
   showCloseButton = true,
   className,
   children,
+  size,
+  fullScreen,
   ...props
 }: DialogPopupProps) {
   return (
     <DialogPortal>
       <DialogBackdrop />
-      <DialogPrimitive.Popup className={mergeClass(css.popup, className)} {...props}>
+      <DialogPrimitive.Popup
+        className={cx(css.popup({ size, fullScreen }), className)}
+        {...props}
+      >
         {children}
         {showCloseButton && (
           <DialogPrimitive.Close
@@ -61,6 +84,27 @@ export function DialogPopup({
         )}
       </DialogPrimitive.Popup>
     </DialogPortal>
+  );
+}
+
+export type DialogBodyProps = HTMLAttributes<HTMLDivElement> & {
+  /**
+   * Drop the padding and let the child own the whole area — an iframe, a
+   * canvas, an embedded third-party app.
+   */
+  flush?: boolean;
+};
+
+/**
+ * The scrolling middle of a dialog, between `DialogHeader` and `DialogFooter`.
+ * MUI's `DialogContent`, which every ported dialog had one of.
+ */
+export function DialogBody({ className, flush, ...props }: DialogBodyProps) {
+  return (
+    <div
+      className={cx(flush ? css.bodyFlush : css.body, className)}
+      {...props}
+    />
   );
 }
 
