@@ -329,7 +329,23 @@ export const appSlice = createSlice({
       state,
       action: PayloadAction<{ old?: string; new?: string }>,
     ) => {
+      // `rejectedHunks` is dropped rather than merged: hunk ids are only
+      // meaningful against the pair of revisions that produced them, so
+      // carrying a decision into a new comparison would name blocks in a
+      // document nobody was looking at.
       state.ui.diff = { ...state.ui.diff, ...action.payload };
+      delete state.ui.diff.rejectedHunks;
+    },
+
+    /**
+     * Which hunks of the proposal under review the author has refused (§7).
+     *
+     * Global for the same reason `diff` itself is: the list that collects the
+     * decision (`Diff/ProposalReview`) and the button that acts on it
+     * (`EditDocument/AgentChangeBar`) are siblings, not parent and child.
+     */
+    setRejectedHunks: (state, action: PayloadAction<string[]>) => {
+      state.ui.diff.rejectedHunks = action.payload;
     },
 
     /**

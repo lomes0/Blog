@@ -63,11 +63,20 @@ export default function AgentChangeBar({ docId }: AgentChangeBarProps) {
   const proposal = useSelector((state) => state.ui.proposals.byDocId[docId]);
   const agentPost = useSelector((state) => selectAgentPost(state, docId));
   const comparing = useSelector((state) => state.ui.diff.new);
+  // What the per-hunk review underneath this bar has been told to refuse
+  // (docs/plans/haklex-adoption.md §7). It is collected there and committed
+  // here, because this bar is the sticky one: a proposal can run for pages, and
+  // the decision has to stay reachable without scrolling back to a header.
+  const rejectedHunks = useSelector((state) => state.ui.diff.rejectedHunks);
   const { busyId, review, approve, reject, acceptPost, discardPost } =
     useProposalActions();
 
   if (proposal) {
     const busy = busyId === proposal.id;
+    // Only when the review on screen is this proposal's. A selection left over
+    // from some other comparison names hunks this one does not have, and the
+    // route is right to 400 on those — so it must never be sent.
+    const refused = comparing === proposal.id ? rejectedHunks ?? [] : [];
     // The document moved off the base this was built on, so approval would 409
     // (§3.6). The diff still means something — it is the left-hand side that has
     // moved on — so the bar stays and loses its Approve button rather than
@@ -142,9 +151,15 @@ export default function AgentChangeBar({ docId }: AgentChangeBarProps) {
                 variant="contained"
                 disabled={busy}
                 startIcon={<Check size={ICON_SIZE.inline} />}
-                onClick={() => void approve(proposal)}
+                onClick={() => void approve(proposal, refused)}
               >
-                Approve
+                {
+                  /* The label changes because the *act* changes: with something
+                    refused this discards it rather than storing it, and a
+                    button that still said "Approve" would be describing the
+                    whole proposal. The count lives in the review's own bar. */
+                }
+                {refused.length > 0 ? "Approve accepted" : "Approve"}
               </Button>
             )}
           </>

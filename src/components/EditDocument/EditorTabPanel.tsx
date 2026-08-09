@@ -10,7 +10,7 @@ import dynamic from "next/dynamic";
 import { useSelector as useReduxSelector } from "react-redux";
 import ConnectedEditor from "@/components/ConnectedEditor";
 import SplashScreen from "@/components/shared/SplashScreen";
-import DiffView from "@/components/Diff";
+import Diff from "@/components/Diff";
 import { actions, postsSelectors, useDispatch, useSelector } from "@/store";
 import type { RootState } from "@/store";
 import { selectPaneById } from "@/store/selectors/layoutSelectors";
@@ -297,7 +297,7 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
               inside one would be a second copy of the notice. */
           }
           {isActive && <AgentChangeBar docId={docId} />}
-          {showDiff && isActive && <DiffView />}
+          {showDiff && isActive && <Diff docId={docId} />}
           <ConnectedEditor
             document={documentForEditor}
             editorRef={editorRef}

@@ -71,10 +71,24 @@ export const refreshProposals = createApiThunk<ProposalsPayload, void>(
  */
 export const approveProposal = createApiThunk(
   "app/approveProposal",
-  async (arg: { documentId: string; revisionId: string }) => {
+  async (arg: {
+    documentId: string;
+    revisionId: string;
+    /**
+     * The hunks the reviewer refused (§7). Absent or empty is the whole
+     * proposal — the request every caller made before per-hunk review existed,
+     * unchanged down to the missing body.
+     */
+    rejectedHunks?: string[];
+    /** The proposal `version` those hunks were computed from. */
+    version?: number;
+  }) => {
     const result = await apiClient.proposals.approve(
       arg.documentId,
       arg.revisionId,
+      arg.rejectedHunks && arg.rejectedHunks.length > 0
+        ? { rejectedHunks: arg.rejectedHunks, version: arg.version }
+        : undefined,
     );
     if (!result) fail("The change could not be applied");
     return {

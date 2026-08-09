@@ -161,6 +161,17 @@ export type SaveStatus = "idle" | "saving" | "retrying" | "error";
 export interface PendingProposal {
   /** The proposal's revision id — the right-hand side of the review diff. */
   id: string;
+  /**
+   * The row's squash counter (§3.2), carried so a per-hunk approval can pin the
+   * version its hunks were computed from.
+   *
+   * Without it the third fence in `planApproval` cannot be raised from the
+   * browser: an agent batch squashing onto the proposal *while the review is
+   * open* moves neither `head` nor `baseRevisionId`, so nothing else on this
+   * row would notice that the hunks on screen describe a state it has moved
+   * past.
+   */
+  version: number;
   documentId: string;
   documentName: string;
   documentHandle: string | null;
@@ -259,7 +270,24 @@ export interface AppState {
      * the record itself. `openPane` seeds it from here; `setDiffOpen` writes
      * both together. Absent means no review is showing.
      */
-    diff: { old?: string; new?: string; docId?: string };
+    diff: {
+      old?: string;
+      new?: string;
+      docId?: string;
+      /**
+       * The hunks the author has refused, when the right-hand side is a pending
+       * proposal being reviewed per hunk (docs/plans/haklex-adoption.md §7).
+       *
+       * Here rather than inside `Diff/ProposalReview` because the decision and
+       * the button that commits it are drawn by two different components:
+       * `AgentChangeBar` is sticky above the review and owns Approve, so a
+       * selection held locally by the list underneath it could not reach the
+       * only control that can act on it. Cleared by `setDiffRevisions` — a new
+       * comparison is a new set of hunks, and a decision about the previous
+       * one's ids means nothing against them.
+       */
+      rejectedHunks?: string[];
+    };
     attachmentPreview: AttachmentPreviewState | null;
     attachmentModified: { url: string; timestamp: number } | null;
     workspace: WorkspaceState;

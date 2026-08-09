@@ -270,6 +270,10 @@ const countPendingProposals = async (authorId: string) =>
 const proposalSummarySelect = {
   id: true,
   documentId: true,
+  // The reviewer's compare-and-set token. Listed rather than fetched per
+  // proposal because the review surface needs it on the row it was offered, and
+  // a second query for one integer would be a round trip per opened review.
+  version: true,
   proposedAt: true,
   origin: true,
   summary: true,

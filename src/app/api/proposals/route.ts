@@ -36,6 +36,7 @@ export const GET = userRoute(
 
     const proposals: PendingProposal[] = rows.map((row) => ({
       id: row.id,
+      version: row.version,
       documentId: row.documentId,
       documentName: row.document.name,
       documentHandle: row.document.handle,

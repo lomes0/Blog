@@ -345,14 +345,46 @@ export const apiClient = {
         { cache: "no-store" },
       ),
 
-    /** POST /api/documents/:documentId/proposals/:revisionId/approve */
+    /**
+     * POST /api/documents/:documentId/proposals/:revisionId/approve
+     *
+     * `decisions` is the per-hunk review's answer (haklex-adoption.md §7) and
+     * is **omitted entirely** when nothing was refused — not sent as an empty
+     * array. The route reads a body only from a request that declares JSON, so
+     * a whole-proposal approval stays the bodiless POST it has always been, and
+     * there is one approve path rather than two.
+     *
+     * Only ids cross the wire. What they mean is recomputed server-side from
+     * the two stored revisions, so nothing here is trusted for a byte of
+     * document content.
+     */
     approve: (
       documentId: string,
       revisionId: string,
-    ): Promise<{ id: string; head: string; approved: boolean } | undefined> =>
-      request<{ id: string; head: string; approved: boolean }>(
+      decisions?: { rejectedHunks: string[]; version?: number },
+    ): Promise<
+      | {
+        id: string;
+        head: string;
+        approved: boolean;
+        partial?: { applied: number; total: number };
+      }
+      | undefined
+    > =>
+      request<{
+        id: string;
+        head: string;
+        approved: boolean;
+        partial?: { applied: number; total: number };
+      }>(
         `/api/documents/${documentId}/proposals/${revisionId}/approve`,
-        { method: "POST" },
+        decisions && decisions.rejectedHunks.length > 0
+          ? {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(decisions),
+          }
+          : { method: "POST" },
       ),
 
     /** POST /api/documents/:documentId/proposals/:revisionId/reject */

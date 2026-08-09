@@ -63,12 +63,25 @@ export function useProposalActions() {
     dispatch(actions.setDiffOpen({ docId: proposal.documentId, open: true }));
   }, [run, dispatch]);
 
-  const approve = useCallback(async (proposal: PendingProposal) => {
+  /**
+   * @param rejectedHunks the hunks the author refused in the per-hunk review
+   * (docs/plans/haklex-adoption.md §7). Omitted — the case for every caller
+   * that is not the review surface — approves the proposal whole, with the
+   * bodiless request that has always meant that.
+   */
+  const approve = useCallback(async (
+    proposal: PendingProposal,
+    rejectedHunks?: string[],
+  ) => {
     setBusyId(proposal.id);
     try {
       const result = await dispatch(actions.approveProposal({
         documentId: proposal.documentId,
         revisionId: proposal.id,
+        rejectedHunks,
+        // Only pinned when something was refused: a whole-proposal approval
+        // takes the row as it stands, whatever batch that now includes.
+        version: proposal.version,
       }));
       // A rejection has already been announced by the slice — including the 409
       // that means "you saved first", which is the one refusal this whole
