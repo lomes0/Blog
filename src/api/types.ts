@@ -12,6 +12,12 @@
 export interface ApiError {
   title: string;
   subtitle?: string;
+  /**
+   * A stable tag, present only where a caller has to branch on *which* failure
+   * of a given status this is — see `ApiErrorOptions` in `lib/api-utils.ts`.
+   * Reaches callers as `ApiClientError.details.code`.
+   */
+  code?: string;
 }
 
 // -----------------------------------------------------------------------

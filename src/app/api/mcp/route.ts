@@ -39,7 +39,7 @@ export const POST = tokenRoute(async (request, { token }) => {
       "An agent token must not be sent over plain HTTP. Put the endpoint " +
         "behind TLS, or set MCP_ALLOW_INSECURE=1 if the transport is already " +
         "private (a tunnel or a private mesh).",
-      { Upgrade: "TLS/1.2, HTTP/1.1", Connection: "Upgrade" },
+      { headers: { Upgrade: "TLS/1.2, HTTP/1.1", Connection: "Upgrade" } },
     );
   }
 
@@ -63,7 +63,7 @@ export const POST = tokenRoute(async (request, { token }) => {
       429,
       "Too Many Requests",
       `Slow down and retry in ${budget.retryAfterSeconds}s.`,
-      { "Retry-After": String(budget.retryAfterSeconds) },
+      { headers: { "Retry-After": String(budget.retryAfterSeconds) } },
     );
   }
 

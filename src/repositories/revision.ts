@@ -4,12 +4,21 @@ import { Revision } from "@/types";
 import { unstable_cache } from "next/cache";
 import { randomUUID } from "node:crypto";
 import {
+  type ApprovalDecisions,
   foldProposal,
+  noteApplied,
   type PendingProposal,
   planApproval,
   planStaleMarking,
   type ProposalRowState,
 } from "@/lib/proposals";
+import {
+  applyDecisions,
+  diffProposal,
+  UnknownHunkError,
+} from "@/lib/proposalDiff";
+import { emptyState } from "@/lib/content-bridge/ops";
+import type { StoredState } from "@/lib/content-bridge/types";
 import { APP_ORIGIN } from "@/lib/changes/events";
 import { notifyChange } from "@/lib/changes/notify";
 
@@ -577,8 +586,116 @@ const upsertProposal = async (
 };
 
 export type ApproveResult =
-  | { ok: true; head: string }
-  | { ok: false; reason: "not-found" | "stale" | "conflict" };
+  | {
+    ok: true;
+    head: string;
+    /**
+     * Present only when the author refused something: how much of the proposal
+     * became the document. Absent is the whole proposal, which is what an
+     * approval with no decisions has always been.
+     */
+    partial?: { applied: number; total: number };
+  }
+  | { ok: false; reason: "not-found" | "stale" | "conflict" | "version-moved" }
+  | {
+    /** The client named hunks this proposal's diff does not contain. */
+    ok: false;
+    reason: "unknown-hunks";
+    ids: string[];
+  };
+
+/**
+ * The proposal row moved between the read and the write, so the approval has to
+ * come apart again.
+ *
+ * Thrown rather than returned, and that is not a style choice: returning a value
+ * from a `$transaction` callback **commits** it, and by this point `head` has
+ * already been moved. The only way to unwind that is to leave through an
+ * exception, so the failure travels as one and is converted back to a result
+ * outside — which is why the route still sees an ordinary `ApproveResult` and
+ * not a 500.
+ */
+class ProposalMovedError extends Error {
+  constructor() {
+    super("the proposal was rewritten during approval");
+    this.name = "ProposalMovedError";
+  }
+}
+
+/** A refusal, on its way back out of {@link materializePartial}. */
+type PartialRefusal = Extract<ApproveResult, { ok: false }>;
+
+/**
+ * The state a partial approval promotes: the proposal, minus the refused hunks.
+ *
+ * **Nothing here comes from the client except ids.** The diff is recomputed from
+ * this transaction's own two rows, and an id the recomputation does not produce
+ * is a refusal rather than a silent drop — accepting a selection whose meaning
+ * the two sides disagree about would apply decisions the author never made, with
+ * a 200 and no way to tell (`proposalDiff.ts`'s `UnknownHunkError`).
+ *
+ * The base is the revision the proposal was built on. It is also, by the time
+ * this runs, what `head` must still be — the compare-and-set below insists on
+ * it — so diffing against it is diffing against the document, and the reviewer's
+ * hunks and these hunks are the same hunks.
+ *
+ * `data` is read here and not in the caller's `select`, because the caller's
+ * query runs on **every** approval and this one only when something was refused.
+ * A whole-document Json column is not worth fetching to ignore.
+ */
+const materializePartial = async (
+  tx: Prisma.TransactionClient,
+  revisionId: string,
+  baseRevisionId: string | null,
+  rejected: readonly string[],
+): Promise<
+  | { ok: true; state: StoredState; applied: number; total: number }
+  | { ok: false; refusal: PartialRefusal }
+> => {
+  const row = await tx.revision.findUnique({
+    where: { id: revisionId },
+    select: { data: true },
+  });
+  if (!row) return { ok: false, refusal: { ok: false, reason: "not-found" } };
+
+  let base: StoredState;
+  if (baseRevisionId === null) {
+    // A proposal against a document with no head yet: every block reads as an
+    // insert, which is exactly what reviewing one block at a time should show.
+    base = emptyState();
+  } else {
+    const baseRow = await tx.revision.findUnique({
+      where: { id: baseRevisionId },
+      select: { data: true },
+    });
+    // The base revision is gone, so there is no state to review against and
+    // nothing to invent one from. Reported as `conflict` because that is what
+    // it is: `head` cannot honestly equal a row that does not exist, and the
+    // compare-and-set is the thing that would have said so.
+    if (!baseRow) return { ok: false, refusal: { ok: false, reason: "conflict" } };
+    base = baseRow.data as unknown as StoredState;
+  }
+
+  const proposal = row.data as unknown as StoredState;
+  const total = diffProposal(base, proposal).length;
+  try {
+    return {
+      ok: true,
+      state: applyDecisions(base, proposal, rejected),
+      // Ids may repeat in a client's list without meaning two refusals.
+      applied: total - new Set(rejected).size,
+      total,
+    };
+  } catch (error) {
+    if (error instanceof UnknownHunkError) {
+      return {
+        ok: false,
+        refusal: { ok: false, reason: "unknown-hunks", ids: [...error.ids] },
+      };
+    }
+    throw error;
+  }
+};
 
 /**
  * Make the pending proposal the document: move `head` and clear the flag, in
@@ -600,69 +717,142 @@ export type ApproveResult =
  * belt-and-braces about it too — `planStaleMarking` skips the row whose id is
  * the new head — but the reason it is not called here is that there is nothing
  * to mark: at most one pending proposal exists per document, and this is it.
+ *
+ * ### Taking only part of it
+ *
+ * `decisions.rejectedHunks` names hunks the author refused, and the row's `data`
+ * is rewritten to the proposal minus those blocks before it becomes head. Three
+ * things about that are deliberate:
+ *
+ * - **One path, not two.** An empty or absent selection skips the merge
+ *   entirely and writes exactly what it always wrote. A partial approval is the
+ *   same transaction with one extra column in the `data` argument, so there is
+ *   no second approval to keep in step with this one.
+ * - **The refused ops are discarded**, on `rejectProposal`'s rationale (§3.4):
+ *   the content is regenerable and it was refused on purpose. Splitting the row
+ *   into an approved half and a surviving pending remainder is not available —
+ *   the remainder would need a *new* `baseRevisionId`, which is precisely the
+ *   silent clobber §3.2 forbids, and for the length of the transaction two
+ *   pending rows would exist for one document, which `revision_one_pending_
+ *   per_document` refuses outright.
+ * - **`ops` is left as written.** It records what the agent proposed; the
+ *   approved `data` records what was accepted. Rewriting the ops to match the
+ *   decision would destroy the only record of the difference, which is the one
+ *   thing a partial approval creates.
  */
 const approveProposal = async (
   documentId: string,
   revisionId: string,
-): Promise<ApproveResult> =>
-  prisma.$transaction(async (tx): Promise<ApproveResult> => {
-    const proposal = await tx.revision.findFirst({
-      where: { id: revisionId, documentId, proposedAt: { not: null } },
-      select: {
-        id: true,
-        baseRevisionId: true,
-        staleAt: true,
-        // For the change feed's payload, and taken from the *document* rather
-        // than the revision: the person entitled to hear that a proposal was
-        // resolved is the one who owns the document, the same line
-        // `countPendingProposals` and the approve route both already draw. It
-        // is an extra column on a query that had to run anyway, not an extra
-        // round trip.
-        document: { select: { authorId: true } },
-      },
+  decisions: ApprovalDecisions = {},
+): Promise<ApproveResult> => {
+  try {
+    return await prisma.$transaction(async (tx): Promise<ApproveResult> => {
+      const proposal = await tx.revision.findFirst({
+        where: { id: revisionId, documentId, proposedAt: { not: null } },
+        select: {
+          id: true,
+          baseRevisionId: true,
+          staleAt: true,
+          // The squash's compare-and-set token (§3.2), read here so approval can
+          // hold the row still while it merges: see `expectedVersion`.
+          version: true,
+          // Short, and only read on the partial path — unlike `data`, it costs
+          // nothing to carry on every approval.
+          summary: true,
+          // For the change feed's payload, and taken from the *document* rather
+          // than the revision: the person entitled to hear that a proposal was
+          // resolved is the one who owns the document, the same line
+          // `countPendingProposals` and the approve route both already draw. It
+          // is an extra column on a query that had to run anyway, not an extra
+          // round trip.
+          document: { select: { authorId: true } },
+        },
+      });
+      if (!proposal) return { ok: false, reason: "not-found" };
+
+      const plan = planApproval(proposal, decisions);
+      if (plan.kind === "stale") return { ok: false, reason: "stale" };
+      if (plan.kind === "version-moved") {
+        return { ok: false, reason: "version-moved" };
+      }
+
+      // Everything the merge needs is decided before anything is written, so a
+      // refused selection returns from a transaction that wrote nothing.
+      let content: { data: Prisma.InputJsonValue; summary: string | null } | null =
+        null;
+      let partial: { applied: number; total: number } | undefined;
+      if (plan.rejected.length > 0) {
+        const merged = await materializePartial(
+          tx,
+          revisionId,
+          proposal.baseRevisionId,
+          plan.rejected,
+        );
+        if (!merged.ok) return merged.refusal;
+        content = {
+          data: asJson(merged.state),
+          summary: noteApplied(proposal.summary, merged.applied, merged.total),
+        };
+        partial = { applied: merged.applied, total: merged.total };
+      }
+
+      const { count } = await tx.document.updateMany({
+        where: { id: documentId, head: plan.expectedHead },
+        data: { head: revisionId },
+      });
+      if (count === 0) return { ok: false, reason: "conflict" };
+
+      // Clearing `proposedAt` is what turns the row into history — and it is what
+      // frees the document's single pending slot. `ops`, `origin` and
+      // `baseRevisionId` stay: approval keeps the batches (§3.3), and they are
+      // the record of where this revision came from.
+      //
+      // `updateMany` under a version guard rather than `update` by id, on both
+      // paths. A batch that squashed onto this row after it was read would
+      // otherwise be promoted to head unreviewed — the whole-proposal approval
+      // had that hole before there was anything partial about it, and this is
+      // the same write, fenced. A miss throws, because `head` has already moved
+      // and the transaction has to come apart.
+      const written = await tx.revision.updateMany({
+        where: { id: revisionId, version: plan.expectedVersion },
+        data: { ...plan.patch, ...(content ?? {}) },
+      });
+      if (written.count === 0) throw new ProposalMovedError();
+
+      // Only here, and inside the transaction: every refusal above returns
+      // without announcing, and a rollback discards these two notifications
+      // along with the write (docs/plans/changes_detection.md §2.1). Two events
+      // rather than one because approval is genuinely both things — the proposal
+      // stopped being pending, *and* `head` moved, so the document's content
+      // changed and any client holding it has to re-fetch. Leaving the second to
+      // be inferred from the first would put that reasoning in every consumer.
+      const authorId = proposal.document.authorId;
+      await notifyChange(tx, {
+        kind: "proposal.resolved",
+        id: documentId,
+        revisionId,
+        resolution: "approved",
+        authorId,
+        origin: APP_ORIGIN,
+      });
+      await notifyChange(tx, {
+        kind: "document.updated",
+        id: documentId,
+        authorId,
+        origin: APP_ORIGIN,
+      });
+
+      return { ok: true, head: revisionId, ...(partial ? { partial } : {}) };
     });
-    if (!proposal) return { ok: false, reason: "not-found" };
-
-    const plan = planApproval(proposal);
-    if (plan.kind === "stale") return { ok: false, reason: "stale" };
-
-    const { count } = await tx.document.updateMany({
-      where: { id: documentId, head: plan.expectedHead },
-      data: { head: revisionId },
-    });
-    if (count === 0) return { ok: false, reason: "conflict" };
-
-    // Clearing `proposedAt` is what turns the row into history — and it is what
-    // frees the document's single pending slot. `ops`, `origin` and
-    // `baseRevisionId` stay: approval keeps the batches (§3.3), and they are
-    // the record of where this revision came from.
-    await tx.revision.update({ where: { id: revisionId }, data: plan.patch });
-
-    // Only here, and inside the transaction: the three refusals above return
-    // without announcing, and a rollback discards these two notifications along
-    // with the write (docs/plans/changes_detection.md §2.1). Two events rather
-    // than one because approval is genuinely both things — the proposal stopped
-    // being pending, *and* `head` moved, so the document's content changed and
-    // any client holding it has to re-fetch. Leaving the second to be inferred
-    // from the first would put that reasoning in every consumer.
-    const authorId = proposal.document.authorId;
-    await notifyChange(tx, {
-      kind: "proposal.resolved",
-      id: documentId,
-      revisionId,
-      resolution: "approved",
-      authorId,
-      origin: APP_ORIGIN,
-    });
-    await notifyChange(tx, {
-      kind: "document.updated",
-      id: documentId,
-      authorId,
-      origin: APP_ORIGIN,
-    });
-
-    return { ok: true, head: revisionId };
-  });
+  } catch (error) {
+    // The one failure that has to unwind a write it already made. Converted back
+    // to a result here so the route's answer stays a 409 rather than a 500.
+    if (error instanceof ProposalMovedError) {
+      return { ok: false, reason: "version-moved" };
+    }
+    throw error;
+  }
+};
 
 /**
  * Throw the proposal away. No `rejectedAt`, no retention, no extra filter on

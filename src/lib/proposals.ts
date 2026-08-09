@@ -38,6 +38,14 @@
  * folded onto, which is what makes "ask Claude again against current content"
  * something that happens rather than something a document says (§3.6).
  *
+ * **How much of it the author took.** Approval may accept a subset:
+ * `planApproval` carries the refused hunk ids through and names the *two*
+ * compare-and-sets that have to hold — `Document.head` against the base, and
+ * the proposal row's own `version` against what the reviewer's hunks were
+ * computed from. The ids are ids; what they mean is recomputed from the two
+ * stored states by `proposalDiff.ts`, which is the only reason a client may be
+ * allowed to name anything here at all.
+ *
  * This module has **no imports on purpose**. It is the part that is decidable
  * without a database: `repositories/revision.ts` and `repositories/document.ts`
  * supply rows and execute plans, and `__tests__/proposals.test.ts` exercises
@@ -444,11 +452,58 @@ export const foldProposal = (
 
 // ─── Approval ────────────────────────────────────────────────────────────────
 
+/**
+ * What the reviewer decided, when they decided anything at all.
+ *
+ * Both fields are optional and an absent object is the whole-proposal approval
+ * that existed before per-hunk review — one approve path, not two. A reviewer
+ * who refused nothing is indistinguishable, on purpose, from a reviewer who was
+ * never offered the choice.
+ */
+export interface ApprovalDecisions {
+  /**
+   * The ids of the hunks the author refused — `proposalDiff.ts`'s vocabulary.
+   *
+   * Ids only. The content behind them is **recomputed** from the two stored
+   * states, never taken from the client: a hunk id is a pure function of
+   * `(base, proposal)`, so the server can say what the author's selection meant
+   * without trusting them for a single byte of document.
+   */
+  rejectedHunks?: readonly string[];
+  /**
+   * The `version` the reviewed hunks were computed from, if the reviewer said.
+   *
+   * A **third** fence, and it guards something neither of the other two can see.
+   * `baseRevisionId` catches the author saving underneath (§3.4) and `version`
+   * catches two agent batches racing each other (§3.2) — but an agent squashing
+   * a further batch onto the proposal *while the review page is open* moves
+   * neither `head` nor the base. The hunks on screen then describe a state the
+   * row has moved past, and applying that selection would accept and refuse
+   * blocks the author never saw. Supplying the version the hunks came from turns
+   * that into a refusal the UI can answer by recomputing.
+   *
+   * Optional because the whole-proposal approval has nothing to pin: it accepts
+   * the row as it stands, whatever batch that now includes.
+   */
+  version?: number;
+}
+
 export type ApprovalPlan =
   | {
     /** The base stopped being head, so the proposal's content is built on a
      * state that no longer exists. Refuse rather than rebase (§3.6). */
     kind: "stale";
+  }
+  | {
+    /**
+     * The row moved on since the reviewer computed their hunks — an agent
+     * squashed another batch onto it (§3.2). Distinct from `stale`, and from
+     * the head compare-and-set missing, because the answer is different: the
+     * proposal is still approvable, the *selection* is what expired.
+     */
+    kind: "version-moved";
+    /** What the row says now, so a caller can report the gap. */
+    version: number;
   }
   | {
     kind: "approve";
@@ -460,16 +515,78 @@ export type ApprovalPlan =
      * instead of quietly discarding your edit (§3.4).
      */
     expectedHead: string | null;
+    /**
+     * The compare-and-set value for the *proposal row itself*.
+     *
+     * A different fence from `expectedHead`, and neither substitutes for the
+     * other: head guards the document against the author's own save, this
+     * guards the row against a batch landing between the read that produced the
+     * merge and the write that stores it. Without it, a squash committed inside
+     * that window would be silently promoted to head unreviewed — the plain
+     * approval had this hole too, and closing it is not a second path but the
+     * same one, guarded.
+     */
+    expectedVersion: number;
+    /**
+     * The hunks to leave out of the state that becomes head. Empty is the whole
+     * proposal, and empty must reach storage as *today's* write — the row's
+     * `data` untouched, not re-materialized into an equal-but-rewritten copy.
+     */
+    rejected: readonly string[];
     /** What turns the row into history. Everything else — `ops`, `origin`,
      * `baseRevisionId` — is kept as provenance (§3.3: approval keeps the ops). */
     patch: { proposedAt: null; staleAt: null };
   };
 
+/**
+ * Whether this proposal may be approved, and under which two compare-and-sets.
+ *
+ * Staleness is asked **first**. A stale proposal cannot be approved on any
+ * version, so answering "your hunks are out of date" would send the reviewer to
+ * recompute a selection over a row that could only ever refuse them.
+ */
 export const planApproval = (
-  proposal: { baseRevisionId: string | null; staleAt: Date | null },
-): ApprovalPlan =>
-  proposal.staleAt ? { kind: "stale" } : {
+  proposal: {
+    baseRevisionId: string | null;
+    staleAt: Date | null;
+    version: number;
+  },
+  decisions: ApprovalDecisions = {},
+): ApprovalPlan => {
+  if (proposal.staleAt) return { kind: "stale" };
+  if (
+    decisions.version !== undefined && decisions.version !== proposal.version
+  ) {
+    return { kind: "version-moved", version: proposal.version };
+  }
+  return {
     kind: "approve",
     expectedHead: proposal.baseRevisionId,
+    expectedVersion: proposal.version,
+    rejected: decisions.rejectedHunks ?? [],
     patch: { proposedAt: null, staleAt: null },
   };
+};
+
+/**
+ * The rail line for a proposal only part of which was taken.
+ *
+ * `ops` records what the agent proposed and is left exactly as written (§3.3);
+ * the approved `data` records what was accepted. Neither says how much of the
+ * one became the other, and a history row reading "Rewrote the introduction"
+ * when two of its five changes were refused is a small lie the author has no
+ * way to catch later. So the count is appended rather than the summary replaced
+ * — the agent's own wording is still the useful half.
+ *
+ * A whole approval returns the summary untouched, which is what keeps the
+ * absent-decisions path byte-identical to the one that predates review.
+ */
+export const noteApplied = (
+  summary: string | null,
+  applied: number,
+  total: number,
+): string | null => {
+  if (applied === total) return summary;
+  const note = `Applied ${applied} of ${total} proposed changes.`;
+  return summary ? `${summary} — ${note}` : note;
+};

@@ -3,6 +3,7 @@ import {
   historyOf,
   isProposal,
   isProposalStale,
+  noteApplied,
   type PendingProposal,
   planApproval,
   planStaleMarking,
@@ -372,30 +373,121 @@ describe("foldProposal — replacing a stale proposal", () => {
 });
 
 describe("planApproval", () => {
+  const approvable = { baseRevisionId: "head-1", staleAt: null, version: 3 };
+
   it("compares against the base, not against whatever head is now", () => {
-    const plan = planApproval({ baseRevisionId: "head-1", staleAt: null });
+    const plan = planApproval(approvable);
     if (plan.kind !== "approve") throw new Error("expected an approval");
     expect(plan.expectedHead).toBe("head-1");
   });
 
   it("clears the pending flag and nothing else", () => {
-    const plan = planApproval({ baseRevisionId: "head-1", staleAt: null });
+    const plan = planApproval(approvable);
     if (plan.kind !== "approve") throw new Error("expected an approval");
     expect(plan.patch).toEqual({ proposedAt: null, staleAt: null });
   });
 
   it("approves a proposal built on no head at all", () => {
-    const plan = planApproval({ baseRevisionId: null, staleAt: null });
+    const plan = planApproval({ ...approvable, baseRevisionId: null });
     if (plan.kind !== "approve") throw new Error("expected an approval");
     expect(plan.expectedHead).toBeNull();
   });
 
   it("refuses a proposal whose base stopped being head", () => {
     expect(
-      planApproval({
-        baseRevisionId: "head-1",
-        staleAt: at("2026-08-06T12:00:00Z"),
-      }).kind,
+      planApproval({ ...approvable, staleAt: at("2026-08-06T12:00:00Z") }).kind,
     ).toBe("stale");
+  });
+
+  // ── The second fence (§3.2's `version`, spent at approval time) ────────────
+
+  it("fences the row itself as well as head", () => {
+    // Two compare-and-sets, and neither substitutes for the other: head guards
+    // the document against the author's own save, `version` guards the row
+    // against a batch landing between the read and the write.
+    const plan = planApproval(approvable);
+    if (plan.kind !== "approve") throw new Error("expected an approval");
+    expect(plan.expectedVersion).toBe(3);
+    expect(plan.expectedHead).toBe("head-1");
+  });
+
+  it("refuses when the reviewer's hunks came from an older version", () => {
+    const plan = planApproval(approvable, { version: 2, rejectedHunks: ["h"] });
+    expect(plan.kind).toBe("version-moved");
+    if (plan.kind !== "version-moved") throw new Error("expected a refusal");
+    // What the row says now, so the caller can report the gap rather than a
+    // bare failure.
+    expect(plan.version).toBe(3);
+  });
+
+  it("accepts a selection pinned to the version the row still holds", () => {
+    const plan = planApproval(approvable, { version: 3, rejectedHunks: ["h"] });
+    if (plan.kind !== "approve") throw new Error("expected an approval");
+    expect(plan.rejected).toEqual(["h"]);
+  });
+
+  it("asks staleness before version, because stale is unrecoverable", () => {
+    // A stale proposal cannot be approved on *any* version. Answering "your
+    // hunks are out of date" would send the reviewer round to recompute a
+    // selection over a row that could only ever refuse them.
+    expect(
+      planApproval(
+        { ...approvable, staleAt: at("2026-08-06T12:00:00Z") },
+        { version: 2 },
+      ).kind,
+    ).toBe("stale");
+  });
+
+  it("does not pin a version the reviewer never claimed", () => {
+    // The whole-proposal approval has nothing to pin: it takes the row as it
+    // stands, whatever batch that now includes.
+    const plan = planApproval(approvable, { rejectedHunks: [] });
+    expect(plan.kind).toBe("approve");
+  });
+
+  // ── The decisions themselves ──────────────────────────────────────────────
+
+  it("treats no decisions as the whole proposal", () => {
+    const plan = planApproval(approvable);
+    if (plan.kind !== "approve") throw new Error("expected an approval");
+    expect(plan.rejected).toEqual([]);
+  });
+
+  it("never puts anything but the flag clear in the patch", () => {
+    // `data` and `summary` are the *repository's* to add, from a state it
+    // recomputed. A patch built here could only carry what the client sent.
+    const plan = planApproval(approvable, { rejectedHunks: ["a", "b"] });
+    if (plan.kind !== "approve") throw new Error("expected an approval");
+    expect(Object.keys(plan.patch).sort()).toEqual(["proposedAt", "staleAt"]);
+  });
+
+  it("leaves the base alone whatever was refused", () => {
+    // The one invariant with no database constraint behind it (§3.2): approval
+    // reads `baseRevisionId` and never writes it, partial or not.
+    const plan = planApproval(approvable, { rejectedHunks: ["a"] });
+    if (plan.kind !== "approve") throw new Error("expected an approval");
+    expect(plan.expectedHead).toBe("head-1");
+    expect(plan.patch).not.toHaveProperty("baseRevisionId");
+  });
+});
+
+describe("noteApplied", () => {
+  it("says nothing when the whole proposal was taken", () => {
+    expect(noteApplied("Rewrote the intro.", 5, 5)).toBe("Rewrote the intro.");
+    expect(noteApplied(null, 0, 0)).toBeNull();
+  });
+
+  it("appends to the agent's wording rather than replacing it", () => {
+    expect(noteApplied("Rewrote the intro.", 3, 5)).toBe(
+      "Rewrote the intro. — Applied 3 of 5 proposed changes.",
+    );
+  });
+
+  it("stands alone when the agent left no summary", () => {
+    expect(noteApplied(null, 3, 5)).toBe("Applied 3 of 5 proposed changes.");
+  });
+
+  it("records a proposal every part of which was refused", () => {
+    expect(noteApplied(null, 0, 4)).toBe("Applied 0 of 4 proposed changes.");
   });
 });

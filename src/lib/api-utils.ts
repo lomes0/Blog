@@ -16,33 +16,59 @@ import type { z } from "zod";
  * @example
  * throw new ApiError(401, "Unauthorized", "Please sign in");
  */
-export class ApiError extends Error {
-  public readonly status: number;
-  public readonly title: string;
-  public readonly subtitle?: string;
+export interface ApiErrorOptions {
+  /**
+   * A stable machine-readable tag on the error body, for the rare case where
+   * two failures share a status and the client must act on them differently.
+   *
+   * Deliberately not on every error. Prose is what a user reads and what a
+   * developer changes freely; a code is a contract, so it exists only where a
+   * caller genuinely has to branch — approval's two 409s, where "someone saved
+   * first" ends the attempt and "this changed while you were reviewing" means
+   * recompute and try again. Matching on the title instead would make the
+   * wording load-bearing without anything saying so.
+   */
+  code?: string;
   /**
    * Extra response headers. Exists for `WWW-Authenticate`, which RFC 7235 says
    * a 401 should carry and which a client cannot infer from the body.
    */
+  headers?: Record<string, string>;
+}
+
+export class ApiError extends Error {
+  public readonly status: number;
+  public readonly title: string;
+  public readonly subtitle?: string;
+  public readonly code?: string;
   public readonly headers?: Record<string, string>;
 
   constructor(
     status: number,
     title: string,
     subtitle?: string,
-    headers?: Record<string, string>,
+    options?: ApiErrorOptions,
   ) {
     super(subtitle ? `${title}: ${subtitle}` : title);
     this.name = "ApiError";
     this.status = status;
     this.title = title;
     this.subtitle = subtitle;
-    this.headers = headers;
+    this.code = options?.code;
+    this.headers = options?.headers;
   }
 
   toResponse(): NextResponse {
     return NextResponse.json(
-      { error: { title: this.title, subtitle: this.subtitle } },
+      {
+        error: {
+          title: this.title,
+          subtitle: this.subtitle,
+          // Omitted rather than sent as null, so the body of an error with no
+          // code is byte-for-byte what it was before codes existed.
+          ...(this.code ? { code: this.code } : {}),
+        },
+      },
       { status: this.status, headers: this.headers },
     );
   }
@@ -141,7 +167,7 @@ async function requireAgentToken(request: Request): Promise<AgentTokenSummary> {
     401,
     "Unauthorized",
     "A valid agent token is required",
-    { "WWW-Authenticate": "Bearer" },
+    { headers: { "WWW-Authenticate": "Bearer" } },
   );
 }
 
