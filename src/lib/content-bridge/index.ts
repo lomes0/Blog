@@ -12,6 +12,7 @@
  * and in the MCP server, and is testable without mounting anything.
  */
 export {
+  BLOCK_CONTAINERS,
   formatAddress,
   locate,
   parseAddress,

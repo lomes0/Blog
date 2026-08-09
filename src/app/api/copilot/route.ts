@@ -19,6 +19,12 @@ import {
   opSchema,
   RECOVERY_DOC,
 } from "@/lib/content-bridge/schema";
+import {
+  type CapturedSelection,
+  MAX_ADDRESS_LENGTH,
+  MAX_SELECTION_BLOCKS,
+  MAX_SELECTION_TEXT,
+} from "@/lib/ai/selection";
 
 // Node runtime (not edge): auth uses the Prisma adapter, which cannot run on edge.
 
@@ -93,7 +99,14 @@ const readTools = {
   }),
   get_selection: tool({
     description:
-      "Get the user's current text selection in the open document, if any.",
+      "The user's selection in the open document right now: the selected " +
+      "text, the block address and character offset of each end, and every " +
+      "block the range touches — or whole block addresses when they have " +
+      "selected blocks rather than text. Null when nothing is selected. " +
+      "The SELECTION section of the system prompt already carries this as of " +
+      "the moment the user sent their message, so call this only to check " +
+      "whether they have moved it since. Offsets are into each block's plain " +
+      "text; read_blocks the addresses to see the content.",
     inputSchema: z.object({}),
   }),
 };
@@ -177,6 +190,43 @@ const messageSchema = z.object({
   parts: z.array(z.unknown()),
 }).passthrough();
 
+/**
+ * The user's selection, captured client-side from the live editor.
+ *
+ * Validated rather than trusted, and capped on every axis, because this is the
+ * one field of the body that goes into the system prompt verbatim: an
+ * unbounded `text` is an unbounded prompt paid for per turn. The caps are the
+ * same constants the capture truncates to, so a well-behaved client is never
+ * refused — an over-long field means something other than the editor sent it.
+ */
+const selectionPointSchema = z.object({
+  id: z.string().min(1).max(MAX_ADDRESS_LENGTH),
+  offset: z.number().int().min(0),
+}).strict();
+
+const addressesSchema = z
+  .array(z.string().min(1).max(MAX_ADDRESS_LENGTH))
+  .max(MAX_SELECTION_BLOCKS);
+
+const selectionSchema: z.ZodType<CapturedSelection> = z.discriminatedUnion(
+  "kind",
+  [
+    z.object({
+      kind: z.literal("blocks"),
+      ids: addressesSchema.min(1),
+      truncated: z.boolean().optional(),
+    }).strict(),
+    z.object({
+      kind: z.literal("text"),
+      text: z.string().max(MAX_SELECTION_TEXT),
+      anchor: selectionPointSchema,
+      focus: selectionPointSchema,
+      ids: addressesSchema,
+      truncated: z.boolean().optional(),
+    }).strict(),
+  ],
+);
+
 const copilotBodySchema = z.object({
   messages: z.array(messageSchema).default([]),
   documentTitle: z.string().optional(),
@@ -184,6 +234,7 @@ const copilotBodySchema = z.object({
   currentPath: z.string().optional(),
   provider: z.enum(AI_PROVIDERS),
   model: z.string().min(1, "Model ID is required"),
+  selection: selectionSchema.nullish(),
 });
 
 export const POST = userRoute(async (req, { user }) => {
@@ -193,6 +244,7 @@ export const POST = userRoute(async (req, { user }) => {
     currentPath,
     provider,
     model: modelId,
+    selection,
   } = await parseBody(req, copilotBodySchema);
 
   // An open document is authorized before anything is said about it: reading is
@@ -235,7 +287,14 @@ export const POST = userRoute(async (req, { user }) => {
     system: COPILOT_AGENT_SYSTEM_PROMPT(
       currentPath ?? null,
       documentTitle ?? null,
-      { canWriteDocument, commandTools: commandToolsPromptSection() },
+      {
+        canWriteDocument,
+        commandTools: commandToolsPromptSection(),
+        // Only ever about the open document, so it is dropped with the
+        // document — a selection left over from a pane that is no longer the
+        // subject would name blocks in a post the turn is not about.
+        selection: currentPath ? selection : null,
+      },
     ),
     messages: modelMessages,
     tools: {

@@ -44,7 +44,7 @@
  *   proposal went stale", which is reported on a *successful* write as
  *   `outcome: "replaced"`.
  */
-import { $getSelection, $isRangeSelection, type LexicalEditor } from "lexical";
+import type { LexicalEditor } from "lexical";
 import { apiClient, ApiClientError } from "@/api";
 import { postsSelectors, store } from "@/store";
 import { getPost, refreshProposals } from "@/store/app";
@@ -67,6 +67,7 @@ import {
   normalizeDocId,
   searchDocuments,
 } from "./virtualRepo";
+import { captureSelection } from "./captureSelection";
 
 const getDocs = (): Post[] => postsSelectors.selectAll(store.getState());
 
@@ -273,14 +274,12 @@ export async function runReadTool(
       };
     }
 
-    case "get_selection": {
-      if (!editor) return { selection: "" };
-      const selection = editor.getEditorState().read(() => {
-        const sel = $getSelection();
-        return $isRangeSelection(sel) ? sel.getTextContent() : "";
-      });
-      return { selection };
-    }
+    // The pull half of the selection context. The push half — what rides on
+    // every turn's request — is the same function, called from `CopilotChat`
+    // (docs/plans/haklex-adoption.md §7.3). One implementation on purpose: a
+    // model that asks after being told must not get a different answer.
+    case "get_selection":
+      return { selection: captureSelection(editor) };
 
     default:
       return { error: `Unknown read tool: ${name}` };

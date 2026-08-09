@@ -16,6 +16,8 @@ import {
   runReadTool,
   runWriteTool,
 } from "@/editor/utils/copilotAgentExecutors";
+import { captureSelection } from "@/editor/utils/captureSelection";
+import type { CapturedSelection } from "@/lib/ai/selection";
 import { isReadTool, isWriteTool } from "@/lib/ai/copilotAgentTools";
 import {
   isAutoRunCommandTool,
@@ -147,6 +149,20 @@ const CopilotChat: React.FC<CopilotChatProps> = (
   const llmConfigRef = useRef(llmConfig);
   llmConfigRef.current = llmConfig;
 
+  /**
+   * What the user had selected when they sent the turn
+   * (docs/plans/haklex-adoption.md §7.3).
+   *
+   * Held in a ref and captured once in `sendPrompt` rather than read here,
+   * because `prepareSendMessagesRequest` also runs for every automatic resume
+   * of the agent loop: reading the editor there would let a stray click
+   * mid-turn re-aim "rewrite this" at a different paragraph between one tool
+   * call and the next. The selection the agent is told about is the one that
+   * was live when the user asked, and it stays that for the whole turn —
+   * `get_selection` is what re-reads it on purpose.
+   */
+  const selectionRef = useRef<CapturedSelection | null>(null);
+
   const [transport] = useState(
     () =>
       new DefaultChatTransport({
@@ -159,6 +175,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
             currentPath: documentId ? `${documentId}.md` : undefined,
             provider: llmConfigRef.current.provider,
             model: llmConfigRef.current.model,
+            selection: documentId ? selectionRef.current : null,
           },
         }),
       }),
@@ -340,6 +357,9 @@ const CopilotChat: React.FC<CopilotChatProps> = (
     if (!text.trim() || isLoading || disabledReason || starting.current) return;
     starting.current = true;
     try {
+      // Before the flush, not after: a save is not supposed to disturb the
+      // selection, and capturing first means it cannot.
+      selectionRef.current = captureSelection(editorRefRef.current.current);
       await triggerSave();
       sendMessage({ text });
     } finally {
