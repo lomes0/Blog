@@ -1,6 +1,11 @@
 "use client";
-import { LexicalEditor } from "lexical";
-import { ImageNode } from "@/editor/nodes/ImageNode";
+import {
+  $parseSerializedNode,
+  $setState,
+  LexicalEditor,
+  SKIP_SCROLL_INTO_VIEW_TAG,
+} from "lexical";
+import { $isImageNode, ImageNode } from "@/editor/nodes/ImageNode";
 import { $isSketchNode, SketchNode } from "@/editor/nodes/SketchNode";
 import { $isGraphNode, GraphNode } from "@/editor/nodes/GraphNode";
 import { $patchStyle, getStyleObjectFromCSS } from "@/editor/nodes/utils";
@@ -11,6 +16,9 @@ import {
   Captions,
   CaptionsOff,
   Contrast,
+  Copy,
+  Download,
+  ExternalLink,
   Pencil,
   PenLine,
   Trash2,
@@ -18,6 +26,14 @@ import {
 import { $isIFrameNode, IFrameNode } from "@/editor/nodes/IFrameNode";
 import { ICON_SIZE } from "@/theme/icons";
 import { getActionButtonClassName, Tooltip, TooltipProvider } from "@/editor/ui";
+import { ANNOUNCE_COMMAND } from "@/editor/commands";
+import { blockIdState } from "@/lib/content-bridge";
+import {
+  imageFileName,
+  isDirectDownloadSrc,
+  isOpenableImageSrc,
+  isSafeImageSrc,
+} from "@/editor/utils/imageSrc";
 import * as css from "./tools.css";
 
 /**
@@ -61,6 +77,22 @@ const FormatImageLeft = () => (
  */
 const buttonClass = getActionButtonClassName({ size: "md", icon: true });
 
+/**
+ * Hand a URL to the browser's downloader.
+ *
+ * The anchor is appended before it is clicked because Firefox ignores a click
+ * on an element that is not in the document.
+ */
+function saveAs(href: string, fileName: string): void {
+  const link = document.createElement("a");
+  link.href = href;
+  link.download = fileName;
+  link.rel = "noopener";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
 export default function ImageTools(
   { editor, node }: {
     editor: LexicalEditor;
@@ -102,20 +134,128 @@ export default function ImageTools(
     setStyle(currentNodeStyle());
   }, [node, currentNodeStyle]);
 
+  /**
+   * Every write this toolbar makes targets the figure the reader is looking
+   * at, and the caret is somewhere else entirely — usually offscreen, because
+   * selecting an image is a node selection and never moves it. Committing an
+   * update untagged makes Lexical scroll that caret back into view, yanking
+   * the figure the reader just acted on off the screen.
+   *
+   * haklex tags the same updates (`useImageActions.ts:69-71`) with the string
+   * `'skip-scroll-into-view'`; `SKIP_SCROLL_INTO_VIEW_TAG` is `lexical`'s own
+   * export of it, so the spelling cannot drift from the version installed.
+   *
+   * Deliberately *not* applied to delete below: that one calls
+   * `selectPrevious()`, so the caret genuinely moves and the reader should be
+   * taken to where it landed.
+   */
+  const updateNode = useCallback((run: () => void) => {
+    editor.update(run, { tag: SKIP_SCROLL_INTO_VIEW_TAG });
+  }, [editor]);
+
   function updateStyle(newStyle: Record<string, string | null>) {
     setStyle({ ...style, ...newStyle });
-    editor.update(() => {
+    updateNode(() => {
       $patchStyle(node, newStyle);
     });
   }
 
   const toggleShowCaption = () => {
-    editor.update(() => {
+    updateNode(() => {
       node.setShowCaption(!node.getShowCaption());
     });
   };
 
+  /**
+   * Insert a copy of this figure after it.
+   *
+   * The round trip through serialized JSON is what keeps the subclass: three
+   * classes extend `ImageNode`, and `$parseSerializedNode` dispatches on the
+   * serialized `type` through the editor's registry, so a graph is rebuilt by
+   * `GraphNode.importJSON` with its `value` intact rather than degraded to a
+   * bare image. haklex's version hand-constructs an `$createImageNode` from
+   * nine getters, which cannot do that — and would also share one caption
+   * editor between the two nodes, because `clone()` passes the instance
+   * through. `importJSON` parses a fresh nested editor from the caption's
+   * serialized state instead.
+   *
+   * Two fields are cleared rather than copied, both because they name the node
+   * rather than describe it:
+   *
+   *  - `__id` is the anchor-link target `LinkDialog` assigns, and it keeps it
+   *    unique by clearing whichever figure held it before. Two figures sharing
+   *    one is a duplicate DOM `id` and an ambiguous in-document link.
+   *  - the persistent block id (`src/lib/content-bridge/blockId.ts`) is how an
+   *    agent addresses a block across edits. Copying it would put two blocks
+   *    behind one address, and the write that followed would land on whichever
+   *    the walk reached first.
+   */
+  const duplicateNode = () => {
+    updateNode(() => {
+      // `getLatest()` because the toolbar holds whichever version of the node
+      // the last selection change handed it — a resize since then would
+      // otherwise be copied at its old size.
+      const latest = node.getLatest();
+      const copy = $parseSerializedNode(latest.exportJSON());
+      if ($isImageNode(copy)) copy.setId("");
+      $setState(copy, blockIdState, "");
+      latest.insertAfter(copy);
+    });
+  };
+
+  const src = node.getSrc();
+
+  const openInNewTab = () => {
+    if (!isOpenableImageSrc(src)) return;
+    window.open(src, "_blank", "noopener,noreferrer");
+  };
+
+  /**
+   * Save the figure to disk.
+   *
+   * Two cases, and only one of them is a plain anchor. An uploaded image is
+   * `/api/attachments/…` — same origin, so `download` is honoured and the
+   * session cookie rides along to a route that requires it. A graph or sketch
+   * is a `data:` URL, same again. A *pasted external* image is neither: the
+   * `download` attribute is ignored cross-origin, so the anchor would navigate
+   * away and lose the reader's place. Those go through `fetch`, which needs
+   * the host to grant CORS — and when it does not, there is no way to read the
+   * bytes from this page at all. That case is announced rather than swallowed,
+   * because the alternative is a button that looks like it worked.
+   *
+   * The failure is not `window.open`ed as a fallback: by then the click is
+   * several hundred milliseconds old and a popup blocker will eat it.
+   */
+  const downloadNode = async () => {
+    if (!isSafeImageSrc(src)) return;
+    const fileName = imageFileName(src, node.getAltText());
+    if (isDirectDownloadSrc(src, window.location.origin)) {
+      saveAs(src, fileName);
+      return;
+    }
+    try {
+      const response = await fetch(src);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const objectUrl = URL.createObjectURL(await response.blob());
+      saveAs(objectUrl, fileName);
+      // Not revoked synchronously: the download has not started yet when
+      // `click()` returns.
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+    } catch {
+      editor.dispatchCommand(ANNOUNCE_COMMAND, {
+        message: {
+          title: "Downloading image failed",
+          subtitle:
+            "Its host does not allow this page to read it. Right-click the image and use the browser's own save instead.",
+        },
+      });
+    }
+  };
+
   const isImageNode = node.__type === "image";
+  // An iframe's src is a page, not a picture — there is nothing to save.
+  const canDownload = !$isIFrameNode(node) && isSafeImageSrc(src);
+  const canOpen = isOpenableImageSrc(src);
   const isFiltered = style?.filter === "auto";
   const showCaption = node.getShowCaption();
   const float = style?.float;
@@ -144,6 +284,40 @@ export default function ImageTools(
               onClick={openSketchDialog}
             >
               <PenLine size={ICON_SIZE.dense} />
+            </button>
+          </Tooltip>
+        )}
+        <Tooltip content="Duplicate">
+          <button
+            aria-label="Duplicate"
+            className={buttonClass}
+            type="button"
+            onClick={duplicateNode}
+          >
+            <Copy size={ICON_SIZE.dense} />
+          </button>
+        </Tooltip>
+        {canDownload && (
+          <Tooltip content="Download">
+            <button
+              aria-label="Download"
+              className={buttonClass}
+              type="button"
+              onClick={() => void downloadNode()}
+            >
+              <Download size={ICON_SIZE.dense} />
+            </button>
+          </Tooltip>
+        )}
+        {canOpen && (
+          <Tooltip content="Open in new tab">
+            <button
+              aria-label="Open in new tab"
+              className={buttonClass}
+              type="button"
+              onClick={openInNewTab}
+            >
+              <ExternalLink size={ICON_SIZE.dense} />
             </button>
           </Tooltip>
         )}

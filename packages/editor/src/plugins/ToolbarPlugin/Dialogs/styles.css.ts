@@ -141,6 +141,59 @@ export const progressBar = style({
   animation: `${indeterminate} 1.6s ease-in-out infinite`,
 });
 
+/* ── ImageDialog's replace preview ─────────────────────────────────────── */
+
+/**
+ * The box under the URL field, in the shape of haklex's
+ * `rich-renderer-image/src/ReplacePanel.tsx` `replacePreview`.
+ *
+ * It has a fixed height on purpose: the four states it cycles through — empty,
+ * loading, broken, loaded — would otherwise reflow the dialog under the
+ * reader's cursor on every keystroke. Dashed while there is nothing in it, and
+ * the `loaded` variant below turns that off.
+ */
+export const previewFrame = style({
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: SPACE.sm,
+  height: 140,
+  padding: SPACE.sm,
+  overflow: "hidden",
+  borderRadius: RADIUS.md,
+  border: `1px dashed ${vars.color.border}`,
+  backgroundColor: vars.color.fillQuaternary,
+  fontFamily: "inherit",
+  fontSize: FONT.md,
+  lineHeight: 1.5,
+  color: vars.color.textSecondary,
+  textAlign: "center",
+});
+
+/** Once there is a picture, the frame stops advertising that it is a frame. */
+export const previewFrameLoaded = style({
+  borderStyle: "solid",
+  backgroundColor: vars.color.bgSecondary,
+});
+
+export const previewImage = style({
+  maxWidth: "100%",
+  minHeight: 0,
+  flex: 1,
+  objectFit: "contain",
+});
+
+/** The `1024 × 768` line under a loaded preview. */
+export const previewMeta = style({
+  flexShrink: 0,
+  fontSize: FONT.sm,
+  color: vars.color.textTertiary,
+});
+
+/** The broken-URL message — §9 wants an error state, not an empty box. */
+export const previewError = style({ color: vars.color.danger });
+
 /** The hidden `<input type="file">` a `FilePickerButton` drives. */
 export const visuallyHiddenInput = style({
   position: "absolute",
