@@ -23,6 +23,7 @@
     "test:watch": "vitest",
     "mcp:server": "node --import tsx --env-file=.env mcp/content-server.ts",
     "mcp:smoke": "node --import tsx mcp/smoke.ts",
+    "mcp:smoke:http": "node --import tsx --env-file=.env mcp/smokeHttp.ts",
     "mcp:token": "node --import tsx --env-file=.env prisma/scripts/agent-token.ts"
   },
   "dependencies": {

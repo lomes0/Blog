@@ -139,7 +139,18 @@ plumbing — two servers in one process get two different authors, a write passe
 its resolved author as `ownedBy`, and `tools/list` costs no user lookup. What is
 still script-only is anything that needs the live database: `npm run mcp:smoke`
 (export `MCP_AUTHOR_ID` — the value lives in `.mcp.json`, not `.env`) and
-`npm run mcp:token`. `src/lib/__tests__/agentTokens.test.ts` covers the
+`npm run mcp:token`. `npm run mcp:smoke:http` is the same idea for the remote
+endpoint and needs a live *server* as well: it covers what no spec can reach
+because it only exists over HTTP — the token refusals being indistinguishable
+from each other, a read-only token seeing six tools rather than eight, 426 on
+cleartext, the 1 MiB cap, the budgets, and a write proposing under the name of
+the token that made it. It takes a URL, so it doubles as a post-deploy check,
+and it names the checks it skipped rather than passing over them. Two traps it
+encodes: `fetch` silently drops a `Host` header, so the cleartext check would
+otherwise arrive claiming to be loopback and be waved through (it drops to
+`node:http` for that one), and the route authenticates *before* it decides
+whether the transport was fit to carry the credential, so 426 needs a valid
+token to reach. `src/lib/__tests__/agentTokens.test.ts` covers the
 credential those will use, and deliberately covers the *refusal* side, because
 that is the half that fails silently: an unknown and a revoked token must be
 indistinguishable from outside, expiry is inclusive on the boundary, the stored

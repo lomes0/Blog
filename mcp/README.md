@@ -129,3 +129,13 @@ database. This exercises the server end to end against real content:
 # read-only unless RUN_WRITE=1
 MCP_AUTHOR_ID=you@example.com npm run mcp:smoke
 ```
+
+`npm run mcp:smoke:http` is its counterpart for the remote endpoint. It covers
+what only exists over HTTP — the token refusals, scope narrowing, the cleartext
+rule, the body cap, the budgets and the origin naming which credential wrote —
+and it takes a URL, so the same command verifies a deployment:
+
+```bash
+MCP_AUTHOR_ID=you@example.com npm run mcp:smoke:http          # mints its own tokens
+BLOG_MCP_TOKEN=blog_pat_… npm run mcp:smoke:http -- https://your-blog/api/mcp
+```

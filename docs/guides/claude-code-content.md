@@ -167,6 +167,31 @@ naming the wait. Bodies are capped at 1 MiB.
 **If a legitimate session ever trips a limit, that is a bug** — say so, and the
 numbers get revised (see `src/lib/mcp/limits.ts`).
 
+### 5. Verifying an install
+
+`npm run mcp:smoke:http` drives the endpoint through the same SDK client Claude
+Code uses, and checks the half that only exists over HTTP: that every bad
+credential is refused identically, that a read-only token is offered six tools
+rather than eight, that cleartext is answered 426, that the body cap and the
+budgets engage, and that a write proposes rather than commits under the name of
+the token that made it. It exits non-zero on failure, so it works as a
+post-deploy check.
+
+```bash
+# Locally: mints the tokens it needs and revokes them on the way out.
+MCP_AUTHOR_ID=you@example.com npm run mcp:smoke:http
+
+# Against a deployment you have no database access to.
+BLOG_MCP_TOKEN=blog_pat_… npm run mcp:smoke:http -- https://your-blog/api/mcp
+```
+
+Checks it could not make are listed by name at the end rather than passed over,
+so the summary never reads as coverage it did not have. Without a database it
+skips the two that need to mint a second token; `--write` and `--limits` are
+opt-in, the first because there is no delete tool to clean up with (it refuses
+without a database for that reason) and the second because proving a limiter
+works costs a whole bucket of requests.
+
 ---
 
 ## Caveats the tools cannot state themselves
@@ -209,4 +234,6 @@ expect names the credential to revoke. A local stdio write is just
 The bridge is covered by `src/lib/content-bridge/__tests__/` and needs no
 database. The server, the token lifecycle, the route wrapper and the rate
 limiter all have specs under `src/lib/**/__tests__/`; `npm run mcp:smoke` is
-what covers the stdio path against a real database.
+what covers the stdio path against a real database, and
+`npm run mcp:smoke:http` the HTTP one against a running server — see
+[verifying an install](#5-verifying-an-install).
