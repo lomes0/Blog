@@ -154,6 +154,29 @@ ssh — needs no CI setup and is a reasonable place to start. It requires sizing
 the box for the build rather than the runtime (§6) and accepting build-time
 degradation. Start there if CI is a yak; move to GHCR when the build annoys you.
 
+### 4.1 The build must not need a database
+
+Found by actually building the image, and it is a constraint worth defending
+rather than a one-off fix. `src/app/sitemap.ts` queries Postgres, and Next
+prerenders it by default, so `docker build` failed with
+`Environment variable not found: DATABASE_URL` — the *only* prerendered route in
+the app that touches the database.
+
+It is now `dynamic = "force-dynamic"`. Passing a build-time `DATABASE_URL`
+would have "fixed" it while baking the post list as it stood at build time, so
+every post published afterwards would be invisible to crawlers until the next
+redeploy — served, well-formed, and silently stale.
+
+Keeping the image buildable without a database is what lets it be built in CI
+(§4), on a laptop, or anywhere, and promoted between environments as one
+artifact. If another prerendered route ever grows a query, this is the failure
+it will produce.
+
+**Verified 13 Aug 2026:** image builds clean (573MB), the standalone server
+boots, `/api/health` returns its documented 503 + `db: down` against an
+unreachable database, static chunks and `/offline` serve 200, and both upload
+directories exist owned by `nextjs:nodejs` so a volume mount will not `EACCES`.
+
 **Migrations** run on boot, as the recovered compose already does
 (`npx prisma migrate deploy && node server.js`). That is safe precisely because
 there is one instance — the multi-instance race that justifies a separate
@@ -234,8 +257,8 @@ Named here so they are not mistaken for solved by choosing a host. From
    (§2)~~ — done, `118a5a8c`. The backgrounds volume was the bug fix
 3. ~~Re-status `storage-uploads.md` (§2) and rewrite `changes_detection.md`
    §6 (§7)~~ — done. Both stated a dead premise
-4. **Build the image once, locally**, to prove the Dockerfile — the only step so
-   far verified by `docker build --check` rather than by an actual build
+4. ~~Build the image once, locally, to prove the Dockerfile~~ — done. It failed
+   first time on §4.1 and passes now
 5. Provision the box, point DNS, bring the stack up, confirm TLS
 6. Migrate the existing 19MB of uploads onto the volumes
 7. **Backups and a rehearsed restore (§5)** — before this is load-bearing, not
