@@ -7,10 +7,7 @@
         "tsx",
         "--env-file=.env",
         "mcp/content-server.ts"
-      ],
-      "env": {
-        "MCP_AUTHOR_ID": "lomes0@protonmail.com"
-      }
+      ]
     }
   }
 }
