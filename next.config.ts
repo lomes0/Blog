@@ -10,7 +10,6 @@ const ONE_DAY = 24 * 60 * 60;
 const ONE_WEEK = 7 * ONE_DAY;
 const ONE_YEAR = 365 * ONE_DAY;
 
-const IS_VERCEL = !!process.env.NEXT_PUBLIC_VERCEL_URL;
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 const withBundleAnalyzerConfig = {
@@ -147,10 +146,11 @@ const withPWAConfig = {
 };
 
 const nextConfig: NextConfig = {
-  // `output: "standalone"` was here for the container image (Dockerfile +
-  // fly.toml), both deleted 13 Aug 2026 when production moved to Vercel.
-  // Vercel builds through its own output API and reads nothing from
-  // `.next/standalone`, so the option had no consumer left.
+  // Emit `.next/standalone` — a self-contained server bundling only the
+  // dependencies actually traced, which is what the Dockerfile's runner stage
+  // copies. Production is a container on a single VPS
+  // (docs/plans/production-deployment.md), so this has a consumer again.
+  output: "standalone",
   devIndicators: false,
   reactStrictMode: true,
   distDir: process.env.BUILD_DIR || ".next",
@@ -195,9 +195,6 @@ const nextConfig: NextConfig = {
   webpack: (config, { isServer }) => {
     if (isServer) {
       config.externals.push("canvas");
-    }
-    if (IS_VERCEL) {
-      config.externals.push("puppeteer");
     }
     config.module.rules.push({
       test: /\.(woff|woff2|eot|ttf|otf)$/i,

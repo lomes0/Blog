@@ -1,0 +1,106 @@
+# Production stack for a single VPS — docs/plans/production-deployment.md.
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Three services on a private network, one of them published. Only `caddy`
+# binds host ports; `app` and `postgres` are reachable solely over the compose
+# network, by service name.
+#
+# Reads secrets from .env (NEXTAUTH_SECRET, GOOGLE_CLIENT_ID/SECRET,
+# ANTHROPIC_API_KEY, …). DATABASE_URL is overridden below to point at the
+# `postgres` service rather than localhost, so a .env copied from a development
+# machine does not silently aim production at nothing.
+#
+# .env must also carry APP_DOMAIN (the hostname Caddy obtains a certificate
+# for), NEXTAUTH_URL and PUBLIC_URL — all three https://<APP_DOMAIN>.
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-blog}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-blog}
+      POSTGRES_DB: ${POSTGRES_DB:-blog}
+    volumes:
+      - blog-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-blog} -d ${POSTGRES_DB:-blog}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: blog-simple:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # The image CMD is just `node server.js`; migrations are applied on boot
+    # here. That is safe because there is exactly one instance — the concurrent
+    # -migration race that would justify a separate release step cannot occur.
+    command: ["sh", "-c", "npx prisma migrate deploy && node server.js"]
+    env_file:
+      - .env
+    # Both upload roots need a volume, and they are separate paths because
+    # src/lib/uploads.ts separates them as a security boundary. Mounting only
+    # the first is the mistake this file previously made: backgrounds are the
+    # bulk of the data and sit under ./public with the baked-in static assets,
+    # so losing them on rebuild is silent — the rows survive and their URLs 404.
+    volumes:
+      - blog-attachments:/app/var/uploads
+      - blog-backgrounds:/app/public/uploads/directories
+    environment:
+      NODE_ENV: production
+      # `postgres` is the service hostname on the compose network.
+      # connection_limit caps the Prisma pool; keep replicas × limit under
+      # Postgres max_connections (~100 by default).
+      DATABASE_URL: postgresql://${POSTGRES_USER:-blog}:${POSTGRES_PASSWORD:-blog}@postgres:5432/${POSTGRES_DB:-blog}?connection_limit=10&schema=public
+      # CHANGES_DATABASE_URL is deliberately NOT set. The change feed falls back
+      # to DATABASE_URL, which is correct here: that variable exists only because
+      # `LISTEN` fails silently through a transaction-mode pooler, and there is
+      # no pooler in this topology. See docs/plans/changes_detection.md §6.
+    expose:
+      - "3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://127.0.0.1:3000/api/health",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?set APP_DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificates and OCSP staples. Losing this volume means re-requesting
+      # certificates on every restart, which Let's Encrypt rate-limits.
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  blog-postgres-data:
+  blog-attachments:
+  blog-backgrounds:
+  caddy-data:
+  caddy-config:

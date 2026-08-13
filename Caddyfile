@@ -1,0 +1,37 @@
+# Reverse proxy and TLS for the production stack.
+# docs/plans/production-deployment.md §1.
+#
+# APP_DOMAIN is injected by docker-compose.prod.yml from .env. Caddy obtains and
+# renews a Let's Encrypt certificate for it with no further configuration, which
+# is the whole reason to prefer Caddy to nginx here.
+
+{$APP_DOMAIN} {
+	encode zstd gzip
+
+	reverse_proxy app:3000 {
+		# Do not buffer responses — flush every write straight through.
+		#
+		# This is load-bearing for /api/events, which is an SSE stream held open
+		# indefinitely. A buffering proxy produces the failure
+		# docs/plans/changes_detection.md §5 describes and which is genuinely
+		# nasty to debug: the connection opens, the browser fires `open`, and no
+		# event ever arrives. Nothing errors.
+		#
+		# Caddy already declines to buffer `text/event-stream`, so this is
+		# belt-and-braces — but the cost is negligible at this traffic and the
+		# failure it prevents is silent.
+		flush_interval -1
+
+		# Preserve the client's address for the app's logs. If Cloudflare is in
+		# front, the real client IP arrives as CF-Connecting-IP and X-Forwarded-
+		# For will be Cloudflare's edge.
+		header_up X-Real-IP {remote_host}
+	}
+}
+
+# Note on Cloudflare: with the orange cloud on, Caddy still terminates TLS at
+# the origin and Cloudflare should be set to Full (strict). The HTTP-01
+# challenge continues to work through the proxy. If Cloudflare ever blocks
+# /.well-known/acme-challenge, switch to the DNS-01 challenge — that needs a
+# Caddy build carrying the Cloudflare DNS module, which the stock image does
+# not have.

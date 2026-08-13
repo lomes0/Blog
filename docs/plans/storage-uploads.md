@@ -1,25 +1,53 @@
 # Storage Support: moving uploads off the filesystem
 
-Status: **proposal**, not yet implemented. Decided 2026-07-30 during production
-readiness work. Revised 2026-07-30 — re-checked against the tree after the
-`UPLOADS_DIR` split landed; migration and security sections corrected, scope
-boundary made explicit (§What stays in Postgres).
+Status: **deferred** — a considered not-yet, with a named trigger below, not a
+backlog item. Written 2026-07-30 during production readiness work. Revised
+2026-07-30 — re-checked against the tree after the `UPLOADS_DIR` split landed;
+migration and security sections corrected, scope boundary made explicit
+(§What stays in Postgres).
 
-**Rewritten 2026-08-13: the hosting premise reversed.** The original plan
-targeted a container on Fly with Cloudflare R2 for objects and MinIO for local
-parity, and explicitly *rejected* Vercel. Production is now **Vercel +
-Supabase**, so `fly.toml`, the `Dockerfile`, `.dockerignore` and
-`docker-compose.prod.yml` are deleted and the object store is **Supabase
-Storage**. What survives that reversal is most of this document — the security
-analysis, the backgrounds backfill, the route inventory and the scope boundary
-were never about the host. What changes is the vendor, the local-parity story,
-and the plan's *status*: it is no longer an improvement.
+**Re-statused 2026-08-13 (second revision that day): DEFERRED — not a blocker.**
+The hosting premise moved twice in one day. It went Fly + R2 → Vercel + Supabase
+(morning) → **a single VPS running Docker Compose** (afternoon,
+`docs/plans/production-deployment.md`). The morning's rewrite made this document
+a hard prerequisite; the afternoon's decision hands that back.
 
-**On Vercel this is a prerequisite, not an optimisation.** A serverless function
-has no writable filesystem that outlives the request and no filesystem shared
-between invocations. Every `mkdir` + `writeFile` in the seven routes below
-either fails outright or writes to `/tmp` on one instance and is unreachable
-from the next. The app cannot be deployed until this lands.
+**Why it stops being urgent.** The two failures §Problem opens with are both
+answered by a named Docker volume on one box: a volume outlives
+`docker compose up --build`, and there is exactly one instance. The third —
+"serverless has no writable filesystem" — does not apply at all. So this returns
+to being the improvement it was on 30 July. Seven route rewrites, a presigning
+flow and a migration script are not justified by 19MB of data that a volume
+already keeps safe.
+
+**What replaces it, today:** two volumes in `docker-compose.prod.yml`, one per
+upload root. That is the whole fix, and it closed a real bug — the prod compose
+mounted a volume only over `ATTACHMENTS_DIR` (180KB/11 files) and left
+`BACKGROUNDS_DIR` (19MB/70 files) in the container's writable layer, to be
+destroyed on every rebuild.
+
+**The revisit trigger**, so this is a decision and not a shelving:
+
+- a second app instance, or
+- moving to a CDN origin, or
+- uploads past a few GB, where backing up a volume stops being cheap.
+
+**What this costs, and it is real:** durability is now entirely the backup job
+(`production-deployment.md` §5), where an object store would have provided it
+from the vendor. That is the trade being made knowingly.
+
+**The vendor question is now open again**, because nothing forces it. Supabase
+Storage was chosen when Supabase held the database; it no longer does. When the
+trigger fires, prefer whichever object store is already holding the offsite
+backups — Backblaze B2 or Cloudflare R2 — since that is one credential and one
+vendor rather than two. Everything below about *how* to talk to it is unchanged:
+the S3 SDK against an `S3_ENDPOINT` was chosen precisely so this paragraph could
+be rewritten without touching code.
+
+**What survives all three reversals** — and it is most of this document: the
+security analysis, the backgrounds backfill asymmetry, the route inventory and
+the scope boundary in §What stays in Postgres. None of them was ever about the
+host.
 
 ## Problem
 
@@ -36,18 +64,24 @@ const fileUrl = `/api/attachments/${fileName}`; // string → the database
 
 Both roots resolve under `process.cwd()` — `ATTACHMENTS_DIR` defaults to
 `<cwd>/var/uploads/attachments` and `BACKGROUNDS_DIR` is
-`<cwd>/public/uploads/directories` (`src/lib/uploads.ts`). Three consequences,
-the third new:
+`<cwd>/public/uploads/directories` (`src/lib/uploads.ts`). Three consequences —
+**all three now answered or inapplicable**, which is why this plan is deferred.
+They are kept because they are the conditions to watch for, not history:
 
 1. **Redeploys destroy data.** A new deployment is a fresh filesystem. Every
    uploaded file is gone; the DB rows survive and still point at
    `/api/attachments/attach_xyz.png`. The result is a database full of URLs that
    404 — silent loss, discovered later by readers.
+   → **Answered by a named volume.** The container is replaced on redeploy; the
+   volume is not. This was the failure mode that actually bit, and it bit
+   because the volume covered only one of the two roots.
 2. **Horizontal scale is impossible.** Two instances have separate filesystems.
    An upload lands on A; the next request routes to B, which has no such file.
-3. **On Vercel there is no step 1 to begin with.** The bundle is read-only
-   apart from `/tmp`, which is per-invocation. This is not a durability risk to
-   be accepted for a while — it is a hard failure on the first upload.
+   → **Not a present condition.** One instance. This is revisit trigger #1.
+3. ~~**On Vercel there is no step 1 to begin with.**~~ Written for the serverless
+   target and dead with it — a VPS has an ordinary writable filesystem. Kept
+   struck through rather than deleted because it is the reason this document
+   briefly read as a deploy blocker.
 
 Currently on disk: **19MB across 70 files** in `public/uploads/directories`
 (backgrounds) and **180KB across 11 files** in `var/uploads/attachments`. The
@@ -64,71 +98,75 @@ Two standing requirements drove every choice below.
 - **The app must not lag waiting on data.** Bytes must not stream through Node.
   Today every upload does `Buffer.from(await file.arrayBuffer())` (whole file in
   app memory) and every download does `readFile` then serves it — both occupy a
-  request slot for the full transfer. On Vercel this also burns function
-  duration, which is metered.
+  request slot for the full transfer. On a box sized for one app, a large
+  download holding a request slot is the constraint; there is no metered
+  function duration any more, but there is finite concurrency.
 
 ## Decisions
 
+Everything here is **conditional on the revisit trigger firing** — see the
+header. The shape is settled; the vendor is not.
+
 | Axis                | Choice                                                                     |
 | ------------------- | -------------------------------------------------------------------------- |
-| Backend             | **Supabase Storage**, driven through its S3-compatible endpoint             |
-| Client              | `@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner`, not `supabase-js`   |
-| Local parity        | **`supabase start`** — the same Storage API on localhost, no second vendor  |
+| Backend             | **Open** — prefer whichever store already holds the offsite backups (B2/R2) |
+| Client              | `@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner`, against `S3_ENDPOINT` |
+| Local parity        | **MinIO in `docker-compose.yml`** — the dev stack is already Compose        |
 | Upload path         | **Presigned direct-to-bucket PUT** — the app signs, the browser transfers   |
 | Serve path          | **Public backgrounds, signed attachments** — two buckets                    |
 | Size/type ceiling   | **Bucket-level limits**, not presign conditions — see the security note      |
 
-### Why the S3 endpoint rather than `supabase-js`
+### Why the S3 SDK rather than any vendor's own
 
-Supabase Storage speaks S3. Using the AWS SDK against it buys two things worth
-more than the convenience of the native client:
+Every candidate store speaks S3. Using the AWS SDK against an `S3_ENDPOINT` buys
+two things worth more than any native client's convenience:
 
-- **The escape hatch stays open.** R2, S3 and MinIO are all the same code behind
-  the same env vars. If Supabase is ever the wrong answer, the change is a
-  `S3_ENDPOINT` and a migration script, not a rewrite. Having just reversed one
-  hosting decision, this is not hypothetical.
-- **One dependency, not two.** `supabase-js` would arrive carrying an auth
+- **The escape hatch stays open** — and it has now been *used twice*. R2, B2, S3,
+  MinIO and Supabase Storage are all the same code behind the same env vars, so
+  a vendor change is an `S3_ENDPOINT` and a migration script rather than a
+  rewrite. Three hosting decisions in two weeks is the argument.
+- **One dependency, not two.** A vendor SDK tends to arrive carrying an auth
   client this app does not use — NextAuth owns sessions here, and a second
   identity library in the tree is a standing invitation to confusion.
-
-The cost is that Supabase's native `createSignedUploadUrl` is not used, so the
-one-token-per-upload ergonomics are traded for standard presigned PUTs. That is
-the right trade at this size.
 
 Rejected, with reasons:
 
 - **Postgres `bytea`** — satisfies local parity perfectly, but every byte then
   flows through Node _and_ the database connection. Fails the performance
-  constraint, and bloats backups.
-- **Vercel Blob** — genuinely fine, and now that the platform is chosen it is no
-  longer disqualified by association. Rejected because it splits durable state
-  across two vendors when Supabase is already holding the database, and because
-  it has no local emulator, which fails the parity constraint outright.
-- **Cloudflare R2 + MinIO** (the original plan) — still technically sound and
-  cheaper at egress. Rejected because it adds a third vendor and a compose
-  service to run locally, both of which Supabase already provides. Keep it in
-  mind if egress ever becomes a real line item.
+  constraint, and bloats backups. Note this one is *newly awkward*: Postgres is
+  now on the same box and the same disk, so it would not even buy durability.
+- **Supabase Storage** (the morning's choice) — was right only because Supabase
+  was holding the database. It no longer is, so it would be a new vendor for one
+  small job, with no local story that Compose does not already provide.
+- **Vercel Blob** — dead with the platform. No local emulator either.
 - **Everything public** — fastest and simplest, but drops the existing access
   control on attachments. A security regression, not a tradeoff.
+- **Keeping the filesystem forever** — the status quo, and correct *until* a
+  trigger fires. Listed so it is understood as the current answer rather than an
+  unconsidered default.
 
 ### Why two buckets
 
-Supabase grants public access per _bucket_, not per prefix, and the two asset
-classes already have different access rules today. **The split exists in the
-code already** — `src/lib/uploads.ts` separates them onto two roots precisely
-because one is authorization-gated and the other is not.
+Every candidate store grants public access per _bucket_, not per prefix, and the
+two asset classes already have different access rules today. **The split exists
+in the code already** — `src/lib/uploads.ts` separates them onto two roots
+precisely because one is authorization-gated and the other is not, and
+`docker-compose.prod.yml` now mirrors that split as two volumes.
 
-Buckets also carry `file_size_limit` and `allowed_mime_types` per bucket, which
-is where the upload ceiling belongs (see the security note).
+Buckets are also where a size/MIME ceiling can be enforced server-side, which is
+where the upload ceiling belongs (see the security note).
 
 ### The caching tradeoff
 
 Signed URLs are unique per issue, which defeats CDN caching. That is acceptable
 for attachments (accessed rarely, must stay gated) and unacceptable for
 backgrounds (rendered on every page view). Splitting by bucket is what lets each
-class get the right treatment rather than a single compromise. Public Supabase
-objects are served through its CDN, so backgrounds cache without the app in the
-path at all.
+class get the right treatment rather than a single compromise.
+
+On the current topology this matters less than it did: Cloudflare sits in front
+of the origin (`production-deployment.md` §1.1) and caches
+`/uploads/directories/*` off the static tree already. A public bucket would
+change *where* backgrounds are served from, not *whether* they are cached.
 
 ## Target architecture
 
@@ -150,41 +188,39 @@ New dependencies: `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`.
 ### Environment
 
 ```
-S3_ENDPOINT=https://<ref>.supabase.co/storage/v1/s3   # http://127.0.0.1:54321/storage/v1/s3 locally
-S3_REGION=<project region>                            # Supabase requires the real region, not "auto"
-S3_ACCESS_KEY_ID=                                     # Storage → S3 access keys, not the anon/service JWT
+S3_ENDPOINT=          # vendor endpoint; http://minio:9000 locally
+S3_REGION=            # the real region — some vendors reject "auto"
+S3_ACCESS_KEY_ID=     # an S3 access key, never a vendor's admin/service token
 S3_SECRET_ACCESS_KEY=
 S3_BUCKET_PUBLIC=blog-public
 S3_BUCKET_PRIVATE=blog-private
-S3_PUBLIC_URL=https://<ref>.supabase.co/storage/v1/object/public/blog-public
-S3_FORCE_PATH_STYLE=true                              # Supabase's endpoint is path-style
+S3_PUBLIC_URL=        # public read base for the public bucket — see below
+S3_FORCE_PATH_STYLE=  # true for MinIO and most non-AWS endpoints
 ```
 
 `S3_PUBLIC_URL` is separate from `S3_ENDPOINT` because the public read path is
-not the S3 path — Supabase serves public objects from
-`/storage/v1/object/public/<bucket>/<key>` through its CDN, while the S3
-endpoint is for signed operations.
+generally not the S3 path — vendors serve public objects from a CDN hostname
+while the S3 endpoint handles signed operations. Keeping them apart is also what
+lets the public hostname change without a data backfill (see §Migration).
 
-**The S3 access key is not the service-role JWT.** They are separate
-credentials issued from separate screens, and reaching for the JWT here is the
-predictable first mistake. The service-role key belongs nowhere in this app at
-all — it bypasses every Supabase policy and this app's authorization lives in
-`src/lib/access.ts`, not in RLS.
+**Use an S3 access key, never a vendor's admin or service token.** They are
+separate credentials from separate screens, and reaching for the powerful one is
+the predictable first mistake. This app's authorization lives in
+`src/lib/access.ts`; nothing here should hold a credential that can bypass a
+storage policy.
 
 ### Local parity
 
-`supabase start` runs the whole stack locally in Docker, Storage included, at
-`127.0.0.1:54321`. Identical SDK, identical presigning, identical bucket
-semantics — only env values differ between a laptop and production. Bucket
-creation and the public policy go in a `supabase/migrations/` SQL file so a
-fresh checkout gets both by running the same command.
+**MinIO as a service in `docker-compose.yml`** — which is the original 30 July
+plan, restored, and it costs nothing now that development already runs Compose
+for Postgres. Identical SDK, identical presigning, identical bucket semantics;
+only env values differ between a laptop and the box. Bucket creation and the
+public policy go in an init script so a fresh checkout gets both from
+`docker compose up`.
 
-This supersedes the MinIO-in-compose plan and, separately, raises the question
-of whether `docker-compose.yml` (a bare `postgres:16` for dev) should be
-replaced by the local Supabase Postgres. **Not decided here** — the dev database
-holds real content and swapping it is its own small migration. Note that
-`supabase start` binds Postgres on **54322**, so the two can coexist while that
-is decided.
+The `supabase start` parity story is dead with the vendor, and it took a
+question with it: whether the dev database should move to the local Supabase
+Postgres. It should not; there is no Supabase.
 
 ## Route changes
 
@@ -214,10 +250,12 @@ presigned URL accepts any content of any size. Mitigations, all three required:
    set a content-length range and content-type condition in the presign policy.
    That is a **POST-policy** mechanism; a presigned *PUT* can only sign the
    `Content-Length` and `Content-Type` headers, which binds a well-behaved
-   client and nothing else. Supabase's per-bucket `file_size_limit` and
-   `allowed_mime_types` are enforced server-side regardless of what the client
-   sends, so that is where the ceiling belongs. Sign the headers as well —
-   defence in depth, and it turns the common mistake into a clear error.
+   client and nothing else. A per-bucket size and MIME limit is enforced
+   server-side regardless of what the client sends, so that is where the ceiling
+   belongs — check the chosen vendor exposes one, since the spelling differs
+   (Supabase called it `file_size_limit`/`allowed_mime_types`; MinIO and S3 want
+   a bucket policy). Sign the headers as well — defence in depth, and it turns
+   the common mistake into a clear error.
 2. **Re-validate on confirm.** For backgrounds, the confirm step should `HEAD`
    the object and check size and content-type before writing `background_image`
    to the DB.
@@ -239,10 +277,11 @@ The existing extension sanitising (`/^\w{1,16}$/` on the extension,
 construction.
 
 Note that the `bodySizeLimit: "2mb"` in `next.config.ts` applies to server
-actions, not these route handlers. Vercel's own 4.5MB request-body ceiling on
-functions applies to neither once uploads go direct to the bucket — which is a
-second, independent reason presigning is the right shape here rather than
-proxying bytes.
+actions, not these route handlers. The platform request-body ceiling that used
+to be the second argument for presigning (Vercel's 4.5MB) is gone with the
+platform; what remains is that proxying bytes through Node holds a request slot
+on a single small box, which is the §Constraints argument and is enough on its
+own.
 
 ## Migration
 
@@ -257,9 +296,11 @@ proxying bytes.
 At 19MB / 81 files this runs in seconds. Verify object count against file count,
 then deploy the code that reads from the bucket.
 
-**Run it before the first Vercel deploy, from the checkout that still has the
-files.** They exist only on this machine; there is no deployed instance holding
-a second copy.
+**Source of truth: whichever copy is live when this runs.** The earlier "run it
+before the first Vercel deploy, from the checkout that still has the files"
+urgency is void — with volumes in place, the files live on the box, and this
+checkout's copy becomes the stale one the moment production takes an upload.
+Run the migration *from the box*, against the volumes.
 
 ### Attachments need no backfill; backgrounds do
 
@@ -287,9 +328,11 @@ Pick one, and state it in the migration commit:
 
 Option 2 is preferred: it keeps the stored value a stable identifier rather than
 a location, which is the same reason attachments do not need a backfill at all.
-It is also cheaper on Vercel than the redirect an earlier draft proposed — a
-`rewrite` is resolved at the edge, where a `redirect` costs the browser a second
-round trip per image.
+It also still beats the redirect an earlier draft proposed, which costs the
+browser a second round trip per image — though the rewrite is now resolved by
+Next on the box rather than at Vercel's edge, so it is a proxied hop rather than
+a free one. If that ever matters, the same rewrite belongs in the Caddyfile
+instead.
 
 ## What stays in Postgres — a scope boundary, not an omission
 
@@ -321,33 +364,38 @@ Left as-is deliberately, for now:
   content-model change, not a hosting change.
 
 **Do not treat this plan as having solved image storage.** Revision-table growth
-from embedded base64 is now a *billing* problem as well as a design one —
-Supabase meters database size where a self-hosted volume did not. Measure it
-against the real database before deciding whether it needs its own plan.
+from embedded base64 stopped being a *billing* problem when Supabase's metered
+database went away, but it is still a design problem and now a **backup** one:
+every embedded image is re-dumped in full, in every revision, on every nightly
+`pg_dump`. Measure it against the real database before deciding whether it needs
+its own plan — the number that matters is now dump size, not vendor storage.
 
 ## Rollout
 
-Two commits, each independently verifiable:
+Two commits, each independently verifiable — **when the trigger fires**:
 
-1. **Storage layer + Supabase wiring** — `src/lib/storage.ts`, the bucket
-   migration SQL, `.env.example`, dependencies. Verifiable locally against
-   `supabase start` before any route changes exist.
+1. **Storage layer + local MinIO** — `src/lib/storage.ts`, the MinIO service and
+   bucket-init script in `docker-compose.yml`, `.env.example`, dependencies.
+   Verifiable locally before any route changes exist.
 2. **Route migration + backfill** — the seven files above, plus the migration
    script and CLAUDE.md updates.
 
-`vercel.json` **stays** — an earlier draft ended by telling you to delete it as
-"the last artifact of the serverless path this work rules out". That sentence is
-now exactly backwards.
+Two earlier endings, both now wrong, recorded so neither is re-derived: the
+first draft said to delete `vercel.json` as "the last artifact of the serverless
+path this work rules out"; the second said it **stays**. It is deleted — not by
+this plan, but by `production-deployment.md` §3, for reasons that have nothing
+to do with storage.
 
 ## Open questions
 
 - **Signed URL expiry** for attachments is unset. A short window (5 min) limits
   leak damage; a longer one survives slow connections on large downloads.
-- **Does the dev database move to the local Supabase Postgres?** See §Local
-  parity. Coexistence works today (54322 vs 5432), so this can wait.
-- **Free-tier ceilings.** Supabase's free tier caps storage and egress. 19MB is
-  nothing, but backgrounds are served on every page view and egress is the
-  metered axis, not size. Worth a number before launch rather than after.
+- **Which store, when the trigger fires?** Deferred deliberately — see the
+  header. Favour whichever already holds the offsite backups.
+- **Does a public bucket beat Cloudflare in front of the origin?** Backgrounds
+  are already CDN-cached off the static tree. The bucket's advantage is that it
+  removes the box from the path entirely; whether that is worth a vendor is a
+  question for the day the trigger fires, not before.
 
 Closed since the first draft:
 
@@ -355,6 +403,7 @@ Closed since the first draft:
   `/api/thumbnails/[id]` renders on demand and `/api/og` runs on the edge
   runtime. Neither contains a `writeFile`, `mkdir` or `readFile`. Nothing to
   migrate.
-- ~~Backup story for self-hosted MinIO.~~ Moot: Supabase replicates and backs up
-  its own storage. If the R2 path is ever revisited, this question returns with
-  it.
+- ~~Backup story for self-hosted MinIO.~~ Returned, and answered elsewhere:
+  `production-deployment.md` §5 backs up the upload volumes offsite regardless
+  of whether they are ever fronted by MinIO. The backup job does not care.
+- ~~Supabase free-tier storage and egress ceilings.~~ Moot with the vendor.
