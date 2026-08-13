@@ -161,7 +161,7 @@ export interface ReconcilePayload {
 }
 
 /**
- * Fold a catch-up result into the store — docs/plans/changes_detection.md §4.
+ * Fold a catch-up result into the store — docs/plans/archive/changes-detection.md §4.
  *
  * Reached two ways, which is why it is a function rather than a reducer body:
  * the `reconcilePosts` action (what the SSE phase will dispatch per event) and
@@ -351,7 +351,7 @@ export const appSlice = createSlice({
     /**
      * Upsert the named posts, drop the ones proven gone, touch nothing else.
      *
-     * The store-side half of the change feed (docs/plans/changes_detection.md
+     * The store-side half of the change feed (docs/plans/archive/changes-detection.md
      * §4). Kept as a plain action as well as a thunk case because Phase 3's
      * stream reconciles *per event* with ids it already holds, and that path
      * has no fetch to hang a `fulfilled` case on.
@@ -513,7 +513,7 @@ export const appSlice = createSlice({
       .addCase(deleteRevision.rejected, (state, action) => {
         announceFailure(state, action.payload);
       })
-      // ── Agent proposals (docs/plans/agent-gating.md §3.5) ──
+      // ── Agent proposals (docs/plans/archive/agent-gating.md §3.5) ──
       //
       // No `announceFailure` on the poll, unlike almost everything else here: it
       // runs on every window focus, and a server that is down would stack a

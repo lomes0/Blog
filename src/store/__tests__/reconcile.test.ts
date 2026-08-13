@@ -2,7 +2,7 @@ import { appSlice } from "@/store/app";
 import type { AppState, Post, Series } from "@/types";
 
 /**
- * `reconcilePosts` — docs/plans/changes_detection.md §4, §8.
+ * `reconcilePosts` — docs/plans/archive/changes-detection.md §4, §8.
  *
  * The reducer, exercised directly: pure state in, pure state out, no store and
  * no React, like the workspace spec beside it. What is being defended here is

@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * Everything of Claude's that is waiting on the caller, listed rather than
- * counted (docs/plans/agent-gating.md §3.5, phase 4).
+ * counted (docs/plans/archive/agent-gating.md §3.5, phase 4).
  *
  * This is the **dedicated pending fetch**. The alternative phase 4 was offered —
  * loosening `revisionsSelect`'s `proposedAt: null` so a proposal rides along

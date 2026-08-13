@@ -227,7 +227,7 @@ export function useSave(
   /**
    * Does the editor hold anything storage has not acknowledged?
    *
-   * The answer §3.9 of docs/plans/agent-gating.md needs, and deliberately a
+   * The answer §3.9 of docs/plans/archive/agent-gating.md needs, and deliberately a
    * *function* rather than a piece of state. There is no dirty flag in this app
    * and putting one back was explicitly the wrong fix: `SaveStatus` cannot
    * answer (`idle` covers both "clean" and "typed, not yet flushed"), and

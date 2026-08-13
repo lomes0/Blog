@@ -34,7 +34,7 @@ const TABLE_LABEL = (input: Record<string, unknown>): string => {
  * Renders a human-readable preview of a pending Copilot proposal so the user can
  * see *what* accepting would do — not just the tool name.
  *
- * **Command proposals only, since docs/plans/ai-surface-consolidation.md §4.4.**
+ * **Command proposals only, since docs/plans/archive/ai-surface-consolidation.md §4.4.**
  * Content writes used to render here as a list of ops; they are now proposed on
  * the tool call and reviewed as a diff against the document, which is a better
  * answer to "what changed" than a restatement of the ops — see

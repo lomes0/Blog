@@ -8,7 +8,7 @@ Markdown files any more.
 This is the architecture. For _how to set it up_ see
 [guides/claude-code-content.md](../guides/claude-code-content.md) (driving it is
 documented in the tool descriptions themselves); for _why it is shaped this way_
-see [plans/claude-code-lexical.md](../plans/claude-code-lexical.md) and
+see [plans/archive/claude-code-lexical.md](../plans/archive/claude-code-lexical.md) and
 [mcp/README.md](../../mcp/README.md).
 
 ---
@@ -169,7 +169,7 @@ that window would simply be overwritten. The guard has to be in the database:
 
 > The database behaviour is verified; the browser pass — what the conflict looks
 > like on screen — is still owed. See
-> [claude_code_support_tasks.md](../claude_code_support_tasks.md) §1.
+> [claude-code-backlog.md](../plans/claude-code-backlog.md) §1.
 
 Every agent write lands as a **new** `Revision` with `head` advanced, so history
 is preserved and an agent edit can be diffed against what came before. Agent
@@ -185,7 +185,7 @@ directory, so `claude` must be launched from the repo root. It runs
 **straight to Postgres** — no dev server, no `/api/*`.
 
 The eight tools and the transport are separate files, which is what let a second
-door be added without touching a tool (docs/plans/mcp_support.md):
+door be added without touching a tool (docs/plans/archive/mcp-support.md):
 `createContentServer({ resolveAuthorId })` in `src/lib/mcp/server.ts` knows
 nothing about processes or the environment, and `mcp/content-server.ts` is only
 the ~50 lines that resolve `MCP_AUTHOR_ID` and connect stdio.
@@ -249,7 +249,7 @@ and confirms the stale-`stateHash` refusal.
 
 Same bridge, different plumbing. Tools are **declared** on the server
 (`/api/copilot/route.ts` — schemas only, no `execute`) and **executed on the
-client** (`src/editor/utils/copilotAgentExecutors.ts`), because the browser is
+client** (`packages/editor/src/utils/copilotAgentExecutors.ts`), because the browser is
 the only place both content stores and the live editor exist.
 
 - `src/lib/ai/copilotAgentTools.ts` is the dependency-free source of truth both
@@ -261,7 +261,7 @@ the only place both content stores and the live editor exist.
   `list_series` and the browser-only `get_selection`. One operation, one name,
   whichever agent is calling. Command tools carry a `command_` prefix, so they
   cannot collide with the bare `search` / `outline`.
-- `src/editor/utils/virtualRepo.ts` is the Copilot's view of the library — pure
+- `packages/editor/src/utils/virtualRepo.ts` is the Copilot's view of the library — pure
   synchronous functions over a Redux snapshot. Search hits carry a **block
   address** a later tool can act on. Cloud-only posts expose metadata and are
   hydrated on demand.
@@ -319,4 +319,4 @@ addressable blocks, **93.2% read as a typed block**, and no block-level content
 type is without a codec.
 
 Remaining work and open decisions live in
-[claude_code_support_tasks.md](../claude_code_support_tasks.md).
+[claude-code-backlog.md](../plans/claude-code-backlog.md).

@@ -145,7 +145,7 @@ export const isProposalCommandTool = (name: string): boolean =>
  * What the chat does with a tool call, across *both* families.
  *
  * Three answers rather than two, because §4.4 of
- * docs/plans/ai-surface-consolidation.md split what used to be one bucket:
+ * docs/plans/archive/ai-surface-consolidation.md split what used to be one bucket:
  *
  * - **`read`** — resolved on arrival and fed back; nothing is written. Content
  *   reads and `effect: "read"` commands (which observe or navigate) both

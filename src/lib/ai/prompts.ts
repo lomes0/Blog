@@ -13,7 +13,7 @@ import type { CapturedSelection } from "./selection";
  *
  * Pushed on the turn rather than waiting for `get_selection`, because the model
  * only asks when it thinks to, and "rewrite this" is the commonest thing anyone
- * says to a Copilot with a document open (docs/plans/haklex-adoption.md §7.3).
+ * says to a Copilot with a document open (docs/plans/archive/haklex-adoption.md §7.3).
  *
  * It deliberately does **not** inline the blocks' content. Every address here
  * is one `read_blocks` takes, and the model has read tools mid-loop, so telling

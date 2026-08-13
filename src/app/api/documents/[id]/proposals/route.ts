@@ -32,7 +32,7 @@ const proposalSchema = z.object({
  * The same call `mcp/content-server.ts`'s `apply_ops` makes — `proposeOps` in
  * `src/lib/agentWrites.ts` — with an HTTP door in front, so an in-app agent's
  * content write lands in the proposal table and is reviewed through the surfaces
- * docs/plans/agent-gating.md already built, instead of being a chat-local accept
+ * docs/plans/archive/agent-gating.md already built, instead of being a chat-local accept
  * that overwrites `head` with no compare-and-set, no staleness and no provenance
  * (§2.4).
  *

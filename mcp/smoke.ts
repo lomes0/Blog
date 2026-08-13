@@ -7,7 +7,7 @@
 // leaves a *pending proposal*, which is a row the app is meant to show you and
 // ask you about, and there is at most one per document. A smoke run that left
 // them behind would fill the review rail with test litter
-// (docs/plans/agent-gating.md §3.8).
+// (docs/plans/archive/agent-gating.md §3.8).
 //
 // Run: npm run mcp:smoke
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";

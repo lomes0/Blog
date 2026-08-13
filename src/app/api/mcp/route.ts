@@ -1,5 +1,5 @@
 // The remote MCP endpoint: the same eight tools the stdio server exposes,
-// reached over HTTP with an agent token. See docs/plans/mcp_support.md phase 3.
+// reached over HTTP with an agent token. See docs/plans/archive/mcp-support.md phase 3.
 //
 // Same origin as the blog (§8.2, decided 8 Aug 2026): it shares the app's TLS
 // and deployment, and there is one thing to point Claude Code at. The cost is

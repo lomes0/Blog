@@ -321,7 +321,7 @@ snapshot — which is what our `applyOps` already does server-side.
 - **Keeps, unchanged:** proposals as Postgres rows, the `version` compare-and-set,
   stale marking, head-never-moves. Their review state is ephemeral client state;
   ours is not, and ours is the better half.
-- This is the deferred phases 6–7 of `docs/plans/agent-gating.md`. Read §3.2 and
+- This is the deferred phases 6–7 of `docs/plans/archive/agent-gating.md`. Read §3.2 and
   §3.6 of that plan before starting — the silent-clobber trap around
   `baseRevisionId` vs `version` is live here.
 

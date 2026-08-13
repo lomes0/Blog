@@ -151,7 +151,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
 
   /**
    * What the user had selected when they sent the turn
-   * (docs/plans/haklex-adoption.md §7.3).
+   * (docs/plans/archive/haklex-adoption.md §7.3).
    *
    * Held in a ref and captured once in `sendPrompt` rather than read here,
    * because `prepareSendMessagesRequest` also runs for every automatic resume
@@ -214,7 +214,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
     // Reads run automatically so the agent can explore the library. Content
     // writes now run automatically too and land as pending proposals — the
     // author answers them in `AgentChangeBar` or the rail rather than here
-    // (docs/plans/ai-surface-consolidation.md §4.4). Only mutating command tools
+    // (docs/plans/archive/ai-surface-consolidation.md §4.4). Only mutating command tools
     // are left pending (input-available) for the user to accept.
     // Do NOT await addToolOutput here — awaiting inside onToolCall can deadlock.
     onToolCall: ({ toolCall }) => {

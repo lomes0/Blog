@@ -302,8 +302,8 @@ if (problems.length > 0) {
   console.error("\n❌  Content-bridge codec coverage failures:\n");
   for (const problem of problems) console.error(`   ${problem}`);
   console.error(
-    `\n   ${problems.length} problem(s). See docs/plans/haklex-adoption.md ` +
-      `§7.3 and docs/plans/claude-code-lexical.md §4.6 for what a codec owes.\n`,
+    `\n   ${problems.length} problem(s). See docs/plans/archive/haklex-adoption.md ` +
+      `§7.3 and docs/plans/archive/claude-code-lexical.md §4.6 for what a codec owes.\n`,
   );
   process.exit(1);
 }

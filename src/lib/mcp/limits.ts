@@ -1,5 +1,5 @@
 /**
- * What one agent token may spend at `/api/mcp` (docs/plans/mcp_support.md
+ * What one agent token may spend at `/api/mcp` (docs/plans/archive/mcp-support.md
  * phase 4, and §8.3 which asked for these numbers).
  *
  * ## Where the numbers come from

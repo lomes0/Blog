@@ -174,7 +174,7 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
             mounted at *both* rail modes. The message itself is a row inside
             Properties, which is invisible while the rail is collapsed — which is
             exactly when a stuck save would otherwise go unnoticed for longest.
-            See docs/plans/quiet-autosave.md §3.3. */
+            See docs/plans/archive/quiet-autosave.md §3.3. */
         }
         <Tooltip
           title={saveTrouble

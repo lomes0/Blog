@@ -4,7 +4,7 @@
  * A `Revision` with `proposedAt` set is a *pending agent write*: it is in
  * storage, but `Document.head` does not point at it, so it is not the document.
  * Approval moves the pointer; rejection deletes the row. See
- * `docs/plans/agent-gating.md` — §3.2 (the squash) and §3.4 (approve/reject).
+ * `docs/plans/archive/agent-gating.md` — §3.2 (the squash) and §3.4 (approve/reject).
  *
  * Three decisions live here, and every one is the kind that loses work silently
  * when it goes wrong:

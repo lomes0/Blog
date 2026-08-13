@@ -1,5 +1,5 @@
 /**
- * The phase-2 acceptance test of docs/plans/agent-gating.md, in the pure half.
+ * The phase-2 acceptance test of docs/plans/archive/agent-gating.md, in the pure half.
  *
  * Three consecutive `apply_ops` calls against one document must leave **exactly
  * one** pending proposal containing all three edits, each batch having seen the
@@ -19,7 +19,7 @@
  *
  * That write path is now `src/lib/agentWrites.ts` — `readAgentState` and
  * `proposeOps`, shared by `mcp/content-server.ts` and
- * `POST /api/documents/[id]/proposals` (docs/plans/ai-surface-consolidation.md
+ * `POST /api/documents/[id]/proposals` (docs/plans/archive/ai-surface-consolidation.md
  * §4.4.1). The simulation is deliberately **not** rewired onto it: those
  * functions reach Postgres through the `@/lib/prisma` singleton, and standing a
  * fake in for it would mean hand-writing the semantics of `findFirst`,

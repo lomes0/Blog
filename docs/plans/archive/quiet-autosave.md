@@ -1,6 +1,10 @@
 # Quiet autosave: silent success, loud failure
 
-**Status:** proposed, 2 Aug 2026.
+**Status: SHIPPED 3 Aug 2026**, `06371273`…`5dd50c7b`. The eight dirty-state
+surfaces are gone, `ui.saveStatus` is wired to a rail row and a rail-toggle
+badge, and `96b02804` deleted `dirtyDocIds` / `useDirtyTracking` /
+`selectIsDirty` outright — `src/store/index.ts` carries a comment at the site
+saying why there is deliberately no selector there. Written 2 Aug 2026.
 
 ---
 

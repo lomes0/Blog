@@ -13,7 +13,7 @@ import type { AgentCreatedPost, PendingProposal } from "@/types";
  *
  * Shared by the rail section and the review bar over the diff, because the
  * *sequence* is the part worth having once: approve, then reload whatever tab is
- * showing that document (docs/plans/agent-gating.md §3.9). Getting the second
+ * showing that document (docs/plans/archive/agent-gating.md §3.9). Getting the second
  * half right in one of the two call sites and not the other is exactly the kind
  * of drift that leaves a tab showing content that is no longer the document.
  *
@@ -48,7 +48,7 @@ export function useProposalActions() {
     // Three fields rather than the whole row, so the Copilot transcript can
     // offer Review from what its write just returned — a proposal id and the
     // document it is against — without fabricating a listing row it does not
-    // have (docs/plans/ai-surface-consolidation.md §4.4.5). Every other caller
+    // have (docs/plans/archive/ai-surface-consolidation.md §4.4.5). Every other caller
     // passes a `PendingProposal`, which satisfies this.
     proposal: Pick<PendingProposal, "id" | "documentId" | "head">,
   ) => {
@@ -65,7 +65,7 @@ export function useProposalActions() {
 
   /**
    * @param rejectedHunks the hunks the author refused in the per-hunk review
-   * (docs/plans/haklex-adoption.md §7). Omitted — the case for every caller
+   * (docs/plans/archive/haklex-adoption.md §7). Omitted — the case for every caller
    * that is not the review surface — approves the proposal whole, with the
    * bodiless request that has always meant that.
    */

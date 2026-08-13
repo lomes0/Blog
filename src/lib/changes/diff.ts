@@ -1,5 +1,5 @@
 /**
- * The catch-up diff — docs/plans/changes_detection.md §3, §3.1.
+ * The catch-up diff — docs/plans/archive/changes-detection.md §3, §3.1.
  *
  * Import-free on purpose, like `dragGeometry.ts` and `ordering.ts`: this is the
  * whole of the reasoning that makes the change feed correct across a

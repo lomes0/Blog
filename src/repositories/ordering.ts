@@ -147,7 +147,7 @@ export async function movePost(
 
   // `document.updated` — a move changes where the sidebar draws the row, which
   // is a change the client answers exactly as it answers a rename (docs/plans/
-  // changes_detection.md §2.1). Emitted on `db`, so when this runs inside
+  // changes-detection.md §2.1). Emitted on `db`, so when this runs inside
   // `moveDocumentTx` the notification commits with the move; `doc.authorId` is
   // the row this function already had to read to compute the rank, so the
   // payload costs no extra query.

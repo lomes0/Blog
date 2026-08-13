@@ -12,7 +12,7 @@ import {
 // The block model — schemas and prose alike — is declared once, beside the
 // codecs that enforce it, and shared with `mcp/content-server.ts` so the two
 // agents cannot be told different things about the same document. See
-// docs/plans/ai-surface-consolidation.md §4.1.
+// docs/plans/archive/ai-surface-consolidation.md §4.1.
 import {
   BLOCK_DOC,
   blockSchema,
@@ -31,7 +31,7 @@ import {
 // Tools are declared here (schemas only) but EXECUTED ON THE CLIENT — read
 // tools auto-run against the Redux store / live editor, and content writes run
 // on arrival too, landing as pending proposals the author reviews on the
-// document (docs/plans/ai-surface-consolidation.md §4.4). See
+// document (docs/plans/archive/ai-surface-consolidation.md §4.4). See
 // src/lib/ai/copilotAgentTools.ts for the read/write split the client enforces,
 // and `toolDisposition` in src/lib/ai/commandTools.ts for what the chat does
 // with each family.
@@ -41,7 +41,7 @@ import {
 // the app can *do* — open, navigate, rename, describe the workspace — arrives
 // via `buildCommandTools()`, generated from the command registry, so adding a
 // command needs no edit to this file (plan §3.1).
-// Documents are addressed by BLOCK — see docs/plans/claude-code-lexical.md.
+// Documents are addressed by BLOCK — see docs/plans/archive/claude-code-lexical.md.
 // A read hands back addresses (b3, b4.2) and a stateHash; a write names blocks
 // and carries that hash. Blocks the write does not name are left exactly as
 // they were, which is why rich content no longer has to be hidden behind

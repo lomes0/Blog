@@ -114,7 +114,7 @@ const cachedRevisionThumbnail = unstable_cache(getRevisionThumbnail, [], {
  * These two render a revision from an id alone, and `/embed/[id]` and
  * `/view/[id]` take that id straight from `?v=` — so a pending agent proposal
  * would otherwise be rendered to anyone, on a document they may only *read*
- * (docs/plans/agent-gating.md §2.1). It is not the document until it is
+ * (docs/plans/archive/agent-gating.md §2.1). It is not the document until it is
  * approved, so it renders as nothing.
  *
  * The check is outside `unstable_cache` on purpose. Inside, the `null` would be

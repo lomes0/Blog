@@ -1,5 +1,5 @@
 /**
- * Refusing a bearer token in cleartext (docs/plans/mcp_support.md phase 5).
+ * Refusing a bearer token in cleartext (docs/plans/archive/mcp-support.md phase 5).
  *
  * The environment is a parameter, so these run without touching `process.env`
  * and without the ordering hazard that comes with restoring it.

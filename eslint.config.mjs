@@ -151,7 +151,7 @@ export default [
     // `no-restricted-syntax` block over the same files would replace the route
     // rules above rather than add to them — API routes have no UI colors.
     // `packages/**` is covered ahead of the editor extraction
-    // (docs/plans/haklex-adoption.md §4.3) — 32 of the editor's files use MUI,
+    // (docs/plans/archive/haklex-adoption.md §4.3) — 32 of the editor's files use MUI,
     // so a src-rooted glob would stop guarding them the moment they move. The
     // api-route blocks above stay src-rooted: no route moves.
     files: ["src/**/*.{ts,tsx}", "packages/**/*.{ts,tsx}"],
@@ -189,7 +189,7 @@ export default [
     },
   },
   {
-    // The editor package is deliberately off MUI (docs/plans/haklex-adoption.md
+    // The editor package is deliberately off MUI (docs/plans/archive/haklex-adoption.md
     // §5). It draws on vanilla-extract + Base UI against the `--ed-*` contract
     // in `packages/editor/src/styles/tokens.css.ts`; the app shell keeps MUI and
     // DESIGN.md. That split is the *point* — haklex's components port in
@@ -215,7 +215,7 @@ export default [
           {
             group: ["@mui/*", "@mui/*/**"],
             message:
-              "packages/** is MUI-free on purpose (docs/plans/haklex-adoption.md §5). Use the Base UI kit in packages/editor/src/ui and the --ed-* tokens in packages/editor/src/styles/tokens.css.ts; for the color scheme use utils/useColorScheme (html.dark), not useTheme().palette.mode. If a primitive is missing, add it to ui/ — do not reach back into the app shell's design system.",
+              "packages/** is MUI-free on purpose (docs/plans/archive/haklex-adoption.md §5). Use the Base UI kit in packages/editor/src/ui and the --ed-* tokens in packages/editor/src/styles/tokens.css.ts; for the color scheme use utils/useColorScheme (html.dark), not useTheme().palette.mode. If a primitive is missing, add it to ui/ — do not reach back into the app shell's design system.",
           },
         ],
       }],

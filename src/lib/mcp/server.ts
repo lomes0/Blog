@@ -2,12 +2,12 @@
 //
 // This module is the server *without a transport*. `mcp/content-server.ts`
 // builds one from MCP_AUTHOR_ID and speaks stdio; a route can build one per
-// request and speak HTTP (docs/plans/mcp_support.md phase 3). Neither knows
+// request and speak HTTP (docs/plans/archive/mcp-support.md phase 3). Neither knows
 // anything the other does not, because the only thing that differs between them
 // is `resolveAuthorId` — see below.
 //
 // Documents are addressed by BLOCK, not round-tripped through Markdown — see
-// docs/plans/claude-code-lexical.md. Reads hand out addresses (`b3`, `b4.2`)
+// docs/plans/archive/claude-code-lexical.md. Reads hand out addresses (`b3`, `b4.2`)
 // and a `stateHash`; writes name blocks and carry that hash back. Only the
 // nodes an op names are touched, so a kanban board nobody mentioned comes out
 // byte-identical, and blocks with no codec are visible and movable rather than
@@ -23,7 +23,7 @@ import { prisma } from "@/lib/prisma";
 // The read, the ops and the proposal write are shared with the in-app Copilot's
 // route — one execution of `applyOps` against one authoritative base, rather
 // than two implementations that happen to write the same columns. See
-// docs/plans/ai-surface-consolidation.md §4.4.1. What stays in this file is how
+// docs/plans/archive/ai-surface-consolidation.md §4.4.1. What stays in this file is how
 // the result is *said* to Claude Code: the tool text below is MCP's, not shared.
 import {
   type AgentReadState,
@@ -46,7 +46,7 @@ import {
 // The input schemas and the block prose used to be declared here, and a second
 // time in `src/app/api/copilot/route.ts` for the in-app Copilot. They drifted.
 // One copy now lives beside the codecs that enforce it — see
-// docs/plans/ai-surface-consolidation.md §4.1. Not from the barrel: it is the
+// docs/plans/archive/ai-surface-consolidation.md §4.1. Not from the barrel: it is the
 // one part of the bridge the browser has no use for.
 import {
   BLOCK_DOC,
@@ -101,7 +101,7 @@ export interface ContentServerOptions {
    * takes an author from its arguments, so a caller cannot name a user other
    * than the one the transport authenticated. Under stdio that is
    * `MCP_AUTHOR_ID`; over HTTP it will be the owner of the presented token
-   * (docs/plans/mcp_support.md §4.3).
+   * (docs/plans/archive/mcp-support.md §4.3).
    *
    * Called at most once per server, lazily — a stdio process should not fail at
    * import time, and a per-request server should not pay a lookup for a

@@ -1,6 +1,6 @@
 /**
  * Per-hunk diff between a document and a pending agent proposal
- * (docs/plans/haklex-adoption.md §7, docs/plans/agent-gating.md §3.5's third
+ * (docs/plans/archive/haklex-adoption.md §7, docs/plans/archive/agent-gating.md §3.5's third
  * tier — "accept some ops, reject the rest").
  *
  * ### Why this is a diff over two states, not a replay of ops

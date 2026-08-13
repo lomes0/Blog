@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 /**
- * The catch-up query — docs/plans/changes_detection.md §3.
+ * The catch-up query — docs/plans/archive/changes-detection.md §3.
  *
  * Every document the caller owns, as `{ id, updatedAt }`. The client diffs this
  * against its store (`src/lib/changes/diff.ts`) to learn what it missed: a new

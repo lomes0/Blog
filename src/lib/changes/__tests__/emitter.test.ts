@@ -9,7 +9,7 @@ import type { ChangeEvent } from "@/lib/changes/events";
 
 /**
  * The fan-out filter and the reconnect schedule —
- * docs/plans/changes_detection.md §2.2, §2.3, §5, §8.
+ * docs/plans/archive/changes-detection.md §2.2, §2.3, §5, §8.
  *
  * `pg` delivery and reconnect are not testable here and are verified by hand
  * against the local Postgres. What *is* testable is the half that decides who

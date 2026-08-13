@@ -1,5 +1,5 @@
 /**
- * `tokenRoute` — the fourth route wrapper (docs/plans/mcp_support.md §4.2).
+ * `tokenRoute` — the fourth route wrapper (docs/plans/archive/mcp-support.md §4.2).
  *
  * CLAUDE.md's standing warning is that **no automated check covers API
  * authorization**, which is true of every route resolved through a session:

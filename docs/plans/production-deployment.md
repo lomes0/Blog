@@ -68,7 +68,7 @@ could not.
 
 **One caveat that will otherwise cost an afternoon:** `/api/events` is an SSE
 stream, and a proxy that buffers it produces the exact failure
-`changes_detection.md` §5 describes — the connection opens, the browser fires
+`changes-detection.md` §5 describes — the connection opens, the browser fires
 `open`, and nothing ever arrives. The route already sends `X-Accel-Buffering:
 no` and `Cache-Control: no-cache, no-transform`, which is what Cloudflare reads.
 Verify the stream end to end through the proxy before believing it works; the
@@ -227,7 +227,7 @@ Confirming these, since they were the argument:
 - **The change feed ports unchanged.** `CHANGES_DATABASE_URL` is left unset and
   falls back to `DATABASE_URL` — there is no transaction-mode pooler in this
   topology, so the silent-`LISTEN`-failure hazard does not arise.
-  `changes_detection.md` §6 is rewritten for this target, and now says the live
+  `changes-detection.md` §6 is rewritten for this target, and now says the live
   risk is the **proxy**, not the database (§6.2 there, §1.1 here).
 - **`/api/events` holds its SSE response open** for as long as the client stays
   connected. No duration cap. Watch the proxy, not the platform (§1.1).
@@ -255,7 +255,7 @@ Named here so they are not mistaken for solved by choosing a host. From
    `vercel.json`; resolve `IS_VERCEL` (§3)~~ — done, `118a5a8c`
 2. ~~Restore `docker-compose.prod.yml` with `caddy` and **both** upload volumes
    (§2)~~ — done, `118a5a8c`. The backgrounds volume was the bug fix
-3. ~~Re-status `storage-uploads.md` (§2) and rewrite `changes_detection.md`
+3. ~~Re-status `storage-uploads.md` (§2) and rewrite `changes-detection.md`
    §6 (§7)~~ — done. Both stated a dead premise
 4. ~~Build the image once, locally, to prove the Dockerfile~~ — done. It failed
    first time on §4.1 and passes now
@@ -265,5 +265,5 @@ Named here so they are not mistaken for solved by choosing a host. From
    after
 8. External uptime check against `/api/health`, alerting somewhere you read
 9. Verify the change feed end to end *through* Cloudflare (§1.1, and
-   `changes_detection.md` §6.2 — the failure is silent, so this is a real step
+   `changes-detection.md` §6.2 — the failure is silent, so this is a real step
    rather than a formality)

@@ -275,7 +275,7 @@ export default function TextFormatToggles(
           Still the MUI color picker from `./ColorPicker` — it is shared with
           TableTools, NoteTools and MathTools, all of which are MUI menus, so it
           belongs to the tranche that restyles `Tools/` as a whole (see
-          docs/plans/haklex-adoption.md §9.2). `ui/color-picker` is ported and
+          docs/plans/archive/haklex-adoption.md §9.2). `ui/color-picker` is ported and
           waiting for it.
         */}
         <ColorPicker

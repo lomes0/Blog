@@ -9,7 +9,7 @@
  * subprocess — which is what these specs are for.
  *
  * What they assert is the claim the whole remote plan rests on
- * (docs/plans/mcp_support.md §1, §7 check 6): **the author a tool queries with
+ * (docs/plans/archive/mcp-support.md §1, §7 check 6): **the author a tool queries with
  * comes from the injected resolver and from nowhere else.** Under stdio that is
  * one env var and the question looks academic; the moment two requests with two
  * tokens share a process it is the only thing standing between one author's

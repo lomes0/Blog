@@ -1,6 +1,11 @@
 # AI surface consolidation
 
-**Status:** proposed, 8 Aug 2026 **Related:**
+**Status: COMPLETE — all six phases shipped 8–9 Aug 2026**, `fb12b4e5`…`f58d50df`
+(`fb12b4e5` one block schema, `801962ec` `list_series`, `aa1eaccf` one
+vocabulary, `b3c2cbd7` one accept/reject mechanism, `21614a2f` one AI action
+registry, `80722068`/`f58d50df` the loose ends). The headline consequence is
+§4.4: the in-app Copilot's content edits **propose** now — they no longer apply
+straight to the open document. **Related:**
 [claude-code-lexical.md](./claude-code-lexical.md) (the block transport all of
 this rides on), [agent-gating.md](./agent-gating.md) (the proposal table),
 [workspace-panes.md](./workspace-panes.md) §3.1 (the command registry the

@@ -27,7 +27,7 @@ import { blockIdState } from "@/lib/content-bridge";
 import { $captureSelection, captureSelection } from "../captureSelection";
 
 /**
- * Selection context for the model (docs/plans/haklex-adoption.md §7.3).
+ * Selection context for the model (docs/plans/archive/haklex-adoption.md §7.3).
  *
  * These drive a real headless editor rather than hand-building a selection
  * object: the whole question is whether an anchor Lexical actually produced

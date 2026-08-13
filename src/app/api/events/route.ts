@@ -5,7 +5,7 @@ import { encodeChangeEvent } from "@/lib/changes/events";
 
 /**
  * Hop 3 of the change feed: the SSE stream —
- * docs/plans/changes_detection.md §2.3, §5.
+ * docs/plans/archive/changes-detection.md §2.3, §5.
  *
  * One long-lived `GET` per browser tab. The server writes ids, never content
  * (§10); the client turns them into fetches through the ordinary authorized

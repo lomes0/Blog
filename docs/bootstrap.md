@@ -128,7 +128,7 @@ What deploying will involve, once that lands:
   survive a transaction-mode pooler and fails _silently_ — the connection
   succeeds, the `LISTEN` succeeds, and notifications never arrive. Whether the
   change feed works on serverless at all is an open question, not a settled one:
-  see [`plans/changes_detection.md`](./plans/changes_detection.md) §6.
+  see [`plans/archive/changes-detection.md`](./plans/archive/changes-detection.md) §6.
 - **Migrations are not automatic.** There is no release command; run
   `npx prisma migrate deploy` against `DIRECT_URL` as a deploy step or by hand.
 - **OAuth callbacks** must be re-registered at GitHub/Google for the production

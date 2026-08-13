@@ -1,6 +1,6 @@
 /**
  * The shape a per-hunk review renders, and the decisions it collects
- * (docs/plans/haklex-adoption.md §7).
+ * (docs/plans/archive/haklex-adoption.md §7).
  *
  * `proposalDiff.ts` answers *what changed*; this answers *what to draw and in
  * what order*, which is a different question and the one the surface actually

@@ -12,7 +12,7 @@ import type { CopilotThread, CopilotThreadInput, User } from "@/types";
  * alone by {@link threadBackendFor} — so there is still exactly one place the
  * local/cloud decision is made, and everything above it is written once.
  *
- * See docs/plans/workspace-panes.md §6.3.
+ * See docs/plans/archive/workspace-panes.md §6.3.
  */
 interface CopilotThreadBackend {
   /** Every thread in one scope, newest first. The live one has `current`. */

@@ -1,6 +1,6 @@
 /**
  * Mint, list and revoke agent tokens — the credentials that will let an agent
- * reach one user's content over HTTP (docs/plans/mcp_support.md phase 2).
+ * reach one user's content over HTTP (docs/plans/archive/mcp-support.md phase 2).
  *
  *   npm run mcp:token -- mint you@example.com --name laptop
  *   npm run mcp:token -- mint you@example.com --name ci --scopes read --expires 90d
@@ -9,7 +9,7 @@
  *
  * A script rather than a UI, deliberately and for now: the admin story for this
  * app is already psql-only (no route sets `role` or `disabled` either), and a
- * management screen is a phase of its own — see mcp_support.md §8.5, which asks
+ * management screen is a phase of its own — see mcp-support.md §8.5, which asks
  * whether a public deployment can ship without one. It cannot ship without
  * *revocation*, which is why that is here from the start rather than left until
  * a token leaks.

@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 export const dynamic = "force-dynamic";
 
 /**
- * Throw an agent-created post away (docs/plans/agent-gating.md §3.7).
+ * Throw an agent-created post away (docs/plans/archive/agent-gating.md §3.7).
  *
  * `DELETE /api/documents/[id]` would delete it too, and this route exists
  * anyway for one reason: `discardAgentDocument` refuses a post that is not

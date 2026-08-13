@@ -1,7 +1,7 @@
 /**
  * Adapted from haklex `packages/rich-editor-ui/src/styles/menu.css.ts`
  * (MIT, github.com/Innei/haklex). Retinted to the `--ed-*` contract in
- * `styles/tokens.css.ts`; see docs/plans/haklex-adoption.md §5.
+ * `styles/tokens.css.ts`; see docs/plans/archive/haklex-adoption.md §5.
  *
  * The popup and item shapes shared by every floating surface in the kit —
  * dropdown menu, combobox, and anything later that grows a list. Kept as

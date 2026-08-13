@@ -2,7 +2,7 @@
  * The command registry — one description of "what this app can do", shared by
  * the ⌘K palette, the UI's own buttons, and (from Phase 3) the Copilot's tools.
  *
- * See docs/plans/workspace-panes.md §3. Two rules keep it worth having:
+ * See docs/plans/archive/workspace-panes.md §3. Two rules keep it worth having:
  *
  * 1. **Commands are entities, never URLs.** There is no `navigate(href)`. A
  *    route only appears inside a command body, so Phase 4 can move every page

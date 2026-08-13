@@ -1,5 +1,5 @@
 /**
- * Every content tool renders its own label (docs/plans/haklex-adoption.md §7.3).
+ * Every content tool renders its own label (docs/plans/archive/haklex-adoption.md §7.3).
  *
  * What is actually at stake is that a tool added to `READ_TOOLS`/`WRITE_TOOLS`
  * does not silently regress the transcript to its wire name. The `satisfies

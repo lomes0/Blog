@@ -1,7 +1,7 @@
 import { diffCatchUp } from "@/lib/changes/diff";
 
 /**
- * The catch-up diff — docs/plans/changes_detection.md §3, §3.1, §8.
+ * The catch-up diff — docs/plans/archive/changes-detection.md §3, §3.1, §8.
  *
  * This is where the hard-delete reasoning either holds or does not. The
  * endpoint's shape (the *full* id set, no `since=` cursor) exists solely so

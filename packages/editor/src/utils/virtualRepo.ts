@@ -8,7 +8,7 @@
  * Documents used to be presented as a folder of Markdown files addressed by
  * `<id>.md`, with rich nodes hidden inside opaque `[[lexblk:…]]` tokens. That
  * framing is gone: content is addressed by block through
- * `src/lib/content-bridge` (docs/plans/claude-code-lexical.md), so the agent can
+ * `src/lib/content-bridge` (docs/plans/archive/claude-code-lexical.md), so the agent can
  * see a kanban board is there and move it, rather than being handed base64 it
  * must not touch.
  *

@@ -11,7 +11,7 @@ import {
 
 /**
  * Hop 2 of the change feed: one `LISTEN` per Next process —
- * docs/plans/changes_detection.md §2.2, §5, §6.
+ * docs/plans/archive/changes-detection.md §2.2, §5, §6.
  *
  * Phase 3's SSE route is the only intended caller, and the only thing it may
  * do is {@link subscribeToChanges}. Everything that can be decided without a
@@ -72,7 +72,7 @@ import {
  * Because the failure is silent, the connection string is overridable:
  * `CHANGES_DATABASE_URL` wins over `DATABASE_URL`. Today they are the same
  * string and the fallback is what runs — the target deployment is a container
- * with a direct connection (docs/plans/prod-storage-decision.md), so there is
+ * with a direct connection (docs/plans/production-deployment.md), so there is
  * nothing to configure yet. The override exists so that the day the app is put
  * behind a pooler, the fix is one env var and not a code change under
  * incident pressure. That is the whole of it; there is no pooler detection and

@@ -1,6 +1,6 @@
 /**
  * The Copilot's view of the library (phase 4 of
- * docs/plans/claude-code-lexical.md).
+ * docs/plans/archive/claude-code-lexical.md).
  *
  * The behaviour worth pinning is that search now returns a *block address*
  * rather than a line number. Under the Markdown transport a hit came back as

@@ -34,7 +34,7 @@ interface AgentMarkerProps {
 /**
  * Renders the agent-change marker for a document or group row.
  *
- * The vocabulary is from docs/plans/agent-change-indication.md §2. A glyph per
+ * The vocabulary is from docs/plans/archive/agent-change-indication.md §2. A glyph per
  * state rather than a colour per state, because DESIGN.md §10 forbids carrying
  * state in colour alone — and this marker has to survive a monochrome scan of a
  * dense tree.

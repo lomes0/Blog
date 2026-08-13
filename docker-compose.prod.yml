@@ -63,7 +63,7 @@ services:
       # CHANGES_DATABASE_URL is deliberately NOT set. The change feed falls back
       # to DATABASE_URL, which is correct here: that variable exists only because
       # `LISTEN` fails silently through a transaction-mode pooler, and there is
-      # no pooler in this topology. See docs/plans/changes_detection.md §6.
+      # no pooler in this topology. See docs/plans/archive/changes-detection.md §6.
     expose:
       - "3000"
     healthcheck:

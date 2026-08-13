@@ -1,7 +1,7 @@
 # Claude Code support — remaining tasks
 
 **Status: backlog.** Everything the plan in
-[plans/claude-code-lexical.md](./plans/claude-code-lexical.md) scoped is built
+[archive/claude-code-lexical.md](./archive/claude-code-lexical.md) scoped is built
 (phases 1–5, plus tables and nested lists). This file is what is _left_, why
 each item exists, and what it would cost. Nothing here is in progress.
 
@@ -12,7 +12,7 @@ Read the plan first for the design; this file assumes it.
 The content bridge (`src/lib/content-bridge/`) addresses Lexical documents by
 block. Both agents run on it: the MCP server (`mcp/content-server.ts`) for
 Claude Code in the terminal, and the in-app Copilot
-(`src/editor/utils/copilotAgentExecutors.ts`). Nothing converts documents to
+(`packages/editor/src/utils/copilotAgentExecutors.ts`). Nothing converts documents to
 Markdown any more.
 
 Coverage against this blog's real content, measured 2026-08-06 across every
@@ -42,7 +42,7 @@ four decisions.
 The hole: `head` was a client-chosen uuid written unconditionally, so a tab open
 a while could point it back at its own revision and orphan an agent's, with
 nothing on screen to say so — autosave went quiet in Aug 2026
-(`plans/quiet-autosave-plan.md`), so there is no indicator to notice either. The
+(`plans/archive/quiet-autosave.md`), so there is no indicator to notice either. The
 content bridge guarded _its_ writes with `stateHash`; this was the other
 direction.
 

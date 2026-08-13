@@ -28,7 +28,7 @@
  *
  * `[data-theme="dark"]` is banned for the same reason as `[theme="dark"]`, and
  * is listed separately because it is not a hypothetical: it is how haklex's own
- * `.css.ts` files spell the dark scheme (docs/plans/haklex-adoption.md §5.2),
+ * `.css.ts` files spell the dark scheme (docs/plans/archive/haklex-adoption.md §5.2),
  * and phase 2 ports their component code. Nothing in this app sets that
  * attribute, so a paste that keeps it must fail loudly rather than match
  * nothing.
@@ -55,7 +55,7 @@ import { fileURLToPath } from "url";
 
 const ROOT = resolve(fileURLToPath(new URL(".", import.meta.url)), "..");
 // `packages/**` is listed alongside `src/**` ahead of the editor extraction
-// (docs/plans/haklex-adoption.md §4.3): the moment `src/editor/theme.css` moves
+// (docs/plans/archive/haklex-adoption.md §4.3): the moment `src/editor/theme.css` moves
 // to a workspace package, a src-rooted glob goes green by checking nothing.
 //
 // `*.css.ts` is listed separately because `*.css` does not match it. Without

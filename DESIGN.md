@@ -95,7 +95,7 @@ MUI CSS variables are enabled with
 vanilla-extract against its own token contract, `--ed-*` in
 `packages/editor/src/styles/tokens.css.ts`, with the primitives in
 `packages/editor/src/ui`. That split was decided in
-docs/plans/haklex-adoption.md §5 and carried out over phase 2's seven commits,
+docs/plans/archive/haklex-adoption.md §5 and carried out over phase 2's seven commits,
 so haklex's component code ports in unrewritten; an ESLint
 `no-restricted-imports` rule bans `@mui/*` under `packages/**` to keep it from
 rotting back.

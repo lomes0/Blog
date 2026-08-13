@@ -70,7 +70,7 @@ export class TableNode extends LexicalTableNode {
   // string is baked into stored content. Renaming it means rewriting every
   // stored revision that carries the old one in the same change — Lexical
   // throws on a `type` it has no class for. That was done once already, when
-  // the fork's spellings were retired; see docs/plans/upstream-scrub.md.
+  // the fork's spellings were retired; see docs/plans/archive/upstream-scrub.md.
   static getType(): string {
     return "blog-table";
   }

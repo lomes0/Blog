@@ -7,7 +7,7 @@ import { validate } from "uuid";
 export const dynamic = "force-dynamic";
 
 /**
- * Throw a pending agent proposal away (docs/plans/agent-gating.md §3.4).
+ * Throw a pending agent proposal away (docs/plans/archive/agent-gating.md §3.4).
  *
  * `own` for the same reason as approve: on a collab document `write` would let
  * any signed-in visitor delete work you have not looked at yet.
@@ -34,7 +34,7 @@ export const POST = userRoute<{ id: string; revisionId: string }>(
 
     // The author comes from the document `requireDocument(…, "own")` just
     // returned, never from the request: it is the change feed's fan-out key
-    // (docs/plans/changes_detection.md §2.3).
+    // (docs/plans/archive/changes-detection.md §2.3).
     const rejected = await rejectProposal(
       userPost.id,
       params.revisionId,

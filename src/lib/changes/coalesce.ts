@@ -1,5 +1,5 @@
 /**
- * Event coalescing for the live feed — docs/plans/changes_detection.md §8.
+ * Event coalescing for the live feed — docs/plans/archive/changes-detection.md §8.
  *
  * Import-free apart from its own types, like `diff.ts` and `emitter.ts`, and for
  * the same reason: this is the whole of what the SSE client decides on its own,

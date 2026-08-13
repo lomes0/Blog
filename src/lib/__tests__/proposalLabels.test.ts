@@ -1,5 +1,5 @@
 /**
- * The `origin` string's format, composed and read back (mcp_support.md phase 5).
+ * The `origin` string's format, composed and read back (mcp-support.md phase 5).
  *
  * Both halves live in one module so the format has one definition; these pin
  * that they agree — a composer whose output its own reader mislabels would put

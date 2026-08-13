@@ -42,7 +42,7 @@ export const HOME_ROUTE = "/";
  *
  * It is no longer only the second half of a delete *this* tab performed.
  * `useBackgroundRefresh` runs the change-feed catch-up
- * (docs/plans/changes_detection.md §3), and that reports deletions made
+ * (docs/plans/archive/changes-detection.md §3), and that reports deletions made
  * somewhere else entirely — a second browser tab, an agent in a terminal — as
  * ids missing from the full set. Those removals reach the store through
  * `reconcilePosts`, which is a reducer and so cannot navigate, and they would

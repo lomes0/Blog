@@ -28,7 +28,7 @@ const decisionsSchema = z.object({
 
 /**
  * Make a pending agent proposal the document, whole or in part
- * (docs/plans/agent-gating.md §3.4, docs/plans/haklex-adoption.md §7).
+ * (docs/plans/archive/agent-gating.md §3.4, docs/plans/archive/haklex-adoption.md §7).
  *
  * **`own`, not `write`.** `collab` satisfies `write` — "anyone holding the link
  * may edit" (`lib/access.ts`) — so on a collab document `write` would let any

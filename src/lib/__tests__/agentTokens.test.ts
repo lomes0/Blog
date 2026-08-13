@@ -1,5 +1,5 @@
 /**
- * Agent tokens — the credential half of docs/plans/mcp_support.md.
+ * Agent tokens — the credential half of docs/plans/archive/mcp-support.md.
  *
  * What is worth pinning here is the refusal side, not the happy path. A token
  * that works is obvious the first time anyone uses one; a token that *keeps*

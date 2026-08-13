@@ -10,7 +10,7 @@ export const CHANGE_FEED_ROUTE = "/api/events";
 
 /**
  * Hop 4 of the change feed: the browser end —
- * docs/plans/changes_detection.md §2.4.
+ * docs/plans/archive/changes-detection.md §2.4.
  *
  * An agent write in a terminal reaches the sidebar in the time it takes
  * Postgres to commit and one fetch to return, with no interaction and no
@@ -87,7 +87,7 @@ export const CHANGE_FEED_ROUTE = "/api/events";
  * connections per origin and this one never returns: two mounts across six tabs
  * would be the whole budget, and the seventh request — an image, a save —
  * simply waits. Production is HTTP/2 over a single multiplexed connection
- * (docs/plans/prod-storage-decision.md), where the limit does not apply; `next
+ * (docs/plans/production-deployment.md), where the limit does not apply; `next
  * dev` is plain HTTP/1.1, so the cost is real exactly where a developer keeps
  * many tabs open.
  */

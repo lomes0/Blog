@@ -9,8 +9,8 @@
  * `after`/`before`/`appendTo`, and the route's prose described an `attachment`
  * with no `mimetype` and a kanban task with no `tags` that its own schema
  * accepted. Every block type graduated under
- * docs/plans/claude-code-lexical.md §4.6.1 had to be written twice or it worked
- * on one agent and not the other. See docs/plans/ai-surface-consolidation.md
+ * docs/plans/archive/claude-code-lexical.md §4.6.1 had to be written twice or it worked
+ * on one agent and not the other. See docs/plans/archive/ai-surface-consolidation.md
  * §2.1.
  *
  * This lives beside the codecs rather than under `src/lib/ai/` because

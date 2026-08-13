@@ -114,7 +114,7 @@ export function usePostLoader(
       // This panel is going away, so a review it was showing is over. Named by
       // document, which is what makes that safe to say unconditionally: closing
       // *this* document's diff cannot close the one the rail's "Review" just
-      // asked for on another (docs/plans/agent-gating.md §3.5), even though
+      // asked for on another (docs/plans/archive/agent-gating.md §3.5), even though
       // opening that other document is precisely what unmounts this panel.
       //
       // It used to compare the focused document by hand, because `setDiffOpen`

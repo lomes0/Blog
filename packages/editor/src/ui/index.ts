@@ -2,7 +2,7 @@
  * The editor package's UI primitives kit.
  *
  * Ported from haklex `packages/rich-editor-ui` (MIT, github.com/Innei/haklex)
- * per docs/plans/haklex-adoption.md §5, so that their component code — the
+ * per docs/plans/archive/haklex-adoption.md §5, so that their component code — the
  * phase-3 image and code-block upgrades, the phase-4 diff review overlay —
  * drops in without being rewritten twice.
  *

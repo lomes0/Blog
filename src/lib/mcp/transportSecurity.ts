@@ -1,5 +1,5 @@
 /**
- * Refusing to accept a bearer token in cleartext (docs/plans/mcp_support.md
+ * Refusing to accept a bearer token in cleartext (docs/plans/archive/mcp-support.md
  * phase 5).
  *
  * An agent token is a long-lived credential that a holder replays on every

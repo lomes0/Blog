@@ -1,7 +1,7 @@
 # The workspace URL: from projection to entry point
 
 **Status:** proposed, 1 Aug 2026. Follows
-[workspace-panes.md](./workspace-panes.md), and refines its §0 rather than
+[workspace-panes.md](./archive/workspace-panes.md), and refines its §0 rather than
 reversing it.
 
 ---

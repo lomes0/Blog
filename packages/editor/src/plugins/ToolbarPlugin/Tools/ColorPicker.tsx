@@ -6,7 +6,7 @@
  *
  * This was one MUI `Menu` holding both palettes as a 28-cell grid, opened from
  * a single palette-icon toggle, with a `toggle="menuitem"` mode for the two
- * places it was mounted *inside* another menu. Per docs/plans/haklex-adoption.md
+ * places it was mounted *inside* another menu. Per docs/plans/archive/haklex-adoption.md
  * §6 the kit adopts haklex's picker rather than restyling ours, and haklex's is
  * one control for one colour — so the shape here is two of them.
  *

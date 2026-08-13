@@ -322,7 +322,7 @@ export const apiClient = {
   },
 
   // -------------------------------------------------------------------------
-  // Agent proposals (docs/plans/agent-gating.md)
+  // Agent proposals (docs/plans/archive/agent-gating.md)
   // -------------------------------------------------------------------------
   proposals: {
     /**
@@ -417,7 +417,7 @@ export const apiClient = {
   },
 
   // -------------------------------------------------------------------------
-  // Agent writes (docs/plans/ai-surface-consolidation.md §4.4)
+  // Agent writes (docs/plans/archive/ai-surface-consolidation.md §4.4)
   // -------------------------------------------------------------------------
   // The other side of the group above: `proposals` is what the *author* does
   // about an agent's work, this is how the in-app agent's work gets there. Both

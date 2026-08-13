@@ -15,14 +15,14 @@
  * document.
  *
  * Now it addresses blocks through `src/lib/content-bridge`
- * (docs/plans/claude-code-lexical.md): reads hand out addresses and a
+ * (docs/plans/archive/claude-code-lexical.md): reads hand out addresses and a
  * `stateHash`, writes name blocks, and only the named nodes are touched.
  *
  * ### What changed in ai-surface-consolidation §4.4
  *
  * **Writes no longer apply anything here.** They used to be held in the chat and,
  * on accept, dispatch `updatePost` or set the live editor state — which meant an
- * in-app agent edit had none of what docs/plans/agent-gating.md built for the
+ * in-app agent edit had none of what docs/plans/archive/agent-gating.md built for the
  * terminal one: no compare-and-set, no staleness, no provenance, no squash and
  * no review surface (§2.4). `apply_ops` and `create_post` now POST to
  * `/api/documents/[id]/proposals` and `/api/documents/agent`, both of which are
@@ -276,7 +276,7 @@ export async function runReadTool(
 
     // The pull half of the selection context. The push half — what rides on
     // every turn's request — is the same function, called from `CopilotChat`
-    // (docs/plans/haklex-adoption.md §7.3). One implementation on purpose: a
+    // (docs/plans/archive/haklex-adoption.md §7.3). One implementation on purpose: a
     // model that asks after being told must not get a different answer.
     case "get_selection":
       return { selection: captureSelection(editor) };

@@ -1,5 +1,5 @@
 /**
- * Rate limiting — the first in this codebase. See docs/plans/mcp_support.md
+ * Rate limiting — the first in this codebase. See docs/plans/archive/mcp-support.md
  * phase 4.
  *
  * Written for `/api/mcp`, which is the app's first surface where a static
@@ -14,7 +14,7 @@
  * **The state is in this process.** Two containers serving the same token get a
  * budget each, so the effective limit is per-instance times instances. That is
  * honest for a single-container deployment (which is what
- * docs/plans/prod-storage-decision.md chose) and wrong the moment the app is
+ * docs/plans/production-deployment.md chose) and wrong the moment the app is
  * scaled out. `RateLimiter` is an interface for exactly that reason: a
  * Postgres- or Redis-backed implementation drops in behind it without any
  * caller changing. Do not scale the app out and assume this still holds.

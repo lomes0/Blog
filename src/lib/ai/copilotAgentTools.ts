@@ -11,7 +11,7 @@
  *
  * The names are deliberately the same ones `mcp/content-server.ts` exposes to
  * Claude Code — one operation, one name, whichever agent is calling. See
- * docs/plans/ai-surface-consolidation.md §4.2; the `post` vocabulary won because
+ * docs/plans/archive/ai-surface-consolidation.md §4.2; the `post` vocabulary won because
  * "document" is the Prisma row and "post" is what the author calls it. A
  * persisted thread from before that rename holds the old names; the chat renders
  * an unrecognized tool from its wire name rather than blanking.
@@ -74,7 +74,7 @@ export const isAgentTool = (name: string): name is AgentToolName =>
 
 /**
  * Each tool says what it did, rather than the UI guessing from the first
- * argument (docs/plans/haklex-adoption.md §7.3).
+ * argument (docs/plans/archive/haklex-adoption.md §7.3).
  *
  * This lives beside the name lists, not in the chat, for the same reason the
  * lists do: it is the one module both the server route and the browser import,

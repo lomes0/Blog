@@ -1,5 +1,5 @@
 /**
- * The change feed's shared vocabulary — docs/plans/changes_detection.md §2.1.
+ * The change feed's shared vocabulary — docs/plans/archive/changes-detection.md §2.1.
  *
  * Import-free apart from its own types, and deliberately so: this module is the
  * one thing all four hops agree on. Phase 1's emitters (`notify.ts`, running in

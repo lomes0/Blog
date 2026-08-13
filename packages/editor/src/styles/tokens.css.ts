@@ -1,7 +1,7 @@
 /**
  * The editor package's vanilla-extract token contract.
  *
- * Phase 2 of docs/plans/haklex-adoption.md: the editor's interior adopts
+ * Phase 2 of docs/plans/archive/haklex-adoption.md: the editor's interior adopts
  * haklex's styling stack (vanilla-extract + Base UI) so their component code
  * ports directly, while the app shell stays on MUI + DESIGN.md. This file is
  * the seam between the two — everything inside `packages/editor` that is
@@ -106,7 +106,7 @@ export const vars = createGlobalThemeContract({
     infoSoft: "ed-info-soft",
     /**
      * The 4-step interactive fill ladder — haklex's `fill` → `fillQuaternary`
-     * scale (docs/plans/haklex-adoption.md §5.3), retinted to our slate palette
+     * scale (docs/plans/archive/haklex-adoption.md §5.3), retinted to our slate palette
      * rather than imported with their neutral literals. This is the thing that
      * makes their components read as one system, and it is the gap
      * `src/theme/treeRow.ts` closed for tree rows only.

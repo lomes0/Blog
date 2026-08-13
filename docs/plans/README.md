@@ -3,29 +3,45 @@
 Proposals and in-flight work. **Each file states its own status at the top —
 read that first.** A plan describes an intended state, not the current one.
 
-| Plan                                                       | Status                                                                                                                                                                                                                                                                                     |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [bloat-remediation.md](./bloat-remediation.md)             | Steps 1–6 done (re-verified 2026-07-30); only step 7 is left, still blocked on the brief below                                                                                                                                                                                             |
-| [tree-model-brief.md](./tree-model-brief.md)               | Decision brief — awaits one product call: does `/posts` render projects?                                                                                                                                                                                                                   |
-| [ide-redesign.md](./ide-redesign.md)                       | In progress — ⌘K command palette landed; status bar and Explorer restyle pending                                                                                                                                                                                                           |
-| [workspace-panes.md](./workspace-panes.md)                 | Proposal — command registry, `ui.tabs` → `ui.workspace`, public/workspace route split, split view; two product calls open                                                                                                                                                                  |
-| [claude-code-lexical.md](./claude-code-lexical.md)         | Proposal rev 2 — Claude Code edits Lexical documents by addressed block, not Markdown. Three spikes killed rev 1's stored ids, its `expectedHead` guard, and its headline Copilot data-loss bug (never real — §2.4). Not urgent; phase 1 is the start                                      |
-| [agent-gating.md](./agent-gating.md)                       | Proposal, decisions locked — agent writes land as _proposals_, reviewed and approved in the app before they become the document. Gate is always on, terminal only, one squashed proposal per document; phases 1–4 are the walking skeleton                                                 |
-| [mcp_support.md](./mcp_support.md)                         | **COMPLETE (8 Aug 2026)** — all 6 phases. The eight MCP tools over HTTP from any machine at `POST /api/mcp`, authenticated by a per-user bearer token: a fourth `tokenRoute` wrapper, scopes gated at tool registration, two tokens on one server proved to see two different authors' content, three token-bucket budgets, 426 on cleartext, and an origin naming which token wrote ("Claude Code (laptop)"). Brought the app its first rate limiter, `src/lib/rateLimit.ts`, written generic for `/api/completion` next. Left undone on purpose (§8): no token-management UI, and no OAuth — the line past which this becomes multi-tenant |
-| [storage-uploads.md](./storage-uploads.md)                 | Proposal — move uploads off the container filesystem to R2/MinIO                                                                                                                                                                                                                           |
-| [upstream-scrub.md](./upstream-scrub.md)                   | **COMPLETE (7 Aug 2026)** — all 6 phases. Deleted the math-editor fork's demo surface: `/tutorial`, `/playground`, their 756 KB of demo JSON, a duplicated font, the app shell's toolbar slot and `EditorSkeleton`. Editor nodes, the collab surface and git history untouched by decision |
-| [ordering-simplification.md](./ordering-simplification.md) | Proposal — see below                                                                                                                                                                                                                                                                       |
-| [schema-organization.md](./schema-organization.md)         | Proposal — see below                                                                                                                                                                                                                                                                       |
-| [series-as-node.md](./series-as-node.md)                   | Proposal — see below                                                                                                                                                                                                                                                                       |
+Shipped plans move to [archive/](./archive/) rather than being deleted — the
+code cites them by section number. See [archive/README.md](./archive/README.md)
+for what has landed and when.
+
+## Live
+
+| Plan                                                       | Status                                                                                                                                                 |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [production-deployment.md](./production-deployment.md)     | **Decided 13 Aug 2026, not yet implemented** — a single VPS running Docker Compose. The third hosting decision in two weeks; the other two are recorded because their reasoning still reads, not because they are live |
+| [claude-code-backlog.md](./claude-code-backlog.md)         | **Backlog.** What the content bridge does _not_ do, and why. Several items are decisions rather than work — chiefly §4, nested editors, which gates three codecs and 198 real nodes |
+| [ide-redesign.md](./ide-redesign.md)                       | All three phases of the visible pass shipped; only its deferred list is left — status bar, AI panel restyle, tabs/breadcrumb polish                    |
+| [workspace-url.md](./workspace-url.md)                     | Proposal, 1 Aug 2026 — the workspace URL should stop projecting pane focus and become an entry point. Refines [archive/workspace-panes.md](./archive/workspace-panes.md) §0 rather than reversing it |
+| [storage-uploads.md](./storage-uploads.md)                 | **Deferred**, with a named trigger — a considered not-yet, not a backlog item. The single-VPS decision handed back the prerequisite the Vercel plan had briefly made of it |
+| [bloat-remediation.md](./bloat-remediation.md)             | Steps 1–6 done (re-verified 30 Jul 2026); only step 7 is left, still blocked on the brief below                                                        |
+| [tree-model-brief.md](./tree-model-brief.md)               | Decision brief — awaits one product call: does `/posts` render projects?                                                                               |
+| [ordering-simplification.md](./ordering-simplification.md) | Proposal — see below                                                                                                                                   |
+| [schema-organization.md](./schema-organization.md)         | Proposal — see below                                                                                                                                   |
+| [series-as-node.md](./series-as-node.md)                   | Sketch for comparison, not an approved plan — see below                                                                                                |
+
+## Blocked on a decision, not on effort
+
+Three items are waiting on a human answer rather than on work. They are listed
+together because a plan blocked on a question reads exactly like one that has
+stalled:
+
+- **Does `/posts` render projects?** — blocks `tree-model-brief.md`, and through
+  it step 7 of `bloat-remediation.md`.
+- **Nested editors: address into them, or refuse explicitly?** —
+  `claude-code-backlog.md` §4. Blocks the `image`, `sticky` and `canvas` codecs.
+- **Commit to Plan 3 (series-as-node)?** — the high-churn unification below.
 
 ---
 
 ## Content model & ordering simplification
 
-The last three are related proposals to simplify how content is modeled and
-ordered, optimizing for **less code and easier maintenance under a single-user
-blog**. They started from one question — "is the `rank`-based reordering the
-best way?" — and fanned out into the schema underneath it.
+The last three in the table are related proposals to simplify how content is
+modeled and ordered, optimizing for **less code and easier maintenance under a
+single-user blog**. They started from one question — "is the `rank`-based
+reordering the best way?" — and fanned out into the schema underneath it.
 
 Read them in this order:
 

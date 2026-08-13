@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 /**
- * How much agent work is waiting on the caller (docs/plans/agent-gating.md
+ * How much agent work is waiting on the caller (docs/plans/archive/agent-gating.md
  * §3.4, §3.5).
  *
  * **`userRoute`, and scoped to the caller's own documents.** A bare count

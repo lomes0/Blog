@@ -1,6 +1,6 @@
 /**
  * The block diff per-hunk proposal review is built on
- * (docs/plans/haklex-adoption.md §7).
+ * (docs/plans/archive/haklex-adoption.md §7).
  *
  * Two claims are under test, and the module is worthless without either.
  *

@@ -1,5 +1,5 @@
 /**
- * The central claim of docs/plans/claude-code-lexical.md, under test.
+ * The central claim of docs/plans/archive/claude-code-lexical.md, under test.
  *
  * §4.1: *losslessness comes from addressing, not from format coverage.* The
  * applier touches only the nodes an op names, so a kanban board or a GeoGebra

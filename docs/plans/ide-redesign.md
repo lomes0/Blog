@@ -1,5 +1,14 @@
 # IDE Redesign — Phased Plan (visible pass)
 
+**Status: all three phases of this pass have shipped.** Phase 0 (⌘K palette) and
+Phase 1 (`fda8cb70` — search pill + Read/Edit toggle) are in `EditorTopBar.tsx`;
+Phase 2's Explorer restyle landed over `4e138db5`…`13c32850`; Phase 3 is
+`Layout/ActivityRail.tsx`, `SideBar/SidebarSearchView.tsx` and `ui.sidebarView`
+in `store/app.ts`. **What is left is only the "Deferred (next pass)" list
+below** — the status bar (nothing renders one today), the AI panel restyle, and
+the tabs/breadcrumb polish. This file stays out of `archive/` for that list
+alone; §"Locked decisions" and the phase bodies are now history.
+
 Applying the **Blog IDE** proposal to this app. (The proposal bundle itself is
 no longer in the repo; the locked decisions below are what survived of it.)
 

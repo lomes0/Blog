@@ -44,7 +44,7 @@ interface AgentWriteResultProps {
  * What a content write did, in the transcript (§4.4.5).
  *
  * The write itself is already done by the time this renders: since
- * docs/plans/ai-surface-consolidation.md §4.4 the agent proposes on the tool
+ * docs/plans/archive/ai-surface-consolidation.md §4.4 the agent proposes on the tool
  * call, so there is no Accept here and this is a report rather than a decision.
  * The one action it offers is **Review**, which is `useProposalActions.review` —
  * the same call the rail and `AgentChangeBar` make, opening the document, naming

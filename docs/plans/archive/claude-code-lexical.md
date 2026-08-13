@@ -113,7 +113,7 @@ that broke rev 1's guard is the one that removes rev 1's need for stored ids.
 compare-and-set (`src/app/api/documents/[id]/route.ts:54`). A stale open editor
 can point `head` back at its own revision and orphan Claude's, with nothing on
 screen to say so — autosave went quiet in Aug 2026
-(`docs/plans/quiet-autosave-plan.md`). Recoverable from history, but only if you
+(`docs/plans/archive/quiet-autosave.md`). Recoverable from history, but only if you
 know to look.
 
 The bridge guards its own writes. Closing the other direction means a CAS on

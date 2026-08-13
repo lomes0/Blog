@@ -211,7 +211,7 @@ depth:
 >
 > **STATUS 2026-08-07: STILL OPEN, two route lists below are stale.**
 > `/playground` and `/tutorial` were deleted
-> ([plans/upstream-scrub.md](../plans/upstream-scrub.md) phases 3–4), so the
+> ([plans/archive/upstream-scrub.md](../plans/archive/upstream-scrub.md) phases 3–4), so the
 > `htmr`-rendered set is now just `/embed/[id]`, and `/api/embed`'s loopback
 > callers no longer include those two. The finding itself is unaffected — the
 > sinks and both delivery paths are unchanged, and the "do not require a session

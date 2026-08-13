@@ -1,7 +1,7 @@
 /**
  * How an approved proposal reaches a tab that is already showing the document.
  *
- * docs/plans/agent-gating.md §3.9: approving moves `Document.head`, and until
+ * docs/plans/archive/agent-gating.md §3.9: approving moves `Document.head`, and until
  * the user next typed, an open editor would go on showing content that is no
  * longer the document. So the panel that owns the editor registers a callback
  * here, and whoever approves — the rail, the review bar, anything later — calls

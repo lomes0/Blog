@@ -183,7 +183,7 @@ as browser-only and uncovered. Add no spec; verify with §4.
 
 ### 3.7 The doc fix, same commit
 
-`docs/plans/upstream-scrub.md:512` still lists under _What this does not fix_:
+`docs/plans/archive/upstream-scrub.md:512` still lists under _What this does not fix_:
 that `src/indexeddb/index.ts` still kept the upstream database name. That was
 overtaken by `7921af36` a week later — `index.ts:56` reads `"blog-simple"`. It
 was the only factually wrong reference in the repo. Rewrite it to point here.

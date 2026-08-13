@@ -18,7 +18,7 @@ interface ProposalsSectionProps {
 }
 
 /**
- * What Claude has done that is waiting on you (docs/plans/agent-gating.md §3.5,
+ * What Claude has done that is waiting on you (docs/plans/archive/agent-gating.md §3.5,
  * "awareness" tier).
  *
  * Two kinds of thing, one list, because from the author's side they are one

@@ -26,6 +26,7 @@ Each documents a specific failure mode and its fix.
 | [guides/date-formatting.md](./guides/date-formatting.md)                 | The two date seams, and which is safe where                           |
 | [guides/nextauth-ssr.md](./guides/nextauth-ssr.md)                       | Session handling in server components with NextAuth                   |
 | [guides/notes-indexeddb-origins.md](./guides/notes-indexeddb-origins.md) | Why notes "vanish" between `dev` and `start`: IndexedDB is per-origin |
+| [guides/ai-providers.md](./guides/ai-providers.md)                       | Multi-provider AI completion layer: models, providers, env vars        |
 
 ## Architecture
 
@@ -34,19 +35,24 @@ Each documents a specific failure mode and its fix.
 | [architecture/overview.md](./architecture/overview.md)                               | Layered architecture, rules per layer, naming conventions, and new-feature checklist               |
 | [architecture/api-client.md](./architecture/api-client.md)                           | `apiClient` contract, error handling, and how to add new API routes                                |
 | [architecture/claude-code-integration.md](./architecture/claude-code-integration.md) | The content bridge, the MCP server and the in-app Copilot — one block-addressing layer, two agents |
-| [ai.instructions.md](./ai.instructions.md)                                           | Multi-provider AI completion layer: models, providers, env vars                                    |
 
 ## Plans and reviews
 
 Proposals and audits — **status is stated at the top of each file**. These
 describe intended or observed states, not necessarily the current one.
 
-| File                                                           | Description                                                                  |
-| -------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| [plans/README.md](./plans/README.md)                           | Index of the content-model & ordering proposals                              |
-| [claude_code_support_tasks.md](./claude_code_support_tasks.md) | Backlog for the Claude Code / Copilot content bridge — what is left, and why |
-| [reviews/](./reviews/)                                         | Point-in-time code reviews, dated                                            |
+| File                                                             | Description                                                                        |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| [plans/README.md](./plans/README.md)                             | The ten live plans, and the three decisions blocking them                          |
+| [plans/archive/README.md](./plans/archive/README.md)             | Shipped plans, kept because 184 code comments cite them by section number          |
+| [plans/claude-code-backlog.md](./plans/claude-code-backlog.md)   | Backlog for the Claude Code / Copilot content bridge — what is left, and why       |
+| [reviews/](./reviews/)                                           | Point-in-time code reviews, dated                                                  |
 
 Findings in `reviews/` carry a per-finding `STATUS` line stating whether they
 are still open. Re-verify before acting on one — a review body describes the
 code as it was on the date at its top.
+
+**A plan is not documentation of the current tree.** Plans under `archive/` were
+accurate when they shipped and have drifted since — most say `src/editor`, which
+has been `packages/editor/src` since the haklex extraction. The reference docs
+above are the ones kept current.

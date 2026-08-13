@@ -84,7 +84,7 @@ the URL replayed over a restored layout),
 `src/lib/__tests__/workspaceUrl.test.ts` (when the address bar may be rewritten
 to follow pane focus), `src/commands/__tests__/toolParity.test.ts` (that the AI
 tool surface stays derivable from the command registry — see
-docs/plans/workspace-panes.md §3.1),
+docs/plans/archive/workspace-panes.md §3.1),
 `src/components/EditDocument/__tests__/tabFit.test.ts` (which pane tabs fit the
 strip and which fall into the overflow menu),
 `src/lib/__tests__/scrollMemory.test.ts` (restoring a document to where it was
@@ -97,7 +97,7 @@ central claim: a block nobody named comes out byte-identical, plus snapshot
 addressing, atomicity and the freshness guard) and `outline.test.ts`
 (addressing, descriptors for blocks with no codec, and the content hash) and
 `codecs.test.ts` (a round-trip per graduated block type over a node with every
-optional field populated — the obligation docs/plans/claude-code-lexical.md
+optional field populated — the obligation docs/plans/archive/claude-code-lexical.md
 §4.6.1 attaches to graduating one — which now also feeds each of those nodes to
 the zod schema in `content-bridge/schema.ts`, so a type that gains a codec
 without gaining a schema arm, or the reverse, fails rather than working on one
@@ -118,7 +118,7 @@ environment cannot parse. The newest two both gate an agent's writes:
 `src/lib/__tests__/proposals.test.ts` (that a head repair falls back to history
 rather than promoting a pending proposal, and that squashing a second batch onto
 one carries `baseRevisionId` through untouched while `version` advances; see
-docs/plans/agent-gating.md §3.2, where refreshing that one field is the silent
+docs/plans/archive/agent-gating.md §3.2, where refreshing that one field is the silent
 clobber) and `src/lib/__tests__/agentBatches.test.ts`, which is the phase-2
 acceptance test — three consecutive `apply_ops` calls simulated end to end over
 an in-memory stand-in for the two tables, asserting that they leave exactly one
@@ -138,8 +138,7 @@ database or a subprocess. It pins the authorization claim rather than the
 plumbing — two servers in one process get two different authors, a write passes
 its resolved author as `ownedBy`, and `tools/list` costs no user lookup. What is
 still script-only is anything that needs the live database: `npm run mcp:smoke`
-(export `MCP_AUTHOR_ID` — the value lives in `.mcp.json`, not `.env`) and
-`npm run mcp:token`. `npm run mcp:smoke:http` is the same idea for the remote
+and `npm run mcp:token`. `npm run mcp:smoke:http` is the same idea for the remote
 endpoint and needs a live *server* as well: it covers what no spec can reach
 because it only exists over HTTP — the token refusals being indistinguishable
 from each other, a read-only token seeing six tools rather than eight, 426 on
@@ -167,7 +166,7 @@ the change feed), `src/lib/__tests__/tokenRoute.test.ts` and
 the plain-HTTP refusal), `src/lib/__tests__/proposalLabels.test.ts`,
 `src/store/__tests__/reconcile.test.ts`, and
 `packages/editor/src/plugins/MarkdownPlugin/__tests__/blockShortcuts.test.ts`
-(the ``` regression in docs/plans/haklex-adoption.md §10.2, moved out of a
+(the ``` regression in docs/plans/archive/haklex-adoption.md §10.2, moved out of a
 `useEffect` so it could be tested at all).
 
 All of these follow the same rule as `dragGeometry.ts`: the logic lives in an
@@ -224,7 +223,7 @@ The application uses PostgreSQL with the following core models:
   endpoint — many per user, each independently revocable. Only the SHA-256 of a
   secret is stored, `userId` lives on the token and never arrives in a request,
   and revoked rows are kept rather than deleted. Mint and revoke with
-  `npm run mcp:token`; see docs/plans/mcp_support.md §4.3
+  `npm run mcp:token`; see docs/plans/archive/mcp-support.md §4.3
 
 ### Local vs Cloud Storage
 
@@ -397,7 +396,7 @@ become a path on disk.
 
 The rich text editor is a workspace package, `packages/editor` — not part of
 `src/`. The `@/editor/*` alias points at `packages/editor/src/*`, so import
-paths read the same as before the extraction (docs/plans/haklex-adoption.md §4).
+paths read the same as before the extraction (docs/plans/archive/haklex-adoption.md §4).
 
 **It is on a different design system to the rest of the app, deliberately.** The
 app shell is MUI + DESIGN.md; the editor package is vanilla-extract + Base UI
@@ -490,8 +489,9 @@ Optional:
   tree is served with no session and no authorization check, bypassing
   `/api/attachments`. Point it at a mounted volume in production.
 - `MCP_AUTHOR_ID`: which user the **stdio** MCP server acts as (a `User` id or
-  email). Lives in `.mcp.json`'s `env`, not `.env` — export it by hand for
-  `npm run mcp:smoke` and `npm run mcp:token`.
+  email). Lives in `.env` like everything else — `.mcp.json` is committed, so an
+  author named there would be one person's identity imposed on every clone. The
+  server loads it via `--env-file=.env`, so nothing needs exporting by hand.
 - `MCP_ALLOW_INSECURE=1`: accept an agent token at `/api/mcp` over plain HTTP to
   a non-loopback host. Only for a transport that is already private — an ssh
   tunnel, Tailscale, a proxy that forwards under a different header. Setting it
@@ -524,6 +524,22 @@ Key rules enforced by `eslint.config.mjs`:
 
 Additional documentation is in the `/docs/` directory, including guides on
 hydration issues, component architecture, and implementation-specific notes.
+Start at [docs/README.md](./docs/README.md), which indexes the rest.
+
+**A plan is not a description of the current tree.** `docs/plans/` holds live
+proposals; each states its own status at the top, and that line is the thing to
+read first. A plan that ships moves to `docs/plans/archive/` rather than being
+deleted, because **the code cites these documents by section number** — 184
+comments across 121 files, and two tools (`eslint.config.mjs`'s MUI rule and
+`scripts/check-codecs.mjs`) print a path from there in their failure output. So:
+
+- Moving or renaming anything under `docs/plans/` means updating those
+  citations. `grep -rn "docs/plans/" --include="*.ts" --include="*.tsx"` finds
+  them; the two `prisma/migrations/*.sql` comments are the exception, since
+  Prisma checksums an applied migration and will refuse one that changed.
+- Archived plans were accurate when they shipped and have drifted since — most
+  say `src/editor`, which is `packages/editor/src` now. Read them for _why_ a
+  thing is shaped as it is, never for _where_ it lives.
 
 ### AI Integration
 

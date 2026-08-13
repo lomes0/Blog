@@ -1,6 +1,6 @@
 /**
  * Partial approval, composed the way `approveProposal` composes it
- * (docs/plans/haklex-adoption.md §7, docs/plans/agent-gating.md §3.2–§3.4).
+ * (docs/plans/archive/haklex-adoption.md §7, docs/plans/archive/agent-gating.md §3.2–§3.4).
  *
  * `proposals.test.ts` pins the plan and `proposalDiff.test.ts` pins the diff.
  * Neither can see the thing this commit actually adds, which is what happens

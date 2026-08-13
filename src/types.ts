@@ -26,7 +26,7 @@ export interface AttachmentPreviewState {
 
 /**
  * How a pane is showing its document — the state that replaced the `/view` vs
- * `/edit` route split in Phase 5 of docs/plans/workspace-panes.md. Flipping it
+ * `/edit` route split in Phase 5 of docs/plans/archive/workspace-panes.md. Flipping it
  * is a state change, not a navigation: same pane, same Lexical instance, same
  * scroll position, `editor.setEditable(false)`.
  */
@@ -149,7 +149,7 @@ export type SidebarView = "explorer" | "search" | "notes";
  */
 export type SaveStatus = "idle" | "saving" | "retrying" | "error";
 
-// ─── Agent proposals (docs/plans/agent-gating.md §3.5) ───────────────────────
+// ─── Agent proposals (docs/plans/archive/agent-gating.md §3.5) ───────────────────────
 
 /**
  * An agent write that has been stored but is not yet the document.
@@ -276,7 +276,7 @@ export interface AppState {
       docId?: string;
       /**
        * The hunks the author has refused, when the right-hand side is a pending
-       * proposal being reviewed per hunk (docs/plans/haklex-adoption.md §7).
+       * proposal being reviewed per hunk (docs/plans/archive/haklex-adoption.md §7).
        *
        * Here rather than inside `Diff/ProposalReview` because the decision and
        * the button that commits it are drawn by two different components:

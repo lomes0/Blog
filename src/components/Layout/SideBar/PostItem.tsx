@@ -105,7 +105,7 @@ export const PostItem = memo(
     );
     const isOpenRoot = openPaneId !== null;
     // An agent has proposed a change to this post, or an agent created it and it
-    // has not been accepted yet (docs/plans/agent-gating.md §3.5 and §3.7). A
+    // has not been accepted yet (docs/plans/archive/agent-gating.md §3.5 and §3.7). A
     // primitive, not the proposal itself: this selector runs for every row in
     // the tree on every store change, and returning an object would give each
     // one a fresh identity to diff.
@@ -147,7 +147,7 @@ export const PostItem = memo(
     // These deliberately say nothing about unsaved state. Autosave is silent
     // while it is working, and the sidebar's old dirty subscription put every
     // row on the re-render path of every keystroke in the open editor — see
-    // docs/plans/quiet-autosave.md.
+    // docs/plans/archive/quiet-autosave.md.
     const tabEntries = useMemo<SubTabEntry[]>(() => {
       if (!hasTabs) return EMPTY_TAB_ENTRIES;
       const entries: SubTabEntry[] = [

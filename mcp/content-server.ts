@@ -6,7 +6,7 @@
 // The eight tools live in `src/lib/mcp/server.ts`, which knows nothing about
 // transports or the environment. This file is the whole of what makes that
 // server *this process*: it resolves MCP_AUTHOR_ID to a user and speaks stdio.
-// An HTTP door onto the same factory is docs/plans/mcp_support.md phase 3.
+// An HTTP door onto the same factory is docs/plans/archive/mcp-support.md phase 3.
 //
 // Auth: single-user, personal use. All operations are scoped to the user named
 // by MCP_AUTHOR_ID (a User id or email); the server never reads or writes other

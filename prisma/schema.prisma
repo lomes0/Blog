@@ -108,7 +108,7 @@ model Document {
   type DocumentType
 
   // An agent-created post lands normally but stays flagged until you accept it
-  // (docs/plans/agent-gating.md §3.7). `published` defaults to false, so this is
+  // (docs/plans/archive/agent-gating.md §3.7). `published` defaults to false, so this is
   // a draft nobody else can read meanwhile.
   agentCreatedAt DateTime?
   agentOrigin    String?
@@ -145,7 +145,7 @@ model Revision {
   authorId   String   @db.Uuid
   author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
-  // ── Agent proposals (docs/plans/agent-gating.md §3.1) ──────────────────────
+  // ── Agent proposals (docs/plans/archive/agent-gating.md §3.1) ──────────────────────
   // A revision with `proposedAt` set is *not* history: it is a pending agent
   // write that `Document.head` does not point at, and every history read
   // filters it out with `proposedAt: null`. Approval clears the flag, which is
@@ -199,7 +199,7 @@ model User {
 }
 
 /// A bearer credential that lets an agent reach this user's content over HTTP
-/// without a browser session — see docs/plans/mcp_support.md §4.3.
+/// without a browser session — see docs/plans/archive/mcp-support.md §4.3.
 ///
 /// The whole security argument for preferring this over OAuth rests on one
 /// property, so it is worth stating where the columns are: **`userId` lives on
@@ -343,7 +343,7 @@ model Note {
 // per-user: two accounts sharing a machine shared their history, and a thread
 // did not follow its author to another device. Once the chatbox is a way to
 // *act* on the library rather than only ask about it, the thread is the audit
-// trail of what was done — see docs/plans/workspace-panes.md §6.3.
+// trail of what was done — see docs/plans/archive/workspace-panes.md §6.3.
 model CopilotThread {
   id       String  @id @default(uuid()) @db.Uuid
   authorId String  @db.Uuid

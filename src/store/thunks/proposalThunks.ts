@@ -8,7 +8,7 @@ import type {
 import { createApiThunk, fail } from "./createApiThunk";
 
 /**
- * The author's side of docs/plans/agent-gating.md — reading what Claude has
+ * The author's side of docs/plans/archive/agent-gating.md — reading what Claude has
  * proposed, and answering it.
  *
  * Everything here is cloud-only by construction. An agent proposal is a row in

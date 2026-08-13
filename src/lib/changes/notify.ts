@@ -4,7 +4,7 @@ import { CHANGE_CHANNEL, type ChangeEvent, encodeChangeEvent } from "./events";
 
 /**
  * Hop 1 of the change feed: `NOTIFY` at the write —
- * docs/plans/changes_detection.md §2.1.
+ * docs/plans/archive/changes-detection.md §2.1.
  *
  * ## Why these calls live in the repositories
  *

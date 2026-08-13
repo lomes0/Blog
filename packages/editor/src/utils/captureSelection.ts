@@ -1,7 +1,7 @@
 /**
  * The user's selection, in the addresses the agent tools already speak.
  *
- * docs/plans/haklex-adoption.md §7.3. Their `captureSelection.ts` marks the
+ * docs/plans/archive/haklex-adoption.md §7.3. Their `captureSelection.ts` marks the
  * selected blocks `selected="true"` in the serialization the model is pushed
  * and, for a text range, injects the exact text plus anchor/focus `blockId`
  * and offset. Ours does the same job against *our* addressing, which is the

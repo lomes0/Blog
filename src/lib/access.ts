@@ -120,7 +120,7 @@ export async function requireDocument(
  *
  * **A pending agent proposal is owner-only whatever the document allows.**
  * Following the document would make an unapproved rewrite of a *published* post
- * readable by anyone holding its id (docs/plans/agent-gating.md §2.1), and
+ * readable by anyone holding its id (docs/plans/archive/agent-gating.md §2.1), and
  * `collab` would hand it to any signed-in visitor besides — so the requested
  * mode is overridden to `own`, the same line §3.4 draws for approving one. It is
  * an override rather than a caller's option because there is no call site that

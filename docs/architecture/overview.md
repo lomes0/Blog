@@ -13,7 +13,7 @@ adding new features.
 │  Next.js App Router pages  (src/app/)               │
 │  Server Components · RSC fetch · generateMetadata   │
 ├─────────────────────────────────────────────────────┤
-│  React Components  (src/components/, src/editor/)   │
+│  React Components  (src/components/, packages/editor/src/)   │
 │  Client Components · UI state · dispatch actions    │
 ├─────────────────────────────────────────────────────┤
 │  State layer  (src/store/)                          │
@@ -168,7 +168,7 @@ Components must not:
 
 ## Editor (Lexical)
 
-Custom nodes live in `src/editor/nodes/`. Plugins live in `src/editor/plugins/`.
+Custom nodes live in `packages/editor/src/nodes/`. Plugins live in `packages/editor/src/plugins/`.
 The editor is client-only; never import editor internals in server components or
 API routes.
 

@@ -53,7 +53,7 @@ const idbConfig = {
   // every draft in the old one. Renaming this would need a copy written first,
   // the way the fork's old database was carried over in Aug 2026; that copy was
   // retired once every profile had been swept, so there is nothing left to
-  // follow this one. See `docs/plans/legacy-idb-retirement.md`.
+  // follow this one. See `docs/plans/archive/legacy-idb-retirement.md`.
   databaseName: "blog-simple",
   // 7 adds `workspaces`; 6 added `copilotThreads`. Bumping the version is what
   // runs `onupgradeneeded`, which creates any store in this list the database

@@ -16,13 +16,13 @@ import NProgress from "nprogress";
  * had just fetched, i.e. the review surface was a write path onto the row under
  * review. Harmless while every revision id was immutable history; not harmless
  * now that `diff.new` can be a pending proposal, which `createRevision` upserts
- * by id (docs/plans/agent-gating.md §2.1). The write is gone rather than
+ * by id (docs/plans/archive/agent-gating.md §2.1). The write is gone rather than
  * guarded: nothing here ever needed it.
  *
  * **This is no longer the agent-proposal surface.** Reviewing what Claude
  * proposed goes through `ProposalReview`, which renders the same two states as
  * addressed blocks so each change can be accepted or refused on its own
- * (docs/plans/haklex-adoption.md §7.2). What stays here is revision-to-revision
+ * (docs/plans/archive/haklex-adoption.md §7.2). What stays here is revision-to-revision
  * comparison, which is a different job: two pieces of history, nothing to
  * decide, and a whole-document word diff is the right shape for it.
  */

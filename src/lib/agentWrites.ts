@@ -4,7 +4,7 @@
  * Two agents write this blog's documents — Claude Code over stdio
  * (`mcp/content-server.ts`) and the in-app Copilot over HTTP — and until now
  * only the first of them went through the proposal machinery
- * (docs/plans/agent-gating.md). The second dispatched `updatePost` from the
+ * (docs/plans/archive/agent-gating.md). The second dispatched `updatePost` from the
  * browser on an accept, so it had no compare-and-set, no staleness, no
  * provenance, no squash and no review surface: "the AI edited my post" meant
  * two different things depending on which AI (docs/plans/
@@ -414,7 +414,7 @@ export async function proposeNewPost(
     parentId: null,
   });
   // The one write in this codebase that does not go through a repository, so it
-  // is the one hand-placed notify (docs/plans/changes_detection.md §2.1) —
+  // is the one hand-placed notify (docs/plans/archive/changes-detection.md §2.1) —
   // everything else here reaches Postgres through `src/repositories/*`, which
   // emits on its own. Inside the transaction, so the browser only hears about a
   // post that actually committed. `null` means the payload could not be built;

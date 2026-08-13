@@ -9,7 +9,7 @@ import {
 } from "../events";
 
 /**
- * The change feed's payload contract — docs/plans/changes_detection.md §2.1,
+ * The change feed's payload contract — docs/plans/archive/changes-detection.md §2.1,
  * §10.
  *
  * `events.ts` is import-free by design (the same rule as `diff.ts` and

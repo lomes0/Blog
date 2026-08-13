@@ -2,7 +2,7 @@
  * The content bridge — Claude Code and the in-app Copilot address a Lexical
  * document by block instead of round-tripping it through Markdown.
  *
- * See docs/plans/claude-code-lexical.md. The load-bearing property is §4.1:
+ * See docs/plans/archive/claude-code-lexical.md. The load-bearing property is §4.1:
  * losslessness comes from *addressing*, not from format coverage. The applier
  * touches only the nodes an op names, so a kanban board nobody mentioned comes
  * out identical, and the IR never has to be able to express one.

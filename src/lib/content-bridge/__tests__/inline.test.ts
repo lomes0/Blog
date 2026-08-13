@@ -1,5 +1,5 @@
 /**
- * The gate on §4.5 of docs/plans/claude-code-lexical.md.
+ * The gate on §4.5 of docs/plans/archive/claude-code-lexical.md.
  *
  * `set_text` is only safe if a block's inline formatting survives being
  * rendered to Markdown and parsed back. Ten marks is more than Markdown was

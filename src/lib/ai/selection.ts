@@ -17,7 +17,7 @@
  * `read_blocks` them. The payload stays small, and block text reaches the model
  * in one spelling (the bridge's) instead of two.
  *
- * See docs/plans/haklex-adoption.md §7.3.
+ * See docs/plans/archive/haklex-adoption.md §7.3.
  */
 
 /** One end of a text selection. */

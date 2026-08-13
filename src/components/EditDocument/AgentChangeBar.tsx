@@ -43,7 +43,7 @@ interface AgentChangeBarProps {
  * renders nothing when neither answers.
  *
  * It renders whenever this document is in either state — in or out of diff mode
- * (docs/plans/agent-change-indication.md §3.4). It used to render only when the
+ * (docs/plans/archive/agent-change-indication.md §3.4). It used to render only when the
  * diff's right-hand side was the proposal, which left the one state that needs a
  * warning as the one state with nothing on screen: you could open a document
  * Claude had written against, type a character, and silently mark the proposal
@@ -64,7 +64,7 @@ export default function AgentChangeBar({ docId }: AgentChangeBarProps) {
   const agentPost = useSelector((state) => selectAgentPost(state, docId));
   const comparing = useSelector((state) => state.ui.diff.new);
   // What the per-hunk review underneath this bar has been told to refuse
-  // (docs/plans/haklex-adoption.md §7). It is collected there and committed
+  // (docs/plans/archive/haklex-adoption.md §7). It is collected there and committed
   // here, because this bar is the sticky one: a proposal can run for pages, and
   // the decision has to stay reachable without scrolling back to a header.
   const rejectedHunks = useSelector((state) => state.ui.diff.rejectedHunks);

@@ -1,6 +1,6 @@
 /**
  * Agent tokens: the credential an agent presents to reach one user's content
- * over HTTP, without a browser session. See docs/plans/mcp_support.md §4.3.
+ * over HTTP, without a browser session. See docs/plans/archive/mcp-support.md §4.3.
  *
  * The whole lifecycle lives here — mint, verify, revoke, list — rather than
  * splitting the hash across a script and a route. Two implementations of "how a

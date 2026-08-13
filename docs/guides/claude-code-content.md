@@ -1,16 +1,45 @@
 # Editing blog content from Claude Code
 
 Claude Code can navigate, read, write and create posts in this blog directly,
-through an MCP server that exposes the Prisma/Lexical content as tools. There
-are two ways to reach it:
+through an MCP server that exposes the Prisma/Lexical content as tools. Ask it
+to "fix the second paragraph of my Kalman filter post" and it does, in the
+terminal, with no copy-paste through a browser.
 
-- **[Local](#local-stdio)** — a stdio process next to the database. Needs the
-  repo and `.env`. This is the one to use on the machine you develop on.
-- **[Remote](#remote-httpapimcp)** — `POST /api/mcp` on the deployed blog,
-  authenticated by an agent token. Needs nothing but a URL and a secret.
+## Which one do you want?
 
-Same eight tools either way; the difference is only how the process is reached
-and who it decides you are.
+Two ways in. Same eight tools either way — the only difference is how the
+process is reached and how it decides who you are.
+
+| | **[Local](#local-stdio)** | **[Remote](#remote-httpapimcp)** |
+| --- | --- | --- |
+| Use it when | you have this repo checked out | you have a login on a deployed blog and nothing else |
+| You need | `.env` with `DATABASE_URL`, a database that is up | the blog's URL and an agent token |
+| Reaches | Postgres, directly | `POST /api/mcp` on the running app |
+| You are | whoever `MCP_AUTHOR_ID` names | whoever owns the token |
+| To set up | edit `.env`, start `claude` in the repo | one `claude mcp add`, no checkout |
+| Get a token from | — | whoever runs the blog; **there is no self-serve UI yet** |
+
+If you are reading this because you develop the blog, you want **local**. If you
+want to write posts from a laptop that has never seen the source, you want
+**remote**, and your first move is to ask for a token — you cannot mint your own
+without database access.
+
+### The 30-second version
+
+```bash
+# Local — from the repo root
+echo 'MCP_AUTHOR_ID="you@example.com"' >> .env   # the email you sign in with
+claude                                            # approve blog-content, then /mcp
+
+# Remote — from anywhere
+claude mcp add --transport http blog-content https://your-blog.example/api/mcp \
+  --header "Authorization: Bearer blog_pat_…"     # NOT --scope project
+```
+
+Either way, `/mcp` should then list **blog-content** as connected with eight
+tools (six for a read-only token). If it doesn't,
+[the table at the bottom](#when-it-does-not-connect) has the ways it usually
+fails, and what each one means.
 
 **This page is setup and caveats only.** How to drive the tools — block
 addressing, the outline → read → write loop, the authorable block types, the
@@ -19,8 +48,8 @@ inline markup, what each refusal means — lives in the tool descriptions in
 connected. Documenting it twice here would only give it somewhere to rot. For
 _why_ content is addressed by block rather than by Markdown, see
 [mcp/README.md](../../mcp/README.md) and
-[docs/plans/claude-code-lexical.md](../plans/claude-code-lexical.md); for how
-the remote door is built, [docs/plans/mcp_support.md](../plans/mcp_support.md).
+[docs/plans/archive/claude-code-lexical.md](../plans/archive/claude-code-lexical.md); for how
+the remote door is built, [docs/plans/archive/mcp-support.md](../plans/archive/mcp-support.md).
 
 ---
 
@@ -39,22 +68,33 @@ pg_isready -h localhost -p 5432
 
 ### 2. Name the author
 
-Everything is scoped to one user. Set `MCP_AUTHOR_ID` in `.mcp.json` at the repo
-root — a `User` id or an email:
+Everything is scoped to one user. Put `MCP_AUTHOR_ID` in `.env` next to
+`DATABASE_URL` — a `User` id, or the email you sign in with:
+
+```bash
+MCP_AUTHOR_ID="you@example.com"
+```
+
+Find yours with `npx prisma studio` if you are not sure.
+
+**It goes in `.env`, not in `.mcp.json`.** `.mcp.json` is committed, so an author
+written there is one person's identity imposed on everyone who clones — and it
+was, until the file was emptied of it. `.env` is gitignored, is already the file
+you filled in to get the app running, and is loaded by the server's
+`--env-file=.env`, so nothing else has to be exported by hand: `npm run
+mcp:server`, `npm run mcp:smoke` and `npm run mcp:smoke:http` all pick it up from
+there. Registration itself carries no per-machine values at all now:
 
 ```jsonc
 {
   "mcpServers": {
     "blog-content": {
       "command": "node",
-      "args": ["--import", "tsx", "--env-file=.env", "mcp/content-server.ts"],
-      "env": { "MCP_AUTHOR_ID": "you@example.com" }
+      "args": ["--import", "tsx", "--env-file=.env", "mcp/content-server.ts"]
     }
   }
 }
 ```
-
-Find yours with `npx prisma studio` if you are not sure.
 
 The server never reads or writes another author's content: every query is
 filtered on `authorId`, and no tool takes an author from its arguments. That is
@@ -77,9 +117,8 @@ npm run mcp:server
 ### 4. Verify end to end (optional)
 
 ```bash
-export MCP_AUTHOR_ID=you@example.com   # lives in .mcp.json, not .env
-npm run mcp:smoke                      # read-only
-RUN_WRITE=1 npm run mcp:smoke          # also creates a throwaway post and edits it
+npm run mcp:smoke              # read-only
+RUN_WRITE=1 npm run mcp:smoke  # also creates a throwaway post and edits it
 ```
 
 The write path only touches the post it just created, and deletes it before
@@ -93,6 +132,17 @@ read the output.
 
 For a machine that has no checkout and no database access. The endpoint runs
 inside the deployed app, so there is nothing to install.
+
+**Step 1 is not something you can do yourself.** Minting a token needs
+`DATABASE_URL` and a shell where the app runs — there is no settings screen and
+no route that issues one, deliberately for now (see
+[the CLI's own header](../../prisma/scripts/agent-token.ts) and
+[mcp-support.md §8.5](../plans/archive/mcp-support.md), which asks whether a public
+deployment can ship without a management UI). So if the blog is not yours: sign
+in to it once through OAuth first — a token is minted against a `User` row, and
+signing in is what creates yours — then ask its operator for a token named after
+your machine, and skip to [step 2](#2-register-it). If the blog is yours, read
+on.
 
 ### 1. Mint a token
 
@@ -179,7 +229,7 @@ post-deploy check.
 
 ```bash
 # Locally: mints the tokens it needs and revokes them on the way out.
-MCP_AUTHOR_ID=you@example.com npm run mcp:smoke:http
+npm run mcp:smoke:http
 
 # Against a deployment you have no database access to.
 BLOG_MCP_TOKEN=blog_pat_… npm run mcp:smoke:http -- https://your-blog/api/mcp
@@ -220,6 +270,26 @@ expect names the credential to revoke. A local stdio write is just
 
 ---
 
+## When it does not connect
+
+`/mcp` is the first place to look; `claude mcp list` reports a server that
+failed to start, and a missing `${VAR}` in a config, by name.
+
+| What you see | What it is |
+| --- | --- |
+| `blog-content` absent entirely | you started `claude` outside the repo root — `.mcp.json` is per project directory — or you registered remotely and it went to a different project's local scope |
+| Fails at startup, local | run `npm run mcp:server` by hand: an absent `DATABASE_URL`, a database that is not up, and an `MCP_AUTHOR_ID` matching no user each print their own error and exit before the transport connects |
+| `MCP_AUTHOR_ID is required` | it is unset in `.env` — the server reads it from there via `--env-file=.env`, and no longer from `.mcp.json` |
+| 401 on every call, remote | the token is unknown, revoked, or expired. All three are answered identically on purpose, so the endpoint cannot be used to test which secrets were once real — check with `npm run mcp:token -- list you@example.com`, which names the state |
+| 426 Upgrade Required | the endpoint was reached over plain HTTP on a non-loopback host. Use HTTPS; see [§3](#3-it-must-be-https) |
+| Six tools instead of eight | a `--scopes read` token. `apply_ops` and `create_post` are not registered at all rather than refusing later |
+| 429, or a tool error naming a wait | you hit a [budget](#4-what-it-costs-you). In an ordinary editing session this is a bug — say so |
+
+Beyond that, `npm run mcp:smoke` (local) and `npm run mcp:smoke:http` (remote)
+exercise the same paths Claude Code takes and print where they stop.
+
+---
+
 ## Where the code is
 
 | Path | What |
@@ -229,7 +299,7 @@ expect names the credential to revoke. A local stdio write is just
 | `src/app/api/mcp/route.ts` | The HTTP entry: token auth, budgets, TLS check |
 | `src/lib/agentTokens.ts` | Mint, verify, revoke; `prisma/scripts/agent-token.ts` is the CLI |
 | `src/lib/content-bridge/` | Addressing, codecs, ops applier, `stateHash` — pure JSON, no DOM |
-| `src/editor/utils/copilotAgentExecutors.ts` | The same bridge, driving the in-app Copilot |
+| `packages/editor/src/utils/copilotAgentExecutors.ts` | The same bridge, driving the in-app Copilot |
 
 The bridge is covered by `src/lib/content-bridge/__tests__/` and needs no
 database. The server, the token lifecycle, the route wrapper and the rate

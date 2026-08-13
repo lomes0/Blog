@@ -159,7 +159,7 @@ const nextConfig: NextConfig = {
   // `dirs` is what `npm run lint` (`next lint`) actually walks. Its default is
   // app/pages/components/lib/src, of which only `src` exists here — so
   // `packages/` would be linted by nothing at all. Named explicitly ahead of
-  // the editor extraction (docs/plans/haklex-adoption.md §4.3).
+  // the editor extraction (docs/plans/archive/haklex-adoption.md §4.3).
   //
   // `mcp/` and `scripts/` are deliberately *not* listed. Neither has ever been
   // linted, and `mcp/smoke.ts` is a CLI that legitimately prints (26 pre-existing
@@ -183,7 +183,7 @@ const nextConfig: NextConfig = {
   // per-component paths so the barrel's whole surface is not pulled in.
   //
   // Still earning its keep after the editor came off MUI
-  // (docs/plans/haklex-adoption.md §5): the app shell keeps MUI, and 131 files
+  // (docs/plans/archive/haklex-adoption.md §5): the app shell keeps MUI, and 131 files
   // under `src/` still import from the barrel. What changed is its reach —
   // `packages/**` is now MUI-free and lint-enforced, so this transform no
   // longer touches the editor at all.

@@ -32,7 +32,7 @@
 // because there is no `delete_post` tool: an unattended create over HTTP alone
 // would be litter only a human could clear, and an `apply_ops` would leave a
 // pending proposal sitting in someone's review rail
-// (docs/plans/agent-gating.md §3.8). With a database it cleans up after itself
+// (docs/plans/archive/agent-gating.md §3.8). With a database it cleans up after itself
 // exactly as the stdio smoke does.
 //
 // The budget checks are opt-in too (`--limits`), because proving a limiter

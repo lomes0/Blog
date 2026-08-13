@@ -1,5 +1,12 @@
 # Changes detection
 
+**Status: COMPLETE — all four phases shipped 8 Aug 2026**, `f268d2f4`…`58557915`
+(catch-up query, `NOTIFY` at the write, `LISTEN` and per-user fan-out, SSE to the
+browser). Planned in `516c4e46`. It shipped as designed: `GET /api/events` is the
+stream, `GET /api/documents/changes` the catch-up query, and `src/lib/changes/`
+holds the six modules. §6 was rewritten for the single-VPS target on 13 Aug 2026
+(`754b3cb0`) — see [production-deployment.md](../production-deployment.md).
+
 When Claude Code creates or edits a post, the browser does not find out. You
 refresh, and the sidebar catches up. This plan closes that gap with a change
 feed: Postgres `NOTIFY` at the write, `LISTEN` in the Next process, SSE to the

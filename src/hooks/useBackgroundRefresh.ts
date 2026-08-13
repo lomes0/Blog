@@ -25,7 +25,7 @@ const MIN_INTERVAL_MS = 30_000;
 /**
  * The fallback for when the live feed is down — a catch-up on focus.
  *
- * `useChangeFeed` is the primary path now (docs/plans/changes_detection.md §7):
+ * `useChangeFeed` is the primary path now (docs/plans/archive/changes-detection.md §7):
  * a `NOTIFY` at the write, a `LISTEN` in the Next process and an SSE stream to
  * this tab, which normally makes an outside write visible in under a second and
  * leaves this hook with nothing to find. What it is still for is every window
@@ -42,7 +42,7 @@ const MIN_INTERVAL_MS = 30_000;
  * Two questions, asked together because they have the same trigger and the same
  * answer-shape:
  *
- * 1. **What documents changed?** `catchUpPosts` (docs/plans/changes_detection.md
+ * 1. **What documents changed?** `catchUpPosts` (docs/plans/archive/changes-detection.md
  *    §3) fetches the full id set the caller owns and diffs it against the store,
  *    which is the only shape that can also report a *deletion* — `Document` has
  *    no `deletedAt`, so a hard-deleted row leaves nothing for a cursor query to
@@ -68,7 +68,7 @@ const MIN_INTERVAL_MS = 30_000;
  * already runs, not a second copy of its rules.
  *
  * **On SSE.** The earliest version of this hook ruled a stream out of scope;
- * phases 1–3 of docs/plans/changes_detection.md revisited that rather than
+ * phases 1–3 of docs/plans/archive/changes-detection.md revisited that rather than
  * reversing it, and this hook is what makes them *correct* rather than what
  * they replace. `NOTIFY` has no durability — a dropped connection, a laptop
  * sleep or a Next restart silently loses whatever happened inside the window —

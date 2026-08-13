@@ -1,6 +1,6 @@
 /**
  * The layer between the diff and the review surface
- * (docs/plans/haklex-adoption.md §7).
+ * (docs/plans/archive/haklex-adoption.md §7).
  *
  * `proposalReview.ts` exists because a hunk list is not a document, and the
  * three claims under test here are the ones a component cannot make for itself

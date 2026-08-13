@@ -1,5 +1,5 @@
 /**
- * The token bucket behind `/api/mcp`'s budgets (docs/plans/mcp_support.md
+ * The token bucket behind `/api/mcp`'s budgets (docs/plans/archive/mcp-support.md
  * phase 4).
  *
  * Time is injected on every call, so these are ordinary pure-function tests —

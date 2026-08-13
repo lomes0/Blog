@@ -1,6 +1,6 @@
 /**
  * The process-wide fan-out, and the reconnect schedule that feeds it —
- * docs/plans/changes_detection.md §2.2, §2.3, §5.
+ * docs/plans/archive/changes-detection.md §2.2, §2.3, §5.
  *
  * Import-free apart from its own types, like `diff.ts` and `dragGeometry.ts`.
  * `listener.ts` is the half that cannot be tested without a database: a socket,

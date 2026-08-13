@@ -451,7 +451,7 @@ Verified against a running server:
 
 **Still per-process.** Two containers serving one token get a budget each. That
 is honest for the single-container deployment
-docs/plans/prod-storage-decision.md chose, and wrong the moment the app scales
+docs/plans/production-deployment.md chose, and wrong the moment the app scales
 out; `RateLimiter` is the seam a shared-store implementation drops into.
 
 ### Phase 5 — Hardening — **SHIPPED (8 Aug 2026)**

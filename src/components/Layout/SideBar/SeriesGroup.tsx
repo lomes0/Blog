@@ -246,7 +246,7 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
                     expanded: that makes the marker flicker on every fold, which is
                     worse than the redundancy. The descendant rows carry their own
                     markers, so the group's is load-bearing only when collapsed, but
-                    it stays visible when open too — see docs/plans/agent-change-indication.md §3.2. */
+                    it stays visible when open too — see docs/plans/archive/agent-change-indication.md §3.2. */
                 }
                 <AgentMarkerComponent
                   marker={groupMarker.marker}

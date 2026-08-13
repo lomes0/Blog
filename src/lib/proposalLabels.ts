@@ -8,7 +8,7 @@
  * whole content of the field, and a value nobody has a label for is still more
  * informative than a shrug.
  *
- * Since docs/plans/mcp_support.md phase 5 an origin may also name the *instance*
+ * Since docs/plans/archive/mcp-support.md phase 5 an origin may also name the *instance*
  * that wrote, as `agent:instance` — the remote MCP endpoint stamps the agent
  * token's name, so the rail can say which machine proposed rather than only
  * that something did. Composing and parsing that form both live here so the
@@ -16,7 +16,7 @@
  */
 const KNOWN_ORIGINS: Record<string, string> = {
   "claude-code": "Claude Code",
-  // The in-app agent, since docs/plans/ai-surface-consolidation.md §4.4: its
+  // The in-app agent, since docs/plans/archive/ai-surface-consolidation.md §4.4: its
   // content writes are proposals in this table too, so the rail now has a second
   // origin to name. Server-stamped by `POST /api/documents/[id]/proposals`.
   copilot: "Copilot",

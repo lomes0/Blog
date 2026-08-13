@@ -13,7 +13,7 @@
 		#
 		# This is load-bearing for /api/events, which is an SSE stream held open
 		# indefinitely. A buffering proxy produces the failure
-		# docs/plans/changes_detection.md §5 describes and which is genuinely
+		# docs/plans/archive/changes-detection.md §5 describes and which is genuinely
 		# nasty to debug: the connection opens, the browser fires `open`, and no
 		# event ever arrives. Nothing errors.
 		#

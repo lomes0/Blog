@@ -93,7 +93,7 @@ export default function EditSeriesForm(
       // `/series/[id]`, itself a 308 to `/posts/[id]`), so this is a broken
       // destination rather than a command. Where a deleted series sends you is
       // a behaviour question, and Phase 1 changes no behaviour — see
-      // docs/plans/workspace-panes.md §7.
+      // docs/plans/archive/workspace-panes.md §7.
       router.push("/series");
     } catch (err) {
       // The thunk announced the failure globally; this is the inline copy.

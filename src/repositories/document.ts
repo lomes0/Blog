@@ -49,7 +49,7 @@ const revisionAuthorSelect = {
  */
 const revisionsSelect = {
   // The history filter, and it lives **here** rather than in
-  // `toCloudDocument`'s non-collab arm (docs/plans/agent-gating.md §2.1). In
+  // `toCloudDocument`'s non-collab arm (docs/plans/archive/agent-gating.md §2.1). In
   // the arm it would be wrong twice over: the non-collab arm already keeps only
   // `head`, so with `take: 1` the one row fetched *is* the proposal and the
   // document arrives with no revision metadata at all — and the `collab` arm
@@ -241,7 +241,7 @@ const findDocument = async (
         // delete head's own row without touching `head`, so this repair runs on
         // an ordinary read; promoting the newest row full stop would make an
         // unreviewed agent write the document with no user action and no
-        // compare-and-set (docs/plans/agent-gating.md §2.1).
+        // compare-and-set (docs/plans/archive/agent-gating.md §2.1).
         if (!selection.repair) return null;
         revision = selection.repair;
         const repaired = revision.id;
@@ -317,7 +317,7 @@ const findDocumentsByAuthorId = async (
  * Every document the author owns, as `{ id, updatedAt }` and nothing else.
  *
  * This backs `GET /api/documents/changes` — the catch-up query of
- * docs/plans/changes_detection.md §3. The client diffs it against its store to
+ * docs/plans/archive/changes-detection.md §3. The client diffs it against its store to
  * learn what was created, updated and (§3.1) deleted while it was not looking.
  *
  * **Deliberately unpaged.** `AUTHOR_DOCUMENTS_PAGE_SIZE` caps the *listing*
@@ -393,7 +393,7 @@ const createDocument = async (data: CreateDocumentInput) => {
   });
 
   // The create and its notification commit together (docs/plans/
-  // changes_detection.md §2.1): Postgres delivers a `NOTIFY` at COMMIT and
+  // changes-detection.md §2.1): Postgres delivers a `NOTIFY` at COMMIT and
   // discards it on rollback, so a create that fails cannot announce a post that
   // does not exist. The ids are known before the write here, which is what lets
   // this one be the array form the plan sketches.
@@ -490,7 +490,7 @@ const updateDocument = async (
     : { handle: handle.toLowerCase() };
 
   // A save moves `head`, and a proposal built on the head it moves off can no
-  // longer be approved (docs/plans/agent-gating.md §3.6). Marking travels with
+  // longer be approved (docs/plans/archive/agent-gating.md §3.6). Marking travels with
   // the move, in whichever transaction the move is happening in — the two must
   // not be separable, or a crash between them leaves the rail offering an
   // Approve button that can only 409, with nothing left to come back and fix it.
@@ -646,7 +646,7 @@ const findEditorDocument = async (handle: string) => {
   if (!revision) {
     // Head is missing or points to a deleted revision — recover from the latest
     // row that is *not* a proposal. Same rule, and same reason, as the repair in
-    // `findDocument` (docs/plans/agent-gating.md §2.1).
+    // `findDocument` (docs/plans/archive/agent-gating.md §2.1).
     const latestRevision = await prisma.revision.findFirst({
       where: { documentId: doc.id, proposedAt: null },
       orderBy: { createdAt: "desc" },
@@ -745,7 +745,7 @@ const findDocumentChildren = async (parentId: string) => {
   });
 };
 
-// ─── Agent-created posts (docs/plans/agent-gating.md §3.7) ───────────────────
+// ─── Agent-created posts (docs/plans/archive/agent-gating.md §3.7) ───────────────────
 
 /**
  * How many of this author's posts are still flagged as agent-created.

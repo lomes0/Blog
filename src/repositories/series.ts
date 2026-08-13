@@ -64,7 +64,7 @@ const postSelect = (author: typeof authorSelect | typeof publicAuthorSelect) =>
     },
     revisions: {
       // History only: a pending agent proposal is not part of a post's history
-      // and must not travel in a series payload (docs/plans/agent-gating.md
+      // and must not travel in a series payload (docs/plans/archive/agent-gating.md
       // §3.1). This list is unfiltered by `head` on the way out, so without it
       // a proposal would reach every reader of a public series.
       where: { proposedAt: null },

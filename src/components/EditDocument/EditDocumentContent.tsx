@@ -11,7 +11,7 @@ import WorkspacePanes from "./WorkspacePanes";
  * The one place the URL is still an *input*.
  *
  * Since Phase 2 nothing else parses a path to learn what is open — the
- * workspace holds that (docs/plans/workspace-panes.md §2.3). A deep link has to
+ * workspace holds that (docs/plans/archive/workspace-panes.md §2.3). A deep link has to
  * enter somewhere, though, and this is that seam: the id off the address bar
  * becomes the document `WorkspacePanes` opens.
  *

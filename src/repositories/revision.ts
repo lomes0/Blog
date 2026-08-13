@@ -28,7 +28,7 @@ import { notifyChange } from "@/lib/changes/notify";
  * `proposedAt` is on the select because authorization has to branch on it: a
  * revision on a *published* post is readable by anyone holding its id
  * (`requireRevision(…, "read")`), and a proposal must be owner-only whatever
- * the document's publication state. Phase 2 of docs/plans/agent-gating.md adds
+ * the document's publication state. Phase 2 of docs/plans/archive/agent-gating.md adds
  * that check; the column is here so it has something to read.
  */
 export type StoredRevision = Revision & { proposedAt: Date | null };
@@ -195,7 +195,7 @@ const deleteRevision = async (id: string) => {
   });
 };
 
-// ─── Agent proposals (docs/plans/agent-gating.md) ────────────────────────────
+// ─── Agent proposals (docs/plans/archive/agent-gating.md) ────────────────────────────
 
 const pendingSelect = {
   id: true,
@@ -251,7 +251,7 @@ const countPendingProposals = async (authorId: string) =>
  * What the rail renders for one pending proposal. Metadata only — no `data`.
  *
  * This is the **dedicated pending fetch** phase 4 was allowed to add instead of
- * loosening the history filter (docs/plans/agent-gating.md §2.1, phase 4). The
+ * loosening the history filter (docs/plans/archive/agent-gating.md §2.1, phase 4). The
  * filter stays `proposedAt: null` in `revisionsSelect` where phase 1 put it: it
  * covers every caller in one place, and the alternative — letting proposals
  * through there — has to be right on *both* arms of `toCloudDocument`, where the
@@ -310,7 +310,7 @@ const findPendingProposalsByAuthor = async (
 
 /**
  * Stamp every pending proposal on a document stale, because `head` has moved off
- * the base they were built on (docs/plans/agent-gating.md §3.6).
+ * the base they were built on (docs/plans/archive/agent-gating.md §3.6).
  *
  * **Takes a transaction client rather than opening one.** It has to commit with
  * the head move: a crash in between would leave a proposal the compare-and-set
@@ -549,7 +549,7 @@ const writeProposal = async (
 
 /**
  * {@link writeProposal}, plus the `proposal.upserted` event
- * (docs/plans/changes_detection.md §2.1).
+ * (docs/plans/archive/changes-detection.md §2.1).
  *
  * The notify is **here rather than in the three arms** of the retry loop, and
  * that is the point of the split: `create`, `replace` and `fold` are three
@@ -825,7 +825,7 @@ const approveProposal = async (
 
       // Only here, and inside the transaction: every refusal above returns
       // without announcing, and a rollback discards these two notifications
-      // along with the write (docs/plans/changes_detection.md §2.1). Two events
+      // along with the write (docs/plans/archive/changes-detection.md §2.1). Two events
       // rather than one because approval is genuinely both things — the proposal
       // stopped being pending, *and* `head` moved, so the document's content
       // changed and any client holding it has to re-fetch. Leaving the second to

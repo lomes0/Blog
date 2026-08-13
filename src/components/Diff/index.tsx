@@ -11,7 +11,7 @@ import ProposalReview from "./ProposalReview";
  * about it — and a whole-document word diff says that best. A pending agent
  * proposal against the document is a question the author has to answer, block
  * by block, which is what `ProposalReview` is for
- * (docs/plans/haklex-adoption.md §7.2).
+ * (docs/plans/archive/haklex-adoption.md §7.2).
  *
  * The branch is on identity, not on a mode flag: the right-hand side of the
  * comparison *being* this document's pending proposal is the whole condition,

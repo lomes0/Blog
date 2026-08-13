@@ -6,7 +6,7 @@ import {
 import type { ChangeEvent } from "@/lib/changes/events";
 
 /**
- * Event coalescing — docs/plans/changes_detection.md §8's second testable
+ * Event coalescing — docs/plans/archive/changes-detection.md §8's second testable
  * claim: "N notifications for the same id inside one window collapse to one
  * refresh".
  *

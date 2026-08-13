@@ -211,7 +211,7 @@ export default function PropertiesSection({
             that block only renders when a pane has more than one tab, so a
             single-tab document — the ordinary case — could never show this,
             and the collapsed-rail badge would light with nothing to explain
-            it. See docs/plans/quiet-autosave.md §3.2. */
+            it. See docs/plans/archive/quiet-autosave.md §3.2. */
         }
         {saveTrouble && (
           <KVRow

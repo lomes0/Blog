@@ -51,7 +51,7 @@ next-env.d.ts
 # Location is overridable with UPLOADS_DIR; this is the default.
 /var/
 
-# reference checkout, read while planning docs/plans/haklex-adoption.md.
+# reference checkout, read while planning docs/plans/archive/haklex-adoption.md.
 # A whole clone with its own .git — never ours to track.
 /tmp/haklex/
 

@@ -59,7 +59,7 @@ import { TableNode } from "./TableNode";
  * back under the old type, without the id/style/float our subclasses model.
  *
  * That is deliberate, and it is not defended against, because the data is gone:
- * `docs/plans/legacy-idb-retirement.md` §10 migrated all 58 stored revisions
+ * `docs/plans/archive/legacy-idb-retirement.md` §10 migrated all 58 stored revisions
  * that carried those strings, verified every other JSON column at zero, swept
  * every browser profile on the only machine that has ever run this app (zero
  * guest documents) and scanned the filesystem for export bundles (none). The

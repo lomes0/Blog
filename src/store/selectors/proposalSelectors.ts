@@ -4,7 +4,7 @@ import type { AgentCreatedPost } from "@/types";
 import { isProposalStale } from "@/lib/proposals";
 
 /* ------------------------------------------------------------------ */
-/*  Agent markers (docs/plans/agent-change-indication.md §2)           */
+/*  Agent markers (docs/plans/archive/agent-change-indication.md §2)           */
 /* ------------------------------------------------------------------ */
 
 /**

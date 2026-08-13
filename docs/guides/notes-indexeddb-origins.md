@@ -5,14 +5,14 @@
 This guide used to describe notes disappearing when switching between
 `npm run dev` and `npm run build && npm start`. That is fixed, by the third of
 the options it proposed: notes live in Postgres now (`prisma.notesCanvas`,
-`/api/notes/*`, read by `src/editor/nodes/CanvasNode/`). The `notesCanvas`
+`/api/notes/*`, read by `packages/editor/src/nodes/CanvasNode/`). The `notesCanvas`
 IndexedDB store had no readers left and is no longer declared in
 `src/indexeddb/index.ts`.
 
 The migration described below never copied that store, and refused to delete the
 legacy database while anything was left in it — so on a profile that held
 pre-move notes, the operator dumped them out as JSON before the sweep could
-finish (`docs/plans/legacy-idb-retirement.md` §4.2). That was the last decision
+finish (`docs/plans/archive/legacy-idb-retirement.md` §4.2). That was the last decision
 the migration was deferring, and it is now closed.
 
 ## The origin rule still applies to everything else
@@ -95,10 +95,10 @@ without knowing the migration above had already emptied that set — and the
 reintroduction was fatal rather than merely redundant, because a class that owns
 a type string upstream itself constructs makes every table insertion throw. See
 `packages/editor/src/nodes/TableNode/registration.ts` for the mechanism and
-`docs/plans/legacy-idb-retirement.md` §10.6 for the sequence. The second lesson,
+`docs/plans/archive/legacy-idb-retirement.md` §10.6 for the sequence. The second lesson,
 then: **a migration is only finished when the reason for the workaround is
 written where the workaround used to be**, or the next change re-derives it.
 
 Nothing in the tree now carries the upstream name — code, docs or memory.
-`docs/plans/legacy-idb-retirement.md` records both halves, and the pre-migration
+`docs/plans/archive/legacy-idb-retirement.md` records both halves, and the pre-migration
 rows are backed up under `var/backups/`.

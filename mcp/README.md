@@ -11,7 +11,7 @@ built by `createContentServer({ resolveAuthorId })`, which knows nothing about
 transports; this directory holds only the stdio entry point that resolves
 `MCP_AUTHOR_ID` and connects a pipe. The other entry point is
 `POST /api/mcp`, which builds the same server from an agent token — see
-[docs/plans/mcp_support.md](../docs/plans/mcp_support.md). What differs between
+[docs/plans/archive/mcp-support.md](../docs/plans/archive/mcp-support.md). What differs between
 them is one function: where the author id comes from.
 
 **To actually use it, start with
@@ -23,7 +23,7 @@ descriptions, which the agent already has; this file is the design rationale.
 
 Posts are stored as Lexical editor-state JSON in `Revision.data`, not files.
 Claude addresses that JSON **by block** rather than round-tripping it through
-Markdown — see [docs/plans/claude-code-lexical.md](../docs/plans/claude-code-lexical.md).
+Markdown — see [docs/plans/archive/claude-code-lexical.md](../docs/plans/archive/claude-code-lexical.md).
 
 ```
 outline(id)          ->  b1  heading[1]  "Gradient descent, revisited"
@@ -103,7 +103,7 @@ which is why `src/lib/content-bridge/` is shared and the command registry is
 not. If Claude Code ever needs to drive the running app, that is a channel from
 this server to a live session — a feature with its own plan, not a matter of
 registering more tools here. See
-[docs/plans/ai-surface-consolidation.md](../docs/plans/ai-surface-consolidation.md)
+[docs/plans/archive/ai-surface-consolidation.md](../docs/plans/archive/ai-surface-consolidation.md)
 §4.3.
 
 Parity runs the other way too: `list_series` above exists in both, because
@@ -111,11 +111,15 @@ enumerating series is content, and the Copilot was missing it.
 
 ## Configuration
 
-Registered in `.mcp.json` at the repo root. Set the author:
+Registered in `.mcp.json` at the repo root, which holds no per-machine values —
+both of these come from `.env` via `--env-file`:
 
-- `MCP_AUTHOR_ID` — a `User` id or email. Set in `.mcp.json`'s `env`, which is
-  why `npm run mcp:smoke` and `npm run mcp:token` need it exported by hand.
-- `DATABASE_URL` — loaded from `.env` via `--env-file`.
+- `MCP_AUTHOR_ID` — a `User` id or email. In `.env` rather than `.mcp.json`'s
+  `env` because that file is committed, so an author written there is one
+  person's identity imposed on everyone who clones. Keeping it with
+  `DATABASE_URL` is also why nothing has to be exported by hand for
+  `npm run mcp:smoke`.
+- `DATABASE_URL`.
 
 The remote endpoint takes neither: it gets its author from the presented token
 and its database from the app it runs inside.
@@ -127,7 +131,7 @@ database. This exercises the server end to end against real content:
 
 ```bash
 # read-only unless RUN_WRITE=1
-MCP_AUTHOR_ID=you@example.com npm run mcp:smoke
+npm run mcp:smoke
 ```
 
 `npm run mcp:smoke:http` is its counterpart for the remote endpoint. It covers
@@ -136,6 +140,6 @@ rule, the body cap, the budgets and the origin naming which credential wrote —
 and it takes a URL, so the same command verifies a deployment:
 
 ```bash
-MCP_AUTHOR_ID=you@example.com npm run mcp:smoke:http          # mints its own tokens
+npm run mcp:smoke:http                                        # mints its own tokens
 BLOG_MCP_TOKEN=blog_pat_… npm run mcp:smoke:http -- https://your-blog/api/mcp
 ```

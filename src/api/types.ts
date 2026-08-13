@@ -36,7 +36,7 @@ export interface PaginatedDocuments {
 // -----------------------------------------------------------------------
 // The full id set the caller owns, two fields per row and no document bodies.
 // Unpaged on purpose: a hard delete is only visible as an id *missing* from the
-// complete set. See docs/plans/changes_detection.md §3 and §3.1.
+// complete set. See docs/plans/archive/changes-detection.md §3 and §3.1.
 export interface DocumentChanges {
   ids: { id: string; updatedAt: string }[];
 }
@@ -46,7 +46,7 @@ export interface DocumentChanges {
 // -----------------------------------------------------------------------
 // The in-app agent's two content writes, which go through the same
 // `src/lib/agentWrites.ts` the MCP server calls. See
-// docs/plans/ai-surface-consolidation.md §4.4.
+// docs/plans/archive/ai-surface-consolidation.md §4.4.
 
 /** What a batch of block ops did to the document's one pending proposal. */
 export interface AgentProposalResult {

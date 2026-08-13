@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 /**
- * Keep an agent-created post: clear its flag (docs/plans/agent-gating.md §3.7).
+ * Keep an agent-created post: clear its flag (docs/plans/archive/agent-gating.md §3.7).
  *
  * A create has no `head` to withhold and nothing to overwrite, so it lands
  * normally and is flagged instead. Accepting is the flag coming off; the post
@@ -29,7 +29,7 @@ export const POST = userRoute<{ id: string }>(
 
     // The author comes from the document `requireDocument(…, "own")` just
     // returned, never from the request: it is the change feed's fan-out key
-    // (docs/plans/changes_detection.md §2.3).
+    // (docs/plans/archive/changes-detection.md §2.3).
     const accepted = await acceptAgentDocument(userPost.id, userPost.author.id);
 
     return NextResponse.json({ data: { id: userPost.id, accepted } });

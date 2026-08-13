@@ -33,7 +33,7 @@ import type { SerializedEditorState } from "lexical";
 
 /**
  * Review a pending agent proposal one change at a time
- * (docs/plans/haklex-adoption.md §7).
+ * (docs/plans/archive/haklex-adoption.md §7).
  *
  * ### Why this is not the word diff
  *

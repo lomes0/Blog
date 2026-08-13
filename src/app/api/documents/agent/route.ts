@@ -20,7 +20,7 @@ const agentPostSchema = z.object({
 }).strict();
 
 /**
- * Create a post as the in-app agent (docs/plans/ai-surface-consolidation.md
+ * Create a post as the in-app agent (docs/plans/archive/ai-surface-consolidation.md
  * §4.4.4) — the sibling of `POST /api/documents/[id]/proposals`, and the same
  * call `mcp/content-server.ts`'s `create_post` makes.
  *

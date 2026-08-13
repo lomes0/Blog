@@ -25,7 +25,7 @@ interface RowAgentActionsProps {
  * the tree would put those two hooks on every post, series and project, when
  * only the marked rows need them.
  *
- * The marker drives the actions (docs/plans/agent-change-indication.md):
+ * The marker drives the actions (docs/plans/archive/agent-change-indication.md):
  *
  * - **pending**: Approve and Reject. The proposal is fresh; both choices are
  *   available.

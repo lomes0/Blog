@@ -8,7 +8,7 @@ import type { PaneMode, User } from "@/types";
  * The same thing as {@link PaneMode}, and aliased to it rather than redeclared
  * so the two cannot drift: since Phase 2 the mode lives on the pane, and
  * `document.open` still takes it as a parameter only because flipping it is
- * still a navigation. Phase 5 of docs/plans/workspace-panes.md is where it
+ * still a navigation. Phase 5 of docs/plans/archive/workspace-panes.md is where it
  * stops being one.
  */
 export type DocumentMode = PaneMode;

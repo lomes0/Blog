@@ -1,5 +1,5 @@
 /**
- * Shared shapes for the content bridge (docs/plans/claude-code-lexical.md).
+ * Shared shapes for the content bridge (docs/plans/archive/claude-code-lexical.md).
  *
  * **The bridge works on serialized JSON, not on a live editor.** The plan's
  * §4.1 describes the applier as loading "the real editor state"; operating on

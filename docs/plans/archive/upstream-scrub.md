@@ -366,7 +366,7 @@ out of `package.json`. It has six live callers — `Diff/index.tsx`,
 `(public)/view/[id]`, plus its own module). Nothing was orphaned by either
 deletion.
 
-**Left for phase 6, deliberately:** `docs/plans/workspace-panes.md` §513-541 and
+**Left for phase 6, deliberately:** `docs/plans/archive/workspace-panes.md` §513-541 and
 `docs/reviews/code-review-2026-07.md` both discuss these routes. Both are dated
 records of decisions taken at the time — rewriting them would falsify the
 history. They should be _annotated_ as superseded, not edited.
@@ -470,7 +470,7 @@ would falsify that:
   the file's own per-finding convention. The finding is unchanged — the sinks
   and both delivery paths are untouched — but two route lists inside it are
   stale.
-- `docs/plans/workspace-panes.md` §8.2 left `/tutorial` as an open product call
+- `docs/plans/archive/workspace-panes.md` §8.2 left `/tutorial` as an open product call
   ("marketing surface or in-app help page"). Annotated as resolved by deletion.
 - `docs/plans/bloat-remediation.md` Step 5 said `EditorSkeleton` would stay,
   being a genuinely different shape. Annotated: it went anyway, as a side effect
@@ -515,7 +515,7 @@ Worth stating so the plan is not mistaken for a full de-fork:
   copy was itself retired on 8 Aug 2026. The last two upstream `type` strings
   went the same day, by rewriting the 58 stored revisions that carried them.
   Nothing upstream-named is left in the tree. See
-  `docs/plans/legacy-idb-retirement.md` and
+  `docs/plans/archive/legacy-idb-retirement.md` and
   `docs/guides/notes-indexeddb-origins.md`.
 - **~9.5k LOC of `src/editor` is vendored Lexical playground code** (Meta
   copyright header). It is upstream-authored in the strictest sense, but it is

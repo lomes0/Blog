@@ -14,7 +14,7 @@ const NOTHING: CatchUpResult = { changed: [], deletedIds: [] };
 
 /**
  * Ask what changed while the browser was not looking — Phase 0 of
- * docs/plans/changes_detection.md.
+ * docs/plans/archive/changes-detection.md.
  *
  * `GET /api/documents/changes` returns every id the caller owns with its
  * `updatedAt`; the diff against the store answers create, update *and* delete

@@ -83,7 +83,7 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
   // sidebar, the right rail and the review bar, and a second mount would be a
   // second SSE connection per tab and a second pair of requests on every window
   // focus. The feed is the primary signal and the poll is its fallback for when
-  // the stream is down (docs/plans/changes_detection.md §7) — both converge on
+  // the stream is down (docs/plans/archive/changes-detection.md §7) — both converge on
   // the same catch-up, so having both cannot leave the store in two states.
   useChangeFeed();
   useBackgroundRefresh();

@@ -1,11 +1,7 @@
----
-applyTo: 'src/**/*ai*,src/**/*completion*,src/**/*llm*'
----
-
 # AI Integration
 
 Reference for the multi-provider completion layer. Last verified against the
-code on 2026-07-30.
+code on 2026-08-13.
 
 ## Layout
 
@@ -17,15 +13,24 @@ src/lib/ai/
 ├── prompts.ts             # Centralized prompt templates
 ├── providers.ts           # Provider factory functions
 ├── errors.ts              # Custom error classes
-└── copilotAgentTools.ts   # Tool definitions for the copilot panel
+├── actions.ts             # One definition per AI action — the registry
+├── actionIcons.ts         # Icon per action, split out to keep actions.ts server-safe
+├── selection.ts           # What the user has selected, as told to the Copilot
+├── commandTools.ts        # Non-content tools, generated from the command registry
+└── copilotAgentTools.ts   # Content tool definitions for the copilot panel
 ```
+
+The last five arrived with the AI-surface consolidation
+([plans/archive/ai-surface-consolidation.md](../plans/archive/ai-surface-consolidation.md));
+`actions.ts` is its §4.5 action registry, and `copilotAgentTools.ts` is the
+`post`-vocabulary tool surface from §4.2.
 
 Consumers:
 
 - `src/app/api/completion/route.ts` — completion endpoint
 - `src/app/api/copilot/route.ts` — copilot endpoint
-- `src/editor/plugins/ToolbarPlugin/Dialogs/AIDialog.tsx` — model selection UI
-- `src/editor/plugins/ToolbarPlugin/Tools/AITools.tsx` — toolbar actions
+- `packages/editor/src/plugins/ToolbarPlugin/Dialogs/AIDialog.tsx` — model selection UI
+- `packages/editor/src/plugins/ToolbarPlugin/Tools/AITools.tsx` — toolbar actions
 
 ## Rules
 
