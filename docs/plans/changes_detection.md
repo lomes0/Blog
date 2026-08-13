@@ -360,16 +360,33 @@ over hop 4, and hop 4 is what makes it correct.
 of them break it, and they break it _silently_: the connection succeeds, the
 `LISTEN` succeeds, and notifications simply never arrive.
 
-Per `docs/plans/prod-storage-decision.md` the target is a container on Fly with
-a direct Postgres connection, which is fine. But the listener must use the
-**direct** `DATABASE_URL`, not a pooled one, and this needs confirming before
-release rather than discovering it in production.
+**Revised 13 Aug 2026: this section's premise is now wrong, and the conclusion
+with it.** It was written against a container on Fly holding a direct Postgres
+connection, where the only hazard was picking the wrong URL. Production is now
+**Vercel + Supabase**, which breaks both halves of that:
 
-**Multiple instances are fine.** `NOTIFY` broadcasts to every listener, so each
-Next instance holding its own `LISTEN` receives every event and serves its own
-subscribers. This is a real advantage over an in-memory emitter fed by a
-localhost webhook, which would only ever reach the one process that received the
-POST.
+- Supabase's pooled port (`:6543`) is exactly the transaction-mode pooler
+  described above, and it is the port a serverless app is supposed to use. The
+  listener must therefore use `CHANGES_DATABASE_URL` pointed at the **direct**
+  `:5432` connection while `DATABASE_URL` stays pooled. That much is a
+  configuration fix, and `CHANGES_DATABASE_URL` already exists for it.
+- **The harder problem is that there is no process to hold the connection.** A
+  `LISTEN` is a long-lived session on a Postgres backend; a Vercel function is
+  short-lived, and there is no instance that stays alive between requests to own
+  one. The SSE route (`/api/events`) has the same shape of problem from the
+  other end — it holds a response open, against a platform that caps function
+  duration.
+
+So the change feed is **unverified on the new target, not merely
+unconfigured**. Deciding this needs its own pass: the options are roughly a
+long-running worker outside Vercel that owns the `LISTEN` and fans out, Supabase
+Realtime in place of the hand-rolled `pg_notify` path (it is the same mechanism,
+hosted), or accepting polling. Do not assume the current design ports.
+
+**Multiple instances were fine** on the old target: `NOTIFY` broadcasts to every
+listener, so each instance holding its own `LISTEN` received every event and
+served its own subscribers. That advantage survives only for a deployment shape
+where instances exist and persist.
 
 ## 7. Phasing
 

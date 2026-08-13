@@ -334,7 +334,9 @@ Two results worth keeping:
 `PUBLIC_URL` and `NEXTAUTH_URL` are both `http://localhost:3000` in this
 checkout. `fly.toml` (app `blog-simple`, iad) and `vercel.json` are committed
 and looked like they might contradict that, but **the author confirmed the app
-has never been deployed** — both are unused templates. The population is
+has never been deployed** — both are unused templates. (`fly.toml` was deleted
+on 13 Aug 2026 when production settled on Vercel + Supabase; it is named here
+because it was part of the evidence at the time.) The population is
 therefore the two rows above, and both are clean.
 
 Guest drafts were the only stake. A signed-in user's documents are in Postgres;

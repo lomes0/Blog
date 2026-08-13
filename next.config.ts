@@ -147,9 +147,10 @@ const withPWAConfig = {
 };
 
 const nextConfig: NextConfig = {
-  // Emit a self-contained server bundle (.next/standalone) for a minimal
-  // production container image. See Dockerfile.
-  output: "standalone",
+  // `output: "standalone"` was here for the container image (Dockerfile +
+  // fly.toml), both deleted 13 Aug 2026 when production moved to Vercel.
+  // Vercel builds through its own output API and reads nothing from
+  // `.next/standalone`, so the option had no consumer left.
   devIndicators: false,
   reactStrictMode: true,
   distDir: process.env.BUILD_DIR || ".next",
