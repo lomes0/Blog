@@ -1,7 +1,29 @@
 # Storage Support: moving uploads off the filesystem
 
-Status: **deferred** — a considered not-yet, with a named trigger below, not a
-backlog item. Written 2026-07-30 during production readiness work. Revised
+Status: **SUPERSEDED 2026-08-13 by [blob-storage.md](./blob-storage.md).** Read
+that first; this file is kept for the reasoning it carries forward, not as a
+plan to execute.
+
+**Why it was superseded, and it is not that the design was wrong.** This plan
+moved two asset classes and drew an explicit scope boundary around the third
+(§What stays in Postgres — editor images as base64 data URIs in `Revision.data`),
+because moving it changes the document format. Measuring the live database
+showed that excluded class holds **most of the bytes**: six distinct images
+stored 141 times, 13.6 MB, one PNG accounting for a third of the whole database.
+The boundary was correct under a backward-compatibility constraint. That
+constraint was lifted on 2026-08-13, and with it the reason to leave the largest
+problem outside the plan.
+
+**What blob-storage.md carries forward from here:** the S3-SDK-over-vendor-SDK
+choice, the two-bucket split and why it is per-bucket, the presigning security
+analysis, MinIO for local parity, and the backgrounds backfill asymmetry. **What
+it drops:** the seven-route port as a standalone change — those routes are now
+rewritten against a content-addressed store instead of a path-keyed one.
+
+---
+
+Original status: **deferred** — a considered not-yet, with a named trigger below,
+not a backlog item. Written 2026-07-30 during production readiness work. Revised
 2026-07-30 — re-checked against the tree after the `UPLOADS_DIR` split landed;
 migration and security sections corrected, scope boundary made explicit
 (§What stays in Postgres).

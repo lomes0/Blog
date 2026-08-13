@@ -12,10 +12,12 @@ for what has landed and when.
 | Plan                                                       | Status                                                                                                                                                 |
 | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [production-deployment.md](./production-deployment.md)     | **Decided 13 Aug 2026, not yet implemented** — a single VPS running Docker Compose. The third hosting decision in two weeks; the other two are recorded because their reasoning still reads, not because they are live |
-| [claude-code-backlog.md](./claude-code-backlog.md)         | **Backlog.** What the content bridge does _not_ do, and why. Several items are decisions rather than work — chiefly §4, nested editors, which gates three codecs and 198 real nodes |
+| [claude-code-backlog.md](./claude-code-backlog.md)         | **Backlog.** What the content bridge does _not_ do, and why. Several items are decisions rather than work — chiefly §4, nested editors, which gates three codecs and 198 real nodes. That one now has a proposed answer in `haklex-reprise.md` §2.2 |
+| [haklex-reprise.md](./haklex-reprise.md)                   | Proposal, 13 Aug 2026 — reopens the five capabilities [archive/haklex-adoption.md](./archive/haklex-adoption.md) §10.7 cut. Three of those five blockers were properties of haklex's implementation, not of the feature; one dissolves into a bridge seam that also answers `claude-code-backlog.md` §4 |
 | [ide-redesign.md](./ide-redesign.md)                       | All three phases of the visible pass shipped; only its deferred list is left — status bar, AI panel restyle, tabs/breadcrumb polish                    |
 | [workspace-url.md](./workspace-url.md)                     | Proposal, 1 Aug 2026 — the workspace URL should stop projecting pane focus and become an entry point. Refines [archive/workspace-panes.md](./archive/workspace-panes.md) §0 rather than reversing it |
-| [storage-uploads.md](./storage-uploads.md)                 | **Deferred**, with a named trigger — a considered not-yet, not a backlog item. The single-VPS decision handed back the prerequisite the Vercel plan had briefly made of it |
+| [blob-storage.md](./blob-storage.md)                       | **Decided 13 Aug 2026, not started** — one content-addressed store for every byte, on R2. Measured first: six distinct images are stored 141 times, one PNG is a third of the database, and ~25× is available. Supersedes `storage-uploads.md` |
+| [storage-uploads.md](./storage-uploads.md)                 | **Superseded** by `blob-storage.md`. Its scope boundary excluded the class holding most of the bytes — correct under a backcompat constraint that has since been lifted. Its S3-SDK, two-bucket and presigning-security reasoning is carried forward |
 | [bloat-remediation.md](./bloat-remediation.md)             | Steps 1–6 done (re-verified 30 Jul 2026); only step 7 is left, still blocked on the brief below                                                        |
 | [tree-model-brief.md](./tree-model-brief.md)               | Decision brief — awaits one product call: does `/posts` render projects?                                                                               |
 | [ordering-simplification.md](./ordering-simplification.md) | Proposal — see below                                                                                                                                   |
@@ -32,6 +34,10 @@ stalled:
   it step 7 of `bloat-remediation.md`.
 - **Nested editors: address into them, or refuse explicitly?** —
   `claude-code-backlog.md` §4. Blocks the `image`, `sticky` and `canvas` codecs.
+  **An answer is now on the table** rather than merely a choice:
+  `haklex-reprise.md` proposes "address into them, as ordinary containers", on
+  the ground that the cost §4 deferred on — every op knowing which document it
+  operates on — is a live-editor cost, and the bridge never touches one.
 - **Commit to Plan 3 (series-as-node)?** — the high-churn unification below.
 
 ---

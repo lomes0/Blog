@@ -74,7 +74,19 @@ no` and `Cache-Control: no-cache, no-transform`, which is what Cloudflare reads.
 Verify the stream end to end through the proxy before believing it works; the
 failure is silent.
 
-## 2. Uploads stay on the filesystem
+## 2. Uploads stay on the filesystem — for now
+
+> **Superseded in direction, 13 Aug 2026 (later the same day), by
+> [blob-storage.md](./blob-storage.md).** Measuring the database showed the
+> largest store of bytes was never the filesystem at all: six distinct images
+> held 141 times inside `Revision.data`, one of them a third of the database.
+> The decision is now one content-addressed blob store on R2, covering
+> attachments, backgrounds *and* editor images.
+>
+> **This section still describes what to deploy today.** The volumes below are
+> correct and stay mounted until that plan's phase 3 verification passes — they
+> are what keeps the current data alive in the meantime. What changes is the
+> destination, not the next step.
 
 **`docs/plans/storage-uploads.md` is deferred, not a blocker.** This is the
 largest consequence of the topology and the one most likely to be got wrong by
