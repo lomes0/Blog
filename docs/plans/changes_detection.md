@@ -345,8 +345,8 @@ it. The change feed's job is to trigger that refresh, not to duplicate it.
 | Next restarts                    | All SSE connections drop      | `EventSource` auto-retries → catch-up on open                                   |
 | Laptop sleeps                    | Connection dies silently      | Retry on wake; `visibilitychange` poll as belt-and-braces                       |
 | Events missed while disconnected | Invisible at hop 1–3          | **Caught by §3** (documents) and §3.2 (proposals) — the whole reason they exist |
-| Proxy buffers the stream         | No events, no error           | `X-Accel-Buffering: no`; verify in the target deployment                        |
-| Connection pooler in txn mode    | `LISTEN` silently never fires | §6 — must be checked, not assumed                                               |
+| Proxy buffers the stream         | No events, no error           | **The live one** — §6.2. Caddy `flush_interval -1` + headers; verify through Cloudflare too |
+| Connection pooler in txn mode    | `LISTEN` silently never fires | §6.1 — not present on the current topology, but never assume it                 |
 | Subscriber leak                  | Memory growth                 | Unsubscribe on `request.signal` abort                                           |
 
 The pattern worth noticing: every row's recovery is either "EventSource retries"
@@ -355,38 +355,70 @@ over hop 4, and hop 4 is what makes it correct.
 
 ## 6. Deployment constraints
 
+**Revised 13 Aug 2026, twice.** This section has now been written against three
+targets in one day — a container on Fly, then Vercel + Supabase (where the
+conclusion was that the feed might not port at all), and now **a single VPS
+running Docker Compose** (`docs/plans/production-deployment.md`). That churn is
+the reason the constraints are stated below as properties to check rather than
+as a verdict about a vendor.
+
+**The design ports unchanged.** Every requirement the feed has is satisfied by
+the current topology, and none of it needed code:
+
+| Requirement | Satisfied by |
+| --- | --- |
+| A process that outlives a request, to hold the `LISTEN` | The app container. `restart: unless-stopped` |
+| A direct, non-pooled Postgres connection | The `postgres` service on the compose network |
+| A response that may stay open indefinitely | No platform duration cap on a container |
+| A proxy that does not buffer | Caddy with `flush_interval -1` |
+
+### 6.1 The pooler hazard — real, and not present here
+
 **`LISTEN` does not survive a transaction-mode connection pooler.** PgBouncer in
 `transaction` mode, Supabase's `:6543` pooled port, Neon's pooled endpoint — all
 of them break it, and they break it _silently_: the connection succeeds, the
-`LISTEN` succeeds, and notifications simply never arrive.
+`LISTEN` succeeds, and notifications simply never arrive. This is a permanent
+fact about `LISTEN`, so it stays documented even though it does not currently
+bite.
 
-**Revised 13 Aug 2026: this section's premise is now wrong, and the conclusion
-with it.** It was written against a container on Fly holding a direct Postgres
-connection, where the only hazard was picking the wrong URL. Production is now
-**Vercel + Supabase**, which breaks both halves of that:
+**`CHANGES_DATABASE_URL` is deliberately unset** in `docker-compose.prod.yml`.
+It falls back to `DATABASE_URL`, which is correct precisely because there is no
+pooler in this topology — the app talks to `postgres:5432` over a private
+compose network. The variable exists for the day that stops being true; setting
+it to a duplicate of `DATABASE_URL` today would be config that drifts.
 
-- Supabase's pooled port (`:6543`) is exactly the transaction-mode pooler
-  described above, and it is the port a serverless app is supposed to use. The
-  listener must therefore use `CHANGES_DATABASE_URL` pointed at the **direct**
-  `:5432` connection while `DATABASE_URL` stays pooled. That much is a
-  configuration fix, and `CHANGES_DATABASE_URL` already exists for it.
-- **The harder problem is that there is no process to hold the connection.** A
-  `LISTEN` is a long-lived session on a Postgres backend; a Vercel function is
-  short-lived, and there is no instance that stays alive between requests to own
-  one. The SSE route (`/api/events`) has the same shape of problem from the
-  other end — it holds a response open, against a platform that caps function
-  duration.
+The connection also never leaves the box, which makes it more stable than on
+either previous target rather than merely adequate.
 
-So the change feed is **unverified on the new target, not merely
-unconfigured**. Deciding this needs its own pass: the options are roughly a
-long-running worker outside Vercel that owns the `LISTEN` and fans out, Supabase
-Realtime in place of the hand-rolled `pg_notify` path (it is the same mechanism,
-hosted), or accepting polling. Do not assume the current design ports.
+### 6.2 The live hazard is now the proxy, not the database
 
-**Multiple instances were fine** on the old target: `NOTIFY` broadcasts to every
-listener, so each instance holding its own `LISTEN` received every event and
-served its own subscribers. That advantage survives only for a deployment shape
-where instances exist and persist.
+§5's "proxy buffers the stream" row is the one to actually verify. It is the
+nastiest failure in this design because there is no error anywhere: the
+connection opens, the browser fires `open`, and nothing arrives, forever.
+
+There are **two** proxies in front of the app now, and they must both be checked:
+
+- **Caddy** carries an explicit `flush_interval -1` in the `Caddyfile`. Caddy
+  already declines to buffer `text/event-stream`, so this is belt-and-braces —
+  but the cost is nil and the failure is silent.
+- **Cloudflare**, if the orange cloud is on. It reads the `Cache-Control:
+  no-cache, no-transform` and `X-Accel-Buffering: no` headers the route already
+  sends. Verify end to end *through* the proxy; do not infer it from a working
+  direct connection to the origin.
+
+### 6.3 One instance, and what that buys
+
+**`NOTIFY` broadcasts to every listener**, so each instance holding its own
+`LISTEN` receives every event and serves its own subscribers. That is what makes
+the design scale horizontally without a shared bus — and on a single-instance
+deployment it is simply latent, not lost. Nothing needs revisiting if a second
+instance ever appears.
+
+Single-instance does have one consequence worth naming: an app restart drops
+every SSE connection at once, where a rolling multi-instance deploy would not.
+That is §5's "Next restarts" row, and its recovery is unchanged — `EventSource`
+retries and §3 catches up. A redeploy is a brief reconnect storm from however
+many tabs are open, which at this scale is a handful.
 
 ## 7. Phasing
 

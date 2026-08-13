@@ -201,11 +201,11 @@ but it is no longer close.
 
 Confirming these, since they were the argument:
 
-- **The change feed ports unchanged.** `CHANGES_DATABASE_URL` can simply be the
-  same direct connection string as `DATABASE_URL` — there is no transaction-mode
-  pooler in this topology, so the silent-`LISTEN`-failure hazard of
-  `changes_detection.md` §6 does not arise. That section's premise is now wrong
-  for the second time and needs rewriting.
+- **The change feed ports unchanged.** `CHANGES_DATABASE_URL` is left unset and
+  falls back to `DATABASE_URL` — there is no transaction-mode pooler in this
+  topology, so the silent-`LISTEN`-failure hazard does not arise.
+  `changes_detection.md` §6 is rewritten for this target, and now says the live
+  risk is the **proxy**, not the database (§6.2 there, §1.1 here).
 - **`/api/events` holds its SSE response open** for as long as the client stays
   connected. No duration cap. Watch the proxy, not the platform (§1.1).
 - **`src/lib/mcp/limits.ts` is correct as written.** One process, one set of
@@ -228,14 +228,19 @@ Named here so they are not mistaken for solved by choosing a host. From
 
 ## 9. Order of work
 
-1. Restore `Dockerfile`, `.dockerignore`, `output: "standalone"`; delete
-   `vercel.json`; resolve `IS_VERCEL` (§3)
-2. Restore `docker-compose.prod.yml` with `caddy` and **both** upload volumes
-   (§2) — the backgrounds volume is the bug fix, not a nicety
-3. Provision the box, point DNS, bring the stack up, confirm TLS
-4. Migrate the existing 19MB of uploads onto the volumes
-5. **Backups and a rehearsed restore (§5)** — before this is load-bearing, not
+1. ~~Restore `Dockerfile`, `.dockerignore`, `output: "standalone"`; delete
+   `vercel.json`; resolve `IS_VERCEL` (§3)~~ — done, `118a5a8c`
+2. ~~Restore `docker-compose.prod.yml` with `caddy` and **both** upload volumes
+   (§2)~~ — done, `118a5a8c`. The backgrounds volume was the bug fix
+3. ~~Re-status `storage-uploads.md` (§2) and rewrite `changes_detection.md`
+   §6 (§7)~~ — done. Both stated a dead premise
+4. **Build the image once, locally**, to prove the Dockerfile — the only step so
+   far verified by `docker build --check` rather than by an actual build
+5. Provision the box, point DNS, bring the stack up, confirm TLS
+6. Migrate the existing 19MB of uploads onto the volumes
+7. **Backups and a rehearsed restore (§5)** — before this is load-bearing, not
    after
-6. External uptime check against `/api/health`, alerting somewhere you read
-7. Verify the change feed end to end *through* Cloudflare (§1.1)
-8. Rewrite `changes_detection.md` §6 and re-status `storage-uploads.md` (§2)
+8. External uptime check against `/api/health`, alerting somewhere you read
+9. Verify the change feed end to end *through* Cloudflare (§1.1, and
+   `changes_detection.md` §6.2 — the failure is silent, so this is a real step
+   rather than a formality)
