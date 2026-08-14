@@ -15,6 +15,7 @@ import { useEffect } from "react";
 import { INSERT_IMAGE_COMMAND } from "../ImagePlugin";
 import { getImageDimensions } from "@/editor/nodes/utils";
 import { ANNOUNCE_COMMAND } from "@/editor/commands";
+import { blobSrcOrFallback } from "@/editor/utils/uploadBlob";
 
 const ACCEPTABLE_IMAGE_TYPES = [
   "image/",
@@ -37,14 +38,19 @@ export default function DragDropPaste(): null {
           );
           for (const { file, result } of filesResult) {
             if (isMimeType(file, ACCEPTABLE_IMAGE_TYPES)) {
+              // Dimensions still come from the data URI: it is already in hand,
+              // and measuring it needs no network. Only `src` changes — to a
+              // blob URL when the bytes could be stored, and otherwise to the
+              // same data URI as before (blob-storage.md §6).
               const dimensions = await getImageDimensions(result);
+              const src = await blobSrcOrFallback(file, result);
               // Scale pasted images to 50% of their original size
               const scaledDimensions = {
                 width: Math.round(dimensions.width * 0.35),
                 height: Math.round(dimensions.height * 0.5),
               };
               editor.dispatchCommand(INSERT_IMAGE_COMMAND, {
-                src: result,
+                src,
                 altText: file.name.replace(/\.[^/.]+$/, ""),
                 showCaption: true,
                 ...scaledDimensions,

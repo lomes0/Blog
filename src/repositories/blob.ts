@@ -78,3 +78,67 @@ export async function findBlobReadableBy(
 export function findBlobMeta(hash: string): Promise<Blob | null> {
   return prisma.blob.findUnique({ where: { hash } });
 }
+
+/**
+ * Record a blob and the fact that `documentId` references it.
+ *
+ * Both halves are upserts because both are expected to already exist: the whole
+ * point of content addressing is that the same bytes arrive repeatedly. A second
+ * paste of the same image into the same document must be a no-op, not a
+ * conflict, and two concurrent pastes of it must not race — which is why this is
+ * `upsert` rather than `create` and needs no transaction to be safe.
+ *
+ * `size` and `mimeType` are only written on first insert. They are properties of
+ * the bytes, and the bytes cannot have changed — a differing value on a later
+ * upload means the caller mislabelled the same content, and the first
+ * observation is no worse a guess than the second.
+ */
+export async function recordBlob(
+  hash: string,
+  documentId: string,
+  size: number,
+  mimeType: string,
+): Promise<void> {
+  await prisma.blob.upsert({
+    where: { hash },
+    create: { hash, size, mimeType },
+    update: {},
+  });
+  await prisma.blobRef.upsert({
+    where: { blobHash_documentId: { blobHash: hash, documentId } },
+    create: { blobHash: hash, documentId },
+    update: {},
+  });
+}
+
+/**
+ * Attach an already-stored blob to a document, or report that it is not stored.
+ *
+ * This is the dedup fast path: the client hashes locally and calls here first,
+ * so re-using an image the server already holds transfers no bytes. It returns
+ * `false` rather than throwing when the blob is unknown, because "not stored
+ * yet" is the ordinary first-upload case and not an error.
+ *
+ * **No authorization happens here** — the caller must already have proven write
+ * access to `documentId`. Linking is a write to that document's reference set,
+ * and letting an arbitrary caller link arbitrary hashes would hand out reads on
+ * blobs they cannot otherwise reach, which is precisely the leak §4 is built to
+ * prevent.
+ */
+export async function linkBlobToDocument(
+  hash: string,
+  documentId: string,
+): Promise<boolean> {
+  const blob = await prisma.blob.findUnique({
+    where: { hash },
+    select: { hash: true },
+  });
+  if (!blob) return false;
+
+  await prisma.blobRef.upsert({
+    where: { blobHash_documentId: { blobHash: hash, documentId } },
+    create: { blobHash: hash, documentId },
+    update: {},
+  });
+  return true;
+}

@@ -162,6 +162,36 @@ that hash, upload only if not, then set `src` to the blob path. **The dedup
 check happens before the upload**, so re-pasting a known image costs one round
 trip and no bytes.
 
+### 6.1 Sketches are not a `src` swap — found during phase 2
+
+The first two producers took the change as written. **The third does not, and
+the reason is a finding rather than an obstacle.**
+
+`SketchNode.__src` is not merely a picture. It is a `data:image/svg+xml,…` with
+the sketch's own source data embedded inside the SVG between
+`<!-- payload-start -->` and `<!-- payload-end -->` markers, which `decorate()`
+decodes and strips on every render
+(`packages/editor/src/nodes/SketchNode/index.tsx:193-197`). So the string is
+simultaneously the rendering *and* the document.
+
+Worse, `exportJSON` also persists `value` — the `ExcalidrawElement[]` — so **a
+stored sketch appears to carry its source twice**: once as JSON in `value`, once
+embedded in the SVG in `src`. `getValue()` reads only `value`, which suggests
+the embedded payload is vestigial for this app and kept for Excalidraw's own
+importer. That is a suggestion, not a conclusion — it was not chased down.
+
+Consequences for this plan:
+
+- Pointing `src` at a blob is safe for *rendering* but moves the embedded
+  payload out of the document, where `decorate()` currently reads it
+  synchronously. A blob URL cannot be decoded synchronously.
+- The 74 SVG occurrences measured in §1 are the ones that would move, so the
+  win is real — 3.6 MB to 396 kB — but it is not available for the price of a
+  one-line change.
+- **Do not ship this as a `src` swap.** Sketches hold user work, and 74 stored
+  occurrences would be rewritten by a migration built on a guess about what the
+  embedded payload is for. Establish that first.
+
 ## 7. Where the bytes live
 
 **Cloudflare R2**, chosen over B2 for one reason that is specific to this
@@ -297,8 +327,22 @@ second `put` is a no-op, a presigned GET serves the same bytes, and a
 traversal-shaped key is refused before any request leaves the process. §7.1
 records the one design correction the build produced.
 
-**Phase 2 — new writes go through it.** The three data-URI producers (§6),
-attachment upload, background upload. From here the problem stops growing.
+**Phase 2 — new writes go through it. PARTIALLY DONE 14 Aug 2026.**
+
+- **Done:** `POST /api/blob` (upload) and `POST /api/blob/link` (the dedup
+  fast path), `recordBlob`/`linkBlobToDocument`, the shared client helper
+  `packages/editor/src/utils/uploadBlob.ts`, and **two of the three producers** —
+  insert-image and paste/drag-drop. Both now store bytes once and reference
+  them, falling back to the old data URI whenever there is nothing to upload to.
+- **Not done, deliberately:** sketches — see §6.1, which is a finding, not a
+  postponement. Also attachment upload and background upload, which are a
+  separate slice: neither *duplicates*, so neither contributes to the growth
+  this phase exists to stop.
+- **Still open:** `BlobRef` reconciliation on save. References are created at
+  upload time, which is what makes a blob readable, but nothing removes a
+  reference when an image is deleted from a document. Until that lands, GC
+  (phase 5) has nothing to collect — which is the right order, but means the
+  refs are additive-only in the meantime.
 
 **Phase 3 — migrate what exists.** §10. This is the phase that reclaims the
 13 MB.

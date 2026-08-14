@@ -10,6 +10,7 @@ import { isMimeType, mediaFileReader } from "@lexical/utils";
 import { ImageNode } from "@/editor/nodes/ImageNode";
 import { SET_DIALOGS_COMMAND } from "./commands";
 import { getImageDimensions } from "@/editor/nodes/utils";
+import { blobSrcOrFallback } from "@/editor/utils/uploadBlob";
 import {
   ActionButton,
   cx,
@@ -114,18 +115,22 @@ function ImageDialog(
     );
     for (const { file, result } of filesResult) {
       if (isMimeType(file, ACCEPTABLE_IMAGE_TYPES)) {
+        // Store the bytes once and reference them, rather than embedding the
+        // data URI in every future revision (blob-storage.md §6). Falls back to
+        // `result` when there is nothing to upload to — a guest draft, say.
+        const src = await blobSrcOrFallback(file, result);
         try {
           const dimensions = await getImageDimensions(result);
           setFormData({
             ...formData,
-            src: result,
+            src,
             altText: files![0].name.replace(/\.[^/.]+$/, ""),
             ...dimensions,
           });
         } catch {
           setFormData({
             ...formData,
-            src: result,
+            src,
             altText: files![0].name.replace(/\.[^/.]+$/, ""),
           });
         }
