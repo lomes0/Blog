@@ -177,14 +177,38 @@ putBlob(hash, bytes, mimeType): Promise<void>   // idempotent by construction
 getBlob(hash): Promise<Buffer>
 blobExists(hash): Promise<boolean>
 presignBlobGet(hash, expiresIn): Promise<string>
-publicBlobUrl(hash): string
+hashBytes(bytes): string
+isValidHash(hash): boolean
 ```
 
 On `@aws-sdk/client-s3` against `S3_ENDPOINT`, per `archive/storage-uploads.md`'s
 reasoning — which has now survived three hosting reversals and been used twice.
-**Two buckets stay**, for the reason that file already gives: public for
-CDN-cacheable content, private for anything gated, because public access is
-granted per bucket and not per prefix.
+
+### 7.1 One bucket, not two — corrected during phase 1
+
+**This section originally said "two buckets stay", carrying the public/private
+split forward from `archive/storage-uploads.md`. That was wrong, and building
+phase 1 is what showed it.**
+
+The split does not survive content addressing, for exactly the reason §4 gives
+for ACLs. A blob deduplicated across a published post and a private draft would
+belong in *both* buckets, and would have to be moved whenever either document's
+visibility changed. Bucket placement is a property of the blob; visibility is a
+property of the document; deduplication severs the two. The inherited rule
+("public access is granted per bucket, not per prefix") is still true — it just
+stopped being answerable, because there is no longer a per-blob answer to give.
+
+So: **one bucket, private**, and `/api/blob/[hash]` decides per request from the
+documents referencing the blob. Public content still gets CDN-cached, because
+the response carries `Cache-Control: public, max-age=31536000, immutable` — safe
+unconditionally, since a hash's bytes never change. What that directive must
+follow is `isPublic` (could an *anonymous* caller have fetched this?) and never
+"did this caller succeed?" — an author fetching their own private draft
+satisfies the second and not the first, and a shared cache told `public` there
+would serve that draft's image to everyone, irreversibly.
+
+`publicBlobUrl` is dropped with the second bucket: there is no direct-from-store
+public URL when nothing in the store is public.
 
 Local development is **MinIO in `docker-compose.yml`**, so the code path under
 test is the one that runs in production. MinIO is the local half of this
@@ -264,9 +288,14 @@ database, and §5's grace period does not protect against a bad rewrite.
 
 Each phase is independently shippable, and 1–3 is where the 25× lands.
 
-**Phase 1 — the store, with no callers.** `Blob`/`BlobRef` schema,
-`src/lib/storage.ts`, `GET /api/blob/[hash]` with `requireBlobRead`, R2 wiring,
-MinIO in the dev compose. Verifiable in isolation.
+**Phase 1 — the store, with no callers. DONE 14 Aug 2026.** `Blob`/`BlobRef`
+schema and migration, `src/lib/storage.ts`, `src/repositories/blob.ts`,
+`requireBlobRead` in `src/lib/access.ts`, `GET /api/blob/[hash]`, MinIO +
+bucket-init in `docker-compose.yml`, `S3_*` in `.env.example`. Verified against
+MinIO: bytes round-trip, re-hashing the fetched bytes reproduces the key, a
+second `put` is a no-op, a presigned GET serves the same bytes, and a
+traversal-shaped key is refused before any request leaves the process. §7.1
+records the one design correction the build produced.
 
 **Phase 2 — new writes go through it.** The three data-URI producers (§6),
 attachment upload, background upload. From here the problem stops growing.

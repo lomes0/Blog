@@ -17,5 +17,43 @@ services:
       timeout: 5s
       retries: 5
 
+  # Local stand-in for R2, so the code path under test is the one that runs in
+  # production — docs/plans/blob-storage.md §7. MinIO is the *local* half of that
+  # decision and is not a production backend.
+  minio:
+    image: minio/minio
+    container_name: blog-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: blogblobs
+      MINIO_ROOT_PASSWORD: blogblobs
+    ports:
+      - "9000:9000" # S3 API — this is what S3_ENDPOINT points at
+      - "9001:9001" # web console, browsable at http://localhost:9001
+    volumes:
+      - blog-minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Creates the bucket and exits. Without this a fresh checkout gets a running
+  # MinIO with nowhere to put anything, and the first upload fails with
+  # NoSuchBucket — which reads like a credentials problem and is not.
+  minio-init:
+    image: minio/mc
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 blogblobs blogblobs &&
+      mc mb --ignore-existing local/blog-blobs &&
+      echo 'bucket blog-blobs ready'
+      "
+
 volumes:
   blog-postgres-data:
+  blog-minio-data:

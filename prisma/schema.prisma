@@ -118,6 +118,7 @@ model Document {
   coauthors DocumentCoauthors[]
   revisions Revision[]
   series    Series?             @relation("SeriesPosts", fields: [seriesId], references: [id], onDelete: SetNull)
+  blobs     BlobRef[]
 
   @@index([seriesId])
   @@index([authorId, published]) // Index for finding user's published posts
@@ -150,25 +151,25 @@ model Revision {
   // write that `Document.head` does not point at, and every history read
   // filters it out with `proposedAt: null`. Approval clears the flag, which is
   // what turns the row into history; rejection deletes it.
-  proposedAt DateTime?
-  origin     String? // where the write came from, e.g. "claude-code"
+  proposedAt     DateTime?
+  origin         String? // where the write came from, e.g. "claude-code"
   // The head this proposal was built on. **Written once**, on creation — a
   // squash must never refresh it (§3.2), because approval's compare-and-set on
   // `Document.head` uses it as the staleness check.
-  baseRevisionId String? @db.Uuid
+  baseRevisionId String?   @db.Uuid
   ops            Json? // the batches folded into this proposal (§3.3)
   summary        String? // one line, for the rail
   staleAt        DateTime? // set when the base stops being head (§3.6)
   // CAS token for the squash (§3.2). Once `head` stops moving on an agent
   // write, this is the only thing serializing two folds onto the same row.
   version        Int       @default(0)
+  // At most one pending proposal per document is enforced by a *partial*
+  // unique index, which Prisma cannot express — see the raw SQL in
+  // migrations/20260806…_add_revision_proposals.
 
   @@index([documentId])
   @@index([authorId])
   @@index([documentId, proposedAt])
-  // At most one pending proposal per document is enforced by a *partial*
-  // unique index, which Prisma cannot express — see the raw SQL in
-  // migrations/20260806…_add_revision_proposals.
 }
 
 model User {
@@ -369,4 +370,45 @@ model CopilotThread {
   author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   @@index([authorId, scope, updatedAt])
+}
+
+// A stored binary, addressed by the SHA-256 of its own bytes.
+//
+// Content addressing is the point, not an implementation detail: the same image
+// pasted into twenty revisions is one row and one object, because the key is
+// derived from the content rather than assigned per upload. See
+// docs/plans/blob-storage.md §2 for the measurement that chose this — six
+// distinct images were being stored 141 times.
+model Blob {
+  // Lowercase hex SHA-256. 64 chars, fixed.
+  hash      String   @id @db.VarChar(64)
+  size      Int
+  mimeType  String
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  refs BlobRef[]
+}
+
+// Which documents reference a blob.
+//
+// This table is not bookkeeping — it is what makes a blob authorizable and
+// collectable at all (blob-storage.md §4, §5). Under deduplication a blob has no
+// ACL of its own, so the question "may this caller read these bytes?" is only
+// answerable through the documents pointing at it.
+//
+// Deliberately keyed per *document*, not per revision: revisions churn on every
+// save, and a reference table that churned with them would reintroduce exactly
+// the write amplification this design exists to remove.
+model BlobRef {
+  blobHash   String   @db.VarChar(64)
+  documentId String   @db.Uuid
+  createdAt  DateTime @default(now()) @db.Timestamptz
+
+  blob     Blob     @relation(fields: [blobHash], references: [hash], onDelete: Cascade)
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@id([blobHash, documentId])
+  // Answering "which blobs does this document reference?" — the diff performed
+  // on every content save, and the reverse direction the primary key cannot serve.
+  @@index([documentId])
 }

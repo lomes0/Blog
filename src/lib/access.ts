@@ -1,4 +1,6 @@
 import { ApiError, requireOwner, type SessionUser } from "@/lib/api-utils";
+import { isValidHash } from "@/lib/storage";
+import { findBlobReadableBy, isBlobPubliclyReadable } from "@/repositories/blob";
 import { findDocument } from "@/repositories/document";
 import { findThreadById } from "@/repositories/copilotThread";
 import { findCanvasById, findNoteById } from "@/repositories/notes";
@@ -6,6 +8,7 @@ import { findProjectById } from "@/repositories/project";
 import { getCachedRevision } from "@/repositories/revision";
 import { findSeriesById } from "@/repositories/series";
 import type { CloudPost } from "@/types";
+import type { Blob } from "@prisma/client";
 
 /**
  * Authorized fetches: every one of these returns the row *and* proves the caller
@@ -253,4 +256,44 @@ export async function requireWritableCopilotThread(
     user,
     "You do not have access to this conversation",
   );
+}
+
+// ─── Blobs ───────────────────────────────────────────────────────────────────
+
+/**
+ * Fetch a blob's metadata and authorize the caller for it, or throw.
+ *
+ * **Authorization is on the reference, not the blob** — docs/plans/blob-storage.md
+ * §4. Deduplication means one blob is reachable through many documents, so it
+ * has no ACL of its own; the question is whether *any* referencing document
+ * admits this caller.
+ *
+ * Also returns whether the blob is readable with no session at all, because the
+ * route needs that separately: it decides whether the response may be cached by
+ * a shared cache. Access and cacheability are different questions and are kept
+ * apart deliberately — see `isBlobPubliclyReadable`.
+ *
+ * **Throws 404 for both "no such blob" and "not permitted", and that is
+ * deliberate.** Unlike a document, a blob's identifier *is* a digest of its
+ * content, so distinguishing the two answers would turn this route into an
+ * oracle: anyone holding a hash could learn whether those exact bytes exist in
+ * the system, having never been allowed to read them. The same
+ * indistinguishability rule the agent-token verifier follows, for the same
+ * reason. A blob is also a subresource — nothing navigates to one expecting a
+ * sign-in prompt — so there is no UX cost to paying for it here.
+ */
+export async function requireBlobRead(
+  hash: string,
+  user: SessionUser | null,
+): Promise<{ blob: Blob; isPublic: boolean }> {
+  if (!isValidHash(hash)) throw new ApiError(404, "Not found");
+
+  const blob = await findBlobReadableBy(hash, user?.id ?? null);
+  if (!blob) throw new ApiError(404, "Not found");
+
+  // Only asked when a session was involved. Without one, admission *was* the
+  // public check — a second query would ask a question already answered.
+  const isPublic = user ? await isBlobPubliclyReadable(hash) : true;
+
+  return { blob, isPublic };
 }
