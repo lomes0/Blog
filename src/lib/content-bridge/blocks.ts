@@ -26,6 +26,7 @@ import type {
   ListBlock,
   ListItem,
   ListType,
+  NestedDocBlock,
   ParagraphBlock,
   QuoteBlock,
   SerializedNode,
@@ -34,7 +35,7 @@ import type {
   WritableBlock,
 } from "./types";
 import { parseInline, renderInline } from "./inline";
-import { childrenOf } from "./containers";
+import { childrenOf, findUnregisterable } from "./containers";
 
 const str = (value: unknown, fallback = ""): string =>
   typeof value === "string" ? value : fallback;
@@ -297,6 +298,18 @@ export function nodeToBlock(node: SerializedNode): Block {
         text: text ?? plainText(kids),
       };
       if (text === null) block.readonlyText = true;
+      return block;
+    }
+
+    case "nested-doc": {
+      // Wrapper only. The interior is addressed block by block through
+      // `containers.ts`, so reading it here would give the same content two
+      // spellings — the same rule `layout` and `details` follow.
+      const block: NestedDocBlock = {
+        type: "nested-doc",
+        title: str(node.title),
+      };
+      if (typeof node.open === "boolean") block.open = node.open;
       return block;
     }
 
@@ -671,6 +684,40 @@ export function blockToNode(
       };
     }
 
+    case "nested-doc": {
+      // `doc` is a whole serialized editor *state*, so the carried node brings
+      // the existing interior with it for free — omitting `body` on a replace
+      // keeps what is there, exactly as it does for layout and details.
+      const body = block.body?.map((child) => blockToNode(child));
+      if (body) {
+        // The refusal is here as well as in `ops.ts` because this path is also
+        // `create_post`'s: `stateFromBlocks` never goes near an op. Empty on the
+        // next load is what happens if this is missed — see `containers.ts`.
+        const bad = findUnregisterable(["nested-doc"], body);
+        if (bad) {
+          throw new Error(
+            `a ${bad.nodeType} block cannot go inside a nested-doc — its ` +
+              `editor cannot register that node type, and the nested ` +
+              `document would come back empty the next time it is opened`,
+          );
+        }
+      }
+      const doc = body
+        ? { root: { ...ELEMENT_DEFAULTS, type: "root", children: body } }
+        : carried?.doc;
+      if (!doc) {
+        throw new Error("a new nested-doc needs `body`");
+      }
+      return {
+        ...carried,
+        type: "nested-doc",
+        version: 1,
+        title: str(block.title),
+        open: block.open ?? carried?.open ?? true,
+        doc,
+      };
+    }
+
     case "cell":
       return cellNode(block, carried);
 
@@ -742,6 +789,10 @@ export function blockText(block: Block): string {
       return block.items.map((item) => item.text).join("\n");
     case "details":
       return block.summary;
+    // The interior is searched through its own blocks, which carry their own
+    // addresses — this is the wrapper's only text.
+    case "nested-doc":
+      return block.title;
     case "kanban":
       return block.tasks
         .map((task) =>

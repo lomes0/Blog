@@ -992,6 +992,42 @@ iframe {
   pointer-events: none;
 }
 
+/* The nested doc, as a *reader* sees it — `exportDOM`, `/view`, print and the
+   export bundles. The editing card is React and is styled in
+   `nodes/NestedDocNode/styles.css.ts`; the two halves are separate on purpose
+   (DESIGN.md §19.4) and both need looking at when either changes.
+
+   `.nested-doc` itself is the element `createDOM` returns, so it is shared with
+   the editor and stays layout-only. `.nested-doc-card` exists only in exported
+   HTML, which is what keeps this border off the editing card.
+
+   No `html.dark` twin is needed and none should be added: every colour here is
+   a `--mui-palette-*` variable, which already flips with the class. */
+.nested-doc {
+  margin: 1rem 0;
+}
+
+.nested-doc-card {
+  border: 1px solid var(--mui-palette-divider);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+}
+
+.nested-doc-title {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--mui-palette-text-primary);
+}
+
+.nested-doc-body > *:first-child {
+  margin-top: 0;
+}
+
+.nested-doc-body > *:last-child {
+  margin-bottom: 0;
+}
+
 .LexicalTheme__hr {
   width: 100%;
   border: none;

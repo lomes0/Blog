@@ -116,13 +116,21 @@ export class UnknownHunkError extends Error {
  * be the exact bug haklex-reprise §10 names: the merge would read the nested
  * array and put the result back at `children`, where nothing renders it.
  *
- * Today the two cannot disagree in practice, because `canRecurse` demands the
+ * The two cannot disagree in practice, because `canRecurse` demands the
  * container's own fields be untouched and a nested editor's content *is* an own
- * field (`editor`), so a changed note never recurses — it reviews as one
- * whole-block hunk, which is coarse but correct. Phase 4's `nested-doc` will
- * have the same shape and the same outcome. Making either reviewable block by
- * block means giving this module a write half of the seam, not swapping the
- * read half.
+ * field — `editor` on a sticky, `doc` on a `nested-doc` — so a changed one never
+ * recurses.
+ *
+ * **The consequence, stated plainly because a reviewer will meet it:** an agent
+ * that rewrites one paragraph inside a `nested-doc` gets **one whole-block
+ * hunk** covering the entire nested document, not a hunk for that paragraph.
+ * Accepting or rejecting it is still exact in both directions — reject and the
+ * base comes back verbatim, accept and the proposal does — so the review is
+ * coarse, never wrong. That was accepted for phase 4 (haklex-reprise §6.1).
+ * Making it fine-grained means giving this module a *write* half of the seam,
+ * so that `rebuild` puts merged children back where the container actually
+ * keeps them; swapping the read half alone would merge correctly and then store
+ * the result at `children`, where nothing renders it.
  */
 const childrenOf = (node: SerializedNode): SerializedNode[] =>
   Array.isArray(node.children) ? (node.children as SerializedNode[]) : [];

@@ -455,39 +455,50 @@ describe("a mutated note survives a load", () => {
   });
 
   /**
-   * A hazard the seam opens, recorded rather than fixed.
+   * The hazard this file measured in phase 1, now guarded — and still measured.
    *
    * A nested editor runs on `nestedEditorConfig`, which deliberately excludes
-   * StickyNode, CanvasNode, KanbanNode, AttachmentNode and PageBreakNode. The
-   * block IR can author some of those, and nothing between an `insert_blocks`
-   * and the nested editor's `parseEditorState` checks. The parse then throws,
-   * `StickyNode.importJSON` **swallows it into `console.error`** and returns a
-   * note with its default empty state — so the whole note's content is gone,
-   * on load, with the write itself having reported success.
+   * StickyNode, CanvasNode, KanbanNode, AttachmentNode, PageBreakNode and
+   * NestedDocNode. The block IR can author two of those, and until phase 4
+   * nothing between an `insert_blocks` and the nested editor's
+   * `parseEditorState` looked. The parse throws, `StickyNode.importJSON`
+   * **swallows it into `console.error`** and returns a note with its default
+   * empty state — so the whole note's content is gone, on load, with the write
+   * itself having reported success.
    *
-   * It is not reachable today: a note the app produced is wrapped in a
-   * paragraph and therefore has no address at all (see the addressing block
-   * above), and this blog stores none. Phase 4's `nested-doc` is a block-level
-   * node on the same nested config, so it *will* be reachable, and it needs a
-   * guard — the arms in `containers.ts` are where the refused types belong.
-   * This test is here so that guard turns it red rather than being forgotten.
+   * Phase 4 refuses the write instead (`findUnregisterable` in
+   * `containers.ts`). Both halves stay asserted: that the op is now refused, and
+   * — by pushing the same node in behind the guard's back — that the loss it
+   * prevents is real rather than a story about one.
    */
-  it("silently empties a note when an op inserts a node its editor cannot register", () => {
-    const edited = apply(makeStickyState(), [
-      {
-        op: "insert_blocks",
-        appendTo: "b2",
-        blocks: [
-          { type: "kanban", tasks: [{ name: "T", stage: 0, priority: "high" }] },
-        ],
-      },
-    ]);
+  it("refuses an op that would insert a node the note's editor cannot register", () => {
+    expect(() =>
+      apply(makeStickyState(), [
+        {
+          op: "insert_blocks",
+          appendTo: "b2",
+          blocks: [
+            {
+              type: "kanban",
+              tasks: [{ name: "T", stage: 0, priority: "high" }],
+            },
+          ],
+        },
+      ])
+    ).toThrow(/kanban block cannot go inside a sticky/);
+  });
+
+  it("would silently empty the note if that refusal were removed", () => {
+    // Written straight into the stored JSON, which is what the guard stands
+    // between an agent and. Nothing here goes through `applyOps`.
+    const state = makeStickyState();
+    noteChildren(state).push({ type: "kanban", version: 1, tasks: [] });
 
     const errors = vi.spyOn(console, "error").mockImplementation(() => {});
     let loaded: StoredState;
     let logged: number;
     try {
-      loaded = roundTrip(edited.state);
+      loaded = roundTrip(state);
       // Read before restoring: `mockRestore` clears the recorded calls too.
       logged = errors.mock.calls.length;
     } finally {

@@ -25,7 +25,11 @@ import { blockToNode, canSetText, nodeToBlock, TEXT_BLOCKS } from "./blocks";
 import { assertFresh, stateHash } from "./stateHash";
 import { formatAddress, walkBlocks } from "./address";
 import { mintBlockId, readBlockId, writeBlockId } from "./blockId";
-import { childrenOf, ensureChildrenOf } from "./containers";
+import {
+  childrenOf,
+  ensureChildrenOf,
+  findUnregisterable,
+} from "./containers";
 
 export type InsertTarget = {
   /** Place the blocks after this one. */
@@ -175,6 +179,56 @@ function resolveInsertion(
   return { parent: container, index: ensureChildrenOf(container).length };
 }
 
+/**
+ * The types of every node from the root down to `node`, inclusive.
+ *
+ * Searched rather than tracked, because a batch moves nodes between parents and
+ * a map built up front would be stale by the second op. It is O(document) per
+ * write op, against a tree that is already fully walked twice per batch.
+ */
+function chainTo(root: SerializedNode, node: SerializedNode): string[] {
+  const walk = (current: SerializedNode): string[] | null => {
+    if (current === node) return [current.type];
+    for (const child of childrenOf(current)) {
+      const found = walk(child);
+      if (found) return [current.type, ...found];
+    }
+    return null;
+  };
+  // The fallback is the destination's own type: a parent that is somehow not in
+  // the tree must still not be told it may hold anything.
+  return walk(root) ?? [node.type];
+}
+
+/**
+ * Refuse a write that would put a node inside a nested editor that cannot
+ * register it (docs/plans/haklex-reprise.md §6.1).
+ *
+ * This is not a rendering concern. `parseEditorState` throws on an unregistered
+ * type and the node classes swallow it, so the *whole* nested document comes
+ * back empty on the next load — after this write reported success. See
+ * `NESTED_EDITOR_REFUSES` in `containers.ts` for the measurement.
+ *
+ * Called on the three ops that can move a node into a new parent. `set_text`
+ * cannot: it rebuilds the same block type in place through the same codec.
+ */
+function guardNested(
+  root: SerializedNode,
+  parent: SerializedNode,
+  added: readonly SerializedNode[],
+  opIndex: number,
+): void {
+  const bad = findUnregisterable(chainTo(root, parent), added);
+  if (!bad) return;
+  throw new OpError(
+    `a ${bad.nodeType} block cannot go inside a ${bad.container} — its ` +
+      `editor cannot register that node type, and the nested document would ` +
+      `come back empty the next time it is opened. Put it outside the ` +
+      `${bad.container} instead`,
+    opIndex,
+  );
+}
+
 function build(
   blocks: readonly WritableBlock[],
   opIndex: number,
@@ -284,6 +338,7 @@ export function applyOps(
         } catch (error) {
           throw new OpError((error as Error).message, opIndex);
         }
+        guardNested(working.root, target.parent, [next], opIndex);
         childrenOf(target.parent)[positionOf(target)] = next;
         target.node = next;
         markSubtree(next);
@@ -298,6 +353,7 @@ export function applyOps(
           op,
           opIndex,
         );
+        guardNested(working.root, parent, nodes, opIndex);
         ensureChildrenOf(parent).splice(index, 0, ...nodes);
         nodes.forEach(markSubtree);
         changed += nodes.length;
@@ -315,6 +371,12 @@ export function applyOps(
         if (containsNode(target.node, destination.parent)) {
           throw new OpError("a block cannot be moved inside itself", opIndex);
         }
+        guardNested(
+          working.root,
+          destination.parent,
+          [target.node],
+          opIndex,
+        );
         const from = positionOf(target);
         childrenOf(target.parent).splice(from, 1);
         // Removing from the same container shifts anything after it left by one.

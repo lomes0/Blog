@@ -119,6 +119,12 @@ function entryFor(block: Block): { preview: string; chars?: number } {
           truncate(block.summary)
         }`,
       };
+    case "nested-doc":
+      return {
+        preview: `${block.open === false ? "collapsed" : "open"} · ${
+          block.title ? truncate(block.title) : "untitled"
+        }`,
+      };
     case "kanban": {
       const lanes = new Set(block.tasks.map((task) => task.stage)).size;
       return {

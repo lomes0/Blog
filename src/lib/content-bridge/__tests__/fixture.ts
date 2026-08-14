@@ -192,6 +192,48 @@ const nestedEditor = (children: SerializedNode[]) => ({
  * either side of it are there to be asserted byte-identical after a write
  * inside the note.
  */
+/**
+ * A document with a nested doc in it — phase 4's fixture
+ * (docs/plans/haklex-reprise.md §6.1).
+ *
+ * Deliberately the same shape as `makeStickyState` one line up, so the two can
+ * be compared: the nested doc is `b2` and its blocks are `b2.1` and `b2.2`. The
+ * differences are the two the phase turns on. Its interior is a
+ * `SerializedEditorState` at `doc` — `{ root }`, with no `editorState` level,
+ * because `NestedDocNode.exportJSON` writes `getEditorState().toJSON()` rather
+ * than `editor.toJSON()`. And the block is *block-level*, so unlike the sticky
+ * it survives a load as a root child and keeps those addresses.
+ */
+export const makeNestedDocState = (): StoredState => ({
+  root: {
+    type: "root",
+    version: 1,
+    direction: null,
+    format: "",
+    indent: 0,
+    children: [
+      paragraph("Before the aside."),
+      {
+        type: "nested-doc",
+        version: 1,
+        title: "Working notes",
+        open: true,
+        doc: {
+          root: {
+            type: "root",
+            version: 1,
+            direction: null,
+            format: "",
+            indent: 0,
+            children: [paragraph("aside one"), paragraph("aside two")],
+          },
+        },
+      },
+      paragraph("After the aside."),
+    ],
+  },
+});
+
 export const makeStickyState = (): StoredState => ({
   root: {
     type: "root",

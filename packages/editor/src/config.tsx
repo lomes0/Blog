@@ -26,6 +26,7 @@ import { GraphNode } from "./nodes/GraphNode";
 import { StickyNode } from "./nodes/StickyNode";
 import { KanbanNode } from "./nodes/KanbanNode";
 import { CanvasNode } from "./nodes/CanvasNode";
+import { NestedDocNode } from "./nodes/NestedDocNode";
 import { AttachmentNode } from "./nodes/AttachmentNode";
 import theme from "./theme";
 import { PageBreakNode } from "./nodes/PageBreakNode";
@@ -109,6 +110,9 @@ export const editorConfig = {
     StickyNode,
     KanbanNode,
     CanvasNode,
+    // Registered here and deliberately *not* in `nodes/nestedConfig.tsx`: a
+    // container that can hold itself recurses without bound. See the note there.
+    NestedDocNode,
     AttachmentNode,
     PageBreakNode,
     IFrameNode,

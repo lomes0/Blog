@@ -138,6 +138,35 @@ export interface DetailsBlock {
   body?: WritableBlock[];
 }
 
+/**
+ * A document embedded in a document (docs/plans/haklex-reprise.md §6.1).
+ *
+ * The codec covers the **wrapper only** — its title and whether the card shows
+ * its contents. The interior is a nested editor whose blocks are addressed in
+ * their own right (`b7.1`, `b7.2`) through `containers.ts`, so every existing
+ * codec already works inside one and this needs no codec of its own. `body`
+ * follows the same rule as `LayoutBlock.columns`: absent on a read, required
+ * when inserting a new one, optional when replacing.
+ *
+ * **Not everything may go in the body.** The nested editor cannot register
+ * `sticky`, `canvas`, `kanban`, `attachment`, `page-break` or another
+ * `nested-doc`; writing one in empties the whole nested document on the next
+ * load. `findUnregisterable` in `containers.ts` refuses those.
+ *
+ * **A known coarseness in review.** An agent's edit *inside* one of these
+ * reviews as a single whole-block hunk rather than per paragraph, because
+ * `proposalDiff.ts` keeps its own `childrenOf` and cannot recurse through a
+ * container whose own fields changed. Exact in both directions, just coarse —
+ * the reason, and what fixing it would take, are in that file's header.
+ */
+export interface NestedDocBlock {
+  type: "nested-doc";
+  title: string;
+  /** Whether the card shows a preview of its contents. Defaults to open. */
+  open?: boolean;
+  body?: WritableBlock[];
+}
+
 /** The label of a collapsible section — its own block so it can be retitled. */
 export interface SummaryBlock extends TextOpacity {
   type: "summary";
@@ -245,6 +274,7 @@ export type Block =
   | DividerBlock
   | LayoutBlock
   | DetailsBlock
+  | NestedDocBlock
   | SummaryBlock
   | KanbanBlock
   | AttachmentBlock

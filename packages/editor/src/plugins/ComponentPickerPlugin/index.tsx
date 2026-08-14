@@ -44,6 +44,8 @@ import { StickyNode } from "@/editor/nodes/StickyNode";
 import { KanbanNode } from "@/editor/nodes/KanbanNode";
 import { CanvasNode } from "@/editor/nodes/CanvasNode";
 import { INSERT_CANVAS_COMMAND } from "@/editor/plugins/CanvasPlugin";
+import { NestedDocNode } from "@/editor/nodes/NestedDocNode";
+import { INSERT_NESTED_DOC_COMMAND } from "@/editor/plugins/NestedDocPlugin";
 import { PageBreakNode } from "@/editor/nodes/PageBreakNode";
 import { INSERT_PAGE_BREAK } from "../PageBreakPlugin";
 import {
@@ -63,6 +65,7 @@ import {
   ListChecks,
   ListOrdered,
   Minus,
+  NotebookText,
   Paperclip,
   Quote,
   ScanSearch,
@@ -556,6 +559,18 @@ export default function ComponentPickerMenuPlugin() {
               INSERT_CANVAS_COMMAND,
               undefined,
             ),
+        }),
+      );
+    }
+
+    if (editor.hasNode(NestedDocNode)) {
+      baseOptions.push(
+        new ComponentPickerOption("Nested Document", {
+          icon: <NotebookText />,
+          keywords: ["nested", "document", "doc", "sub-document", "embed"],
+          keyboardShortcut: "/doc",
+          onSelect: () =>
+            editor.dispatchCommand(INSERT_NESTED_DOC_COMMAND, undefined),
         }),
       );
     }

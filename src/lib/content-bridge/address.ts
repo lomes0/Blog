@@ -40,6 +40,11 @@ export const BLOCK_CONTAINERS: ReadonlySet<string> = new Set([
   // `children`; `containers.ts` is what knows that, and the address scheme does
   // not have to (haklex-reprise §3.2).
   "sticky",
+  // The same, and this one is actually reachable: a nested doc is block-level,
+  // so it is a child of a container rather than of a paragraph, and it keeps
+  // that position across a load (haklex-reprise §6.1). A sticky does not, which
+  // is why the seam buys nothing there — see `containers.test.ts`.
+  "nested-doc",
 ]);
 
 const ADDRESS_RE = /^b\d+(?:\.\d+)*$/;

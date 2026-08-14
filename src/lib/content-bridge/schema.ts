@@ -95,6 +95,12 @@ export const blockSchema = z.discriminatedUnion("type", [
     body: z.array(z.unknown()).optional(),
   }),
   z.object({
+    type: z.literal("nested-doc"),
+    title: z.string(),
+    open: z.boolean().optional(),
+    body: z.array(z.unknown()).optional(),
+  }),
+  z.object({
     type: z.literal("table"),
     rows: z
       .array(z.array(z.unknown()))
@@ -161,11 +167,17 @@ export const BLOCK_DOC =
   "kanban {tasks[{name, description?, stage, priority low|medium|high, tags?}]}, " +
   'layout {templateColumns e.g. "1fr 1fr", columns[[block,…],[block,…]]}, ' +
   "details {summary, open?, body[block,…]}, summary {text}, " +
+  '"nested-doc" {title, open?, body[block,…]} — a document inside the ' +
+  "document, whose blocks are addressed like any other container's, " +
   "table {rows[[cell,…],…], headerRow?} where a cell is a plain string or " +
   "{text, header row|column|both, colSpan, rowSpan}, and cell {text, header?}. " +
-  "For layout, details and table, columns/body/rows are required when " +
-  "inserting a new one and optional when replacing — omit them to keep the " +
-  "contents already there. " +
+  "For layout, details, nested-doc and table, columns/body/rows are required " +
+  "when inserting a new one and optional when replacing — omit them to keep " +
+  "the contents already there. " +
+  "A nested-doc runs a restricted editor: kanban, attachment, page-break, " +
+  "sticky, canvas and another nested-doc cannot go inside one, at any depth, " +
+  "and a write that tries is refused rather than silently emptying it. " +
+  "It has no single text field either — retitle it with replace_block. " +
   "Inline formatting inside `text` uses **bold**, __italic__, `code`, " +
   "~~strike~~, ==highlight==, ++underline++, ^^sup^^, ,,sub,,, [link](url) and " +
   "$latex$. Italic is __, not *, so that no delimiter is a prefix of another. " +
@@ -179,7 +191,8 @@ export const BLOCK_DOC =
   "iframe, canvas, sticky) are read-only: they can be read, moved or deleted " +
   "by address, but not rewritten. set_text needs a single text field, so it " +
   "applies only to paragraph, heading, quote, summary, cell and code; a list, " +
-  "table, layout, details or kanban is rewritten whole with replace_block.";
+  "table, layout, details, nested-doc or kanban is rewritten whole with " +
+  "replace_block.";
 
 /**
  * What to do when a write is refused, appended to every tool description that

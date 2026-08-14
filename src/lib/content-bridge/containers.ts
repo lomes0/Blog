@@ -42,7 +42,47 @@ interface ContainerArm {
   read(node: SerializedNode): SerializedNode[] | undefined;
   /** The same array, creating it and any missing object on the way. */
   ensure(node: SerializedNode): SerializedNode[];
+  /**
+   * Node types this container's editor cannot register — see
+   * `NESTED_EDITOR_REFUSES`. Empty for a container that is not a nested editor.
+   */
+  refuses: ReadonlySet<string>;
 }
+
+/**
+ * What `packages/editor/src/nodes/nestedConfig.tsx` does not register, and
+ * therefore what may not be written into a sticky note or a nested doc.
+ *
+ * ### Why this is a refusal and not a rendering quirk
+ *
+ * A nested editor is built from `nestedEditorConfig`, which excludes the
+ * containers that own nested editors themselves — they would recurse without
+ * bound — plus two types that mean nothing at that scale. `parseEditorState`
+ * *throws* on an unregistered type, and both `StickyNode.importJSON` and
+ * `$createNestedDocNode` swallow that into `console.error` and return an editor
+ * holding its **default, empty** state. So the failure is not "the kanban did
+ * not render": the entire nested document is gone, on the next load, after the
+ * write reported success.
+ *
+ * The block IR can author two of these (`kanban`, `attachment`), and until
+ * phase 4 nothing between `insert_blocks` and `parseEditorState` looked. Phase 1
+ * measured the loss and pinned it as a test while it was still unreachable — a
+ * sticky is wrapped in a paragraph and has no address at all. `nested-doc` is
+ * block-level, which makes it reachable, so the guard lands with it.
+ *
+ * **Keep this in step with that config.** `src/lib/content-bridge/__tests__/
+ * nestedDoc.test.ts` derives the difference between the document node set and
+ * the nested one and asserts it is exactly this set, so a node registered in one
+ * place and not the other turns red here rather than costing someone a document.
+ */
+const NESTED_EDITOR_REFUSES: ReadonlySet<string> = new Set([
+  "sticky",
+  "canvas",
+  "kanban",
+  "attachment",
+  "page-break",
+  "nested-doc",
+]);
 
 /** An untyped object on the path to a children array — a nested editor state. */
 type Bag = Record<string, unknown>;
@@ -57,8 +97,15 @@ const isBag = (value: unknown): value is Bag =>
  * ensure walks it and fills the gaps. Adding a container type is therefore one
  * line, and it is not possible to add one that reads from a different place
  * than it writes to.
+ *
+ * `refuses` comes first and has no default, so adding an arm means *answering*
+ * the question of what its editor cannot hold rather than inheriting silence —
+ * and silence is the answer that loses documents.
  */
-function childrenAt(...path: readonly string[]): ContainerArm {
+function childrenAt(
+  refuses: ReadonlySet<string>,
+  ...path: readonly string[]
+): ContainerArm {
   const owner = (node: SerializedNode): Bag | undefined => {
     let current: Bag = node;
     for (const key of path) {
@@ -70,6 +117,7 @@ function childrenAt(...path: readonly string[]): ContainerArm {
   };
 
   return {
+    refuses,
     read(node) {
       const holder = owner(node);
       return holder && Array.isArray(holder.children)
@@ -96,8 +144,7 @@ function childrenAt(...path: readonly string[]): ContainerArm {
  * an object lookup would let `"constructor"` or `"toString"` resolve to
  * something off `Object.prototype`.
  *
- * One entry today. `nested-doc` joins it in phase 4 with `childrenAt("doc",
- * "root")`; canvas is phase 7 and needs an arm written by hand rather than a
+ * Two entries. Canvas is phase 7 and needs an arm written by hand rather than a
  * path, because its notes are frames with no `type` of their own — which is
  * also what `typeOf` is here for.
  */
@@ -105,7 +152,14 @@ const NESTED_CHILDREN: ReadonlyMap<string, ContainerArm> = new Map([
   // `StickyNode.exportJSON` writes `editor: this.__editor.toJSON()`, and a
   // `SerializedEditor` is `{ editorState: { root } }` — so a note's blocks sit
   // under that nested editor's own root, three keys down.
-  ["sticky", childrenAt("editor", "editorState", "root")],
+  ["sticky", childrenAt(NESTED_EDITOR_REFUSES, "editor", "editorState", "root")],
+  // `NestedDocNode.exportJSON` writes the editor *state* rather than the editor
+  // — `doc: this.__doc.getEditorState().toJSON()` — so there is no `editorState`
+  // level and its blocks are two keys down. That is the shape §3.1 sketched, and
+  // it is a decision the node class and this line make together: a
+  // `SerializedEditor` wrapper would carry nothing we store. Change neither
+  // alone.
+  ["nested-doc", childrenAt(NESTED_EDITOR_REFUSES, "doc", "root")],
 ]);
 
 /**
@@ -151,4 +205,49 @@ export function typeOf(
   _parent?: SerializedNode,
 ): string {
   return node.type;
+}
+
+const NO_REFUSALS: ReadonlySet<string> = new Set<string>();
+
+/** What a container refuses to hold — empty for everything but a nested editor. */
+export const refusedTypesOf = (containerType: string): ReadonlySet<string> =>
+  NESTED_CHILDREN.get(containerType)?.refuses ?? NO_REFUSALS;
+
+/**
+ * The first node in `nodes`, or anywhere beneath one, that no editor along
+ * `containers` could register — or null when the write is safe.
+ *
+ * `containers` is the chain of node types from the document root down to and
+ * including the destination's parent, so a block landing three levels inside a
+ * nested doc is checked against that doc's editor just as a direct child is.
+ * The whole subtree is walked, because the offending node is as likely to be a
+ * kanban inside a `details` body as it is to be the block itself.
+ *
+ * Returning the pair rather than a boolean is what lets the caller say *which*
+ * node and *which* container, which is the difference between an agent fixing
+ * its batch and an agent retrying it verbatim.
+ */
+export function findUnregisterable(
+  containers: readonly string[],
+  nodes: readonly SerializedNode[],
+): { container: string; nodeType: string } | null {
+  for (const container of containers) {
+    const refuses = refusedTypesOf(container);
+    if (refuses.size === 0) continue;
+
+    const search = (node: SerializedNode): string | null => {
+      if (refuses.has(node.type)) return node.type;
+      for (const child of childrenOf(node)) {
+        const hit = search(child);
+        if (hit) return hit;
+      }
+      return null;
+    };
+
+    for (const node of nodes) {
+      const nodeType = search(node);
+      if (nodeType) return { container, nodeType };
+    }
+  }
+  return null;
 }

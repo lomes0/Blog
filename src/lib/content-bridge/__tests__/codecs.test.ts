@@ -102,6 +102,17 @@ const FIXTURES = {
     open: false,
     body: [{ type: "code", language: "diff", code: "- a\n+ b" }],
   },
+  "nested-doc": {
+    type: "nested-doc",
+    // Plain text, deliberately: a title is a `title` attribute on the node, not
+    // an inline run, so it is stored and read back verbatim.
+    title: "Working notes",
+    open: false,
+    body: [
+      { type: "heading", level: 2, text: "Scratch" },
+      { type: "paragraph", text: "one" },
+    ],
+  },
   summary: { type: "summary", text: "Full **diff**" },
   kanban: {
     type: "kanban",
@@ -335,6 +346,114 @@ describe("details", () => {
     ]);
     const summary = kids(kids(result.state.root)[0])[0];
     expect(nodeToBlock(summary)).toMatchObject({ text: "Shorter title" });
+  });
+});
+
+/**
+ * The wrapper codec only — the interior is reached through the container seam
+ * and has no codec of its own (docs/plans/haklex-reprise.md §6.1). What this
+ * has to prove is that the two halves of the *shape* decision agree: the codec
+ * writes the interior where `containers.ts` reads it, and where
+ * `NestedDocNode.exportJSON` writes it. `nestedDoc.test.ts` pins the third
+ * corner of that triangle, through a real editor.
+ */
+describe("nested doc", () => {
+  const block = FIXTURES["nested-doc"];
+
+  it("builds a serialized editor state at `doc`, with no `editorState` level", () => {
+    const node = blockToNode(block);
+    expect(node.type).toBe("nested-doc");
+    expect(node.title).toBe("Working notes");
+    expect(node.open).toBe(false);
+    // The whole of the shape decision, asserted rather than described. An
+    // `editorState` key here would mean the codec and the container arm had
+    // drifted, and every address inside would resolve to nothing.
+    expect(Object.keys(node.doc as object)).toEqual(["root"]);
+    const root = (node.doc as { root: SerializedNode }).root;
+    expect(kids(root).map((child) => child.type)).toEqual([
+      "heading",
+      "paragraph",
+    ]);
+  });
+
+  it("reads back as the wrapper alone — the interior is addressed in its own right", () => {
+    expect(nodeToBlock(blockToNode(block))).toEqual({
+      type: "nested-doc",
+      title: "Working notes",
+      open: false,
+    });
+  });
+
+  it("round-trips", () => {
+    const { readBack } = rebuilds(block);
+    expect(readBack).toMatchObject({ type: "nested-doc", open: false });
+  });
+
+  it("keeps the interior when a replace omits the body", () => {
+    const previous = blockToNode(block);
+    const next = blockToNode(
+      { type: "nested-doc", title: "Renamed" },
+      previous,
+    );
+    expect(next.title).toBe("Renamed");
+    expect(JSON.stringify(next.doc)).toBe(JSON.stringify(previous.doc));
+  });
+
+  it("refuses a new nested doc with no body", () => {
+    expect(() => blockToNode({ type: "nested-doc", title: "x" })).toThrow(
+      /needs `body`/,
+    );
+  });
+
+  it("defaults to open, and carries a previous choice through a replace", () => {
+    expect(
+      blockToNode({
+        type: "nested-doc",
+        title: "x",
+        body: [{ type: "paragraph", text: "y" }],
+      }).open,
+    ).toBe(true);
+    const closed = blockToNode(block);
+    expect(blockToNode({ type: "nested-doc", title: "x" }, closed).open)
+      .toBe(false);
+  });
+
+  /**
+   * `create_post` never goes near an op, so the refusal cannot live only in
+   * `ops.ts` — see `nestedDoc.test.ts` for the same guard on the write path.
+   */
+  it("refuses a body holding a node the nested editor cannot register", () => {
+    expect(() =>
+      blockToNode({
+        type: "nested-doc",
+        title: "x",
+        body: [
+          { type: "kanban", tasks: [{ name: "T", stage: 0, priority: "low" }] },
+        ],
+      })
+    ).toThrow(/kanban block cannot go inside a nested-doc/);
+  });
+
+  it("refuses one nested inside another, at any depth", () => {
+    expect(() =>
+      blockToNode({
+        type: "nested-doc",
+        title: "outer",
+        body: [
+          {
+            type: "details",
+            summary: "s",
+            body: [
+              {
+                type: "nested-doc",
+                title: "inner",
+                body: [{ type: "paragraph", text: "boom" }],
+              },
+            ],
+          },
+        ],
+      })
+    ).toThrow(/nested-doc block cannot go inside a nested-doc/);
   });
 });
 

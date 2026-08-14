@@ -25,10 +25,26 @@ import {
  * note on a `CanvasNode` board.
  *
  * It is the document's node set minus the container nodes that own nested
- * editors themselves: StickyNode, CanvasNode, KanbanNode. Leaving those in
- * would let a user put a canvas inside a note inside that same canvas, which
- * recurses without bound on both render and serialization. AttachmentNode and
- * PageBreakNode are out too — neither means anything at this scale.
+ * editors themselves: StickyNode, CanvasNode, KanbanNode and **NestedDocNode**.
+ * Leaving those in would let a user put a canvas inside a note inside that same
+ * canvas — or a nested doc inside itself — which recurses without bound on both
+ * render and serialization. AttachmentNode and PageBreakNode are out too —
+ * neither means anything at this scale.
+ *
+ * ### This list is a data-loss hazard, and something else enforces it
+ *
+ * A node type absent here does not merely fail to render: `parseEditorState`
+ * throws on it, and both `StickyNode.importJSON` and `$createNestedDocNode`
+ * swallow that into `console.error` and hand back an editor with its *default*
+ * state — so the whole nested document comes back empty, on load, long after
+ * the write that put it there reported success.
+ *
+ * The block IR can author two of the excluded types (`kanban`, `attachment`),
+ * so the exclusion is enforced where a write can still be refused:
+ * `NESTED_EDITOR_REFUSES` in `src/lib/content-bridge/containers.ts`, which
+ * `src/lib/content-bridge/__tests__/nestedDoc.test.ts` pins *against this
+ * array* — adding a node here without adding it there, or the reverse, turns
+ * that spec red rather than costing someone a document.
  */
 export const nestedEditorConfig = {
   // Must match `editor/config.tsx` — see the note there.
