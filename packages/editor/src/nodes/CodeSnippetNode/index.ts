@@ -51,7 +51,7 @@ import type {
   SerializedElementNode,
   Spread,
 } from "lexical";
-import { ElementNode } from "lexical";
+import { ElementNode, setDOMUnmanaged } from "lexical";
 import {
   CODE_SNIPPET_TYPE,
   SNIPPET_CLASS,
@@ -121,11 +121,25 @@ export class CodeSnippetNode extends ElementNode {
     // The strip is React, portaled in by `CodeSnippetPlugin` — the same
     // mechanism a decorator's `decorate()` output reaches the DOM by, done by
     // hand because an element node has no `decorate()`. It is not editable
-    // content and must never be reconciled, hence both the flag and the slot
+    // content and must never be reconciled, hence the flags here and the slot
     // below.
+    //
+    // `setDOMUnmanaged` is the one that keeps the strip alive, and
+    // `contentEditable` is no substitute for it: the mutation observer walks up
+    // from a mutation's target looking for the nearest *managed* node, and
+    // without the marker that walk runs straight past this host to the
+    // snippet's keyed element — at which point React's freshly portalled tabs
+    // are foreign DOM under a managed node and get evicted
+    // (`LexicalMutations.ts`, `parentDOM.removeChild(addedDOM)`). React is not
+    // told, so its next update or unmount removes a child that is no longer
+    // there and throws `NotFoundError: The node to be removed is not a child of
+    // this node`, which the editor's error boundary catches as a whole-pane
+    // failure. `captureSelection` for the reason `CodeNode`'s header passes it:
+    // the strip holds a focusable `Select` that owns its own caret.
     const tabs = document.createElement("div");
     tabs.className = SNIPPET_TABS_CLASS;
     tabs.contentEditable = "false";
+    setDOMUnmanaged(tabs, { captureSelection: true });
 
     const files = document.createElement("div");
     files.className = SNIPPET_FILES_CLASS;
