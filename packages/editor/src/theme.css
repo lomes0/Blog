@@ -79,12 +79,12 @@
     monospace;
   font-size: 0.875em;
   border-radius: 5px;
-  border: 1px solid rgba(128, 128, 128, 0.22);
+  border: 1px solid var(--doc-inline-code-border);
 }
 
 .LexicalTheme__hashtag {
-  background-color: rgba(88, 144, 255, 0.15);
-  border-bottom: 1px solid rgba(88, 144, 255, 0.3);
+  background-color: var(--doc-hashtag-bg);
+  border-bottom: 1px solid var(--doc-hashtag-rule);
 }
 
 .LexicalTheme__link {
@@ -113,9 +113,16 @@
    starts.
    ============================================================ */
 
+/* The card's light palette (Claude Design); the dark twin is near the foot of
+   the file, keyed to `html.dark`.
+
+   Its own rule, and nothing but custom properties in it. `check:theme`'s
+   `color-literal-outside-token-block` requires that — a block that mixes a
+   palette with the styling that consumes it is one where the next literal
+   added reads as belonging, which is how this file's other regions grew. The
+   styling half follows immediately below and is the same selector, so the
+   cascade is unchanged. */
 .LexicalTheme__code {
-  /* Light palette (Claude Design); the dark twin is near the foot of the
-     file, keyed to `html.dark`. */
   --code-bg: #ffffff;
   --code-fg: #2c333d;
   --code-border: #e4e7ec;
@@ -158,7 +165,13 @@
   --tok-keyword: #c0392b;
   --tok-variable: #7a4bc2;
   --tok-function: #2d6be6;
+  /* The card's drop. Scheme-invariant on purpose: it is a dark tint at low
+     alpha, which reads as a lift on the white canvas and as nothing much on
+     the dark one, where the card's own border carries the edge instead. */
+  --code-shadow-tint: rgba(31, 41, 61, 0.3);
+}
 
+.LexicalTheme__code {
   font-family:
     "Fira Code",
     ui-monospace,
@@ -181,7 +194,7 @@
   /* Clips the header against the rounded corners, and clips the body when it
      is collapsed. */
   overflow: hidden;
-  box-shadow: 0 18px 44px -26px rgba(31, 41, 61, 0.3);
+  box-shadow: 0 18px 44px -26px var(--code-shadow-tint);
 }
 
 .LexicalTheme__code.has-card-head {
@@ -542,7 +555,7 @@
 }
 
 .LexicalTheme__tableRowStriping tr:nth-of-type(odd) {
-  background-color: rgb(120 132 157 / 10%);
+  background-color: var(--doc-table-stripe-bg);
 }
 
 .LexicalTheme__tableSelection *::selection {
@@ -713,7 +726,7 @@
 
 .LexicalTheme__listItemUnchecked:focus:before,
 .LexicalTheme__listItemChecked:focus:before {
-  box-shadow: 0 0 0 2px #a6cdfe;
+  box-shadow: 0 0 0 2px var(--doc-focus-ring);
   border-radius: 2px;
 }
 
@@ -783,24 +796,24 @@
 }
 
 .LexicalTheme__mark {
-  background: rgba(255, 212, 0, 0.14);
-  border-bottom: 2px solid rgba(255, 212, 0, 0.3);
+  background: rgb(var(--doc-mark-rgb) / 14%);
+  border-bottom: 2px solid rgb(var(--doc-mark-rgb) / 30%);
   padding-bottom: 2px;
 }
 
 .LexicalTheme__markOverlap {
-  background: rgba(255, 212, 0, 0.3);
-  border-bottom: 2px solid rgba(255, 212, 0, 0.7);
+  background: rgb(var(--doc-mark-rgb) / 30%);
+  border-bottom: 2px solid rgb(var(--doc-mark-rgb) / 70%);
 }
 
 .LexicalTheme__mark.selected {
-  background: rgba(255, 212, 0, 0.5);
-  border-bottom: 2px solid rgba(255, 212, 0, 1);
+  background: rgb(var(--doc-mark-rgb) / 50%);
+  border-bottom: 2px solid rgb(var(--doc-mark-rgb) / 100%);
 }
 
 .LexicalTheme__markOverlap.selected {
-  background: rgba(255, 212, 0, 0.7);
-  border-bottom: 2px solid rgba(255, 212, 0, 0.7);
+  background: rgb(var(--doc-mark-rgb) / 70%);
+  border-bottom: 2px solid rgb(var(--doc-mark-rgb) / 70%);
 }
 
 .LexicalTheme__embedBlock {
@@ -891,6 +904,18 @@ iframe {
   min-height: 44px;
 }
 
+/* The note's own ink, fixed in both schemes. The `--doc-*` island above
+   restores the *content* colours for this subtree; these three are the note's
+   own chrome and never had a dark twin to restore — colored paper takes dark
+   ink whatever the page around it is doing (DESIGN.md §19.3). Stated as tokens
+   so that "this does not respond to the toggle" is a declaration rather than
+   three literals a reader has to infer it from. */
+.sticky-note {
+  --note-fg: rgba(0, 0, 0, 0.87);
+  --note-caret: rgb(5, 5, 5);
+  --note-placeholder-fg: #999;
+}
+
 .sticky-note {
   position: relative;
   z-index: 1;
@@ -899,7 +924,7 @@ iframe {
   min-height: 160px;
   padding: 20px;
   position: relative;
-  color: rgba(0, 0, 0, 0.87);
+  color: var(--note-fg);
   border-bottom-right-radius: 60px 5px;
   display: flex;
   flex-direction: column;
@@ -910,7 +935,7 @@ iframe {
   flex: 1;
   border: 0;
   resize: none;
-  caret-color: rgb(5, 5, 5);
+  caret-color: var(--note-caret);
   display: flow-root;
   position: relative;
   tab-size: 1;
@@ -918,7 +943,7 @@ iframe {
 }
 
 .sticky-note .nested-placeholder {
-  color: #999;
+  color: var(--note-placeholder-fg);
   overflow: hidden;
   position: absolute;
   text-overflow: ellipsis;
@@ -1285,6 +1310,22 @@ html.dark {
 :root {
   --doc-selection-fill: rgb(95 183 255 / 50%);
   --doc-selection-accent: rgb(95 183 255 / 75%);
+  /* A neutral grey at 22% — the same hairline on either canvas. */
+  --doc-inline-code-border: rgba(128, 128, 128, 0.22);
+  /* A blue wash and its underline. Low enough alpha to composite over both. */
+  --doc-hashtag-bg: rgba(88, 144, 255, 0.15);
+  --doc-hashtag-rule: rgba(88, 144, 255, 0.3);
+  /* Zebra striping, a mid-slate at 10%. Distinct from `--doc-table-header-bg`,
+     which does flip: a header is a surface, a stripe is a tint over one. */
+  --doc-table-stripe-bg: rgb(120 132 157 / 10%);
+  /* The ring on a focused checklist box. Pinned here to preserve the value it
+     has always had; docs/plans/theme-css-tokenization.md §4.2 decides whether
+     it should instead follow `--ed-accent-soft` and track the app's accent. */
+  --doc-focus-ring: #a6cdfe;
+  /* Highlight marks, as a channel triple rather than five paired literals: the
+     four states below differ only in alpha, and spelling that as one hue plus
+     `/ N%` is what stops a fifth state inventing a sixth yellow. */
+  --doc-mark-rgb: 255 212 0;
 }
 
 .LexicalTheme__textCode {

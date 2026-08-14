@@ -59,6 +59,13 @@
   padding-bottom: 20px;
 }
 
+/* The lift under a hovered column. A dark tint at low alpha, so it reads on
+   the white canvas and recedes on the dark one rather than inverting — no dark
+   twin, stated here rather than left as a literal in the rule below. */
+.kanban-column {
+  --kanban-column-shadow-tint: rgba(0, 0, 0, 0.1);
+}
+
 .kanban-column {
   flex: 1;
   min-width: 280px;
@@ -68,7 +75,7 @@
 }
 
 .kanban-column:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px var(--kanban-column-shadow-tint);
 }
 
 .kanban-column-content {

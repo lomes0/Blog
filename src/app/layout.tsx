@@ -6,6 +6,14 @@ import { AIModelProvider } from "@/contexts/AIModelContext";
 import InitColorSchemeScript from "@mui/material/InitColorSchemeScript";
 import "mathlive/static.css";
 import "@/editor/theme.css";
+// The `--ed-*` token contract, imported here rather than left to
+// `@/editor/theme.tsx` — which is the only other thing that pulls it in, and
+// which a route rendering *stored* HTML never loads. `theme.css` is app-wide
+// (the line above), so a rule in it that reads `var(--ed-…)` would resolve on
+// the editor's routes and not on `/view` or print. Inert today, because nothing
+// in plain CSS reads the contract yet; it is here so that phase 3 of
+// docs/plans/theme-css-tokenization.md can, unconditionally.
+import "@/editor/styles/tokens.css";
 import "./globals.css";
 
 // Force Next.js to use SSG for this layout, which helps with consistency between server and client

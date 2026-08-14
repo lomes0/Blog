@@ -1,5 +1,42 @@
 :root {
   --keyboard-inset-height: 0px;
+  /* A thumb tuned for a white canvas is invisible on a #252b3a one, so the
+     dark scheme gets its own. DESIGN.md §12 described these as applied
+     "globally" — which was only ever true in light mode. Keyed to `html.dark`,
+     not `prefers-color-scheme`, per DESIGN.md §2: the media query ignores the
+     in-app theme toggle.
+
+     Two tokens rather than three paired rules: the Firefox and WebKit
+     spellings of a scrollbar have nothing in common except the colour, and
+     when that colour was written three times per scheme it was the third
+     copy — `scrollbar-color` on `*` — that got missed. */
+  --scrollbar-thumb: rgba(0, 0, 0, 0.2);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.35);
+  /* The caret in the editor. The light value is the one `.editor-input` has
+     always carried; dark overrode it from a second, higher-specificity rule. */
+  --editor-caret: var(--mui-palette-text-primary);
+  /* Selection and the find-in-document highlight are the same indigo at the
+     same alpha, and were the same literal written twice. */
+  --selection-bg: rgb(79 70 229 / 22%);
+  /* Diff shading. The pair below is the one place in this file where the dark
+     values are not the light ones re-alpha'd: a 50%-tint pastel is legible on
+     white and muddy on #252b3a, so dark takes GitHub's saturated pair at a
+     lower alpha instead. */
+  --diff-ins-bg: rgb(200 255 200 / 50%);
+  --diff-del-bg: rgb(255 200 200 / 50%);
+  /* Print is a light island by definition — paper is white in both schemes
+     (DESIGN.md §19.3). Declared here so the `@media print` block below states
+     an intent rather than a colour. */
+  --print-bg: #fff;
+  --print-fg: rgba(0, 0, 0, 0.87);
+}
+
+html.dark {
+  --scrollbar-thumb: rgba(255, 255, 255, 0.22);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.38);
+  --editor-caret: #eee;
+  --diff-ins-bg: rgb(46 160 67 / 35%);
+  --diff-del-bg: rgb(248 81 73 / 35%);
 }
 
 /* Thin auto-hiding scrollbars */
@@ -13,35 +50,18 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--scrollbar-thumb);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--scrollbar-thumb-hover);
 }
 
 /* For Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
-}
-
-/* A thumb tuned for a white canvas is invisible on a #252b3a one, so the dark
-   scheme gets its own. DESIGN.md §12 described these as applied "globally" —
-   which was only ever true in light mode. Uses `html.dark`, not
-   `prefers-color-scheme`, per DESIGN.md §2: the media query ignores the in-app
-   theme toggle. */
-html.dark ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.22);
-}
-
-html.dark ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.38);
-}
-
-html.dark * {
-  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
 /* DESIGN.md §11 requires every animation to respect `prefers-reduced-motion`.
@@ -80,12 +100,12 @@ header {
 }
 
 ::selection {
-  background-color: rgb(79 70 229 / 22%);
+  background-color: var(--selection-bg);
 }
 
 @media screen {
   .selection-highlight {
-    background-color: rgb(79 70 229 / 22%);
+    background-color: var(--selection-bg);
   }
 }
 
@@ -177,7 +197,7 @@ body:has(#app-toolbar) .editor-container :is([id], [target="_self"]) {
 .editor-input {
   flex: 1;
   resize: none;
-  caret-color: var(--mui-palette-text-primary);
+  caret-color: var(--editor-caret);
   position: relative;
   tab-size: 1;
   outline: 0;
@@ -239,20 +259,12 @@ body.fullscreen {
 }
 
 .diff-container ins {
-  background-color: rgb(200 255 200 / 50%);
+  background-color: var(--diff-ins-bg);
   text-decoration: none;
 }
 
 .diff-container del {
-  background-color: rgb(255 200 200 / 50%);
-}
-
-html.dark .diff-container ins {
-  background-color: rgb(46 160 67 / 35%);
-}
-
-html.dark .diff-container del {
-  background-color: rgb(248 81 73 / 35%);
+  background-color: var(--diff-del-bg);
 }
 
 .diff-container ~ .editor-input,
@@ -260,9 +272,6 @@ html.dark .diff-container del {
   display: none;
 }
 
-html.dark .editor-input {
-  caret-color: #eee;
-}
 
 .editor-input .LexicalTheme__link:hover {
   text-decoration: none;
@@ -293,8 +302,8 @@ html.dark .editor-input {
   }
 
   body {
-    background-color: #fff !important;
-    color: rgba(0, 0, 0, 0.87) !important;
+    background-color: var(--print-bg) !important;
+    color: var(--print-fg) !important;
     margin: 0;
     padding: 0;
   }
