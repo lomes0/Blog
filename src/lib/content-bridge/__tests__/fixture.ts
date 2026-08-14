@@ -234,6 +234,58 @@ export const makeNestedDocState = (): StoredState => ({
   },
 });
 
+/**
+ * A document with a code snippet in it — phase 5's fixture
+ * (docs/plans/haklex-reprise.md §6.2).
+ *
+ * Deliberately the same shape as the two above, so the three can be compared:
+ * the snippet is `b2` and its files are `b2.1` and `b2.2`. The difference is
+ * the point of the phase — there is nothing unusual about where its children
+ * are. They are `code` nodes in `children`, so every existing codec and the
+ * *default* container accessor serve them with no new arm anywhere.
+ */
+export const makeCodeSnippetState = (): StoredState => ({
+  root: {
+    type: "root",
+    version: 1,
+    direction: null,
+    format: "",
+    indent: 0,
+    children: [
+      paragraph("Before the snippet."),
+      {
+        type: "code-snippet",
+        version: 1,
+        active: 0,
+        direction: null,
+        format: "",
+        indent: 0,
+        children: [
+          codeFile("index.ts", "ts", "export const x = 1;"),
+          codeFile("main.py", "python", "x = 1"),
+        ],
+      },
+      paragraph("After the snippet."),
+    ],
+  },
+});
+
+/** One file of a snippet: a `code` node carrying its own name. */
+const codeFile = (
+  filename: string,
+  language: string,
+  source: string,
+): SerializedNode => ({
+  type: "code",
+  version: 1,
+  language,
+  filename,
+  direction: null,
+  format: "",
+  indent: 0,
+  children: [text(source)],
+});
+
 export const makeStickyState = (): StoredState => ({
   root: {
     type: "root",

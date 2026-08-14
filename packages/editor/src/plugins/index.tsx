@@ -28,6 +28,7 @@ import StickyPlugin from "./StickyPlugin";
 import KanbanPlugin from "./KanbanPlugin";
 import CanvasPlugin from "./CanvasPlugin";
 import NestedDocPlugin from "./NestedDocPlugin";
+import CodeSnippetPlugin from "./CodeSnippetPlugin";
 import AttachmentPlugin from "./AttachmentPlugin";
 import ComponentPickerMenuPlugin from "./ComponentPickerPlugin";
 import TabFocusPlugin from "./TabFocusPlugin";
@@ -40,6 +41,7 @@ import { StickyNode } from "../nodes/StickyNode";
 import { KanbanNode } from "../nodes/KanbanNode";
 import { CanvasNode } from "../nodes/CanvasNode";
 import { NestedDocNode } from "../nodes/NestedDocNode";
+import { CodeSnippetNode } from "../nodes/CodeSnippetNode";
 import { AttachmentNode } from "../nodes/AttachmentNode";
 import { TableNode } from "../nodes/TableNode";
 import { PageBreakNode } from "../nodes/PageBreakNode";
@@ -119,6 +121,7 @@ export const EditorPlugins: React.FC<{
       {editor.hasNode(KanbanNode) && <KanbanPlugin />}
       {editor.hasNode(CanvasNode) && <CanvasPlugin />}
       {editor.hasNode(NestedDocNode) && <NestedDocPlugin />}
+      {editor.hasNode(CodeSnippetNode) && <CodeSnippetPlugin />}
       {editor.hasNode(PageBreakNode) && <PageBreakPlugin />}
       {editor.hasNode(IFrameNode) && <IFramePlugin />}
       {editor.hasNode(LayoutContainerNode) && <LayoutPlugin />}

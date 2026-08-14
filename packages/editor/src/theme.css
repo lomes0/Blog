@@ -1028,6 +1028,44 @@ iframe {
   margin-bottom: 0;
 }
 
+/* The code snippet — the block itself, for editor and reader alike
+   (docs/plans/haklex-reprise.md §6.2). The tab strip is React and is styled in
+   `nodes/CodeSnippetNode/styles.css.ts`; the two halves are separate on purpose
+   (DESIGN.md §19.4) and both need looking at when either changes.
+
+   `.code-snippet` and `.code-snippet-files` are what `createDOM` builds, so
+   they are shared with the editor and stay layout-only. `.code-snippet-file`
+   and `.code-snippet-filename` exist only in exported HTML, where every file is
+   shown at once with its name above it — tabs need a click and a published
+   article has no script to answer one.
+
+   No `html.dark` twin is needed and none should be added: every colour here is
+   a `--mui-palette-*` variable, which already flips with the class. */
+.code-snippet {
+  margin: 1rem 0;
+}
+
+/* Applied to a file's element by `CodeSnippetPlugin` while another tab is open.
+   Never serialized, and never present in exported HTML. */
+.code-snippet-file-hidden {
+  display: none !important;
+}
+
+.code-snippet-files > * {
+  margin-top: 0;
+}
+
+.code-snippet-file + .code-snippet-file {
+  margin-top: 0.75rem;
+}
+
+.code-snippet-filename {
+  padding: 0 0.25rem 0.35rem;
+  font-family: "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125rem;
+  color: var(--mui-palette-text-secondary);
+}
+
 .LexicalTheme__hr {
   width: 100%;
   border: none;

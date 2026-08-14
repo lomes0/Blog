@@ -104,6 +104,39 @@ export interface CodeBlock {
   type: "code";
   language: string;
   code: string;
+  /**
+   * The file's name, when this block is one file of a `code-snippet`
+   * (docs/plans/haklex-reprise.md §6.2). Absent on a code block that is not.
+   *
+   * It lives on the file rather than on the snippet because the snippet's
+   * children are spliced by `move_block` and `delete_block`, which know nothing
+   * about it — a parallel array of names on the wrapper would come out of the
+   * first reorder attached to the wrong files. See `CodeNode.__filename`.
+   */
+  filename?: string;
+}
+
+/**
+ * A multi-file code snippet: a tab strip over one code block per file.
+ *
+ * The codec covers the **wrapper only**. Its files are real Lexical children,
+ * so each is addressed in its own right (`b7.1`, `b7.2`) and read and written
+ * by the `code` codec that already existed — this is the container that needs
+ * no arm in `containers.ts` at all, only a line in `BLOCK_CONTAINERS`.
+ *
+ * `files` follows the same rule as `LayoutBlock.columns`: absent on a read,
+ * required when inserting a new one, optional when replacing. `filenames` is
+ * the read-only counterpart, the way a table reports `rowCount` and is written
+ * with `rows` — without it the outline could say a snippet is there and not
+ * what is in it, because the wrapper node holds no names of its own.
+ */
+export interface CodeSnippetBlock {
+  type: "code-snippet";
+  /** Which file the tab strip opens on, 1-based like an address. Default 1. */
+  active?: number;
+  /** Read-only: the tab labels, in order. Write them through `files`. */
+  filenames?: string[];
+  files?: CodeBlock[];
 }
 
 export interface DividerBlock {
@@ -271,6 +304,7 @@ export type Block =
   | QuoteBlock
   | ListBlock
   | CodeBlock
+  | CodeSnippetBlock
   | DividerBlock
   | LayoutBlock
   | DetailsBlock

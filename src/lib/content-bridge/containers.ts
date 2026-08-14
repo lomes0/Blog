@@ -82,6 +82,12 @@ const NESTED_EDITOR_REFUSES: ReadonlySet<string> = new Set([
   "attachment",
   "page-break",
   "nested-doc",
+  // Not a recursion risk — a snippet holds code blocks. It is absent from the
+  // nested config because that config registers *upstream's* `CodeNode`, whose
+  // `exportJSON` writes no `filename`: a snippet in a sticky note would come
+  // back from its first load with every tab unnamed. See the note in
+  // `packages/editor/src/nodes/nestedConfig.tsx`.
+  "code-snippet",
 ]);
 
 /** An untyped object on the path to a children array — a nested editor state. */
@@ -205,6 +211,53 @@ export function typeOf(
   _parent?: SerializedNode,
 ): string {
   return node.type;
+}
+
+/**
+ * Containers that hold exactly one kind of child.
+ *
+ * A different table from `NESTED_CHILDREN` and a different question: that one
+ * asks *where* a container's children live, this one asks *what* they may be.
+ * `code-snippet` is the first entry and needs no entry in the other — its files
+ * are ordinary `code` nodes in the ordinary `children` array, which is the
+ * whole design (docs/plans/haklex-reprise.md §6.2).
+ *
+ * The cost of not refusing is small but real: the editor's own transform
+ * (`nodes/CodeSnippetNode/guard.ts`) moves a stray out of the snippet on the
+ * next load, so an agent's paragraph does not vanish — it silently *relocates*,
+ * days later, in someone else's editing session. Refusing at the write is the
+ * difference between an agent that fixes its batch and an author who finds a
+ * paragraph that walked.
+ */
+const ONLY_CHILD_TYPE: ReadonlyMap<string, string> = new Map([
+  ["code-snippet", "code"],
+]);
+
+/** The one child type a container accepts, or undefined if it takes anything. */
+export const onlyChildTypeOf = (
+  containerType: string,
+): string | undefined => ONLY_CHILD_TYPE.get(containerType);
+
+/**
+ * The first of `nodes` that `container` cannot hold, or null when all may land.
+ *
+ * Shallow on purpose, unlike `findUnregisterable`: this is a rule about a
+ * container's *own* children, not about everything beneath them. A `details`
+ * inside a snippet is refused; a code block inside a details inside a paragraph
+ * elsewhere is nobody's business here.
+ */
+export function findWrongChildType(
+  container: string,
+  nodes: readonly SerializedNode[],
+): { container: string; nodeType: string; required: string } | null {
+  const required = onlyChildTypeOf(container);
+  if (!required) return null;
+  for (const node of nodes) {
+    if (node.type !== required) {
+      return { container, nodeType: node.type, required };
+    }
+  }
+  return null;
 }
 
 const NO_REFUSALS: ReadonlySet<string> = new Set<string>();

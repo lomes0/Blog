@@ -93,8 +93,20 @@ function entryFor(block: Block): { preview: string; chars?: number } {
     case "code": {
       const lines = block.code === "" ? 0 : block.code.split("\n").length;
       return {
-        preview: `${lines} line${lines === 1 ? "" : "s"}`,
+        // The filename first when there is one: inside a snippet it is what
+        // tells two otherwise identical "40 lines" apart.
+        preview: `${block.filename ? `${block.filename} · ` : ""}${lines} line${
+          lines === 1 ? "" : "s"
+        }`,
         chars: block.code.length,
+      };
+    }
+    case "code-snippet": {
+      const names = block.filenames ?? [];
+      return {
+        preview: `${plural(names.length, "file")}${
+          names.some(Boolean) ? ` · ${truncate(names.filter(Boolean).join(", "))}` : ""
+        }`,
       };
     }
     case "list": {

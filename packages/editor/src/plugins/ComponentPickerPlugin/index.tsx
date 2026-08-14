@@ -46,6 +46,8 @@ import { CanvasNode } from "@/editor/nodes/CanvasNode";
 import { INSERT_CANVAS_COMMAND } from "@/editor/plugins/CanvasPlugin";
 import { NestedDocNode } from "@/editor/nodes/NestedDocNode";
 import { INSERT_NESTED_DOC_COMMAND } from "@/editor/plugins/NestedDocPlugin";
+import { CodeSnippetNode } from "@/editor/nodes/CodeSnippetNode";
+import { INSERT_CODE_SNIPPET_COMMAND } from "@/editor/plugins/CodeSnippetPlugin";
 import { PageBreakNode } from "@/editor/nodes/PageBreakNode";
 import { INSERT_PAGE_BREAK } from "../PageBreakPlugin";
 import {
@@ -57,6 +59,7 @@ import {
   ChevronDown,
   Code,
   Columns2,
+  FileCode,
   Globe,
   Image,
   Kanban,
@@ -571,6 +574,18 @@ export default function ComponentPickerMenuPlugin() {
           keyboardShortcut: "/doc",
           onSelect: () =>
             editor.dispatchCommand(INSERT_NESTED_DOC_COMMAND, undefined),
+        }),
+      );
+    }
+
+    if (editor.hasNode(CodeSnippetNode)) {
+      baseOptions.push(
+        new ComponentPickerOption("Code Snippet", {
+          icon: <FileCode />,
+          keywords: ["code", "snippet", "files", "tabs", "multi-file"],
+          keyboardShortcut: "/snippet",
+          onSelect: () =>
+            editor.dispatchCommand(INSERT_CODE_SNIPPET_COMMAND, undefined),
         }),
       );
     }

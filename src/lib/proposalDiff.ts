@@ -131,6 +131,11 @@ export class UnknownHunkError extends Error {
  * so that `rebuild` puts merged children back where the container actually
  * keeps them; swapping the read half alone would merge correctly and then store
  * the result at `children`, where nothing renders it.
+ *
+ * **`code-snippet` is the container where the two genuinely agree** (phase 5,
+ * §6.2): its files are real children at `children`, so this reads exactly what
+ * the bridge does and an edit to one file reviews as a hunk for that file. That
+ * is the shape the paragraph above wishes the nested doc had.
  */
 const childrenOf = (node: SerializedNode): SerializedNode[] =>
   Array.isArray(node.children) ? (node.children as SerializedNode[]) : [];

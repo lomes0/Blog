@@ -362,6 +362,11 @@ function CodeBlockChrome(
   // reflow participates in positioning by forcing a re-render + re-measure.
   void reflow;
   const rect = element.getBoundingClientRect();
+  // A block with no layout box: a file of a code snippet whose tab is not the
+  // open one is `display: none`, and every rect it reports is zero. Positioning
+  // chrome against that puts a header and a footer in the top-left corner of
+  // the scroll container, for a block nobody can see.
+  if (rect.width === 0 && rect.height === 0) return null;
   const { top, left } = rectToContainerSpace(rect, container);
   const width = rect.width;
 

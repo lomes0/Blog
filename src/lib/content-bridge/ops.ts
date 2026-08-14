@@ -29,6 +29,7 @@ import {
   childrenOf,
   ensureChildrenOf,
   findUnregisterable,
+  findWrongChildType,
 } from "./containers";
 
 export type InsertTarget = {
@@ -201,32 +202,49 @@ function chainTo(root: SerializedNode, node: SerializedNode): string[] {
 }
 
 /**
- * Refuse a write that would put a node inside a nested editor that cannot
- * register it (docs/plans/haklex-reprise.md §6.1).
+ * Refuse a write whose destination cannot hold what is landing in it.
  *
- * This is not a rendering concern. `parseEditorState` throws on an unregistered
- * type and the node classes swallow it, so the *whole* nested document comes
- * back empty on the next load — after this write reported success. See
- * `NESTED_EDITOR_REFUSES` in `containers.ts` for the measurement.
+ * Two rules, both from `containers.ts`, both about the same failure shape — a
+ * write that succeeds now and is quietly undone later:
+ *
+ *   - **A nested editor that cannot register the type**
+ *     (docs/plans/haklex-reprise.md §6.1). `parseEditorState` throws on an
+ *     unregistered type and the node classes swallow it, so the *whole* nested
+ *     document comes back empty on the next load.
+ *   - **A container that holds one kind of child** (§6.2). A `code-snippet`
+ *     holds files; the editor's own transform moves anything else out on the
+ *     next load, so an unrefused paragraph relocates itself in someone's
+ *     editing session days later.
  *
  * Called on the three ops that can move a node into a new parent. `set_text`
  * cannot: it rebuilds the same block type in place through the same codec.
  */
-function guardNested(
+function guardDestination(
   root: SerializedNode,
   parent: SerializedNode,
   added: readonly SerializedNode[],
   opIndex: number,
 ): void {
-  const bad = findUnregisterable(chainTo(root, parent), added);
-  if (!bad) return;
-  throw new OpError(
-    `a ${bad.nodeType} block cannot go inside a ${bad.container} — its ` +
-      `editor cannot register that node type, and the nested document would ` +
-      `come back empty the next time it is opened. Put it outside the ` +
-      `${bad.container} instead`,
-    opIndex,
-  );
+  const unregisterable = findUnregisterable(chainTo(root, parent), added);
+  if (unregisterable) {
+    throw new OpError(
+      `a ${unregisterable.nodeType} block cannot go inside a ` +
+        `${unregisterable.container} — its editor cannot register that node ` +
+        `type, and the nested document would come back empty the next time ` +
+        `it is opened. Put it outside the ${unregisterable.container} instead`,
+      opIndex,
+    );
+  }
+
+  const wrongType = findWrongChildType(parent.type, added);
+  if (wrongType) {
+    throw new OpError(
+      `a ${wrongType.container} holds ${wrongType.required} blocks only, and ` +
+        `this one is a ${wrongType.nodeType}. Put it outside the ` +
+        `${wrongType.container} instead`,
+      opIndex,
+    );
+  }
 }
 
 function build(
@@ -338,7 +356,7 @@ export function applyOps(
         } catch (error) {
           throw new OpError((error as Error).message, opIndex);
         }
-        guardNested(working.root, target.parent, [next], opIndex);
+        guardDestination(working.root, target.parent, [next], opIndex);
         childrenOf(target.parent)[positionOf(target)] = next;
         target.node = next;
         markSubtree(next);
@@ -353,7 +371,7 @@ export function applyOps(
           op,
           opIndex,
         );
-        guardNested(working.root, parent, nodes, opIndex);
+        guardDestination(working.root, parent, nodes, opIndex);
         ensureChildrenOf(parent).splice(index, 0, ...nodes);
         nodes.forEach(markSubtree);
         changed += nodes.length;
@@ -371,7 +389,7 @@ export function applyOps(
         if (containsNode(target.node, destination.parent)) {
           throw new OpError("a block cannot be moved inside itself", opIndex);
         }
-        guardNested(
+        guardDestination(
           working.root,
           destination.parent,
           [target.node],

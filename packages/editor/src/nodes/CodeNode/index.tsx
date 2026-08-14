@@ -21,6 +21,7 @@ import type {
 export type SerializedCodeNodeWithWidth = Spread<{
   width?: string; // e.g., "80%", "600px", "100%"
   wrap?: boolean; // word-wrap (soft wrap) toggle
+  filename?: string; // the tab label when this block is a file in a snippet
 }, SerializedCodeNode>;
 
 /**
@@ -40,6 +41,20 @@ export type SerializedCodeNodeWithWidth = Spread<{
 export class CodeNode extends LexicalCodeNode {
   __width?: string;
   __wrap?: boolean;
+  /**
+   * The file's name, when this block is one file of a `CodeSnippetNode`
+   * (docs/plans/haklex-reprise.md §6.2). Undefined everywhere else, and it
+   * serializes only when set.
+   *
+   * **On the file rather than on the snippet, deliberately.** The alternative
+   * is an array of names on the wrapper, indexed by child position — and the
+   * things that reorder a snippet's children are `move_block` and
+   * `delete_block` in `src/lib/content-bridge/ops.ts`, which splice the
+   * children array and have never heard of this node. A parallel array would
+   * come out of the first agent reorder attached to the wrong files, silently.
+   * A name carried by the node it names cannot drift from it.
+   */
+  __filename?: string;
   static getType(): string {
     return "code";
   }
@@ -48,6 +63,7 @@ export class CodeNode extends LexicalCodeNode {
     const clonedNode = new CodeNode(node.__language, node.__key);
     clonedNode.__width = node.__width;
     clonedNode.__wrap = node.__wrap;
+    clonedNode.__filename = node.__filename;
     return clonedNode;
   }
 
@@ -89,6 +105,21 @@ export class CodeNode extends LexicalCodeNode {
   }
 
   /**
+   * Get the file name this block carries as a snippet file, if any.
+   */
+  getFilename(): string | undefined {
+    return this.getLatest().__filename;
+  }
+
+  /**
+   * Set (or, with an empty string, clear) the file name.
+   */
+  setFilename(filename: string | undefined): void {
+    const self = this.getWritable();
+    self.__filename = filename || undefined;
+  }
+
+  /**
    * Override createDOM to apply width styling in the editor.
    */
   createDOM(config: EditorConfig): HTMLElement {
@@ -98,6 +129,9 @@ export class CodeNode extends LexicalCodeNode {
     }
     if (this.__wrap) {
       element.classList.add("code-wrap");
+    }
+    if (this.__filename) {
+      element.setAttribute("data-filename", this.__filename);
     }
     return element;
   }
@@ -124,6 +158,15 @@ export class CodeNode extends LexicalCodeNode {
     // Update word-wrap class if it changed
     if (prevNode.__wrap !== this.__wrap) {
       dom.classList.toggle("code-wrap", !!this.__wrap);
+    }
+
+    // Update the snippet file name if it changed
+    if (prevNode.__filename !== this.__filename) {
+      if (this.__filename) {
+        dom.setAttribute("data-filename", this.__filename);
+      } else {
+        dom.removeAttribute("data-filename");
+      }
     }
 
     return isUpdated;
@@ -169,6 +212,13 @@ export class CodeNode extends LexicalCodeNode {
             element.classList.add("code-wrap");
           }
 
+          // The name only; the caption element around it is assembled by
+          // `CodeSnippetNode.exportDOM`, which is the one that can wrap this
+          // element without replacing it with its own ancestor.
+          if (this.__filename) {
+            element.setAttribute("data-filename", this.__filename);
+          }
+
           return element;
         }
         // Call parent's after callback if it exists
@@ -197,6 +247,11 @@ export class CodeNode extends LexicalCodeNode {
       node.setWrap(serializedNode.wrap);
     }
 
+    // Restore the snippet file name if present
+    if (serializedNode.filename) {
+      node.setFilename(serializedNode.filename);
+    }
+
     return node;
   }
 
@@ -208,6 +263,7 @@ export class CodeNode extends LexicalCodeNode {
       ...super.exportJSON(),
       width: this.__width,
       wrap: this.__wrap,
+      filename: this.__filename,
     };
   }
 

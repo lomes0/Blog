@@ -63,7 +63,20 @@ const FIXTURES = {
   paragraph: { type: "paragraph", text: "a **bold** word" },
   heading: { type: "heading", level: 3, text: "What we built" },
   quote: { type: "quote", text: "as they say" },
-  code: { type: "code", language: "ts", code: "const x = 1;" },
+  code: {
+    type: "code",
+    language: "ts",
+    code: "const x = 1;",
+    filename: "main.ts",
+  },
+  "code-snippet": {
+    type: "code-snippet",
+    active: 2,
+    files: [
+      { type: "code", language: "ts", code: "export const x = 1;", filename: "index.ts" },
+      { type: "code", language: "python", code: "x = 1", filename: "main.py" },
+    ],
+  },
   list: {
     type: "list",
     listType: "bullet",
@@ -454,6 +467,115 @@ describe("nested doc", () => {
         ],
       })
     ).toThrow(/nested-doc block cannot go inside a nested-doc/);
+  });
+});
+
+/**
+ * The wrapper codec only — every file is an ordinary `code` node reached
+ * through the *default* container accessor, and read and written by the `code`
+ * codec that already existed (docs/plans/haklex-reprise.md §6.2). What this has
+ * to prove is that the wrapper carries what the node class stores (`active`),
+ * that a file's name rides on the file, and that `files` follows the same
+ * insert-required / replace-optional rule as every other container's contents.
+ */
+describe("code snippet", () => {
+  const block = FIXTURES["code-snippet"];
+
+  it("builds ordinary code children, in the ordinary children array", () => {
+    const node = blockToNode(block);
+    expect(node.type).toBe("code-snippet");
+    expect(kids(node).map((child) => child.type)).toEqual(["code", "code"]);
+    expect(kids(node).map((child) => child.filename)).toEqual([
+      "index.ts",
+      "main.py",
+    ]);
+    expect(kids(node).map((child) => child.language)).toEqual([
+      "ts",
+      "python",
+    ]);
+  });
+
+  it("stores `active` 0-based, and reports it 1-based like an address", () => {
+    expect(blockToNode(block).active).toBe(1);
+    expect(nodeToBlock(blockToNode(block))).toMatchObject({ active: 2 });
+  });
+
+  it("omits `active` on a read when the first file is the open one", () => {
+    const first = blockToNode({ ...block, active: 1 });
+    expect(first.active).toBe(0);
+    expect(nodeToBlock(first)).not.toHaveProperty("active");
+  });
+
+  it("reads back as the wrapper plus its tab labels", () => {
+    expect(nodeToBlock(blockToNode(block))).toEqual({
+      type: "code-snippet",
+      active: 2,
+      filenames: ["index.ts", "main.py"],
+    });
+  });
+
+  it("round-trips", () => {
+    const { readBack } = rebuilds(block);
+    expect(readBack).toMatchObject({ type: "code-snippet" });
+  });
+
+  it("keeps the files when a replace omits them", () => {
+    const previous = blockToNode(block);
+    const next = blockToNode({ type: "code-snippet", active: 1 }, previous);
+    expect(next.active).toBe(0);
+    expect(JSON.stringify(next.children)).toBe(
+      JSON.stringify(previous.children),
+    );
+  });
+
+  it("keeps the open tab when a replace omits that too", () => {
+    const previous = blockToNode(block);
+    expect(blockToNode({ type: "code-snippet" }, previous).active).toBe(1);
+  });
+
+  it("refuses a new snippet with no files", () => {
+    expect(() => blockToNode({ type: "code-snippet" })).toThrow(
+      /needs `files`/,
+    );
+  });
+
+  /**
+   * The type guard is here as well as in `ops.ts` because this path is also
+   * `create_post`'s, which never goes near an op. The IR types say `CodeBlock`,
+   * but an agent's JSON arrives as `unknown` and only zod and this stand
+   * between it and a paragraph wedged between two files.
+   */
+  it("refuses a file that is not a code block", () => {
+    expect(() =>
+      blockToNode({
+        type: "code-snippet",
+        files: [{ type: "paragraph", text: "not a file" }] as never,
+      })
+    ).toThrow(/holds code blocks only; file 1 is a paragraph/);
+  });
+
+  it("gives a file with no name a filename-free node", () => {
+    const node = blockToNode({
+      type: "code-snippet",
+      files: [{ type: "code", language: "sh", code: "ls" }],
+    });
+    expect(kids(node)[0]).not.toHaveProperty("filename");
+    expect(nodeToBlock(node)).toEqual({
+      type: "code-snippet",
+      filenames: [""],
+    });
+  });
+
+  it("keeps a file's name through a `code` write that does not mention it", () => {
+    // A `set_text` on one file rebuilds it through the `code` codec. The name
+    // is not part of that codec's input, so carry-through is the only thing
+    // between an edit and an unnamed tab.
+    const file = kids(blockToNode(block))[0];
+    const rewritten = blockToNode(
+      { type: "code", language: "ts", code: "export const x = 2;" },
+      file,
+    );
+    expect(rewritten.filename).toBe("index.ts");
   });
 });
 

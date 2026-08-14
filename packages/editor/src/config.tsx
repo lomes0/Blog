@@ -2,6 +2,7 @@ import { HeadingNode, QuoteNode } from "@lexical/rich-text";
 import { ListItemNode, ListNode } from "@lexical/list";
 import { CodeHighlightNode, CodeNode as LexicalCodeNode } from "@lexical/code";
 import { CodeNode } from "./nodes/CodeNode";
+import { CodeSnippetNode } from "./nodes/CodeSnippetNode";
 /**
  * Two prism grammars, still here after Shiki became the tokenizer, and now
  * load-bearing for a different reason than they were.
@@ -96,6 +97,11 @@ export const editorConfig = {
       with: (node: LexicalCodeNode) => new CodeNode(node.getLanguage()),
     },
     CodeHighlightNode,
+    // The container the entry above is a prerequisite for: a snippet's files
+    // are `code` nodes carrying a `filename`, which only our subclass keeps.
+    // Registered here and deliberately *not* in `nodes/nestedConfig.tsx` — see
+    // the note there.
+    CodeSnippetNode,
     // Our two subclasses, upstream's three classes, and the `replace` entries
     // that join them. One shared constant because the shape is load-bearing and
     // getting it wrong throws on every table insertion — see the note there.

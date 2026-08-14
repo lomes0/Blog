@@ -45,6 +45,11 @@ export const BLOCK_CONTAINERS: ReadonlySet<string> = new Set([
   // that position across a load (haklex-reprise §6.1). A sticky does not, which
   // is why the seam buys nothing there — see `containers.test.ts`.
   "nested-doc",
+  // A code snippet's files are ordinary `code` nodes in its ordinary `children`
+  // array, so this line is the *whole* of what the bridge needs for it: no arm
+  // in `containers.ts`, no codec for the interior, `b7.1` is the first file
+  // (haklex-reprise §6.2).
+  "code-snippet",
 ]);
 
 const ADDRESS_RE = /^b\d+(?:\.\d+)*$/;

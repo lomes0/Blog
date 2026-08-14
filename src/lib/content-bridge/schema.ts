@@ -63,6 +63,23 @@ export const blockSchema = z.discriminatedUnion("type", [
     type: z.literal("code"),
     language: z.string().default("plain"),
     code: z.string(),
+    filename: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal("code-snippet"),
+    active: z.number().int().min(1).optional(),
+    // Read-only, and accepted rather than refused so a block handed straight
+    // back from a read is still a legal write — the same rule the header gives
+    // for `rowCount`.
+    filenames: z.array(z.string()).optional(),
+    files: z
+      .array(z.object({
+        type: z.literal("code"),
+        language: z.string().default("plain"),
+        code: z.string(),
+        filename: z.string().optional(),
+      }))
+      .optional(),
   }),
   z.object({
     type: z.literal("list"),
@@ -160,7 +177,8 @@ export const opSchema = z.discriminatedUnion("op", [
  */
 export const BLOCK_DOC =
   "Authorable block types: paragraph {text}, heading {level 1-6, text}, " +
-  "quote {text}, code {language, code}, list {listType bullet|number|check, " +
+  "quote {text}, code {language, code, filename?}, " +
+  "list {listType bullet|number|check, " +
   "items[{text, checked?, sublist?}]} where sublist is {listType, items[…]} " +
   "for nesting, divider {}, " +
   "attachment {url, filename, mimetype?, size?, expanded?}, " +
@@ -169,13 +187,19 @@ export const BLOCK_DOC =
   "details {summary, open?, body[block,…]}, summary {text}, " +
   '"nested-doc" {title, open?, body[block,…]} — a document inside the ' +
   "document, whose blocks are addressed like any other container's, " +
+  '"code-snippet" {active?, files[code,…]} — one code block per file behind a ' +
+  "tab strip, each file addressed like any other container's child and named " +
+  "by its own `filename`; `active` is 1-based and picks the open tab, " +
   "table {rows[[cell,…],…], headerRow?} where a cell is a plain string or " +
   "{text, header row|column|both, colSpan, rowSpan}, and cell {text, header?}. " +
-  "For layout, details, nested-doc and table, columns/body/rows are required " +
-  "when inserting a new one and optional when replacing — omit them to keep " +
-  "the contents already there. " +
+  "For layout, details, nested-doc, code-snippet and table, " +
+  "columns/body/files/rows are required when inserting a new one and optional " +
+  "when replacing — omit them to keep the contents already there. " +
+  "A code-snippet holds code blocks and nothing else, at its top level, and a " +
+  "write that puts anything else in one is refused. " +
   "A nested-doc runs a restricted editor: kanban, attachment, page-break, " +
-  "sticky, canvas and another nested-doc cannot go inside one, at any depth, " +
+  "sticky, canvas, code-snippet and another nested-doc cannot go inside one, " +
+  "at any depth, " +
   "and a write that tries is refused rather than silently emptying it. " +
   "It has no single text field either — retitle it with replace_block. " +
   "Inline formatting inside `text` uses **bold**, __italic__, `code`, " +
@@ -191,8 +215,8 @@ export const BLOCK_DOC =
   "iframe, canvas, sticky) are read-only: they can be read, moved or deleted " +
   "by address, but not rewritten. set_text needs a single text field, so it " +
   "applies only to paragraph, heading, quote, summary, cell and code; a list, " +
-  "table, layout, details, nested-doc or kanban is rewritten whole with " +
-  "replace_block.";
+  "table, layout, details, nested-doc, code-snippet or kanban is rewritten " +
+  "whole with replace_block.";
 
 /**
  * What to do when a write is refused, appended to every tool description that

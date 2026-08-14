@@ -31,6 +31,16 @@ import {
  * render and serialization. AttachmentNode and PageBreakNode are out too —
  * neither means anything at this scale.
  *
+ * **CodeSnippetNode is out for a different reason, and a measured one.** It
+ * cannot recurse — its children are code blocks. But the code block registered
+ * here is upstream's `CodeNode`, not ours (see the `nodes` array below), and
+ * upstream's `exportJSON` writes neither `width`, `wrap` nor `filename`. So a
+ * snippet in a sticky note would come back from its first load with every tab
+ * unnamed: not a rendering quirk, a silent edit of stored content. Fixing that
+ * means giving this config the `{ replace: CodeNode }` entry the document's
+ * has, which is a change to how *every* nested code block is stored and does
+ * not belong in the same commit as a new node.
+ *
  * ### This list is a data-loss hazard, and something else enforces it
  *
  * A node type absent here does not merely fail to render: `parseEditorState`

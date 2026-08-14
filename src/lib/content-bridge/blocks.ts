@@ -20,6 +20,7 @@ import type {
   Block,
   CellHeader,
   CodeBlock,
+  CodeSnippetBlock,
   DetailsBlock,
   HeadingBlock,
   KanbanTask,
@@ -354,6 +355,26 @@ export function nodeToBlock(node: SerializedNode): Block {
         language: str(node.language),
         code: plainText(kids),
       };
+      // Only when the block has one, so a code block that is not a snippet
+      // file reads back exactly as it did before phase 5.
+      if (typeof node.filename === "string" && node.filename) {
+        block.filename = node.filename;
+      }
+      return block;
+    }
+
+    case "code-snippet": {
+      // Wrapper only. Each file is addressed and edited in its own right
+      // through the *default* accessor in `containers.ts` — the point of the
+      // node (docs/plans/haklex-reprise.md §6.2). `filenames` is read-only, and
+      // is here because the wrapper node holds no names: without it an outline
+      // could say a snippet is there and never what is in it.
+      const block: CodeSnippetBlock = {
+        type: "code-snippet",
+        filenames: kids.map((child) => str(child.filename)),
+      };
+      const active = num(node.active, 0);
+      if (active > 0) block.active = active + 1;
       return block;
     }
     case "list": {
@@ -591,8 +612,46 @@ export function blockToNode(
         ...base,
         type: "code",
         language: str(block.language, "plain"),
+        // Absent means "leave whatever is there": `base` already carries the
+        // previous node's name, so a `set_text` on one file of a snippet must
+        // not be a way to lose its tab label.
+        ...(block.filename === undefined ? {} : { filename: block.filename }),
         children: block.code ? [textLeaf(block.code)] : [],
       };
+
+    case "code-snippet": {
+      // `files` absent on a replace keeps the files already there — the same
+      // carry-through rule layout, details and table use for their contents.
+      const files = block.files?.map((file, index) => {
+        const node = blockToNode(file);
+        if (node.type !== "code") {
+          throw new Error(
+            `a code-snippet holds code blocks only; file ${index + 1} is a ` +
+              `${file.type}`,
+          );
+        }
+        return node;
+      });
+      const children = files ?? childrenOf(carried ?? {} as SerializedNode);
+      if (children.length === 0) {
+        throw new Error(
+          'a new code-snippet needs `files`, e.g. [{type:"code",language:"ts",' +
+            'code:"…",filename:"main.ts"}]',
+        );
+      }
+      // 1-based in the IR to read like an address, 0-based on the node to be an
+      // index into its children. Clamped by `CodeSnippetNode.getActiveIndex`
+      // rather than here, because the file it names can be deleted later.
+      const active = block.active === undefined
+        ? num(carried?.active, 0)
+        : Math.max(0, Math.trunc(block.active) - 1);
+      return {
+        ...base,
+        type: "code-snippet",
+        active,
+        children,
+      };
+    }
     case "list": {
       const listType = block.listType ?? "bullet";
       if (!(listType in LIST_TYPE_TAG)) {
@@ -784,7 +843,13 @@ export function blockText(block: Block): string {
     case "summary":
       return block.text;
     case "code":
-      return block.code;
+      // The filename is the block's own text as much as the code is: it is what
+      // someone searching for "the webpack config" would type.
+      return [block.filename, block.code].filter(Boolean).join("\n");
+    // The files are searched through their own blocks; these are the only words
+    // the wrapper has.
+    case "code-snippet":
+      return (block.filenames ?? []).join("\n");
     case "list":
       return block.items.map((item) => item.text).join("\n");
     case "details":
