@@ -22,8 +22,17 @@ import { prisma } from "@/lib/prisma";
  * `apply_ops` and `create_post`. A read-only token is the reason scopes exist
  * at all — it is the difference between handing something the ability to read
  * your blog and the ability to write to it.
+ *
+ * `manage` is a third rather than part of `propose`, and the reason is that
+ * every write `propose` grants is *reversible by declining it*: a proposal sits
+ * in the review rail until the author approves it, and a created post is an
+ * unpublished draft they can discard. `rename_post` and `delete_post` are
+ * neither. They land on the author's own content immediately, and `Document`
+ * has no `deletedAt` — a deleted post and its revisions are gone. Folding those
+ * into `propose` would have retroactively widened every token already minted,
+ * so a credential that predates this scope cannot use them.
  */
-export const AGENT_SCOPES = ["read", "propose"] as const;
+export const AGENT_SCOPES = ["read", "propose", "manage"] as const;
 export type AgentScope = (typeof AGENT_SCOPES)[number];
 
 export const isAgentScope = (value: string): value is AgentScope =>

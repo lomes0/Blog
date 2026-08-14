@@ -1,4 +1,4 @@
-// The blog-content MCP server: eight tools over one author's posts.
+// The blog-content MCP server: ten tools over one author's posts.
 //
 // This module is the server *without a transport*. `mcp/content-server.ts`
 // builds one from MCP_AUTHOR_ID and speaks stdio; a route can build one per
@@ -55,6 +55,13 @@ import {
   RECOVERY_DOC,
 } from "@/lib/content-bridge/schema";
 import { AGENT_SCOPES, type AgentScope } from "@/lib/agentTokens";
+// The two `manage` tools, and the only writes here that are not proposals.
+// Author-scoped by argument rather than by a session, because this server has
+// no session — see `loadPost` for the same reasoning about reads.
+import {
+  deleteOwnedDocument,
+  renameOwnedDocument,
+} from "@/repositories/document";
 import type { RateDecision } from "@/lib/rateLimit";
 
 /** Where a write from this server says it came from (`Revision.origin`). */
@@ -143,7 +150,7 @@ const sourceNote = (post: AgentReadState): string => {
  * Build a server bound to one author.
  *
  * Every tool resolves the author first and passes it down; nothing here reads
- * `process.env`, so the same eight tools serve a stdio process and an HTTP
+ * `process.env`, so the same ten tools serve a stdio process and an HTTP
  * request without knowing which they are in.
  */
 export function createContentServer(
@@ -156,6 +163,7 @@ export function createContentServer(
 ): McpServer {
   const server = new McpServer({ name: "blog-content", version: "0.2.0" });
   const mayPropose = scopes.includes("propose");
+  const mayManage = scopes.includes("manage");
 
   /**
    * Wrap a tool handler in its budget.
@@ -435,12 +443,124 @@ export function createContentServer(
   );
 
   // -------------------------------------------------------------------------
-  // Writing
+  // Managing
+  //
+  // `manage` is a separate axis from `propose`, not a wider version of it — a
+  // token can hold either without the other — so this is a guarded block rather
+  // than a second early return. Putting it *above* the `propose` return is what
+  // keeps a manage-only token from silently losing these two tools.
+  //
+  // Everything here lands immediately on the author's own content. That is the
+  // opposite of the rule the tools below follow, and the tool text says so in
+  // as many words, because an agent that has learned "my writes are proposals"
+  // from `apply_ops` will otherwise carry that belief into a delete.
+  // -------------------------------------------------------------------------
+
+  if (mayManage) {
+    server.registerTool(
+      "rename_post",
+      {
+        description:
+          "Change a post's title. Unlike apply_ops this is NOT a proposal — it " +
+          "takes effect immediately on the live post, so confirm the new title " +
+          "with the user before calling rather than after. " +
+          "Only the title: the handle (the post's URL) is left alone, so links " +
+          "keep working and the address can still say something the title no " +
+          "longer does. Publishing, moving between series and editing content " +
+          "are all elsewhere. A rename does not touch content, so a pending " +
+          "proposal on this post stays pending and still applies.",
+        inputSchema: {
+          id: z.string().describe("Document id"),
+          title: z.string().min(1).describe("The new title"),
+        },
+      },
+      metered("write", async ({ id, title }) => {
+        const authorId = await getAuthorId();
+        const result = await renameOwnedDocument({
+          id,
+          ownedBy: authorId,
+          name: title,
+          origin,
+        });
+        if (!result.ok) return fail(`Post ${id} not found (or not yours).`);
+        return text(
+          `Renamed "${result.previousName}" to "${title}". This is live — the ` +
+            `post is now titled that in the author's library.`,
+        );
+      }),
+    );
+
+    server.registerTool(
+      "delete_post",
+      {
+        description:
+          "PERMANENTLY delete a post and its entire revision history. This is " +
+          "not a proposal and not a trash bin: there is no undo, no soft " +
+          "delete and no way to recover the content afterwards. Never call it " +
+          "on your own initiative — only when the user has named the post they " +
+          "want gone. " +
+          "Two steps. Call it with just `id` first: nothing is deleted, and it " +
+          "reports the exact title and how much history would go. Then call it " +
+          "again passing that title as `confirm` to actually delete. The echo " +
+          "is what makes acting on the wrong id impossible — a plausible id " +
+          "from a listing is the mistake this guards, not a change of heart. " +
+          "Child tabs of a deleted post are not deleted: they are promoted to " +
+          "top level. Posts forked from it survive, losing only the link back.",
+        inputSchema: {
+          id: z.string().describe("Document id"),
+          confirm: z.string().optional().describe(
+            "The post's exact title, as reported by the unconfirmed call. " +
+              "Omit to preview what would be deleted.",
+          ),
+        },
+      },
+      metered("write", async ({ id, confirm }) => {
+        const authorId = await getAuthorId();
+        const result = await deleteOwnedDocument({
+          id,
+          ownedBy: authorId,
+          confirmName: confirm,
+          origin,
+        });
+        if (result.ok) {
+          return text(
+            `Deleted "${result.name}" (${id}) and its revision history. This ` +
+              `is permanent and cannot be undone.`,
+          );
+        }
+        if (result.reason === "not-found") {
+          return fail(`Post ${id} not found (or not yours).`);
+        }
+        // Both the mismatch and the preview end up here, and they are told
+        // apart by whether the caller sent anything — a wrong `confirm` is the
+        // guard doing its job and has to read as a stop, not as a prompt to
+        // try again with the title it just printed.
+        const history = result.revisions === 1
+          ? "1 revision"
+          : `${result.revisions} revisions`;
+        const live = result.published
+          ? " It is PUBLISHED — deleting it breaks any link anyone has to it."
+          : "";
+        return fail(
+          (confirm === undefined
+            ? `Nothing was deleted. `
+            : `Refused: confirm was "${confirm}", which is not this post's ` +
+              `title. Nothing was deleted — check you have the right id.\n`) +
+            `Deleting ${id} would permanently destroy "${result.name}" and ` +
+            `${history}. There is no undo.${live}\n` +
+            `To proceed, call delete_post again with confirm: "${result.name}".`,
+        );
+      }),
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Proposing
   //
   // Everything below needs the `propose` scope. Returning early rather than
   // nesting is deliberate: it makes "a read-only server is the one without
   // these two tools" a fact about the file's shape, and leaves no branch where
-  // a write tool could later be added outside the guard.
+  // a proposal tool could later be added outside the guard.
   // -------------------------------------------------------------------------
 
   if (!mayPropose) return server;

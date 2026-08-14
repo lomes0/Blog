@@ -575,6 +575,14 @@ const updateDocument = async (
 const deleteDocumentRow = async (
   tx: Prisma.TransactionClient,
   doc: { id: string; authorId: string },
+  /**
+   * Who is doing the deleting, for the change feed. Defaults to the app,
+   * because that is every caller but the MCP server's `delete_post` — and a
+   * client tells an agent's removal from its own by this field alone
+   * (`isAgentOrigin`), so a terminal deleting a post must not look like the
+   * author deleting it in another tab.
+   */
+  origin: string = APP_ORIGIN,
 ) => {
   // Child tabs are promoted to root via onDelete: SetNull — capture them
   // (in order) so we can re-home them with fresh root ranks below.
@@ -594,7 +602,7 @@ const deleteDocumentRow = async (
     kind: "document.deleted",
     id: doc.id,
     authorId: doc.authorId,
-    origin: APP_ORIGIN,
+    origin,
   });
   // The promoted children moved container, and nothing else will say so: their
   // rows survive, so a client that only heard about the delete would keep
@@ -605,7 +613,7 @@ const deleteDocumentRow = async (
       kind: "document.updated",
       id: child.id,
       authorId: doc.authorId,
-      origin: APP_ORIGIN,
+      origin,
     });
   }
 
@@ -863,11 +871,119 @@ const discardAgentDocument = async (id: string) =>
     return true;
   });
 
+/**
+ * Rename one of *this author's* posts, by id.
+ *
+ * Separate from `updateDocument` for the reason `discardAgentDocument` is
+ * separate from `deleteDocument`: that one takes a handle and no author, and is
+ * safe only because every route in front of it has already been through
+ * `requireDocument`. The MCP server has no session to authorize against — its
+ * whole authorization is the author it resolved — so the filter has to be *in*
+ * the query, where forgetting it is impossible rather than merely unlikely.
+ *
+ * Only `name`. Not the handle (it is a URL, and changing it breaks links), not
+ * `published` (a publish is a decision, not a rename), and not the container
+ * fields, which belong to the move routes.
+ *
+ * No compare-and-set on `head`: a rename does not touch content, so it cannot
+ * race a save and cannot invalidate a pending proposal.
+ */
+const renameOwnedDocument = async (
+  { id, ownedBy, name, origin = APP_ORIGIN }: {
+    id: string;
+    ownedBy: string;
+    name: string;
+    origin?: string;
+  },
+): Promise<
+  { ok: true; previousName: string } | { ok: false; reason: "not-found" }
+> =>
+  prisma.$transaction(async (tx) => {
+    const doc = await tx.document.findFirst({
+      where: { id, authorId: ownedBy, type: PrismaDocumentType.DOCUMENT },
+      select: { id: true, name: true },
+    });
+    if (!doc) return { ok: false as const, reason: "not-found" as const };
+
+    await tx.document.update({ where: { id: doc.id }, data: { name } });
+    await notifyChange(tx, {
+      kind: "document.updated",
+      id: doc.id,
+      authorId: ownedBy,
+      origin,
+    });
+    return { ok: true as const, previousName: doc.name };
+  });
+
+/**
+ * Delete one of *this author's* posts, by id, after confirming its title.
+ *
+ * The confirmation is not ceremony. There is no `deletedAt` on `Document` and
+ * no trash table: this cascades the post's revisions and its whole history, and
+ * nothing can put it back. The realistic failure is not an agent deciding to be
+ * destructive, it is an agent reading a list and acting on the neighbouring id —
+ * so the caller has to name what it believes it is deleting, and a mismatch
+ * refuses. Passing no `confirmName` never deletes; it reports what would be
+ * destroyed, which is how the tool gets a title to echo back.
+ *
+ * Find, compare and delete are one transaction for the same reason they are in
+ * `discardAgentDocument`: a rename landing between the check and the delete
+ * must not turn into "confirmed one post, deleted another".
+ */
+const deleteOwnedDocument = async (
+  { id, ownedBy, confirmName, origin = APP_ORIGIN }: {
+    id: string;
+    ownedBy: string;
+    confirmName?: string;
+    origin?: string;
+  },
+): Promise<
+  | { ok: true; name: string }
+  | { ok: false; reason: "not-found" }
+  | {
+    ok: false;
+    reason: "unconfirmed";
+    name: string;
+    revisions: number;
+    published: boolean;
+  }
+> =>
+  prisma.$transaction(async (tx) => {
+    const doc = await tx.document.findFirst({
+      where: { id, authorId: ownedBy, type: PrismaDocumentType.DOCUMENT },
+      select: {
+        id: true,
+        name: true,
+        authorId: true,
+        published: true,
+        _count: { select: { revisions: true } },
+      },
+    });
+    if (!doc) return { ok: false as const, reason: "not-found" as const };
+
+    // Trimmed, but not case-folded: this is a copy of a title the caller was
+    // just shown, so tolerating stray whitespace is kindness and tolerating a
+    // different capitalisation would be tolerating a different post.
+    if (confirmName === undefined || confirmName.trim() !== doc.name.trim()) {
+      return {
+        ok: false as const,
+        reason: "unconfirmed" as const,
+        name: doc.name,
+        revisions: doc._count.revisions,
+        published: doc.published,
+      };
+    }
+
+    await deleteDocumentRow(tx, doc, origin);
+    return { ok: true as const, name: doc.name };
+  });
+
 export {
   acceptAgentDocument,
   countAgentCreatedDocuments,
   createDocument,
   deleteDocument,
+  deleteOwnedDocument,
   discardAgentDocument,
   findAgentCreatedDocuments,
   findCloudStorageUsageByAuthorId,
@@ -879,5 +995,6 @@ export {
   findPublishedDocuments,
   findPublishedDocumentsByAuthorId,
   findUnownedDocumentIds,
+  renameOwnedDocument,
   updateDocument,
 };

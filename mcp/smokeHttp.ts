@@ -1,6 +1,6 @@
 // End-to-end smoke test for the *remote* MCP endpoint, `POST /api/mcp`.
 //
-// The stdio smoke (`mcp/smoke.ts`) proves the eight tools. This one proves the
+// The stdio smoke (`mcp/smoke.ts`) proves the ten tools. This one proves the
 // half that only exists over HTTP and that no spec covers: token auth and its
 // refusals, scope narrowing at registration, the cleartext rule, the body cap,
 // the budgets, statelessness, and that a remote write names the credential that
@@ -17,9 +17,10 @@
 // ## Two modes, because the point is that it runs from anywhere
 //
 // With `DATABASE_URL` and `MCP_AUTHOR_ID` it provisions itself: it mints the
-// tokens it needs (including a read-only one, to prove six tools rather than
-// eight), and revokes them on the way out whatever happened. That is the local
-// case, and it is zero-setup.
+// tokens it needs — a read-only one to prove six tools rather than eight, and a
+// `manage` one to prove that the two destructive tools are the difference
+// between eight and ten — and revokes them on the way out whatever happened.
+// That is the local case, and it is zero-setup.
 //
 // With only `BLOG_MCP_TOKEN` it runs against a deployment it has no database
 // access to — which is the configuration the endpoint exists for. The checks
@@ -202,6 +203,7 @@ async function main(): Promise<void> {
   const minted: string[] = [];
   let full = provided ?? "";
   let readOnly = "";
+  let manage = "";
   let tokenName = "";
   let authorId = "";
 
@@ -224,11 +226,20 @@ async function main(): Promise<void> {
         name: `${tokenName} (read-only)`,
         scopes: ["read"],
       });
-      minted.push(a.token.id, b.token.id);
+      // The destructive scope, held by nothing else here. Minting it separately
+      // is the point: `a` is what most tokens look like, and the check below is
+      // that it did *not* quietly acquire rename/delete.
+      const c = await mintAgentToken({
+        userId: user.id,
+        name: `${tokenName} (manage)`,
+        scopes: ["read", "propose", "manage"],
+      });
+      minted.push(a.token.id, b.token.id, c.token.id);
       // A token the operator passed in wins: it is the one they are asking
-      // about. The minted pair still provides the read-only half.
+      // about. The minted set still provides the narrower and wider halves.
       full = provided ?? a.secret;
       readOnly = b.secret;
+      manage = c.secret;
     }
 
     // -- Refusals ---------------------------------------------------------
@@ -362,6 +373,47 @@ async function main(): Promise<void> {
         `write tools leaked into a read-only token: ${names.join(", ")}`,
       );
       return `${names.length} tools, no apply_ops/create_post`;
+    });
+
+    await check("a propose token is not offered the destructive tools", async () => {
+      // The escalation this scope exists to prevent: `manage` must not ride in
+      // on `propose`, or every token minted before it silently gained the
+      // ability to delete posts irreversibly.
+      expect(
+        !toolNames.includes("rename_post") && !toolNames.includes("delete_post"),
+        `manage tools leaked into a read+propose token: ${toolNames.join(", ")}`,
+      );
+      return "8 tools, no rename_post/delete_post";
+    });
+
+    await check("a manage token is offered all ten", async () => {
+      if (!manage) return { skip: "needs a database to mint a manage-scoped token" };
+      const mg = await connect(manage);
+      const names = (await mg.listTools()).tools.map((t) => t.name);
+      await mg.close();
+      expect(names.length === 10, `expected 10 tools, got ${names.length}: ${names.join(", ")}`);
+      expect(
+        names.includes("rename_post") && names.includes("delete_post"),
+        `manage token is missing its own tools: ${names.join(", ")}`,
+      );
+      return `${names.length} tools, including rename_post/delete_post`;
+    });
+
+    await check("delete_post will not delete without a confirmation", async () => {
+      if (!manage) return { skip: "needs a database to mint a manage-scoped token" };
+      // Read-safe on purpose: a bogus id can only ever come back "not found",
+      // so this proves the shape of the guard without risking a real post. The
+      // confirmed branch is exercised by the write half, behind --write.
+      const mg = await connect(manage);
+      const said = textOf(
+        await mg.callTool({
+          name: "delete_post",
+          arguments: { id: "00000000-0000-0000-0000-000000000000" },
+        }),
+      );
+      await mg.close();
+      expect(/not found/i.test(said), `expected a not-found refusal, got: ${said}`);
+      return "unconfirmed delete refused";
     });
 
     // -- The write path ---------------------------------------------------

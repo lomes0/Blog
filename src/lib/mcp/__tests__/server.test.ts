@@ -22,6 +22,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const findMany = vi.fn();
 const revisionFindMany = vi.fn();
 const proposeOps = vi.fn();
+const renameOwnedDocument = vi.fn();
+const deleteOwnedDocument = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -32,6 +34,13 @@ vi.mock("@/lib/prisma", () => ({
       findUnique: () => Promise.resolve(null),
     },
   },
+}));
+
+// The `manage` tools go to the repository rather than through `agentWrites`,
+// because they are not proposals — see the server's "Managing" section.
+vi.mock("@/repositories/document", () => ({
+  renameOwnedDocument: (...args: unknown[]) => renameOwnedDocument(...args),
+  deleteOwnedDocument: (...args: unknown[]) => deleteOwnedDocument(...args),
 }));
 
 vi.mock("@/lib/agentWrites", () => ({
@@ -45,7 +54,7 @@ const { createContentServer } = await import("../server");
 /** A client wired straight to a server built for `authorId`. */
 async function connect(
   resolveAuthorId: () => Promise<string>,
-  scopes?: readonly ("read" | "propose")[],
+  scopes?: readonly ("read" | "propose" | "manage")[],
   checkRate?: (kind: "read" | "write") => {
     allowed: boolean;
     retryAfterSeconds: number;
@@ -68,21 +77,31 @@ beforeEach(() => {
     reason: "not-found",
     message: "stub",
   });
+  renameOwnedDocument.mockResolvedValue({ ok: true, previousName: "Before" });
+  deleteOwnedDocument.mockResolvedValue({
+    ok: false,
+    reason: "unconfirmed",
+    name: "Linux Process Manager",
+    revisions: 12,
+    published: false,
+  });
 });
 
 describe("createContentServer", () => {
-  it("registers the eight tools", async () => {
+  it("registers the ten tools", async () => {
     const client = await connect(async () => "author-a");
     const { tools } = await client.listTools();
 
     expect(tools.map((tool) => tool.name).sort()).toEqual([
       "apply_ops",
       "create_post",
+      "delete_post",
       "list_posts",
       "list_series",
       "outline",
       "read_blocks",
       "read_post",
+      "rename_post",
       "search",
     ]);
   });
@@ -209,6 +228,131 @@ describe("createContentServer", () => {
     expect(result.isError).toBe(true);
     expect(JSON.stringify(result.content)).toMatch(/not found/i);
     expect(proposeOps).not.toHaveBeenCalled();
+  });
+
+  // -------------------------------------------------------------------------
+  // The `manage` scope
+  //
+  // `manage` and `propose` are independent, and the tools they gate differ in
+  // kind: a proposal can be declined, a delete cannot be undone. Both halves of
+  // that independence are pinned, because the obvious way to write the guard —
+  // hanging `manage` off the `propose` early return — passes every other test
+  // in this file while silently disarming one of the two tokens.
+  // -------------------------------------------------------------------------
+
+  it("gives a propose-only server no manage tools", async () => {
+    const client = await connect(async () => "author-a", ["read", "propose"]);
+    const names = (await client.listTools()).tools.map((tool) => tool.name);
+
+    expect(names).toContain("apply_ops");
+    expect(names).not.toContain("rename_post");
+    expect(names).not.toContain("delete_post");
+  });
+
+  it("gives a manage-only server its tools without the proposal ones", async () => {
+    const client = await connect(async () => "author-a", ["read", "manage"]);
+    const names = (await client.listTools()).tools.map((tool) => tool.name);
+
+    expect(names).toContain("rename_post");
+    expect(names).toContain("delete_post");
+    expect(names).not.toContain("apply_ops");
+    expect(names).not.toContain("create_post");
+  });
+
+  it("deletes nothing when a read-only server is asked to", async () => {
+    const client = await connect(async () => "author-a", ["read"]);
+
+    const result = await client.callTool({
+      name: "delete_post",
+      arguments: { id: "doc-1", confirm: "Anything" },
+    });
+
+    expect(result.isError).toBe(true);
+    expect(deleteOwnedDocument).not.toHaveBeenCalled();
+  });
+
+  it("passes the resolved author as the manage tools' authorization", async () => {
+    const client = await connect(async () => "author-a", ["read", "manage"]);
+
+    await client.callTool({
+      name: "rename_post",
+      arguments: { id: "doc-1", title: "After" },
+    });
+    await client.callTool({
+      name: "delete_post",
+      arguments: { id: "doc-1", confirm: "Whatever" },
+    });
+
+    // Neither tool takes an author from its arguments — same invariant as the
+    // reads, and the only thing keeping one token off another author's posts.
+    expect(renameOwnedDocument.mock.calls[0][0]).toMatchObject({
+      id: "doc-1",
+      ownedBy: "author-a",
+      name: "After",
+    });
+    expect(deleteOwnedDocument.mock.calls[0][0]).toMatchObject({
+      id: "doc-1",
+      ownedBy: "author-a",
+    });
+  });
+
+  it("previews a delete without confirming it on the caller's behalf", async () => {
+    // The guard is only worth anything if the server never supplies the title
+    // it was just told. A single call, carrying no confirmation, that reports
+    // what would go — and reports it as an error, so an agent cannot read it as
+    // "done".
+    const client = await connect(async () => "author-a", ["read", "manage"]);
+
+    const result = await client.callTool({
+      name: "delete_post",
+      arguments: { id: "doc-1" },
+    });
+
+    expect(deleteOwnedDocument).toHaveBeenCalledOnce();
+    expect(deleteOwnedDocument.mock.calls[0][0].confirmName).toBeUndefined();
+    expect(result.isError).toBe(true);
+    const said = JSON.stringify(result.content);
+    expect(said).toMatch(/Nothing was deleted/);
+    expect(said).toMatch(/Linux Process Manager/);
+    expect(said).toMatch(/12 revisions/);
+  });
+
+  it("reports a mismatched confirmation as a stop, not a retry", async () => {
+    const client = await connect(async () => "author-a", ["read", "manage"]);
+
+    const result = await client.callTool({
+      name: "delete_post",
+      arguments: { id: "doc-1", confirm: "Linux Process Manger" },
+    });
+
+    expect(result.isError).toBe(true);
+    const said = JSON.stringify(result.content);
+    expect(said).toMatch(/Refused/);
+    expect(said).toMatch(/right id/);
+  });
+
+  it("counts a rename and a delete against the write budget", async () => {
+    const checkRate = vi.fn((_kind: "read" | "write") => ({
+      allowed: true,
+      retryAfterSeconds: 0,
+      remaining: 1,
+    }));
+    const client = await connect(
+      async () => "author-a",
+      ["read", "manage"],
+      checkRate,
+    );
+
+    await client.callTool({
+      name: "rename_post",
+      arguments: { id: "doc-1", title: "After" },
+    });
+    await client.callTool({ name: "delete_post", arguments: { id: "doc-1" } });
+
+    expect(checkRate.mock.calls.map(([kind]) => kind)).toEqual([
+      "write",
+      "write",
+    ]);
   });
 
   it("counts reads and writes against separate budgets", async () => {

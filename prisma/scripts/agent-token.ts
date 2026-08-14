@@ -136,6 +136,9 @@ if (!run) {
   die(
     `Usage: npm run mcp:token -- <mint|list|revoke> …\n` +
       `  mint <user> --name <label> [--scopes read,propose] [--expires 90d]\n` +
+      `    scopes: read (list/outline/read/search), propose (apply_ops,\n` +
+      `    create_post — both land in the review rail), manage (rename_post,\n` +
+      `    delete_post — immediate and irreversible; never granted by default)\n` +
       `  list <user>\n` +
       `  revoke <token-id>`,
   );

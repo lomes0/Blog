@@ -7,8 +7,8 @@ terminal, with no copy-paste through a browser.
 
 ## Which one do you want?
 
-Two ways in. Same eight tools either way — the only difference is how the
-process is reached and how it decides who you are.
+Two ways in. Same tools either way — up to ten, depending on scope — the only
+difference is how the process is reached and how it decides who you are.
 
 | | **[Local](#local-stdio)** | **[Remote](#remote-httpapimcp)** |
 | --- | --- | --- |
@@ -36,8 +36,8 @@ claude mcp add --transport http blog-content https://your-blog.example/api/mcp \
   --header "Authorization: Bearer blog_pat_…"     # NOT --scope project
 ```
 
-Either way, `/mcp` should then list **blog-content** as connected with eight
-tools (six for a read-only token). If it doesn't,
+Either way, `/mcp` should then list **blog-content** as connected with ten
+tools locally (six for a read-only token, eight for an ordinary remote one). If it doesn't,
 [the table at the bottom](#when-it-does-not-connect) has the ways it usually
 fails, and what each one means.
 
@@ -105,7 +105,7 @@ requires `.env` and a shell on the machine.
 
 `.mcp.json` is picked up per project directory, so launch `claude` from
 `/…/blog-simple`. On first run it asks you to approve the server. Afterwards
-`/mcp` should list **blog-content** as connected, with eight tools. If it
+`/mcp` should list **blog-content** as connected, with ten tools. If it
 doesn't, run the server by hand to see the error — a missing `DATABASE_URL` or
 an `MCP_AUTHOR_ID` matching no user both fail at startup, before the transport
 connects:
@@ -162,6 +162,12 @@ Two flags worth knowing:
   register `apply_ops` or `create_post` at all, so an agent holding it sees six
   tools rather than eight and plans around the limit instead of discovering it
   through a refusal.
+- `--scopes read,propose,manage` is the only way to get `rename_post` and
+  `delete_post`, which is why it is spelled out rather than defaulted. Every
+  other write an agent can make is reviewable — a proposal you decline, a draft
+  you discard. These two are not: they land on the live post, and a delete takes
+  its revision history with it. The default (`read,propose`) is the one to want
+  unless you specifically need a terminal that can tidy your library.
 - `--expires 90d` (also `12h`, `30m`). Omit for a token that does not expire.
 
 `list` and `revoke` are the other two subcommands:
@@ -185,7 +191,8 @@ claude mcp add --transport http blog-content https://your-blog.example/api/mcp \
 committed — the secret would go with it. The default (`local`) stores the entry
 in your own config, and `--scope user` does the same across every project.
 
-Then `/mcp` should list **blog-content** with its eight (or six) tools.
+Then `/mcp` should list **blog-content** with its eight tools (six for
+`--scopes read`, ten if you granted `manage`).
 
 ### 3. It must be HTTPS
 
@@ -222,7 +229,8 @@ numbers get revised (see `src/lib/mcp/limits.ts`).
 `npm run mcp:smoke:http` drives the endpoint through the same SDK client Claude
 Code uses, and checks the half that only exists over HTTP: that every bad
 credential is refused identically, that a read-only token is offered six tools
-rather than eight, that cleartext is answered 426, that the body cap and the
+rather than eight and an ordinary one is *not* offered the two destructive ones,
+that cleartext is answered 426, that the body cap and the
 budgets engage, and that a write proposes rather than commits under the name of
 the token that made it. It exits non-zero on failure, so it works as a
 post-deploy check.
@@ -260,8 +268,27 @@ edit rather than leaving both live.
 **Attachments cannot be uploaded.** An `attachment` block can only reference a
 URL that already exists.
 
-**Posts can be created but not deleted**, by design — one you regret has to be
-removed from the app. Creates land unpublished; publish from the app.
+**Creates land unpublished**; publish from the app.
+
+**`rename_post` and `delete_post` are the two writes that are not proposals.**
+Everything else an agent does here is reviewable — a proposal you approve or
+decline, a draft you accept or discard. These two take effect on the live post
+the moment they are called, and a delete is final: `Document` has no `deletedAt`
+and there is no trash table, so the post and its whole revision history go
+together. Child tabs survive, promoted to top level; forks survive, losing the
+link back.
+
+Two things keep that honest, and neither is a substitute for reading what you
+are about to approve:
+
+- They need the `manage` scope, which no default grants — locally you have it
+  (the credential is your operating system); remotely you must have minted the
+  token with `--scopes read,propose,manage`.
+- `delete_post` refuses unless it is passed the post's exact title as `confirm`.
+  Called without one it deletes nothing and reports what would go, so the agent
+  has to echo back a title it was shown. That is aimed at the realistic failure —
+  reading a list and acting on the id next to the one you meant — not at an
+  agent that has decided to be destructive.
 
 **A remote write says which token made it.** The review rail shows
 "Claude Code (laptop)" rather than just "Claude Code", so a proposal you did not
@@ -283,6 +310,7 @@ failed to start, and a missing `${VAR}` in a config, by name.
 | 401 on every call, remote | the token is unknown, revoked, or expired. All three are answered identically on purpose, so the endpoint cannot be used to test which secrets were once real — check with `npm run mcp:token -- list you@example.com`, which names the state |
 | 426 Upgrade Required | the endpoint was reached over plain HTTP on a non-loopback host. Use HTTPS; see [§3](#3-it-must-be-https) |
 | Six tools instead of eight | a `--scopes read` token. `apply_ops` and `create_post` are not registered at all rather than refusing later |
+| No `rename_post` / `delete_post` | the token lacks `manage`, which no default grants. Mint one with `--scopes read,propose,manage`, and read [the flag](#2-mint-a-token) before you do |
 | 429, or a tool error naming a wait | you hit a [budget](#4-what-it-costs-you). In an ordinary editing session this is a bug — say so |
 
 Beyond that, `npm run mcp:smoke` (local) and `npm run mcp:smoke:http` (remote)
@@ -294,7 +322,7 @@ exercise the same paths Claude Code takes and print where they stop.
 
 | Path | What |
 | --- | --- |
-| `src/lib/mcp/server.ts` | The eight tools, with no transport — one factory both entry points build |
+| `src/lib/mcp/server.ts` | The ten tools, with no transport — one factory both entry points build |
 | `mcp/content-server.ts` | The stdio entry: resolve `MCP_AUTHOR_ID`, connect stdio |
 | `src/app/api/mcp/route.ts` | The HTTP entry: token auth, budgets, TLS check |
 | `src/lib/agentTokens.ts` | Mint, verify, revoke; `prisma/scripts/agent-token.ts` is the CLI |

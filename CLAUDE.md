@@ -30,7 +30,9 @@ they are the reference, and they are already in context.
 Three things they do not say about themselves: only cloud content is visible
 (anything created while signed out lives in browser IndexedDB and never reaches
 the server), `apply_ops` proposes rather than commits (report an edit as
-awaiting the author, never as done), and there is no delete tool. Setup and the
+awaiting the author, never as done), and `rename_post`/`delete_post` are the two
+that do **not** — they land immediately, and a delete is irreversible, so treat
+them as the user's decision to make and never as a tidy-up you noticed. Setup and the
 remaining caveats are in
 [docs/guides/claude-code-content.md](./docs/guides/claude-code-content.md).
 
@@ -141,7 +143,9 @@ still script-only is anything that needs the live database: `npm run mcp:smoke`
 and `npm run mcp:token`. `npm run mcp:smoke:http` is the same idea for the remote
 endpoint and needs a live *server* as well: it covers what no spec can reach
 because it only exists over HTTP — the token refusals being indistinguishable
-from each other, a read-only token seeing six tools rather than eight, 426 on
+from each other, a read-only token seeing six tools rather than eight and a
+`manage` one seeing ten (with the check that matters being the *middle* case: a
+read+propose token must not have acquired `delete_post`), 426 on
 cleartext, the 1 MiB cap, the budgets, and a write proposing under the name of
 the token that made it. It takes a URL, so it doubles as a post-deploy check,
 and it names the checks it skipped rather than passing over them. Two traps it
@@ -219,11 +223,16 @@ The application uses PostgreSQL with the following core models:
 - **Revision**: Version history for documents, stored as JSON
 - **DocumentCoauthers**: Many-to-many relationship for collaborative editing
 - **Account/Session/VerificationToken**: NextAuth models
-- **AgentToken**: bearer credentials for the (not yet built) remote MCP
-  endpoint — many per user, each independently revocable. Only the SHA-256 of a
+- **AgentToken**: bearer credentials for the remote MCP endpoint — many per
+  user, each independently revocable. Only the SHA-256 of a
   secret is stored, `userId` lives on the token and never arrives in a request,
   and revoked rows are kept rather than deleted. Mint and revoke with
-  `npm run mcp:token`; see docs/plans/archive/mcp-support.md §4.3
+  `npm run mcp:token`; see docs/plans/archive/mcp-support.md §4.3.
+  Three scopes, and the split is by what a mistake costs rather than by
+  read/write: `read`, `propose` (`apply_ops`, `create_post` — both reviewable,
+  both declinable) and `manage` (`rename_post`, `delete_post` — immediate, and
+  the delete is unrecoverable because `Document` has no `deletedAt`). `manage`
+  is not in the mint default, so no token predating it can delete anything
 
 ### Local vs Cloud Storage
 
@@ -309,7 +318,7 @@ API routes are in `src/app/api/`:
 - `/api/og`: Open Graph image generation
 - `/api/thumbnails/*`: Document thumbnails
 - `/api/health`: Liveness/readiness probe
-- `/api/mcp`: The remote MCP endpoint — the same eight tools as the stdio
+- `/api/mcp`: The remote MCP endpoint — the same ten tools as the stdio
   server, authenticated by an agent token. POST only; stateless; three
   token-bucket budgets per token (requests → 429, reads and writes separately →
   a tool error), a 1 MiB body cap, and **426 on plain HTTP to a non-loopback
