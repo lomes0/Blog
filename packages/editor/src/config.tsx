@@ -2,6 +2,19 @@ import { HeadingNode, QuoteNode } from "@lexical/rich-text";
 import { ListItemNode, ListNode } from "@lexical/list";
 import { CodeHighlightNode, CodeNode as LexicalCodeNode } from "@lexical/code";
 import { CodeNode } from "./nodes/CodeNode";
+/**
+ * Two prism grammars, still here after Shiki became the tokenizer, and now
+ * load-bearing for a different reason than they were.
+ *
+ * `registerCodeHighlighting` gates every code node on `@lexical/code-prism`'s
+ * own `isCodeLanguageLoaded`, which reads `Prism.languages` — the custom
+ * tokenizer does not get a say. `@lexical/code-prism` loads sixteen grammars of
+ * its own; `csharp` and `bash` (and, via prism-bash's alias, `shell`) are not
+ * among them, and `utils/codeLanguage.ts` appends both to the language
+ * dropdown. Delete these two imports and those blocks stop reaching Shiki at
+ * all: `setIsSyntaxHighlightSupported(false)`, no tokens, no colour.
+ * See `plugins/CodePlugin/shikiTokenizer.ts`, `grammarIdFor`.
+ */
 import "prismjs/components/prism-csharp";
 import "prismjs/components/prism-bash";
 import { AutoLinkNode, LinkNode } from "@lexical/link";
