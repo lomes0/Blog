@@ -337,7 +337,7 @@ Nothing here is reachable from `vitest`: every current spec is
 
 ## 7. Execution log
 
-### 7.1 Phase 1 (14 Aug 2026)
+### 7.1 Phase 1 (14 Aug 2026, `7c73fea9`)
 
 Landed: the `color-literal-outside-token-block` rule and its scanner, the
 `.LexicalTheme__code` palette split, **every straggler in `theme.css`**, all of
