@@ -41,28 +41,28 @@ remaining caveats are in
 ### Core Development
 
 ```bash
-npm install          # Install dependencies
-npm run dev          # Start development server
-npm run build        # Build for production
-npm start            # Start production server
-npm run lint         # Run ESLint
+pnpm install         # Install dependencies
+pnpm dev             # Start development server
+pnpm build           # Build for production
+pnpm start           # Start production server
+pnpm lint            # Run ESLint
 ```
 
 ### Maintenance
 
 ```bash
-npm run clean        # Remove .next and cached files
-npm run rebuild      # Clean and rebuild
-npx prisma generate  # Generate Prisma client
-npx prisma migrate dev # Run database migrations
-npx prisma studio    # Browse database in browser UI
+pnpm clean                    # Remove .next and cached files
+pnpm rebuild                  # Clean and rebuild
+pnpm exec prisma generate     # Generate Prisma client
+pnpm exec prisma migrate dev  # Run database migrations
+pnpm exec prisma studio       # Browse database in browser UI
 ```
 
 ### Testing
 
 ```bash
-npm test             # Vitest, single run
-npm run test:watch   # Vitest, watch mode
+pnpm test            # Vitest, single run
+pnpm test:watch      # Vitest, watch mode
 ```
 
 Config is `vitest.config.mts`: `globals: true` (no importing `describe`/`it`/
@@ -114,7 +114,7 @@ write stamps only what it touched, and that a read never stamps) and
 survives
 a load — `importJSON` is the only parse path, so a class that does not delegate
 to `updateFromJSON` silently drops node state _and_ element format/indent/
-direction; five classes did). `npm run check:nodes` enforces the same rule
+direction; five classes did). `pnpm check:nodes` enforces the same rule
 statically across every node class, including the `.tsx` ones the test
 environment cannot parse. The newest two both gate an agent's writes:
 `src/lib/__tests__/proposals.test.ts` (that a head repair falls back to history
@@ -139,8 +139,8 @@ not a spec. The MCP server is no longer in that category:
 database or a subprocess. It pins the authorization claim rather than the
 plumbing — two servers in one process get two different authors, a write passes
 its resolved author as `ownedBy`, and `tools/list` costs no user lookup. What is
-still script-only is anything that needs the live database: `npm run mcp:smoke`
-and `npm run mcp:token`. `npm run mcp:smoke:http` is the same idea for the remote
+still script-only is anything that needs the live database: `pnpm mcp:smoke`
+and `pnpm mcp:token`. `pnpm mcp:smoke:http` is the same idea for the remote
 endpoint and needs a live *server* as well: it covers what no spec can reach
 because it only exists over HTTP — the token refusals being indistinguishable
 from each other, a read-only token seeing six tools rather than eight and a
@@ -199,9 +199,9 @@ running the app against the local Postgres and exercising the routes directly.
 > use it. A system PostgreSQL cluster may also be running, on a _different_ port
 > (`pg_lsclusters`), and is not the one the app talks to.
 
-Type-check and lint with `npx tsc --noEmit` and `npm run lint`. After touching
-anything in `packages/editor/src/nodes/`, run `npm run check:nodes`. For UI
-changes also run `npm run check:theme`, which catches colors that do not respond
+Type-check and lint with `pnpm exec tsc --noEmit` and `pnpm lint`. After touching
+anything in `packages/editor/src/nodes/`, run `pnpm check:nodes`. For UI
+changes also run `pnpm check:theme`, which catches colors that do not respond
 to the light/dark toggle (DESIGN.md §19) — it reads `.css`, `.css.ts` and the
 editor's `--ed-*` contract alike.
 
@@ -227,7 +227,7 @@ The application uses PostgreSQL with the following core models:
   user, each independently revocable. Only the SHA-256 of a
   secret is stored, `userId` lives on the token and never arrives in a request,
   and revoked rows are kept rather than deleted. Mint and revoke with
-  `npm run mcp:token`; see docs/plans/archive/mcp-support.md §4.3.
+  `pnpm mcp:token`; see docs/plans/archive/mcp-support.md §4.3.
   Three scopes, and the split is by what a mistake costs rather than by
   read/write: `read`, `propose` (`apply_ops`, `create_post` — both reviewable,
   both declinable) and `manage` (`rename_post`, `delete_post` — immediate, and
@@ -511,10 +511,10 @@ Optional:
 ### Build Configuration
 
 - ESLint is skipped during build (`eslint.ignoreDuringBuilds: true`)
-- Bundle analyzer available with `ANALYZE=true npm run build`
+- Bundle analyzer available with `ANALYZE=true pnpm build`
 - PWA support enabled in production
 - Webpack configured for MUI modular imports and font handling
-- `npm install` automatically applies patches via `patch-package` (see
+- `pnpm install` automatically applies patches via `patch-package` (see
   `/patches/`)
 
 ### ESLint Rules
@@ -527,7 +527,7 @@ Key rules enforced by `eslint.config.mjs`:
 - `no-restricted-syntax` on `grey.*` and numeric shades of semantic colors
   (`primary.50`, `warning.100`, …) — neither responds to the active color
   scheme, and the second resolves to `undefined` and drops. See DESIGN.md §19;
-  `npm run check:theme` covers the CSS spellings of the same mistakes.
+  `pnpm check:theme` covers the CSS spellings of the same mistakes.
 
 ### Documentation
 
