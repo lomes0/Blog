@@ -274,6 +274,11 @@ export function useSidebarActions(): SidebarActionsResult {
           private: false,
           collab: false,
           seriesId: seriesId ?? null,
+          // The sidebar's "+" is a here-and-now affordance: the row it creates
+          // goes to the top of its container, where the author is looking and
+          // where the rename it opens is on screen — not appended below a list
+          // that may be scrolled out of view.
+          placement: "start",
         });
         await dispatch(actions.createPost(payload)).unwrap();
         // Seed the rename explicitly — this closure's `documents` predates the

@@ -481,6 +481,12 @@ export type PostCreateInput =
     coauthors?: string[];
     /** Seed revisions to create alongside the post. */
     revisions?: Revision[];
+    /**
+     * Which end of its container the new post lands at. Not a column: both
+     * backends turn it into a `rank` among the live siblings and drop it.
+     * Defaults to `"end"`.
+     */
+    placement?: "start" | "end";
   };
 
 /**

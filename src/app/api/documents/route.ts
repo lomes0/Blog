@@ -146,7 +146,7 @@ export const POST = userRoute(async (request, { user }) => {
     if (basePost) input.baseId = body.baseId;
   }
 
-  const data = await createDocument(input);
+  const data = await createDocument({ ...input, placement: body.placement });
 
   revalidatePath("/");
   if (body.seriesId) {

@@ -76,6 +76,11 @@ const documentFields = {
  *
  * `authorId` is not accepted: it comes from the session.
  *
+ * `placement` says which *end* of the container the new document lands at, and
+ * is the only ordering input taken here: the rank itself is still minted
+ * server-side against the live siblings, so a client cannot pin a position it
+ * computed from a stale list. Defaults to `"end"`.
+ *
  * Unknown keys are stripped rather than rejected (unlike the update schema): the
  * route allowlists the columns it writes, and callers legitimately post a whole
  * `Post` through `toCreateInput` — `rank`, a joined `series`, seed `revisions` —
@@ -88,6 +93,7 @@ export const documentCreateSchema = z.object({
   parentId: z.string().uuid().nullish(),
   seriesId: z.string().uuid().nullish(),
   baseId: z.string().uuid().nullish(),
+  placement: z.enum(["start", "end"]).optional(),
   head: documentFields.head.optional(),
   createdAt: clientDate.optional(),
   updatedAt: clientDate.optional(),

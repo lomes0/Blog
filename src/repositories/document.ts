@@ -10,7 +10,7 @@ import {
 import { validate } from "uuid";
 import { historyOf, selectHead } from "@/lib/proposals";
 import { getCachedRevision, markProposalsStale } from "./revision";
-import { rankForAppend, reRankIntoRoot } from "./ordering";
+import { rankForAppend, rankForPrepend, reRankIntoRoot } from "./ordering";
 import { APP_ORIGIN } from "@/lib/changes/events";
 import { changeNotification, notifyChange } from "@/lib/changes/notify";
 
@@ -370,22 +370,31 @@ const findPublishedDocumentsByAuthorId = async (authorId: string) => {
   return docs.map(toCloudDocument);
 };
 
-// `rank` is computed here (appended to the document's container), so callers
-// need not supply it — though they may to pin an explicit position.
+// `rank` is computed here (from `placement` within the document's container),
+// so callers need not supply it — though they may to pin an explicit position.
 type CreateDocumentInput =
   & Omit<Prisma.DocumentUncheckedCreateInput, "rank">
-  & { rank?: string | null };
+  & { rank?: string | null; placement?: DocumentPlacement };
 
-const createDocument = async (data: CreateDocumentInput) => {
+/** Which end of its container a new document lands at. Default `"end"`. */
+export type DocumentPlacement = "start" | "end";
+
+const createDocument = async (
+  { placement = "end", ...data }: CreateDocumentInput,
+) => {
   if (!data.id) return null;
 
-  // Position new documents at the end of their container (series / tab-group /
-  // root) unless the caller already supplied a rank.
-  const rank = data.rank ?? await rankForAppend(prisma, {
+  // Position new documents within their container (series / tab-group / root)
+  // unless the caller already supplied a rank.
+  const container = {
     authorId: data.authorId,
     seriesId: (data.seriesId as string | null | undefined) ?? null,
     parentId: (data.parentId as string | null | undefined) ?? null,
-  });
+  };
+  const rank = data.rank ??
+    (placement === "start"
+      ? await rankForPrepend(prisma, container)
+      : await rankForAppend(prisma, container));
 
   // Ensure it's always a DOCUMENT type, not DIRECTORY
   const create = prisma.document.create({

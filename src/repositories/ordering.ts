@@ -93,6 +93,71 @@ async function maxRank(
   return maxRootRank(db, container.authorId, { docIds: excludeDocIds });
 }
 
+/**
+ * Smallest rank in the author's *root* list, or null when empty. The mirror of
+ * {@link maxRootRank} — same three-table space, opposite end.
+ */
+async function minRootRank(
+  db: Db,
+  authorId: string,
+  exclude: { docIds?: string[]; seriesIds?: string[] } = {},
+): Promise<string | null> {
+  const docNotSelf = exclude.docIds?.length
+    ? { id: { notIn: exclude.docIds } }
+    : {};
+  const seriesNotSelf = exclude.seriesIds?.length
+    ? { id: { notIn: exclude.seriesIds } }
+    : {};
+  const [firstDoc, firstSeries, firstProject] = await Promise.all([
+    db.document.findFirst({
+      where: { authorId, seriesId: null, parentId: null, ...docNotSelf },
+      orderBy: { rank: "asc" },
+      select: { rank: true },
+    }),
+    db.series.findFirst({
+      where: { authorId, projectId: null, ...seriesNotSelf },
+      orderBy: { rank: "asc" },
+      select: { rank: true },
+    }),
+    db.project.findFirst({
+      where: { authorId },
+      orderBy: { rank: "asc" },
+      select: { rank: true },
+    }),
+  ]);
+  return minStr(
+    minStr(firstDoc?.rank ?? null, firstSeries?.rank ?? null),
+    firstProject?.rank ?? null,
+  );
+}
+
+/** Smallest rank currently in `container`, or null when it is empty. */
+async function minRank(
+  db: Db,
+  container: Container,
+  excludeDocIds: string[] = [],
+): Promise<string | null> {
+  const notSelf = excludeDocIds.length ? { id: { notIn: excludeDocIds } } : {};
+
+  if (container.seriesId) {
+    const first = await db.document.findFirst({
+      where: { seriesId: container.seriesId, ...notSelf },
+      orderBy: { rank: "asc" },
+      select: { rank: true },
+    });
+    return first?.rank ?? null;
+  }
+  if (container.parentId) {
+    const first = await db.document.findFirst({
+      where: { parentId: container.parentId, ...notSelf },
+      orderBy: { rank: "asc" },
+      select: { rank: true },
+    });
+    return first?.rank ?? null;
+  }
+  return minRootRank(db, container.authorId, { docIds: excludeDocIds });
+}
+
 /** A rank that appends a new row to the end of `container`. */
 export async function rankForAppend(
   db: Db,
@@ -100,6 +165,15 @@ export async function rankForAppend(
   excludeDocIds: string[] = [],
 ): Promise<string> {
   return rankBetween(await maxRank(db, container, excludeDocIds), null);
+}
+
+/** A rank that puts a new row at the start of `container`. */
+export async function rankForPrepend(
+  db: Db,
+  container: Container,
+  excludeDocIds: string[] = [],
+): Promise<string> {
+  return rankBetween(null, await minRank(db, container, excludeDocIds));
 }
 
 /**
@@ -354,6 +428,9 @@ export async function reRankSeriesIntoRoot(
 
 const maxStr = (a: string | null, b: string | null): string | null =>
   a == null ? b : b == null ? a : a > b ? a : b;
+
+const minStr = (a: string | null, b: string | null): string | null =>
+  a == null ? b : b == null ? a : a < b ? a : b;
 
 // Convenience: run a move outside an existing transaction.
 export const moveDocumentTx = (

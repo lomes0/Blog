@@ -1,4 +1,5 @@
 import { getStore } from "@/indexeddb";
+import { rankAtStart } from "@/lib/ordering";
 import type {
   MovePostArg,
   Post,
@@ -50,6 +51,8 @@ const NOT_STORED = [
   // one writer per browser, so there is no race here to guard — but the field
   // still must not end up in the stored record.
   "expectedHead",
+  // Where in the container to land, not where it is: consumed by `create`.
+  "placement",
 ] as const;
 
 /** Drop cloud-only fields and content-adjacent collections before persisting. */
@@ -79,6 +82,31 @@ function hydrate(
     revisions,
     ...(options.withData ? { data } : {}),
   };
+}
+
+/**
+ * A rank that puts a new post above every ranked sibling in its container.
+ *
+ * Container membership mirrors the server's: a series wins over a parent,
+ * otherwise root. Siblings without a rank are ignored — they already sort last.
+ */
+async function rankAtStartOf(
+  post: { seriesId?: string | null; parentId?: string | null },
+): Promise<string> {
+  const seriesId = post.seriesId ?? null;
+  const parentId = seriesId ? null : (post.parentId ?? null);
+  const posts = await postDB.getAll();
+  const siblings = posts
+    .filter((sibling) =>
+      seriesId
+        ? sibling.seriesId === seriesId
+        : parentId
+        ? sibling.parentId === parentId
+        : !sibling.seriesId && !sibling.parentId
+    )
+    .filter((sibling) => typeof sibling.rank === "string")
+    .map((sibling) => ({ id: sibling.id, rank: sibling.rank as string }));
+  return rankAtStart(siblings);
 }
 
 async function readPost(id: string): Promise<Post | undefined> {
@@ -125,7 +153,15 @@ export const localBackend: PostBackend = {
 
   async create(input: PostCreateInput) {
     const { revisions, ...post } = input;
-    await postDB.add(toStored(post) as Post);
+    // The cloud mints the rank server-side from `placement`; there is no server
+    // here, so the same key is minted against the sibling records. Only a
+    // `"start"` placement needs one: an unranked post already sorts after every
+    // ranked sibling (`comparePostsByRank`), which is what "end" means.
+    const stored = toStored(post);
+    if (input.placement === "start" && post.rank == null) {
+      stored.rank = await rankAtStartOf(post);
+    }
+    await postDB.add(stored as Post);
     if (revisions?.length) await revisionDB.addMany(revisions);
     const created = await readPost(input.id);
     if (!created) throw new Error("failed to create post");
