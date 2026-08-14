@@ -25,6 +25,7 @@ import { blockToNode, canSetText, nodeToBlock, TEXT_BLOCKS } from "./blocks";
 import { assertFresh, stateHash } from "./stateHash";
 import { formatAddress, walkBlocks } from "./address";
 import { mintBlockId, readBlockId, writeBlockId } from "./blockId";
+import { childrenOf, ensureChildrenOf } from "./containers";
 
 export type InsertTarget = {
   /** Place the blocks after this one. */
@@ -87,24 +88,6 @@ export class OpError extends Error {
 }
 
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
-
-/**
- * Read a node's children without touching it.
- *
- * This must not create the array when it is missing. A leaf like a kanban node
- * has no `children` at all, and giving it an empty one — even harmlessly, even
- * only in passing while walking the tree — means it no longer serializes
- * identically, which is the one property this module exists to hold. The ops
- * spec caught exactly that.
- */
-const childrenOf = (node: SerializedNode): SerializedNode[] =>
-  Array.isArray(node.children) ? (node.children as SerializedNode[]) : [];
-
-/** The children array of a node about to receive one, created if absent. */
-const mutableChildren = (node: SerializedNode): SerializedNode[] => {
-  if (!Array.isArray(node.children)) node.children = [];
-  return node.children as SerializedNode[];
-};
 
 interface Target {
   node: SerializedNode;
@@ -189,7 +172,7 @@ function resolveInsertion(
     : requireTarget(targets, spec.appendTo, opIndex).node;
   // Only here, where something is genuinely about to be appended, may a node
   // gain a children array it did not have.
-  return { parent: container, index: mutableChildren(container).length };
+  return { parent: container, index: ensureChildrenOf(container).length };
 }
 
 function build(
@@ -315,7 +298,7 @@ export function applyOps(
           op,
           opIndex,
         );
-        mutableChildren(parent).splice(index, 0, ...nodes);
+        ensureChildrenOf(parent).splice(index, 0, ...nodes);
         nodes.forEach(markSubtree);
         changed += nodes.length;
         break;
@@ -339,7 +322,7 @@ export function applyOps(
           destination.parent === target.parent && destination.index > from
             ? destination.index - 1
             : destination.index;
-        mutableChildren(destination.parent).splice(to, 0, target.node);
+        ensureChildrenOf(destination.parent).splice(to, 0, target.node);
         target.parent = destination.parent;
         // A moved block is precisely the case a stable id is for.
         touched.add(target.node);

@@ -26,7 +26,11 @@ import { stateHash } from "@/lib/content-bridge/stateHash";
 import { readBlockId } from "@/lib/content-bridge/blockId";
 import { walkBlocks } from "@/lib/content-bridge/address";
 import type { SerializedNode, StoredState } from "@/lib/content-bridge/types";
-import { makeState, snapshot } from "@/lib/content-bridge/__tests__/fixture";
+import {
+  makeState,
+  makeStickyState,
+  snapshot,
+} from "@/lib/content-bridge/__tests__/fixture";
 
 /** A proposal, produced the way the MCP server produces one. */
 const propose = (base: StoredState, ops: Op[]): StoredState =>
@@ -439,6 +443,51 @@ describe("alignment", () => {
     expect(shapeOf(diffProposal(base, proposal))).toEqual([
       { kind: "insert", base: null },
     ]);
+  });
+});
+
+/**
+ * A container whose children are not at `children` (haklex-reprise §3).
+ *
+ * `sticky` joined `BLOCK_CONTAINERS` in phase 1, so it now reaches `canRecurse`
+ * — but this module reads `node.children` and writes it back the same way, and
+ * a note's blocks live at `editor.editorState.root.children`. The reason that
+ * is safe rather than merely lucky is `ownPropsEqual`: `editor` is one of the
+ * note's own fields, so any nested edit fails the recursion test and the note
+ * reviews as a single whole-block hunk.
+ *
+ * Pinned, because the tempting "fix" — pointing this module at the bridge's
+ * `childrenOf` — would make the merge read the nested array and write the
+ * result back at `children`, where the editor never looks. See the note on
+ * `childrenOf` in `proposalDiff.ts`.
+ */
+describe("diffProposal — a nested editor reviews as one block", () => {
+  it("reduces an edit inside a sticky note to a single whole-block hunk", () => {
+    const base = makeStickyState();
+    const proposal = propose(base, [
+      { op: "set_text", id: "b2.1", text: "rewritten by an agent" },
+    ]);
+
+    const hunks = diffProposal(base, proposal);
+    expect(shapeOf(hunks)).toEqual([{ kind: "replace", base: "b2" }]);
+    expect(hunks[0].depth).toBe(0);
+    // Not the note's inner paragraph: the hunk carries the whole note.
+    expect(hunks[0].proposal?.type).toBe("sticky");
+    // And the blocks either side of it produced nothing.
+    expect(snapshot(kids(proposal)[0])).toBe(snapshot(kids(base)[0]));
+    expect(snapshot(kids(proposal)[2])).toBe(snapshot(kids(base)[2]));
+  });
+
+  it("gives the base note back verbatim when the hunk is rejected", () => {
+    const base = makeStickyState();
+    const before = snapshot(base);
+    const proposal = propose(base, [
+      { op: "set_text", id: "b2.1", text: "rewritten by an agent" },
+    ]);
+    const [hunk] = diffProposal(base, proposal);
+
+    const merged = applyDecisions(stored(base), stored(proposal), [hunk.id]);
+    expect(snapshot(merged)).toBe(before);
   });
 });
 

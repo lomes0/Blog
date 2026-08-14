@@ -34,9 +34,7 @@ import type {
   WritableBlock,
 } from "./types";
 import { parseInline, renderInline } from "./inline";
-
-const childrenOf = (node: SerializedNode): SerializedNode[] =>
-  Array.isArray(node.children) ? node.children : [];
+import { childrenOf } from "./containers";
 
 const str = (value: unknown, fallback = ""): string =>
   typeof value === "string" ? value : fallback;

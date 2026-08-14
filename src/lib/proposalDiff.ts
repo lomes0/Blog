@@ -108,6 +108,21 @@ export class UnknownHunkError extends Error {
  * Same rule as `ops.ts`: materializing an absent `children` array on a leaf
  * would make it stop serializing identically, which is the one property both
  * modules exist to hold.
+ *
+ * **Deliberately not `content-bridge/containers.ts`'s `childrenOf`**, which
+ * knows that a container may keep its children somewhere other than `children`
+ * — a sticky note's are at `editor.editorState.root.children`. Reading through
+ * that seam here without also teaching `rebuild` to *write* through it would
+ * be the exact bug haklex-reprise §10 names: the merge would read the nested
+ * array and put the result back at `children`, where nothing renders it.
+ *
+ * Today the two cannot disagree in practice, because `canRecurse` demands the
+ * container's own fields be untouched and a nested editor's content *is* an own
+ * field (`editor`), so a changed note never recurses — it reviews as one
+ * whole-block hunk, which is coarse but correct. Phase 4's `nested-doc` will
+ * have the same shape and the same outcome. Making either reviewable block by
+ * block means giving this module a write half of the seam, not swapping the
+ * read half.
  */
 const childrenOf = (node: SerializedNode): SerializedNode[] =>
   Array.isArray(node.children) ? (node.children as SerializedNode[]) : [];

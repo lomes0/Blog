@@ -167,3 +167,50 @@ export const makeState = (): StoredState => ({
 
 /** Deep-equality snapshot of a subtree, for asserting it did not move. */
 export const snapshot = (node: unknown): string => JSON.stringify(node);
+
+/** A nested editor state, shaped as `LexicalEditor.toJSON()` writes it. */
+const nestedEditor = (children: SerializedNode[]) => ({
+  editorState: {
+    root: {
+      type: "root",
+      version: 1,
+      direction: null,
+      format: "",
+      indent: 0,
+      children,
+    },
+  },
+});
+
+/**
+ * A document with a sticky note in it — the container-children seam's fixture
+ * (docs/plans/haklex-reprise.md §3).
+ *
+ * The sticky is `b2` and its two paragraphs are `b2.1` and `b2.2`, which are
+ * *not* stored at `b2.children`: a note's body is a whole nested editor, so
+ * they live three keys down at `editor.editorState.root.children`. The blocks
+ * either side of it are there to be asserted byte-identical after a write
+ * inside the note.
+ */
+export const makeStickyState = (): StoredState => ({
+  root: {
+    type: "root",
+    version: 1,
+    direction: null,
+    format: "",
+    indent: 0,
+    children: [
+      paragraph("Before the note."),
+      {
+        type: "sticky",
+        version: 1,
+        style: "float: right; background-color: #bceac4;",
+        editor: nestedEditor([
+          paragraph("note one"),
+          paragraph("note two"),
+        ]),
+      },
+      paragraph("After the note."),
+    ],
+  },
+});

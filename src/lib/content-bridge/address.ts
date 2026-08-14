@@ -8,6 +8,7 @@
  */
 import type { Address, SerializedNode, StoredState } from "./types";
 import { isBlockId, readBlockId } from "./blockId";
+import { childrenOf } from "./containers";
 
 /**
  * The only node types whose children are addressed individually.
@@ -34,6 +35,11 @@ export const BLOCK_CONTAINERS: ReadonlySet<string> = new Set([
   // outline and give two addresses for one piece of content.
   "blog-table",
   "tablerow",
+  // A sticky note is a document in its own right, so its blocks are addressed
+  // like any other container's — `b7.1`, `b7.2`. Its children are not at
+  // `children`; `containers.ts` is what knows that, and the address scheme does
+  // not have to (haklex-reprise §3.2).
+  "sticky",
 ]);
 
 const ADDRESS_RE = /^b\d+(?:\.\d+)*$/;
@@ -52,9 +58,6 @@ export function parseAddress(address: string): number[] | null {
     .map((part) => Number(part) - 1);
   return path.some((i) => i < 0 || !Number.isInteger(i)) ? null : path;
 }
-
-const childrenOf = (node: SerializedNode): SerializedNode[] =>
-  Array.isArray(node.children) ? node.children : [];
 
 /** True when this node's children get addresses of their own. */
 const isContainer = (node: SerializedNode): boolean =>
