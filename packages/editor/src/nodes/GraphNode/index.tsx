@@ -15,6 +15,7 @@ import {
 } from "lexical";
 
 import { ImageNode, ImagePayload, SerializedImageNode } from "../ImageNode";
+import type { ImageResizeUnit } from "../imageLayout";
 
 import { $generateHtmlFromNodes } from "@lexical/html";
 
@@ -37,6 +38,34 @@ export type SerializedGraphNode = Spread<
 
 export class GraphNode extends ImageNode {
   __value: string;
+
+  /**
+   * A drag on a graph commits **pixels**, not a percentage of the column.
+   *
+   * The picture here is generated rather than uploaded: GeoGebra exports at a
+   * size, `__value` is replayed into the dialog at that size, and `exportDOM`
+   * writes it onto the `<svg>` as `width` / `height` attributes. Pixels are the
+   * vocabulary that whole path already speaks, and a drag that answered in
+   * percent would leave the stored artefact and the rendered one disagreeing
+   * about how big the graph is.
+   *
+   * There is a second, sharper reason, and it is visible in
+   * `ImageComponent`'s SVG effect: for a graph and a sketch the `<svg>` is
+   * rebuilt from the source document, and its `viewBox` is synthesized from
+   * the source's own `width`/`height` when it declares no `viewBox` of its
+   * own. A source that declares neither yields `viewBox="0 0 null null"` —
+   * no intrinsic ratio at all — and `width: N%` with `height: auto` collapses
+   * such a box to nothing. A pixel height cannot collapse.
+   *
+   * Note this is **not** the same claim as the one `ImageTools`' `canSetWidth`
+   * makes: the percent *slider* is still offered for a graph, because that is
+   * an author stating a display width deliberately. This governs only what a
+   * pixel gesture commits.
+   *
+   * A static, so it costs one line and cannot reach stored JSON — see
+   * `imageLayout.ts`'s `ImageResizeUnit`.
+   */
+  static override resizeUnit: ImageResizeUnit = "px";
 
   static getType(): string {
     return "graph";

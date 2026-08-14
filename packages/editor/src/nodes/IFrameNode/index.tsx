@@ -17,6 +17,7 @@ import type {
 
 import { JSX } from "react";
 import { ImageNode, ImagePayload, SerializedImageNode } from "../ImageNode";
+import type { ImageResizeUnit } from "../imageLayout";
 import { $generateHtmlFromNodes } from "@lexical/html";
 import ImageComponent from "../ImageNode/ImageComponent";
 
@@ -53,6 +54,20 @@ export type SerializedIFrameNode = Spread<
 >;
 
 export class IFrameNode extends ImageNode {
+  /**
+   * Pixels, and this is the one of the three where percent is not merely the
+   * wrong vocabulary but unrenderable.
+   *
+   * An `<iframe>` has **no intrinsic aspect ratio**. Its height is the `height`
+   * attribute `exportDOM` writes, in pixels, so a figure narrowed to 50% would
+   * letterbox a video inside a box of the original height rather than scale it.
+   * Sizing an embed properly means an aspect-ratio box around the iframe, which
+   * is a different change from this one — and it is the same finding
+   * `ImageTools`' `canSetWidth` already acts on by withholding the percent
+   * slider from an iframe entirely.
+   */
+  static override resizeUnit: ImageResizeUnit = "px";
+
   static getType(): string {
     return "iframe";
   }

@@ -37,6 +37,7 @@ import {
   getCSSFromStyleObject,
   getStyleObjectFromRawCSS,
 } from "../utils";
+import type { ImageResizeUnit } from "../imageLayout";
 
 export interface ImagePayload {
   altText?: string;
@@ -84,6 +85,31 @@ export class ImageNode extends DecoratorNode<JSX.Element> {
   __id: string;
   __showCaption: boolean;
   __caption: LexicalEditor;
+
+  /**
+   * What a resize drag commits: a percentage of the content column.
+   *
+   * A picture has an intrinsic aspect ratio, so a figure narrowed to 50% takes
+   * its height down with it and stays a picture. That makes percent the right
+   * default *and* the one that survives a reader on a narrower screen, where a
+   * stored pixel width is either overflow or a stripe of white.
+   *
+   * The three subclasses override it to `"px"` — see `imageLayout.ts`'s
+   * `ImageResizeUnit` for why this is a static and not a field, and
+   * `GraphNode` for why the answer differs there.
+   */
+  static resizeUnit: ImageResizeUnit = "percent";
+
+  /**
+   * This node's resize unit, resolved through the actual class.
+   *
+   * `this.constructor` rather than `ImageNode` — a static is looked up on the
+   * class the instance was built from, so a `GraphNode` answers `"px"` here
+   * while sharing every line of the resizer with an image.
+   */
+  getResizeUnit(): ImageResizeUnit {
+    return (this.constructor as typeof ImageNode).resizeUnit;
+  }
 
   static getType(): string {
     return "image";

@@ -12,6 +12,13 @@
  *     subclasses builds its element by calling `createDOM`. Pinning the string
  *     pins the editor and the published page at `/view/[id]` to the same
  *     answer.
+ *  3. **The unit split.** `percentFromPixels` is the whole of what a
+ *     `"percent"` node's resize drag does that a `"px"` node's does not
+ *     (docs/plans/haklex-reprise.md §7.1). It is exercised here rather than
+ *     through the resizer because the resizer needs a browser and this needs
+ *     arithmetic — which is the reason the arithmetic lives in an import-free
+ *     module in the first place. Which class reports which unit is
+ *     `resizeUnit.test.ts`.
  */
 import {
   clampWidth,
@@ -19,6 +26,7 @@ import {
   type ImageLayout,
   layoutPatch,
   MARGIN_INLINE,
+  percentFromPixels,
   readAlignment,
   readDisplayWidth,
   readLayout,
@@ -92,6 +100,73 @@ describe("snapWidth", () => {
     expect(snapWidth(140)).toBe(100);
     // 10 is the floor and 25 is the nearest preset, five away: no snap.
     expect(snapWidth(-5)).toBe(WIDTH_MIN);
+  });
+});
+
+describe("percentFromPixels", () => {
+  it("reads a drag as a share of what a percentage resolves against", () => {
+    expect(percentFromPixels(320, 640)).toBe(50);
+    expect(percentFromPixels(640, 640)).toBe(100);
+  });
+
+  /**
+   * The same snap the slider applies, so a drag that lands near half the
+   * column agrees with the `50%` preset button and the tick beside it rather
+   * than reading `49%`.
+   */
+  it("snaps onto a preset the way the slider does", () => {
+    expect(percentFromPixels(316, 640)).toBe(50);
+    expect(percentFromPixels(324, 640)).toBe(50);
+    expect(percentFromPixels(384, 640)).toBe(60);
+  });
+
+  /**
+   * `readDisplayWidth` clamps on read, so a stored `5%` comes back as `10%`
+   * on the next load. Writing below the floor would buy nothing but a figure
+   * that changed size when nobody touched it.
+   */
+  it("bottoms out where the reader bottoms out", () => {
+    expect(percentFromPixels(40, 1000)).toBe(WIDTH_MIN);
+    expect(readDisplayWidth(applyPatch({}, widthPatch(percentFromPixels(40, 1000)))))
+      .toBe(WIDTH_MIN);
+  });
+
+  it("never exceeds the column, however far the drag went", () => {
+    expect(percentFromPixels(2000, 640)).toBe(WIDTH_MAX);
+  });
+
+  /** A container with no laid-out width has nothing to be a percentage of. */
+  it("refuses a container it cannot resolve against", () => {
+    expect(percentFromPixels(320, 0)).toBeNull();
+    expect(percentFromPixels(320, -1)).toBeNull();
+    expect(percentFromPixels(320, Number.NaN)).toBeNull();
+    expect(percentFromPixels(0, 640)).toBeNull();
+    expect(percentFromPixels(Number.NaN, 640)).toBeNull();
+  });
+
+  /**
+   * The unit split, end to end over the module that owns it: a `"percent"`
+   * node's drag becomes a style patch the reader reads back, and a `"px"`
+   * node's drag becomes the *absence* of one — `widthPatch(null)`, which
+   * deletes the property rather than writing a competitor to `__width`.
+   */
+  it("round-trips a percent commit and clears on a px commit", () => {
+    const dragged = percentFromPixels(480, 640);
+    const percentStyle = applyPatch({}, widthPatch(dragged));
+    expect(readDisplayWidth(percentStyle)).toBe(75);
+
+    const pixelStyle = applyPatch(percentStyle, widthPatch(null));
+    expect(readDisplayWidth(pixelStyle)).toBeNull();
+    expect("width" in pixelStyle).toBe(false);
+  });
+
+  it("leaves the alignment alone, because a width is not a position", () => {
+    const style = applyPatch(
+      applyPatch({}, layoutPatch("align-center")),
+      widthPatch(percentFromPixels(320, 640)),
+    );
+    expect(readLayout(style)).toBe("align-center");
+    expect(readDisplayWidth(style)).toBe(50);
   });
 });
 

@@ -37,7 +37,7 @@ import ImageResizer from "./ImageResizer";
 import ImageCaption from "./ImageCaption";
 import { $isImageNode } from ".";
 import { $patchStyle } from "../utils";
-import { widthPatch } from "../imageLayout";
+import { percentFromPixels, widthPatch } from "../imageLayout";
 
 export default function ImageComponent({
   src,
@@ -210,6 +210,22 @@ export default function ImageComponent({
     setSelected,
   ]);
 
+  /**
+   * The width a percentage resolves against: the figure's **containing
+   * block**, not the figure.
+   *
+   * `createDOM` builds a `<figure>` and everything here renders inside it, so
+   * the nearest `figure` ancestor is this node's own box and its parent is
+   * what `width: N%` is a percentage of. Measured at commit rather than held
+   * in state because it changes with the window, with the sidebar, and with a
+   * pane split — and the only moment it has to be right is this one.
+   */
+  const containingBlockWidth = (): number => {
+    const figure = imageRef.current?.closest("figure");
+    const parent = figure?.parentElement;
+    return parent ? parent.getBoundingClientRect().width : 0;
+  };
+
   const onResizeEnd = (
     nextWidth: number,
     nextHeight: number,
@@ -219,18 +235,43 @@ export default function ImageComponent({
       setIsResizing(false);
     }, 200);
 
+    const container = containingBlockWidth();
+
     editor.update(() => {
       const node = $getNodeByKey(nodeKey);
       if (!$isImageNode(node)) return;
+
+      // The drag is pixels either way — `getBoundingClientRect` in,
+      // `style.width = Npx` out. What the node's class decides is the unit the
+      // *commit* is written in, which is a property of what the figure holds:
+      // a picture scales, a GeoGebra applet and an embed do not. See
+      // `imageLayout.ts`'s `ImageResizeUnit`.
+      const percent = node.getResizeUnit() === "percent"
+        ? percentFromPixels(nextWidth, container)
+        : null;
+
+      // `__width`/`__height` are written in both modes, and they are not the
+      // competitor to the percent that they look like: for a percent-sized
+      // figure the stylesheet gives the picture `width: 100%; height: auto`,
+      // so the pair survives only as the `aspect-ratio` the picture is drawn
+      // at — which is exactly what a vertical drag changes and what `Auto`
+      // must be able to come back to. It is also what makes the imperative
+      // `style.width` the drag left behind get cleared: the effect below fires
+      // on a change to either.
       node.setWidthAndHeight(nextWidth, nextHeight);
-      // Dragging a handle states an absolute size, so it *replaces* a percent
-      // display width rather than fighting it. The two are different tools for
-      // the same property and the resizer's whole geometry is in pixels
-      // (`getBoundingClientRect` in, `style.width = Npx` out): keeping the
-      // percent would mean the figure snapped back to it the moment the drag
-      // committed, which is the one outcome nobody would call correct. The
-      // *alignment* survives — it is not a size.
-      $patchStyle(node, widthPatch(null));
+
+      // Percent: the drag *states* a display width, in the same channel the
+      // slider writes. Pixels: the drag states an absolute size, so it clears
+      // any percent rather than fighting it — keeping one would mean the
+      // figure snapped back the moment the drag committed, which is the one
+      // outcome nobody would call correct.
+      //
+      // A `null` percent from a container that has not been laid out is the
+      // pixel answer too: better a size the reader dragged than a percentage
+      // of nothing.
+      //
+      // The *alignment* survives in both. It is not a size.
+      $patchStyle(node, widthPatch(percent));
     });
   };
 

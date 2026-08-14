@@ -87,6 +87,58 @@ export function snapWidth(value: number): number {
 }
 
 /**
+ * Which unit a **resize drag** commits in — the one thing about a figure's
+ * width that is a property of the node *class* rather than of the document.
+ *
+ * `ImageNode.resizeUnit` is `"percent"`; `GraphNode`, `SketchNode` and
+ * `IFrameNode` override it to `"px"`. It is a `static` and never a serialized
+ * field, for the reason this module's header gives about `layout` /
+ * `displayWidth`: a field on `ImageNode` is four constructors, four clones,
+ * four `importJSON`s, four serialized types, four `check:nodes` arms and a
+ * migration for four stored node types, while a static costs one line per
+ * subclass and cannot appear in stored JSON at all.
+ *
+ * The type lives here rather than beside the classes because this is the
+ * import-free module — a spec can name the unit without mounting an editor,
+ * and `percentFromPixels` below is the whole of the conversion the `"percent"`
+ * arm performs.
+ */
+export type ImageResizeUnit = "percent" | "px";
+
+/**
+ * A drag's committed pixel width, as a percentage of what it resolves against.
+ *
+ * `ImageResizer`'s geometry is entirely in pixels — `getBoundingClientRect`
+ * in, `style.width = Npx` out — so a percent-unit node has to convert on
+ * commit. `container` is the width of the figure's **containing block**, which
+ * is what a CSS percentage resolves against; measuring the figure itself would
+ * divide the new width by the old one.
+ *
+ * `null` means "not expressible": a container that has not been laid out yet
+ * has no width to be a percentage of, and the caller keeps pixels rather than
+ * inventing a number.
+ *
+ * Two deliberate distortions, both small and both the same ones the slider
+ * already applies:
+ *
+ *  - It **snaps**, so dragging near half the column lands on exactly 50% and
+ *    the figure agrees with the preset button and the tick beside it.
+ *  - It **clamps** to `[WIDTH_MIN, WIDTH_MAX]`. A drag narrower than 10% of the
+ *    column commits at 10% and visibly springs back — which is honest, because
+ *    `readDisplayWidth` clamps on read too: a stored `5%` would come back as
+ *    `10%` on the next load anyway, and the only thing writing it would buy is
+ *    a figure whose size changed when nobody touched it.
+ */
+export function percentFromPixels(
+  pixels: number,
+  container: number,
+): number | null {
+  if (!Number.isFinite(pixels) || pixels <= 0) return null;
+  if (!Number.isFinite(container) || container <= 0) return null;
+  return snapWidth((pixels / container) * 100);
+}
+
+/**
  * The slider's ticks. The thumb is 12px wide, so its centre travels within
  * `[6px, 100% - 6px]` — a tick drawn at a flat percentage of the track would
  * sit off the thumb at both ends. haklex's `tickLeft`.
