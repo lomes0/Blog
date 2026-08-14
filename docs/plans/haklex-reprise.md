@@ -1,6 +1,12 @@
 # Haklex reprise — the five cut items, reopened
 
-Status: **Proposal, 13 Aug 2026. Not started.** Reopens the five capabilities
+Status: **DONE — five of seven phases shipped 14 Aug 2026.** Phase 7 was
+investigated and **refused on evidence**; §11.3 says why, and it invalidates a
+claim §9 makes about what this plan closes. Nothing in §1–§7 should be read as a
+to-do list without reading §11 first — four of its claims turned out to be
+wrong, and one of those was load-bearing.
+
+Reopens the five capabilities
 [archive/haklex-adoption.md](./archive/haklex-adoption.md) cut in §10.7 and
 §10.8. Written after re-reading the code the cuts were made against, not the
 plan that recorded them — three of the five blockers do not survive that
@@ -443,3 +449,143 @@ rather than a clean sheet to be surprised by:
   unit is a serialization-adjacent change with a stored-data blast radius, and
   the panel is pixels. Reviewing them together is how the first hides in the
   second.
+
+## 11. Execution log (14 Aug 2026)
+
+### 11.1 What shipped
+
+| Phase | Commit | Note |
+| - | ------ | ---- |
+| 1 — container seam | `31eec273` | plus a 12-line vanilla-extract transform in `vitest.config.mts`, without which no spec can build a real editor |
+| 2 — live Shiki | `6f8b5274` | `themes: []`; two measured pins, see §11.2 |
+| 4 — nested doc | `a3418e4d` | first real consumer of the seam; closes a data-loss hazard phase 1 found |
+| 5 — code snippet | `e546b2ed` | no `NESTED_CHILDREN` arm needed, as §6.2 predicted |
+| 6a — resize unit | `0bdccf83` | `nodes/` only |
+| 3 + 6b — jotai, anchored panel | `539164ae` | landed together; a fenced dependency with no importer is what `check:unused` exists to catch |
+| 7 — canvas notes | — | **refused**, §11.3 |
+
+**660 tests / 36 files → 964 / 45.** `tsc`, lint, `check:nodes` (21 classes),
+`check:codecs` (15 encodable / 12 allowlisted of 27), `check:theme` (40 style
+files), `check:unused` and `npm run build` all green at every commit.
+
+### 11.2 What this plan got wrong
+
+Worst first, in the shape §10.6.3 of the plan this one annotates took.
+
+- **§9's third answer is wrong, and it is the load-bearing one.** It says
+  `claude-code-backlog.md` §4 "resolves as address into them", with captions
+  taking a codec field and documents taking the seam. The seam half is right and
+  shipped. The rest does not follow, because **an inline node inside a paragraph
+  is unreachable by *either* mechanism**: a codec field is reached through
+  `nodeToBlock`, which only runs on addressable blocks. §2.4 states that fact
+  about images in its own closing paragraph and then fails to apply it to the
+  `sticky` and `canvas` rows two lines above, or to its own caption answer. What
+  actually closes §4 is `nested-doc` — a type this plan invented and made
+  block-level on purpose. For `image` (67 stored), `sticky` (0) and `canvas`
+  (131) it stays open, and the blocker is not the bridge at all: it is that
+  those three are inline decorators.
+- **§2.4's canvas row costs the wrong thing.** It bills canvas as "the hardest
+  arm" — a synthetic level, a threaded `parent`. The real blocker is one rung
+  below: there is nothing to attach an arm to. See §11.3.
+- **§2.3 undercounts `childrenOf` at three copies. There are four.** The fourth
+  is `src/lib/proposalDiff.ts:112`, and it was deliberately left unmerged:
+  reading through the seam without a matching *write* half is the same
+  "reads correct, writes lost" failure the seam's own docs warn about, since
+  `rebuild` writes children back as `{ ...proposal, children }`. Consequence,
+  documented in that file: an edit inside a `nested-doc` reviews as one
+  whole-block hunk. `code-snippet` is unaffected — it is the first container
+  where both copies agree.
+- **§6.1 omits `body` from the nested-doc codec, and the codec cannot work
+  without it.** Addressing is snapshot-based, so a node inserted by op 1 has no
+  address for op 2; with no `body` field an agent could create a nested doc and
+  then never put anything in it. The same lesson applied to `code-snippet`'s
+  `files`.
+- **§7.1's merit argument for pixel resizing is only true of the iframe.** A
+  sketch and a graph render as `<svg>` *with* an intrinsic ratio — `ImageTools`
+  already offers them the percent slider for that reason. They are `"px"` on two
+  other grounds: their own editors write pixels into `__width`/`__height`, and
+  `ImageComponent` synthesizes `viewBox` from the source document's attributes,
+  so a source declaring none yields `viewBox="0 0 null null"`.
+- **§4's `codeToTokens(..., includeExplanation: "scopeName")` was not usable.**
+  It requires a theme, i.e. loading colours in order to discard them. Shiki also
+  merges tokens by resolved colour, so a rules-free theme returns one token per
+  line with an empty explanation — measured. Phase 2 uses `tokenizeLine` against
+  the raw grammar with `themes: []`, which makes "no colour reaches a node"
+  structural rather than disciplinary.
+- **§4 assumed a custom tokenizer decides which languages are supported. It does
+  not.** `registerCodeHighlighting` gates on `@lexical/code-prism`'s
+  `isCodeLanguageLoaded`, which reads `Prism.languages`, and returns *before*
+  calling the tokenizer. So Prism stays, and `config.tsx`'s two hand-imported
+  grammars are now load-bearing for an entirely different reason than the one
+  they were added for — documented at the import site, because the next reader
+  deletes them otherwise.
+- **§10's own prediction that the scope table would want more `--tok-*`
+  variables did not hold.** The existing eight covered every token type;
+  `check:theme` did not move. The other half of that prediction — that the table
+  *is* the phase — was right: two arms were wrong on first pass.
+- **§5's gate says `package.json` under `dependencies`.** jotai is declared in
+  the *root* manifest; `packages/editor/package.json` deliberately declares
+  nothing. The enforcement is the lint fence, not the manifest location.
+
+### 11.3 Phase 7 — refused, not deferred
+
+`CanvasNode extends DecoratorNode` and never overrides `isInline()`, whose
+Lexical default is `true`; `CanvasPlugin` wraps it on insert with
+`$wrapNodeInElement`, the same line `StickyPlugin` has. Verified against a live
+editor rather than read: a canvas placed at root, in a `layout-item` and in a
+`details-content` comes back paragraph-wrapped in all three, because those two
+containers are shadow roots and reject inline children exactly as root does.
+Every other member of `BLOCK_CONTAINERS` is excluded some other way. And
+`claude-code-backlog.md` already measured the corpus: all 131 stored canvases
+are paragraph-wrapped today.
+
+So the arm would resolve against hand-written fixtures and against **nothing in
+the database**. Building it would have produced correct reads of zero documents
+— phase 1's sticky arm again, without sticky's excuse of having no stored data.
+
+`isInline(): false` was measured as the alternative and is not sufficient on its
+own: a *freshly* created canvas would then sit at root, but the 131 stored ones
+are **not** unwrapped on load. Closing this needs a migration or a hoisting
+transform, and that is not mechanical — a paragraph can hold prose alongside the
+board, so unwrapping means splitting it and deciding what happens to the
+surrounding runs. That is a product and data call, not a phase.
+
+**The cheap thing that is actually unblocked** is `claude-code-backlog.md` §2's
+read-only extraction, which reaches inline nodes through `plainText` and would
+turn `canvas 7 notes` into the notes' text. Unrelated to the seam, and it works
+through a paragraph.
+
+### 11.4 Guards added, and what each was for
+
+Three of the four exist because execution found a live hazard, not because the
+plan anticipated one:
+
+- **`NESTED_EDITOR_REFUSES`** (phase 4). The block IR can author node types a
+  nested editor cannot register, and `StickyNode.importJSON` swallows the parse
+  failure and returns an *empty* note — the write reports success and the
+  content is gone. Refused now at both `applyOps` and `stateFromBlocks`, along
+  the whole ancestor chain. A parity test derives the set from the two configs
+  rather than restating it.
+- **`ONLY_CHILD_TYPE`** (phase 5). Without it an agent's stray paragraph inside
+  a snippet is not refused, it is silently *relocated* by a transform in a later
+  session.
+- **The `collapseAtStart` transform** (phase 5). Backspace at the head of a file
+  turns a code block into a paragraph — an ordinary keystroke breaking the
+  invariant.
+- **The empty-`style` spec** (phase 2), which is the one guard the plan did ask
+  for, and the only one that pins a bug that already happened.
+
+### 11.5 Still wants a human at a browser
+
+§8.1 stands, minus item 2's mechanism (now covered by a spec that lazily loads
+`rust` and asserts the re-highlight fires; what a spec cannot answer is how the
+frame *looks*). Added since:
+
+1. The anchored panel sits 10px below the figure and may overlap the outer hit
+   area of the `s`/`se`/`sw` resize grips.
+2. A nested doc and a code snippet rendered at `/view` in both schemes — cached,
+   so both need a re-save.
+3. The caret after the panel closes. It should be safe by construction — the
+   panel contains no Base UI floating component at all and every control cancels
+   `mousedown` — but that is the §10.6.3 failure class, and no gate here can see
+   it.
