@@ -1,9 +1,10 @@
 # Blob storage: one content-addressed store for every byte
 
 Status: **decided**, not started. Decided 2026-08-13, after measuring the live
-database (§1). Supersedes `storage-uploads.md`, which moved two asset classes to
-object storage and deliberately left the third — the one holding most of the
-bytes — in Postgres.
+database (§1). Supersedes
+[archive/storage-uploads.md](./archive/storage-uploads.md), which moved two asset
+classes to object storage and deliberately left the third — the one holding most
+of the bytes — in Postgres.
 
 Explicitly authorized: **no backward-compatibility constraints.** That is what
 makes this plan possible at all; the document format changes, and the old shape
@@ -143,8 +144,8 @@ silently removes user data is the one job that must be loud.
 In the node: `src: "/api/blob/<hash>"`.
 
 - **Not an absolute URL** — that bakes a hostname into every stored document and
-  needs a data migration whenever it changes. `storage-uploads.md` reached the
-  same conclusion for backgrounds.
+  needs a data migration whenever it changes. `archive/storage-uploads.md`
+  reached the same conclusion for backgrounds.
 - **Not a bare hash** — the string is rendered directly by `exportDOM`, `/view`
   and the OG route; keeping it a resolvable path means those need no resolver.
 
@@ -179,7 +180,7 @@ presignBlobGet(hash, expiresIn): Promise<string>
 publicBlobUrl(hash): string
 ```
 
-On `@aws-sdk/client-s3` against `S3_ENDPOINT`, per `storage-uploads.md`'s
+On `@aws-sdk/client-s3` against `S3_ENDPOINT`, per `archive/storage-uploads.md`'s
 reasoning — which has now survived three hosting reversals and been used twice.
 **Two buckets stay**, for the reason that file already gives: public for
 CDN-cacheable content, private for anything gated, because public access is
@@ -188,7 +189,7 @@ granted per bucket and not per prefix.
 Local development is **MinIO in `docker-compose.yml`**, so the code path under
 test is the one that runs in production. MinIO is the local half of this
 decision and is not a production backend — see the standing constraint in
-`storage-uploads.md` §Constraints.
+`archive/storage-uploads.md` §Constraints.
 
 `putBlob` is idempotent for free: the key is the content, so re-uploading is a
 no-op rather than a conflict.
@@ -280,7 +281,7 @@ blob store (§8). The largest phase, and the one that keeps offline working.
 
 ## 12. What this supersedes
 
-- **`storage-uploads.md` is superseded, not merely deferred.** Its scope
+- **`archive/storage-uploads.md` is superseded, not merely deferred.** Its scope
   boundary — §What stays in Postgres — was the right call under a
   backcompat constraint that no longer applies, and §1 shows the excluded class
   held most of the bytes. What survives and is carried forward here: the S3-SDK
@@ -306,4 +307,4 @@ blob store (§8). The largest phase, and the one that keeps offline working.
 - **Should backgrounds move to the public bucket and lose `/api/`?** They are
   public by design and 19 MB of the 20. Serving them straight off the R2 public
   URL removes the box from the path entirely — but bakes a hostname unless a
-  rewrite fronts it, which is `storage-uploads.md`'s option 2 again.
+  rewrite fronts it, which is `archive/storage-uploads.md`'s option 2 again.

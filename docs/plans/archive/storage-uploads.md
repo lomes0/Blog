@@ -1,8 +1,8 @@
 # Storage Support: moving uploads off the filesystem
 
-Status: **SUPERSEDED 2026-08-13 by [blob-storage.md](./blob-storage.md).** Read
-that first; this file is kept for the reasoning it carries forward, not as a
-plan to execute.
+Status: **SUPERSEDED 2026-08-13 by [../blob-storage.md](../blob-storage.md).**
+Read that first; this file is archived for the reasoning it carries forward, not
+as a plan to execute. It was never built.
 
 **Why it was superseded, and it is not that the design was wrong.** This plan
 moved two asset classes and drew an explicit scope boundary around the third

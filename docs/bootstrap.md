@@ -105,36 +105,66 @@ npm run build
 npm start
 ```
 
-## Production (Vercel + Supabase)
+## Production (a single VPS running Docker Compose)
 
-**Decided 13 Aug 2026, and not yet done.** The container path this section used
-to document — `Dockerfile`, `docker-compose.prod.yml`, `fly.toml` — is deleted.
-The target is Vercel for the app and Supabase for Postgres and object storage.
-The steps above still describe local development, and `docker-compose.yml` (dev
-Postgres, step 2) is untouched.
+**Decided 13 Aug 2026, not yet deployed.** The full design and its reasoning are
+in [`plans/production-deployment.md`](./plans/production-deployment.md); this is
+the operational summary. Two earlier decisions (Vercel + Supabase, and a
+container on Fly) are recorded there because their reasoning still reads — they
+are not live.
 
-**The app cannot be deployed as it stands.** Uploads are written to the local
-filesystem, which a serverless function does not have — see
-[`plans/storage-uploads.md`](./plans/storage-uploads.md), which is the blocking
-work and now reads as a prerequisite rather than an improvement.
+The stack is three services on a private Compose network, one published:
 
-What deploying will involve, once that lands:
+```
+Internet → caddy :80/:443 → app :3000 → postgres (not published)
+(via Cloudflare)
+```
 
-- **Two database URLs.** Vercel functions are short-lived and numerous, so
-  `DATABASE_URL` points at Supabase's pooled port (`:6543`, transaction mode)
-  while `DIRECT_URL` points at `:5432` for `prisma migrate deploy`. Prisma needs
-  both named in `schema.prisma`.
-- **`CHANGES_DATABASE_URL` must be the direct connection.** `LISTEN` does not
-  survive a transaction-mode pooler and fails _silently_ — the connection
-  succeeds, the `LISTEN` succeeds, and notifications never arrive. Whether the
-  change feed works on serverless at all is an open question, not a settled one:
-  see [`plans/archive/changes-detection.md`](./plans/archive/changes-detection.md) §6.
-- **Migrations are not automatic.** There is no release command; run
-  `npx prisma migrate deploy` against `DIRECT_URL` as a deploy step or by hand.
+Everything needed is committed: `Dockerfile`, `docker-compose.prod.yml`,
+`Caddyfile`. The steps above still describe local development, and
+`docker-compose.yml` (dev Postgres, step 2) is a separate, untouched thing.
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+What deploying involves:
+
+- **`.env` needs three more keys** beyond development: `APP_DOMAIN` (the
+  hostname Caddy gets a certificate for — the stack refuses to start without
+  it), and `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB`. Set
+  `NEXTAUTH_URL` and `PUBLIC_URL` to `https://$APP_DOMAIN`.
+- **`DATABASE_URL` is overridden by the compose file**, so it points at the
+  `postgres` service rather than at whatever a copied `.env` says. Note that
+  `.env` builds it from `${PGUSER}`/`${PGHOST}`/… and **Compose does not expand
+  `${...}` in `env_file`** — that override is what makes it work. Do not remove
+  it, and do not add new interpolated variables expecting them to resolve in the
+  container.
+- **`CHANGES_DATABASE_URL` stays unset.** It falls back to `DATABASE_URL`, which
+  is correct here because there is no connection pooler in this topology. See
+  [`plans/archive/changes-detection.md`](./plans/archive/changes-detection.md)
+  §6.1.
+- **Migrations run on boot** — the app's compose `command` is
+  `prisma migrate deploy && node server.js`. That is safe only because there is
+  exactly one instance.
 - **OAuth callbacks** must be re-registered at GitHub/Google for the production
   origin: `{PUBLIC_URL}/api/auth/callback/<provider>`.
-- **PDF export** has no Chromium on Vercel. Set `BROWSERLESS_URL` to a remote
-  Chrome, or the route fails in production while working locally.
+- **TLS is automatic** via Caddy and Let's Encrypt. If Cloudflare proxies the
+  domain, set it to Full (strict).
+- **Verify the change feed *through* the proxy.** A buffering proxy breaks
+  `/api/events` silently — the connection opens, the browser fires `open`, and
+  no event ever arrives. Nothing errors.
+- **Backups are yours now**, and nothing else here fails as expensively:
+  nightly `pg_dump` plus the upload volumes, pushed to a different provider, and
+  a restore you have actually rehearsed. `plans/production-deployment.md` §5.
+
+**Uploads** live on two named volumes — `/app/var/uploads` (attachments) and
+`/app/public/uploads/directories` (backgrounds). Both are required; the second
+holds most of the data and is the easier one to forget, because it sits under
+`public/` with the baked-in static assets. The longer-term direction is one
+content-addressed blob store on R2 covering attachments, backgrounds and editor
+images alike — [`plans/blob-storage.md`](./plans/blob-storage.md) — but the
+volumes stay mounted until its phase 3 verification passes.
 
 ## Common commands
 

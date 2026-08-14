@@ -1,6 +1,11 @@
-# Archived plans — shipped work
+# Archived plans — closed work
 
-These eleven plans are **done**. They are kept, not deleted, for two reasons:
+These twelve plans are **closed**: eleven shipped, and one
+([storage-uploads.md](./storage-uploads.md)) was superseded before it was built.
+A superseded plan is archived rather than deleted for the same reason a shipped
+one is — the reasoning is cited elsewhere and outlived the plan.
+
+They are kept, not deleted, for two reasons:
 
 1. **The code points at them.** 184 comments across 121 source files cite these
    documents by section number as the standing rationale for an invariant —
@@ -19,7 +24,7 @@ A plan here describes the state **at the time it shipped**. Paths drift — most
 of these say `src/editor`, which is `packages/editor/src` since the haklex
 extraction. Do not read one as a description of the current tree.
 
-| Plan                                                       | Shipped                    | What it did                                                                                                            |
+| Plan                                                       | Closed                     | What it did                                                                                                            |
 | ---------------------------------------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | [workspace-panes.md](./workspace-panes.md)                 | 31 Jul 2026, 5 phases      | Command registry, `ui.tabs` → `ui.workspace`, public/workspace route split, split view                                  |
 | [quiet-autosave.md](./quiet-autosave.md)                   | 3 Aug 2026                 | Autosave went silent — 8 dirty-state surfaces removed, `dirtyDocIds`/`useDirtyTracking`/`selectIsDirty` deleted         |
@@ -32,6 +37,7 @@ extraction. Do not read one as a description of the current tree.
 | [legacy-idb-retirement.md](./legacy-idb-retirement.md)     | 8 Aug 2026                 | Retired the fork's IndexedDB database name and its two Lexical table `type` strings (58 stored revisions rewritten)     |
 | [ai-surface-consolidation.md](./ai-surface-consolidation.md) | 8–9 Aug 2026, 6 phases   | Four AI surfaces onto one schema, one vocabulary and one write path — the Copilot's content edits **propose** now       |
 | [haklex-adoption.md](./haklex-adoption.md)                 | 8–9 Aug 2026, 5 workstreams | Extracted the editor to `packages/editor`, moved it to vanilla-extract + Base UI, added inline agent diff review       |
+| [storage-uploads.md](./storage-uploads.md)                 | **Superseded** 13 Aug 2026 — never built | Uploads off the filesystem to object storage. Superseded by [../blob-storage.md](../blob-storage.md): it scoped out editor images to avoid changing the document format, and measurement showed that excluded class held most of the bytes |
 
 Deliberately left undone, recorded so they are not re-proposed as oversights:
 

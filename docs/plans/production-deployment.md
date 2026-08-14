@@ -88,8 +88,11 @@ failure is silent.
 > are what keeps the current data alive in the meantime. What changes is the
 > destination, not the next step.
 
-**`docs/plans/storage-uploads.md` is deferred, not a blocker.** This is the
-largest consequence of the topology and the one most likely to be got wrong by
+**Object storage is not a blocker for this deployment.** That was the reasoning
+when [archive/storage-uploads.md](./archive/storage-uploads.md) was merely
+deferred, and it still holds for *what to deploy today* even though the
+destination has since changed (see the note above). It is the largest
+consequence of the topology and the one most likely to be got wrong by
 inheriting the previous plan's urgency.
 
 That plan opened with two failures. On a single box with named volumes, both are
@@ -123,9 +126,10 @@ mounted over a path the runtime user does not own arrives root-owned, and every
 upload fails `EACCES`).
 
 **When to revisit:** a second app instance, a move to a CDN origin, or uploads
-past a few GB — whichever comes first. `storage-uploads.md`'s S3-SDK-not-vendor-
-SDK choice means the target is still open (R2, S3, MinIO, Supabase) whenever
-that day arrives.
+past a few GB — whichever comes first. That day arrived the same afternoon:
+`blob-storage.md` picked R2, and the S3-SDK-not-vendor-SDK choice inherited from
+`archive/storage-uploads.md` is what kept the target open long enough to change
+it.
 
 **What this does cost:** durability is now entirely your backup job, where an
 object store would have provided it. §5 is not optional.
@@ -267,7 +271,7 @@ Named here so they are not mistaken for solved by choosing a host. From
    `vercel.json`; resolve `IS_VERCEL` (§3)~~ — done, `118a5a8c`
 2. ~~Restore `docker-compose.prod.yml` with `caddy` and **both** upload volumes
    (§2)~~ — done, `118a5a8c`. The backgrounds volume was the bug fix
-3. ~~Re-status `storage-uploads.md` (§2) and rewrite `changes-detection.md`
+3. ~~Re-status `archive/storage-uploads.md` (§2) and rewrite `changes-detection.md`
    §6 (§7)~~ — done. Both stated a dead premise
 4. ~~Build the image once, locally, to prove the Dockerfile~~ — done. It failed
    first time on §4.1 and passes now
