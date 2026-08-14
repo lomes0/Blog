@@ -32,6 +32,7 @@ import {
 import { mergeRegister } from "@lexical/utils";
 import { $generateHtmlFromNodes } from "@lexical/html";
 import { $generateNodesFromSerializedNodes } from "@lexical/clipboard";
+import { CARD_CHROME_ATTR } from "@/editor/nodes/CodeNode/card";
 
 interface NodeSelectionPluginProps {
   /**
@@ -85,6 +86,14 @@ function isClickOnLeftEdge(
 function getSelectableNodeFromElement(
   element: HTMLElement,
 ): { nodeKey: string | null; element: HTMLElement } | null {
+  // A code block is selected by clicking within the gutter's width of its left
+  // edge — and since docs/plans/code-block-card.md the card's header shares
+  // that edge, so the language dropdown sits inside the hit area. Chrome is
+  // never a node-selection gesture.
+  if (element.closest(`[${CARD_CHROME_ATTR}]`)) {
+    return null;
+  }
+
   // Check for code block
   const codeElement = element.closest(
     "code.LexicalTheme__code",

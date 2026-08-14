@@ -23,7 +23,29 @@ export interface CodeLanguageGlyph {
 const DEFAULT_GLYPH_BG = "#1d222a";
 const DEFAULT_GLYPH_FG = "#ffffff";
 
-/** Per-language badge text + brand-ish colors. Falls back to initials. */
+/**
+ * Per-language badge text and its brand colours. Falls back to initials.
+ *
+ * **Deliberately scheme-invariant, and declared as such** — the same kind of
+ * value as the `constant` group in the `--ed-*` contract
+ * (`styles/tokens.css.ts`) and DESIGN.md §19.3's "light islands". Every entry
+ * is a brand colour, and a brand colour is not part of the palette: none of
+ * them may respond to the theme toggle, because there is no dark-mode
+ * JavaScript yellow to invent. The repo already treats `GoogleIcon`, the AI
+ * providers' marks and the colour picker's swatch data this way. They reach the
+ * DOM as `--code-glyph-bg` / `--code-glyph-fg`, set inline from JS, so
+ * `npm run check:theme` — which reads `.css` and `.css.ts` — cannot see them.
+ * That is by construction, and this paragraph is the declaration
+ * (docs/plans/code-block-card.md §4.4). Moving them into `--ed-*` would be the
+ * actual mistake.
+ *
+ * **The two that are not brand colours.** `DEFAULT_GLYPH_BG` (#1d222a) and the
+ * flat `#000000` entries — JavaScript, `js`, Rust — are the exception §4.4
+ * asked to check, and it was right to: the card's dark header is #141920, so
+ * those chips are near-invisible squares distinguishable only by their letters.
+ * They are still not the theme's to change, so the fix is around the chip —
+ * `--code-glyph-ring` in `theme.css`, which *does* flip with the scheme.
+ */
 const GLYPH_MAP: Record<string, CodeLanguageGlyph> = {
   javascript: { text: "JS", bg: "#000000", fg: "#f7df1e" },
   js: { text: "JS", bg: "#000000", fg: "#f7df1e" },

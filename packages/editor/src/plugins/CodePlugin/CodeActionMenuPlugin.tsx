@@ -1,30 +1,28 @@
 "use client";
 /**
- * CodeActionMenuPlugin
+ * The live half of the code block's card (docs/plans/code-block-card.md).
  *
- * Renders the authoring chrome for `CodeNode` blocks in edit mode — a head bar
- * (language dropdown + word-wrap toggle + copy), a status footer (Ln/Col, line
- * count, indentation, encoding) and an active-line highlight.
+ * The card — header, body, status footer, caret wash — is DOM that
+ * `CodeNode.createDOM` builds and `CodeNode.exportDOM` mirrors, so the reader
+ * gets it with no plugin involved. What is left here is only what an editor can
+ * supply: the language `Select` portalled into the slot the header left empty;
+ * one delegated `click` on the root (`copy`/`collapse` go to the shared
+ * `actions.ts`, `wrap` stays here because it writes node state); a
+ * `ResizeObserver` per body, so whether a block is long enough to offer
+ * collapse is re-answered when `__wrap` or `__width` changes its height rather
+ * than measured once (§4.3); and Ln/Col, the line count and the caret wash.
  *
- * Lexical owns the contentEditable DOM of each code block, so we cannot inject
- * chrome as child elements without fighting reconciliation. Instead we portal
- * the chrome into the editor's scroll container and position it over each block
- * using the block's bounding rect, recomputing on editor updates and resize.
- *
- * The chrome is portaled into the nearest scrollable ancestor (rather than
- * `document.body`) so it rides the editor's scroll natively. If it were anchored
- * to `document.body` it would only move via the JS reposition, which lands a
- * frame behind the browser's native scroll of the code text — the two desync
- * and the head/footer/active-line judder up and down while scrolling. Anchored
- * inside the scroll container, absolute positioning keeps the chrome glued to
- * the block with no per-frame lag.
- *
- * The code block reserves top/bottom padding (see theme.css) so the head/footer
- * never cover code, and the gutter stays aligned.
+ * **What is gone.** This plugin used to portal a header and a footer into the
+ * editor's nearest scrollable ancestor and position them over each block by
+ * bounding rect, recomputed on every update, scroll and resize — with
+ * `findScrollContainer`, `rectToContainerSpace`, `HEADER_HEIGHT`/
+ * `FOOTER_HEIGHT`, a dev warning about `position: static` scrollers, and a
+ * zero-rect guard for snippet files that are `display: none`. All of it existed
+ * to make a floating layer track a block it was not part of.
  */
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { mergeRegister } from "@lexical/utils";
 import {
+  $getNearestNodeFromDOMNode,
   $getNodeByKey,
   $getSelection,
   $isLineBreakNode,
@@ -37,15 +35,35 @@ import {
   type NodeKey,
   type Point,
 } from "lexical";
-import {
-  type CSSProperties,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { $isCodeNode, CodeNode } from "@/editor/nodes/CodeNode";
+import {
+  ACTIVE_CLASS,
+  CAN_COLLAPSE_CLASS,
+  CARD_ACTIVE_LINE_CLASS,
+  CARD_BODY_CLASS,
+  CARD_CHROME_ATTR,
+  CARD_FOOT_CLASS,
+  CARD_GLYPH_CLASS,
+  CARD_HEAD_CLASS,
+  CARD_LANG_CLASS,
+} from "@/editor/nodes/CodeNode/card";
+import {
+  findCodeCardAction,
+  runCodeCardAction,
+} from "@/editor/nodes/CodeNode/actions";
+import {
+  collapsedBodyHeightPx,
+  exceedsCollapseThreshold,
+} from "@/editor/nodes/CodeNode/collapse";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/editor/ui";
 import {
   canonicalCodeLanguage,
   codeLanguageGlyph,
@@ -53,136 +71,7 @@ import {
   getCodeLanguageOptions,
 } from "@/editor/utils/codeLanguage";
 
-const HEADER_HEIGHT = 46;
-const FOOTER_HEIGHT = 32;
 const CODE_LANGUAGE_OPTIONS = getCodeLanguageOptions();
-
-interface ActiveCaret {
-  key: NodeKey;
-  line: number;
-  col: number;
-  /** Top of the caret line, in the portal container's coordinate space. */
-  lineTop: number;
-  lineHeight: number;
-}
-
-/**
- * Nearest scrollable ancestor of `el`, or `document.body` if none.
- *
- * The result is both the portal target and the coordinate space
- * {@link rectToContainerSpace} measures in, so it has to be the containing
- * block for the chrome as well — i.e. not `position: static`. A static scroller
- * silently anchors the chrome to some ancestor further up: it looks right at
- * rest and slides out from under the code as soon as the scroller moves, since
- * the thing it is anchored to is not what is scrolling. Correcting the
- * arithmetic cannot save that case — the chrome has to *live* in the scroller
- * to ride it — so this asserts the requirement rather than working around it.
- */
-function findScrollContainer(el: HTMLElement | null): HTMLElement {
-  let node = el?.parentElement ?? null;
-  while (node && node !== document.body) {
-    const { overflowY, overflowX } = window.getComputedStyle(node);
-    const scrollable = (v: string) =>
-      v === "auto" || v === "scroll" || v === "overlay";
-    if (scrollable(overflowY) || scrollable(overflowX)) return node;
-    node = node.parentElement;
-  }
-  return document.body;
-}
-
-/**
- * Convert a viewport-space rect to the portal container's coordinate space so an
- * absolutely-positioned child sits over `rect`. For a real scroll container this
- * is offset-from-container-padding-box + scroll; for the `document.body` fallback
- * it reduces to page coordinates (viewport + window scroll).
- */
-function rectToContainerSpace(
-  rect: { top: number; left: number },
-  container: HTMLElement,
-): { top: number; left: number } {
-  if (container === document.body || container === document.documentElement) {
-    return {
-      top: rect.top + window.scrollY,
-      left: rect.left + window.scrollX,
-    };
-  }
-  const cRect = container.getBoundingClientRect();
-  return {
-    top: rect.top - cRect.top - container.clientTop + container.scrollTop,
-    left: rect.left - cRect.left - container.clientLeft + container.scrollLeft,
-  };
-}
-
-/* ----------------------------- icons ----------------------------- */
-
-const CopyIcon = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={1.7}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <rect x="9" y="9" width="11" height="11" rx="2.5" />
-    <path d="M5 15.5A2.5 2.5 0 0 1 4 13.5v-7A2.5 2.5 0 0 1 6.5 4h7A2.5 2.5 0 0 1 15.5 5" />
-  </svg>
-);
-
-const CheckIcon = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M4 12.5 9 17.5 20 6.5" />
-  </svg>
-);
-
-const WrapIcon = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={1.7}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M3 6h18M3 12h13a3.5 3.5 0 0 1 0 7h-3.5M3 18h4" />
-    <path d="m9.5 15.5-2.5 2.5 2.5 2.5" />
-  </svg>
-);
-
-const ChevronIcon = () => (
-  <svg
-    className="code-chevron"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M6 9.5 12 15.5 18 9.5" />
-  </svg>
-);
-
-const TickIcon = () => (
-  <svg
-    className="code-tick"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2.2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M4 12.5 9 17.5 20 6.5" />
-  </svg>
-);
 
 /* --------------------------- helpers ----------------------------- */
 
@@ -230,382 +119,283 @@ function $caretLineCol(
   return { line: lines.length, col: lines[lines.length - 1].length + 1 };
 }
 
+const child = (card: HTMLElement, className: string) =>
+  card.querySelector<HTMLElement>(`:scope > .${className}`);
+
+/** The measured line height of a card body, or 0 if it cannot be read. */
+function bodyLineHeight(body: HTMLElement): number {
+  const parsed = parseFloat(window.getComputedStyle(body).lineHeight);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 /* ----------------------- language dropdown ----------------------- */
 
-function LanguageDropdown(
+/**
+ * The header's language control: the same Base UI `Select` the snippet's tab
+ * strip uses.
+ *
+ * §7.1 asked what a `Select` nested in node DOM does, and the answer is that
+ * this is the nesting the strip has shipped in since haklex-reprise phase 5.
+ * All three of its requirements carry over and all three are load-bearing:
+ * `alignItemWithTrigger={false}` (an item-aligned popup measures against a
+ * trigger inside a `contentEditable`), `finalFocus={false}` (restoring focus to
+ * the trigger on close steals the caret from the document), and the `mousedown`
+ * guard (a press inside a `contentEditable=false` island still moves the DOM
+ * selection, and Lexical then reads a selection pointing at chrome).
+ */
+function LanguageSelect(
   { editor, nodeKey, language }: {
     editor: LexicalEditor;
     nodeKey: NodeKey;
     language: string;
   },
 ) {
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const current = canonicalCodeLanguage(language);
-  const glyph = codeLanguageGlyph(language);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDocClick = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
-  }, [open]);
-
-  const select = useCallback((id: string) => {
+  const setLanguage = useCallback((value: string) => {
     editor.update(() => {
       const node = $getNodeByKey(nodeKey);
-      if ($isCodeNode(node)) node.setLanguage(id);
+      if ($isCodeNode(node)) node.setLanguage(canonicalCodeLanguage(value));
     });
-    setOpen(false);
   }, [editor, nodeKey]);
 
   return (
-    <div
-      className={`code-lang-select${open ? " open" : ""}`}
-      ref={rootRef}
-    >
-      <button
-        type="button"
-        className="code-lang-trigger"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => setOpen((v) => !v)}
+    <span onMouseDown={(event) => event.preventDefault()}>
+      <Select<string>
+        onValueChange={(value) => value && setLanguage(value)}
+        value={canonicalCodeLanguage(language) || "plain"}
       >
-        <span
-          className="code-lang-glyph"
-          style={{
-            ["--code-glyph-bg" as string]: glyph.bg,
-            ["--code-glyph-fg" as string]: glyph.fg,
-          } as CSSProperties}
+        <SelectTrigger
+          aria-label="Code language"
+          className="code-card-lang-trigger"
         >
-          {glyph.text}
-        </span>
-        <span>{codeLanguageLabel(language)}</span>
-        <ChevronIcon />
-      </button>
-      {open && (
-        <div className="code-lang-menu" role="listbox">
-          {CODE_LANGUAGE_OPTIONS.map(([id, name]) => (
-            <button
-              key={id}
-              type="button"
-              role="option"
-              aria-selected={canonicalCodeLanguage(id) === current}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => select(id)}
-            >
-              <span>{name}</span>
-              <TickIcon />
-            </button>
+          <SelectValue>
+            {(value: string | null) => {
+              const glyph = codeLanguageGlyph(value);
+              return (
+                <>
+                  <span
+                    className={CARD_GLYPH_CLASS}
+                    style={{
+                      // Brand colours, declared as such — see the note above
+                      // `GLYPH_MAP` in `utils/codeLanguage.ts`.
+                      ["--code-glyph-bg" as string]: glyph.bg,
+                      ["--code-glyph-fg" as string]: glyph.fg,
+                    }}
+                  >
+                    {glyph.text}
+                  </span>
+                  <span>{codeLanguageLabel(value)}</span>
+                </>
+              );
+            }}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent alignItemWithTrigger={false} finalFocus={false}>
+          {CODE_LANGUAGE_OPTIONS.map(([value, label]) => (
+            <SelectItem key={value} label={label} value={value}>
+              {label}
+            </SelectItem>
           ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ------------------------- block chrome -------------------------- */
-
-function CodeBlockChrome(
-  { editor, nodeKey, element, container, caret, reflow }: {
-    editor: LexicalEditor;
-    nodeKey: NodeKey;
-    element: HTMLElement;
-    container: HTMLElement;
-    caret: ActiveCaret | null;
-    reflow: number;
-  },
-) {
-  const [copied, setCopied] = useState(false);
-  const copyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
-    undefined,
-  );
-
-  // Read node-derived data (re-evaluated whenever reflow changes).
-  const data = editor.getEditorState().read(() => {
-    const node = $getNodeByKey(nodeKey);
-    if (!$isCodeNode(node)) return null;
-    const text = node.getTextContent();
-    return {
-      language: node.getLanguage() ?? "",
-      wrap: node.getWrap(),
-      lineCount: text.length === 0 ? 1 : text.split("\n").length,
-    };
-  });
-
-  const toggleWrap = useCallback(() => {
-    editor.update(() => {
-      const node = $getNodeByKey(nodeKey);
-      if ($isCodeNode(node)) node.setWrap(!node.getWrap());
-    });
-  }, [editor, nodeKey]);
-
-  const copy = useCallback(() => {
-    const text = element.innerText;
-    navigator.clipboard?.writeText(text).then(() => {
-      setCopied(true);
-      if (copyTimer.current) clearTimeout(copyTimer.current);
-      copyTimer.current = setTimeout(() => setCopied(false), 1500);
-    }).catch(() => {});
-  }, [element]);
-
-  useEffect(() => () => {
-    if (copyTimer.current) clearTimeout(copyTimer.current);
-  }, []);
-
-  // Skip layout-column code blocks: they keep the compact, chrome-less look.
-  if (!data || element.closest(".LexicalTheme__layoutItem")) return null;
-
-  // reflow participates in positioning by forcing a re-render + re-measure.
-  void reflow;
-  const rect = element.getBoundingClientRect();
-  // A block with no layout box: a file of a code snippet whose tab is not the
-  // open one is `display: none`, and every rect it reports is zero. Positioning
-  // chrome against that puts a header and a footer in the top-left corner of
-  // the scroll container, for a block nobody can see.
-  if (rect.width === 0 && rect.height === 0) return null;
-  const { top, left } = rectToContainerSpace(rect, container);
-  const width = rect.width;
-
-  const headerStyle: CSSProperties = {
-    top,
-    left,
-    width,
-    height: HEADER_HEIGHT,
-  };
-  const footerStyle: CSSProperties = {
-    top: top + rect.height - FOOTER_HEIGHT,
-    left,
-    width,
-    height: FOOTER_HEIGHT,
-  };
-  const isActive = caret?.key === nodeKey;
-  const isDark = typeof document !== "undefined" &&
-    document.documentElement.classList.contains("dark");
-
-  return (
-    <div className={`code-edit-chrome${isDark ? " is-dark" : ""}`}>
-      {isActive && caret && (
-        <div
-          className="code-edit-active-line"
-          style={{
-            top: caret.lineTop,
-            left,
-            width,
-            height: caret.lineHeight,
-          }}
-        />
-      )}
-      <div className="code-edit-header" style={headerStyle}>
-        <LanguageDropdown
-          editor={editor}
-          nodeKey={nodeKey}
-          language={data.language}
-        />
-        <span className="code-head-spacer" />
-        <div className="code-edit-actions">
-          <button
-            type="button"
-            className={`code-edit-iconbtn${data.wrap ? " is-on" : ""}`}
-            aria-label="Toggle word wrap"
-            title="Word wrap"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={toggleWrap}
-          >
-            <WrapIcon />
-          </button>
-          <button
-            type="button"
-            className={`code-edit-iconbtn${copied ? " copied" : ""}`}
-            aria-label="Copy code"
-            title="Copy"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={copy}
-          >
-            {copied ? <CheckIcon /> : <CopyIcon />}
-          </button>
-        </div>
-      </div>
-      <div className="code-edit-footer" style={footerStyle}>
-        {isActive && caret
-          ? <span>Ln {caret.line}, Col {caret.col}</span>
-          : <span>Ln —, Col —</span>}
-        <span className="code-foot-sep" />
-        <span>
-          {data.lineCount} {data.lineCount === 1 ? "line" : "lines"}
-        </span>
-        <span className="code-foot-grow" />
-        <span>Spaces: 2</span>
-        <span className="code-foot-sep" />
-        <span>UTF-8</span>
-      </div>
-    </div>
+        </SelectContent>
+      </Select>
+    </span>
   );
 }
 
 /* --------------------------- plugin ------------------------------ */
 
-export default function CodeActionMenuPlugin(
-  { anchorElem }: { anchorElem?: HTMLElement } = {},
-) {
+export default function CodeActionMenuPlugin() {
   const [editor] = useLexicalComposerContext();
-  const [codeKeys, setCodeKeys] = useState<NodeKey[]>([]);
-  const [caret, setCaret] = useState<ActiveCaret | null>(null);
-  const [reflow, setReflow] = useState(0);
-  const [scrollEl, setScrollEl] = useState<HTMLElement | null>(null);
-  const keysRef = useRef<Set<NodeKey>>(new Set());
-  const rafRef = useRef(0);
+  const [keys, setKeys] = useState<NodeKey[]>([]);
+  /** Bumped when the root element is rebuilt, which invalidates every host. */
+  const [generation, setGeneration] = useState(0);
+  /** The language each card's `Select` should show, by node key. */
+  const [languages, setLanguages] = useState<Record<NodeKey, string>>({});
+  const activeCard = useRef<HTMLElement | null>(null);
 
-  // The element we portal into and measure against. Resolved to the editor's
-  // nearest scrollable ancestor so the chrome scrolls natively with the code.
-  const container = anchorElem ?? scrollEl ??
-    (typeof document !== "undefined" ? document.body : null);
-  const containerRef = useRef<HTMLElement | null>(container);
-  containerRef.current = container;
-
-  // Resolve the scroll container from the editor root (re-resolve if it remounts).
+  // Track which code blocks exist, and what language each one is in. Seeded
+  // from the current state because a mutation listener does not replay
+  // creations for nodes that were already there on load.
+  const known = useRef<Record<NodeKey, string>>({});
   useEffect(() => {
-    if (anchorElem) return;
-    return editor.registerRootListener((root) => {
-      const found = root ? findScrollContainer(root) : null;
-      // The failure this catches is a drift that only shows up mid-scroll, and
-      // looks like a positioning bug in this file rather than a missing
-      // property on someone else's Box — so it says which element to fix.
+    const track = () => {
+      const next = editor.getEditorState().read(() => {
+        const found: Record<NodeKey, string> = {};
+        for (const node of $nodesOfType(CodeNode)) {
+          found[node.getKey()] = node.getLanguage() ?? "";
+        }
+        return found;
+      });
+      const prev = known.current;
+      const nextKeys = Object.keys(next);
+      const unchanged = Object.keys(prev).length === nextKeys.length &&
+        nextKeys.every((key) => prev[key] === next[key]);
+      if (unchanged) return;
+      known.current = next;
+      setLanguages(next);
+      setKeys(nextKeys);
+    };
+    track();
+    return editor.registerMutationListener(CodeNode, track);
+  }, [editor]);
+
+  /**
+   * One delegated listener for the whole editor, mirroring the one `/view`
+   * binds over its container. `copy` and `collapse` are the shared
+   * implementation; `wrap` is the only action that needs an editor.
+   *
+   * Bubble phase, and it stops nothing. A capture-phase listener here would run
+   * *before* React's own delegated dispatch — which is attached above the
+   * editor root — so stopping propagation would silence the language `Select`
+   * along with everything else. Caret theft is headed off at `mousedown`
+   * instead, the same guard `CodeSnippetTabs` uses for the same reason.
+   */
+  useEffect(() => {
+    const onMouseDown = (event: MouseEvent) => {
+      const target = event.target;
       if (
-        process.env.NODE_ENV !== "production" && found &&
-        found !== document.body &&
-        window.getComputedStyle(found).position === "static"
+        target instanceof Element && target.closest(`[${CARD_CHROME_ATTR}]`)
       ) {
-        console.warn(
-          "[CodeActionMenuPlugin] The editor's scroll container is " +
-            "position: static, so code-block chrome will drift when it " +
-            "scrolls. Give it position: relative.",
-          found,
-        );
+        event.preventDefault();
       }
-      setScrollEl(found);
-    });
-  }, [editor, anchorElem]);
+    };
 
-  const scheduleReflow = useCallback(() => {
-    cancelAnimationFrame(rafRef.current);
-    rafRef.current = requestAnimationFrame(() => setReflow((v) => v + 1));
-  }, []);
-
-  // Track which CodeNode keys exist.
-  useEffect(() => {
-    // Seed with code blocks already present on load (mutation listeners may
-    // not replay creations for pre-existing nodes).
-    editor.getEditorState().read(() => {
-      const set = keysRef.current;
-      let changed = false;
-      for (const node of $nodesOfType(CodeNode)) {
-        if (!set.has(node.getKey())) {
-          set.add(node.getKey());
-          changed = true;
-        }
-      }
-      if (changed) setCodeKeys(Array.from(set));
-    });
-
-    return editor.registerMutationListener(CodeNode, (mutations) => {
-      const set = keysRef.current;
-      let changed = false;
-      for (const [key, type] of mutations) {
-        if (type === "destroyed") {
-          if (set.delete(key)) changed = true;
-        } else if (!set.has(key)) {
-          set.add(key);
-          changed = true;
-        }
-      }
-      if (changed) setCodeKeys(Array.from(set));
-      scheduleReflow();
-    });
-  }, [editor, scheduleReflow]);
-
-  // Track caret position within the active code block + trigger reposition.
-  useEffect(() => {
-    const readCaret = () => {
-      editor.getEditorState().read(() => {
-        const selection = $getSelection();
-        if (!$isRangeSelection(selection) || !selection.isCollapsed()) {
-          setCaret(null);
-          return;
-        }
-        const codeNode = $findCodeNode(selection.anchor.getNode());
-        if (!codeNode) {
-          setCaret(null);
-          return;
-        }
-        const { line, col } = $caretLineCol(codeNode, selection.anchor);
-
-        let lineTop = 0;
-        let lineHeight = 22;
-        const ctn = containerRef.current;
-        const domSel = window.getSelection();
-        if (ctn && domSel && domSel.rangeCount > 0) {
-          const rect = domSel.getRangeAt(0).getBoundingClientRect();
-          if (rect.height > 0) {
-            lineTop = rectToContainerSpace(rect, ctn).top;
-            lineHeight = rect.height;
-          } else {
-            const el = editor.getElementByKey(codeNode.getKey());
-            if (el) {
-              const cs = window.getComputedStyle(el);
-              lineHeight = parseFloat(cs.lineHeight) || 22;
-              lineTop = rectToContainerSpace(el.getBoundingClientRect(), ctn)
-                .top + HEADER_HEIGHT + (line - 1) * lineHeight;
-            }
-          }
-        }
-        setCaret({ key: codeNode.getKey(), line, col, lineTop, lineHeight });
+    const onClick = (event: MouseEvent) => {
+      const hit = findCodeCardAction(event.target);
+      if (!hit || runCodeCardAction(hit)) return;
+      if (hit.action !== "wrap") return;
+      editor.update(() => {
+        const node = $getNearestNodeFromDOMNode(hit.card);
+        if ($isCodeNode(node)) node.setWrap(!node.getWrap());
       });
     };
 
-    return mergeRegister(
-      editor.registerUpdateListener(() => {
-        readCaret();
-        scheduleReflow();
-      }),
-    );
-  }, [editor, scheduleReflow]);
+    return editor.registerRootListener((root, prevRoot) => {
+      prevRoot?.removeEventListener("mousedown", onMouseDown);
+      prevRoot?.removeEventListener("click", onClick);
+      root?.addEventListener("mousedown", onMouseDown);
+      root?.addEventListener("click", onClick);
+      setGeneration((n) => n + 1);
+    });
+  }, [editor]);
 
-  // Reposition on scroll / resize.
+  /**
+   * Whether each block is long enough to be worth collapsing, re-answered
+   * whenever its body changes height — which `__wrap` and `__width` both do,
+   * and which a one-shot measurement would miss (§4.3).
+   */
   useEffect(() => {
-    const onScroll = () => scheduleReflow();
-    window.addEventListener("scroll", onScroll, true);
-    window.addEventListener("resize", onScroll);
-    return () => {
-      window.removeEventListener("scroll", onScroll, true);
-      window.removeEventListener("resize", onScroll);
-      cancelAnimationFrame(rafRef.current);
-    };
-  }, [scheduleReflow]);
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const body = entry.target as HTMLElement;
+        const card = body.parentElement;
+        if (!card) continue;
+        const lineHeight = bodyLineHeight(body);
+        // `scrollHeight`, not the observed box: once collapsed the box is the
+        // clamp, and measuring that would answer "is the collapsed height
+        // taller than the collapse threshold" — always no, so the control the
+        // reader just used would vanish under them.
+        card.classList.toggle(
+          CAN_COLLAPSE_CLASS,
+          exceedsCollapseThreshold(body.scrollHeight, lineHeight),
+        );
+        // The clamp itself, from the measured line height rather than from the
+        // stylesheet's guess at it. `/view` keeps the CSS default.
+        card.style.setProperty(
+          "--code-collapsed-h",
+          `${collapsedBodyHeightPx(lineHeight)}px`,
+        );
+      }
+    });
+    for (const key of keys) {
+      const card = editor.getElementByKey(key);
+      const body = card && child(card, CARD_BODY_CLASS);
+      if (body) observer.observe(body);
+    }
+    return () => observer.disconnect();
+  }, [editor, keys, generation]);
 
-  if (!container) return null;
+  /**
+   * The status footer and the caret wash — written straight into the elements
+   * `createDOM` reserved rather than re-rendered, since this runs on every
+   * editor update.
+   */
+  useEffect(() => {
+    const paint = () =>
+      editor.getEditorState().read(() => {
+        const previous = activeCard.current;
+        if (previous) previous.classList.remove(ACTIVE_CLASS);
+        activeCard.current = null;
 
-  return createPortal(
+        for (const key of Object.keys(languages)) {
+          const card = editor.getElementByKey(key);
+          const lines = card?.querySelector<HTMLElement>(".code-card-lines");
+          if (!card || !lines) continue;
+          const node = $getNodeByKey(key);
+          if (!$isCodeNode(node)) continue;
+          const text = node.getTextContent();
+          const count = text.length === 0 ? 1 : text.split("\n").length;
+          lines.textContent = `${count} ${count === 1 ? "line" : "lines"}`;
+        }
+
+        const selection = $getSelection();
+        if (!$isRangeSelection(selection) || !selection.isCollapsed()) return;
+        const codeNode = $findCodeNode(selection.anchor.getNode());
+        if (!codeNode) return;
+        const card = editor.getElementByKey(codeNode.getKey());
+        if (!card) return;
+
+        const { line, col } = $caretLineCol(codeNode, selection.anchor);
+        const footer = child(card, CARD_FOOT_CLASS);
+        const caret = footer?.querySelector<HTMLElement>(".code-card-caret");
+        if (caret) caret.textContent = `Ln ${line}, Col ${col}`;
+
+        card.classList.add(ACTIVE_CLASS);
+        activeCard.current = card;
+
+        // The one measurement left in this file. Against the card, which is the
+        // caret's own offset parent — no scroll container to find, no portal
+        // coordinate space to convert into, and nothing to recompute on scroll.
+        const wash = child(card, CARD_ACTIVE_LINE_CLASS);
+        const domSelection = window.getSelection();
+        if (!wash || !domSelection || domSelection.rangeCount === 0) return;
+        const rect = domSelection.getRangeAt(0).getBoundingClientRect();
+        if (rect.height === 0) return;
+        const cardRect = card.getBoundingClientRect();
+        wash.style.top = `${rect.top - cardRect.top - card.clientTop}px`;
+        wash.style.height = `${rect.height}px`;
+      });
+
+    paint();
+    return editor.registerUpdateListener(paint);
+  }, [editor, languages]);
+
+  // Read so that a root rebuild re-runs the host lookups below; the value
+  // itself means nothing.
+  void generation;
+
+  return (
     <>
-      {codeKeys.map((key) => {
-        const element = editor.getElementByKey(key);
-        if (!element) return null;
-        return (
-          <CodeBlockChrome
-            key={key}
+      {keys.map((key) => {
+        // Resolved during render and never cached, for the reason
+        // `CodeSnippetPlugin` gives: a cached host outlives the DOM it pointed
+        // at, and React would go on portalling into a detached element. Absent
+        // for a block whose parent draws its own heading — a snippet file or a
+        // layout column — which has no header to portal into.
+        const host = editor.getElementByKey(key)?.querySelector<HTMLElement>(
+          `:scope > .${CARD_HEAD_CLASS} > .${CARD_LANG_CLASS}`,
+        );
+        if (!host) return null;
+        return createPortal(
+          <LanguageSelect
             editor={editor}
+            language={languages[key] ?? ""}
             nodeKey={key}
-            element={element}
-            container={container}
-            caret={caret}
-            reflow={reflow}
-          />
+          />,
+          host,
+          key,
         );
       })}
-    </>,
-    container,
+    </>
   );
 }

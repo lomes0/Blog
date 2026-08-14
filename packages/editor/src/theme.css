@@ -97,8 +97,25 @@
   cursor: pointer;
 }
 
+/* ============================================================
+   THE CODE BLOCK CARD (docs/plans/code-block-card.md)
+
+   One set of rules for one card, serving both surfaces: the editor builds it in
+   `CodeNode.createDOM`, the reader gets the same shape from `exportDOM`. It
+   replaced two chromes that had drifted apart — a React overlay portalled into
+   the editor's scroll container and positioned by bounding rect, and an
+   imperative wrapper `ViewCodeEnhancer` hung on `/view` from a
+   `MutationObserver`. Neither `.code-edit-*` nor `.code-block-*` survives.
+
+   The chrome is inside the block, so nothing reserves padding for a floating
+   bar and nothing recomputes on scroll. `--code-head-h` / `--code-foot-h` exist
+   for the gutter, a `::before` on the card that has to be told where the code
+   starts.
+   ============================================================ */
+
 .LexicalTheme__code {
-  /* Light palette (Claude Design); overridden per theme below. */
+  /* Light palette (Claude Design); the dark twin is near the foot of the
+     file, keyed to `html.dark`. */
   --code-bg: #ffffff;
   --code-fg: #2c333d;
   --code-border: #e4e7ec;
@@ -110,8 +127,29 @@
   --code-emph-line: rgba(45, 107, 230, 0.07);
   --code-emph-bar: #2d6be6;
   --code-accent: #2d6be6;
+  --code-chrome-bg: #f7f8fa;
+  --code-chrome-fg: #3b434f;
+  --code-chrome-border: #edeff2;
+  --code-chrome-muted: #7a828f;
+  --code-chrome-hover: rgba(127, 127, 127, 0.12);
+  --code-ok: #2da44e;
+  /* A hairline around the language chip. Its fill is a brand colour with no
+     dark twin (see `GLYPH_MAP`), and several of them are black or near-black —
+     on the dark header those chips have almost no edge of their own. */
+  --code-glyph-ring: rgba(0, 0, 0, 0.06);
   --code-radius: 14px;
   --code-line-height: 1.62;
+  /* The collapsed body's clamp. `collapsedBodyHeightPx()` in
+     `nodes/CodeNode/collapse.ts` is the source of this number: the editor sets
+     it per block from the measured line height, and this is the value that
+     function returns at the line height declared just above, for `/view`,
+     where nothing measures. */
+  --code-collapsed-h: 520px;
+  /* Overridden by `.has-card-head` / `.has-card-foot`, which `CodeNode` sets
+     when it actually builds them — a block inside a snippet or a layout column
+     has neither. */
+  --code-head-h: 0px;
+  --code-foot-h: 0px;
   --tok-comment: #98a0ab;
   --tok-punctuation: #6b7280;
   --tok-property: #9a6700;
@@ -131,38 +169,70 @@
     monospace;
   display: block;
   position: relative;
-  padding: 16px 18px 16px calc(var(--code-gutter-width) + 12px);
   margin: 18px 0;
+  width: 100%;
   line-height: var(--code-line-height);
   font-size: 13.5px;
   tab-size: 2;
-  white-space: pre;
-  overflow-x: auto;
-  width: 100%;
   color: var(--code-fg);
   background: var(--code-bg);
   border: 1px solid var(--code-border);
   border-radius: var(--code-radius);
+  /* Clips the header against the rounded corners, and clips the body when it
+     is collapsed. */
+  overflow: hidden;
   box-shadow: 0 18px 44px -26px rgba(31, 41, 61, 0.3);
 }
 
-/* Word-wrap mode (toggled by the code action menu / CodeNode __wrap). */
-.LexicalTheme__code.code-wrap {
+.LexicalTheme__code.has-card-head {
+  --code-head-h: 46px;
+}
+
+.LexicalTheme__code.has-card-foot {
+  --code-foot-h: 30px;
+}
+
+/* The scroll region, and Lexical's slot: `CodeNode.getDOMSlot` points
+   reconciliation at this element, so every text node, line break and tab lands
+   inside it and the chrome around it is the node's to keep.
+
+   `white-space` and the horizontal scroll live here rather than on the card,
+   which is the whole reason the header can sit above the code and not scroll
+   sideways out of the block it labels. */
+.code-card-body {
+  position: relative;
+  z-index: 1;
+  padding: 16px 18px 16px calc(var(--code-gutter-width) + 12px);
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: pre;
+}
+
+/* Word-wrap mode (`CodeNode.__wrap`, toggled from the card header). */
+.LexicalTheme__code.code-wrap .code-card-body {
   white-space: pre-wrap;
   word-break: break-word;
   overflow-x: hidden;
 }
 
-/* Line-number gutter: a single ::before reads the `data-gutter` attribute
-   ("1\n2\n3"…) kept in sync by registerCodeHighlighting (editor) and by the
-   custom CodeNode.exportDOM (view mode). Robust for empty lines and scales
-   with the digit count. */
+/* Line-number gutter: a single `::before` reads the `data-gutter` attribute
+   ("1\n2\n3"…) kept in sync by `registerCodeHighlighting` (editor) and by
+   `CodeNode.exportDOM` (reader). Robust for empty lines and scales with the
+   digit count.
+
+   It is a pseudo-element of the card and not of the body on purpose: `attr()`
+   can only read its own element's attributes, and `data-gutter` is written onto
+   the element `editor.getElementByKey` returns — which is why the card is the
+   `<code>` element itself and not a wrapper around it. Sitting on the card also
+   means it no longer scrolls away with the code, which as a floating overlay it
+   used to. */
 .LexicalTheme__code:before {
   content: attr(data-gutter);
   position: absolute;
-  top: 0;
+  z-index: 2;
+  top: var(--code-head-h);
   left: 0;
-  bottom: 0;
+  bottom: var(--code-foot-h);
   width: var(--code-gutter-width);
   padding: 16px 12px 16px 0;
   box-sizing: border-box;
@@ -171,93 +241,83 @@
   white-space: pre;
   color: var(--code-gutter-fg);
   background: var(--code-gutter-bg);
-  border-radius: var(--code-radius) 0 0 var(--code-radius);
   user-select: none;
   pointer-events: none;
 }
 
-/* View-mode chrome injected by ViewCodeEnhancer: a head bar (language pill +
-   icon actions) wrapping the <code> element, with collapse support. */
-.code-block-wrapper {
-  --code-border: #e4e7ec;
-  --code-fg: #2c333d;
-  --code-chrome-bg: #f7f8fa;
-  --code-chrome-fg: #3b434f;
-  --code-chrome-border: #edeff2;
-  --code-chrome-muted: #7a828f;
-  --code-accent: #2d6be6;
-  --code-radius: 14px;
-  position: relative;
-  margin: 18px 0;
-  border: 1px solid var(--code-border);
-  border-radius: var(--code-radius);
-  overflow: hidden;
-  background: var(--code-bg, #fff);
-  box-shadow: 0 18px 44px -26px rgba(31, 41, 61, 0.3);
+/* ---- collapse (§4.3) ----
+   Collapsed-ness is this class and nothing else — never node state, never
+   `exportJSON`. It is a view preference: one reader folding a long block away
+   is not an edit to the article. */
+.LexicalTheme__code.is-collapsed .code-card-body {
+  max-height: var(--code-collapsed-h);
+  overflow-y: hidden;
 }
 
-.code-block-wrapper .LexicalTheme__code {
-  margin: 0;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  /* Extra breathing room so the block doesn't end flush with the last line. */
-  padding-bottom: 30px;
-}
-
-.code-block-wrapper .LexicalTheme__code:before {
-  border-radius: 0;
-}
-
-/* The scroll region wrapping <code>, used to clip the collapse animation. */
-.code-block-body {
-  position: relative;
-  max-height: 2000px;
-  transition: max-height 0.38s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.code-block-wrapper.collapsed .code-block-body {
-  max-height: 150px;
-  overflow: hidden;
-}
-
-.code-block-wrapper.collapsed .code-block-body::after {
+.LexicalTheme__code.is-collapsed::after {
   content: "";
   position: absolute;
+  z-index: 3;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: var(--code-foot-h);
   height: 64px;
   pointer-events: none;
-  background: linear-gradient(transparent, var(--code-bg, #fff) 88%);
+  background: linear-gradient(transparent, var(--code-bg) 88%);
 }
 
-.code-block-header {
+/* ---- header ---- */
+.code-card-head {
   display: flex;
   align-items: center;
-  gap: 10px;
-  height: 46px;
-  padding: 0 10px 0 14px;
+  gap: 8px;
+  height: var(--code-head-h);
+  padding: 0 8px 0 12px;
   font-family: "IBM Plex Sans", "Roboto", "Helvetica", "Arial", sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  white-space: normal;
   color: var(--code-chrome-fg);
   background: var(--code-chrome-bg);
   border-bottom: 1px solid var(--code-chrome-border);
   user-select: none;
 }
 
-.code-block-lang {
+/* The language slot. Static text for the reader; in the editor it is left
+   empty and `CodeActionMenuPlugin` portals a Base UI `Select` into it. */
+.code-card-lang {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 12.5px;
-  font-weight: 500;
-  letter-spacing: -0.005em;
+  min-width: 0;
   color: var(--code-chrome-fg);
 }
 
-.code-lang-glyph {
+/* The trigger has to out-specify the `Select`'s own vanilla-extract class, and
+   stylesheet order between `theme.css` and a `.css.ts` bundle is not something
+   to rely on — hence the descendant selector. */
+.code-card-head .code-card-lang-trigger {
+  gap: 7px;
+  height: 28px;
+  padding: 0 6px 0 8px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--code-chrome-fg);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+}
+
+.code-card-head .code-card-lang-trigger:hover {
+  background: var(--code-chrome-hover);
+}
+
+.code-card-glyph {
   display: grid;
   place-items: center;
+  flex: none;
   width: 18px;
   height: 18px;
   border-radius: 5px;
@@ -267,26 +327,49 @@
   line-height: 1;
   color: var(--code-glyph-fg, #fff);
   background: var(--code-glyph-bg, #1d222a);
+  box-shadow: inset 0 0 0 1px var(--code-glyph-ring);
 }
 
-.code-block-header .code-head-spacer {
+/* `CodeNode.__filename`, which haklex-reprise phase 5 stored and nothing
+   displayed outside the snippet's tab strip. */
+.code-card-filename {
+  overflow: hidden;
+  font-family: "Fira Code", ui-monospace, monospace;
+  font-size: 11.5px;
+  font-weight: 450;
+  color: var(--code-chrome-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.code-card-filename::before {
+  content: "";
+  display: inline-block;
+  width: 1px;
+  height: 12px;
+  margin-right: 8px;
+  vertical-align: -2px;
+  background: var(--code-border);
+}
+
+.code-card-spacer {
   flex: 1;
 }
 
-.code-block-actions {
+.code-card-actions {
   display: flex;
   align-items: center;
   gap: 2px;
 }
 
-.code-block-iconbtn {
+.code-card-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 30px;
-  min-width: 30px;
-  padding: 0 8px;
+  height: 28px;
+  min-width: 28px;
+  padding: 0 7px;
   font-family: inherit;
   font-size: 12px;
   font-weight: 500;
@@ -298,259 +381,115 @@
   transition: color 0.16s ease, background 0.16s ease;
 }
 
-.code-block-iconbtn:hover {
+.code-card-btn:hover {
   color: var(--code-fg);
-  background: rgba(127, 127, 127, 0.12);
+  background: var(--code-chrome-hover);
 }
 
-.code-block-iconbtn svg {
+.code-card-btn svg {
   width: 15px;
   height: 15px;
   flex: none;
 }
 
-.code-block-iconbtn.copied {
-  color: #2da44e;
+.code-card-btn.is-copied {
+  color: var(--code-ok);
 }
 
-.code-block-iconbtn .code-chevron {
+/* Word wrap reads its on-state off the block's own class, so nothing has to
+   push it there. */
+.LexicalTheme__code.code-wrap .code-card-btn[data-code-action="wrap"] {
+  color: var(--code-accent);
+}
+
+/* The collapse control appears only above the threshold (§7.2): expanded by
+   default, and no affordance at all on a block short enough that folding it
+   would hide nothing. The button is always in the DOM so that the editor's
+   `ResizeObserver` can reveal it when a block grows. */
+.code-card-fold {
+  display: none;
+}
+
+.LexicalTheme__code.can-collapse .code-card-fold {
+  display: inline-flex;
+}
+
+.code-card-chevron {
   transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.code-block-wrapper:not(.collapsed) .code-block-iconbtn .code-chevron {
+.LexicalTheme__code:not(.is-collapsed) .code-card-chevron {
   transform: rotate(180deg);
 }
 
-.code-head-divider {
-  width: 1px;
-  height: 18px;
-  margin: 0 5px;
-  background: var(--code-border);
-}
-
-/* ============================================================
-   EDIT-MODE CODE CHROME (floating header + footer + active line)
-   Rendered by CodeActionMenuPlugin and portaled into the editor's scroll
-   container, so dark mode is keyed off `html.dark` (matching toolbar.css)
-   rather than [theme].
-   ============================================================ */
-
-/* Reserve room inside editor code blocks for the floating header/footer and
-   keep the gutter numbers aligned with the code lines. */
-.editor-input .LexicalTheme__code {
-  padding-top: 46px;
-  padding-bottom: 34px;
-}
-.editor-input .LexicalTheme__code:before {
-  padding-top: 46px;
-  padding-bottom: 34px;
-}
-/* Layout-column code blocks keep their compact, chrome-less treatment. */
-.editor-input .LexicalTheme__layoutItem .LexicalTheme__code,
-.editor-input .LexicalTheme__layoutItem .LexicalTheme__code:before {
-  padding-top: 14px;
-  padding-bottom: 14px;
-}
-
-.code-edit-chrome {
-  --cb-head: #f7f8fa;
-  --cb-foot: #f7f8fa;
-  --cb-border: #e4e7ec;
-  --cb-border-soft: #edeff2;
-  --cb-fg: #2c333d;
-  --cb-muted: #7a828f;
-  --cb-accent: #2d6be6;
-  --cb-menu-bg: #ffffff;
-  --cb-menu-border: #e4e7ec;
-  --cb-menu-hover: #f3f5f7;
-  --cb-chip-bg: #eef0f3;
-  --cb-chip-border: #e2e5ea;
-  --cb-active-line: rgba(45, 107, 230, 0.05);
-  font-family: "IBM Plex Sans", "Roboto", "Helvetica", "Arial", sans-serif;
-}
-
-html.dark .code-edit-chrome,
-.code-edit-chrome.is-dark {
-  --cb-head: #141920;
-  --cb-foot: #141920;
-  --cb-border: #232b35;
-  --cb-border-soft: #1c232c;
-  --cb-fg: #c3ccd8;
-  --cb-muted: #8893a2;
-  --cb-accent: #6aa6ff;
-  --cb-menu-bg: #161c24;
-  --cb-menu-border: #2a323d;
-  --cb-menu-hover: rgba(255, 255, 255, 0.05);
-  --cb-chip-bg: rgba(255, 255, 255, 0.04);
-  --cb-chip-border: rgba(255, 255, 255, 0.07);
-  --cb-active-line: rgba(123, 162, 217, 0.08);
-}
-
-/* ---- header ---- */
-.code-edit-header {
-  position: absolute;
-  z-index: 24;
+/* ---- status footer (editor only) ---- */
+.code-card-foot {
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 46px;
-  padding: 0 10px 0 14px;
-  background: var(--cb-head);
-  border-bottom: 1px solid var(--cb-border-soft);
-  border-radius: 14px 14px 0 0;
-  box-sizing: border-box;
-}
-.code-edit-header .code-head-spacer {
-  flex: 1;
-}
-.code-edit-actions {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-.code-edit-iconbtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 30px;
-  min-width: 30px;
-  padding: 0 8px;
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--cb-muted);
-  background: transparent;
-  border: 0;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: color 0.16s ease, background 0.16s ease;
-}
-.code-edit-iconbtn:hover {
-  color: var(--cb-fg);
-  background: rgba(127, 127, 127, 0.12);
-}
-.code-edit-iconbtn svg {
-  width: 15px;
-  height: 15px;
-  flex: none;
-}
-.code-edit-iconbtn.is-on {
-  color: var(--cb-accent);
-}
-.code-edit-iconbtn.copied {
-  color: #2da44e;
-}
-
-/* ---- language dropdown ---- */
-.code-lang-select {
-  position: relative;
-}
-.code-lang-trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  height: 30px;
-  padding: 0 8px 0 10px;
-  font-family: inherit;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--cb-fg);
-  background: var(--cb-chip-bg);
-  border: 1px solid var(--cb-chip-border);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.16s ease, border-color 0.16s ease;
-}
-.code-lang-trigger:hover {
-  background: rgba(127, 127, 127, 0.1);
-}
-.code-lang-trigger .code-chevron {
-  width: 13px;
-  height: 13px;
-  color: var(--cb-muted);
-  transition: transform 0.2s ease;
-}
-.code-lang-select.open .code-lang-trigger .code-chevron {
-  transform: rotate(180deg);
-}
-.code-lang-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  min-width: 180px;
-  max-height: 260px;
-  overflow-y: auto;
-  padding: 5px;
-  background: var(--cb-menu-bg);
-  border: 1px solid var(--cb-menu-border);
-  border-radius: 11px;
-  box-shadow: 0 16px 40px -16px rgba(0, 0, 0, 0.55);
-  z-index: 30;
-}
-.code-lang-menu button {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  width: 100%;
-  padding: 8px 9px;
-  font-family: inherit;
-  font-size: 12.5px;
-  font-weight: 450;
-  text-align: left;
-  color: var(--cb-fg);
-  background: transparent;
-  border: 0;
-  border-radius: 7px;
-  cursor: pointer;
-}
-.code-lang-menu button:hover {
-  background: var(--cb-menu-hover);
-}
-.code-lang-menu button .code-tick {
-  width: 14px;
-  height: 14px;
-  margin-left: auto;
-  color: var(--cb-accent);
-  opacity: 0;
-}
-.code-lang-menu button[aria-selected="true"] .code-tick {
-  opacity: 1;
-}
-
-/* ---- footer / status bar ---- */
-.code-edit-footer {
-  position: absolute;
-  z-index: 24;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  height: 32px;
-  padding: 0 14px;
-  background: var(--cb-foot);
-  border-top: 1px solid var(--cb-border-soft);
-  border-radius: 0 0 14px 14px;
-  box-sizing: border-box;
+  height: var(--code-foot-h);
+  padding: 0 12px;
   font-family: "Fira Code", ui-monospace, monospace;
   font-size: 11px;
   letter-spacing: 0.01em;
-  color: var(--cb-muted);
+  white-space: nowrap;
+  color: var(--code-chrome-muted);
+  background: var(--code-chrome-bg);
+  border-top: 1px solid var(--code-chrome-border);
+  user-select: none;
 }
-.code-edit-footer .code-foot-sep {
+
+.code-card-foot-sep {
   width: 1px;
   height: 12px;
-  background: var(--cb-border);
+  background: var(--code-border);
 }
-.code-edit-footer .code-foot-grow {
+
+.code-card-foot-grow {
   flex: 1;
 }
 
-/* ---- active line strip ---- */
-.code-edit-active-line {
+/* ---- caret line ----
+   Behind the body (`z-index: 0` against the body's 1), so the wash sits under
+   the code rather than over it. */
+.code-card-active-line {
+  display: none;
   position: absolute;
-  z-index: 1;
-  background: var(--cb-active-line);
+  z-index: 0;
+  left: 0;
+  right: 0;
+  background: var(--code-active-line);
   pointer-events: none;
+}
+
+.LexicalTheme__code.is-active .code-card-active-line {
+  display: block;
+}
+
+/* ---- print ----
+   The header goes to paper with the block, because it is the block. The
+   controls do not — a printed "Copy" button is furniture — and neither does the
+   status footer. A collapsed block prints **expanded**: a truncated listing in
+   a printed article is a mistake, not a preference (§4.2). */
+@media print {
+  .LexicalTheme__code {
+    box-shadow: none;
+  }
+
+  .LexicalTheme__code.is-collapsed .code-card-body {
+    max-height: none;
+  }
+
+  .LexicalTheme__code.is-collapsed::after,
+  .code-card-actions,
+  .code-card-active-line,
+  .code-card-foot {
+    display: none;
+  }
+
+  .LexicalTheme__code.has-card-foot {
+    --code-foot-h: 0px;
+  }
 }
 
 .LexicalTheme__tableScrollableWrapper {
@@ -1155,8 +1094,11 @@ iframe {
   position: relative;
 }
 
-/* Equalize code block padding in layout columns */
-.LexicalTheme__layoutItem .LexicalTheme__code {
+/* Equalize code block padding in layout columns. A code block in a column also
+   gets no card chrome at all — that decision is the node's, in
+   `suppressesCardChrome`, because `exportDOM` has to make the same one and has
+   no ancestor to ask. */
+.LexicalTheme__layoutItem .LexicalTheme__code .code-card-body {
   padding-left: 14px;
   padding-right: 14px;
 }
@@ -1393,17 +1335,18 @@ html.dark .LexicalTheme__code {
   --tok-keyword: #e58373;
   --tok-variable: #c6a2e8;
   --tok-function: #82b4f2;
-}
-
-html.dark .code-block-wrapper {
-  --code-border: #232b35;
-  --code-fg: #c3ccd8;
-  --code-bg: #0f1318;
   --code-chrome-bg: #141920;
   --code-chrome-fg: #aeb9c7;
   --code-chrome-border: #1c232c;
   --code-chrome-muted: #8893a2;
-  --code-accent: #6aa6ff;
+  --code-ok: #3fb950;
+  /* The card's dark header is #141920, and a language chip's fill is a brand
+     colour with no dark twin — `DEFAULT_GLYPH_BG` is #1d222a and JavaScript's
+     and Rust's are flat #000000, so those chips sit on a near-identical
+     surface and lose their edge entirely. The ring is what gives them one; it
+     is not a colour the chip owns, so it does flip with the scheme even though
+     the fill it surrounds cannot (docs/plans/code-block-card.md §4.4). */
+  --code-glyph-ring: rgba(255, 255, 255, 0.16);
 }
 
 html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {

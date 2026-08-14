@@ -129,15 +129,20 @@ const PaneFrame: React.FC<PaneFrameProps> = ({
           scroller and so occupies the same line this row did. */
       }
       {
-        /* `position: relative` is load-bearing, not decoration. Editor plugins
-          that portal chrome into the nearest scrollable ancestor position it
-          absolutely in that scroller's coordinate space (see
-          CodeActionMenuPlugin) — which only lands where intended if the
-          scroller is also the containing block. Static, the chrome hung off
-          #editor-main-container instead: right at rest, and drifting away from
+        /* `position: relative` here is a standing requirement for any editor
+          chrome that positions itself against this scroller, and it is cheap
+          insurance rather than decoration.
+
+          It was written for CodeActionMenuPlugin, which portalled code-block
+          chrome into the nearest scrollable ancestor and positioned it in that
+          scroller's coordinate space; static, the chrome hung off
+          #editor-main-container instead — right at rest, and drifting away from
           the code the moment this pane scrolled, because it was anchored to
-          something that does not scroll. Any new scroller around the editor
-          needs this too. */
+          something that does not scroll. That plugin no longer portals anything
+          (docs/plans/code-block-card.md: the chrome is part of the block now),
+          so nothing currently depends on this. Any new scroller around the
+          editor still needs it, and the next plugin that does depend on it will
+          not think to come back here. */
       }
       <Box
         sx={{

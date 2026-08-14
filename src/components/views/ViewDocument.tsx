@@ -1,9 +1,9 @@
 "use client";
 import { Post } from "@/types";
 import { seriesPositionOf } from "@/utils/posts/seriesGrouping";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ViewAttachmentEnhancer from "./ViewAttachmentEnhancer";
-import ViewCodeEnhancer from "./ViewCodeEnhancer";
+import { registerCodeCardActions } from "@/editor/nodes/CodeNode/actions";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
@@ -85,6 +85,23 @@ const ViewDocument: React.FC<ViewDocumentProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [moreAnchor, setMoreAnchor] = useState<null | HTMLElement>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  /**
+   * The whole of the reader's side of the code block card
+   * (docs/plans/code-block-card.md §4.2).
+   *
+   * The header is in `cloudHtml` already — `CodeNode.exportDOM` emits the same
+   * card the editor builds — so nothing here constructs anything. This binds
+   * copy and collapse to it with one delegated `click`, which is what let
+   * `ViewCodeEnhancer` go: 174 lines that rebuilt a second, drifted header per
+   * block out of `document.createElement`, re-run by a `MutationObserver`
+   * racing hydration. A tab switch replaces the markup and needs no
+   * re-enhancement, because the markup was never this file's to make.
+   */
+  useEffect(() => {
+    const container = containerRef.current;
+    return container ? registerCodeCardActions(container) : undefined;
+  }, []);
 
   const activeTabId = cloudDocument.id;
   const slug = cloudDocument.handle || cloudDocument.id;
@@ -282,7 +299,6 @@ const ViewDocument: React.FC<ViewDocumentProps> = ({
           />
 
           <ViewAttachmentEnhancer containerRef={containerRef} />
-          <ViewCodeEnhancer containerRef={containerRef} />
         </div>
       </Box>
       <Snackbar
