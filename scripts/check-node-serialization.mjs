@@ -20,7 +20,7 @@
  * it can only cover the classes that import without a DOM. This covers all of
  * them, by reading the source.
  *
- * Run: npm run check:nodes
+ * Run: pnpm check:nodes
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";

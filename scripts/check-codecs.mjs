@@ -23,7 +23,7 @@
  * codec without a schema arm, or the reverse, fails there). Do not add a second
  * enforcement of it here.
  *
- * Run: npm run check:codecs
+ * Run: pnpm check:codecs
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";

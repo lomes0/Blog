@@ -11,23 +11,35 @@ FROM node:24-alpine AS base
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
+# pnpm comes from corepack, pinned by package.json's `packageManager` field, so
+# the image installs with the same version development does.
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+RUN corepack enable
 
 # ---- Dependencies -----------------------------------------------------------
 FROM base AS deps
-# patch-package runs in `postinstall`, so patches must exist before `npm ci`.
-# There is deliberately no .npmrc: the lock file is resolved under npm's normal
-# peer rules, so the image and development agree without needing to share one.
-COPY package.json package-lock.json ./
+# patch-package runs in `postinstall`, so patches must exist before the install.
+# The workspace manifests must be here too: pnpm resolves `packages/*` from
+# pnpm-workspace.yaml, and --frozen-lockfile fails if one of them is missing.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/editor/package.json ./packages/editor/
 COPY patches ./patches
-RUN npm ci
+#
+# `node-linker=hoisted` gives this stage an npm-shaped, symlink-free
+# node_modules. It is only set here, not in a committed .npmrc, so development
+# keeps pnpm's normal linking. The runner below copies individual directories
+# out of node_modules (.prisma, @prisma, prisma); under pnpm's default layout
+# those are symlinks into .pnpm and would arrive dangling.
+RUN pnpm install --frozen-lockfile --config.node-linker=hoisted
 
 # ---- Builder ----------------------------------------------------------------
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # `postinstall` only runs patch-package, so generate the client explicitly.
-RUN npx prisma generate
-RUN npm run build
+RUN pnpm exec prisma generate
+RUN pnpm build
 
 # ---- Runner -----------------------------------------------------------------
 FROM base AS runner

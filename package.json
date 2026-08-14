@@ -2,9 +2,7 @@
   "name": "blog-simple",
   "private": true,
   "version": "0.7.0",
-  "workspaces": [
-    "packages/*"
-  ],
+  "packageManager": "pnpm@11.21.0",
   "scripts": {
     "postinstall": "patch-package",
     "dev": "next dev",
@@ -12,7 +10,7 @@
     "clean": "rm -rf .next && rm -rf node_modules/.cache",
     "start": "next start",
     "lint": "next lint",
-    "rebuild": "npm run clean && npm run build",
+    "rebuild": "pnpm clean && pnpm build",
     "check:tdz": "node scripts/check-tdz.mjs",
     "check:nodes": "node scripts/check-node-serialization.mjs",
     "check:codecs": "node scripts/check-codecs.mjs",

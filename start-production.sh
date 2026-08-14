@@ -1,19 +1,10 @@
 #!/bin/bash
 
-# Production startup script for blog-simple
+# Production startup script for blog-simple.
+#
+# Everything it used to do inline — .env, nvm, cd, migrate, start — now lives in
+# run.sh, so the two cannot drift. Kept as a name for whatever unit or cron
+# entry already points at it.
 set -e
 
-# Source environment variables
-source /home/eransa/code/blog-simple/.env
-
-# Source NVM
-source /home/eransa/.nvm/nvm.sh
-
-# Change to project directory
-cd /home/eransa/code/blog-simple
-
-# Run database migrations
-# npx prisma migrate deploy
-
-# Start the Next.js application in production mode
-npm start
+exec "$(dirname "$(readlink -f "$0")")/run.sh" start
