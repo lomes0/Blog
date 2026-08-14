@@ -4,6 +4,35 @@ import tsParser from "@typescript-eslint/parser";
 import reactPlugin from "eslint-plugin-react";
 import reactHooksPlugin from "eslint-plugin-react-hooks";
 
+/**
+ * jotai belongs to the editor package, and to nothing else
+ * (docs/plans/haklex-reprise.md §5).
+ *
+ * The mirror of the `@mui/*`-under-`packages/**` ban at the foot of this file,
+ * pointing the other way: the app shell has one state library — the Redux
+ * Toolkit slice in `src/store/app.ts` — and a second one arriving beside it
+ * would mean two answers to "where does this live", decided per component. The
+ * editor is a different case: it is a package of node subtrees, each with state
+ * that is genuinely local to one figure or one note, and jotai's `Provider`
+ * scopes a store to exactly that subtree. There is deliberately **no
+ * app-level `Provider`**, so an atom read from `src/` would silently fall back
+ * to jotai's implicit global store — a store with no owner and no lifetime,
+ * which is the failure this fence exists to make unavailable.
+ *
+ * Shared as a constant because it has to be listed in two places. Flat config
+ * merges rules *by name*: a second block naming `no-restricted-imports` over
+ * the same files replaces the first rather than adding to it, so the API-route
+ * block below cannot simply be left to the `src/**` block — it would lose the
+ * `getServerSession` / `authOptions` ban it exists for. Same hazard the
+ * `no-restricted-syntax` blocks record; here it is answered by repeating the
+ * entry instead of by carving a hole in the fence.
+ */
+const NO_JOTAI = {
+  group: ["jotai", "jotai/*"],
+  message:
+    "jotai is scoped to packages/editor (docs/plans/haklex-reprise.md §5). src/** has one state library: the Redux Toolkit slice in @/store/app. There is no app-level jotai Provider, so an atom here would read from the implicit global store — use component state, or the store, or move the component into packages/editor and give it a Provider of its own.",
+};
+
 export default [
   {
     ignores: [
@@ -78,6 +107,9 @@ export default [
               "authOptions is only needed to call getServerSession by hand — use the route wrappers from @/lib/api-utils instead.",
           },
         ],
+        // Repeated from the `src/**` block below, not inherited from it: see
+        // the note on `NO_JOTAI`.
+        patterns: [NO_JOTAI],
       }],
     },
   },
@@ -219,6 +251,21 @@ export default [
           },
         ],
       }],
+    },
+  },
+  {
+    // The other half of that fence, pointing the other way: `src/**` is
+    // jotai-free. See the `NO_JOTAI` note at the top of this file for what the
+    // rule protects and why the API-route block repeats it rather than
+    // inheriting it.
+    //
+    // Scoped by directory rather than by package name, so `packages/*` is the
+    // set that may use it and a second package inherits the permission the way
+    // it inherits the MUI ban above.
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/app/api/**"],
+    rules: {
+      "no-restricted-imports": ["error", { patterns: [NO_JOTAI] }],
     },
   },
 ];

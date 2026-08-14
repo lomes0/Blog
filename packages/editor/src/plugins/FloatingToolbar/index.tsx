@@ -13,15 +13,13 @@ import {
   $getSelection,
   $isRangeSelection,
   $isTextNode,
-  COMMAND_PRIORITY_LOW,
   LexicalEditor,
-  SELECTION_CHANGE_COMMAND,
 } from "lexical";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { getDOMRangeRect } from "@/editor/utils/getDOMRangeRect";
 import { getSelectedNode } from "@/editor/utils/getSelectedNode";
-import { setFloatingElemPosition } from "@/editor/utils/setFloatingElemPosition";
+import { useFloatingElemPosition } from "@/editor/utils/useFloatingElemPosition";
 import TextFormatToggles from "../ToolbarPlugin/Tools/TextFormatToggles";
 import { floatingToolbar } from "./styles.css";
 
@@ -75,76 +73,36 @@ function FloatingToolbar(
     }
   }, [popupCharStylesEditorRef]);
 
-  const updateFloatingToolbar = useCallback(() => {
+  /**
+   * The rect the toolbar points at: the current text range.
+   *
+   * `null` when there is nothing to point at — a collapsed selection, or one
+   * whose anchor has left the editor — which the shared hook reads as "leave
+   * the toolbar where it is". That is what this function did before it was one:
+   * the old body simply returned early in the same cases.
+   */
+  const $selectionRect = useCallback((): DOMRect | null => {
     const selection = $getSelection();
-
-    const popupCharStylesEditorElem = popupCharStylesEditorRef.current;
     const nativeSelection = window.getSelection();
-
-    if (popupCharStylesEditorElem === null) {
-      return;
-    }
-
     const rootElement = editor.getRootElement();
     if (
-      selection !== null &&
-      nativeSelection !== null &&
-      !nativeSelection.isCollapsed &&
-      rootElement !== null &&
-      rootElement.contains(nativeSelection.anchorNode)
+      selection === null ||
+      nativeSelection === null ||
+      nativeSelection.isCollapsed ||
+      rootElement === null ||
+      !rootElement.contains(nativeSelection.anchorNode)
     ) {
-      const rangeRect = getDOMRangeRect(nativeSelection, rootElement);
-
-      setFloatingElemPosition(
-        rangeRect,
-        popupCharStylesEditorElem,
-        anchorElem,
-      );
+      return null;
     }
-  }, [editor, anchorElem]);
+    return getDOMRangeRect(nativeSelection, rootElement);
+  }, [editor]);
 
-  useEffect(() => {
-    const scrollerElem = anchorElem.parentElement;
-
-    const update = () => {
-      editor.getEditorState().read(() => {
-        updateFloatingToolbar();
-      });
-    };
-
-    window.addEventListener("resize", update);
-    if (scrollerElem) {
-      scrollerElem.addEventListener("scroll", update);
-    }
-
-    return () => {
-      window.removeEventListener("resize", update);
-      if (scrollerElem) {
-        scrollerElem.removeEventListener("scroll", update);
-      }
-    };
-  }, [editor, updateFloatingToolbar, anchorElem]);
-
-  useEffect(() => {
-    editor.getEditorState().read(() => {
-      updateFloatingToolbar();
-    });
-    return mergeRegister(
-      editor.registerUpdateListener(({ editorState }) => {
-        editorState.read(() => {
-          updateFloatingToolbar();
-        });
-      }),
-      editor.registerCommand(
-        SELECTION_CHANGE_COMMAND,
-        () => {
-          updateFloatingToolbar();
-          return false;
-        },
-        COMMAND_PRIORITY_LOW,
-      ),
-    );
-  }, [editor, updateFloatingToolbar]);
+  useFloatingElemPosition(
+    editor,
+    anchorElem,
+    popupCharStylesEditorRef,
+    $selectionRect,
+  );
 
   return (
     <div

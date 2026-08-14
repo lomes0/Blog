@@ -19,6 +19,7 @@ import CodeActionMenuPlugin from "./CodePlugin/CodeActionMenuPlugin";
 import AutoLinkPlugin from "./LinkPlugin/AutoLinkPlugin";
 import TableCellResizer from "./TablePlugin/TableCellResizer";
 import FloatingToolbarPlugin from "./FloatingToolbar";
+import FloatingImageToolbarPlugin from "./FloatingImageToolbar";
 import HorizontalRulePlugin from "./HorizontalRulePlugin";
 import MathPlugin from "./MathPlugin";
 import ImagePlugin from "./ImagePlugin";
@@ -114,6 +115,7 @@ export const EditorPlugins: React.FC<{
       {editor.hasNode(TableNode) && <TablePlugin />}
       {editor.hasNode(TableNode) && <TableCellResizer />}
       {editor.hasNode(ImageNode) && <ImagePlugin />}
+      {editor.hasNode(ImageNode) && <FloatingImageToolbarPlugin />}
       {editor.hasNode(AttachmentNode) && <AttachmentPlugin />}
       {editor.hasNode(SketchNode) && <SketchPlugin />}
       {editor.hasNode(GraphNode) && <GraphPlugin />}
