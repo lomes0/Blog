@@ -18,6 +18,7 @@ import CodeHighlightPlugin from "./CodePlugin/CodeHighlightPlugin";
 import CodeActionMenuPlugin from "./CodePlugin/CodeActionMenuPlugin";
 import AutoLinkPlugin from "./LinkPlugin/AutoLinkPlugin";
 import TableCellResizer from "./TablePlugin/TableCellResizer";
+import TableRowColumnHandles from "./TablePlugin/TableRowColumnHandles";
 import FloatingToolbarPlugin from "./FloatingToolbar";
 import FloatingImageToolbarPlugin from "./FloatingImageToolbar";
 import HorizontalRulePlugin from "./HorizontalRulePlugin";
@@ -114,6 +115,7 @@ export const EditorPlugins: React.FC<{
       <AutoLinkPlugin />
       {editor.hasNode(TableNode) && <TablePlugin />}
       {editor.hasNode(TableNode) && <TableCellResizer />}
+      {editor.hasNode(TableNode) && <TableRowColumnHandles />}
       {editor.hasNode(ImageNode) && <ImagePlugin />}
       {editor.hasNode(ImageNode) && <FloatingImageToolbarPlugin />}
       {editor.hasNode(AttachmentNode) && <AttachmentPlugin />}

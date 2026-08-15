@@ -13,6 +13,61 @@
   z-index: 1;
 }
 
+/*
+  The drag zone is 16px so it is easy to hit, and transparent so it does not
+  draw a 16px band over the table. The hairline is what the reader actually
+  sees: `::after` centres a 2px line inside the zone, hidden until the pointer
+  is on it.
+
+  Until this rule the zone drew nothing at all until a drag was already in
+  progress — an affordance that only appears after you have found it. See the
+  comment beside the two divs in `TableCellResizer.tsx`.
+*/
+.TableCellResizer__resizer::after {
+  content: "";
+  position: absolute;
+  background-color: var(--doc-selection-fill);
+  opacity: 0;
+  transition: opacity 100ms ease;
+}
+
+.TableCellResizer__right::after {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-1px);
+}
+
+.TableCellResizer__bottom::after {
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  transform: translateY(-1px);
+}
+
+.TableCellResizer__resizer:hover::after {
+  opacity: 1;
+}
+
+/*
+  Mid-drag the element *is* the line: `getResizers()` collapses it to 2px and
+  parks it under the pointer, so the hairline inside it would be a line within
+  a line.
+*/
+.TableCellResizer__resizer[data-active] {
+  background-color: var(--doc-selected-outline);
+  mix-blend-mode: unset;
+}
+
+.TableCellResizer__resizer[data-active]::after {
+  opacity: 0;
+}
+
+/*
+  Touch has no hover, so the zone shows itself unprompted there.
+*/
 @media (pointer: coarse) {
   .TableCellResizer__resizer {
     background-color: var(--doc-selection-fill);

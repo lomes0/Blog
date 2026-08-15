@@ -4,12 +4,7 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-import {
-  $getTableCellNodeFromLexicalNode,
-  TableCellNode,
-  TableDOMCell,
-  TableMapType,
-} from "@lexical/table";
+import { TableCellNode, TableDOMCell, TableMapType } from "@lexical/table";
 import type { LexicalEditor, NodeKey } from "lexical";
 import type { CSSProperties, JSX, PointerEventHandler } from "react";
 
@@ -27,12 +22,8 @@ import {
   getTableElement,
 } from "@lexical/table";
 import { calculateZoomLevel, mergeRegister } from "@lexical/utils";
-import {
-  $getNearestNodeFromDOMNode,
-  $getSelection,
-  $isRangeSelection,
-  isHTMLElement,
-} from "lexical";
+import { $getNearestNodeFromDOMNode, isHTMLElement } from "lexical";
+import { $getSelectedTableCell } from "./tableCommands";
 import * as React from "react";
 import {
   ReactPortal,
@@ -54,46 +45,6 @@ type PointerDraggingDirection = "right" | "bottom";
 
 const MIN_ROW_HEIGHT = 33;
 const MIN_COLUMN_WIDTH = 75;
-
-const $getSelectedTableCell = (editor: LexicalEditor): TableCellNode | null => {
-  const selection = $getSelection();
-  const nativeSelection = window.getSelection();
-  const activeElement = document.activeElement;
-
-  if (selection == null) {
-    return null;
-  }
-
-  const rootElement = editor.getRootElement();
-
-  if (
-    $isRangeSelection(selection) &&
-    rootElement !== null &&
-    nativeSelection !== null &&
-    rootElement.contains(nativeSelection.anchorNode)
-  ) {
-    const tableCellNodeFromSelection = $getTableCellNodeFromLexicalNode(
-      selection.anchor.getNode(),
-    );
-
-    if (!$isTableCellNode(tableCellNodeFromSelection)) {
-      return null;
-    }
-
-    const tableCellParentNodeDOM = editor.getElementByKey(
-      tableCellNodeFromSelection.getKey(),
-    );
-
-    if (tableCellParentNodeDOM == null) {
-      return null;
-    }
-
-    return tableCellNodeFromSelection;
-  } else if (!activeElement) {
-    return null;
-  }
-  return null;
-};
 
 function TableCellResizer({ editor }: { editor: LexicalEditor }): JSX.Element {
   const targetRef = useRef<HTMLElement | null>(null);
@@ -465,7 +416,6 @@ function TableCellResizer({ editor }: { editor: LexicalEditor }): JSX.Element {
       const zoneWidth = 16; // Pixel width of the zone where you can drag the edge
       const styles: Record<string, CSSProperties> = {
         bottom: {
-          backgroundColor: "none",
           cursor: "row-resize",
           height: `${zoneWidth}px`,
           left: `${window.scrollX + left}px`,
@@ -473,7 +423,6 @@ function TableCellResizer({ editor }: { editor: LexicalEditor }): JSX.Element {
           width: `${Math.min(width, window.innerWidth - left)}px`,
         },
         right: {
-          backgroundColor: "none",
           cursor: "col-resize",
           height: `${Math.min(height, window.innerHeight - top)}px`,
           left: `${window.scrollX + left + width - zoneWidth / 2}px`,
@@ -506,8 +455,6 @@ function TableCellResizer({ editor }: { editor: LexicalEditor }): JSX.Element {
         styles[draggingDirection].width = "2px";
       }
 
-      styles[draggingDirection].backgroundColor = "#adf";
-      styles[draggingDirection].mixBlendMode = "unset";
       return styles;
     }
 
@@ -525,13 +472,23 @@ function TableCellResizer({ editor }: { editor: LexicalEditor }): JSX.Element {
     <div ref={resizerRef}>
       {activeCell != null && (
         <>
+          {/*
+            The direction and active classes are what make the drag zone
+            *visible* — a hairline under the pointer on hover, the accent line
+            while dragging. Until then this was a 16px invisible strip that only
+            drew anything once the drag had already started, so the one table
+            affordance the editor had was the one nothing announced. See
+            `index.css`; the colors are tokens, the geometry stays here.
+          */}
           <div
-            className="TableCellResizer__resizer TableCellResizer__ui"
+            className="TableCellResizer__resizer TableCellResizer__right TableCellResizer__ui"
+            data-active={draggingDirection === "right" || undefined}
             style={resizerStyles.right || undefined}
             onPointerDown={toggleResize("right")}
           />
           <div
-            className="TableCellResizer__resizer TableCellResizer__ui"
+            className="TableCellResizer__resizer TableCellResizer__bottom TableCellResizer__ui"
+            data-active={draggingDirection === "bottom" || undefined}
             style={resizerStyles.bottom || undefined}
             onPointerDown={toggleResize("bottom")}
           />
