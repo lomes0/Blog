@@ -1,17 +1,17 @@
 # Bring-your-own provider keys
 
-**Status: phase 1 shipped 15 Aug 2026; phases 2–5 open.** Measured against the
-tree at `9b839169`. Decided at the outset, so the alternatives below are
+**Status: phases 1–2 shipped 15 Aug 2026; phases 3–5 open.** Measured against
+the tree at `9b839169`. Decided at the outset, so the alternatives below are
 recorded for their reasoning rather than as live options: **keys are stored
 server-side, encrypted** (§4), and **there is no deployment-key fallback** — a
 user with no key for the provider they picked is refused and told to add one
 (§4.7).
 
-Phase 1 landed the storage layer and nothing else: `ProviderCredential`,
-`src/lib/providerCredentials/`, and 33 specs. Nothing calls it yet, so the app
-still resolves keys from `process.env` exactly as before — §5 is deliberately
-ordered so that the switch to per-user keys is the *last* phase rather than the
-first.
+Phase 1 landed the storage layer; phase 2 put a route and a CLI on top of it, so
+a user can now add, replace and remove a key. **The app still resolves keys from
+`process.env`** — §5 is deliberately ordered so that the switch to per-user keys
+is the *last* phase rather than the first, and nothing a user stores is used for
+a completion until phase 4.
 
 Today every signed-in user spends the deployment's AI credits, because
 `src/lib/ai/providers.ts` reads `process.env` and there is nowhere else a key
@@ -392,12 +392,35 @@ Three things the plan did not anticipate, recorded because they cost time:
   reach: the `Bytes` round trip, the compound-key upsert replacing rather than
   colliding, and `iv`/`authTag` coming back at their declared lengths.
 
-**Phase 2 — the route and the CLI.** §4.6, plus `pnpm ai:key` mirroring
-`pnpm mcp:token`, so a deployment can seed a key without a browser and local dev
-does not need the UI to exist yet.
-*Acceptance:* a key can be added, listed masked, replaced and deleted over HTTP;
-a wrong key is refused at `PUT`; the rate limit fires; `GET` never returns
-plaintext (assert on the serialized response body, not on the type).
+**Phase 2 — the route and the CLI. SHIPPED 15 Aug 2026.** §4.6, plus
+`pnpm ai:key` mirroring `pnpm mcp:token`.
+*Acceptance, met* — a throwaway script drove 23 checks against the dev server
+(routes are script-verified here; CLAUDE.md's rule that no automated check
+covers API authorization applies): a key added, listed masked, replaced and
+deleted over HTTP; a wrong key refused at `PUT` before storage; the budget
+running out; `GET` never returning plaintext, asserted on the serialized body.
+Plus `verifyKey.test.ts`, 11 tests on the classification and redaction.
+
+Two departures from the plan as written, both deliberate:
+
+- **§4.4's signature change came forward into this phase.** `verifyProviderKey`
+  needs to build a provider from an explicit key, and the alternative was a
+  second construction path duplicating Azure's fetch-rewriting. So
+  `createProvider(type, credentials)` landed now, with the routes passing a
+  temporary `credentialsFromEnv(provider)` that preserves today's behaviour
+  exactly. Phase 4 is correspondingly smaller: swap what the routes pass, delete
+  `credentialsFromEnv`. Dead `getModelInstance` went with it.
+- **The rate limit is spent after body validation, not before.** What is
+  rationed is the provider call, and a body the schema rejects never makes one —
+  charging for it would let the settings dialog's own validation errors eat the
+  allowance a user needs to enter their key. Found by the verification script,
+  whose budget arithmetic did not come out.
+
+One thing worth knowing for phase 3: `verifyProviderKey` distinguishes
+`rejected` (400, the user's to fix) from `unreachable` (502, ours), and the
+route relies on that. Collapsing them would tell someone their key is wrong
+because our network was down, which is the one outcome that makes a correct key
+look broken.
 
 **Phase 3 — the UI.** An "AI providers" section in `SettingsPanel.tsx` (DESIGN.md
 conventions), with the four states the design system requires — empty, saving,

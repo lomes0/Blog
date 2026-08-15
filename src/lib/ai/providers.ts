@@ -2,7 +2,7 @@ import { createOllama } from "ollama-ai-provider";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createAnthropic } from "@ai-sdk/anthropic";
-import type { AIModel, AIProviderType } from "./types";
+import type { AIProviderType } from "./types";
 import { AIConfigurationError, AIProviderError } from "./errors";
 
 /**
@@ -14,36 +14,56 @@ import { AIConfigurationError, AIProviderError } from "./errors";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ProviderInstance = (modelId: string) => any;
 
-const createGoogleProvider = (): ProviderInstance => {
-  const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-  if (!apiKey) {
-    throw new AIConfigurationError(
-      "GOOGLE_GENERATIVE_AI_API_KEY not configured",
-    );
+/**
+ * What a provider needs to make a call, resolved by the caller rather than read
+ * from `process.env` here — docs/plans/byo-provider-keys.md §4.4.
+ *
+ * The split down the middle is a security boundary, not a convenience: the
+ * **key** is the user's and arrives from `providerCredentials`, while the
+ * **URLs** are the deployment's and come from the environment. `providerRequiresKey`
+ * carries the reasoning; the short version is that a user-supplied base URL
+ * turns this factory into an SSRF gadget.
+ */
+export interface ProviderCredentials {
+  /** Absent only where `providerRequiresKey` is false — that is, Ollama. */
+  apiKey?: string;
+  /** Deployment config. Required by Azure, optional for Ollama. */
+  baseURL?: string;
+  /** Deployment config. Azure only. */
+  apiVersion?: string;
+}
+
+/** The key, or a refusal naming the provider that wanted one. */
+const requireKey = (
+  credentials: ProviderCredentials,
+  provider: AIProviderType,
+): string => {
+  if (!credentials.apiKey) {
+    throw new AIConfigurationError(`No API key supplied for ${provider}`);
   }
-  return createGoogleGenerativeAI({ apiKey });
+  return credentials.apiKey;
 };
 
-const createAnthropicProvider = (): ProviderInstance => {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new AIConfigurationError("ANTHROPIC_API_KEY not configured");
-  }
-  return createAnthropic({ apiKey });
-};
+const createGoogleProvider = (
+  credentials: ProviderCredentials,
+): ProviderInstance =>
+  createGoogleGenerativeAI({ apiKey: requireKey(credentials, "google") });
 
-const createAzureProvider = (): ProviderInstance => {
-  const apiKey = process.env.AZURE_API_KEY;
-  if (!apiKey) {
-    throw new AIConfigurationError("AZURE_API_KEY not configured");
-  }
+const createAnthropicProvider = (
+  credentials: ProviderCredentials,
+): ProviderInstance =>
+  createAnthropic({ apiKey: requireKey(credentials, "anthropic") });
 
-  const baseURL = process.env.AZURE_OPENAI_BASE_URL;
+const createAzureProvider = (
+  credentials: ProviderCredentials,
+): ProviderInstance => {
+  const apiKey = requireKey(credentials, "azure");
+
+  const baseURL = credentials.baseURL;
   if (!baseURL) {
     throw new AIConfigurationError("AZURE_OPENAI_BASE_URL not configured");
   }
-  const apiVersion = process.env.AZURE_OPENAI_API_VERSION ||
-    "2025-04-01-preview";
+  const apiVersion = credentials.apiVersion || "2025-04-01-preview";
 
   // Use @ai-sdk/openai with custom fetch to transform URLs for Azure format
   // This provides v2/v3 model specs while using standard chat completions API
@@ -115,24 +135,69 @@ const createAzureProvider = (): ProviderInstance => {
   return (modelId: string) => openai.chat(modelId);
 };
 
-const createOllamaProvider = (): ProviderInstance => {
-  const baseURL = process.env.OLLAMA_API_URL || "http://localhost:11434/api";
-  return createOllama({ baseURL });
+const createOllamaProvider = (
+  credentials: ProviderCredentials,
+): ProviderInstance =>
+  createOllama({ baseURL: credentials.baseURL || OLLAMA_DEFAULT_URL });
+
+const OLLAMA_DEFAULT_URL = "http://localhost:11434/api";
+
+/**
+ * The deployment's own AI configuration, as it has always been read.
+ *
+ * **Temporary.** Once the routes resolve a user's own key
+ * (docs/plans/byo-provider-keys.md phase 4) the only part of this that survives
+ * is the URL half — the three `*_API_KEY` reads go away with it, and so do the
+ * variables. It exists now so that adding the credentials parameter above is
+ * not also the change that switches the app to per-user keys: those are
+ * separate phases precisely because the second one breaks AI for anyone who has
+ * not added a key yet.
+ */
+export const credentialsFromEnv = (
+  providerType: AIProviderType,
+): ProviderCredentials => {
+  switch (providerType) {
+    case "google":
+      return { apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY };
+    case "anthropic":
+      return { apiKey: process.env.ANTHROPIC_API_KEY };
+    case "azure":
+      return {
+        apiKey: process.env.AZURE_API_KEY,
+        baseURL: process.env.AZURE_OPENAI_BASE_URL,
+        apiVersion: process.env.AZURE_OPENAI_API_VERSION,
+      };
+    case "ollama":
+      return { baseURL: process.env.OLLAMA_API_URL };
+  }
+};
+
+/**
+ * The deployment-configured half of a provider's settings: the URLs, which stay
+ * the deployment's business even after the keys become the user's (§4.5).
+ * Pair it with a user's key to build the full credentials.
+ */
+export const deploymentEndpoint = (
+  providerType: AIProviderType,
+): Pick<ProviderCredentials, "baseURL" | "apiVersion"> => {
+  const { baseURL, apiVersion } = credentialsFromEnv(providerType);
+  return { baseURL, apiVersion };
 };
 
 export const createProvider = (
   providerType: AIProviderType,
+  credentials: ProviderCredentials,
 ): ProviderInstance => {
   try {
     switch (providerType) {
       case "google":
-        return createGoogleProvider();
+        return createGoogleProvider(credentials);
       case "anthropic":
-        return createAnthropicProvider();
+        return createAnthropicProvider(credentials);
       case "azure":
-        return createAzureProvider();
+        return createAzureProvider(credentials);
       case "ollama":
-        return createOllamaProvider();
+        return createOllamaProvider(credentials);
       default:
         throw new AIProviderError(
           providerType,
@@ -151,10 +216,4 @@ export const createProvider = (
       error,
     );
   }
-};
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const getModelInstance = (model: AIModel): any => {
-  const provider = createProvider(model.provider);
-  return provider(model.id);
 };

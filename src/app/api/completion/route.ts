@@ -6,6 +6,7 @@ import {
   AI_PROVIDERS,
   completionSystemPrompt,
   createProvider,
+  credentialsFromEnv,
   getModelById,
 } from "@/lib/ai";
 import { ApiError, parseBody, userRoute } from "@/lib/api-utils";
@@ -94,7 +95,7 @@ export const POST = userRoute(async (request) => {
     throw new ApiError(404, "Model not found", `Model '${modelId}' not found`);
   }
 
-  const providerInstance = createProvider(provider);
+  const providerInstance = createProvider(provider, credentialsFromEnv(provider));
   const modelInstance = providerInstance(model.id);
 
   const result = streamText({
