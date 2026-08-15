@@ -195,6 +195,8 @@ model User {
   copilotThreads CopilotThread[] // User's Copilot conversations
   agentTokens    AgentToken[] // Bearer credentials for the remote MCP endpoint
 
+  providerCredentials ProviderCredential[] // This user's own AI provider API keys
+
   @@index([email])
   @@index([handle])
 }
@@ -250,6 +252,70 @@ model AgentToken {
   /// evidence about what a leaked credential did, and deleting destroys it.
   revokedAt DateTime?
 
+  @@index([userId])
+}
+
+/// A user's own API key for one AI provider — see docs/plans/byo-provider-keys.md §4.1.
+///
+/// Read the row above first, then the one difference that shapes everything
+/// here: `AgentToken` stores a SHA-256 because the server only ever has to
+/// recognise the same string again, but this key is **replayed verbatim** to
+/// api.anthropic.com on every completion, so the server must be able to read it
+/// back. It is therefore encrypted, not hashed, and the security claim is
+/// correspondingly narrower and worth stating where the columns are:
+///
+///   a dump of this table is useless on its own — the ciphertext is AES-256-GCM
+///   under a key that lives in the environment (`AI_CREDENTIAL_KEYS`)
+///   a host holding both the database and that environment has every user's key
+///
+/// The second line is not a defect to be fixed later; it is what "replayable
+/// credential" costs. What it buys over keeping the key in the browser is that
+/// the plaintext never travels back toward a client, so an XSS in the app
+/// cannot exfiltrate it. See §6 of the plan for the full table.
+model ProviderCredential {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  // Cascade for the reason AgentToken cascades: deleting an account must not
+  // leave live third-party credentials behind.
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Which provider, spelled as `AIModel.provider` spells it. A plain string
+  /// rather than an enum, matching `AgentToken.scopes` and `User.role` — the set
+  /// grows, and growing it should not be a migration.
+  provider String
+
+  /// The AES-256-GCM parts, in three columns rather than one packed blob: a
+  /// malformed row is then a decode failure at a named field instead of an
+  /// off-by-one in a parser nobody reads twice.
+  ciphertext Bytes
+  iv         Bytes
+  authTag    Bytes
+
+  /// Which KEK sealed this row. Present in the first migration because
+  /// retrofitting rotation means re-encrypting blind — with this column a
+  /// rotation is "open under the version the row names, re-seal under the
+  /// current one", and it can be resumed after a crash.
+  keyVersion Int @default(1)
+
+  /// Last four characters of the plaintext, for the masked display. Four is what
+  /// the providers themselves show: enough to tell one of your own keys from
+  /// another, not a meaningful fraction of the secret.
+  last4 String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Last time a completion used it — the evidence for "is this key still live".
+  /// Throttled like `AgentToken.lastUsedAt`; see `shouldTouch`.
+  lastUsedAt DateTime?
+
+  /// Last time it was checked against the provider and worked.
+  lastVerifiedAt DateTime?
+
+  /// One key per provider per user. Several keys for one provider would need a
+  /// "which is the default" concept for no benefit — a user replacing a key
+  /// means to replace it, so the write is an upsert.
+  @@unique([userId, provider])
   @@index([userId])
 }
 
