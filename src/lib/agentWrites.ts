@@ -49,6 +49,8 @@ import { prisma } from "@/lib/prisma";
 import { changeNotification } from "@/lib/changes/notify";
 import { isProposalStale, selectAgentRead } from "@/lib/proposals";
 import { rankForAppend } from "@/repositories/ordering";
+import { reconcileDocumentBlobs } from "@/repositories/blob";
+import { blobHashesFor } from "@/lib/blobRefs";
 import {
   findPendingProposal,
   type ProposalRecord,
@@ -446,6 +448,8 @@ export async function proposeNewPost(
         documentId: id,
         authorId: input.authorId,
         data: state as object,
+        // With the content, always (docs/plans/blob-storage.md §3).
+        blobHashes: blobHashesFor(state),
         // Stamped here as well as on the document. `Document.agentOrigin`
         // answers "who created this post", but a revision list is where you
         // look to ask what wrote a particular state, and this one was arriving
@@ -455,6 +459,10 @@ export async function proposeNewPost(
     }),
     ...(notification ? [notification] : []),
   ]);
+
+  // Blocks copied from another post can carry a blob reference into a post that
+  // has never seen an upload (docs/plans/blob-storage.md §3).
+  await reconcileDocumentBlobs(id);
 
   return {
     ok: true,

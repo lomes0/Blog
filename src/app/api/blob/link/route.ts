@@ -4,6 +4,7 @@ import { ApiError, parseBody, userRoute } from "@/lib/api-utils";
 import { requireDocument } from "@/lib/access";
 import { linkBlobToDocument } from "@/repositories/blob";
 import { isValidHash } from "@/lib/storage";
+import { blobUrl } from "@/lib/blobRefs";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,7 @@ export const POST = userRoute(async (request, { user }) => {
     throw new ApiError(404, "Not found", "That blob is not stored yet");
   }
 
-  return NextResponse.json({ data: { url: `/api/blob/${hash}`, hash } });
+  return NextResponse.json({ data: { url: blobUrl(hash), hash } });
 }, {
   errorLabel: "Error linking blob",
   signInMessage: "Please sign in to add images",

@@ -4,6 +4,7 @@ import {
   createRevision,
   findRevisionDocumentId,
 } from "@/repositories/revision";
+import { reconcileDocumentBlobs } from "@/repositories/blob";
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
@@ -53,6 +54,11 @@ export const POST = userRoute(async (request, { user }) => {
   };
 
   const revision = await createRevision(input);
+
+  // Re-posting a known id rewrites that revision, so this both adds references
+  // and can drop one (docs/plans/blob-storage.md §3).
+  await reconcileDocumentBlobs(body.documentId);
+
   return NextResponse.json({
     data: {
       id: revision.id,

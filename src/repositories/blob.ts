@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { planBlobRefs, unionOf } from "@/lib/blobRefs";
 import type { Blob, Prisma } from "@prisma/client";
 
 /**
@@ -141,4 +142,80 @@ export async function linkBlobToDocument(
     update: {},
   });
   return true;
+}
+
+/**
+ * Make the document's `BlobRef` rows match what its content actually
+ * references — docs/plans/blob-storage.md §3, and the precondition for §5.
+ *
+ * Call it after **anything that changes the set of revision rows or their
+ * content**: a save, a revision created or deleted, a proposal written,
+ * approved or rejected, an import. That rule is the invariant this whole
+ * mechanism rests on — a content write that does not reconcile leaves the
+ * document referencing bytes nobody records, and §5's collector believes the
+ * record.
+ *
+ * It takes no content, because it needs none: every write stamps its own
+ * revision's `blobHashes` in the statement that stores the data (that is what
+ * `blobHashesFor` is for), so what a document references is already answerable
+ * from short arrays rather than from megabytes of JSON. Reconciling is then the
+ * same three queries whether content arrived, changed or was deleted.
+ *
+ * ## It never throws
+ *
+ * Reconciliation is bookkeeping that runs after a committed write, so a failure
+ * here must not turn a save the user already made into a 500 they will retry.
+ * What a swallowed failure costs is bounded and self-healing: the reference set
+ * stays as it was, so nothing becomes unreadable — references for new images
+ * were already created at upload time — and the next write reconciles again.
+ * Only the collector notices, by leaving bytes alone that it could have taken.
+ */
+export async function reconcileDocumentBlobs(
+  documentId: string,
+): Promise<void> {
+  try {
+    const [refs, revisions] = await Promise.all([
+      prisma.blobRef.findMany({
+        where: { documentId },
+        select: { blobHash: true, createdAt: true },
+      }),
+      prisma.revision.findMany({
+        where: { documentId },
+        select: { blobHashes: true },
+      }),
+    ]);
+
+    const recorded = refs.map((ref) => ({
+      hash: ref.blobHash,
+      createdAt: ref.createdAt,
+    }));
+    const referenced = unionOf(revisions.map((r) => r.blobHashes));
+
+    const { add, remove } = planBlobRefs(recorded, referenced, new Date());
+
+    if (add.length > 0) {
+      // A hash can be referenced by content whose bytes this deployment does
+      // not hold — an imported bundle, a document restored from elsewhere. The
+      // foreign key would reject the whole batch for one such row, so the
+      // unknown ones are dropped rather than allowed to fail the known ones.
+      const stored = await prisma.blob.findMany({
+        where: { hash: { in: add } },
+        select: { hash: true },
+      });
+      if (stored.length > 0) {
+        await prisma.blobRef.createMany({
+          data: stored.map(({ hash }) => ({ blobHash: hash, documentId })),
+          skipDuplicates: true,
+        });
+      }
+    }
+
+    if (remove.length > 0) {
+      await prisma.blobRef.deleteMany({
+        where: { documentId, blobHash: { in: remove } },
+      });
+    }
+  } catch (error) {
+    console.warn(`Could not reconcile blob refs for ${documentId}`, error);
+  }
 }

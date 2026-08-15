@@ -5,6 +5,8 @@ import {
   userRoute,
 } from "@/lib/api-utils";
 import { requireDocument } from "@/lib/access";
+import { reconcileDocumentBlobs } from "@/repositories/blob";
+import { blobHashesFor } from "@/lib/blobRefs";
 import {
   deleteDocument,
   findEditorDocument,
@@ -128,6 +130,11 @@ export const PATCH = userRoute<{ id: string }>(
             authorId: user.id,
             createdAt: body.updatedAt,
             data: body.data as unknown as Prisma.InputJsonObject,
+            // Stamped in the same statement as the content it describes
+            // (docs/plans/blob-storage.md §3). Nothing else reads `data` back to
+            // work this out, so a write that stores one without the other is the
+            // one way to make the collector wrong.
+            blobHashes: blobHashesFor(body.data),
           },
         },
       };
@@ -150,6 +157,13 @@ export const PATCH = userRoute<{ id: string }>(
         );
       }
       throw error;
+    }
+
+    // The content is committed; bring the document's blob references in line
+    // with it (docs/plans/blob-storage.md §3). Only a content save can change
+    // them — a rename or a publish toggle carries no `data`.
+    if (body.data && body.head) {
+      await reconcileDocumentBlobs(params.id);
     }
 
     revalidatePath("/");

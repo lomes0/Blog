@@ -6,6 +6,7 @@ import {
 } from "@/lib/api-utils";
 import { requireRevision } from "@/lib/access";
 import { deleteRevision, findRevisionAuthorId } from "@/repositories/revision";
+import { reconcileDocumentBlobs } from "@/repositories/blob";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -45,6 +46,13 @@ export const DELETE = userRoute<{ id: string }>(
     );
 
     const revision = await deleteRevision(params.id);
+
+    // History is part of what references a blob, so losing a revision can be
+    // the last thing holding one (docs/plans/blob-storage.md §3). No content is
+    // passed: what is left to reference is exactly what the other revisions
+    // say, and that is the scan.
+    await reconcileDocumentBlobs(revision.documentId);
+
     return NextResponse.json({
       data: {
         id: revision.id,

@@ -21,6 +21,8 @@ import { emptyState } from "@/lib/content-bridge/ops";
 import type { StoredState } from "@/lib/content-bridge/types";
 import { APP_ORIGIN } from "@/lib/changes/events";
 import { notifyChange } from "@/lib/changes/notify";
+import { reconcileDocumentBlobs } from "@/repositories/blob";
+import { blobHashesFor } from "@/lib/blobRefs";
 
 /**
  * A revision as stored, including whether it is a pending agent proposal.
@@ -160,6 +162,9 @@ export class ProposalWriteError extends Error {
  */
 const createRevision = async (data: Prisma.RevisionUncheckedCreateInput) => {
   const id = data.id as string;
+  // Derived here rather than taken from the caller, so both arms below agree and
+  // neither route has to remember (docs/plans/blob-storage.md §3).
+  const blobHashes = blobHashesFor(data.data);
 
   // Two passes rather than one so that losing a race to an identical create is
   // retried instead of being reported as a proposal collision. Exhausting them
@@ -168,12 +173,12 @@ const createRevision = async (data: Prisma.RevisionUncheckedCreateInput) => {
   for (let attempt = 0; attempt < 2; attempt++) {
     const { count } = await prisma.revision.updateMany({
       where: { id, proposedAt: null },
-      data: { data: data.data, createdAt: data.createdAt },
+      data: { data: data.data, createdAt: data.createdAt, blobHashes },
     });
     if (count > 0) return prisma.revision.findUniqueOrThrow({ where: { id } });
 
     try {
-      return await prisma.revision.create({ data });
+      return await prisma.revision.create({ data: { ...data, blobHashes } });
     } catch (error) {
       if (!isUniqueViolation(error)) throw error;
     }
@@ -486,6 +491,7 @@ const writeProposal = async (
           documentId: input.documentId,
           authorId: input.authorId,
           data: asJson(plan.row.data),
+          blobHashes: blobHashesFor(plan.row.data),
           ops: asJson(plan.row.ops),
           origin: plan.row.origin,
           summary: plan.row.summary,
@@ -529,6 +535,7 @@ const writeProposal = async (
       where: { id: plan.id, version: plan.expectedVersion },
       data: {
         data: asJson(plan.patch.data),
+        blobHashes: blobHashesFor(plan.patch.data),
         ops: asJson(plan.patch.ops),
         origin: plan.patch.origin,
         summary: plan.patch.summary,
@@ -579,6 +586,11 @@ const upsertProposal = async (
   input: ProposalInput,
 ): Promise<ProposalRecord> => {
   const record = await writeProposal(input);
+  // An agent cannot create an image, but it can move a block that holds one, and
+  // the review rail has to be able to render what it proposed
+  // (docs/plans/blob-storage.md §3). A fold rewrites the pending row, so this
+  // can drop a reference as well as add one.
+  await reconcileDocumentBlobs(record.documentId);
   await notifyChange(prisma, {
     kind: "proposal.upserted",
     id: record.documentId,
@@ -750,7 +762,7 @@ const approveProposal = async (
   decisions: ApprovalDecisions = {},
 ): Promise<ApproveResult> => {
   try {
-    return await prisma.$transaction(async (tx): Promise<ApproveResult> => {
+    const result = await prisma.$transaction(async (tx): Promise<ApproveResult> => {
       const proposal = await tx.revision.findFirst({
         where: { id: revisionId, documentId, proposedAt: { not: null } },
         select: {
@@ -782,8 +794,13 @@ const approveProposal = async (
 
       // Everything the merge needs is decided before anything is written, so a
       // refused selection returns from a transaction that wrote nothing.
-      let content: { data: Prisma.InputJsonValue; summary: string | null } | null =
-        null;
+      let content:
+        | {
+          data: Prisma.InputJsonValue;
+          blobHashes: string[];
+          summary: string | null;
+        }
+        | null = null;
       let partial: { applied: number; total: number } | undefined;
       if (plan.rejected.length > 0) {
         const merged = await materializePartial(
@@ -795,6 +812,9 @@ const approveProposal = async (
         if (!merged.ok) return merged.refusal;
         content = {
           data: asJson(merged.state),
+          // The refused hunks are gone from what is about to become head, so
+          // the row's blob list has to shrink with them (blob-storage §3).
+          blobHashes: blobHashesFor(merged.state),
           summary: noteApplied(proposal.summary, merged.applied, merged.total),
         };
         partial = { applied: merged.applied, total: merged.total };
@@ -848,6 +868,15 @@ const approveProposal = async (
 
       return { ok: true, head: revisionId, ...(partial ? { partial } : {}) };
     });
+
+    // Outside the transaction, and only once it committed: a partial approval
+    // rewrites the row's `data` to the proposal minus the refused hunks, so a
+    // blob that only the refused half referenced stops being referenced at all
+    // (docs/plans/blob-storage.md §3). No content is passed — the promoted state
+    // is one revision among several and the union is what matters.
+    if (result.ok) await reconcileDocumentBlobs(documentId);
+
+    return result;
   } catch (error) {
     // The one failure that has to unwind a write it already made. Converted back
     // to a result here so the route's answer stays a 409 rather than a 500.
@@ -887,6 +916,10 @@ const rejectProposal = async (
     where: { id: revisionId, documentId, proposedAt: { not: null } },
   });
   if (count === 0) return false;
+
+  // The refused content is gone, and with it whatever only it referenced
+  // (docs/plans/blob-storage.md §3).
+  await reconcileDocumentBlobs(documentId);
 
   await notifyChange(prisma, {
     kind: "proposal.resolved",

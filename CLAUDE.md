@@ -75,7 +75,12 @@ globals; `compilerOptions.types` is deliberately left unset, because setting it
 would restrict resolution to only its entries and drop every other ambient
 package.
 
-Coverage is 28 specs, 485 tests: `src/lib/__tests__/ordering.test.ts`
+Coverage is 54 specs, 1067 tests, of which the list below walks the ones worth
+knowing about rather than all of them. `src/lib/__tests__/blobRefs.test.ts` is
+the newest: what a document's content references, and the two ways getting that
+wrong destroys user work — a reference the scan cannot see, and one revoked
+inside the upload-before-save window (docs/plans/blob-storage.md §3.1, §3.2).
+The rest: `src/lib/__tests__/ordering.test.ts`
 (fractional rank keys),
 `src/components/Layout/SideBar/__tests__/
 dragGeometry.test.ts` (sidebar drag
@@ -248,6 +253,32 @@ The two are hidden behind one seam rather than branched on per call site. The
 `backendFor(user)` picks one from the session alone. Thunks call the interface,
 so there are no paired `createLocal*` / `createCloud*` variants; everything
 above the seam is written once.
+
+### Blob storage
+
+Images in the editor are stored once, content-addressed, and referenced by
+`/api/blob/<sha256>` — not embedded as base64 in every revision, which is what
+made six distinct images occupy 13.6 MB across 141 copies. `src/lib/storage.ts`
+is the object store (S3 API, MinIO locally), `src/repositories/blob.ts` the rows.
+See docs/plans/blob-storage.md; phases 3–5 (migrating what exists, offline
+parity, collection) are not built yet, so data URIs are still in the database.
+
+**A blob is authorized through the documents referencing it, never on its own**
+(§4). `BlobRef` is that reference, and it is what `GET /api/blob/[hash]` asks
+about — a hash is not a capability, because hashes appear in revision JSON,
+export bundles and agent tool output.
+
+Two rules follow, and both are invariants rather than conventions, because
+breaking either ends in the collector deleting bytes a document is still using:
+
+- **A write that stores `data` stores `blobHashes` with it**, in the same
+  statement, from `blobHashesFor` (`src/lib/blobRefs.ts`). The column is a cache
+  of what the content references, and it exists because recomputing it from the
+  JSON is 11 MB on the worst document (§3.1).
+- **A write that changes the set of revision rows or their content calls
+  `reconcileDocumentBlobs(documentId)`** afterwards. It is deliberately quiet —
+  bookkeeping must never turn a committed save into a 500 — so a missing call
+  fails silently. `grep -rn "reconcileDocumentBlobs" src` is the complete list.
 
 ### State Management (Redux Toolkit)
 

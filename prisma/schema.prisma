@@ -146,6 +146,18 @@ model Revision {
   authorId   String   @db.Uuid
   author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
+  // Which blobs this revision's content references (docs/plans/blob-storage.md
+  // §3). Derived from `data` and written with it — a cache, not a second source
+  // of truth, and `src/lib/blobRefs.ts` is the one thing that computes it.
+  //
+  // It exists because of what the alternative costs. A document's `BlobRef` set
+  // is the union over **all** its revisions, since history stays readable and
+  // restorable, and recomputing that union from `data` means reading every
+  // revision's JSON on the write path: measured against this blog, one document
+  // is 120 revisions and 11 MB. Reading 64-character strings instead is the same
+  // answer for a thousandth of the bytes.
+  blobHashes String[] @default([])
+
   // ── Agent proposals (docs/plans/archive/agent-gating.md §3.1) ──────────────────────
   // A revision with `proposedAt` set is *not* history: it is a pending agent
   // write that `Document.head` does not point at, and every history read

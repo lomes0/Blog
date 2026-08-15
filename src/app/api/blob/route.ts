@@ -3,6 +3,7 @@ import { ApiError, userRoute } from "@/lib/api-utils";
 import { requireDocument } from "@/lib/access";
 import { recordBlob } from "@/repositories/blob";
 import { blobExists, hashBytes, putBlob } from "@/lib/storage";
+import { blobUrl } from "@/lib/blobRefs";
 
 export const dynamic = "force-dynamic";
 
@@ -97,7 +98,7 @@ export const POST = userRoute(async (request, { user }) => {
   await recordBlob(hash, document.id, bytes.byteLength, mimeType);
 
   return NextResponse.json({
-    data: { url: `/api/blob/${hash}`, hash, size: bytes.byteLength, mimeType },
+    data: { url: blobUrl(hash), hash, size: bytes.byteLength, mimeType },
   });
 }, {
   errorLabel: "Error storing blob",

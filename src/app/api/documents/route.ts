@@ -5,6 +5,8 @@ import {
   findDocument,
   findDocumentsByAuthorId,
 } from "@/repositories/document";
+import { reconcileDocumentBlobs } from "@/repositories/blob";
+import { blobHashesFor } from "@/lib/blobRefs";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
@@ -93,6 +95,8 @@ export const POST = userRoute(async (request, { user }) => {
       create: {
         id: body.head || undefined,
         data: body.data as unknown as Prisma.JsonObject,
+        // With the content, always (docs/plans/blob-storage.md §3).
+        blobHashes: blobHashesFor(body.data),
         authorId: user.id,
         createdAt: body.updatedAt,
       },
@@ -147,6 +151,12 @@ export const POST = userRoute(async (request, { user }) => {
   }
 
   const data = await createDocument({ ...input, placement: body.placement });
+
+  // A fork, a duplicate or a guest draft being uploaded arrives with content
+  // that already references blobs, and no upload happened to record them
+  // (docs/plans/blob-storage.md §3). Sharing the bytes is exactly what content
+  // addressing is for; the reference is what has to be created.
+  await reconcileDocumentBlobs(body.id);
 
   revalidatePath("/");
   if (body.seriesId) {

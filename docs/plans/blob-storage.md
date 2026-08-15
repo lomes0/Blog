@@ -1,7 +1,11 @@
 # Blob storage: one content-addressed store for every byte
 
-Status: **decided**, not started. Decided 2026-08-13, after measuring the live
-database (§1). Supersedes
+Status: **phase 1 done; phase 2 done bar sketches; phases 3–5 open.** Decided
+2026-08-13 after measuring the live database (§1); §11 is the phase log and is
+the thing to read before acting on any section body. Two sections are
+corrections written while building rather than parts of the original design —
+§3.1, §3.2 and §7.1 — and §3.1 contradicts the paragraph above it on purpose.
+Supersedes
 [archive/storage-uploads.md](./archive/storage-uploads.md), which moved two asset
 classes to object storage and deliberately left the third — the one holding most
 of the bytes — in Postgres.
@@ -92,6 +96,65 @@ Note `BlobRef` is per **document**, not per revision. Revisions come and go
 constantly; a reference that churned with them would be write-amplification of
 the kind this plan exists to remove. The reference set is recomputed when a
 document's content changes, as a diff against the previous set.
+
+### 3.1 What a document references — corrected while building reconciliation
+
+Two things above are wrong as written, and both were found by asking what the
+recompute costs.
+
+**"A diff against the previous set" is not enough, because the set is the union
+over *all* the document's revisions and not just the one at `head`.** Revisions
+stay readable and restorable (`GET /api/revisions/[id]`), so an image deleted
+from the current draft is still needed by the history behind it. Diffing head
+against the recorded refs would drop that reference, §5 would then collect the
+bytes, and restoring the revision would hand back a post with a dead image —
+user work destroyed by a bookkeeping job, which is the one outcome this
+mechanism must not produce.
+
+**Recomputing that union from `data` is unaffordable.** Measured against this
+blog's database: 1475 revisions over 206 documents, and the worst single
+document is **120 revisions totalling 11 MB**. Reading them on the write path
+would be fine once and pathological forever after — the scan is needed exactly
+when head and history disagree, which is the permanent state of any post an
+image was ever deleted from. That is a slow save on precisely the documents this
+plan exists for.
+
+So the union is answered from a derived column instead:
+
+```prisma
+model Revision {
+  blobHashes String[] @default([])   // what this revision's content references
+}
+```
+
+Written **in the same statement as the `data` it describes** — `blobHashesFor`
+in `src/lib/blobRefs.ts` is the only thing that computes it — so a row cannot
+hold content and a stale list of its blobs. Reconciliation is then three small
+queries with no JSON in any of them, identical whether content arrived, changed
+or was deleted. The column is a cache of `data`, never a second source of truth,
+and it is backfilled in the migration that adds it so that no revision predating
+it reads as referencing nothing.
+
+Per-revision *refs* are still rejected, for the reason above and one more: a
+reference is created at **upload** time, before any revision mentions the image
+(§6), and per-revision rows cannot express a reference that no revision holds
+yet.
+
+### 3.2 The grace period is on the reference, not just the blob
+
+`BlobRef.createdAt` is what makes the upload-before-save window safe. Between
+pasting an image and saving the document, the reference is real and no revision
+mentions it — so a reconcile triggered in that window by anything else touching
+the document (an agent proposing, a revision deleted in another tab) would
+revoke it, leaving the blob with zero references and collectable while an open
+editor still holds its URL. The save then arrives pointing at an object that no
+longer exists, and nothing can repair it.
+
+**A reference younger than `BLOB_REF_GRACE_MS` (24 hours) is never removed**,
+whatever the content says. The window is far longer than the gap it covers, and
+over-holding costs only that a deleted image's bytes are reclaimed a day late.
+This answers §13's grace-period question for the reference; the collector's own
+window is still open.
 
 ## 4. Authorization under deduplication
 
@@ -338,11 +401,22 @@ records the one design correction the build produced.
   postponement. Also attachment upload and background upload, which are a
   separate slice: neither *duplicates*, so neither contributes to the growth
   this phase exists to stop.
-- **Still open:** `BlobRef` reconciliation on save. References are created at
-  upload time, which is what makes a blob readable, but nothing removes a
-  reference when an image is deleted from a document. Until that lands, GC
-  (phase 5) has nothing to collect — which is the right order, but means the
-  refs are additive-only in the meantime.
+- **Reconciliation on save: DONE 15 Aug 2026.** `src/lib/blobRefs.ts` (the scan,
+  the plan and the grace period, all import-free and specced in
+  `src/lib/__tests__/blobRefs.test.ts`), `reconcileDocumentBlobs` in
+  `src/repositories/blob.ts`, and `Revision.blobHashes` with its backfill.
+  §3.1 and §3.2 record what building it corrected — the union over history, the
+  11 MB measurement that ruled out recomputing it from `data`, and why the
+  reference and not only the blob needs a grace period.
+
+  Wired at every write that changes the set of revision rows or their content,
+  which is the invariant the whole mechanism rests on: the two document routes,
+  the two revision routes, `upsertProposal`, `approveProposal`, `rejectProposal`,
+  `agentWrites`'s `create_post`, and import. Verified against the local Postgres
+  by a throwaway script, not a spec — that both blobs are recorded, that a
+  fresh reference survives the grace window and an aged one does not, that a
+  blob only *history* mentions is kept and goes when that revision does, and
+  that a hash with no stored bytes is skipped rather than failing the batch.
 
 **Phase 3 — migrate what exists.** §10. This is the phase that reclaims the
 13 MB.
@@ -372,11 +446,18 @@ blob store (§8). The largest phase, and the one that keeps offline working.
   every supported browser and is what makes the "check before upload" in §6
   possible. Confirm it is acceptable on large files on a slow device, or hash in
   a worker.
-- **Does `BlobRef` recomputation belong in the save path or a trigger?** The
-  save path is simpler and keeps it in one language; a trigger cannot be
-  forgotten. Decide when phase 2 lands.
-- **Grace period length** for §5. Long enough to cover an upload-then-save gap,
-  including a slow client that uploads and then leaves the tab open.
+- ~~**Does `BlobRef` recomputation belong in the save path or a trigger?**~~
+  **Answered: the save path.** A trigger would have to compute the reference
+  list from `data` in SQL, which means a second spelling of the pattern
+  `src/lib/blobRefs.ts` scans for — two definitions of the one rule that must
+  not drift, where drifting means collecting a blob that is still in use. The
+  save path already holds the content in memory, so the list costs nothing to
+  derive there. The migration's backfill is the one place the SQL spelling
+  exists, and it runs once.
+- ~~**Grace period length** for §5.~~ Answered for the *reference* — 24 hours,
+  §3.2. The collector's own window is still open, and is a different question:
+  this one covers upload-before-save, that one covers a blob that has just lost
+  its last reference.
 - **Should backgrounds move to the public bucket and lose `/api/`?** They are
   public by design and 19 MB of the 20. Serving them straight off the R2 public
   URL removes the box from the path entirely — but bakes a hostname unless a

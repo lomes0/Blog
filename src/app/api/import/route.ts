@@ -26,6 +26,8 @@ import {
   validateManifest,
 } from "@/lib/export/manifest";
 import { rankForAppend } from "@/repositories/ordering";
+import { reconcileDocumentBlobs } from "@/repositories/blob";
+import { blobHashesFor } from "@/lib/blobRefs";
 import { resolveWithin, safeBasename } from "@/lib/safePath";
 import { ATTACHMENTS_DIR, BACKGROUNDS_DIR } from "@/lib/uploads";
 
@@ -187,6 +189,8 @@ export const POST = userRoute(async (request, { user }) => {
               documentId: docExport.id,
               authorId: user.id,
               data: rev.data as unknown as NonNullable<object>,
+              // With the content, always (docs/plans/blob-storage.md §3).
+              blobHashes: blobHashesFor(rev.data),
               createdAt: new Date(rev.createdAt),
             },
           });
@@ -226,6 +230,14 @@ export const POST = userRoute(async (request, { user }) => {
       });
 
       summary.imported.documents++;
+
+      // The revisions above were written before the document row existed, so
+      // their references could not be recorded then — `BlobRef` points at a
+      // document. Reconciling here covers a bundle whose blobs this deployment
+      // already holds; one that carries bytes we do not have references nothing,
+      // and stays a broken image until phase 4 puts blobs in the bundle
+      // (docs/plans/blob-storage.md §11).
+      await reconcileDocumentBlobs(docExport.id);
 
       // Extract and save attachment assets. The name comes from inside the
       // uploaded zip, so it is resolved through `resolveWithin` rather than
