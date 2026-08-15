@@ -11,11 +11,11 @@ for what has landed and when.
 
 | Plan                                                       | Status                                                                                                                                                 |
 | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [production-deployment.md](./production-deployment.md)     | **Decided 13 Aug 2026, not yet implemented** — a single VPS running Docker Compose. The third hosting decision in two weeks; the other two are recorded because their reasoning still reads, not because they are live |
+| [production-deployment.md](./production-deployment.md)     | **Decided 13 Aug 2026, steps 1–4 of §9 done, not yet deployed** — a single VPS running Docker Compose. The third hosting decision in two weeks; the other two are recorded because their reasoning still reads, not because they are live. Re-checked against the tree 15 Aug: §2.1 is new (an object store went from "not a blocker" to a hard prerequisite), §5 now has three things to back up rather than two, §9 grew a scheduler step, and §8's AI-spend blocker is resolved — there is no deployment API key left to spend |
 | [blob-storage.md](./blob-storage.md)                       | **All five phases built for images (15 Aug 2026)** — one content-addressed store for every byte, on R2. Measured before designing, and the migration bore it out: one PNG stored 67 times took the dev database from 34 MB to 19 MB. §3.1, §3.2, §10.1, §11.1 and §11.2 are corrections and findings written while building — §11.1 retires §8's local blob store, whose premise phase 2 had already invalidated, and §11.2 records that the collector has nowhere to run on a schedule until the VPS exists. What is left: scheduling, and the sketch/graph rendering decision. Supersedes [archive/storage-uploads.md](./archive/storage-uploads.md) |
 | [claude-code-backlog.md](./claude-code-backlog.md)         | **Backlog.** What the content bridge does _not_ do, and why. Several items are decisions rather than work — chiefly §4, nested editors, which gates three codecs and 198 real nodes. That one now has a proposed answer in `haklex-reprise.md` §2.2 |
 | [haklex-reprise.md](./haklex-reprise.md)                   | **DONE 14 Aug 2026** — five of seven phases shipped (964 tests); phase 7 refused on evidence, and that refusal invalidates §9's claim that this closes `claude-code-backlog.md` §4. Not archived yet: 41 code comments cite it |
-| [code-block-card.md](./code-block-card.md)                 | Proposal, 14 Aug 2026 — **shipped, log pending.** Converges the two code-block chromes (a portalled overlay for the editor, an imperative enhancer for `/view`) onto one card in the node's own DOM. Reopens what `archive/haklex-adoption.md` §6.1 lost as collateral when §10.7 cut Shiki |
+| [code-block-card.md](./code-block-card.md)                 | **Shipped 14 Aug 2026 (`7ec096a7`)**; its status line said "not started" until 15 Aug. Converges the two code-block chromes (a portalled overlay for the editor, an imperative enhancer for `/view`) onto one card in the node's own DOM. Reopens what `archive/haklex-adoption.md` §6.1 lost as collateral when §10.7 cut Shiki. Ready to archive once its citations are updated |
 | [theme-css-tokenization.md](./theme-css-tokenization.md)   | **Phase 1 shipped 14 Aug 2026**, phases 2–5 open. The lasting half landed: `check:theme` now has a rule about *position* rather than file extension, so a literal outside a token block is an error in `.css` too. What is left is the attachment card and the second syntax theme duplicating `--tok-*`, deferred behind one named entry that fails the run when it stops suppressing anything. §7 records four claims this plan got wrong — chiefly a 5× undercount |
 | [ide-redesign.md](./ide-redesign.md)                       | All three phases of the visible pass shipped; only its deferred list is left — status bar, AI panel restyle, tabs/breadcrumb polish                    |
 | [workspace-url.md](./workspace-url.md)                     | Proposal, 1 Aug 2026 — the workspace URL should stop projecting pane focus and become an entry point. Refines [archive/workspace-panes.md](./archive/workspace-panes.md) §0 rather than reversing it |
@@ -24,6 +24,19 @@ for what has landed and when.
 | [ordering-simplification.md](./ordering-simplification.md) | Proposal — see below                                                                                                                                   |
 | [schema-organization.md](./schema-organization.md)         | Proposal — see below                                                                                                                                   |
 | [series-as-node.md](./series-as-node.md)                   | Sketch for comparison, not an approved plan — see below                                                                                                |
+
+## Housekeeping the next pass should do
+
+Three plans are finished but still sitting here, and the reason is the same in
+each case — the code cites them by section number, so moving one means updating
+those citations in the same commit (see the note at the top of this file):
+
+- **`haklex-reprise.md`** — done 14 Aug, 41 code comments cite it.
+- **`code-block-card.md`** — shipped in `7ec096a7`. Its status line said "not
+  started" for a day and has been corrected; only the move is left.
+- **`blob-storage.md`** — all five phases built, but two things are genuinely
+  open (§11.2 scheduling, §10.1 sketches and graphs), so it stays live until
+  those close rather than for a citation reason.
 
 ## Blocked on a decision, not on effort
 

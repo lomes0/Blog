@@ -1,6 +1,13 @@
 # One code block card
 
-Status: **Proposal, 14 Aug 2026. Not started.** Specs the `CodeBlockCard` that
+Status: **Shipped 14 Aug 2026 in `7ec096a7`** — status line corrected 15 Aug,
+having said "not started" since the day it landed. `ViewCodeEnhancer.tsx` is
+deleted, `CodeActionMenuPlugin.tsx` lost its rect measurement, scroll-container
+portal and reposition listeners, and the card lives in `CodeNode`'s own DOM with
+`codeCard.test.ts` and `codeCollapse.test.ts` behind it. Read the body as the
+argument for a thing that now exists, not as work outstanding.
+
+Originally: specs the `CodeBlockCard` that
 [archive/haklex-adoption.md](./archive/haklex-adoption.md) §6.1 described and
 §10.7 cut — cut as collateral, because §6.1 bundled the card with live Shiki and
 the cut was only ever about the tokenizer. [haklex-reprise.md](./haklex-reprise.md)

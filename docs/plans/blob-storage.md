@@ -659,9 +659,21 @@ which is the safe direction for the failure to point.
   route inventory. What is dropped: the seven-route port as a standalone change,
   since those routes are now rewritten against the blob store instead.
 - **`production-deployment.md` §2** ("uploads stay on the filesystem") no longer
-  describes the target. The upload volumes stay in the compose file until phase
-  3 completes, then become empty — keep them mounted until §10's verification
-  passes, and delete them in the same commit that deletes the local files.
+  describes the target — but it does still describe what to deploy.
+
+  **Corrected 15 Aug 2026.** This used to say the upload volumes "become empty"
+  once phase 3 completes. Phase 3 has completed and they have not, because the
+  class it migrated — editor images inside `Revision.data` — was never on the
+  filesystem in the first place. §10 step 5, attachments and backgrounds, was
+  deliberately skipped: neither duplicates, so neither contributes to the growth
+  this plan exists to stop. **Both volumes still hold every byte they held
+  before**, and unmounting one on the strength of "phase 3 is done" would delete
+  live data.
+
+  What the deployment gained instead is a new prerequisite, recorded there as
+  §2.1: the blob store is no longer an improvement awaiting its turn but the
+  place the images in every post live, so `S3_*` must be configured before the
+  first deploy and the bucket is primary data that §5's backup has to cover.
 
 ## 13. Open questions
 

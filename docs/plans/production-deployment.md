@@ -87,6 +87,18 @@ failure is silent.
 > correct and stay mounted until that plan's phase 3 verification passes — they
 > are what keeps the current data alive in the meantime. What changes is the
 > destination, not the next step.
+>
+> **Update, 15 Aug 2026: phase 3 has passed, and the volumes stay anyway.** The
+> migration moved *editor images* — the class that was never on the filesystem
+> to begin with — out of `Revision.data` and into the store. `blob-storage.md`
+> §10 step 5, attachments and backgrounds, was deliberately not done: neither
+> duplicates, so neither contributed to the growth that plan existed to stop.
+> So both volumes still hold every byte they held before, and unmounting either
+> on the strength of "phase 3 is done" would delete live data. §2 below is
+> current, in full.
+>
+> What *did* change for this deployment is the opposite of a simplification, and
+> §2.1 is new because of it.
 
 **Object storage is not a blocker for this deployment.** That was the reasoning
 when [archive/storage-uploads.md](./archive/storage-uploads.md) was merely
@@ -133,6 +145,31 @@ it.
 
 **What this does cost:** durability is now entirely your backup job, where an
 object store would have provided it. §5 is not optional.
+
+### 2.1 An object store is now a hard prerequisite — added 15 Aug 2026
+
+The sentence above — "object storage is not a blocker for this deployment" — was
+true when it was written and **is no longer true**. `blob-storage.md` phases 2–4
+shipped, so the store is not an improvement waiting its turn; it is where the
+images in every post now live. Deploying this stack without one produces a site
+whose posts render broken pictures, and no error that names the cause.
+
+Three concrete things this adds to the deploy, none of which appear anywhere
+else in this document:
+
+- **`S3_ENDPOINT` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` / `S3_BUCKET`
+  must be set in the production environment.** `src/lib/storage.ts` reads them
+  into module-level constants at import, and `isStorageConfigured()` is what
+  every write path checks before falling back. The failure mode of omitting them
+  is not a crash: uploads quietly go back to inlining data URIs, which is the
+  behaviour this whole plan spent four phases removing.
+- **`docker-compose.prod.yml` has no object-store service and should not grow
+  one.** The dev compose runs MinIO; production points at R2, which is off-box
+  by design — that is the choice `blob-storage.md` §7 made, for the reason that
+  Cloudflare already fronts the origin.
+- **The bucket is now primary data.** It is not a cache and it is not
+  reconstructible: once `Revision.data` holds `/api/blob/<hash>` instead of the
+  bytes, the object *is* the picture. §5 has to cover it, and did not.
 
 ## 3. Restoring what was deleted
 
@@ -215,6 +252,17 @@ on one disk, and §2 chose to keep them there.
    restore. This is what survives corruption, a bad migration, and the VPS
    account itself going away.
 
+   **The blob bucket belongs in this set too, and on a different provider from
+   itself** (added 15 Aug 2026, §2.1). It holds the only copy of every image in
+   every post; a `pg_dump` taken without it restores documents whose pictures
+   are gone, and the database will not even show the loss — the `src` is a
+   perfectly valid path to an object that no longer exists. Backing R2 up *to*
+   R2 satisfies the letter of "offsite" and none of its point.
+
+   A useful property while doing it: blobs are content-addressed and immutable,
+   so a copy is a pure add — no object ever changes, and a sync only ever grows.
+   That makes this the cheapest of the three to back up, not the hardest.
+
 **Restore must be rehearsed, on a schedule, or it is not a backup.** Restore
 last night's dump into a throwaway Postgres and boot the app against it. The
 common ending to this story is discovering the cron job broke in March.
@@ -258,10 +306,16 @@ Confirming these, since they were the argument:
 Named here so they are not mistaken for solved by choosing a host. From
 `auth-prod-readiness`:
 
-- **AI routes are unrated.** `/api/completion` and `/api/copilot` spend real
-  money per request against `ANTHROPIC_API_KEY`. Registration is open — anyone
-  completing an OAuth sign-in gets an account. The MCP limiter now works, but it
-  does not cover these two routes.
+- ~~**AI routes are unrated.**~~ **Resolved 15 Aug 2026, by a change of owner
+  rather than by a rate limit.** This said `/api/completion` and `/api/copilot`
+  spend real money per request against `ANTHROPIC_API_KEY` while registration is
+  open to anyone completing an OAuth sign-in. `archive/byo-provider-keys.md`
+  shipped: there is no deployment key of any kind — `src/lib/ai/providers.ts`
+  takes a `ProviderCredentials` and refuses without one, and a user with no key
+  for the provider they picked is told to add one. A stranger signing in can now
+  only spend their own credits. The routes are still unrated, but unrated
+  against the caller's own account is an ordinary product decision rather than a
+  launch blocker.
 - **Administration is psql-only.** No UI for disabling an account.
 - **Middleware is a no-op.**
 
@@ -276,10 +330,22 @@ Named here so they are not mistaken for solved by choosing a host. From
 4. ~~Build the image once, locally, to prove the Dockerfile~~ — done. It failed
    first time on §4.1 and passes now
 5. Provision the box, point DNS, bring the stack up, confirm TLS
-6. Migrate the existing 19MB of uploads onto the volumes
-7. **Backups and a rehearsed restore (§5)** — before this is load-bearing, not
-   after
-8. External uptime check against `/api/health`, alerting somewhere you read
+6. **Create the R2 bucket and set `S3_*` in the production environment (§2.1)** —
+   new, and it belongs before the first deploy rather than after: without it the
+   app runs, serves posts, and shows broken images
+7. Migrate the existing 19MB of uploads onto the volumes. Note this is
+   *filesystem* data only — attachments and backgrounds, which `blob-storage.md`
+   deliberately left where they are (§2's update note)
+8. **Backups and a rehearsed restore (§5)** — before this is load-bearing, not
+   after. Three things to back up now, not two: the database, the upload
+   volumes, and the blob bucket
+9. **A scheduler, and its first two jobs.** There is none in the repo — no cron,
+   no timer unit, no `schedule:` workflow. §5's nightly backup needs one, and so
+   does `pnpm blobs:collect` (`blob-storage.md` §11.2, which records the trap:
+   the runner stage of the Dockerfile carries neither `src/` nor `tsx`, so
+   `docker compose exec app` cannot run any script in `prisma/scripts/`). Decide
+   the mechanism once, for both
+10. External uptime check against `/api/health`, alerting somewhere you read
 9. Verify the change feed end to end *through* Cloudflare (§1.1, and
    `changes-detection.md` §6.2 — the failure is silent, so this is a real step
    rather than a formality)
