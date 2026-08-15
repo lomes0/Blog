@@ -24,6 +24,20 @@ install = "pnpm install --frozen-lockfile"
 # stale client.
 generate = "pnpm exec prisma generate"
 
+# --- Commit messages ---------------------------------------------------------
+# Appended to whatever prompt the author's own config builds, so the house
+# style travels with the repo. The LLM command itself is personal config
+# (~/.config/worktrunk/config.toml) and is deliberately not set here.
+
+[commit.generation]
+template-append = """
+- Conventional-commit subject, matching this repo's history: `feat(theme):`,
+  `chore:`, `docs(plans):`, `fix(editor):`.
+- Body is a few lines at most. Extended rationale belongs in docs/plans/, and a
+  commit that needs more than a paragraph is a sign the plan document is missing.
+- Do not flag commit hygiene, file counts, or diff size in the message.
+"""
+
 # --- Merging -----------------------------------------------------------------
 # Fast checks before the squash commit, the slow suite once per merge.
 # These two are the routine pass from CLAUDE.md.
