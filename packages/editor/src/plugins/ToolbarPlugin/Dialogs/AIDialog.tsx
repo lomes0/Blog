@@ -24,7 +24,7 @@ import { useAIModel } from "@/contexts/AIModelContext";
 import { AI_MODELS } from "@/lib/ai";
 
 function AIDialog({ editor }: { editor: LexicalEditor }) {
-  const { llm, setLlm } = useAIModel();
+  const { llm, setLlm, isProviderConfigured } = useAIModel();
   const [formData, setFormData] = useState(llm);
 
   const handleSubmit = (
@@ -75,19 +75,31 @@ function AIDialog({ editor }: { editor: LexicalEditor }) {
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {AI_MODELS.map((model) => (
-                    <SelectItem key={model.id} value={model.id}>
-                      <span className={css.modelRow}>
-                        <span className={css.modelName}>{model.name}</span>
-                        {model.metadata?.fast && (
-                          <Badge size="sm" variant="success">Fast</Badge>
-                        )}
-                        {model.metadata?.reason && (
-                          <Badge size="sm" variant="warning">Reason</Badge>
-                        )}
-                      </span>
-                    </SelectItem>
-                  ))}
+                  {AI_MODELS.map((model) => {
+                    const usable = isProviderConfigured(model.provider);
+                    return (
+                      <SelectItem
+                        key={model.id}
+                        value={model.id}
+                        disabled={!usable}
+                      >
+                        <span className={css.modelRow}>
+                          <span className={css.modelName}>{model.name}</span>
+                          {/* A badge rather than dimming alone, so the reason a
+                              row cannot be chosen is readable — DESIGN.md §10. */}
+                          {!usable && (
+                            <Badge size="sm" variant="neutral">No key</Badge>
+                          )}
+                          {usable && model.metadata?.fast && (
+                            <Badge size="sm" variant="success">Fast</Badge>
+                          )}
+                          {usable && model.metadata?.reason && (
+                            <Badge size="sm" variant="warning">Reason</Badge>
+                          )}
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>

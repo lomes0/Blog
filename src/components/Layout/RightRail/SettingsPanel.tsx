@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React from "react";
 import {
   Box,
   Dialog,
@@ -22,6 +22,7 @@ import { AlignLeft, Computer, Moon, Settings, Sun, X } from "lucide-react";
 import { AI_MODELS } from "@/lib/ai/models";
 import { useAIModel } from "@/contexts/AIModelContext";
 import { useSidebarFontSize } from "@/components/Layout/SideBar/hooks/useSidebarFontSize";
+import ProviderKeys from "./ProviderKeys";
 import { ICON_SIZE } from "@/theme/icons";
 
 interface SettingsPanelProps {
@@ -31,14 +32,14 @@ interface SettingsPanelProps {
 
 const SettingsPanel: React.FC<SettingsPanelProps> = ({ open, onClose }) => {
   const { mode, setMode } = useColorScheme();
-  const { llm, setLlm } = useAIModel();
+  const { llm, setLlm, isProviderConfigured } = useAIModel();
   const { sidebarFontSize, increaseFontSize, decreaseFontSize, resetFontSize } =
     useSidebarFontSize();
 
-  const [localModel, setLocalModel] = useState(llm.model);
-
+  // Read straight off the context rather than mirroring it into local state:
+  // the context now changes the model on its own when the selected provider has
+  // no key, and a mirror would keep showing the model that was replaced.
   const handleModelChange = (modelId: string) => {
-    setLocalModel(modelId);
     const model = AI_MODELS.find((m) => m.id === modelId);
     if (model) setLlm({ provider: model.provider, model: model.id });
   };
@@ -205,7 +206,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ open, onClose }) => {
               </Typography>
             </Box>
             <Select
-              value={localModel}
+              value={llm.model}
               size="small"
               onChange={(e) => handleModelChange(e.target.value)}
               sx={{
@@ -229,18 +230,38 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ open, onClose }) => {
               }}
               inputProps={{ "aria-label": "AI model" }}
             >
-              {AI_MODELS.map((model) => (
-                <MenuItem key={model.id} value={model.id}>
-                  <ListItemIcon>
-                    <AlignLeft size={ICON_SIZE.dense} />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={model.name}
-                    slotProps={{ primary: { variant: "body2" } }}
-                  />
-                </MenuItem>
-              ))}
+              {AI_MODELS.map((model) => {
+                const usable = isProviderConfigured(model.provider);
+                return (
+                  <MenuItem
+                    key={model.id}
+                    value={model.id}
+                    disabled={!usable}
+                  >
+                    <ListItemIcon>
+                      <AlignLeft size={ICON_SIZE.dense} />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={model.name}
+                      // The reason, not just the dimming — a model nobody can
+                      // explain is unavailable reads as a bug (DESIGN.md §10).
+                      secondary={usable ? undefined : "Add a key below"}
+                      slotProps={{
+                        primary: { variant: "body2" },
+                        secondary: { variant: "caption" },
+                      }}
+                    />
+                  </MenuItem>
+                );
+              })}
             </Select>
+          </Box>
+
+          <Box sx={{ mt: 2.5 }}>
+            <Typography variant="body1" sx={{ mb: 1 }}>
+              Provider keys
+            </Typography>
+            <ProviderKeys />
           </Box>
         </Box>
       </DialogContent>

@@ -16,6 +16,8 @@ import { alpha, type Theme } from "@mui/material/styles";
 import type { SystemStyleObject } from "@mui/system";
 import { ArrowUp, ChevronDown, Mic, Plus, Square } from "lucide-react";
 import { AI_MODELS } from "@/lib/ai/models";
+import { AI_PROVIDER_LABEL } from "@/lib/ai/types";
+import { useAIModel } from "@/contexts/AIModelContext";
 import type { AIModel } from "@/lib/ai/types";
 import { MONO_FONT } from "@/components/Layout/SideBar/constants";
 import { ICON_SIZE } from "@/theme/icons";
@@ -118,12 +120,11 @@ const PROVIDER_COLOR: Record<string, string> = {
   ollama: "#888888",
 };
 
-const PROVIDER_LABEL: Record<string, string> = {
-  anthropic: "Anthropic",
-  google: "Google",
-  azure: "Azure OpenAI",
-  ollama: "Ollama",
-};
+/**
+ * Labels come from `@/lib/ai/types` — the editor package's pickers need the same
+ * words, and two maps would drift.
+ */
+const PROVIDER_LABEL: Record<string, string> = AI_PROVIDER_LABEL;
 
 /** The menu's second line. Derived from the model list, not written twice. */
 const modelNote = (model: AIModel): string => {
@@ -305,6 +306,11 @@ const Composer: React.FC<ComposerProps> = ({
   const [modelMenuAnchor, setModelMenuAnchor] = useState<null | HTMLElement>(
     null,
   );
+
+  // The model list is filtered by what this user can actually run — a model
+  // whose provider has no key on file is offered as disabled with the reason,
+  // rather than selectable and then failing at the request.
+  const { isProviderConfigured } = useAIModel();
 
   const disabled = Boolean(disabledReason);
   const currentModel = AI_MODELS.find((m) => m.id === llmConfig.model);
@@ -535,12 +541,15 @@ const Composer: React.FC<ComposerProps> = ({
           list: { sx: { p: 0.75 } },
         }}
       >
-        {AI_MODELS.map((m) => (
+        {AI_MODELS.map((m) => {
+          const usable = isProviderConfigured(m.provider);
+          return (
           <MenuItem
             key={m.id}
             role="menuitemradio"
             aria-checked={m.id === llmConfig.model}
             selected={m.id === llmConfig.model}
+            disabled={!usable}
             onClick={() => {
               setLlmConfig({ provider: m.provider, model: m.id });
               setModelMenuAnchor(null);
@@ -562,11 +571,12 @@ const Composer: React.FC<ComposerProps> = ({
                 {m.name}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                {modelNote(m)}
+                {usable ? modelNote(m) : `${modelNote(m)} · add a key in Settings`}
               </Typography>
             </Box>
           </MenuItem>
-        ))}
+          );
+        })}
       </Menu>
 
       {

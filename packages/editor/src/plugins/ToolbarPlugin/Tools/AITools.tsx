@@ -46,7 +46,7 @@ import {
   type SelectionAIAction,
 } from "@/lib/ai";
 import { AI_ACTION_ICON } from "@/lib/ai/actionIcons";
-import useLocalStorage from "@/hooks/useLocalStorage";
+import { useAIModel } from "@/contexts/AIModelContext";
 import { ICON_SIZE } from "@/theme/icons";
 import {
   AutoResizeTextArea,
@@ -112,10 +112,12 @@ const sendButtonClass = cx(
 );
 
 export default function AITools({ editor }: { editor: LexicalEditor }) {
-  const [llmConfig, setLlmConfig] = useLocalStorage("llm", {
-    provider: "google",
-    model: "gemini-2.5-flash",
-  });
+  // The shared context rather than a second `useLocalStorage("llm", …)`. Both
+  // read the same key, but they disagreed on the default, so which model the
+  // toolbar started on depended on whether the Copilot had been opened first.
+  // It also carries `isProviderConfigured`, which this picker now needs.
+  const { llm: llmConfig, setLlm: setLlmConfig, isProviderConfigured } =
+    useAIModel();
 
   /*
    * `useMenuState` is gone from this file — and, with it, from the package.
@@ -437,15 +439,22 @@ export default function AITools({ editor }: { editor: LexicalEditor }) {
             <span className={css.modelChange}>Change</span>
           </DropdownMenuSubTrigger>
           <DropdownMenuContent align="start" side="right">
-            {AI_MODELS.map((model) => (
-              <DropdownMenuItem
-                key={model.id}
-                onClick={() => handleModelSelect(model.id)}
-              >
-                {getProviderIcon(model.provider)}
-                {model.name}
-              </DropdownMenuItem>
-            ))}
+            {AI_MODELS.map((model) => {
+              const usable = isProviderConfigured(model.provider);
+              return (
+                <DropdownMenuItem
+                  key={model.id}
+                  disabled={!usable}
+                  onClick={() => handleModelSelect(model.id)}
+                >
+                  {getProviderIcon(model.provider)}
+                  {model.name}
+                  {!usable && (
+                    <span className={css.modelUnavailable}>No key</span>
+                  )}
+                </DropdownMenuItem>
+              );
+            })}
           </DropdownMenuContent>
         </DropdownMenuSub>
 

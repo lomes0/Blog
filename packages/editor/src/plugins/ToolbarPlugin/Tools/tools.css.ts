@@ -228,3 +228,19 @@ export const modelChange = style({
   fontSize: FONT.xs,
   color: vars.color.textSecondary,
 });
+
+/**
+ * Why a model in the submenu cannot be picked.
+ *
+ * The `[data-disabled]` rule in `menu.css.ts` already dims the row, but dimming
+ * alone is state carried by nothing but contrast — DESIGN.md §10 applies here
+ * as much as in the shell (§1.1: the accessibility checklist binds both design
+ * systems). This is the label that says what to do about it.
+ */
+export const modelUnavailable = style({
+  marginLeft: "auto",
+  paddingLeft: SPACE.sm,
+  fontSize: FONT.xs,
+  color: vars.color.textSecondary,
+  whiteSpace: "nowrap",
+});

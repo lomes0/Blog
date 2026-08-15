@@ -1,15 +1,16 @@
 # Bring-your-own provider keys
 
-**Status: phases 1–2 shipped 15 Aug 2026; phases 3–5 open.** Measured against
+**Status: phases 1–3 shipped 15 Aug 2026; phases 4–5 open.** Measured against
 the tree at `9b839169`. Decided at the outset, so the alternatives below are
 recorded for their reasoning rather than as live options: **keys are stored
 server-side, encrypted** (§4), and **there is no deployment-key fallback** — a
 user with no key for the provider they picked is refused and told to add one
 (§4.7).
 
-Phase 1 landed the storage layer; phase 2 put a route and a CLI on top of it, so
-a user can now add, replace and remove a key. **The app still resolves keys from
-`process.env`** — §5 is deliberately ordered so that the switch to per-user keys
+Phase 1 landed the storage layer, phase 2 a route and a CLI, phase 3 the
+settings UI and the picker filtering — so a user can add, replace and remove a
+key, and sees which models that makes available. **The app still resolves keys
+from `process.env`** — §5 is deliberately ordered so that the switch to per-user keys
 is the *last* phase rather than the first, and nothing a user stores is used for
 a completion until phase 4.
 
@@ -422,11 +423,47 @@ route relies on that. Collapsing them would tell someone their key is wrong
 because our network was down, which is the one outcome that makes a correct key
 look broken.
 
-**Phase 3 — the UI.** An "AI providers" section in `SettingsPanel.tsx` (DESIGN.md
-conventions), with the four states the design system requires — empty, saving,
-saved-and-masked, rejected. Picker filtering in the four render sites.
-*Acceptance:* `pnpm check:theme` clean; a provider with no key is visibly
-unselectable rather than selectable-and-broken.
+**Phase 3 — the UI. SHIPPED 15 Aug 2026.** A "Provider keys" section in
+`SettingsPanel.tsx` (`RightRail/ProviderKeys.tsx`), with the states §9 requires
+— loading, empty, saving, saved-and-masked, rejected, and a signed-out branch
+that is deliberately *not* an error. Picker filtering in all four render sites.
+*Acceptance, met:* `pnpm check:theme` clean (41 style files); every unusable
+model is `disabled` and carries a reason in words, not dimming alone.
+
+The design decision worth recording is where the state went: **`AIModelContext`
+was extended rather than joined by a second context.** It already owned "which
+model", and the effect that keeps that choice valid needs both halves — a stored
+model becomes unusable either because it left the registry or because its
+provider has no key, and one effect should decide both. It now exposes
+`providerKeys`, `providerKeysState` and `isProviderConfigured`.
+
+Three details that are not obvious from the outside:
+
+- **`isProviderConfigured` answers `true` while the list is loading.** Otherwise
+  every picker flashes every model as unavailable on the way in, which reads as
+  breakage rather than as a pending fetch.
+- **A guest is `signed-out`, not `error`.** Keys are per account, so having none
+  is the correct state for someone who is not signed in; an alert there would
+  accuse the user of a failure that is not theirs.
+- **Nothing configured leaves the selection alone.** The fallback effect only
+  switches models when there is a usable one to switch *to* — otherwise it would
+  trade one unusable model for another and discard a preference the user gets
+  back the moment they add a key.
+
+Two pre-existing bugs surfaced and were fixed, both because this phase made them
+reachable rather than latent:
+
+- `SettingsPanel` mirrored `llm.model` into local state. Harmless while only the
+  user changed it; wrong now that the context can switch models on its own,
+  since the Select would keep showing the model that was replaced.
+- `AITools.tsx` read `useLocalStorage("llm", …)` directly with a *different
+  default* to `AIModelContext` (google/gemini vs anthropic/sonnet) off the same
+  key, so which model the toolbar started on depended on whether the Copilot had
+  been opened first. It uses the context now.
+
+`AI_PROVIDER_LABEL` moved into `src/lib/ai/types.ts` because both design systems
+need the same words across the §1.1 seam, and `Composer.tsx`'s private copy was
+the second one.
 
 **Phase 4 — flip the seam.** `createProvider` takes credentials (§4.4), both
 routes resolve per user, `AIConfigurationError` becomes the typed 409, the env

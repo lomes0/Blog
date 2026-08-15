@@ -24,6 +24,22 @@ export type AIProviderType = typeof AI_PROVIDERS[number];
 export const providerRequiresKey = (provider: AIProviderType): boolean =>
   provider !== "ollama";
 
+/**
+ * How a provider is named to a person.
+ *
+ * Here rather than in a component because both design systems need it — the
+ * MUI shell's settings and model pickers, and the editor package's `--ed-*`
+ * ones — and a label map copied into each is a label map that drifts. It is the
+ * one piece of presentation in this file, and it earns the place by being
+ * shared across the seam that §1.1 of DESIGN.md draws.
+ */
+export const AI_PROVIDER_LABEL: Record<AIProviderType, string> = {
+  anthropic: "Anthropic",
+  google: "Google",
+  azure: "Azure OpenAI",
+  ollama: "Ollama",
+};
+
 export interface AIModel {
   id: string;
   name: string;
