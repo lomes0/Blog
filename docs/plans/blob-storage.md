@@ -1,8 +1,9 @@
 # Blob storage: one content-addressed store for every byte
 
-Status: **phases 1–3 done for images; phases 4–5 open.** The two SVG node types
-(sketch, graph) are the one thing 2 and 3 both stop short of, and §10.1 is now
-where that decision sits. Decided
+Status: **phases 1–4 done for images; only phase 5 (collection) is open.** The
+two SVG node types (sketch, graph) are the one thing 2 and 3 both stop short of,
+and §10.1 is now where that decision sits. §11.1 records why phase 4 answered
+§8 instead of building it. Decided
 2026-08-13 after measuring the live database (§1); §11 is the phase log and is
 the thing to read before acting on any section body. Two sections are
 corrections written while building rather than parts of the original design —
@@ -494,8 +495,71 @@ assume `src` is a data URI, and the first is not a degradation:
 - **`localBackend` has no blob store**, so guest drafts still fall back to data
   URIs — deliberate, and §8.
 
-**Phase 4 — parity.** Export inlining, import, docx, and the `localBackend`
-blob store (§8). The largest phase, and the one that keeps offline working.
+**Phase 4 — parity. DONE 15 Aug 2026, except that §8's local blob store turned
+out not to be the shape the problem has.**
+
+- **docx** — `generateDocx(data, blobs)` takes the bytes, because the conversion
+  is one synchronous `editorState.read` and cannot fetch. `/api/docx/[id]`
+  resolves them with `loadBlobs` beforehand;
+  `packages/editor/src/utils/docx/blobs.ts` carries them across the read the same
+  way `listNodes` already carries state. An image whose bytes cannot be found
+  exports as its **alt text** rather than throwing — the whole-document failure
+  was the wrong trade once there was a right answer to fall back from. Verified
+  over HTTP against a published fixture: the .docx contains
+  `word/media/*.png` at the blob's exact size, and a reference to a hash the
+  store has never held returns 200 with the alt text in `word/document.xml`.
+- **`/api/export`** — `assets/blobs/{hash}` plus `referencedBlobs` on each
+  document. The field carries `{hash, mimeType, size}` and not a bare hash: the
+  zip entry is raw bytes under a hash, so a bare list would leave import
+  guessing what it holds, and the guess would end up on the `Content-Type` of
+  every later response. Blobs are collected from the **revision JSON**, not from
+  `BlobRef`, so a drifted reference row cannot make a backup incomplete; a blob
+  the store cannot produce is named in the manifest's `missingBlobs` rather than
+  silently omitted. Schema version → `2026-08-15`.
+- **`/api/import`** — restores those bytes, and **re-hashes every one of them**.
+  The filename inside an uploaded zip is a claim, not evidence; storing bytes
+  under a hash they do not have would poison every future deduplication of that
+  key, which is the same attack `POST /api/blob` refuses by hashing what it
+  receives. A mismatch is refused with a warning rather than stored under its
+  true hash, because the documents reference the claimed one regardless.
+- **Content arriving inline** — `src/lib/blobIngest.ts`. Two paths still deliver
+  data URIs (a guest draft signing in, an old bundle), and without this both put
+  back exactly what phase 3 removed, to start growing again on every save. It
+  runs on `POST /api/documents` and on each revision an import creates, reuses
+  the migration's walk, and leaves the content alone when there is no store
+  configured.
+
+### 11.1 §8 is answered rather than built
+
+§8 planned a `blobs` sub-interface on `PostBackend` and an IndexedDB blob store,
+on the premise that "documents stop being self-contained here, so local storage
+has to carry the bytes explicitly."
+
+**That premise did not survive phase 2.** `uploadBlob` falls back to a data URI
+whenever there is nothing to upload to, and a signed-out browser is exactly that
+case — so local documents never stopped being self-contained, and the cost §8
+called honest was never actually paid. Building the local store now would create
+the problem it was designed to solve.
+
+What was missing was not storage but **conversion at the boundary**, and there
+are four of them. All four now hold:
+
+| Crossing | What happens |
+| --- | --- |
+| cloud → zip | bytes bundled under `assets/blobs/{hash}` |
+| zip → local | inlined back to data URIs (`inlineBlobUrls`) |
+| local → cloud | inline images ingested as blobs (`ingestInlineBlobs`) |
+| zip → cloud | bytes restored to the store, hash re-verified |
+
+The invariant is one sentence: **the cloud stores an image once; a local document
+carries its own.** §8's closing claim still holds and is what makes the local →
+cloud crossing an upload rather than a rewrite — the hash is the same on both
+sides of the seam.
+
+The rest of §9 needed nothing. `/api/og` renders the author's avatar and a static
+logo, never document images. `/pdf/[id]` redirects to `/embed`, so the reader's
+own browser fetches the image under their own session and `/api/blob/[hash]`
+authorizes it exactly as it does in the app.
 
 **Phase 5 — GC.** §5, plus the scheduled job and its log.
 

@@ -2,9 +2,19 @@ import type { SerializedEditorState } from "lexical";
 import { createHeadlessEditor } from "@lexical/headless";
 import { editorConfig } from "../config";
 import { $generateDocxBlob } from "./docx";
+import { type BlobBytes, withBlobBytes } from "./docx/blobs";
 import { JSDOM } from "jsdom";
 
-export const generateDocx = (data: SerializedEditorState) =>
+/**
+ * `blobs` carries the bytes for any `/api/blob/<hash>` `src` in `data`, because
+ * a .docx embeds its pictures and the conversion that reads them is synchronous
+ * (docs/plans/blob-storage.md §9). The caller resolves them — this package has
+ * no store to reach. An image whose bytes are absent exports as its alt text.
+ */
+export const generateDocx = (
+  data: SerializedEditorState,
+  blobs: BlobBytes = new Map(),
+) =>
   new Promise<Blob>((resolve, reject) => {
     try {
       // Initialize JSDOM with more features enabled
@@ -42,7 +52,10 @@ export const generateDocx = (data: SerializedEditorState) =>
         const editor = createHeadlessEditor(editorConfig);
         const editorState = editor.parseEditorState(data);
         editor.setEditorState(editorState);
-        const blob = editorState.read($generateDocxBlob);
+        const blob = withBlobBytes(
+          blobs,
+          () => editorState.read($generateDocxBlob),
+        );
         resolve(blob);
       } finally {
         // Restore original global values

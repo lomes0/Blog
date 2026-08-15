@@ -8,6 +8,7 @@
  *  - documents/{id}.json  (one per document, includes all revisions with data)
  *  - assets/attachments/{filename}
  *  - assets/backgrounds/{filename}
+ *  - assets/blobs/{sha256}       (the images documents reference by hash)
  *
  * Query params:
  *  (none — always exports the full account)
@@ -20,12 +21,15 @@ import { existsSync } from "fs";
 import path from "path";
 import JSZip from "jszip";
 import {
+  type BlobExport,
   CURRENT_SCHEMA_VERSION,
   type DocumentExport,
   type ExportManifest,
   type SeriesExport,
 } from "@/lib/export/manifest";
 import { collectAttachmentFilenames } from "@/lib/export/lexicalAssetRewriter";
+import { extractBlobHashes } from "@/lib/blobRefs";
+import { loadBlobs } from "@/lib/blobBytes";
 import { ATTACHMENTS_DIR } from "@/lib/uploads";
 import type { SerializedEditorState } from "lexical";
 
@@ -68,10 +72,18 @@ export const GET = userRoute(async (_request, { user }) => {
   const assetsFolder = zip.folder("assets")!;
   const attachmentsFolder = assetsFolder.folder("attachments")!;
   const backgroundsFolder = assetsFolder.folder("backgrounds")!;
+  const blobsFolder = assetsFolder.folder("blobs")!;
 
   let totalAssets = 0;
   const bundledAttachments = new Set<string>();
   const bundledBackgrounds = new Set<string>();
+  const bundledBlobs = new Set<string>();
+  /**
+   * `document:hash` for every blob a document references whose bytes the store
+   * could not produce. Reported in the manifest rather than swallowed: a backup
+   * that is quietly short of an image is worse than one that says so.
+   */
+  const missingBlobs: string[] = [];
 
   const docExports: DocumentExport[] = [];
 
@@ -94,6 +106,35 @@ export const GET = userRoute(async (_request, { user }) => {
       }
     }
 
+    // Blobs are collected from the revision JSON rather than from `BlobRef`, so
+    // that what the bundle carries is decided by what the bundle *contains* —
+    // a reference row that has drifted cannot make a backup incomplete.
+    const hashes = [
+      ...new Set(revisions.flatMap((rev) => [...extractBlobHashes(rev.data)])),
+    ];
+
+    // **The zip has to carry the bytes** (§9). A bundle that names blobs by URL
+    // is a bookmark, not a backup — it would restore into a deployment whose
+    // store has never seen them.
+    const loaded = await loadBlobs(hashes);
+    const referencedBlobs: BlobExport[] = [];
+    for (const [hash, blob] of loaded) {
+      referencedBlobs.push({
+        hash,
+        mimeType: blob.mimeType,
+        size: blob.bytes.byteLength,
+      });
+      if (bundledBlobs.has(hash)) continue;
+      blobsFolder.file(hash, blob.bytes);
+      bundledBlobs.add(hash);
+      totalAssets++;
+    }
+    for (const hash of hashes) {
+      if (!loaded.has(hash)) {
+        missingBlobs.push(`${doc.id}:${hash}`);
+      }
+    }
+
     const docExport: DocumentExport = {
       id: doc.id,
       name: doc.name,
@@ -113,6 +154,7 @@ export const GET = userRoute(async (_request, { user }) => {
       seriesId: doc.seriesId,
       revisions,
       referencedAssets,
+      referencedBlobs,
     };
 
     docExports.push(docExport);
@@ -178,6 +220,7 @@ export const GET = userRoute(async (_request, { user }) => {
       series: seriesExports.length,
       assets: totalAssets,
     },
+    ...(missingBlobs.length > 0 && { missingBlobs }),
   };
   zip.file("manifest.json", JSON.stringify(manifest, null, 2));
 

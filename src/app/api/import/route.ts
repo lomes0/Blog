@@ -28,6 +28,8 @@ import {
 import { rankForAppend } from "@/repositories/ordering";
 import { reconcileDocumentBlobs } from "@/repositories/blob";
 import { blobHashesFor } from "@/lib/blobRefs";
+import { blobExists, hashBytes, isValidHash, putBlob } from "@/lib/storage";
+import { ingestInlineBlobs } from "@/lib/blobIngest";
 import { resolveWithin, safeBasename } from "@/lib/safePath";
 import { ATTACHMENTS_DIR, BACKGROUNDS_DIR } from "@/lib/uploads";
 
@@ -72,6 +74,13 @@ export const POST = userRoute(async (request, { user }) => {
     errors: [],
     warnings: [],
   };
+
+  /**
+   * Blobs already restored from this bundle. One image referenced by twenty
+   * documents is one entry in the zip and one upload — which is the property
+   * the whole store exists for, applied to the restore.
+   */
+  const restoredBlobs = new Set<string>();
 
   const seriesFile = zip.file("series/series.json");
   if (seriesFile) {
@@ -183,6 +192,10 @@ export const POST = userRoute(async (request, { user }) => {
           select: { id: true },
         });
         if (!revExists) {
+          // A bundle written before blobs existed carries its images inline.
+          // Storing them now is what stops a restore from putting back the
+          // duplication phase 3 removed (docs/plans/blob-storage.md §8).
+          await ingestInlineBlobs(rev.data);
           await prisma.revision.create({
             data: {
               id: rev.id,
@@ -231,12 +244,58 @@ export const POST = userRoute(async (request, { user }) => {
 
       summary.imported.documents++;
 
+      // Restore the bundle's blobs before reconciling, because a reference can
+      // only be recorded against a blob this deployment holds
+      // (docs/plans/blob-storage.md §9).
+      for (const blob of docExport.referencedBlobs ?? []) {
+        if (restoredBlobs.has(blob.hash)) continue;
+
+        const entry = isValidHash(blob.hash)
+          ? zip.file(`assets/blobs/${blob.hash}`)
+          : null;
+        if (!entry) {
+          summary.warnings.push(
+            `Blob "${blob.hash}" is referenced by document "${docExport.id}" ` +
+              `but not carried in the bundle — its image will not render.`,
+          );
+          continue;
+        }
+
+        const bytes = await entry.async("nodebuffer");
+
+        // **The name inside the zip is not evidence of anything.** Storing
+        // these bytes under a hash the bundle merely claims would poison every
+        // future deduplication of that key — the same reason `POST /api/blob`
+        // hashes what it receives rather than trusting the client. A mismatch
+        // is refused rather than stored under its true hash, because the
+        // documents reference the claimed one and would not find it anyway.
+        if (hashBytes(bytes) !== blob.hash) {
+          summary.warnings.push(
+            `Blob "${blob.hash}" in the bundle does not hash to its name — ` +
+              `refused. The bundle is corrupt or was tampered with.`,
+          );
+          continue;
+        }
+
+        if (!(await blobExists(blob.hash))) {
+          await putBlob(blob.hash, bytes, blob.mimeType);
+        }
+        await prisma.blob.upsert({
+          where: { hash: blob.hash },
+          create: {
+            hash: blob.hash,
+            size: bytes.byteLength,
+            mimeType: blob.mimeType,
+          },
+          update: {},
+        });
+        restoredBlobs.add(blob.hash);
+        summary.imported.assets++;
+      }
+
       // The revisions above were written before the document row existed, so
       // their references could not be recorded then — `BlobRef` points at a
-      // document. Reconciling here covers a bundle whose blobs this deployment
-      // already holds; one that carries bytes we do not have references nothing,
-      // and stays a broken image until phase 4 puts blobs in the bundle
-      // (docs/plans/blob-storage.md §11).
+      // document.
       await reconcileDocumentBlobs(docExport.id);
 
       // Extract and save attachment assets. The name comes from inside the

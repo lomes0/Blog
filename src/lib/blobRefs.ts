@@ -80,6 +80,54 @@ export function blobHashesFor(content: unknown): string[] {
   return [...extractBlobHashes(content)].sort();
 }
 
+/**
+ * Replace every blob reference with the bytes themselves, making the content
+ * self-contained again — docs/plans/blob-storage.md §9.
+ *
+ * The direction the store exists to avoid, and correct in exactly one place: a
+ * document arriving in **local** storage. A guest has no session, so
+ * `/api/blob/<hash>` is not a URL their browser can resolve, and IndexedDB
+ * holds no blobs. Inlining at that boundary keeps a local document what it has
+ * always been — self-contained — rather than a set of references to a server
+ * the reader may never reach.
+ *
+ * `dataUriFor` returns `null` for a hash whose bytes are not to hand; that
+ * reference is left alone, so the failure is a broken image rather than a
+ * document that fails to import.
+ *
+ * **Mutates `state`**, like `rewriteToBlobUrls`, and returns how many nodes
+ * changed.
+ */
+export function inlineBlobUrls(
+  state: unknown,
+  dataUriFor: (hash: string) => string | null,
+): number {
+  let inlined = 0;
+  const stack: unknown[] = [state];
+
+  while (stack.length > 0) {
+    const value = stack.pop();
+    if (Array.isArray(value)) {
+      stack.push(...value);
+      continue;
+    }
+    if (value === null || typeof value !== "object") continue;
+
+    const node = value as Record<string, unknown>;
+    if (typeof node.src === "string") {
+      const match = /^\/api\/blob\/([0-9a-f]{64})$/.exec(node.src);
+      const dataUri = match ? dataUriFor(match[1]) : null;
+      if (dataUri) {
+        node.src = dataUri;
+        inlined++;
+      }
+    }
+    stack.push(...Object.values(node));
+  }
+
+  return inlined;
+}
+
 /** What reconciliation has to write to make the stored refs match the content. */
 export interface BlobRefPlan {
   /** Referenced by the content, not yet recorded. */

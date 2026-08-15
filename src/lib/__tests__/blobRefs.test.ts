@@ -3,6 +3,7 @@ import {
   blobHashesFor,
   blobUrl,
   extractBlobHashes,
+  inlineBlobUrls,
   planBlobRefs,
   unionOf,
 } from "../blobRefs";
@@ -121,6 +122,56 @@ describe("unionOf", () => {
     // The head no longer holds `A`, but the revision behind it does — and that
     // revision is still readable and restorable, so the reference stands.
     expect([...unionOf([[A, B], [B], []])].sort()).toEqual([A, B]);
+  });
+});
+
+describe("inlineBlobUrls", () => {
+  /**
+   * The one direction back out of the store, taken at the boundary of local
+   * storage — a signed-out browser can resolve neither a blob URL nor an
+   * IndexedDB that holds no blobs (docs/plans/blob-storage.md §9).
+   */
+  const dataUri = "data:image/png;base64,AAAA";
+
+  it("puts the bytes back where the reference was", () => {
+    const doc = { root: { children: [{ type: "image", src: blobUrl(A) }] } };
+
+    expect(inlineBlobUrls(doc, () => dataUri)).toBe(1);
+    expect(doc.root.children[0].src).toBe(dataUri);
+  });
+
+  it("leaves a reference alone when the bytes are not to hand", () => {
+    // A bundle short of one image imports as a document with one broken
+    // picture, not as a failed import.
+    const doc = { root: { children: [{ type: "image", src: blobUrl(A) }] } };
+
+    expect(inlineBlobUrls(doc, () => null)).toBe(0);
+    expect(doc.root.children[0].src).toBe(blobUrl(A));
+  });
+
+  it("touches nothing that is not a blob reference", () => {
+    const doc = {
+      root: {
+        children: [
+          { type: "image", src: "https://example.com/cat.png" },
+          { type: "sketch", src: "data:image/svg+xml,%3Csvg%3E" },
+        ],
+      },
+    };
+    const before = JSON.stringify(doc);
+
+    expect(inlineBlobUrls(doc, () => dataUri)).toBe(0);
+    expect(JSON.stringify(doc)).toBe(before);
+  });
+
+  it("round-trips with the hashes the scan finds", () => {
+    const doc = {
+      root: { children: [{ type: "image", src: blobUrl(A) }, { src: blobUrl(B) }] },
+    };
+    const seen = [...extractBlobHashes(doc)].sort();
+
+    expect(inlineBlobUrls(doc, () => dataUri)).toBe(seen.length);
+    expect(extractBlobHashes(doc).size).toBe(0);
   });
 });
 

@@ -7,6 +7,7 @@ import {
 } from "@/repositories/document";
 import { reconcileDocumentBlobs } from "@/repositories/blob";
 import { blobHashesFor } from "@/lib/blobRefs";
+import { ingestInlineBlobs } from "@/lib/blobIngest";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
@@ -75,6 +76,12 @@ export const POST = userRoute(async (request, { user }) => {
       "You can only add posts to your own series",
     );
   }
+
+  // A guest draft signing in, or a fork of something never migrated, arrives
+  // with its images still inline. Store them before the content is written,
+  // or the duplication phase 3 removed comes straight back
+  // (docs/plans/blob-storage.md §8).
+  await ingestInlineBlobs(body.data);
 
   // rank is assigned by createDocument (appended to the document's container).
   const input: Omit<Prisma.DocumentUncheckedCreateInput, "rank"> = {

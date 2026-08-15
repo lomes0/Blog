@@ -263,9 +263,22 @@ is the object store (S3 API, MinIO locally), `src/repositories/blob.ts` the rows
 See docs/plans/blob-storage.md. Migration is `pnpm blobs:migrate`
 (`status | run [--dry-run] | verify`) and has been run for `image` nodes;
 `sketch` and `graph` still hold SVG data URIs, because both render one inline
-and a URL would change that (§10.1). Phases 4–5 — export/docx/offline parity and
-collection — are not built, and **docx export throws on a blob-backed image**
-until the first of those lands.
+and a URL would change that (§10.1). Only garbage collection (phase 5) is left,
+so **nothing collects a blob yet** — references are exact, but unreferenced
+bytes stay.
+
+**The cloud stores an image once; a local document carries its own.** Local
+(IndexedDB) documents keep data URIs — a signed-out browser can resolve neither
+a blob URL nor an IndexedDB that holds no blobs — so the conversion happens at
+the four boundaries rather than in storage (§11.1): `/api/export` bundles bytes
+under `assets/blobs/{hash}`, `localImporter` inlines them back, and
+`ingestInlineBlobs` (`src/lib/blobIngest.ts`) stores whatever arrives inline on
+`POST /api/documents` and on import. A bundle's blob is **re-hashed on import** —
+the filename in an uploaded zip is a claim, not evidence.
+
+docx is the one consumer that needs bytes rather than a URL, because it embeds
+its pictures: `/api/docx/[id]` resolves them with `loadBlobs` before the
+conversion, which is a synchronous `editorState.read` and cannot fetch.
 
 **A blob is authorized through the documents referencing it, never on its own**
 (§4). `BlobRef` is that reference, and it is what `GET /api/blob/[hash]` asks

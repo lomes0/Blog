@@ -22,6 +22,7 @@ import {
 } from "@/lib/export/manifest";
 import { DocumentStatus, type Post, type Revision } from "@/types";
 import { filenameToAttachmentUrl } from "@/lib/export/lexicalAssetRewriter";
+import { inlineBlobUrls } from "@/lib/blobRefs";
 
 /**
  * Import a backup zip file into the local IndexedDB stores.
@@ -84,6 +85,33 @@ export async function importLocalBackupZip(
       if (existing) {
         summary.skipped.documents.push(docExport.id);
         continue;
+      }
+
+      // A local document has to be self-contained: a guest has no session, so
+      // `/api/blob/<hash>` is not a URL this browser can resolve, and IndexedDB
+      // holds no blobs (docs/plans/blob-storage.md §9). The bundle carries the
+      // bytes, so put them back where they came from.
+      const inlined = new Map<string, string>();
+      for (const blob of docExport.referencedBlobs ?? []) {
+        const entry = zip.file(`assets/blobs/${blob.hash}`);
+        if (!entry) {
+          summary.warnings.push(
+            `Image "${blob.hash.slice(0, 12)}…" is not carried in the bundle — ` +
+              `it will not render.`,
+          );
+          continue;
+        }
+        const bytes = await entry.async("uint8array");
+        inlined.set(
+          blob.hash,
+          `data:${blob.mimeType};base64,${uint8ArrayToBase64(bytes)}`,
+        );
+      }
+      if (inlined.size > 0) {
+        for (const rev of docExport.revisions) {
+          inlineBlobUrls(rev.data, (hash) => inlined.get(hash) ?? null);
+        }
+        summary.imported.assets += inlined.size;
       }
 
       // Save revisions first

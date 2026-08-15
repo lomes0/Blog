@@ -24,14 +24,45 @@ import {
   $isLayoutItemNode,
 } from "@/editor/nodes/LayoutNode";
 import { ImageNode } from "@/editor/nodes/ImageNode";
+import { isBlobSrc, resolveBlobSrc } from "./blobs";
+
+/** The picture's bytes and what kind they are, however the `src` names them. */
+function imageData(
+  src: string,
+): { type: ImageType; data: Buffer } | null {
+  if (isBlobSrc(src)) {
+    // docs/plans/blob-storage.md §9: a .docx embeds pictures rather than
+    // referencing them, so a blob `src` has to arrive already resolved.
+    const blob = resolveBlobSrc(src);
+    if (!blob) return null;
+    return { type: typeFromMime(blob.mimeType), data: Buffer.from(blob.bytes) };
+  }
+  const type = typeFromMime(src.split(",")[0].split(";")[0]);
+  const payload = src.split(",")[1];
+  if (payload === undefined) return null;
+  return {
+    type,
+    data: type === "svg" ? svgToBuffer(payload) : Buffer.from(payload, "base64"),
+  };
+}
+
+type ImageType = "jpg" | "png" | "gif" | "svg" | "bmp";
+
+/** `image/svg+xml`, `data:image/png` and `png` all answer the same thing. */
+function typeFromMime(value: string): ImageType {
+  return value.split("/").pop()!.split("+")[0] as ImageType;
+}
 
 export function $convertImageNode(node: ImageNode) {
-  const dataURI = node.getSrc();
-  const type = dataURI.split(",")[0].split(";")[0].split("/")[1].split(
-    "+",
-  )[0] as "jpg" | "png" | "gif" | "svg" | "bmp";
-  const src = dataURI.split(",")[1];
-  const data = type === "svg" ? svgToBuffer(src) : Buffer.from(src, "base64");
+  const resolved = imageData(node.getSrc());
+  if (!resolved) {
+    // One picture whose bytes cannot be found must not cost the whole export.
+    // The alt text is what a reader gets instead, which is also what they would
+    // get from a broken `<img>`.
+    console.warn(`docx: no bytes for image src, exporting alt text instead`);
+    return new TextRun({ text: node.getAltText() });
+  }
+  const { type, data } = resolved;
   const altText = node.getAltText();
   const dimensions = sizeOf(data);
   const width = node.getWidth() || dimensions.width as number;
