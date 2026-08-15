@@ -1,23 +1,24 @@
 # Bring-your-own provider keys
 
-**Status: phases 1–3 shipped 15 Aug 2026; phases 4–5 open.** Measured against
+**Status: phases 1–4 shipped 15 Aug 2026; phase 5 (key rotation) open.** Measured against
 the tree at `9b839169`. Decided at the outset, so the alternatives below are
 recorded for their reasoning rather than as live options: **keys are stored
 server-side, encrypted** (§4), and **there is no deployment-key fallback** — a
 user with no key for the provider they picked is refused and told to add one
 (§4.7).
 
-Phase 1 landed the storage layer, phase 2 a route and a CLI, phase 3 the
-settings UI and the picker filtering — so a user can add, replace and remove a
-key, and sees which models that makes available. **The app still resolves keys
-from `process.env`** — §5 is deliberately ordered so that the switch to per-user keys
-is the *last* phase rather than the first, and nothing a user stores is used for
-a completion until phase 4.
+**This is live.** Phase 4 flipped the seam: `/api/completion` and
+`/api/copilot` run on the signed-in user's own key, a user without one gets a
+409 pointing at Settings, and the `*_API_KEY` variables have been deleted rather
+than merely bypassed — a key set in the environment now serves nobody. What
+remains is phase 5, key rotation, which nothing depends on until a KEK has to be
+replaced.
 
-Today every signed-in user spends the deployment's AI credits, because
-`src/lib/ai/providers.ts` reads `process.env` and there is nowhere else a key
-could come from. This plan makes the key a property of the *user* instead of the
-*deployment*, without ever letting the plaintext reach a browser.
+The problem as it stood when this was written: every signed-in user spent the
+deployment's AI credits, because `src/lib/ai/providers.ts` read `process.env`
+and there was nowhere else a key could come from. This plan makes the key a
+property of the *user* instead of the *deployment*, without ever letting the
+plaintext reach a browser.
 
 ## 1. The insight
 
@@ -465,12 +466,36 @@ reachable rather than latent:
 need the same words across the §1.1 seam, and `Composer.tsx`'s private copy was
 the second one.
 
-**Phase 4 — flip the seam.** `createProvider` takes credentials (§4.4), both
-routes resolve per user, `AIConfigurationError` becomes the typed 409, the env
-provider keys leave `.env.example`, `CLAUDE.md` and the runtime path.
-*Acceptance:* a user with no key gets the 409 and the settings prompt; a user
-with a key completes normally; Ollama still works with no key at all; the
-deployment's own env keys serve nobody.
+**Phase 4 — flip the seam. SHIPPED 15 Aug 2026.** Both routes resolve per user
+through `src/lib/ai/credentials.ts`, the missing key is a typed 409, and the
+`*_API_KEY` variables left `.env.example`, `CLAUDE.md` and the runtime path.
+`grep -rn "ANTHROPIC_API_KEY\|GOOGLE_GENERATIVE_AI_API_KEY\|AZURE_API_KEY" src packages`
+returns nothing.
+*Acceptance, met* — a throwaway script against the dev server, 11 checks: a user
+with no key gets the 409, the `provider_key_missing` code and the settings
+prompt **while a real `ANTHROPIC_API_KEY` is still sitting in `.env`**, which is
+the whole claim; `/api/copilot` refuses identically; Ollama is not refused for a
+missing key; a user with a key completes and gets text back; the completion
+stamps `lastUsedAt`; removing the key refuses again. Plus
+`errorMessage.test.ts`, 8 tests.
+
+Three things worth knowing:
+
+- **The refusal had to reach the user in words.** `AITools`'s `onError` threw
+  every failure away and announced "Something went wrong · Please try again
+  later" — advice that can never work for a missing key — and `CopilotChat`
+  rendered `error.message`, which under the route wrapper is the serialized
+  `{ error: { … } }` body. `describeAIError` (client-safe, in the barrel)
+  unpacks the envelope for both. Without it this phase would have shipped the
+  app's commonest failure as an unreadable blob.
+- **`resolveProviderCredentials` separates "no key" from "unreadable key".** A
+  `SealError` or `KeyringError` is a 500 about the deployment, not a 409 about
+  the user — otherwise someone whose key cannot be decrypted is told to enter a
+  key they already entered, forever.
+- **No "open Settings" button.** §4.7 wanted one; the settings dialog's open
+  state is local to `RightRail/index.tsx` and hoisting it to something globally
+  reachable is a refactor of its own. The 409's subtitle names the place
+  instead, and the rail button is on screen. Left deliberately.
 
 **Phase 5 — rotation.** `pnpm ai:rotate` walks rows whose `keyVersion` is not
 current, opens under the version they name, re-seals under the current one.

@@ -19,6 +19,7 @@ import {
 import { captureSelection } from "@/editor/utils/captureSelection";
 import type { CapturedSelection } from "@/lib/ai/selection";
 import { isReadTool, isWriteTool } from "@/lib/ai/copilotAgentTools";
+import { describeAIError } from "@/lib/ai/errorMessage";
 import {
   isAutoRunCommandTool,
   isProposalTool,
@@ -250,6 +251,12 @@ const CopilotChat: React.FC<CopilotChatProps> = (
   addToolOutputRef.current = addToolOutput as unknown as GenericAddToolOutput;
 
   const isLoading = status === "submitted" || status === "streaming";
+
+  // The route's own envelope, unpacked once. Rendering `error.message` would
+  // print the serialized JSON body — see `describeAIError`.
+  const errorInfo = error
+    ? describeAIError(error, { title: "Copilot could not answer" })
+    : null;
 
   // Restore the live conversation for this scope. Storage is async now (it may
   // be a network round trip), so this is an effect rather than a `useState`
@@ -556,11 +563,17 @@ const CopilotChat: React.FC<CopilotChatProps> = (
             flexShrink: 0,
           }}
         >
-          <Typography variant="caption">
-            {/Unauthorized|sign in|401/i.test(error.message)
-              ? "Sign in to use Copilot."
-              : error.message}
+          <Typography variant="caption" sx={{ display: "block" }}>
+            {errorInfo?.title}
           </Typography>
+          {errorInfo?.subtitle && (
+            <Typography
+              variant="caption"
+              sx={{ display: "block", opacity: 0.9 }}
+            >
+              {errorInfo.subtitle}
+            </Typography>
+          )}
         </Box>
       )}
 

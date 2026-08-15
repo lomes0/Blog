@@ -42,6 +42,7 @@ import {
   AI_TONES,
   AI_TOOLBAR_ACTIONS,
   type AIActionToolbar,
+  describeAIError,
   getModelById,
   type SelectionAIAction,
 } from "@/lib/ai";
@@ -171,13 +172,15 @@ export default function AITools({ editor }: { editor: LexicalEditor }) {
     editor.dispatchCommand(ANNOUNCE_COMMAND, announcement);
   }, [editor]);
 
-  const handleError = useCallback(() => {
-    annouunce({
-      message: {
-        title: "Something went wrong",
-        subtitle: "Please try again later",
-      },
+  // The server's own wording, not a generic apology. Under bring-your-own keys
+  // the commonest failure here is "no key for this provider", and telling
+  // someone to try again later is advice that will never work.
+  const handleError = useCallback((error: Error) => {
+    const { title, subtitle } = describeAIError(error, {
+      title: "Something went wrong",
+      subtitle: "Please try again later",
     });
+    annouunce({ message: { title, subtitle } });
   }, [annouunce]);
 
   const { completion, complete, isLoading, stop } = useCompletion({

@@ -143,45 +143,35 @@ const createOllamaProvider = (
 const OLLAMA_DEFAULT_URL = "http://localhost:11434/api";
 
 /**
- * The deployment's own AI configuration, as it has always been read.
+ * The deployment-configured half of a provider's settings — the URLs, and
+ * nothing else.
  *
- * **Temporary.** Once the routes resolve a user's own key
- * (docs/plans/byo-provider-keys.md phase 4) the only part of this that survives
- * is the URL half — the three `*_API_KEY` reads go away with it, and so do the
- * variables. It exists now so that adding the credentials parameter above is
- * not also the change that switches the app to per-user keys: those are
- * separate phases precisely because the second one breaks AI for anyone who has
- * not added a key yet.
+ * **There is no `*_API_KEY` read left in this file**, and that is the point of
+ * docs/plans/byo-provider-keys.md: a key belongs to a user and arrives from
+ * `providerCredentials`, while an endpoint belongs to the deployment and stays
+ * here. §4.5 is the reasoning — a user-supplied base URL would make this
+ * factory fetch any host they name, from inside the deployment's network.
+ *
+ * Pair the result with a user's key to build full credentials; that is what
+ * `resolveProviderCredentials` in `./credentials` does.
  */
-export const credentialsFromEnv = (
+export const deploymentEndpoint = (
   providerType: AIProviderType,
-): ProviderCredentials => {
+): Pick<ProviderCredentials, "baseURL" | "apiVersion"> => {
   switch (providerType) {
-    case "google":
-      return { apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY };
-    case "anthropic":
-      return { apiKey: process.env.ANTHROPIC_API_KEY };
     case "azure":
       return {
-        apiKey: process.env.AZURE_API_KEY,
         baseURL: process.env.AZURE_OPENAI_BASE_URL,
         apiVersion: process.env.AZURE_OPENAI_API_VERSION,
       };
     case "ollama":
       return { baseURL: process.env.OLLAMA_API_URL };
+    case "google":
+    case "anthropic":
+      // Both are reached at the SDK's own default host. Nothing to configure,
+      // and nothing a user could point elsewhere.
+      return {};
   }
-};
-
-/**
- * The deployment-configured half of a provider's settings: the URLs, which stay
- * the deployment's business even after the keys become the user's (§4.5).
- * Pair it with a user's key to build the full credentials.
- */
-export const deploymentEndpoint = (
-  providerType: AIProviderType,
-): Pick<ProviderCredentials, "baseURL" | "apiVersion"> => {
-  const { baseURL, apiVersion } = credentialsFromEnv(providerType);
-  return { baseURL, apiVersion };
 };
 
 export const createProvider = (

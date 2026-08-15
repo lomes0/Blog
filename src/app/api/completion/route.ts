@@ -6,10 +6,11 @@ import {
   AI_PROVIDERS,
   completionSystemPrompt,
   createProvider,
-  credentialsFromEnv,
   getModelById,
 } from "@/lib/ai";
 import { ApiError, parseBody, userRoute } from "@/lib/api-utils";
+import { resolveProviderCredentials } from "@/lib/ai/credentials";
+import { touchCredential } from "@/lib/providerCredentials";
 
 // Node runtime (not edge): `userRoute` reads the session through the Prisma
 // adapter, which cannot run on edge. `/api/copilot` is on Node for the same
@@ -56,7 +57,7 @@ const completionBodySchema = z.object({
   tone: z.string().min(1).max(64).optional(),
 }).strict();
 
-export const POST = userRoute(async (request) => {
+export const POST = userRoute(async (request, { user }) => {
   const { provider, model: modelId, prompt, action, command, tone } =
     await parseBody(request, completionBodySchema);
 
@@ -95,13 +96,21 @@ export const POST = userRoute(async (request) => {
     throw new ApiError(404, "Model not found", `Model '${modelId}' not found`);
   }
 
-  const providerInstance = createProvider(provider, credentialsFromEnv(provider));
+  // The user's own key, not the deployment's — and a 409 rather than a
+  // 500 if they have none (docs/plans/byo-provider-keys.md §4.7).
+  const credentials = await resolveProviderCredentials(user.id, provider);
+  const providerInstance = createProvider(provider, credentials);
   const modelInstance = providerInstance(model.id);
 
   const result = streamText({
     model: modelInstance,
     messages,
   });
+
+  // Best-effort, and not awaited: the stream is what the caller is waiting for,
+  // and `touchCredential` throttles itself to one write a minute and swallows
+  // its own failures.
+  void touchCredential(user.id, provider);
 
   return result.toTextStreamResponse();
 }, {

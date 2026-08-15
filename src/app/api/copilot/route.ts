@@ -4,10 +4,11 @@ import { z } from "zod";
 import {
   AI_PROVIDERS,
   createProvider,
-  credentialsFromEnv,
   getModelById,
 } from "@/lib/ai";
 import { ApiError, parseBody, userRoute } from "@/lib/api-utils";
+import { resolveProviderCredentials } from "@/lib/ai/credentials";
+import { touchCredential } from "@/lib/providerCredentials";
 import { permitsDocument, requireDocument } from "@/lib/access";
 import { COPILOT_AGENT_SYSTEM_PROMPT } from "@/lib/ai/prompts";
 import {
@@ -282,7 +283,10 @@ export const POST = userRoute(async (req, { user }) => {
     throw new ApiError(404, "Model not found", `Model '${modelId}' not found`);
   }
 
-  const providerInstance = createProvider(provider, credentialsFromEnv(provider));
+  // The user's own key, not the deployment's — and a 409 rather than a
+  // 500 if they have none (docs/plans/byo-provider-keys.md §4.7).
+  const credentials = await resolveProviderCredentials(user.id, provider);
+  const providerInstance = createProvider(provider, credentials);
   const modelInstance = providerInstance(model.id);
 
   const modelMessages = await convertToModelMessages(messages as UIMessage[]);
@@ -319,6 +323,9 @@ export const POST = userRoute(async (req, { user }) => {
     // user's accept in the chat.
     stopWhen: stepCountIs(40),
   });
+
+  // Best-effort and not awaited — see the same call in /api/completion.
+  void touchCredential(user.id, provider);
 
   return result.toUIMessageStreamResponse();
 }, {
