@@ -1,0 +1,22 @@
+# Which gitignored files `wt step copy-ignored` carries into a new worktree.
+# A file is copied only if it is BOTH gitignored and listed here — so this is a
+# narrowing list, and the things it leaves out are the point:
+#
+#   node_modules/  1.4 GB, and pnpm reinstalls it from the warm store faster
+#                  than a copy runs. The pre-start hook installs instead.
+#   .next/         a dev build keyed to the old worktree's absolute paths.
+#   var/uploads/   attachments. Shared via an absolute UPLOADS_DIR in .env,
+#                  because the rows pointing at them live in the shared database.
+
+# Every secret and connection string the app, Prisma and the MCP server read.
+# Without this a new worktree cannot start, migrate, or serve.
+.env
+.env.local
+
+# Claude Code's permission allowlist, so a worktree doesn't re-ask for
+# approvals you already granted. Ignored via the global gitignore, not ours.
+.claude/settings.local.json
+
+# Incremental tsc state. Paths inside are relative to the tsconfig directory,
+# so it stays valid at the new path — first `tsc --noEmit` is seconds, not minutes.
+tsconfig.tsbuildinfo

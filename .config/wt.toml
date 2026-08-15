@@ -1,0 +1,57 @@
+# Worktrunk project config — hooks for the worktree lifecycle.
+# Commands here run on your machine; `wt config approvals add` is what
+# reviews and trusts them (once per project, re-prompted when one changes).
+
+# --- Creating a worktree -----------------------------------------------------
+# A pipeline, not a table: each `[[pre-start]]` block waits for the previous.
+# The order matters — .env must land before Prisma reads DATABASE_URL, and
+# install must finish before the client can be generated.
+
+[[pre-start]]
+# Carries the gitignored files a checkout can't reconstruct. `.worktreeinclude`
+# narrows this to a handful of files; without it this would copy the 1.4 GB
+# node_modules and every uploaded attachment.
+copy = "wt step copy-ignored"
+
+[[pre-start]]
+# Cheap despite the size: pnpm's global store is already warm, so this is
+# mostly hardlinking. Frozen because a worktree must not drift from the lockfile.
+install = "pnpm install --frozen-lockfile"
+
+[[pre-start]]
+# Belt-and-braces: `prisma` is in pnpm-workspace.yaml's allowBuilds, so its own
+# postinstall normally does this. Explicit means a worktree never opens with a
+# stale client.
+generate = "pnpm exec prisma generate"
+
+# --- Merging -----------------------------------------------------------------
+# Fast checks before the squash commit, the slow suite once per merge.
+# These two are the routine pass from CLAUDE.md.
+
+[[pre-commit]]
+types = "pnpm exec tsc --noEmit"
+lint = "pnpm lint"
+
+[[pre-merge]]
+test = "pnpm test"
+# Static rules a branch can break without failing tsc: every node class must
+# delegate to updateFromJSON, and every color must respond to the dark toggle.
+nodes = "pnpm check:nodes"
+theme = "pnpm check:theme"
+
+# --- Deliberately absent -----------------------------------------------------
+# No post-start dev server. The usual recipe is
+#   server = "wt step tether -- pnpm exec next dev --port {{ branch | hash_port }}"
+# but .env pins NEXTAUTH_URL to http://localhost:3000 and the GitHub OAuth app's
+# callback is registered for that origin, so a worktree on a hashed port renders
+# but cannot sign in. Run `pnpm dev` by hand in whichever worktree you are
+# testing, on 3000, one at a time. (Check `ps aux | grep next` first — :3000 is
+# often a stale `next start`.) Making this work per-worktree needs per-worktree
+# NEXTAUTH_URL via direnv/mise plus extra callback URLs on the OAuth apps.
+#
+# No per-worktree database either. Every worktree shares DATABASE_URL, which is
+# right for reading and wrong the moment a branch runs `prisma migrate dev` —
+# that mutates the database main is pointed at too. For a schema branch, set up
+# an isolated one with `wt config state vars` and a container on a hashed port;
+# see https://worktrunk.dev/tips-patterns/#database-per-worktree, and mind
+# CLAUDE.md's rule about what may already be holding port 5432.
