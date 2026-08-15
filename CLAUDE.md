@@ -263,9 +263,12 @@ is the object store (S3 API, MinIO locally), `src/repositories/blob.ts` the rows
 See docs/plans/blob-storage.md. Migration is `pnpm blobs:migrate`
 (`status | run [--dry-run] | verify`) and has been run for `image` nodes;
 `sketch` and `graph` still hold SVG data URIs, because both render one inline
-and a URL would change that (§10.1). Only garbage collection (phase 5) is left,
-so **nothing collects a blob yet** — references are exact, but unreferenced
-bytes stay.
+and a URL would change that (§10.1). Collection is `pnpm blobs:collect`
+(`status | run [--dry-run]`): a blob with no `BlobRef` and older than seven days
+goes, object first and then the row, because the row is the only thing that
+names the key. **Nothing runs it on a schedule** — there is no scheduler in this
+repo and no deployment to put one on (§11.2) — so unreferenced bytes stay until
+an operator collects them, which is the safe direction for that to fail.
 
 **The cloud stores an image once; a local document carries its own.** Local
 (IndexedDB) documents keep data URIs — a signed-out browser can resolve neither

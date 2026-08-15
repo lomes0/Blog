@@ -1,9 +1,10 @@
 # Blob storage: one content-addressed store for every byte
 
-Status: **phases 1–4 done for images; only phase 5 (collection) is open.** The
-two SVG node types (sketch, graph) are the one thing 2 and 3 both stop short of,
-and §10.1 is now where that decision sits. §11.1 records why phase 4 answered
-§8 instead of building it. Decided
+Status: **all five phases built for images; the collector is not yet
+*scheduled*, and cannot be until there is a deployment to schedule it on
+(§11.2).** The two SVG node types (sketch, graph) are the one thing 2 and 3 both
+stop short of, and §10.1 is now where that decision sits. §11.1 records why
+phase 4 answered §8 instead of building it. Decided
 2026-08-13 after measuring the live database (§1); §11 is the phase log and is
 the thing to read before acting on any section body. Two sections are
 corrections written while building rather than parts of the original design —
@@ -561,7 +562,92 @@ logo, never document images. `/pdf/[id]` redirects to `/embed`, so the reader's
 own browser fetches the image under their own session and `/api/blob/[hash]`
 authorizes it exactly as it does in the app.
 
-**Phase 5 — GC.** §5, plus the scheduled job and its log.
+**Phase 5 — GC. Built 15 Aug 2026; the scheduling half is open, §11.2.**
+`deleteBlob` in `src/lib/storage.ts` (the
+only destructive operation in the module, and the only one with no caller on a
+request path), the rule in `src/lib/blobGc.ts` with
+`src/lib/__tests__/blobGc.test.ts`, and
+`prisma/scripts/collect-blobs.ts` (`pnpm blobs:collect status | run
+[--dry-run]`).
+
+The collector's own grace window is **7 days** (`BLOB_GC_GRACE_MS`), which
+answers the second half of §13. §3.2's 24 hours protects a *reference* during
+upload-before-save; this protects a blob that has **no reference at all**, which
+that grace cannot reach because there is nothing there for it to hold. That
+state is ordinary rather than exceptional — `ingestInlineBlobs`, `/api/import`
+and `migrate-blobs.ts` all write the `Blob` row before any document can point at
+it — and the way those gaps get long is that the batch job died and a person has
+to re-run it, which is an operator's timescale and not a request's. A day does
+not survive a Friday-evening import failure. The window must in any case exceed
+`BLOB_REF_GRACE_MS`, since a blob is always at least as old as its youngest
+reference, and a spec asserts that ordering so shortening it fails rather than
+quietly disarming §5.
+
+The query is deliberately **unfiltered** — every blob with its reference count,
+decided in `blobGc.ts`. Asking Postgres for "the collectable ones" would put half
+the rule in a `where` clause, and §13 has already ruled on what two spellings of
+one blob rule cost.
+
+**One correction to §5.** The deletion order it names is right and is what was
+built, but the sentence justifying it describes the wrong leftover: an orphaned
+*object* is the residue of the **reverse** order, not of this one. The actual
+argument is that the row is the only handle on the object — the key is derivable
+from nothing else — so dropping the row first and then failing on the object
+leaves bytes nothing in the database names and no later run can find. Object
+first leaves a `Blob` row whose object is gone, which is visible (`blobs:migrate
+verify` reports it), harmless (a `Blob` is only reachable through a `BlobRef`,
+and it has none), and self-healing (the next run deletes an already-absent
+object, which the store treats as success).
+
+Verified against the local MinIO and the dev database: bytes round-trip and
+delete, a second delete of the same key succeeds, a traversal-shaped key is
+refused before any request leaves the process, and `run` refuses outright with
+no store configured.
+
+Then against a store deliberately populated with two orphans — one aged past the
+window, one minutes old — alongside the real referenced blob. `status` sorted
+all three correctly; `run --dry-run` named the aged one and deleted nothing;
+`run` took its object and its row and left the other two, references included.
+Finally the interrupted-run claim above, which the whole ordering argument rests
+on: with the object deleted by hand and the row left behind, the next `run`
+collected the row and reported no failure, because deleting an absent key
+succeeds.
+
+### 11.2 The collector has nowhere to run yet
+
+§11's phase 5 is "§5, plus the scheduled job and its log". The job and the log
+exist; **the schedule does not, and it is blocked on something outside this
+plan.**
+
+There is no scheduling infrastructure in this repo at all — no cron, no timer
+unit, no `schedule:` workflow, no scheduler dependency. That is not an oversight
+to correct here, because there is also nothing deployed to schedule *on*:
+[production-deployment.md](./production-deployment.md) §9 has steps 5–9
+outstanding, so the VPS does not exist yet.
+
+The non-obvious part, and the reason this is recorded rather than left to be
+rediscovered: **the collector cannot run inside the production container as the
+image is built.** `Dockerfile`'s runner stage copies `.next/standalone`,
+`.next/static`, `public` and the Prisma client — not `src/`, and not `tsx`. Every
+script in `prisma/scripts/` imports app modules by relative path and is executed
+through `tsx`, so `docker compose exec app pnpm blobs:collect` fails on a box
+where it would otherwise be the obvious move.
+
+Two mechanisms actually fit, and the choice belongs with the deployment work:
+
+- **Ship the script into the image** — add `src/` and `tsx` to the runner stage,
+  then a host cron entry running `docker compose exec`. Cheapest to reason about;
+  costs a source tree and a dev dependency in the production image to run one
+  weekly job.
+- **Expose it behind an authenticated route** that cron `curl`s. No image change,
+  and `/api/mcp`'s agent tokens already exist as a credential with scopes. But it
+  puts the one destructive operation in this system on an HTTP surface, which
+  wants more care than a script that only an operator can start.
+
+It pairs naturally with the nightly backup in production-deployment.md §5, which
+needs a scheduler for the same reason and does not have one either. Until then
+the collector is a thing an operator runs, and nothing collects on its own —
+which is the safe direction for the failure to point.
 
 ## 12. What this supersedes
 
@@ -591,10 +677,12 @@ authorizes it exactly as it does in the app.
   save path already holds the content in memory, so the list costs nothing to
   derive there. The migration's backfill is the one place the SQL spelling
   exists, and it runs once.
-- ~~**Grace period length** for §5.~~ Answered for the *reference* — 24 hours,
-  §3.2. The collector's own window is still open, and is a different question:
-  this one covers upload-before-save, that one covers a blob that has just lost
-  its last reference.
+- ~~**Grace period length** for §5.~~ Answered twice, because it was two
+  questions. The *reference* window is 24 hours (§3.2) and covers
+  upload-before-save. The *collector's* window is 7 days (`BLOB_GC_GRACE_MS`,
+  §11 phase 5) and covers a blob that has no reference at all — the state every
+  bytes-before-rows path passes through, and the one that gets long on an
+  operator's clock rather than a request's.
 - **Should backgrounds move to the public bucket and lose `/api/`?** They are
   public by design and 19 MB of the 20. Serving them straight off the R2 public
   URL removes the box from the path entirely — but bakes a hostname unless a

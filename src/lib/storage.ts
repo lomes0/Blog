@@ -1,4 +1,5 @@
 import {
+  DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
   PutObjectCommand,
@@ -156,6 +157,32 @@ export async function blobExists(hash: string): Promise<boolean> {
     if (status === 404 || status === 403) return false;
     throw error;
   }
+}
+
+/**
+ * Remove a blob's bytes — docs/plans/blob-storage.md §5.
+ *
+ * The only destructive operation in this module, and the only one with no
+ * caller on a request path. Deleting is never a write-path decision: under
+ * deduplication a blob can be re-referenced between the check and the delete by
+ * a concurrent paste of the same image, which is the *common* case rather than
+ * the unlucky one. `prisma/scripts/collect-blobs.ts` is the only thing that
+ * calls this, offline, against blobs that have been unreferenced for a week.
+ *
+ * Deleting a key that is not there succeeds. That is S3 semantics rather than a
+ * convenience, and the collector depends on it: a run interrupted between the
+ * object and the row leaves a row whose object is already gone, and the next run
+ * has to be able to finish the job rather than fail on it.
+ *
+ * `keyFor` validates before anything leaves the process, for the same reason
+ * every other entry point here does — but the stake is higher on this one. A
+ * traversal-shaped key that merely fails to *read* is a 404; one that reached a
+ * delete would remove bytes that were never this blob's.
+ */
+export async function deleteBlob(hash: string): Promise<void> {
+  await s3().send(
+    new DeleteObjectCommand({ Bucket: BLOB_BUCKET, Key: keyFor(hash) }),
+  );
 }
 
 /**
