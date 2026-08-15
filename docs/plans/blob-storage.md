@@ -1,6 +1,8 @@
 # Blob storage: one content-addressed store for every byte
 
-Status: **phase 1 done; phase 2 done bar sketches; phases 3–5 open.** Decided
+Status: **phases 1–3 done for images; phases 4–5 open.** The two SVG node types
+(sketch, graph) are the one thing 2 and 3 both stop short of, and §10.1 is now
+where that decision sits. Decided
 2026-08-13 after measuring the live database (§1); §11 is the phase log and is
 the thing to read before acting on any section body. Two sections are
 corrections written while building rather than parts of the original design —
@@ -377,6 +379,42 @@ not dedup — they are 70 distinct images).
 Run it against a restored dump first. This rewrites every revision in the
 database, and §5's grace period does not protect against a bad rewrite.
 
+### 10.1 Which node types may be migrated — settled 15 Aug 2026
+
+Step 1 above says "find every `data:` URI". That is the right thing to *find*
+and the wrong thing to *rewrite*, and §6.1 already knew it for sketches. Running
+the question past all three types gives an answer that splits them differently
+than §1's table does — §1 groups by encoding (base64 vs percent-encoded), and
+the thing that actually decides is **how the node renders a `src` that is not a
+data URI**:
+
+| Type | data URI renders as | URL renders as | Migrated |
+| --- | --- | --- | --- |
+| `image` | `<img>` | `<img>` | **yes** — nothing about rendering changes |
+| `graph` | inline `<svg>` | `<img>`, guarded on the prefix in both `decorate` and `exportDOM` | not yet |
+| `sketch` | inline `<svg>` | nothing — it decodes `__src` unconditionally | no |
+
+So `image` was migrated and the two SVG types were not, which also happens to be
+where the bytes are: **one PNG stored 67 times was 7.7 MB of the 10.8 MB**.
+
+§6.1 asked for one thing to be established before touching sketches — what the
+payload embedded between `<!-- payload-start -->` and `<!-- payload-end -->` is
+for. It is established, and the answer is *nothing this app reads*: the sketch
+editor loads a drawing from `node.getValue()`, which returns `__value`
+(persisted separately by `exportJSON`), and every one of the four sites that
+touches the embedded copy — `SketchNode.decorate`, `SketchNode.exportDOM`,
+`ImageComponent`'s svg branch, `docx/image.ts` — **strips** it. Nothing parses
+it. It is Excalidraw's own re-import format, kept for external tools.
+
+That removes the reason for the caution but not the blocker, and the blocker
+turns out to be smaller and different than §6.1 thought. Migration does not
+destroy the payload — the bytes move into the blob intact, so nothing is lost
+either way. What it changes is that an inline `<svg>` becomes an `<img>`. For
+graphs that already works; for sketches it needs the same prefix guard GraphNode
+carries. **Both are then a rendering change to verify in a browser, not a
+migration** — which is why they are held back as one decision rather than two,
+worth 3.1 MB across 77 occurrences.
+
 ## 11. Phasing
 
 Each phase is independently shippable, and 1–3 is where the 25× lands.
@@ -418,8 +456,43 @@ records the one design correction the build produced.
   blob only *history* mentions is kept and goes when that revision does, and
   that a hash with no stored bytes is skipped rather than failing the batch.
 
-**Phase 3 — migrate what exists.** §10. This is the phase that reclaims the
-13 MB.
+**Phase 3 — migrate what exists. DONE for images 15 Aug 2026; the two SVG types
+are held back on one decision, §10.1.** `prisma/scripts/migrate-blobs.ts`
+(`pnpm blobs:migrate status | run [--dry-run] | verify`), on the walk in
+`src/lib/blobMigration.ts` — specced separately, because a node it fails to see
+keeps its bytes and a node it rewrites that cannot render a URL becomes an empty
+picture in a published post.
+
+It lives in `prisma/scripts/` rather than §10's `scripts/`, with the three other
+scripts that open a database connection; `scripts/` is lint-style checks that do
+not.
+
+Run against the dev database, after a dump: **1 document, 67 revisions, 67
+occurrences of one 117 kB PNG.** The database went **34 MB → 19 MB** and
+`Revision` **23 MB → 8.6 MB** (after a `VACUUM FULL`, which the reclaim needs —
+the rewrite only makes the rows dead). `verify` passes all four checks, and the
+stored object was fetched back and re-hashed to its own key.
+
+What is left in place, on purpose: 64 `sketch` and 13 `graph` occurrences, 3.1 MB
+— §10.1. Also attachments and backgrounds (step 5), which is the same separate
+slice phase 2 named: neither duplicates, and moving them means porting the two
+serving routes, not rewriting revision JSON. This dev database has no
+`background_image` set at all, so §10's "~20 MB of deduplicated objects" is a
+production-only figure.
+
+**Phase 3 makes phase 4 urgent rather than optional.** Three consumers still
+assume `src` is a data URI, and the first is not a degradation:
+
+- **docx export throws** — `$convertImageNode` does `Buffer.from(src.split(",")[1],
+  "base64")` on what is now a URL. True since phase 2 for newly inserted images;
+  the migration extends it to the one post that already had one. Left loud
+  rather than made to skip the image silently, which in an export is worse.
+- **backup bundles are no longer self-contained** — `/api/export` bundles
+  `assets/attachments` and `assets/backgrounds` but knows nothing about blobs, so
+  a restored bundle references bytes it does not carry. `/api/import` already
+  reconciles whatever the target deployment happens to hold (§3).
+- **`localBackend` has no blob store**, so guest drafts still fall back to data
+  URIs — deliberate, and §8.
 
 **Phase 4 — parity.** Export inlining, import, docx, and the `localBackend`
 blob store (§8). The largest phase, and the one that keeps offline working.

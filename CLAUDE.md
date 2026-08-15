@@ -260,8 +260,12 @@ Images in the editor are stored once, content-addressed, and referenced by
 `/api/blob/<sha256>` — not embedded as base64 in every revision, which is what
 made six distinct images occupy 13.6 MB across 141 copies. `src/lib/storage.ts`
 is the object store (S3 API, MinIO locally), `src/repositories/blob.ts` the rows.
-See docs/plans/blob-storage.md; phases 3–5 (migrating what exists, offline
-parity, collection) are not built yet, so data URIs are still in the database.
+See docs/plans/blob-storage.md. Migration is `pnpm blobs:migrate`
+(`status | run [--dry-run] | verify`) and has been run for `image` nodes;
+`sketch` and `graph` still hold SVG data URIs, because both render one inline
+and a URL would change that (§10.1). Phases 4–5 — export/docx/offline parity and
+collection — are not built, and **docx export throws on a blob-backed image**
+until the first of those lands.
 
 **A blob is authorized through the documents referencing it, never on its own**
 (§4). `BlobRef` is that reference, and it is what `GET /api/blob/[hash]` asks
