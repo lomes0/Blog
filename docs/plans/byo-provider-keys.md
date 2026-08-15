@@ -1,18 +1,22 @@
 # Bring-your-own provider keys
 
-**Status: phases 1–4 shipped 15 Aug 2026; phase 5 (key rotation) open.** Measured against
-the tree at `9b839169`. Decided at the outset, so the alternatives below are
+**Status: COMPLETE — all five phases shipped 15 Aug 2026**, `e67f1ffe`…
+Measured against the tree at `9b839169`. Decided at the outset, so the alternatives below are
 recorded for their reasoning rather than as live options: **keys are stored
 server-side, encrypted** (§4), and **there is no deployment-key fallback** — a
 user with no key for the provider they picked is refused and told to add one
 (§4.7).
 
-**This is live.** Phase 4 flipped the seam: `/api/completion` and
-`/api/copilot` run on the signed-in user's own key, a user without one gets a
-409 pointing at Settings, and the `*_API_KEY` variables have been deleted rather
-than merely bypassed — a key set in the environment now serves nobody. What
-remains is phase 5, key rotation, which nothing depends on until a KEK has to be
-replaced.
+**This is live.** `/api/completion` and `/api/copilot` run on the signed-in
+user's own key; a user without one gets a 409 pointing at Settings; the
+`*_API_KEY` variables are deleted rather than merely bypassed, so a key set in
+the environment serves nobody; and `pnpm ai:rotate` can replace the KEK without
+downtime.
+
+What is deliberately *not* done is in §8, and one item there is worth repeating
+because it is the natural next question: **nothing meters the Ollama path**, and
+nobody is sponsored. If either becomes wanted, §2's quota work is the shape of
+the answer — it was never exclusive with this plan.
 
 The problem as it stood when this was written: every signed-in user spent the
 deployment's AI credits, because `src/lib/ai/providers.ts` read `process.env`
@@ -497,11 +501,39 @@ Three things worth knowing:
   reachable is a refactor of its own. The 409's subtitle names the place
   instead, and the rail button is on screen. Left deliberately.
 
-**Phase 5 — rotation.** `pnpm ai:rotate` walks rows whose `keyVersion` is not
-current, opens under the version they name, re-seals under the current one.
-Resumable, because it is the operation that runs when something has gone wrong.
-*Acceptance:* a rotation over a seeded table leaves every row readable and every
-`keyVersion` current; killing it halfway and re-running finishes the job.
+**Phase 5 — rotation. SHIPPED 15 Aug 2026.** `pnpm ai:rotate status` and
+`pnpm ai:rotate run [--dry-run]`, over `providerCredentials/rotate.ts`.
+*Acceptance, met* — 2 500 seeded rows sealed under v1, a second key added, then
+the run **SIGKILLed mid-flight** (not simulated: 1 014 done, 1 486 left). Three
+things checked at that moment and after: the half-rotated table was fully
+readable (2 500/2 500, mixed v1 and v2), re-running finished exactly the
+remaining 1 486, and every row ended readable and current. Plus
+`rotate.test.ts`, 6 tests.
+
+The test that matters most is not "the secret survives" — it is **"the retired
+key stops working"**. A rotation that re-labels `keyVersion` without
+re-encrypting looks identical from outside, since the only visible change is a
+column that says 2.
+
+Four decisions the plan did not anticipate:
+
+- **The write is raw SQL, and both reasons are load-bearing.** `keyVersion` in
+  the `WHERE` clause is a compare-and-set, so a key the owner replaced mid-run
+  cannot be overwritten with the older secret. And Prisma's `@updatedAt` would
+  fire on a normal `update`, making every key look to its owner as though it had
+  just been replaced — a rotation should be invisible to the people whose keys
+  it touches.
+- **Resumability needed no code.** `keyVersion` *is* the progress, so "what is
+  left" is a query and it is still right after a `kill -9`. No checkpoint file,
+  nothing to corrupt.
+- **The failure listing is capped at 20.** The scenario that produces unreadable
+  rows is a key retired too early, which produces them by the *table* — the
+  first run of this printed 2 803 identical lines and buried the summary saying
+  what to do.
+- **`--dry-run` and `status` were added.** Neither was in the plan. This is the
+  script that runs on the day something has gone wrong, and "tell me what you
+  would do" and "tell me where things stand" are the first two things anyone
+  asks it.
 
 ## 6. What this protects, and what it does not
 

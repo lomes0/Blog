@@ -2,10 +2,10 @@
  * Set, list and remove a user's own AI provider keys —
  * docs/plans/byo-provider-keys.md phase 2.
  *
- *   pnpm ai:key -- set you@example.com --provider anthropic     # reads the key from stdin
- *   echo "$KEY" | pnpm ai:key -- set you@example.com --provider google
- *   pnpm ai:key -- list you@example.com
- *   pnpm ai:key -- remove you@example.com --provider anthropic
+ *   pnpm ai:key set you@example.com --provider anthropic     # reads the key from stdin
+ *   echo "$KEY" | pnpm ai:key set you@example.com --provider google
+ *   pnpm ai:key list you@example.com
+ *   pnpm ai:key remove you@example.com --provider anthropic
  *
  * A script as well as a route, for the same reason `mcp:token` is a script: a
  * deployment has to be able to seed a credential without a browser, and local
@@ -144,7 +144,7 @@ const commands: Record<string, (argv: string[]) => Promise<void>> = {
 const run = commands[command ?? ""];
 if (!run) {
   die(
-    `Usage: pnpm ai:key -- <set|list|remove> …\n` +
+    `Usage: pnpm ai:key <set|list|remove> …\n` +
       `  set <user> --provider <${AI_PROVIDERS.join("|")}> [--no-verify]\n` +
       `    the key is read from stdin, never from an argument\n` +
       `  list <user>\n` +

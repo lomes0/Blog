@@ -23,7 +23,8 @@
     "mcp:smoke": "node --import tsx mcp/smoke.ts",
     "mcp:smoke:http": "node --import tsx --env-file=.env mcp/smokeHttp.ts",
     "mcp:token": "node --import tsx --env-file=.env prisma/scripts/agent-token.ts",
-    "ai:key": "node --import tsx --env-file=.env prisma/scripts/ai-key.ts"
+    "ai:key": "node --import tsx --env-file=.env prisma/scripts/ai-key.ts",
+    "ai:rotate": "node --import tsx --env-file=.env prisma/scripts/ai-rotate.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "3.0.9",
