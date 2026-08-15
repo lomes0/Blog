@@ -1,6 +1,6 @@
 /**
  * The sealing half of bring-your-own provider keys —
- * docs/plans/byo-provider-keys.md §4.2.
+ * docs/plans/archive/byo-provider-keys.md §4.2.
  *
  * This module imports `node:crypto` and nothing else, on the same rule as
  * `dragGeometry.ts` and the content-bridge modules: the part with the bugs in

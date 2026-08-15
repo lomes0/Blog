@@ -23,7 +23,7 @@ const DEFAULT_LLM: LLMConfig = {
 
 /**
  * One provider key, as `GET /api/ai/credentials` returns it —
- * docs/plans/byo-provider-keys.md §4.6.
+ * docs/plans/archive/byo-provider-keys.md §4.6.
  *
  * Restated here rather than imported from `@/lib/providerCredentials`, for two
  * reasons that both matter: that module reaches Prisma and cannot be pulled

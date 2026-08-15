@@ -1,5 +1,5 @@
 /**
- * Is this actually a working key? — docs/plans/byo-provider-keys.md §4.6.
+ * Is this actually a working key? — docs/plans/archive/byo-provider-keys.md §4.6.
  *
  * A key is checked against its provider before it is stored, so a typo fails in
  * the settings dialog where the user is still looking at the field they

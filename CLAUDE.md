@@ -493,7 +493,7 @@ Optional:
   `GOOGLE_GENERATIVE_AI_API_KEY` or `AZURE_API_KEY` any more** — each user
   brings their own and enters it in Settings, and nothing reads a deployment
   key. Format is `version:base64`, 32 bytes each, canonical base64; see
-  docs/plans/byo-provider-keys.md §4.2 and `.env.example` for the generator
+  docs/plans/archive/byo-provider-keys.md §4.2 and `.env.example` for the generator
   command. Without it, saving a key fails and every stored key is unreadable.
 - AI endpoints, which stay deployment config because a user-supplied URL would
   be an SSRF gadget (§4.5): `OLLAMA_API_URL`, `AZURE_OPENAI_BASE_URL`,
@@ -545,8 +545,8 @@ Start at [docs/README.md](./docs/README.md), which indexes the rest.
 **A plan is not a description of the current tree.** `docs/plans/` holds live
 proposals; each states its own status at the top, and that line is the thing to
 read first. A plan that ships moves to `docs/plans/archive/` rather than being
-deleted, because **the code cites these documents by section number** — 184
-comments across 121 files, and two tools (`eslint.config.mjs`'s MUI rule and
+deleted, because **the code cites these documents by section number** — 240
+comments across 178 files, and two tools (`eslint.config.mjs`'s MUI rule and
 `scripts/check-codecs.mjs`) print a path from there in their failure output. So:
 
 - Moving or renaming anything under `docs/plans/` means updating those

@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * Store or remove one user's key for one provider —
- * docs/plans/byo-provider-keys.md §4.6.
+ * docs/plans/archive/byo-provider-keys.md §4.6.
  */
 
 /**

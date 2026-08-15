@@ -1,6 +1,6 @@
 /**
  * Where the key-encryption keys come from —
- * docs/plans/byo-provider-keys.md §4.2.
+ * docs/plans/archive/byo-provider-keys.md §4.2.
  *
  * A single `AI_CREDENTIAL_KEY` would make rotation a flag day: there would be
  * no moment at which both the old and the new key are available, so every row

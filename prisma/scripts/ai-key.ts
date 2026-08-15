@@ -1,6 +1,6 @@
 /**
  * Set, list and remove a user's own AI provider keys —
- * docs/plans/byo-provider-keys.md phase 2.
+ * docs/plans/archive/byo-provider-keys.md phase 2.
  *
  *   pnpm ai:key set you@example.com --provider anthropic     # reads the key from stdin
  *   echo "$KEY" | pnpm ai:key set you@example.com --provider google

@@ -1,6 +1,6 @@
 /**
  * Checking a provider key before storing it —
- * docs/plans/byo-provider-keys.md §4.6, phase 2.
+ * docs/plans/archive/byo-provider-keys.md §4.6, phase 2.
  *
  * The happy path is not what needs pinning. Two of the failure paths do:
  *

@@ -16,7 +16,7 @@ export type ProviderInstance = (modelId: string) => any;
 
 /**
  * What a provider needs to make a call, resolved by the caller rather than read
- * from `process.env` here — docs/plans/byo-provider-keys.md §4.4.
+ * from `process.env` here — docs/plans/archive/byo-provider-keys.md §4.4.
  *
  * The split down the middle is a security boundary, not a convenience: the
  * **key** is the user's and arrives from `providerCredentials`, while the
@@ -147,7 +147,7 @@ const OLLAMA_DEFAULT_URL = "http://localhost:11434/api";
  * nothing else.
  *
  * **There is no `*_API_KEY` read left in this file**, and that is the point of
- * docs/plans/byo-provider-keys.md: a key belongs to a user and arrives from
+ * docs/plans/archive/byo-provider-keys.md: a key belongs to a user and arrives from
  * `providerCredentials`, while an endpoint belongs to the deployment and stays
  * here. §4.5 is the reasoning — a user-supplied base URL would make this
  * factory fetch any host they name, from inside the deployment's network.

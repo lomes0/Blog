@@ -1,6 +1,6 @@
 /**
  * Re-seal every stored provider key under the current KEK —
- * docs/plans/byo-provider-keys.md phase 5.
+ * docs/plans/archive/byo-provider-keys.md phase 5.
  *
  *   pnpm ai:rotate status      # what is sealed under what, and what is stuck
  *   pnpm ai:rotate run --dry-run

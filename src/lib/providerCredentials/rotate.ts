@@ -1,5 +1,5 @@
 /**
- * Re-sealing stored keys under a new KEK — docs/plans/byo-provider-keys.md §4.2,
+ * Re-sealing stored keys under a new KEK — docs/plans/archive/byo-provider-keys.md §4.2,
  * phase 5.
  *
  * This is the operation that runs when something has already gone wrong: a key

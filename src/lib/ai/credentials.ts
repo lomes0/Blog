@@ -1,5 +1,5 @@
 /**
- * Where a completion's API key comes from — docs/plans/byo-provider-keys.md §4.4.
+ * Where a completion's API key comes from — docs/plans/archive/byo-provider-keys.md §4.4.
  *
  * This is the seam the whole plan exists to move. Until phase 4 the answer was
  * `process.env`, and every signed-in user spent the deployment's credits; now it

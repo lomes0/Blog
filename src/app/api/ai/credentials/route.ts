@@ -5,7 +5,7 @@ import { listCredentials } from "@/lib/providerCredentials";
 export const dynamic = "force-dynamic";
 
 /**
- * Which AI providers this user has a key for — docs/plans/byo-provider-keys.md §4.6.
+ * Which AI providers this user has a key for — docs/plans/archive/byo-provider-keys.md §4.6.
  *
  * Masked, and masked by construction rather than by remembering to strip a
  * field: `listCredentials` returns `CredentialSummary`, which has no column

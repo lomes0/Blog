@@ -1,5 +1,5 @@
 /**
- * Re-sealing under a new KEK — docs/plans/byo-provider-keys.md phase 5.
+ * Re-sealing under a new KEK — docs/plans/archive/byo-provider-keys.md phase 5.
  *
  * The property that matters is not "the plaintext survives" — it is that the
  * *old key stops working*. A rotation that leaves a row openable under the

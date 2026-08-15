@@ -1,6 +1,6 @@
 /**
  * Reading an API refusal out of an AI SDK error —
- * docs/plans/byo-provider-keys.md §4.7.
+ * docs/plans/archive/byo-provider-keys.md §4.7.
  *
  * The SDK's streaming hooks (`useCompletion`, `useChat`) surface a non-2xx as an
  * `Error` whose message is the raw response body. Ours is the route wrapper's

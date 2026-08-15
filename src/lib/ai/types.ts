@@ -10,7 +10,7 @@ export type AIProviderType = typeof AI_PROVIDERS[number];
  * Does a user have to bring a key for this provider?
  *
  * Ollama is the exception, and it is not an oversight —
- * docs/plans/byo-provider-keys.md §4.5. It authenticates with nothing; it is a
+ * docs/plans/archive/byo-provider-keys.md §4.5. It authenticates with nothing; it is a
  * base URL, usually a local one. A bring-your-own-key rule that refused Ollama
  * for "no key on file" would be refusing a provider that has no key to bring.
  *

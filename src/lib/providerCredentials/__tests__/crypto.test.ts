@@ -1,5 +1,5 @@
 /**
- * Sealing provider keys — docs/plans/byo-provider-keys.md §4.2, phase 1.
+ * Sealing provider keys — docs/plans/archive/byo-provider-keys.md §4.2, phase 1.
  *
  * A round trip is not what is worth pinning here. Encrypt-then-decrypt passes
  * just as happily with the auth tag ignored, with the AAD dropped, and with a

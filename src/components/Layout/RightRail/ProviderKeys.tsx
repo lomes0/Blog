@@ -23,7 +23,7 @@ import { ICON_SIZE } from "@/theme/icons";
 
 /**
  * The user's own AI provider keys, in Settings —
- * docs/plans/byo-provider-keys.md phase 3.
+ * docs/plans/archive/byo-provider-keys.md phase 3.
  *
  * Ollama is filtered out rather than shown as "no key needed": it authenticates
  * with nothing, so a row for it would be a control with no action behind it.

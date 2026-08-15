@@ -97,7 +97,7 @@ export const POST = userRoute(async (request, { user }) => {
   }
 
   // The user's own key, not the deployment's — and a 409 rather than a
-  // 500 if they have none (docs/plans/byo-provider-keys.md §4.7).
+  // 500 if they have none (docs/plans/archive/byo-provider-keys.md §4.7).
   const credentials = await resolveProviderCredentials(user.id, provider);
   const providerInstance = createProvider(provider, credentials);
   const modelInstance = providerInstance(model.id);

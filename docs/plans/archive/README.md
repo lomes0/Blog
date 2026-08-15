@@ -1,13 +1,13 @@
 # Archived plans — closed work
 
-These twelve plans are **closed**: eleven shipped, and one
+These thirteen plans are **closed**: twelve shipped, and one
 ([storage-uploads.md](./storage-uploads.md)) was superseded before it was built.
 A superseded plan is archived rather than deleted for the same reason a shipped
 one is — the reasoning is cited elsewhere and outlived the plan.
 
 They are kept, not deleted, for two reasons:
 
-1. **The code points at them.** 184 comments across 121 source files cite these
+1. **The code points at them.** 178 comments across 136 source files cite these
    documents by section number as the standing rationale for an invariant —
    `src/lib/proposals.ts` names `agent-gating.md` §3.2 and §3.4 as the spec for
    the squash, every module in `src/lib/changes/` names a section of
@@ -38,11 +38,16 @@ extraction. Do not read one as a description of the current tree.
 | [ai-surface-consolidation.md](./ai-surface-consolidation.md) | 8–9 Aug 2026, 6 phases   | Four AI surfaces onto one schema, one vocabulary and one write path — the Copilot's content edits **propose** now       |
 | [haklex-adoption.md](./haklex-adoption.md)                 | 8–9 Aug 2026, 5 workstreams | Extracted the editor to `packages/editor`, moved it to vanilla-extract + Base UI, added inline agent diff review       |
 | [storage-uploads.md](./storage-uploads.md)                 | **Superseded** 13 Aug 2026 — never built | Uploads off the filesystem to object storage. Superseded by [../blob-storage.md](../blob-storage.md): it scoped out editor images to avoid changing the document format, and measurement showed that excluded class held most of the bytes |
+| [byo-provider-keys.md](./byo-provider-keys.md)             | 15 Aug 2026, 5 phases      | AI provider keys moved from the deployment's `.env` to a per-user encrypted row, with no fallback — the codebase's first **reversible** secret, and the reason §4.2 (AAD, IV, key versioning) and §6 (what this does *not* protect) carry its weight |
 
 Deliberately left undone, recorded so they are not re-proposed as oversights:
 
 - **No token-management UI and no OAuth** for `/api/mcp` (`mcp-support.md` §8) —
   OAuth is the line past which this becomes multi-tenant.
+- **Nothing meters the Ollama path, and nobody can be sponsored**
+  (`byo-provider-keys.md` §8) — every other provider is paid for by the user
+  whose key it is, so the metering question only survives for the one provider
+  that needs no key. §2 records the quota design if it is ever wanted.
 - **Agent-gating phases 6–7** (`agent-gating.md` §3.6) — deferred pending
   evidence that document says how to gather.
 - **Haklex phases 3 and 4 were re-scoped mid-execution** on evidence

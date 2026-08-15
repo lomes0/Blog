@@ -1,6 +1,6 @@
 /**
  * Provider credentials: a user's own API key for one AI provider, stored
- * encrypted — docs/plans/byo-provider-keys.md §4.3.
+ * encrypted — docs/plans/archive/byo-provider-keys.md §4.3.
  *
  * Same shape as `agentTokens.ts`, and for the same reason: the whole lifecycle
  * lives in one module so that "how a secret becomes a row" has exactly one

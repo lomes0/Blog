@@ -255,7 +255,7 @@ model AgentToken {
   @@index([userId])
 }
 
-/// A user's own API key for one AI provider — see docs/plans/byo-provider-keys.md §4.1.
+/// A user's own API key for one AI provider — see docs/plans/archive/byo-provider-keys.md §4.1.
 ///
 /// Read the row above first, then the one difference that shapes everything
 /// here: `AgentToken` stores a SHA-256 because the server only ever has to

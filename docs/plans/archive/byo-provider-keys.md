@@ -121,7 +121,7 @@ Verified by grep at `9b839169`:
 ### 4.1 The schema
 
 ```prisma
-/// A user's own API key for one AI provider — see docs/plans/byo-provider-keys.md §4.
+/// A user's own API key for one AI provider — see docs/plans/archive/byo-provider-keys.md §4.
 ///
 /// Unlike `AgentToken`, this is **encrypted, not hashed**: the plaintext is
 /// replayed to the provider on every completion, so the server must be able to

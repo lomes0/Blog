@@ -1,5 +1,5 @@
 /**
- * Parsing the key-encryption keys — docs/plans/byo-provider-keys.md §4.2.
+ * Parsing the key-encryption keys — docs/plans/archive/byo-provider-keys.md §4.2.
  *
  * This is operator-supplied text that decides whether every stored credential
  * in the deployment can be opened, so the interesting cases are all the ways it

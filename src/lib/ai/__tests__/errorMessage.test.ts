@@ -1,6 +1,6 @@
 /**
  * Unpacking an API refusal from an AI SDK error —
- * docs/plans/byo-provider-keys.md §4.7, phase 4.
+ * docs/plans/archive/byo-provider-keys.md §4.7, phase 4.
  *
  * What this stands between: the route wrapper answers with
  * `{ error: { title, subtitle, code } }`, and the SDK's streaming hooks hand a
