@@ -373,11 +373,11 @@ Named here so they are not mistaken for solved by choosing a host. From
 6. **Create the R2 bucket and set `S3_*` in the production environment (§2.1)** —
    new, and it belongs before the first deploy rather than after: without it the
    app runs, serves posts, and shows broken images
-7. Migrate the existing uploads onto the volume — **~180KB, not the 19MB this
-   step used to say.** The other 19MB were background images, and `blob-storage.md`
-   §10.2 deleted them rather than moving them: the feature was already gone. What
-   is left is attachments, which stay on the filesystem for the reason §10.2
-   gives
+7. Copy the existing attachments onto the volume — 11 files, ~180KB. This is the
+   whole of the filesystem migration: it used to read "19MB of uploads", and the
+   other 19MB were background images that turned out to be a removed feature's
+   orphans (§2's 27 Aug note). Attachments stay on disk rather than moving to the
+   store, for the reason `blob-storage.md` §10.2 gives
 8. **Backups and a rehearsed restore (§5)** — before this is load-bearing, not
    after. Three things to back up, and the middle one is now the smallest by
    three orders of magnitude: the database, the upload volume (singular), and the
@@ -387,8 +387,10 @@ Named here so they are not mistaken for solved by choosing a host. From
    does `pnpm blobs:collect` (`blob-storage.md` §11.2, which records the trap:
    the runner stage of the Dockerfile carries neither `src/` nor `tsx`, so
    `docker compose exec app` cannot run any script in `prisma/scripts/`). Decide
-   the mechanism once, for both
-10. External uptime check against `/api/health`, alerting somewhere you read
-9. Verify the change feed end to end *through* Cloudflare (§1.1, and
+   the mechanism once, for both. Note the collector is the *only* thing that ever
+   removes bytes from the bucket, and §5 has to be backing that bucket up before
+   it first runs
+10. Verify the change feed end to end *through* Cloudflare (§1.1, and
    `changes-detection.md` §6.2 — the failure is silent, so this is a real step
    rather than a formality)
+11. External uptime check against `/api/health`, alerting somewhere you read
