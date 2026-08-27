@@ -1,6 +1,6 @@
 # Archived plans — closed work
 
-These thirteen plans are **closed**: twelve shipped, and one
+These fourteen plans are **closed**: thirteen shipped, and one
 ([storage-uploads.md](./storage-uploads.md)) was superseded before it was built.
 A superseded plan is archived rather than deleted for the same reason a shipped
 one is — the reasoning is cited elsewhere and outlived the plan.
@@ -38,6 +38,7 @@ extraction. Do not read one as a description of the current tree.
 | [ai-surface-consolidation.md](./ai-surface-consolidation.md) | 8–9 Aug 2026, 6 phases   | Four AI surfaces onto one schema, one vocabulary and one write path — the Copilot's content edits **propose** now       |
 | [haklex-adoption.md](./haklex-adoption.md)                 | 8–9 Aug 2026, 5 workstreams | Extracted the editor to `packages/editor`, moved it to vanilla-extract + Base UI, added inline agent diff review       |
 | [storage-uploads.md](./storage-uploads.md)                 | **Superseded** 13 Aug 2026 — never built | Uploads off the filesystem to object storage. Superseded by [../blob-storage.md](../blob-storage.md): it scoped out editor images to avoid changing the document format, and measurement showed that excluded class held most of the bytes |
+| [haklex-reprise.md](./haklex-reprise.md)                   | 14 Aug 2026, 5 of 7 phases | The five capabilities the haklex adoption cut, reopened and shipped (964 tests). §11.3 refused phase 7 on evidence — correct about the mechanism, wrong about the corpus, and overturned by [../nested-editor-support.md](../nested-editor-support.md) on 27 Aug |
 | [byo-provider-keys.md](./byo-provider-keys.md)             | 15 Aug 2026, 5 phases      | AI provider keys moved from the deployment's `.env` to a per-user encrypted row, with no fallback — the codebase's first **reversible** secret, and the reason §4.2 (AAD, IV, key versioning) and §6 (what this does *not* protect) carry its weight |
 
 Deliberately left undone, recorded so they are not re-proposed as oversights:
