@@ -11,8 +11,8 @@ for what has landed and when.
 
 | Plan                                                       | Status                                                                                                                                                 |
 | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [production-deployment.md](./production-deployment.md)     | **Decided 13 Aug 2026, steps 1–4 of §9 done, not yet deployed** — a single VPS running Docker Compose. The third hosting decision in two weeks; the other two are recorded because their reasoning still reads, not because they are live. Re-checked against the tree 15 Aug: §2.1 is new (an object store went from "not a blocker" to a hard prerequisite), §5 now has three things to back up rather than two, §9 grew a scheduler step, and §8's AI-spend blocker is resolved — there is no deployment API key left to spend |
-| [blob-storage.md](./blob-storage.md)                       | **All five phases built for images (15 Aug 2026)** — one content-addressed store for every byte, on R2. Measured before designing, and the migration bore it out: one PNG stored 67 times took the dev database from 34 MB to 19 MB. §3.1, §3.2, §10.1, §11.1 and §11.2 are corrections and findings written while building — §11.1 retires §8's local blob store, whose premise phase 2 had already invalidated, and §11.2 records that the collector has nowhere to run on a schedule until the VPS exists. What is left: scheduling, and the sketch/graph rendering decision. Supersedes [archive/storage-uploads.md](./archive/storage-uploads.md) |
+| [production-deployment.md](./production-deployment.md)     | **Decided 13 Aug 2026, steps 1–4 of §9 done, not yet deployed** — a single VPS running Docker Compose. The third hosting decision in two weeks; the other two are recorded because their reasoning still reads, not because they are live. Re-checked against the tree 15 Aug: §2.1 is new (an object store went from "not a blocker" to a hard prerequisite), §5 now has three things to back up rather than two, §9 grew a scheduler step, and §8's AI-spend blocker is resolved — there is no deployment API key left to spend. **Corrected again 27 Aug**, and mostly by subtraction: the background images §2 called "nearly all of the data" were a removed feature's orphans, so there is one upload volume rather than two, §5's disk side is ~180KB against a bucket holding everything else, and §9's step 7 is copying 11 files. §2 keeps the wrong version alongside the right one — the volume that protected dead data was still the correct call on what was known |
+| [blob-storage.md](./blob-storage.md)                       | **All five phases built for images (15 Aug 2026)** — one content-addressed store for every byte, on R2. Measured before designing, and the migration bore it out: one PNG stored 67 times took the dev database from 34 MB to 19 MB. §3.1, §3.2, §10.1, §11.1 and §11.2 are corrections and findings written while building — §11.1 retires §8's local blob store, whose premise phase 2 had already invalidated, and §11.2 records that the collector has nowhere to run on a schedule until the VPS exists. **§10.2 (27 Aug) closes §10's step 5 by subtraction** — backgrounds were a removed feature's leftovers and are deleted rather than migrated (~19MB, and §10's expected outcome was wrong about them); attachments stay on disk because `PUT /api/attachments/[filename]` edits in place and content addressing cannot express that. What is left: scheduling, and the sketch/graph rendering decision. Supersedes [archive/storage-uploads.md](./archive/storage-uploads.md) |
 | [claude-code-backlog.md](./claude-code-backlog.md)         | **Backlog.** What the content bridge does _not_ do, and why. Several items are decisions rather than work — chiefly §4, nested editors, which gates three codecs and 198 real nodes. That one now has a proposed answer in `haklex-reprise.md` §2.2 |
 | [haklex-reprise.md](./haklex-reprise.md)                   | **DONE 14 Aug 2026** — five of seven phases shipped (964 tests); phase 7 refused on evidence, and that refusal invalidates §9's claim that this closes `claude-code-backlog.md` §4. Not archived yet: 41 code comments cite it |
 | [code-block-card.md](./code-block-card.md)                 | **Shipped 14 Aug 2026 (`7ec096a7`)**; its status line said "not started" until 15 Aug. Converges the two code-block chromes (a portalled overlay for the editor, an imperative enhancer for `/view`) onto one card in the node's own DOM. Reopens what `archive/haklex-adoption.md` §6.1 lost as collateral when §10.7 cut Shiki. Ready to archive once its citations are updated |
@@ -36,7 +36,8 @@ those citations in the same commit (see the note at the top of this file):
   started" for a day and has been corrected; only the move is left.
 - **`blob-storage.md`** — all five phases built, but two things are genuinely
   open (§11.2 scheduling, §10.1 sketches and graphs), so it stays live until
-  those close rather than for a citation reason.
+  those close rather than for a citation reason. §10's step 5 is no longer one of
+  them: §10.2 closed it on 27 Aug, and neither half ended in the store.
 
 ## Blocked on a decision, not on effort
 
@@ -107,9 +108,13 @@ on top of an already-simplified base — never all at once.
    thunks, UI drag/menu builds id arrays, remove the `between`/bracketing
    plumbing.
 
-4. **Schema Phases B–D** (from Plan 2): `head` → real FK, `name → title` /
-   `background_image → backgroundImage` renames, drop dead `type`/coauthors.
-   Coordinate Phase D with the next step (both touch `Document` indexes).
+4. **Schema Phases B–D** (from Plan 2): `head` → real FK, `name → title` rename,
+   drop dead `type`/coauthors. Coordinate Phase D with the next step (both touch
+   `Document` indexes). **`background_image → backgroundImage` is no longer the
+   right move**: since `blob-storage.md` §10.2 the column is inert — nothing
+   writes it, nothing renders it, and it is kept only so pre-27-Aug export
+   bundles still import. Drop it here instead of renaming it, once a bundle that
+   old stops mattering.
 
 5. **Ordering, Phase 5 — delete `rank`** (from Plan 1): drop the `rank`
    columns/indexes, the `fractional-indexing` dep, `lib/ordering.ts`,
