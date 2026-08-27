@@ -447,7 +447,8 @@ describe("alignment", () => {
 });
 
 /**
- * A container whose children are not at `children` (haklex-reprise §3).
+ * A container whose children are not at `children`
+ * (docs/plans/archive/haklex-reprise.md §3).
  *
  * `sticky` joined `BLOCK_CONTAINERS` in phase 1, so it now reaches `canRecurse`
  * — but this module reads `node.children` and writes it back the same way, and

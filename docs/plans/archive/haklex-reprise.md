@@ -1,19 +1,22 @@
 # Haklex reprise — the five cut items, reopened
 
-Status: **DONE — five of seven phases shipped 14 Aug 2026.** Phase 7 was
-investigated and **refused on evidence**; §11.3 says why, and it invalidates a
-claim §9 makes about what this plan closes. That refusal was **reopened 27 Aug
-2026** on a re-measurement of the corpus — see §11.3's note and
-[nested-editor-support.md](./nested-editor-support.md). Nothing in §1–§7 should be read as a
-to-do list without reading §11 first — four of its claims turned out to be
-wrong, and one of those was load-bearing.
+Status: **COMPLETE — archived.** Five of seven phases shipped 14 Aug 2026.
+Phase 7 was investigated and refused on evidence in §11.3; a re-measurement of
+the corpus on 27 Aug 2026 overturned that refusal, and the work shipped
+separately the same day as
+[nested-editor-support.md](../nested-editor-support.md) — canvas notes are
+addressable at `b2.1`, an image caption is a codec field, and 259 wrapper
+paragraphs migrated with 0 skipped. That also settles the claim §9 makes about
+what this plan closes, which §11.3's refusal had invalidated. Nothing in §1–§7
+should be read as a to-do list without reading §11 first — four of its claims
+turned out to be wrong, and one of those was load-bearing.
 
 Reopens the five capabilities
-[archive/haklex-adoption.md](./archive/haklex-adoption.md) cut in §10.7 and
+[archive/haklex-adoption.md](./haklex-adoption.md) cut in §10.7 and
 §10.8. Written after re-reading the code the cuts were made against, not the
 plan that recorded them — three of the five blockers do not survive that
 reading, and one of the three dissolves into a seam that also answers
-[claude-code-backlog.md](./claude-code-backlog.md) §4, open since 6 Aug.
+[claude-code-backlog.md](../claude-code-backlog.md) §4, open since 6 Aug.
 
 The archive plan's cuts were correct **as reasons about what haklex ships**.
 They were not reasons about what the capability costs us, because in three cases
@@ -536,7 +539,7 @@ Worst first, in the shape §10.6.3 of the plan this one annotates took.
 > 192 stored canvases is alone in its wrapping paragraph** — as are all 67
 > images — so the prose-splitting call this section refused on has no instances.
 > The unwrap is mechanical. See
-> [nested-editor-support.md](./nested-editor-support.md) §2, which supersedes the
+> [nested-editor-support.md](../nested-editor-support.md) §2, which supersedes the
 > last two paragraphs of this section; the first three still say why the wall is
 > where it is.
 

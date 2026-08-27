@@ -6,7 +6,7 @@ import reactHooksPlugin from "eslint-plugin-react-hooks";
 
 /**
  * jotai belongs to the editor package, and to nothing else
- * (docs/plans/haklex-reprise.md §5).
+ * (docs/plans/archive/haklex-reprise.md §5).
  *
  * The mirror of the `@mui/*`-under-`packages/**` ban at the foot of this file,
  * pointing the other way: the app shell has one state library — the Redux
@@ -30,7 +30,7 @@ import reactHooksPlugin from "eslint-plugin-react-hooks";
 const NO_JOTAI = {
   group: ["jotai", "jotai/*"],
   message:
-    "jotai is scoped to packages/editor (docs/plans/haklex-reprise.md §5). src/** has one state library: the Redux Toolkit slice in @/store/app. There is no app-level jotai Provider, so an atom here would read from the implicit global store — use component state, or the store, or move the component into packages/editor and give it a Provider of its own.",
+    "jotai is scoped to packages/editor (docs/plans/archive/haklex-reprise.md §5). src/** has one state library: the Redux Toolkit slice in @/store/app. There is no app-level jotai Provider, so an atom here would read from the implicit global store — use component state, or the store, or move the component into packages/editor and give it a Provider of its own.",
 };
 
 export default [

@@ -25,15 +25,21 @@ stored revision:
 | Still opaque at block level             | `tablerow` (1357), `layout-item` (741) — pure structure, nothing to author |
 | Block-level content types with no codec | **none**                                                                   |
 
-That last row is narrower than it sounds, and the difference is item 4. Stored
-`image`, `canvas` and `sketch` nodes sit _inside_ paragraphs rather than at the
-top level, so they never reach `nodeToBlock` — they reach the model as bracketed
-descriptors through `plainText` (`blocks.ts:58`), which is why they do not show
-up as opaque blocks. They still have no codec.
+That last row used to be narrower than it sounded: stored `image`, `canvas` and
+`sketch` nodes sat _inside_ paragraphs rather than at the top level, so they
+never reached `nodeToBlock` and never showed up as opaque blocks either — they
+reached the model as bracketed descriptors through `plainText`
+(`blocks.ts:58`). **That is no longer true of the first two.** All three
+decorators are block-level as of 27 Aug 2026, `canvas` descends to its notes and
+their blocks, and `image` has a codec carrying its caption
+([nested-editor-support.md](./nested-editor-support.md)). `sketch` and `graph`
+stay describe-only on purpose — see "Never" below. The counts in the table
+predate that work and have not been re-measured.
 
-So the remaining work is not "finish the codecs". The one correctness hole is
-now closed (item 1, kept here for the record); what is left is capability and
-four decisions.
+So the remaining work is not "finish the codecs", and it is no longer capability
+either. The one correctness hole is closed (item 1, kept here for the record),
+items 2 and 4 are closed by the nested-editor work, and **what is left is four
+decisions**: 3, 5, 6 and 7.
 
 ---
 
@@ -84,22 +90,31 @@ retrying, and that reopening the document restores the buffered text.
 
 ---
 
-## 2. Descriptors could carry text
+## 2. Descriptors could carry text — MOOT (27 Aug 2026)
 
-Reading a block with no codec gives shape, not content: `canvas  7 notes` says a
-board is there but not what the notes say. So "summarise this post" silently
-skips them.
+The hole: reading a block with no codec gave shape, not content. `canvas
+7 notes` said a board was there but not what the notes said, so "summarise this
+post" silently skipped them. `canvas` (131 stored) was the one case left, and
+the proposed fix was read-only text extraction into the descriptor — a morning's
+work on the read path.
 
-Extracting read-only text into the descriptor closes most of that gap. It is
-strictly a read-path change — no new authoring surface, no write risk — and the
-policy is already written down and already followed: `describeNode`'s docstring
-in `blocks.ts` states it, its `tablerow` case joins the row's cell text rather
-than counting cells, and `plainText` does the same for inline nodes it cannot
-spell.
+**It was closed by addressing instead, which is strictly better.** Item 4 landed
+on "address into them", so a canvas's notes are containers rather than
+descriptor text: the board is `b2`, a note `b2.1`, and the note's paragraphs
+`b2.1.1` — ordinary text blocks that `read_blocks` returns and `set_text`
+edits. Extraction would have made them readable; addressing made them
+authorable, and there is nothing left to extract. `image` captions went the
+other way for the reason `haklex-reprise.md` §2.4 gives — a caption is content
+*about* a block, so it is a codec field next to `alt` and `src`, not a
+sub-document.
 
-**`canvas` (131 stored) is the one that is left**, and it needs walking each
-note's nested editor state. `image` captions join it if item 4 lands on
-"refuse".
+What survives of the original complaint is narrow and was never the case being
+argued: a decorator that **shares a paragraph with other content** is not
+unwrapped (the transform and `pnpm nodes:unwrap` both collapse only a paragraph
+whose sole child is one of the three, and count anything else rather than
+deciding it), so it stays inline and still reaches the model as a bracketed
+descriptor. The dev corpus held none — 259 wrapper paragraphs unwrapped across 5
+documents, 0 skipped.
 
 Not `kanban`: it has had a full codec since `6abf8c09` — `nodeToBlock` returns
 `{type: "kanban", tasks}` and `readKanbanTasks` (`blocks.ts:252`) already yields
@@ -108,10 +123,9 @@ zero of them anyway. The `3 lanes · 11 cards` example that used to be here was
 copied from the plan §4.4, written before that graduation; the descriptor now
 only fires for a kanban reached inline.
 
-**Cost.** A morning.
-
-**Blocked by.** Nothing. Note that `canvas` here is _read-only extraction_,
-which is unrelated to and unblocked by item 4.
+**Cost.** Nil — the work happened elsewhere. Kept here for the record, and
+because the reasoning ("extraction is cheaper than addressing") is the kind that
+gets re-proposed.
 
 ---
 
@@ -176,8 +190,9 @@ Two things, both found on the way to answering it:
 
 1. **The stated cost of "address into them" does not exist.** It was "every op
    has to know which document it is operating on", which is a *live editor*
-   cost; the bridge only ever walks stored JSON (`haklex-reprise.md` §2.2). In
-   serialized form a nested editor is a children array at an unusual key.
+   cost; the bridge only ever walks stored JSON
+   (`archive/haklex-reprise.md` §2.2). In serialized form a nested editor is a
+   children array at an unusual key.
 2. **The blocker was never nesting.** All three nodes are inline decorators, so
    they sit inside a paragraph and have no address to descend *from*. The counts
    in the table above are also all-revision counts — current heads hold 4

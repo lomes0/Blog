@@ -1,5 +1,5 @@
 /**
- * A document inside a document (docs/plans/haklex-reprise.md §6.1).
+ * A document inside a document (docs/plans/archive/haklex-reprise.md §6.1).
  *
  * One nested editor, rendered as a titled card the author opens a dialog to
  * edit. Everything interesting about it is a consequence of two decisions:

@@ -38,17 +38,18 @@ export const BLOCK_CONTAINERS: ReadonlySet<string> = new Set([
   // A sticky note is a document in its own right, so its blocks are addressed
   // like any other container's — `b7.1`, `b7.2`. Its children are not at
   // `children`; `containers.ts` is what knows that, and the address scheme does
-  // not have to (haklex-reprise §3.2).
+  // not have to (docs/plans/archive/haklex-reprise.md §3.2).
   "sticky",
   // The same, and this one is actually reachable: a nested doc is block-level,
   // so it is a child of a container rather than of a paragraph, and it keeps
-  // that position across a load (haklex-reprise §6.1). A sticky does not, which
-  // is why the seam buys nothing there — see `containers.test.ts`.
+  // that position across a load (docs/plans/archive/haklex-reprise.md §6.1). A
+  // sticky does not, which is why the seam buys nothing there — see
+  // `containers.test.ts`.
   "nested-doc",
   // A code snippet's files are ordinary `code` nodes in its ordinary `children`
   // array, so this line is the *whole* of what the bridge needs for it: no arm
   // in `containers.ts`, no codec for the interior, `b7.1` is the first file
-  // (haklex-reprise §6.2).
+  // (docs/plans/archive/haklex-reprise.md §6.2).
   "code-snippet",
   // A canvas descends to its notes and a note to its blocks — the same two
   // levels a table descends, and for the same reason: the note is where the

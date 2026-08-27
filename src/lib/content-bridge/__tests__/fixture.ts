@@ -184,7 +184,7 @@ const nestedEditor = (children: SerializedNode[]) => ({
 
 /**
  * A document with a sticky note in it — the container-children seam's fixture
- * (docs/plans/haklex-reprise.md §3).
+ * (docs/plans/archive/haklex-reprise.md §3).
  *
  * The sticky is `b2` and its two paragraphs are `b2.1` and `b2.2`, which are
  * *not* stored at `b2.children`: a note's body is a whole nested editor, so
@@ -194,7 +194,7 @@ const nestedEditor = (children: SerializedNode[]) => ({
  */
 /**
  * A document with a nested doc in it — phase 4's fixture
- * (docs/plans/haklex-reprise.md §6.1).
+ * (docs/plans/archive/haklex-reprise.md §6.1).
  *
  * Deliberately the same shape as `makeStickyState` one line up, so the two can
  * be compared: the nested doc is `b2` and its blocks are `b2.1` and `b2.2`. The
@@ -236,7 +236,7 @@ export const makeNestedDocState = (): StoredState => ({
 
 /**
  * A document with a code snippet in it — phase 5's fixture
- * (docs/plans/haklex-reprise.md §6.2).
+ * (docs/plans/archive/haklex-reprise.md §6.2).
  *
  * Deliberately the same shape as the two above, so the three can be compared:
  * the snippet is `b2` and its files are `b2.1` and `b2.2`. The difference is

@@ -6,7 +6,7 @@
  * These are module-level atom *definitions*, which is the only shape jotai
  * has; the values live in a store, and the store comes from the `<Provider>`
  * this plugin renders around the panel. There is **no app-level `Provider`**
- * (docs/plans/haklex-reprise.md §5, and the lint fence in
+ * (docs/plans/archive/haklex-reprise.md §5, and the lint fence in
  * `eslint.config.mjs` that keeps `src/**` off jotai entirely), so nothing
  * outside that subtree can read or write these. The `Provider` is keyed on the
  * figure's node key as well, so selecting a different image is a fresh store

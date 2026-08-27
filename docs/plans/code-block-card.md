@@ -10,8 +10,9 @@ argument for a thing that now exists, not as work outstanding.
 Originally: specs the `CodeBlockCard` that
 [archive/haklex-adoption.md](./archive/haklex-adoption.md) §6.1 described and
 §10.7 cut — cut as collateral, because §6.1 bundled the card with live Shiki and
-the cut was only ever about the tokenizer. [haklex-reprise.md](./haklex-reprise.md)
-shipped Shiki; the card was never separately argued against.
+the cut was only ever about the tokenizer.
+[haklex-reprise.md](./archive/haklex-reprise.md) shipped Shiki; the card was
+never separately argued against.
 
 **It is not new work. We already have this card twice**, in two languages, on two
 surfaces, and they have drifted. This plan is convergence, and its likely net

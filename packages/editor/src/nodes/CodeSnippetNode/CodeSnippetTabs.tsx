@@ -1,7 +1,7 @@
 "use client";
 /**
  * The snippet's editing chrome: one tab per file, and the controls for the file
- * that is open (docs/plans/haklex-reprise.md §6.2).
+ * that is open (docs/plans/archive/haklex-reprise.md §6.2).
  *
  * ### Why this is a portal and not a `decorate()`
  *

@@ -285,7 +285,7 @@ export function preloadCodeLanguage(language: string): Promise<boolean> {
 /**
  * One line of source → prism-shaped tokens, via the raw TextMate grammar.
  *
- * §4.1 of docs/plans/haklex-reprise.md specifies `codeToTokens(…, {
+ * §4.1 of docs/plans/archive/haklex-reprise.md specifies `codeToTokens(…, {
  * includeExplanation: "scopeName" })`, and this is the one place the
  * implementation departs from it. `codeToTokens` requires a theme, resolves a
  * colour for every token and then **merges adjacent tokens that resolved to the

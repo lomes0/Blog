@@ -2,7 +2,7 @@
  * That live syntax highlighting never writes a colour into stored JSON.
  *
  * This spec is the whole reason `docs/plans/archive/haklex-adoption.md` §10.7
- * cut live Shiki, reopened as `docs/plans/haklex-reprise.md` §4.4. The cut was
+ * cut live Shiki, reopened as `docs/plans/archive/haklex-reprise.md` §4.4. The cut was
  * against `@lexical/code-shiki`, whose `$tokenize` calls
  * `node.setStyle(stringifyTokenStyle(...))`; `CodeHighlightNode` extends
  * `TextNode`, and `TextNode.__style` **serializes**. One theme's hex literals

@@ -1,5 +1,5 @@
 /**
- * A code snippet through the bridge (docs/plans/haklex-reprise.md §6.2).
+ * A code snippet through the bridge (docs/plans/archive/haklex-reprise.md §6.2).
  *
  * The other two consumers of the container seam needed an arm in
  * `containers.ts` — a sticky's blocks are three keys down, a nested doc's are

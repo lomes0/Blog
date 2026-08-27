@@ -1,5 +1,5 @@
 /**
- * The container-children seam (docs/plans/haklex-reprise.md §3).
+ * The container-children seam (docs/plans/archive/haklex-reprise.md §3).
  *
  * A sticky note is a document stored inside a block: its content is a whole
  * nested editor at `editor.editorState.root.children`, not at `children`. Phase

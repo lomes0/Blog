@@ -1,5 +1,5 @@
 /**
- * A nested doc, through the container seam (docs/plans/haklex-reprise.md §6.1).
+ * A nested doc, through the container seam (docs/plans/archive/haklex-reprise.md §6.1).
  *
  * `containers.test.ts` made the same claims one phase earlier over a sticky
  * note, and ended by recording the two things that made them worthless there: a

@@ -4,7 +4,7 @@
  * Everything below `panel` moved here verbatim from
  * `ToolbarPlugin/Tools/tools.css.ts`, where it dressed the popover behind the
  * image toolbar's `Scaling` trigger. The controls moved
- * (docs/plans/haklex-reprise.md §7.2); the rules move with them, so
+ * (docs/plans/archive/haklex-reprise.md §7.2); the rules move with them, so
  * `tools.css.ts` keeps meaning "layout for the seven `Tools/` components" and
  * a reader looking for the width slider finds it beside the width slider.
  *

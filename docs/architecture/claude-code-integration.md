@@ -26,7 +26,7 @@ server.ts      ├─ scopes, budgets        │
    └──────┬───────┘                     copilotAgentExecutors.ts (client)
           ▼                              ├─ reads auto-run
    src/lib/mcp/server.ts                 ├─ writes = reviewable proposals
-   ├─ 8 tools, scoped to one author      └─ virtualRepo.ts: Redux + IndexedDB
+   ├─ 10 tools, scoped to one author     └─ virtualRepo.ts: Redux + IndexedDB
    └─ Prisma direct: no dev server                  │
           │                                         │
           └──────────────┬──────────────────────────┘
@@ -76,6 +76,7 @@ round-trip spec** (plan §4.6.1, enforced by `__tests__/codecs.test.ts`).
 | `address.ts`   | Structural addresses — `b3`, `b4.2` — minted per read, never stored                    |
 | `blockId.ts`   | Optional persistent ids (`blk_…`) in Lexical `NodeState` under the reserved `$` key    |
 | `blocks.ts`    | The codecs: `nodeToBlock` / `blockToNode`, plus `describeNode` for types with no codec |
+| `containers.ts`| Where a container keeps its children when they are not at `children` — a sticky's and a nested doc's editor, a canvas's notes, an image's caption |
 | `inline.ts`    | Inline runs ↔ restricted Markdown (`**bold**`, `__italic__`, `$latex$`, …)             |
 | `ops.ts`       | `applyOps` — snapshot addressing, all-or-nothing, touch only what is named             |
 | `outline.ts`   | `outline` / `readBlocks` / `readAll` — the cheap skeleton and the targeted reads       |
@@ -84,9 +85,29 @@ round-trip spec** (plan §4.6.1, enforced by `__tests__/codecs.test.ts`).
 ### Addressing
 
 `BLOCK_CONTAINERS` in `address.ts` is an **allowlist** of structural containers
-(`root`, layout, details, table, table row). An unrecognised node is therefore
-one opaque block — addressable, movable, preserved — rather than something the
-walker descends into and mints addresses for children no codec understands.
+(`root`, layout, details, table, table row, code snippet, sticky, nested doc,
+canvas, canvas note). An unrecognised node is therefore one opaque block —
+addressable, movable, preserved — rather than something the walker descends into
+and mints addresses for children no codec understands.
+
+**A container's children are not always at `children`.** A sticky note and a
+nested doc keep a whole serialized editor; a canvas keeps `notes`, an array of
+frames that carry no `type` of their own. `containers.ts` is the one module that
+knows where each keeps them, so the address scheme does not have to: a canvas is
+`b2`, its second note `b2.2`, and that note's first paragraph `b2.2.1` — the
+same two levels a table descends, for the same reason. Every arm returns the
+**live** array rather than a copy, because `ops.ts` splices what it is handed
+and a copy would leave every read correct while writes landed nowhere
+(`__tests__/canvas.test.ts` asserts array identity, not equality).
+
+This is what made the three inline decorators reachable at all
+([nested-editor-support.md](../plans/nested-editor-support.md)). `CanvasNode`,
+`ImageNode` and `StickyNode` were `isInline()` by inheritance and were wrapped
+in a paragraph on insert, so they sat *inside* a block and had no address to
+descend from — the seam existed and could not fire. They are block-level now, a
+node transform unwraps anything that predates the change, and
+`pnpm nodes:unwrap` rewrote the stored revisions (259 wrapper paragraphs across
+5 documents, 0 skipped).
 
 Two spellings coexist in one document. A document no agent has touched is
 addressed by path; a write **stamps persistent ids on the blocks it touched
@@ -102,10 +123,18 @@ of by having a write refused:
 
 - **plain** — `set_text` works: paragraph, heading, quote, summary, cell, code.
 - **`[replace only]`** — no single text field, so it is rewritten whole with
-  `replace_block`: list, table, layout, details, kanban.
-- **`[read-only]`** — no codec at all: math-as-a-block, image, graph, sketch,
-  iframe, canvas, sticky. Readable, addressable, movable, deletable, never
-  rewritten.
+  `replace_block`: list, table, layout, details, kanban, image. An image's
+  `caption` is a codec **field** alongside `alt` and `src`, not addressable
+  children — the split is between content that is *about* a block and content
+  that *is* a document (`plans/archive/haklex-reprise.md` §2.4).
+- **`[read-only]`** — no codec at all: math-as-a-block, graph, sketch, iframe,
+  and the pure containers (canvas, canvas note, table row, layout item).
+  Readable, addressable, movable, deletable, never rewritten.
+
+`[read-only]` is a claim about the block itself, not about its interior. A
+canvas refuses `replace_block` and always will — it is structure, and
+`scripts/check-codecs.mjs` records why — while the paragraphs inside its notes
+are ordinary text blocks that `set_text` edits like any other.
 
 Losslessness comes from **addressing, not format coverage**. The IR never has to
 be able to express a kanban board for one to survive an edit.
@@ -184,7 +213,7 @@ directory, so `claude` must be launched from the repo root. It runs
 `node --import tsx --env-file=.env mcp/content-server.ts` over stdio and talks
 **straight to Postgres** — no dev server, no `/api/*`.
 
-The eight tools and the transport are separate files, which is what let a second
+The ten tools and the transport are separate files, which is what let a second
 door be added without touching a tool (docs/plans/archive/mcp-support.md):
 `createContentServer({ resolveAuthorId })` in `src/lib/mcp/server.ts` knows
 nothing about processes or the environment, and `mcp/content-server.ts` is only
@@ -206,7 +235,7 @@ already inside the machine:
 | | stdio | `/api/mcp` |
 | --- | --- | --- |
 | Who you are | `MCP_AUTHOR_ID` | the owner of the presented `AgentToken` |
-| What you may do | everything | the token's `scopes` — a read-only token is served six tools, not eight |
+| What you may do | everything | the token's `scopes` — six tools for `read`, eight with `propose`, ten with `manage` |
 | What you may spend | unmetered | three token-bucket budgets, and a 1 MiB body |
 | Transport | a pipe | HTTPS, or 426 (loopback and `MCP_ALLOW_INSECURE=1` excepted) |
 | Origin recorded | `claude-code` | `claude-code:<token name>` |
@@ -230,6 +259,15 @@ stays the complete list of unauthenticated surfaces.
 | `search`      | Block-level text hits across posts, each with an address              |
 | `apply_ops`   | Edit by block, all-or-nothing, guarded by `stateHash`                 |
 | `create_post` | New post from blocks — real code nodes and lists, not fenced Markdown |
+| `rename_post` | Rename a post. **Commits immediately** — `manage` scope       |
+| `delete_post` | Delete a post and its history. **Irreversible** — `manage` scope |
+
+`rename_post` and `delete_post` are the two writes that are not proposals: they
+land on the live post the moment they are called, and `Document` has no
+`deletedAt`, so a delete takes the revision history with it. Hence the separate
+`manage` scope, which no default grants, and hence `delete_post` refusing unless
+it is passed the post's exact title as `confirm` — aimed at acting on the id
+next to the one you meant, not at an agent that has decided to be destructive.
 
 `search` walks every post's head revision in JS. Fine at one author's scale; if
 it gets slow, prefilter in SQL on the revision JSON before walking.
@@ -239,7 +277,7 @@ shapes (nested lists, layout columns, details bodies, table rows) are typed
 loosely there and validated by the codec, because a lazy zod schema does not
 survive that conversion.
 
-`npm run mcp:smoke` exercises the server end to end against real content —
+`pnpm mcp:smoke` exercises the server end to end against real content —
 read-only unless `RUN_WRITE=1`, in which case it also creates a throwaway post
 and confirms the stale-`stateHash` refusal.
 
@@ -258,7 +296,9 @@ the only place both content stores and the live editor exist.
   accepts before anything is saved.
 - The content tool **names are the table above** — `list_posts`, `search`,
   `outline`, `read_blocks`, `read_post`, `apply_ops`, `create_post`, plus
-  `list_series` and the browser-only `get_selection`. One operation, one name,
+  `list_series` and the browser-only `get_selection`. Not `rename_post` or
+  `delete_post`: renaming is reachable here as a `command_` tool, and there is
+  no destructive equivalent. One operation, one name,
   whichever agent is calling. Command tools carry a `command_` prefix, so they
   cannot collide with the bare `search` / `outline`.
 - `packages/editor/src/utils/virtualRepo.ts` is the Copilot's view of the library — pure
@@ -291,7 +331,7 @@ invisible to it. Those are reachable only from the Copilot.
   one no longer serializes identically, which is the one property `ops.ts`
   exists to hold.
 - **New node classes must delegate to `updateFromJSON`** — persistent ids ride
-  in `NodeState` and are dropped otherwise. `npm run check:nodes` enforces it
+  in `NodeState` and are dropped otherwise. `pnpm check:nodes` enforces it
   statically; `editor/nodes/__tests__/serialization.test.ts` covers it at
   runtime.
 - **Do not make `stateHash` cryptographic.** It is an integrity token, not a
@@ -310,13 +350,14 @@ invisible to it. Those are reachable only from the Copilot.
 | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | Local IndexedDB posts invisible over MCP    | The server reads Postgres directly                                                                          |
 | No uploads                                  | `attachment` can only reference a URL that already exists                                                   |
-| Inline images/sketches never reach a codec  | They sit inside paragraphs, so `nodeToBlock` never sees them; they reach the model as bracketed descriptors |
-| Opaque descriptors carry shape, not content | `canvas 7 notes` does not say what the notes say — backlog §2                                               |
-| `tablerow` / `layout-item` still opaque     | Pure structure; nothing to author                                                                           |
+| No `graph` / `sketch` codec                 | GeoGebra state and Excalidraw scene graphs — coordinates, seeds, version nonces. Their `altText` is editable, which covers the useful case |
+| `tablerow` / `layout-item` / `canvas` opaque | Pure structure; nothing to author. Their children are addressable                                          |
 
 Coverage across this blog's stored content (measured 6 Aug 2026): ~31,000
 addressable blocks, **93.2% read as a typed block**, and no block-level content
-type is without a codec.
+type is without a codec. That measurement predates nested-editor addressing
+(27 Aug 2026), which added a canvas's notes and their blocks to the addressable
+set and graduated `image` out of `[read-only]`; it has not been re-run.
 
 Remaining work and open decisions live in
 [claude-code-backlog.md](../plans/claude-code-backlog.md).

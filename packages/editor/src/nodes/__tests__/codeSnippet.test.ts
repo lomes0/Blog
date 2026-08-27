@@ -1,6 +1,6 @@
 /**
  * `CodeSnippetNode`, through a real editor over the real registry
- * (docs/plans/haklex-reprise.md §6.2, and §10.3's rule that a node spec which
+ * (docs/plans/archive/haklex-reprise.md §6.2, and §10.3's rule that a node spec which
  * never builds an editor is not testing registration).
  *
  * Four claims are load-bearing and none of them is visible by reading the

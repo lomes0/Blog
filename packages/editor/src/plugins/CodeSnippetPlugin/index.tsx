@@ -1,7 +1,7 @@
 "use client";
 /**
  * Insertion, the invariant guard, and the tab strips
- * (docs/plans/haklex-reprise.md §6.2).
+ * (docs/plans/archive/haklex-reprise.md §6.2).
  *
  * **No `$wrapNodeInElement`**, for the reason `NestedDocPlugin` spells out:
  * `StickyPlugin` and `CanvasPlugin` wrap a root-level insert in a paragraph

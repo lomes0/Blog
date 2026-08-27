@@ -9,9 +9,9 @@ below are in §7.
 
 Originally: **decided 27 Aug 2026, not started.** `claude-code-backlog.md` §4 is
 answered **"address into them"**, and this plan is what that costs. It reopens
-`haklex-reprise.md` §11.3, which refused phase 7 on evidence — the evidence was
-right about the mechanism and wrong about the corpus, and §2 below is the
-re-measurement that says so.
+`archive/haklex-reprise.md` §11.3, which refused phase 7 on evidence — the
+evidence was right about the mechanism and wrong about the corpus, and §2 below
+is the re-measurement that says so.
 
 Supersedes nothing. Closes `claude-code-backlog.md` §4 and the `image`,
 `sticky` and `canvas` codecs it blocks.
@@ -22,7 +22,7 @@ Supersedes nothing. Closes `claude-code-backlog.md` §4 and the `image`,
 
 `image.caption`, `sticky.editor` and every entry in `canvas.notes` hold a
 complete serialized Lexical editor — a sub-document inside a block. The bridge
-has had the seam for reaching them since `haklex-reprise.md` §3:
+has had the seam for reaching them since `archive/haklex-reprise.md` §3:
 `containers.ts` already answers "where does this container keep its children",
 and `BLOCK_CONTAINERS` already lists `sticky`. None of it fires, for a reason
 that has nothing to do with nesting:
@@ -37,8 +37,8 @@ That is the wall. It is not an addressing problem and never was.
 
 ## 2. The corpus, re-measured 27 Aug 2026
 
-`haklex-reprise.md` §11.3 refused phase 7 because unwrapping the stored canvases
-"is not mechanical — a paragraph can hold prose alongside the board, so
+`archive/haklex-reprise.md` §11.3 refused phase 7 because unwrapping the stored
+canvases "is not mechanical — a paragraph can hold prose alongside the board, so
 unwrapping means splitting it and deciding what happens to the surrounding
 runs. That is a product and data call, not a phase."
 
@@ -111,10 +111,11 @@ deliberately the same rule as the migration so there is one definition of
    - `canvas-note` → `editor.editorState.root.children`, which is the same path
      `sticky` already declares.
 3. `image` gets a codec with `caption` as a **field**, not as addressable
-   children (`haklex-reprise.md` §2.4: captions take a codec field, documents
-   take the seam). An image is one block with `alt`, `src` and `caption`; a
-   canvas note is a container of blocks. The split is the difference between
-   content that is *about* a block and content that *is* a document.
+   children (`archive/haklex-reprise.md` §2.4: captions take a codec field,
+   documents take the seam). An image is one block with `alt`, `src` and
+   `caption`; a canvas note is a container of blocks. The split is the
+   difference between content that is *about* a block and content that *is* a
+   document.
 4. Schema arms in `content-bridge/schema.ts` for every new block type, or
    `check:codecs` fails the run — which is the obligation
    `archive/claude-code-lexical.md` §4.6.1 attaches to graduating a type.

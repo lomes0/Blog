@@ -113,8 +113,9 @@ export class UnknownHunkError extends Error {
  * knows that a container may keep its children somewhere other than `children`
  * — a sticky note's are at `editor.editorState.root.children`. Reading through
  * that seam here without also teaching `rebuild` to *write* through it would
- * be the exact bug haklex-reprise §10 names: the merge would read the nested
- * array and put the result back at `children`, where nothing renders it.
+ * be the exact bug docs/plans/archive/haklex-reprise.md §10 names: the merge
+ * would read the nested array and put the result back at `children`, where
+ * nothing renders it.
  *
  * The two cannot disagree in practice, because `canRecurse` demands the
  * container's own fields be untouched and a nested editor's content *is* an own
@@ -126,11 +127,12 @@ export class UnknownHunkError extends Error {
  * hunk** covering the entire nested document, not a hunk for that paragraph.
  * Accepting or rejecting it is still exact in both directions — reject and the
  * base comes back verbatim, accept and the proposal does — so the review is
- * coarse, never wrong. That was accepted for phase 4 (haklex-reprise §6.1).
- * Making it fine-grained means giving this module a *write* half of the seam,
- * so that `rebuild` puts merged children back where the container actually
- * keeps them; swapping the read half alone would merge correctly and then store
- * the result at `children`, where nothing renders it.
+ * coarse, never wrong. That was accepted for phase 4
+ * (docs/plans/archive/haklex-reprise.md §6.1). Making it fine-grained means
+ * giving this module a *write* half of the seam, so that `rebuild` puts merged
+ * children back where the container actually keeps them; swapping the read
+ * half alone would merge correctly and then store the result at `children`,
+ * where nothing renders it.
  *
  * **`code-snippet` is the container where the two genuinely agree** (phase 5,
  * §6.2): its files are real children at `children`, so this reads exactly what

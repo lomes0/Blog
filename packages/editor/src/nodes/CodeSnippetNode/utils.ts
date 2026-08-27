@@ -1,6 +1,6 @@
 /**
  * The code snippet's type string and its DOM contract
- * (docs/plans/haklex-reprise.md §6.2).
+ * (docs/plans/archive/haklex-reprise.md §6.2).
  *
  * Split out of `index.ts` for the reason `NestedDocNode/utils.ts` gives: the
  * tab strip writes to the node it decorates, and anything importing the class

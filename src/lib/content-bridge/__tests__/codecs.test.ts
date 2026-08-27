@@ -452,7 +452,7 @@ describe("details", () => {
 
 /**
  * The wrapper codec only — the interior is reached through the container seam
- * and has no codec of its own (docs/plans/haklex-reprise.md §6.1). What this
+ * and has no codec of its own (docs/plans/archive/haklex-reprise.md §6.1). What this
  * has to prove is that the two halves of the *shape* decision agree: the codec
  * writes the interior where `containers.ts` reads it, and where
  * `NestedDocNode.exportJSON` writes it. `nestedDoc.test.ts` pins the third
@@ -561,7 +561,7 @@ describe("nested doc", () => {
 /**
  * The wrapper codec only — every file is an ordinary `code` node reached
  * through the *default* container accessor, and read and written by the `code`
- * codec that already existed (docs/plans/haklex-reprise.md §6.2). What this has
+ * codec that already existed (docs/plans/archive/haklex-reprise.md §6.2). What this has
  * to prove is that the wrapper carries what the node class stores (`active`),
  * that a file's name rides on the file, and that `files` follows the same
  * insert-required / replace-optional rule as every other container's contents.

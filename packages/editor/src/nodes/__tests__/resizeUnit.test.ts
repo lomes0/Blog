@@ -6,7 +6,7 @@
  * line that only a reader would notice going missing. The whole reason it is a
  * `static` rather than a serialized field is that a field would be four
  * constructors, four clones, four `importJSON`s and a migration
- * (docs/plans/haklex-reprise.md §7.1); the cost of the static is that nothing
+ * (docs/plans/archive/haklex-reprise.md §7.1); the cost of the static is that nothing
  * about the *serialization* checks it, so this spec is the check.
  *
  * Two claims, and the second is the one that will actually break:

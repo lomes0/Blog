@@ -64,7 +64,7 @@ export class CodeNode extends LexicalCodeNode {
   __wrap?: boolean;
   /**
    * The file's name, when this block is one file of a `CodeSnippetNode`
-   * (docs/plans/haklex-reprise.md §6.2). Undefined everywhere else, and it
+   * (docs/plans/archive/haklex-reprise.md §6.2). Undefined everywhere else, and it
    * serializes only when set.
    *
    * **On the file rather than on the snippet, deliberately.** The alternative

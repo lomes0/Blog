@@ -106,7 +106,7 @@ export interface CodeBlock {
   code: string;
   /**
    * The file's name, when this block is one file of a `code-snippet`
-   * (docs/plans/haklex-reprise.md §6.2). Absent on a code block that is not.
+   * (docs/plans/archive/haklex-reprise.md §6.2). Absent on a code block that is not.
    *
    * It lives on the file rather than on the snippet because the snippet's
    * children are spliced by `move_block` and `delete_block`, which know nothing
@@ -172,7 +172,7 @@ export interface DetailsBlock {
 }
 
 /**
- * A document embedded in a document (docs/plans/haklex-reprise.md §6.1).
+ * A document embedded in a document (docs/plans/archive/haklex-reprise.md §6.1).
  *
  * The codec covers the **wrapper only** — its title and whether the card shows
  * its contents. The interior is a nested editor whose blocks are addressed in
@@ -232,7 +232,7 @@ export interface KanbanBlock {
  * An image, with its caption as a **field** rather than as nested blocks.
  *
  * `caption` is a whole serialized Lexical editor in storage, and the reason it
- * arrives here as one inline string is docs/plans/haklex-reprise.md §2.4: a
+ * arrives here as one inline string is docs/plans/archive/haklex-reprise.md §2.4: a
  * caption is content *about* the block, so descending into it would give two
  * addresses for one piece of content. A canvas note, which is a document in its
  * own right, goes the other way and gets addresses.

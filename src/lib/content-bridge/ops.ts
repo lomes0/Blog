@@ -208,7 +208,7 @@ function chainTo(root: SerializedNode, node: SerializedNode): string[] {
  * write that succeeds now and is quietly undone later:
  *
  *   - **A nested editor that cannot register the type**
- *     (docs/plans/haklex-reprise.md §6.1). `parseEditorState` throws on an
+ *     (docs/plans/archive/haklex-reprise.md §6.1). `parseEditorState` throws on an
  *     unregistered type and the node classes swallow it, so the *whole* nested
  *     document comes back empty on the next load.
  *   - **A container that holds one kind of child** (§6.2). A `code-snippet`

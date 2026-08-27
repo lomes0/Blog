@@ -1,5 +1,5 @@
 /**
- * A multi-file code snippet (docs/plans/haklex-reprise.md §6.2).
+ * A multi-file code snippet (docs/plans/archive/haklex-reprise.md §6.2).
  *
  * An `ElementNode` whose children are ordinary `code` nodes, one per file, with
  * a tab strip choosing which one is on screen. Everything that matters about it

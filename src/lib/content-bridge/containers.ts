@@ -1,5 +1,5 @@
 /**
- * Where a container keeps its children (docs/plans/haklex-reprise.md §3).
+ * Where a container keeps its children (docs/plans/archive/haklex-reprise.md §3).
  *
  * `address.ts`, `blocks.ts` and `ops.ts` each used to answer this with the same
  * two lines — `Array.isArray(node.children) ? node.children : []` — which
@@ -232,7 +232,7 @@ const NESTED_CHILDREN: ReadonlyMap<string, ContainerArm> = new Map([
  *
  * Deliberately **not** an entry in `NESTED_CHILDREN`: a caption is a *field* of
  * the image block, not a container of addressable ones
- * (docs/plans/haklex-reprise.md §2.4, restated in
+ * (docs/plans/archive/haklex-reprise.md §2.4, restated in
  * docs/plans/nested-editor-support.md §4). An image is one block with a
  * `caption` string; descending into it instead would give two addresses for one
  * piece of content, which is the same reason a table cell is a leaf.
@@ -307,7 +307,7 @@ export function typeOf(node: SerializedNode): string {
  * asks *where* a container's children live, this one asks *what* they may be.
  * `code-snippet` is the first entry and needs no entry in the other — its files
  * are ordinary `code` nodes in the ordinary `children` array, which is the
- * whole design (docs/plans/haklex-reprise.md §6.2).
+ * whole design (docs/plans/archive/haklex-reprise.md §6.2).
  *
  * The cost of not refusing is small but real: the editor's own transform
  * (`nodes/CodeSnippetNode/guard.ts`) moves a stray out of the snippet on the

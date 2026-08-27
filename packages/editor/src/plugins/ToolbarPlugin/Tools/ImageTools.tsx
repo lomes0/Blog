@@ -8,7 +8,7 @@
  * behind a `Scaling` popover; they now live in
  * `plugins/FloatingImageToolbar`, anchored to the figure itself, because
  * judging a width against a column means being able to see both
- * (docs/plans/haklex-reprise.md §7.2). The style *state* below survives that
+ * (docs/plans/archive/haklex-reprise.md §7.2). The style *state* below survives that
  * move: "adapt to color scheme" is a `filter` in the same `__style` string.
  */
 import {
