@@ -3,7 +3,10 @@
 Status: **all five phases built for images; the collector is not yet
 *scheduled*, and cannot be until there is a deployment to schedule it on
 (§11.2).** The two SVG node types (sketch, graph) are the one thing 2 and 3 both
-stop short of, and §10.1 is now where that decision sits. §11.1 records why
+stop short of, and §10.1 is now where that decision sits. **§10.2 closes §10's
+step 5, and does it by subtraction: backgrounds were a removed feature's
+leftovers and are deleted rather than migrated, attachments stay on disk on a
+blocker that is not effort, and §10's expected outcome is wrong about both.** §11.1 records why
 phase 4 answered §8 instead of building it. Decided
 2026-08-13 after measuring the live database (§1); §11 is the phase log and is
 the thing to read before acting on any section body. Two sections are
@@ -417,6 +420,102 @@ carries. **Both are then a rendering change to verify in a browser, not a
 migration** — which is why they are held back as one decision rather than two,
 worth 3.1 MB across 77 occurrences.
 
+### 10.2 Step 5 is answered rather than deferred — 27 Aug 2026
+
+Step 5 above — "migrate `attachments/` and `public/uploads/directories` the same
+way" — was the one part of §10 never done, and §11 twice recorded it as a
+separate slice waiting its turn. Asking the question directly split it into two
+unrelated answers, and neither is "migrate it".
+
+**Expected outcome, corrected.** §10 predicts "~20 MB of deduplicated objects
+land in R2 (dominated by the 19 MB of backgrounds, which do not dedup — they are
+70 distinct images)". That figure is wrong, and not by a little: the backgrounds
+are not live data. What actually remains for the store is ~180 KB of
+attachments. `production-deployment.md` §2 inherits the same error where it calls
+backgrounds "nearly all of the data".
+
+#### Backgrounds: deleted, not migrated
+
+The feature had already been removed, and only its bytes were left. Five things
+agreed, and no reading of them leaves the data live:
+
+- `POST /api/documents/[id]/background` threw unconditionally — `"Background
+  images are only supported for directories, which have been removed"` — before
+  reading the form. Every line of upload code below that throw was unreachable.
+- Nothing in the client fetched that route.
+- `updateBackgroundImage` in `useEditDocumentForm.ts` was exported from the hook
+  and had **zero consumers**.
+- **Nothing rendered `background_image`.** The only `backgroundImage` uses in the
+  tree are a sidebar drag gradient and the canvas grid.
+- The files were `dir_<uuid>_*.png` dated Aug 2025 — orphans of the deleted
+  directories feature, addressed by a URL shape (`/uploads/directories/…`) named
+  after a model the app no longer has.
+
+So migrating them meant paying R2 rent in perpetuity to preserve bytes nothing
+reads, at zero dedup benefit — content addressing has nothing to collapse across
+70 distinct images. Removed instead: the throwing route, `BACKGROUNDS_DIR`, the
+export bundling and import restore of `assets/backgrounds/`, the unused setter
+and its form plumbing, the `blog-backgrounds` volume in
+`docker-compose.prod.yml`, and the second `mkdir`/`chown` in the Dockerfile.
+
+**`Document.background_image` stays**, in the schema and in the export manifest.
+Dropping it needs an irreversible migration for a nullable string, and keeping
+the manifest field means bundles written before this still import without a
+schema-version bump. It is inert: nothing writes it and nothing renders it.
+
+Two consequences worth stating, because both are subtractions from documents
+that argue the opposite:
+
+- **The backgrounds volume was protecting dead data.** `production-deployment.md`
+  §2's live-bug fix (`118a5a8c`) was still the right call when it was made —
+  "do not silently destroy 19 MB on every rebuild" beats "investigate first" —
+  but the backup set in §5 is one volume smaller than it says, and step 7's
+  "migrate the existing 19MB of uploads onto the volumes" is now ~180 KB.
+- **`src/lib/uploads.ts` no longer has two roots**, so its docblock's
+  public/private split is history rather than structure. The rule it exists to
+  state is unchanged and now unconditional: nothing private goes under `public/`,
+  because the static tree is served with no session and no authorization check.
+
+#### Attachments: not migrated, and the blocker is not effort
+
+180 KB, no duplication, so none of §1's argument reaches them. That alone would
+only make it low priority. What makes it a *design* question is one route:
+
+**`PUT /api/attachments/[filename]` edits text attachments in place.** Content
+addressing cannot express that. The key *is* the content, so "write new bytes to
+this file" has no meaning in the store — the operation necessarily becomes:
+hash the new content, `putBlob` it, rewrite every reference to the old hash in
+the owning document's content, and `reconcileDocumentBlobs`. That is a different
+feature, not a port of this one, and its failure mode is the bad kind: a
+reference the rewrite misses leaves a document pointing at bytes the collector
+will remove seven days later. Same hazard §3.1 records for the scan, arrived at
+from the other direction.
+
+What migrating *would* buy, so the trade is on the record rather than implied:
+
+- **Authorization stops riding on the filename.** Today it rides on
+  `attach_<documentId>_<random>.<ext>` — `src/app/api/attachments/access.ts`
+  recovers the owning document by regex, which is what made these routes
+  authorizable at all after they had no session check whatsoever. It works, and
+  it is a property the filename has to keep carrying. `BlobRef` is the stronger
+  model: it survives forks and deduplication, neither of which a name encoding
+  one document id can represent.
+- **The machinery already reaches them.** Attachment URLs live in the node `src`
+  inside revision JSON, so `blobHashesFor` would pick them up with no new scan
+  arm; reconciliation and collection would cover attachments for free.
+- **One durability story instead of two.** §5 backs up a volume solely for this.
+
+**The trigger to revisit is the one `production-deployment.md` §2 already names:
+a second app instance**, or an in-place-edit answer arrived at deliberately. Until
+then a volume is the right home for 180 KB, and adding `var/uploads` to the
+nightly backup buys the durability without the rewrite.
+
+One loose end left by the background removal: `safeBasename`
+(`src/lib/safePath.ts`) lost its only caller with the import route's restore
+block. It is kept — CLAUDE.md documents it alongside `resolveWithin` as the
+entry point for filenames arriving from outside the app, and an attachment
+migration would want it back.
+
 ## 11. Phasing
 
 Each phase is independently shippable, and 1–3 is where the 25× lands.
@@ -440,7 +539,8 @@ records the one design correction the build produced.
 - **Not done, deliberately:** sketches — see §6.1, which is a finding, not a
   postponement. Also attachment upload and background upload, which are a
   separate slice: neither *duplicates*, so neither contributes to the growth
-  this phase exists to stop.
+  this phase exists to stop. That slice is now closed — §10.2, and neither half
+  of it ends in the store.
 - **Reconciliation on save: DONE 15 Aug 2026.** `src/lib/blobRefs.ts` (the scan,
   the plan and the grace period, all import-free and specced in
   `src/lib/__tests__/blobRefs.test.ts`), `reconcileDocumentBlobs` in
@@ -478,7 +578,9 @@ stored object was fetched back and re-hashed to its own key.
 What is left in place, on purpose: 64 `sketch` and 13 `graph` occurrences, 3.1 MB
 — §10.1. Also attachments and backgrounds (step 5), which is the same separate
 slice phase 2 named: neither duplicates, and moving them means porting the two
-serving routes, not rewriting revision JSON. This dev database has no
+serving routes, not rewriting revision JSON. **Resolved 27 Aug 2026 in §10.2:
+backgrounds were deleted (a removed feature's orphans, ~19 MB) and attachments
+stay put, so step 5 closes with nothing added to the store.** This dev database has no
 `background_image` set at all, so §10's "~20 MB of deduplicated objects" is a
 production-only figure.
 

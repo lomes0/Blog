@@ -25,7 +25,6 @@ export function useEditDocumentForm(post: Post) {
     private: isPrivate,
     published: isPublished,
     collab: isCollab,
-    background_image: document?.background_image || null,
     createdAt: document?.createdAt || new Date().toISOString(),
     status: currentStatus,
   });
@@ -62,7 +61,6 @@ export function useEditDocumentForm(post: Post) {
       private: isPrivate,
       published: isPublished,
       collab: isCollab,
-      background_image: document?.background_image || null,
       createdAt: document?.createdAt || new Date().toISOString(),
       status: currentStatus,
     });
@@ -72,7 +70,6 @@ export function useEditDocumentForm(post: Post) {
     editDialogOpen,
     post.coauthors,
     currentStatus,
-    document?.background_image,
     document?.createdAt,
     document?.description,
     handle,
@@ -88,10 +85,6 @@ export function useEditDocumentForm(post: Post) {
       typeof u === "string" ? [u] : u.email ? [u.email] : []
     );
     updateInput({ coauthors });
-  };
-
-  const updateBackgroundImage = (imagePath: string | null) => {
-    updateInput({ background_image: imagePath });
   };
 
   const { handleSubmit } = useDocumentSubmit(
@@ -113,7 +106,6 @@ export function useEditDocumentForm(post: Post) {
     editDialogOpen,
     updateInput,
     updateCoauthors,
-    updateBackgroundImage,
     updateHandle,
     openEditDialog,
     closeEditDialog,

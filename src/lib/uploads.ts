@@ -14,11 +14,15 @@ import path from "path";
  * in forks, revision JSON and export bundles.
  *
  * So: anything private on disk must stay outside the static tree, and
- * `UPLOADS_DIR` names that location.
+ * `UPLOADS_DIR` names that location. There is no second root and nothing here
+ * may be moved under `public/` — the rule above is the whole reason this module
+ * exists.
  *
- * Background images are the deliberate exception. They are referenced by URL as
- * `/uploads/directories/<name>` from rendered HTML and are public by design, so
- * they stay in `public/` where Next can serve them directly.
+ * There used to be a second root, `BACKGROUNDS_DIR` → `public/uploads/directories`,
+ * for document background images, and it was the deliberate exception: public by
+ * design, served straight off the static tree. It is gone, along with the rest of
+ * that feature — see docs/plans/blob-storage.md §10.2. `Document.background_image`
+ * survives as an inert column; nothing writes it and nothing renders it.
  */
 
 /**
@@ -36,15 +40,6 @@ const UPLOADS_ROOT = process.env.UPLOADS_DIR ||
  * `/api/attachments/[filename]`, which authorizes against the parent document.
  */
 export const ATTACHMENTS_DIR = path.join(UPLOADS_ROOT, "attachments");
-
-/**
- * Background image storage. Public by design — served straight off the static
- * tree as `/uploads/directories/<name>`. Do not move private data here.
- */
-export const BACKGROUNDS_DIR = path.join(
-  process.cwd(),
-  "public/uploads/directories",
-);
 
 /**
  * Extensions permitted on an uploaded attachment, lowercased and without the

@@ -7,7 +7,6 @@
  *  - series/series.json
  *  - documents/{id}.json  (one per document, includes all revisions with data)
  *  - assets/attachments/{filename}
- *  - assets/backgrounds/{filename}
  *  - assets/blobs/{sha256}       (the images documents reference by hash)
  *
  * Query params:
@@ -35,8 +34,6 @@ import type { SerializedEditorState } from "lexical";
 
 export const dynamic = "force-dynamic";
 
-// Root of the Next.js public directory
-const PUBLIC_DIR = path.join(process.cwd(), "public");
 
 export const GET = userRoute(async (_request, { user }) => {
   // ── 1. Fetch all documents + revisions (with Lexical data) ──────────────
@@ -71,12 +68,10 @@ export const GET = userRoute(async (_request, { user }) => {
   const zip = new JSZip();
   const assetsFolder = zip.folder("assets")!;
   const attachmentsFolder = assetsFolder.folder("attachments")!;
-  const backgroundsFolder = assetsFolder.folder("backgrounds")!;
   const blobsFolder = assetsFolder.folder("blobs")!;
 
   let totalAssets = 0;
   const bundledAttachments = new Set<string>();
-  const bundledBackgrounds = new Set<string>();
   const bundledBlobs = new Set<string>();
   /**
    * `document:hash` for every blob a document references whose bytes the store
@@ -168,22 +163,6 @@ export const GET = userRoute(async (_request, { user }) => {
         attachmentsFolder.file(filename, content);
         bundledAttachments.add(filename);
         totalAssets++;
-      }
-    }
-
-    // Bundle background image if present
-    if (doc.background_image) {
-      // background_image is stored as e.g. "/uploads/directories/filename.jpg"
-      const bgRelative = doc.background_image.replace(/^\//, "");
-      const bgFilename = path.basename(bgRelative);
-      if (!bundledBackgrounds.has(bgFilename)) {
-        const bgPath = path.join(PUBLIC_DIR, bgRelative);
-        if (existsSync(bgPath)) {
-          const content = await readFile(bgPath);
-          backgroundsFolder.file(bgFilename, content);
-          bundledBackgrounds.add(bgFilename);
-          totalAssets++;
-        }
       }
     }
   }

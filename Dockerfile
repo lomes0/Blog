@@ -63,28 +63,26 @@ COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/prisma ./prisma
 
-# Upload roots, created here and owned by the runtime user so that a named
-# volume mounted over either one inherits that ownership — without this, the
-# mount arrives root-owned and every upload fails with EACCES.
-#
-# The two are separate because `src/lib/uploads.ts` deliberately separates them,
-# and the split is a security boundary rather than an organisational one:
+# The upload root, created here and owned by the runtime user so that a named
+# volume mounted over it inherits that ownership — without this, the mount
+# arrives root-owned and every upload fails with EACCES.
 #
 #   ./var/uploads/attachments      — private. Reachable only through
 #                                    /api/attachments/[filename], which
 #                                    authorizes against the parent document.
 #                                    Outside ./public so Next cannot serve it
-#                                    statically, bypassing that check.
-#   ./public/uploads/directories   — background images, public by design and
-#                                    served straight off the static tree.
+#                                    statically, bypassing that check. That
+#                                    placement is a security boundary, not an
+#                                    organisational one — see src/lib/uploads.ts.
 #
-# NOTE: unless a volume is mounted at BOTH, uploads live in the container's
-# writable layer and are lost on redeploy. Backgrounds are the larger of the two
-# by a wide margin, and are the easier one to forget precisely because they sit
-# under ./public with the baked-in static assets — see
+# There was a second root, ./public/uploads/directories, for background images.
+# The feature was already gone; docs/plans/blob-storage.md §10.2 has the autopsy.
+#
+# NOTE: unless a volume is mounted here, attachments live in the container's
+# writable layer and are lost on redeploy — see
 # docs/plans/production-deployment.md §2.
-RUN mkdir -p ./var/uploads/attachments ./public/uploads/directories \
-  && chown -R nextjs:nodejs ./var ./public/uploads
+RUN mkdir -p ./var/uploads/attachments \
+  && chown -R nextjs:nodejs ./var
 
 USER nextjs
 EXPOSE 3000

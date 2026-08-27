@@ -46,14 +46,14 @@ services:
     command: ["sh", "-c", "npx prisma migrate deploy && node server.js"]
     env_file:
       - .env
-    # Both upload roots need a volume, and they are separate paths because
-    # src/lib/uploads.ts separates them as a security boundary. Mounting only
-    # the first is the mistake this file previously made: backgrounds are the
-    # bulk of the data and sit under ./public with the baked-in static assets,
-    # so losing them on rebuild is silent — the rows survive and their URLs 404.
+    # Attachments are the only thing on disk. There was a second volume here for
+    # background images under ./public, added because losing them on rebuild was
+    # silent — and then the feature turned out to have been removed already: the
+    # upload route threw unconditionally, nothing rendered the column, and the
+    # 19MB it held were orphans of the deleted directories feature. See
+    # docs/plans/blob-storage.md §10.2. Everything else binary lives in R2.
     volumes:
       - blog-attachments:/app/var/uploads
-      - blog-backgrounds:/app/public/uploads/directories
     environment:
       NODE_ENV: production
       # `postgres` is the service hostname on the compose network.
@@ -101,6 +101,5 @@ services:
 volumes:
   blog-postgres-data:
   blog-attachments:
-  blog-backgrounds:
   caddy-data:
   caddy-config:

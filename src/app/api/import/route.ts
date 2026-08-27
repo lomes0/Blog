@@ -30,8 +30,8 @@ import { reconcileDocumentBlobs } from "@/repositories/blob";
 import { blobHashesFor } from "@/lib/blobRefs";
 import { blobExists, hashBytes, isValidHash, putBlob } from "@/lib/storage";
 import { ingestInlineBlobs } from "@/lib/blobIngest";
-import { resolveWithin, safeBasename } from "@/lib/safePath";
-import { ATTACHMENTS_DIR, BACKGROUNDS_DIR } from "@/lib/uploads";
+import { resolveWithin } from "@/lib/safePath";
+import { ATTACHMENTS_DIR } from "@/lib/uploads";
 
 export const dynamic = "force-dynamic";
 
@@ -327,28 +327,6 @@ export const POST = userRoute(async (request, { user }) => {
         }
       }
 
-      // Extract background image if present
-      if (docExport.background_image) {
-        const bgFilename = safeBasename(docExport.background_image);
-        const zipPath = `assets/backgrounds/${bgFilename}`;
-        const bgFile = bgFilename ? zip.file(zipPath) : null;
-        if (bgFile && bgFilename) {
-          const destDir = BACKGROUNDS_DIR;
-          const destPath = resolveWithin(destDir, bgFilename);
-          if (!destPath) {
-            summary.warnings.push(
-              `Background image for document "${docExport.id}" has an unsafe name — skipped.`,
-            );
-          } else {
-            await mkdir(destDir, { recursive: true });
-            if (!existsSync(destPath)) {
-              const data = await bgFile.async("nodebuffer");
-              await writeFile(destPath, data);
-              summary.imported.assets++;
-            }
-          }
-        }
-      }
     } catch (err) {
       summary.errors.push({
         id: docExport.id,

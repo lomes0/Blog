@@ -39,9 +39,6 @@ export function useDocumentSubmit(
     if (input.private !== isPrivate) partial.private = input.private;
     if (input.published !== isPublished) partial.published = input.published;
     if (input.collab !== isCollab) partial.collab = input.collab;
-    if (input.background_image !== document?.background_image) {
-      partial.background_image = input.background_image;
-    }
     if (input.createdAt && input.createdAt !== document?.createdAt) {
       partial.createdAt = input.createdAt;
     }

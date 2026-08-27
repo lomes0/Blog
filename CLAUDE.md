@@ -223,7 +223,8 @@ The application uses PostgreSQL with the following core models:
   - Includes fork relationships (base/forks)
   - Has status field (ACTIVE/DONE) for workflow management
   - Supports series organization via `seriesId` and `seriesOrder`
-  - Has optional background images
+  - Has an inert `background_image` column — the feature was removed and its
+    bytes deleted (docs/plans/blob-storage.md §10.2); nothing writes or renders it
 - **Series**: Organizes posts into multi-part content series
 - **Revision**: Version history for documents, stored as JSON
 - **DocumentCoauthers**: Many-to-many relationship for collaborative editing

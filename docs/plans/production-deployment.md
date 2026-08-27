@@ -7,6 +7,12 @@ decision of 2026-07-30 before it.
 This is the third hosting decision in two weeks. The other two are recorded
 because their reasoning is still worth reading, not because they are live.
 
+**Read §2's update notes before acting on §2, §3 or §5.** Two of them are
+corrections written after the fact, and the 27 Aug one subtracts a volume: the
+background-image data this document treats as "nearly all of the data" was a
+removed feature's orphans, and is deleted. There is one upload volume now,
+holding ~180KB.
+
 ## Why this one
 
 The app acquired three features in August that all assume a process which
@@ -48,7 +54,7 @@ One box. Three services on a private Compose network, one of them published.
             │      ↓                              │
             │ postgres :5432  (not published)     │
             └─────────────────────────────────────┘
-              volumes: pgdata · attachments · backgrounds
+              volumes: pgdata · attachments
 ```
 
 `caddy` is the addition to the recovered `docker-compose.prod.yml`, which
@@ -99,6 +105,19 @@ failure is silent.
 >
 > What *did* change for this deployment is the opposite of a simplification, and
 > §2.1 is new because of it.
+>
+> **Update, 27 Aug 2026: there is one volume now, and §2 below is no longer
+> current where it counts.** `blob-storage.md` §10.2 finally asked what step 5
+> was protecting and found that half of it was nothing: the background-image
+> feature had already been removed — the upload route threw unconditionally,
+> nothing rendered the column — and its 19MB were orphans of the deleted
+> directories feature. They are deleted, and the `blog-backgrounds` volume with
+> them. **Every sentence below calling backgrounds "nearly all of the data" is
+> arithmetic about bytes nothing reads.** What remains on disk is ~180KB of
+> attachments, which stay for the reason §10.2 gives — the blocker is
+> `PUT /api/attachments/[filename]`, which edits in place, and content
+> addressing cannot express that. §2's *conclusion* survives all of this
+> unchanged, and by a wider margin than it claimed.
 
 **Object storage is not a blocker for this deployment.** That was the reasoning
 when [archive/storage-uploads.md](./archive/storage-uploads.md) was merely
@@ -121,21 +140,35 @@ prerequisite this morning is back to being the improvement it was on 30 July,
 and the deploy is no longer blocked on it. 19MB of data does not justify seven
 route rewrites, a presigning flow and a migration script.
 
-**What must be fixed regardless — and it is a live bug in the recovered
-compose.** `src/lib/uploads.ts` puts the two asset classes on different roots:
+**What must be fixed regardless — and it was a live bug in the recovered
+compose. Resolved twice over, and the second time deleted the problem rather
+than fixing it.** `src/lib/uploads.ts` *used* to put two asset classes on
+different roots:
 
 - `ATTACHMENTS_DIR` → `$UPLOADS_DIR` or `<cwd>/var/uploads/attachments`
-- `BACKGROUNDS_DIR` → `<cwd>/public/uploads/directories`, hardcoded, inside the
-  static tree on purpose (§ that file's docblock)
+- ~~`BACKGROUNDS_DIR` → `<cwd>/public/uploads/directories`~~ — gone, 27 Aug 2026
 
 The deleted `docker-compose.prod.yml` mounted `blog-uploads:/app/var/uploads`
-and nothing else. Backgrounds — **19MB across 70 files, against 180KB across 11
-for attachments, so nearly all of the data** — sat in the image's writable layer
-and would have been destroyed by every rebuild. The restored compose needs a
-second volume at `/app/public/uploads/directories`, and the Dockerfile needs to
-`mkdir`+`chown` it for the same reason it already does for `./var` (a volume
-mounted over a path the runtime user does not own arrives root-owned, and every
-upload fails `EACCES`).
+and nothing else. Backgrounds — 19MB across 70 files, against 180KB across 11
+for attachments — sat in the image's writable layer and would have been
+destroyed by every rebuild, so `118a5a8c` added a second volume at
+`/app/public/uploads/directories` and the matching `mkdir`+`chown` in the
+Dockerfile (a volume mounted over a path the runtime user does not own arrives
+root-owned, and every upload fails `EACCES`).
+
+**That was the right fix on the information available, and the information was
+wrong.** Those 19MB were unreachable: no route could write them, no component
+rendered them, and the files were `dir_<uuid>_*` orphans of a feature deleted
+long before. "Do not silently destroy 19MB on every rebuild" beats "investigate
+first" every time — but the investigation, when it finally happened, ended in a
+`find … -delete` rather than a volume. Both the volume and the second
+`mkdir`/`chown` are now gone. `ATTACHMENTS_DIR` is the only root, and the reason
+it sits outside `public/` is unchanged and now unconditional.
+
+The general lesson outlasts the 19MB: **a volume added to stop data loss is a
+bet that the data is live, and that bet is cheap to make and expensive to leave
+unexamined.** This one sat in the backup set, the topology diagram, the
+Dockerfile and this document for two weeks.
 
 **When to revisit:** a second app instance, a move to a CDN origin, or uploads
 past a few GB — whichever comes first. That day arrived the same afternoon:
@@ -177,10 +210,14 @@ else in this document:
 verbatim — `git show e9018f00^:<path>` recovers them, and the Dockerfile in
 particular is good work worth keeping.
 
+This table is a record of what was done on 15 Aug, not a checklist to run
+today: both background rows were undone on 27 Aug (§2's update note), so a
+reader working from it would re-add a volume for deleted data.
+
 | Artifact | Action |
 | --- | --- |
-| `Dockerfile` | Restore. Add the backgrounds `mkdir`/`chown` (§2) |
-| `docker-compose.prod.yml` | Restore. Add `caddy`, add the backgrounds volume, drop the published `3000:3000` in favour of proxying |
+| `Dockerfile` | Restore. ~~Add the backgrounds `mkdir`/`chown` (§2)~~ — added, then removed 27 Aug |
+| `docker-compose.prod.yml` | Restore. Add `caddy`, ~~add the backgrounds volume~~ (added, then removed 27 Aug), drop the published `3000:3000` in favour of proxying |
 | `.dockerignore` | Restore verbatim |
 | `output: "standalone"` in `next.config.ts` | Restore. The comment at L150 explaining its removal goes with it |
 | `fly.toml` | **Do not restore.** Fly is not the target; its `release_command` was the only reason migrations were not applied on boot |
@@ -246,14 +283,16 @@ on one disk, and §2 chose to keep them there.
    Whole-box, trivial to enable, and the right tool for "the disk died."
    Insufficient alone: a corrupted database gets faithfully snapshotted, and
    restoring is all-or-nothing.
-2. **Nightly logical backup, offsite.** `pg_dump` plus the two upload volumes,
-   pushed to an object store on a *different provider* — Backblaze B2 or
+2. **Nightly logical backup, offsite.** `pg_dump` plus the upload volume
+   (singular since 27 Aug 2026 — §2's update note), pushed to an object store on
+   a *different provider* — Backblaze B2 or
    Cloudflare R2, both cents-per-month at this size, R2 with no egress charge on
    restore. This is what survives corruption, a bad migration, and the VPS
    account itself going away.
 
    **The blob bucket belongs in this set too, and on a different provider from
-   itself** (added 15 Aug 2026, §2.1). It holds the only copy of every image in
+   itself** (added 15 Aug 2026, §2.1). It is also, by size, most of what there is
+   to back up: after §10.2 the disk holds ~180KB. It holds the only copy of every image in
    every post; a `pg_dump` taken without it restores documents whose pictures
    are gone, and the database will not even show the loss — the `src` is a
    perfectly valid path to an object that no longer exists. Backing R2 up *to*
@@ -324,7 +363,8 @@ Named here so they are not mistaken for solved by choosing a host. From
 1. ~~Restore `Dockerfile`, `.dockerignore`, `output: "standalone"`; delete
    `vercel.json`; resolve `IS_VERCEL` (§3)~~ — done, `118a5a8c`
 2. ~~Restore `docker-compose.prod.yml` with `caddy` and **both** upload volumes
-   (§2)~~ — done, `118a5a8c`. The backgrounds volume was the bug fix
+   (§2)~~ — done, `118a5a8c`. The backgrounds volume was the bug fix, and was
+   itself removed on 27 Aug once the data turned out to be dead (§2)
 3. ~~Re-status `archive/storage-uploads.md` (§2) and rewrite `changes-detection.md`
    §6 (§7)~~ — done. Both stated a dead premise
 4. ~~Build the image once, locally, to prove the Dockerfile~~ — done. It failed
@@ -333,12 +373,15 @@ Named here so they are not mistaken for solved by choosing a host. From
 6. **Create the R2 bucket and set `S3_*` in the production environment (§2.1)** —
    new, and it belongs before the first deploy rather than after: without it the
    app runs, serves posts, and shows broken images
-7. Migrate the existing 19MB of uploads onto the volumes. Note this is
-   *filesystem* data only — attachments and backgrounds, which `blob-storage.md`
-   deliberately left where they are (§2's update note)
+7. Migrate the existing uploads onto the volume — **~180KB, not the 19MB this
+   step used to say.** The other 19MB were background images, and `blob-storage.md`
+   §10.2 deleted them rather than moving them: the feature was already gone. What
+   is left is attachments, which stay on the filesystem for the reason §10.2
+   gives
 8. **Backups and a rehearsed restore (§5)** — before this is load-bearing, not
-   after. Three things to back up now, not two: the database, the upload
-   volumes, and the blob bucket
+   after. Three things to back up, and the middle one is now the smallest by
+   three orders of magnitude: the database, the upload volume (singular), and the
+   blob bucket
 9. **A scheduler, and its first two jobs.** There is none in the repo — no cron,
    no timer unit, no `schedule:` workflow. §5's nightly backup needs one, and so
    does `pnpm blobs:collect` (`blob-storage.md` §11.2, which records the trap:
