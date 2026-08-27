@@ -274,37 +274,56 @@ release step does not exist here.
 
 ## 5. Backups — the actual price of this decision
 
-Nothing else in this document can fail as expensively. Both durable stores live
-on one disk, and §2 chose to keep them there.
+Nothing else in this document can fail as expensively. **There are three durable
+stores, in two places.** Postgres and the attachments volume are on the VPS disk,
+where §2 chose to keep them; the blob bucket is in R2, where §2.1 put it. That
+split is a durability improvement for the third store and a hole in the layer
+below, and the two facts are easy to hold separately when they should be held
+together.
 
 **Two layers, because they fail differently:**
 
 1. **Provider snapshots** (Hetzner et al. offer these for ~20% of server cost).
    Whole-box, trivial to enable, and the right tool for "the disk died."
-   Insufficient alone: a corrupted database gets faithfully snapshotted, and
-   restoring is all-or-nothing.
-2. **Nightly logical backup, offsite.** `pg_dump` plus the upload volume
-   (singular since 27 Aug 2026 — §2's update note), pushed to an object store on
-   a *different provider* — Backblaze B2 or
-   Cloudflare R2, both cents-per-month at this size, R2 with no egress charge on
-   restore. This is what survives corruption, a bad migration, and the VPS
-   account itself going away.
+   Insufficient alone for two reasons, not one: a corrupted database gets
+   faithfully snapshotted and restoring is all-or-nothing — and **the box is now
+   Postgres plus ~180KB of attachments, and nothing else.** No snapshot reaches
+   R2, so the store holding almost every byte is entirely outside this layer.
+2. **Nightly logical backup, offsite.** `pg_dump` plus the attachments volume
+   (one volume, not two, since 27 Aug 2026 — §2's update note), pushed to an
+   object store on a *different provider* — Backblaze B2 or Cloudflare R2, both
+   cents-per-month at this size, R2 with no egress charge on restore. This is
+   what survives corruption, a bad migration, and the VPS account itself going
+   away.
 
    **The blob bucket belongs in this set too, and on a different provider from
-   itself** (added 15 Aug 2026, §2.1). It is also, by size, most of what there is
-   to back up: after §10.2 the disk holds ~180KB. It holds the only copy of every image in
-   every post; a `pg_dump` taken without it restores documents whose pictures
-   are gone, and the database will not even show the loss — the `src` is a
-   perfectly valid path to an object that no longer exists. Backing R2 up *to*
-   R2 satisfies the letter of "offsite" and none of its point.
+   itself** (added 15 Aug 2026, §2.1). It holds the only copy of every image in
+   every post; a `pg_dump` taken without it restores documents whose pictures are
+   gone, and the database will not even show the loss — the `src` is a perfectly
+   valid path to an object that no longer exists. Backing R2 up *to* R2 satisfies
+   the letter of "offsite" and none of its point.
+
+   **It is also almost all of the bytes**, which the three-item phrasing hides.
+   Since §10.2 the disk side is ~180KB, so "the database, the volume and the
+   bucket" is a set whose middle element rounds to nothing and whose last element
+   is the job. Size the schedule and the retention against the bucket.
 
    A useful property while doing it: blobs are content-addressed and immutable,
    so a copy is a pure add — no object ever changes, and a sync only ever grows.
-   That makes this the cheapest of the three to back up, not the hardest.
+   That makes this the cheapest of the three to back up, not the hardest. The
+   corollary is the one to watch: `pnpm blobs:collect` is the only thing that
+   ever removes an object, so it must not be scheduled before this backup exists
+   (§9 step 9).
 
 **Restore must be rehearsed, on a schedule, or it is not a backup.** Restore
 last night's dump into a throwaway Postgres and boot the app against it. The
 common ending to this story is discovering the cron job broke in March.
+
+**Point the rehearsal at a restored copy of the bucket, not at the live one.**
+Against production R2 the drill passes whatever the backup contains, because the
+images resolve from the store that was never tested — which is precisely the
+half most likely to be broken, and the half whose loss the database cannot
+report. Open a post with a picture in it and look at the picture.
 
 Retention: 7 daily, 4 weekly, 6 monthly is a fine default and costs almost
 nothing at this volume.
