@@ -38,11 +38,11 @@ interface PostsListViewProps {
   series: Series[];
   /**
    * The author's projects, so a project renders as a row containing its series
-   * — `docs/plans/tree-model-brief.md` §0, answered yes on 27 Aug 2026. Empty or
-   * omitted keeps the flat list this surface used to be, which is what series
-   * mode and a signed-out reader get: `capabilities().projects` is signed-in
-   * only, and a project row nobody can act on is chrome pretending to be a
-   * feature.
+   * — `docs/plans/archive/tree-model-brief.md` §0, answered yes on 27 Aug 2026.
+   * Empty or omitted keeps the flat list this surface used to be, which is what
+   * series mode and a signed-out reader get: `capabilities().projects` is
+   * signed-in only, and a project row nobody can act on is chrome pretending to
+   * be a feature.
    */
   projects?: Project[];
   /**

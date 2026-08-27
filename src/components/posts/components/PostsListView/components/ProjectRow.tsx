@@ -33,9 +33,9 @@ import {
  * A project on `/posts`: a row that contains its series.
  *
  * This is the row `/posts` did not have, and the reason it did not is
- * `docs/plans/tree-model-brief.md` §0 — whether a project appears here at all
- * was a product question, answered yes on 27 Aug 2026. With it, `/posts` and the
- * sidebar render the same three-level tree from the same `RootItem`.
+ * `docs/plans/archive/tree-model-brief.md` §0 — whether a project appears here
+ * at all was a product question, answered yes on 27 Aug 2026. With it, `/posts`
+ * and the sidebar render the same three-level tree from the same `RootItem`.
  *
  * **Deliberately not a port of `SideBar/ProjectGroup`.** That draws a project as
  * a labeled band — an `overline` title with a rule running to the right edge —
