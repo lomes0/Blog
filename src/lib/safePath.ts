@@ -14,12 +14,19 @@ import path from "path";
 
 /**
  * The last path segment of `name`, with anything that could traverse removed.
- *
  * Returns null when nothing usable is left — an empty name, a bare `.`/`..`, or
- * a value that was only separators. Callers should skip such entries rather
- * than invent a name for them.
+ * a value that was only separators.
+ *
+ * **Private on purpose.** It was exported while the backup importer needed a
+ * bare basename to look an entry up *inside* a zip, where there is no directory
+ * to resolve against; that caller went with the background images
+ * (docs/plans/blob-storage.md §10.2). Every remaining path from a hostile name
+ * to the disk ends in a real directory, so `resolveWithin` is the entry point
+ * and its second check — re-resolving against `dir` — is not optional. Exporting
+ * this again would make it possible to take the first half of the guarantee
+ * without the second.
  */
-export function safeBasename(name: string): string | null {
+function safeBasename(name: string): string | null {
   // Normalise Windows separators first: path.basename on POSIX treats a
   // backslash as an ordinary character, so `..\..\x` would survive intact.
   const flattened = name.replace(/\\/g, "/");

@@ -522,11 +522,16 @@ a second app instance**, or an in-place-edit answer arrived at deliberately. Unt
 then a volume is the right home for 180 KB, and adding `var/uploads` to the
 nightly backup buys the durability without the rewrite.
 
-One loose end left by the background removal: `safeBasename`
-(`src/lib/safePath.ts`) lost its only caller with the import route's restore
-block. It is kept — CLAUDE.md documents it alongside `resolveWithin` as the
-entry point for filenames arriving from outside the app, and an attachment
-migration would want it back.
+One loose end left by the background removal, since resolved: `safeBasename`
+(`src/lib/safePath.ts`) lost its only *external* caller with the import route's
+restore block — that one needed a bare basename to look an entry up inside a zip,
+where there is no directory to resolve against. The function is not dead
+(`resolveWithin` calls it on its first line), so it was unexported rather than
+deleted. Every remaining route from a hostile filename to the disk ends in a real
+directory, which makes `resolveWithin` the single entry point and its second
+check — re-resolving against `dir` — unskippable. That is a small tightening
+rather than a cleanup: an export nobody uses is an invitation to take the first
+half of the guarantee without the second.
 
 ## 11. Phasing
 

@@ -450,8 +450,9 @@ For ids arriving in a request _body_, a batch must be checked as a whole — see
 checking only the first is not an available mistake.
 
 Filenames from outside the app — URL segments, entries inside an uploaded zip —
-go through `resolveWithin`/`safeBasename` (`src/lib/safePath.ts`) before they
-become a path on disk.
+go through `resolveWithin` (`src/lib/safePath.ts`) before they become a path on
+disk. It is the only export: taking a basename without re-resolving it against
+the destination directory is half a guarantee, so that half is not reachable.
 
 ### Lexical Editor
 
