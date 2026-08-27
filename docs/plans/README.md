@@ -108,13 +108,9 @@ on top of an already-simplified base — never all at once.
    thunks, UI drag/menu builds id arrays, remove the `between`/bracketing
    plumbing.
 
-4. **Schema Phases B–D** (from Plan 2): `head` → real FK, `name → title` rename,
-   drop dead `type`/coauthors. Coordinate Phase D with the next step (both touch
-   `Document` indexes). **`background_image → backgroundImage` is no longer the
-   right move**: since `blob-storage.md` §10.2 the column is inert — nothing
-   writes it, nothing renders it, and it is kept only so pre-27-Aug export
-   bundles still import. Drop it here instead of renaming it, once a bundle that
-   old stops mattering.
+4. **Schema Phases B–D** (from Plan 2): `head` → real FK, `name → title` /
+   `background_image → backgroundImage` renames, drop dead `type`/coauthors.
+   Coordinate Phase D with the next step (both touch `Document` indexes).
 
 5. **Ordering, Phase 5 — delete `rank`** (from Plan 1): drop the `rank`
    columns/indexes, the `fractional-indexing` dep, `lib/ordering.ts`,
