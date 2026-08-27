@@ -1,6 +1,14 @@
 # Bloat & layout remediation plan
 
-**Status as of 2026-08-27: steps 1–6 are done or effectively done; step 7 is
+**Status as of 2026-08-27: steps 1–7 are done.** Step 7's data-model half
+shipped the same day the product question was answered — `/posts` builds its
+root list with `groupRootItems` and adapts it with `rootItemsToTreeNodes`, the
+same two functions the sidebar uses, and `ProjectRow` gives a project a row that
+contains its series. What is left is not code: **drag reorder across series
+boundaries and multi-select drag have not been exercised in a browser**, and
+both have broken on this surface before.
+
+Previously: **steps 1–6 are done or effectively done; step 7 is
 now UNBLOCKED.** The product question it waited on — does `/posts` render
 projects? — was answered **yes** on 27 Aug 2026, so step 7 takes option A of
 [tree-model-brief.md](./tree-model-brief.md) §6: the unified `TreeNode` model in
@@ -17,7 +25,7 @@ the plan was written.
 | 4    | Done — `hooks/useResizablePanel.ts` + `Layout/ResizeGripper.tsx` landed     |
 | 5    | Done — `LoadingState.tsx` gone, `DocumentCard/theme.ts` 149 → 72            |
 | 6    | Done — [tree-model-brief.md](./tree-model-brief.md)                         |
-| 7    | **Open, unblocked 27 Aug 2026** — partly pre-empted by the shared drag engine |
+| 7    | **Done 27 Aug 2026** — needs browser eyes on drag, see the status note      |
 
 Baseline when written: `c366f438`, 71,354 LOC / 451 files. Now 69,777 LOC.
 
@@ -282,7 +290,18 @@ The user answers before step 7 runs.
 
 ## Step 7 — Tree-model unification _(unblocked 27 Aug 2026)_
 
-> **STATUS: OPEN, and partly pre-empted.** The _drag engine_ was unified ahead
+> **STATUS: DONE 27 Aug 2026.** The data model is one: `PostsListView` no longer
+> declares its own union, and `PostsListView.tsx`, `ActivePostsSection.tsx`,
+> `SeriesGroup.tsx` and `ProjectGroup.tsx` all render the same `RootItem`. New
+> on `/posts`: `ProjectRow` (a container row with the pill outline, deliberately
+> not the sidebar's band), a project arm in the row menu, project rows in bulk
+> selection and delete, a "New project" item in the split button, and
+> `rendersProjects` following the prop rather than being hard-coded off. Guests
+> and series mode get the flat list, because `capabilities().projects` is
+> signed-in only and a project row nobody can act on is chrome pretending to be
+> a feature. What follows is the state before that.
+>
+> **Was: OPEN, and partly pre-empted.** The _drag engine_ was unified ahead
 > of the decision — `src/lib/tree/model.ts` (152) + `src/lib/tree/useTreeDnd.ts`
 > (434), landed in `6f0317c7` / `dc61c6c0` and consumed by both surfaces
 > (`PostsListView`, `ActivePostsSection`, `SeriesGroup`, `ProjectGroup`,

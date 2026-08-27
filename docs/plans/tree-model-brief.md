@@ -1,6 +1,10 @@
 # Step 6 — Tree-model decision brief
 
-**Status: §0 answered 27 Aug 2026 — YES, `/posts` renders projects.** Step 7 of
+**Status: answered AND built, 27 Aug 2026 — `/posts` renders projects.**
+Option A shipped; see `bloat-remediation.md` step 7 for what landed and what
+still needs a browser.
+
+Was: **§0 answered 27 Aug 2026 — YES, `/posts` renders projects.** Step 7 of
 [bloat-remediation.md](./bloat-remediation.md) is unblocked, and the shape to
 build is **option A** in §6/§7: the unified `TreeNode` model in `src/lib/tree/`,
 net ≈ −135 LOC after the ~200 LOC of new project UI §6 enumerates. Everything
