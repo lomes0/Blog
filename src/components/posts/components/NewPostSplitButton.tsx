@@ -8,7 +8,7 @@ import {
   Menu,
   MenuItem,
 } from "@mui/material";
-import { ChevronDown, FolderPlus, Plus } from "lucide-react";
+import { ChevronDown, FolderOpen, FolderPlus, Plus } from "lucide-react";
 import { ICON_SIZE } from "@/theme/icons";
 
 interface NewPostSplitButtonProps {
@@ -17,6 +17,12 @@ interface NewPostSplitButtonProps {
   canEdit: boolean;
   onNewPost: () => void;
   onNewSeries: () => void;
+  /**
+   * Create a project. Omitted where projects are not available — a guest has
+   * none (`capabilities().projects` is signed-in only), and series mode is
+   * inside one series rather than looking at the root list.
+   */
+  onNewProject?: () => void;
   onAddRemovePosts?: () => void;
 }
 
@@ -25,6 +31,7 @@ export function NewPostSplitButton({
   canEdit,
   onNewPost,
   onNewSeries,
+  onNewProject,
   onAddRemovePosts,
 }: NewPostSplitButtonProps) {
   const [anchor, setAnchor] = useState<null | HTMLElement>(null);
@@ -110,6 +117,20 @@ export function NewPostSplitButton({
               </ListItemIcon>
               <ListItemText>New series</ListItemText>
             </MenuItem>,
+            ...(onNewProject
+              ? [
+                <MenuItem
+                  key="new-project"
+                  onClick={wrap(onNewProject)}
+                  dense
+                >
+                  <ListItemIcon>
+                    <FolderOpen size={ICON_SIZE.dense} />
+                  </ListItemIcon>
+                  <ListItemText>New project</ListItemText>
+                </MenuItem>,
+              ]
+              : []),
           ]}
       </Menu>
     </Box>

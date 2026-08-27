@@ -8,9 +8,10 @@ import { documentCommands } from "@/commands";
 import { useCommandRun } from "@/commands/CommandProvider";
 import { Post, Series, User } from "@/types";
 import { DocumentURLProvider } from "@/contexts/DocumentURLContext";
-import { useSelector } from "@/store";
+import { actions, useDispatch, useSelector } from "@/store";
 import { selectStandalonePosts } from "@/store/selectors/postsSelectors";
 import { comparePostsByRank } from "@/lib/documentOrder";
+import { capabilities } from "@/lib/capabilities";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { useTimeEditing } from "@/hooks/useTimeEditing";
 import { ViewToggle, type ViewType } from "@/components/shared/ViewToggle";
@@ -124,6 +125,36 @@ const PostsViewContent: React.FC<PostsViewProps> = (
   // ── Redux (all-posts mode) ────────────────────────────────────────────────
   const standalonePosts = useSelector(selectStandalonePosts);
   const seriesList = useSelector((state) => state.series);
+  const projectsList = useSelector((state) => state.projects);
+
+  /**
+   * Projects, but only where they mean something.
+   *
+   * Series mode renders one series' posts, so a root-list project has no place
+   * in it; and `capabilities().projects` is signed-in only, so a guest gets the
+   * flat list this surface used to be rather than rows they cannot act on.
+   * `PostsListView` treats an empty list as "no projects" all the way down to
+   * the drag engine, which is what keeps a series dragged here from having its
+   * membership cleared by a surface that cannot show it.
+   */
+  const canUseProjects = capabilities(user).projects;
+  const listProjects = canUseProjects ? projectsList : undefined;
+
+  /**
+   * Create a project and open its inline rename, the same IDE-style new-folder
+   * flow the sidebar uses (`useSidebarActions.handleCreateProject`). The row
+   * appears immediately because `createProject.fulfilled` unshifts it into the
+   * store; naming it is the next keystroke rather than a dialog.
+   */
+  const dispatch = useDispatch();
+  const handleCreateProject = React.useCallback(async () => {
+    try {
+      await dispatch(actions.createProject({ title: "New Project" })).unwrap();
+      router.refresh();
+    } catch {
+      // Create failed; the thunk already surfaced an announcement.
+    }
+  }, [dispatch, router]);
 
   // ── Series time-editing (always called – hooks must be unconditional) ─────
   const {
@@ -231,6 +262,9 @@ const PostsViewContent: React.FC<PostsViewProps> = (
               ? () => setCreatePostDrawerOpen(true)
               : () => run(documentCommands.create)}
             onNewSeries={() => setCreateSeriesDrawerOpen(true)}
+            onNewProject={!isSeries && canUseProjects
+              ? handleCreateProject
+              : undefined}
             onAddRemovePosts={isSeries
               ? () => setAddDialogOpen(true)
               : undefined}
@@ -307,6 +341,7 @@ const PostsViewContent: React.FC<PostsViewProps> = (
             <PostsListView
               posts={sortedStandalonePosts}
               series={seriesList}
+              projects={listProjects}
               density={density}
             />
           );

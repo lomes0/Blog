@@ -178,11 +178,11 @@ const groupPostsBySeriesWithEmpty = (
 };
 
 /** The rank governing a root item's position in the interleaved root list. */
-const rootItemRank = (item: RootItem): string | null =>
+export const rootItemRank = (item: RootItem): string | null =>
   item.type === "project" ? (item.project.rank ?? null) : groupRank(item);
 
 /** Stable tie-breaker id for a root item when ranks are equal or absent. */
-const rootItemId = (item: RootItem): string =>
+export const rootItemId = (item: RootItem): string =>
   item.type === "project" ? item.project.id : groupId(item);
 
 /**

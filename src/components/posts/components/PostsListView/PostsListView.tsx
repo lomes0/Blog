@@ -1,21 +1,29 @@
 "use client";
 import React, { useCallback, useEffect, useMemo } from "react";
 import { Box } from "@mui/material";
-import { Post, type PostContainer, Series } from "@/types";
+import { Post, type PostContainer, Project, Series } from "@/types";
 import { actions, useDispatch } from "@/store";
 import { useRouter } from "next/navigation";
 import { useExpandedState } from "@/hooks/useExpandedState";
 import {
-  comparePostsByRank,
   rankOf,
   ranksBracketing,
   type ReorderDirection,
 } from "@/lib/documentOrder";
-import { compareRankThenId } from "@/lib/ordering";
-import { containerFromPost, type TreeNode } from "@/lib/tree/model";
+import { containerFromPost } from "@/lib/tree/model";
+import {
+  groupRootItems,
+  partitionRootItems,
+  type RootItem,
+  rootItemId,
+  rootItemRank,
+  rootItemsToTreeNodes,
+  type SeriesGroupItem,
+} from "@/utils/posts/seriesGrouping";
 import { useTreeDnd } from "@/lib/tree/useTreeDnd";
 import { ListDensity } from "./types";
 import { PostRow } from "./components/PostRow";
+import { ProjectRow } from "./components/ProjectRow";
 import { SeriesRow } from "./components/SeriesRow";
 import { BulkActionBar } from "./components/BulkActionBar";
 import { useRowSelection } from "@/hooks/useRowSelection";
@@ -28,6 +36,15 @@ interface PostsListViewProps {
   posts: Post[];
   /** All series with their posts. */
   series: Series[];
+  /**
+   * The author's projects, so a project renders as a row containing its series
+   * — `docs/plans/tree-model-brief.md` §0, answered yes on 27 Aug 2026. Empty or
+   * omitted keeps the flat list this surface used to be, which is what series
+   * mode and a signed-out reader get: `capabilities().projects` is signed-in
+   * only, and a project row nobody can act on is chrome pretending to be a
+   * feature.
+   */
+  projects?: Project[];
   /**
    * Series offered as bulk-move destinations. Defaults to `series`. In series
    * mode `series` is empty (no Series section), so this supplies the *other*
@@ -45,32 +62,19 @@ interface PostsListViewProps {
   density: ListDensity;
 }
 
-// A single entry in the root list: a standalone post or a series. Both live in
-// one shared rank space; the two are rendered as separate sections (posts above
-// series) but ranked against each other, so a drag across the boundary is one
-// ordinary move.
-type PostRootItem = {
-  kind: "post";
-  id: string;
-  rank: string | null;
-  post: Post;
-};
-type SeriesRootItem = {
-  kind: "series";
-  id: string;
-  rank: string | null;
-  series: Series;
-};
-type RootItem = PostRootItem | SeriesRootItem;
-
-// Rank ascending; unranked entries sort last; ties broken by id (total/stable).
-// Delegates to the shared primitive so /posts and the sidebar agree on order.
-const compareByRank = (a: RootItem, b: RootItem): number =>
-  compareRankThenId(a.rank, a.id, b.rank, b.id);
+/**
+ * The one post a standalone group wraps.
+ *
+ * `SeriesGroupItem` models a loose post as a one-element `posts` array, which is
+ * the encoding the sidebar's tree uses and which this surface now shares. The
+ * accessor is here so no render site has to know that.
+ */
+const lonePost = (group: SeriesGroupItem): Post | undefined => group.posts[0];
 
 export function PostsListView({
   posts,
   series,
+  projects,
   moveTargetSeries,
   rootContainer = {},
   density,
@@ -93,75 +97,74 @@ export function PostsListView({
   const { expandedSeries, toggleSeries } = useExpandedState(
     "postsListExpansion",
   );
+  // Projects keep their own expansion key, so collapsing a drawer does not
+  // collapse the series inside it and lose the user's place twice over.
+  const { expandedSeries: expandedProjects, toggleSeries: toggleProject } =
+    useExpandedState("postsListProjectExpansion");
 
-  // Each series' posts, wrapped and rank-sorted (so reorder is reflected).
-  const seriesPostsById = useMemo(() => {
-    const map = new Map<string, Post[]>();
-    for (const s of series) {
-      map.set(
-        s.id,
-        s.posts
-          .slice()
-          .sort(comparePostsByRank),
-      );
-    }
-    return map;
-  }, [series]);
+  // Each series by id, which is the shape `groupRootItems` takes. `series.posts`
+  // is authoritative and the grouping sorts it, so nothing needs pre-sorting
+  // here any more.
+  const seriesMap = useMemo(
+    () => new Map(series.map((s) => [s.id, s])),
+    [series],
+  );
 
-  // The root list: standalone posts and series in one shared rank space. This is
-  // the source of the neighbour ranks that bracket a reorder (see
-  // handleReorderRoot) and of the sibling lists the drag engine indexes, so it
-  // must stay rank-monotonic — don't group or re-sort it for presentation.
-  const rootItems = useMemo((): RootItem[] => {
-    const items: RootItem[] = [
-      ...posts.map((p) => ({
-        kind: "post" as const,
-        id: p.id,
-        rank: rankOf(p),
-        post: p,
-      })),
-      ...series.map((s) => ({
-        kind: "series" as const,
-        id: s.id,
-        rank: s.rank ?? null,
-        series: s,
-      })),
-    ];
-    return items.sort(compareByRank);
-  }, [posts, series]);
+  /**
+   * The root list, built by the **same** function the sidebar builds it with.
+   *
+   * This was two implementations of one tree until 27 Aug 2026 — a nested one
+   * here and a flat `{kind, id, rank}` union there — which is what
+   * `docs/plans/bloat-remediation.md` step 7 existed to collapse. The rank space
+   * is shared across projects, ungrouped series and standalone posts, so it must
+   * stay rank-monotonic: don't group or re-sort it for presentation.
+   */
+  const rootItems = useMemo(
+    () => groupRootItems(posts, seriesMap, projects ?? []),
+    [posts, seriesMap, projects],
+  );
 
   // Split the rank-ordered root list into the two rendered sections — standalone
-  // posts above, series below — matching the sidebar, which renders the same
-  // tree as "Notes" then "Projects". The rank space stays shared (so a drag
-  // between the sections is still a single well-ordered move); each section is
-  // just a rank-sorted subset of it.
-  const postItems = useMemo(
-    () =>
-      rootItems.filter((item): item is PostRootItem => item.kind === "post"),
-    [rootItems],
-  );
-  const seriesItems = useMemo(
-    () =>
-      rootItems.filter((item): item is SeriesRootItem =>
-        item.kind === "series"
-      ),
+  // posts above, projects and ungrouped series below — matching the sidebar,
+  // which renders the same tree as "Notes" then "Projects". The rank space stays
+  // shared (so a drag between the sections is still a single well-ordered move);
+  // each section is just a rank-sorted subset of it.
+  const { noteItems: postItems, groupItems } = useMemo(
+    () => partitionRootItems(rootItems),
     [rootItems],
   );
 
   // Flat ordered list of all visible IDs for range selection, in *visual* order
-  // (posts section, then the series section with each expanded series' posts) —
-  // it drives Shift-range and Select-All, so it must match what the user sees.
+  // (posts section, then the groups section with each expanded container's
+  // contents) — it drives Shift-range and Select-All, so it must match what the
+  // user sees, including a project's series and those series' posts.
   const allVisibleIds = useMemo(() => {
     const ids: string[] = [];
-    for (const item of postItems) ids.push(item.id);
-    for (const item of seriesItems) {
-      ids.push(item.id);
-      if (expandedSeries.has(item.id)) {
-        (seriesPostsById.get(item.id) ?? []).forEach((p) => ids.push(p.id));
+    const pushSeriesGroup = (group: SeriesGroupItem) => {
+      if (group.type !== "series" || !group.series) {
+        const post = lonePost(group);
+        if (post) ids.push(post.id);
+        return;
       }
+      ids.push(group.series.id);
+      if (expandedSeries.has(group.series.id)) {
+        group.posts.forEach((p) => ids.push(p.id));
+      }
+    };
+
+    for (const item of postItems) pushSeriesGroup(item);
+    for (const item of groupItems) {
+      if (item.type === "project") {
+        ids.push(item.project.id);
+        if (expandedProjects.has(item.project.id)) {
+          item.children.forEach(pushSeriesGroup);
+        }
+        continue;
+      }
+      pushSeriesGroup(item);
     }
     return ids;
-  }, [postItems, seriesItems, expandedSeries, seriesPostsById]);
+  }, [postItems, groupItems, expandedSeries, expandedProjects]);
 
   const selection = useRowSelection(allVisibleIds, "toggle");
 
@@ -181,6 +184,20 @@ export function PostsListView({
     getStoredTitle: (post) => post.name || "",
     onCommit: (post, name) => {
       dispatch(actions.updatePost({ id: post.id, partial: { name } }));
+      router.refresh();
+    },
+    initialContext: undefined,
+  });
+
+  // Project rename is the third instance of the same machine. `updateProject`
+  // takes `{ id, data }` rather than `{ id, partial }`, which is the only
+  // difference between this and the series one.
+  const projectRename = useInlineRename<Project, undefined>({
+    items: projects ?? [],
+    getId: (p) => p.id,
+    getTitle: (p) => p.title,
+    onCommit: (p, title) => {
+      dispatch(actions.updateProject({ id: p.id, data: { title } }));
       router.refresh();
     },
     initialContext: undefined,
@@ -226,18 +243,37 @@ export function PostsListView({
     [confirm, dispatch, router],
   );
 
+  const handleDeleteProject = useCallback(
+    async (projectId: string, title: string) => {
+      const confirmed = await confirm({
+        title: "Delete Project",
+        content:
+          `Delete "${title}"? Its series and posts will not be deleted — they ` +
+          `return to the root list.`,
+        confirmLabel: "Delete",
+      });
+      if (!confirmed) return;
+      await dispatch(actions.deleteProject(projectId));
+      router.refresh();
+    },
+    [confirm, dispatch, router],
+  );
+
   // ── Bulk actions ──────────────────────────────────────────────────────────
   // Delete / move-to-series / merge-into-tabs, shared with the sidebar's
   // right-click bulk menu. Only the chrome differs here: a persistent bar.
   // `renameablePosts` is already every post a row can name — the standalone rows
   // plus each series' children — which is exactly what a selected id can resolve
-  // to. `projects` is left off: this surface has no project rows.
+  // to. `projects` goes with them now that a project row can be selected: a
+  // selected id that resolves to nothing is a bulk delete that silently skips
+  // it.
   const bulk = useBulkPostActions({
     selectedIds: selection.selectedIds,
     orderedIds: allVisibleIds,
     clearSelection: selection.clear,
     posts: renameablePosts,
     series,
+    projects,
   });
   const { handleBulkDelete } = bulk;
 
@@ -247,29 +283,8 @@ export function PostsListView({
   // `SeriesRow` shows past 20), since that list is the source of the sibling
   // ranks that bracket a drop.
   const treeNodes = useMemo(
-    (): TreeNode[] =>
-      rootItems.map((item) =>
-        item.kind === "post"
-          ? {
-            kind: "post" as const,
-            id: item.id,
-            rank: item.rank,
-            label: item.post.name,
-          }
-          : {
-            kind: "series" as const,
-            id: item.id,
-            rank: item.rank,
-            label: item.series.title,
-            children: (seriesPostsById.get(item.id) ?? []).map((p) => ({
-              kind: "post" as const,
-              id: p.id,
-              rank: rankOf(p),
-              label: p.name,
-            })),
-          }
-      ),
-    [rootItems, seriesPostsById],
+    () => rootItemsToTreeNodes(rootItems),
+    [rootItems],
   );
 
   // Which container the top-level rows are in — the author's root list, or the
@@ -291,9 +306,17 @@ export function PostsListView({
     [allVisibleIds, selectedIds],
   );
 
-  // `rendersProjects` is left off: this surface has no project rows, so a series
-  // reordered here must not assert (and thereby clear) its project membership.
-  const dnd = useTreeDnd(treeNodes, { root: dndRoot, getDragSet });
+  // `rendersProjects` follows the prop rather than being hard-coded either way.
+  // It is what tells the engine that a series reordered here knows which project
+  // it is in — asserting that from a surface with no project rows would clear
+  // the membership of every series dragged on it, which is exactly why this used
+  // to be off.
+  const rendersProjects = (projects?.length ?? 0) > 0;
+  const dnd = useTreeDnd(treeNodes, {
+    root: dndRoot,
+    getDragSet,
+    rendersProjects,
+  });
 
   const handleMoveToSeries = useCallback(
     async (postId: string, seriesId: string) => {
@@ -349,22 +372,62 @@ export function PostsListView({
       direction: ReorderDirection,
     ) => {
       const between = ranksBracketing(
-        section.map((r) => r.rank),
+        section.map(rootItemRank),
         index,
         direction,
       );
       if (!between) return;
       const item = section[index];
-      if (item.kind === "post") {
-        await dispatch(
-          actions.movePost({ id: item.id, destination: container, between }),
-        );
+      const id = rootItemId(item);
+      if (item.type === "project") {
+        await dispatch(actions.moveProject({ id, between }));
+      } else if (item.type === "series") {
+        await dispatch(actions.moveSeries({ id, between }));
       } else {
-        await dispatch(actions.moveSeries({ id: item.id, between }));
+        await dispatch(
+          actions.movePost({ id, destination: container, between }),
+        );
       }
       router.refresh();
     },
     [dispatch, router, container],
+  );
+
+  /**
+   * Reposition a series among the members of one project.
+   *
+   * A separate handler from the root one because the rank space is different:
+   * a project's children are ranked against each other, not against the root
+   * list, so bracketing against the wrong list produces a rank that reads
+   * correctly here and puts the series somewhere else on the next load. The
+   * destination names the project in full, for the reason `PostContainer`'s
+   * docstring gives — a partial destination re-homes the row it moves.
+   */
+  const handleReorderProjectSeries = useCallback(
+    async (
+      projectId: string,
+      siblings: SeriesGroupItem[],
+      index: number,
+      direction: ReorderDirection,
+    ) => {
+      const between = ranksBracketing(
+        siblings.map((group) => group.series?.rank ?? null),
+        index,
+        direction,
+      );
+      if (!between) return;
+      const seriesId = siblings[index]?.series?.id;
+      if (!seriesId) return;
+      await dispatch(
+        actions.moveSeries({
+          id: seriesId,
+          destination: { projectId },
+          between,
+        }),
+      );
+      router.refresh();
+    },
+    [dispatch, router],
   );
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
@@ -413,72 +476,141 @@ export function PostsListView({
       }
       {postItems.length > 0 && (
         <Box sx={{ mb: 1 }}>
-          {postItems.map((item, i) => (
-            <PostRow
-              key={item.id}
-              post={item.post}
-              density={density}
-              isSelected={selection.isSelected(item.id)}
-              rename={postRename}
-              onToggleSelect={selection.handleSelectClick}
-              onDelete={handleDeletePost}
-              onDragStart={dnd.onPostDragStart}
-              onDragEnd={dnd.onDragEnd}
-              onReorder={(direction) =>
-                handleReorderRoot(postItems, i, direction)}
-              canMoveUp={i > 0}
-              canMoveDown={i < postItems.length - 1}
-              onReorderDragOver={dnd.onReorderDragOver}
-              onReorderDrop={dnd.onReorderDrop}
-              dropIndicator={dnd.dropTarget?.id === item.id
-                ? dnd.dropTarget.position
-                : null}
-              availableSeries={hasSeries ? series : undefined}
-              onMoveToSeries={hasSeries
-                ? (seriesId) => handleMoveToSeries(item.id, seriesId)
-                : undefined}
-            />
-          ))}
+          {postItems.map((item, i) => {
+            const post = lonePost(item);
+            if (!post) return null;
+            return (
+              <PostRow
+                key={post.id}
+                post={post}
+                density={density}
+                isSelected={selection.isSelected(post.id)}
+                rename={postRename}
+                onToggleSelect={selection.handleSelectClick}
+                onDelete={handleDeletePost}
+                onDragStart={dnd.onPostDragStart}
+                onDragEnd={dnd.onDragEnd}
+                onReorder={(direction) =>
+                  handleReorderRoot(postItems, i, direction)}
+                canMoveUp={i > 0}
+                canMoveDown={i < postItems.length - 1}
+                onReorderDragOver={dnd.onReorderDragOver}
+                onReorderDrop={dnd.onReorderDrop}
+                dropIndicator={dnd.dropTarget?.id === post.id
+                  ? dnd.dropTarget.position
+                  : null}
+                availableSeries={hasSeries ? series : undefined}
+                onMoveToSeries={hasSeries
+                  ? (seriesId) => handleMoveToSeries(post.id, seriesId)
+                  : undefined}
+              />
+            );
+          })}
         </Box>
       )}
 
-      {/* Series, below the standalone posts. */}
-      {seriesItems.length > 0 && (
+      {
+        /* Projects and ungrouped series, below the standalone posts — one
+          rank-ordered section, so a project and a loose series interleave here
+          exactly as they do in the sidebar. */
+      }
+      {groupItems.length > 0 && (
         <Box sx={{ mb: 1 }}>
-          {seriesItems.map((item, i) => (
-            <SeriesRow
-              key={item.id}
-              series={item.series}
-              posts={seriesPostsById.get(item.id) ?? []}
-              onReorderPost={handleReorderPost}
-              onReorder={(direction) =>
-                handleReorderRoot(seriesItems, i, direction)}
-              canMoveUp={i > 0}
-              canMoveDown={i < seriesItems.length - 1}
-              density={density}
-              isSelected={selection.isSelected(item.id)}
-              isPostSelected={selection.isSelected}
-              isExpanded={expandedSeries.has(item.id)}
-              onToggleExpand={toggleSeries}
-              onToggleSelect={selection.handleSelectClick}
-              seriesRename={seriesRename}
-              postRename={postRename}
-              onDeleteSeries={handleDeleteSeries}
-              onDeletePost={handleDeletePost}
-              onPostDragStart={dnd.onPostDragStart}
-              onSeriesDragStart={dnd.onSeriesDragStart}
-              onDragEnd={dnd.onDragEnd}
-              onReorderDragOver={dnd.onReorderDragOver}
-              onReorderDrop={dnd.onReorderDrop}
-              onDragLeaveRow={dnd.onDragLeaveRow}
-              isDragOver={dnd.dragOverSeriesId === item.id}
-              dropIndicator={dnd.dropTarget?.id === item.id
-                ? dnd.dropTarget.position
-                : null}
-              availableSeries={series.filter((other) => other.id !== item.id)}
-              onMovePost={handleMoveToSeries}
-            />
-          ))}
+          {groupItems.map((item, i) => {
+            const reorder = (direction: ReorderDirection) =>
+              handleReorderRoot(groupItems, i, direction);
+            const canMoveUp = i > 0;
+            const canMoveDown = i < groupItems.length - 1;
+
+            if (item.type === "project") {
+              return (
+                <ProjectRow
+                  key={item.project.id}
+                  project={item.project}
+                  groups={item.children}
+                  density={density}
+                  isSelected={selection.isSelected(item.project.id)}
+                  isRowSelected={selection.isSelected}
+                  isExpanded={expandedProjects.has(item.project.id)}
+                  onToggleExpand={toggleProject}
+                  onToggleSelect={selection.handleSelectClick}
+                  projectRename={projectRename}
+                  seriesRename={seriesRename}
+                  postRename={postRename}
+                  onDeleteProject={handleDeleteProject}
+                  onDeleteSeries={handleDeleteSeries}
+                  onDeletePost={handleDeletePost}
+                  expandedSeries={expandedSeries}
+                  onToggleSeries={toggleSeries}
+                  onPostDragStart={dnd.onPostDragStart}
+                  onSeriesDragStart={dnd.onSeriesDragStart}
+                  onProjectDragStart={dnd.onProjectDragStart}
+                  onDragEnd={dnd.onDragEnd}
+                  onReorderDragOver={dnd.onReorderDragOver}
+                  onReorderDrop={dnd.onReorderDrop}
+                  onDragLeaveRow={dnd.onDragLeaveRow}
+                  isDragOver={dnd.dragOverProjectId === item.project.id}
+                  dragOverId={dnd.dragOverSeriesId}
+                  dropIndicator={dnd.dropTarget?.id === item.project.id
+                    ? dnd.dropTarget.position
+                    : null}
+                  childDropIndicator={(id) =>
+                    dnd.dropTarget?.id === id ? dnd.dropTarget.position : null}
+                  onReorder={reorder}
+                  canMoveUp={canMoveUp}
+                  canMoveDown={canMoveDown}
+                  onReorderSeries={(siblings, index, direction) =>
+                    handleReorderProjectSeries(
+                      item.project.id,
+                      siblings,
+                      index,
+                      direction,
+                    )}
+                  onReorderPost={handleReorderPost}
+                  availableSeries={series}
+                  onMovePost={handleMoveToSeries}
+                />
+              );
+            }
+
+            const seriesItem = item.series;
+            if (!seriesItem) return null;
+            return (
+              <SeriesRow
+                key={seriesItem.id}
+                series={seriesItem}
+                posts={item.posts}
+                onReorderPost={handleReorderPost}
+                onReorder={reorder}
+                canMoveUp={canMoveUp}
+                canMoveDown={canMoveDown}
+                density={density}
+                isSelected={selection.isSelected(seriesItem.id)}
+                isPostSelected={selection.isSelected}
+                isExpanded={expandedSeries.has(seriesItem.id)}
+                onToggleExpand={toggleSeries}
+                onToggleSelect={selection.handleSelectClick}
+                seriesRename={seriesRename}
+                postRename={postRename}
+                onDeleteSeries={handleDeleteSeries}
+                onDeletePost={handleDeletePost}
+                onPostDragStart={dnd.onPostDragStart}
+                onSeriesDragStart={dnd.onSeriesDragStart}
+                onDragEnd={dnd.onDragEnd}
+                onReorderDragOver={dnd.onReorderDragOver}
+                onReorderDrop={dnd.onReorderDrop}
+                onDragLeaveRow={dnd.onDragLeaveRow}
+                isDragOver={dnd.dragOverSeriesId === seriesItem.id}
+                dropIndicator={dnd.dropTarget?.id === seriesItem.id
+                  ? dnd.dropTarget.position
+                  : null}
+                availableSeries={series.filter((other) =>
+                  other.id !== seriesItem.id
+                )}
+                onMovePost={handleMoveToSeries}
+              />
+            );
+          })}
         </Box>
       )}
 

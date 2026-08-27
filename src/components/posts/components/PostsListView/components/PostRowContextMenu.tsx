@@ -26,8 +26,13 @@ import { ICON_SIZE } from "@/theme/icons";
 type ReorderDirection = "up" | "down" | "top" | "bottom";
 
 interface PostRowContextMenuProps {
-  /** Pass "series" to show series-specific items (no move-to-series). */
-  mode?: "post" | "series";
+  /**
+   * Pass "series" or "project" to show that row's items (no move-to-series).
+   * Only the delete label differs — a menu that said "Delete" over a project
+   * would be the one place in the tree where the destructive item does not say
+   * what it destroys.
+   */
+  mode?: "post" | "series" | "project";
   onRename: () => void;
   onDelete: () => void;
   /** Reposition this row among its siblings. */
@@ -192,7 +197,7 @@ export function PostRowContextMenu({
             <Trash2 size={ICON_SIZE.dense} />
           </ListItemIcon>
           <ListItemText>
-            {mode === "series" ? "Delete series" : "Delete"}
+            {mode === "post" ? "Delete" : `Delete ${mode}`}
           </ListItemText>
         </MenuItem>
       </Menu>
