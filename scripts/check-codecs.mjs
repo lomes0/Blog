@@ -97,17 +97,15 @@ const OPAQUE_ALLOWLIST = {
   // --- Content nodes whose payload the block IR does not model yet. ---
   math:
     "TODO: the most graduate-worthy of these — a `{ value }` LaTeX string is a codec's worth of work and would let an agent author equations",
-  image:
-    "src/altText/width/height plus a cropped-source payload the IR has no shape for",
   graph:
     "a GeoGebra applet state blob; the IR models nothing of it and a round-trip would have to carry it verbatim",
   sketch:
     "an Excalidraw scene — elements, appState, files. Far outside what a block IR should try to spell",
   iframe: "an embed URL plus sizing the IR does not model",
   canvas:
-    "embeds the notes domain (a whole sticky-note board) inside a block; that structure belongs to NotesCanvas, not the block IR",
+    "a board, addressed *through*: `BLOCK_CONTAINERS` descends to its notes and each note to its blocks, so the board itself has only its height left and an agent has no business setting that (docs/plans/nested-editor-support.md §4)",
   sticky:
-    "same: a notes-domain structure reached as a block",
+    "the same, one level shallower — its blocks are addressed individually and its colour is not the IR's business",
   "page-break":
     "no attributes at all. A codec could only encode `{}`, which buys an agent nothing it cannot already do by moving or deleting the block",
 };

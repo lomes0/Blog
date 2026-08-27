@@ -56,7 +56,7 @@ describe("unwrapBlockDecorators", () => {
     );
     unwrapBlockDecorators(doc);
 
-    expect(doc.root.children.map((c: { type: string }) => c.type)).toEqual([
+    expect((doc.root.children as { type: string }[]).map((c) => c.type)).toEqual([
       "paragraph",
       "image",
       "paragraph",

@@ -151,6 +151,15 @@ function entryFor(block: Block): { preview: string; chars?: number } {
           block.size ? ` · ${block.size} bytes` : ""
         }`,
       };
+    case "image":
+      // The caption first when there is one: `alt` describes the picture for a
+      // reader who cannot see it, but the caption is what the document *says*,
+      // and it is the half an agent can edit.
+      return {
+        preview: truncate(
+          block.caption || block.alt || block.src,
+        ),
+      };
     case "table":
       return {
         preview: `${plural(block.rowCount, "row")} × ${

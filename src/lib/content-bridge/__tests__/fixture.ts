@@ -270,6 +270,58 @@ export const makeCodeSnippetState = (): StoredState => ({
   },
 });
 
+/**
+ * A document with a canvas in it — docs/plans/nested-editor-support.md §4.
+ *
+ * The board is `b2` and its notes are `b2.1` and `b2.2`; a note's own blocks are
+ * `b2.1.1` and so on. Deliberately the same shape as `makeStickyState`, one
+ * level deeper, because that extra level is the whole difference: a note is a
+ * *frame* with no `type` of its own, which is what `typeOf` synthesizes.
+ *
+ * The frame fields are the real ones `CanvasNode.exportJSON` writes — a frame
+ * carrying nothing but its editor would let a test pass while the real shape
+ * failed.
+ */
+export const makeCanvasState = (): StoredState => ({
+  root: {
+    type: "root",
+    version: 1,
+    direction: null,
+    format: "",
+    indent: 0,
+    children: [
+      paragraph("Before the board."),
+      {
+        type: "canvas",
+        version: 1,
+        id: "board-1",
+        height: 480,
+        notes: [
+          {
+            id: "n1",
+            x: 20,
+            y: 20,
+            width: 240,
+            height: 200,
+            color: "yellow",
+            editor: nestedEditor([paragraph("note one"), paragraph("note two")]),
+          },
+          {
+            id: "n2",
+            x: 300,
+            y: 20,
+            width: 240,
+            height: 200,
+            color: "mint",
+            editor: nestedEditor([paragraph("second board note")]),
+          },
+        ],
+      } as unknown as SerializedNode,
+      paragraph("After the board."),
+    ],
+  },
+});
+
 /** One file of a snippet: a `code` node carrying its own name. */
 const codeFile = (
   filename: string,

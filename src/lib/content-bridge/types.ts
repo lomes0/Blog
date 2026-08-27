@@ -228,6 +228,29 @@ export interface KanbanBlock {
  * A file attached to the document. Authorable only against a URL that already
  * exists — the bridge cannot upload (plan §9).
  */
+/**
+ * An image, with its caption as a **field** rather than as nested blocks.
+ *
+ * `caption` is a whole serialized Lexical editor in storage, and the reason it
+ * arrives here as one inline string is docs/plans/haklex-reprise.md §2.4: a
+ * caption is content *about* the block, so descending into it would give two
+ * addresses for one piece of content. A canvas note, which is a document in its
+ * own right, goes the other way and gets addresses.
+ *
+ * `width`, `height`, `style` and `id` are unmodelled on purpose — carry-through
+ * (§4.6.1) preserves them, and an agent has no business choosing an image's
+ * pixel width.
+ */
+export interface ImageBlock {
+  type: "image";
+  src: string;
+  alt: string;
+  /** Inline markdown. Absent means the image has no caption. */
+  caption?: string;
+  /** Whether the caption is shown. Setting `caption` alone does not show it. */
+  showCaption?: boolean;
+}
+
 export interface AttachmentBlock {
   type: "attachment";
   url: string;
@@ -312,6 +335,7 @@ export type Block =
   | SummaryBlock
   | KanbanBlock
   | AttachmentBlock
+  | ImageBlock
   | TableBlock
   | TableCellBlock
   | OpaqueBlock;

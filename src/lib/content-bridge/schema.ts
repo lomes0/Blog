@@ -96,6 +96,15 @@ export const blockSchema = z.discriminatedUnion("type", [
     size: z.number().optional(),
     expanded: z.boolean().optional(),
   }),
+  z.object({
+    type: z.literal("image"),
+    src: z.string(),
+    alt: z.string(),
+    // Inline markdown, one paragraph per newline. Absent means "leave the
+    // caption as it is"; `""` means "empty it".
+    caption: z.string().optional(),
+    showCaption: z.boolean().optional(),
+  }),
   z.object({ type: z.literal("kanban"), tasks: z.array(kanbanTaskSchema) }),
   // Containers nest, so their bodies are typed loosely here and validated by
   // the codec — zod cannot express the recursion inside a discriminated union
@@ -182,6 +191,9 @@ export const BLOCK_DOC =
   "items[{text, checked?, sublist?}]} where sublist is {listType, items[…]} " +
   "for nesting, divider {}, " +
   "attachment {url, filename, mimetype?, size?, expanded?}, " +
+  "image {src, alt, caption?, showCaption?} where caption is inline markdown, " +
+  "one paragraph per newline — omitting it keeps the caption already there and " +
+  'passing "" empties it, ' +
   "kanban {tasks[{name, description?, stage, priority low|medium|high, tags?}]}, " +
   'layout {templateColumns e.g. "1fr 1fr", columns[[block,…],[block,…]]}, ' +
   "details {summary, open?, body[block,…]}, summary {text}, " +
@@ -211,8 +223,12 @@ export const BLOCK_DOC =
   "formatted run, since ,, is subscript. Carry those backslashes through " +
   "unchanged when you rewrite a block; dropping one does not tidy the text up, " +
   "it changes what the block says. " +
-  "Node types with no codec (math as a block, image, graph, sketch, " +
-  "iframe, canvas, sticky) are read-only: they can be read, moved or deleted " +
+  "A canvas is a board of notes: its notes are addressed like any other " +
+  "container's children (b7.2 is the second note) and each note's blocks are " +
+  "addressed inside it (b7.2.1). A note itself is read-only — insert into it, " +
+  "not over it. A sticky note is the same, one level shallower. " +
+  "Node types with no codec (math as a block, graph, sketch, " +
+  "iframe) are read-only: they can be read, moved or deleted " +
   "by address, but not rewritten. set_text needs a single text field, so it " +
   "applies only to paragraph, heading, quote, summary, cell and code; a list, " +
   "table, layout, details, nested-doc, code-snippet or kanban is rewritten " +

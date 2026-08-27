@@ -159,6 +159,13 @@ const FIXTURES = {
     size: 4096,
     expanded: true,
   },
+  image: {
+    type: "image",
+    src: "/api/blob/" + "a".repeat(64),
+    alt: "a diagram of the seam",
+    caption: "Figure 1 — the **seam**",
+    showCaption: true,
+  },
   table: {
     type: "table",
     rowCount: 0,
@@ -231,6 +238,87 @@ describe("attachment", () => {
       filename: "x.txt",
     });
     expect(node).toMatchObject({ expanded: false, editing: false, size: 0 });
+  });
+});
+
+describe("image", () => {
+  it("round-trips every field, caption included", () => {
+    const block = FIXTURES.image;
+    const { node, readBack } = rebuilds(block);
+    expect(node.type).toBe("image");
+    expect(readBack).toMatchObject(block);
+  });
+
+  it("keeps the caption when the write does not mention it", () => {
+    // The carry-through rule, on the one field where getting it wrong deletes
+    // prose: an agent fixing an alt text must not empty the caption under it.
+    const previous = blockToNode(FIXTURES.image);
+    const next = blockToNode(
+      { type: "image", src: FIXTURES.image.src, alt: "better alt" },
+      previous,
+    );
+    expect(nodeToBlock(next)).toMatchObject({
+      alt: "better alt",
+      caption: "Figure 1 — the **seam**",
+    });
+  });
+
+  it("empties the caption when the write says so", () => {
+    const previous = blockToNode(FIXTURES.image);
+    const next = blockToNode(
+      { type: "image", src: FIXTURES.image.src, alt: "alt", caption: "" },
+      previous,
+    );
+    expect(nodeToBlock(next)).not.toHaveProperty("caption");
+  });
+
+  it("gives a caption to an image that never had one", () => {
+    // `ensureCaptionChildren` mints the whole `caption.editorState.root` path.
+    // A stored image predating the caption feature has none of it.
+    const bare: SerializedNode = {
+      type: "image",
+      version: 1,
+      src: "/x.png",
+      altText: "",
+    };
+    const next = blockToNode(
+      { type: "image", src: "/x.png", alt: "", caption: "added" },
+      bare,
+    );
+    expect(nodeToBlock(next)).toMatchObject({ caption: "added" });
+  });
+
+  it("keeps the size and layout fields the IR does not model", () => {
+    const previous: SerializedNode = {
+      ...blockToNode(FIXTURES.image),
+      width: 640,
+      height: 480,
+      style: "float: left",
+      id: "img-1",
+    };
+    const next = blockToNode(
+      { type: "image", src: "/y.png", alt: "y" },
+      previous,
+    );
+    expect(next).toMatchObject({
+      width: 640,
+      height: 480,
+      style: "float: left",
+      id: "img-1",
+    });
+  });
+
+  it("carries a multi-line caption through as separate paragraphs", () => {
+    const node = blockToNode({
+      type: "image",
+      src: "/x.png",
+      alt: "",
+      caption: "first\nsecond",
+    });
+    const caption = (node.caption as Record<string, Record<string, SerializedNode>>)
+      .editorState.root.children as unknown as SerializedNode[];
+    expect(caption).toHaveLength(2);
+    expect(nodeToBlock(node)).toMatchObject({ caption: "first\nsecond" });
   });
 });
 

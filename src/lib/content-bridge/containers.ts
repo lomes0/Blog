@@ -143,16 +143,56 @@ function childrenAt(
 }
 
 /**
+ * The type a canvas note reports, since the stored frame carries none.
+ *
+ * Synthesized rather than stored: adding a `type` to the frames would change
+ * what every existing canvas serializes to, and the bridge's one hard promise
+ * is that a block nobody named comes out byte-identical.
+ */
+export const CANVAS_NOTE_TYPE = "canvas-note";
+
+/** A container that is not a nested editor and so refuses nothing. */
+const NO_REFUSALS: ReadonlySet<string> = new Set<string>();
+
+/**
+ * A canvas note's blocks, at the same path a sticky's are.
+ *
+ * The two are the same object — a `SerializedEditor` — reached through a
+ * different key, which is why the arm is `childrenAt` rather than anything
+ * hand-written.
+ */
+const CANVAS_NOTE_ARM = childrenAt(
+  NESTED_EDITOR_REFUSES,
+  "editor",
+  "editorState",
+  "root",
+);
+
+/**
+ * True when `node` is a canvas note rather than a Lexical node.
+ *
+ * Recognised **by its own shape**, not by its parent: a note is the one thing
+ * in stored content with no `type` of its own carrying a whole serialized
+ * editor. Asking the node settles what `typeOf`'s unused `parent` argument was
+ * reserved for — threading a parent through every `childrenOf` call in
+ * `address.ts`, `blocks.ts`, `ops.ts` and `proposalDiff.ts` would have made a
+ * missed call site *lose canvas notes silently* rather than fail
+ * (docs/plans/nested-editor-support.md §5), and there are thirty of them.
+ *
+ * A `sticky` holds the same `editor` key and is not caught by this, because it
+ * has a `type` and the table below answers first.
+ */
+function isCanvasNote(node: SerializedNode): boolean {
+  return typeof node.type !== "string" && isBag(node.editor);
+}
+
+/**
  * Container types whose children are somewhere other than `children`.
  *
  * A `Map` rather than an object literal, for the same reason `BLOCK_CONTAINERS`
  * is a `Set`: the key is a `type` string read straight out of stored JSON, and
  * an object lookup would let `"constructor"` or `"toString"` resolve to
  * something off `Object.prototype`.
- *
- * Two entries. Canvas is phase 7 and needs an arm written by hand rather than a
- * path, because its notes are frames with no `type` of their own — which is
- * also what `typeOf` is here for.
  */
 const NESTED_CHILDREN: ReadonlyMap<string, ContainerArm> = new Map([
   // `StickyNode.exportJSON` writes `editor: this.__editor.toJSON()`, and a
@@ -166,7 +206,55 @@ const NESTED_CHILDREN: ReadonlyMap<string, ContainerArm> = new Map([
   // `SerializedEditor` wrapper would carry nothing we store. Change neither
   // alone.
   ["nested-doc", childrenAt(NESTED_EDITOR_REFUSES, "doc", "root")],
+  // A canvas's children are its **notes**, which are frames rather than nodes:
+  // `CanvasNode.exportJSON` writes `notes: [{...frame, editor}]`. So this arm
+  // is the one whose elements are not `SerializedNode`, and the cast is the
+  // honest spelling of that — `typeOf` gives each frame a type and
+  // `CANVAS_NOTE_ARM` reaches its blocks.
+  //
+  // `notes` is returned live, never mapped, for the reason at the head of this
+  // file: `ops.ts` splices what it is handed, and a copy would leave every read
+  // correct while writes landed nowhere.
+  ["canvas", {
+    refuses: NO_REFUSALS,
+    read: (node) =>
+      Array.isArray(node.notes) ? node.notes as SerializedNode[] : undefined,
+    ensure: (node) => {
+      if (!Array.isArray(node.notes)) node.notes = [];
+      return node.notes as SerializedNode[];
+    },
+  }],
+  [CANVAS_NOTE_TYPE, CANVAS_NOTE_ARM],
 ]);
+
+/**
+ * An image caption's blocks, and the same array created if absent.
+ *
+ * Deliberately **not** an entry in `NESTED_CHILDREN`: a caption is a *field* of
+ * the image block, not a container of addressable ones
+ * (docs/plans/haklex-reprise.md §2.4, restated in
+ * docs/plans/nested-editor-support.md §4). An image is one block with a
+ * `caption` string; descending into it instead would give two addresses for one
+ * piece of content, which is the same reason a table cell is a leaf.
+ *
+ * The path still lives here, because this file is where "where does this node
+ * keep that content" is answered, and a second spelling of it in `blocks.ts`
+ * is how a read and a write end up disagreeing.
+ */
+const IMAGE_CAPTION_ARM = childrenAt(
+  NESTED_EDITOR_REFUSES,
+  "caption",
+  "editorState",
+  "root",
+);
+
+/** The blocks of an image's caption; empty when it has none. */
+export const captionChildrenOf = (node: SerializedNode): SerializedNode[] =>
+  IMAGE_CAPTION_ARM.read(node) ?? [];
+
+/** The same array, minting the caption's editor state if the image has none. */
+export const ensureCaptionChildren = (node: SerializedNode): SerializedNode[] =>
+  IMAGE_CAPTION_ARM.ensure(node);
 
 /**
  * A node's children — the live array, and never a copy.
@@ -178,7 +266,7 @@ const NESTED_CHILDREN: ReadonlyMap<string, ContainerArm> = new Map([
  * bridge exists to hold. The ops spec caught exactly that.
  */
 export function childrenOf(node: SerializedNode): SerializedNode[] {
-  const arm = NESTED_CHILDREN.get(node.type);
+  const arm = NESTED_CHILDREN.get(typeOf(node));
   if (arm) return arm.read(node) ?? [];
   return Array.isArray(node.children) ? node.children : [];
 }
@@ -190,27 +278,26 @@ export function childrenOf(node: SerializedNode): SerializedNode[] {
  * one place a node may gain a children array it did not have.
  */
 export function ensureChildrenOf(node: SerializedNode): SerializedNode[] {
-  const arm = NESTED_CHILDREN.get(node.type);
+  const arm = NESTED_CHILDREN.get(typeOf(node));
   if (arm) return arm.ensure(node);
   if (!Array.isArray(node.children)) node.children = [];
   return node.children;
 }
 
 /**
- * A child's effective type — `node.type` for everything that exists today.
+ * A child's effective type — `node.type`, except for a canvas note.
  *
- * The parameter is here, unread, on purpose. A canvas serializes its notes as
- * frames carrying no `type` of their own (`CanvasNode/index.tsx:98`), so
- * reaching them needs the *parent* to say what its children are — a synthesized
- * `canvas-note`. Asking the question here now means phase 7 adds an arm to this
- * function rather than threading a new argument through `address.ts`,
- * `blocks.ts` and `outline.ts` after the fact.
+ * **Every switch on a node's type in the bridge goes through this**, or a note
+ * arrives as `undefined` and falls through to whatever the default arm is. That
+ * is `address.ts`'s `isContainer`, `blocks.ts`'s two switches, and the
+ * container chain `ops.ts` builds for its refusal check.
+ *
+ * The `parent` argument this used to take is gone: `isCanvasNote` answers from
+ * the node alone, which is what kept thirty `childrenOf` call sites from having
+ * to learn where they were (docs/plans/nested-editor-support.md §4).
  */
-export function typeOf(
-  node: SerializedNode,
-  _parent?: SerializedNode,
-): string {
-  return node.type;
+export function typeOf(node: SerializedNode): string {
+  return isCanvasNote(node) ? CANVAS_NOTE_TYPE : node.type;
 }
 
 /**
@@ -260,8 +347,6 @@ export function findWrongChildType(
   return null;
 }
 
-const NO_REFUSALS: ReadonlySet<string> = new Set<string>();
-
 /** What a container refuses to hold — empty for everything but a nested editor. */
 export const refusedTypesOf = (containerType: string): ReadonlySet<string> =>
   NESTED_CHILDREN.get(containerType)?.refuses ?? NO_REFUSALS;
@@ -289,7 +374,7 @@ export function findUnregisterable(
     if (refuses.size === 0) continue;
 
     const search = (node: SerializedNode): string | null => {
-      if (refuses.has(node.type)) return node.type;
+      if (refuses.has(typeOf(node))) return typeOf(node);
       for (const child of childrenOf(node)) {
         const hit = search(child);
         if (hit) return hit;

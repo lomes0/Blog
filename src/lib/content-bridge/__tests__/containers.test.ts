@@ -133,7 +133,7 @@ describe("typeOf", () => {
   it("is the node's own type, with or without a parent", () => {
     const state = makeStickyState();
     expect(typeOf(note(state))).toBe("sticky");
-    expect(typeOf(noteChildren(state)[0], note(state))).toBe("paragraph");
+    expect(typeOf(noteChildren(state)[0])).toBe("paragraph");
   });
 });
 

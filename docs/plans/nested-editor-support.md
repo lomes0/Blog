@@ -1,6 +1,13 @@
 # Nested editors — full support
 
-Status: **decided 27 Aug 2026, not started.** `claude-code-backlog.md` §4 is
+Status: **DONE — both phases shipped 27 Aug 2026.** §6's acceptance list is
+met: a canvas's notes are addressed `b2.1`, their blocks `b2.1.1`, an image's
+caption is a codec field, and a sticky's blocks became reachable the moment its
+node stopped being inline. The migration ran against the dev database — 259
+wrapper paragraphs across 5 documents, 0 skipped. Two corrections to the text
+below are in §7.
+
+Originally: **decided 27 Aug 2026, not started.** `claude-code-backlog.md` §4 is
 answered **"address into them"**, and this plan is what that costs. It reopens
 `haklex-reprise.md` §11.3, which refused phase 7 on evidence — the evidence was
 right about the mechanism and wrong about the corpus, and §2 below is the
@@ -135,3 +142,27 @@ deliberately the same rule as the migration so there is one definition of
 - A revision predating the migration, restored, comes back unwrapped.
 - A round-trip test per graduated type, fed to the zod schema — the standing
   rule in CLAUDE.md.
+
+## 7. What this plan got wrong
+
+Two things, both in §4:
+
+1. **Threading the parent was avoidable, and avoiding it was the right call.**
+   §4.2 and §5 assumed `childrenOf` would start taking the parent so a frame
+   could be recognised by where it sits — thirty call sites, each of which
+   fails *silently* if it keeps passing nothing. It is recognised by its own
+   shape instead: a canvas note is the one thing in stored content with no
+   `type` carrying a whole serialized editor, so `isCanvasNote(node)` answers
+   from the node alone and `typeOf` lost its unused `parent` argument rather
+   than gaining a used one. What did have to change is every *switch* on
+   `node.type` in the bridge — three of them — which fails loudly.
+2. **`canvas` needs no codec, and neither does a note.** §4 implies one. Both
+   are structural containers like `layout-item`, so they stay opaque and
+   `scripts/check-codecs.mjs` records why. `image` is the only type that
+   graduated here, and its allowlist entry — "a cropped-source payload the IR
+   has no shape for" — was describing fields carry-through already preserves.
+
+The one thing §5 called correctly is where the risk sits: the canvas arm is the
+first in `NESTED_CHILDREN` whose elements are not `SerializedNode`, and it
+returns `node.notes` live for the reason at the head of `containers.ts`.
+`__tests__/canvas.test.ts` asserts that identity rather than equality.

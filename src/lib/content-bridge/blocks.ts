@@ -23,6 +23,7 @@ import type {
   CodeSnippetBlock,
   DetailsBlock,
   HeadingBlock,
+  ImageBlock,
   KanbanTask,
   ListBlock,
   ListItem,
@@ -36,7 +37,13 @@ import type {
   WritableBlock,
 } from "./types";
 import { parseInline, renderInline } from "./inline";
-import { childrenOf, findUnregisterable } from "./containers";
+import {
+  captionChildrenOf,
+  childrenOf,
+  ensureCaptionChildren,
+  findUnregisterable,
+  typeOf,
+} from "./containers";
 
 const str = (value: unknown, fallback = ""): string =>
   typeof value === "string" ? value : fallback;
@@ -75,7 +82,7 @@ const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
  */
 export function describeNode(node: SerializedNode): string {
   const kids = childrenOf(node);
-  switch (node.type) {
+  switch (typeOf(node)) {
     case "kanban": {
       const tasks = Array.isArray(node.tasks) ? node.tasks : [];
       const lanes = new Set(
@@ -109,6 +116,14 @@ export function describeNode(node: SerializedNode): string {
     case "canvas": {
       const notes = Array.isArray(node.notes) ? node.notes.length : 0;
       return plural(notes, "note");
+    }
+    // A note has no `type` of its own — `typeOf` gives it one, and this is what
+    // an outline shows for the row between the board and the note's blocks. Its
+    // colour is the only thing distinguishing two otherwise identical notes at
+    // a glance, so it is worth the word.
+    case "canvas-note": {
+      const color = str(node.color);
+      return `${color ? `${color} ` : ""}note · ${plural(kids.length, "block")}`;
     }
     case "horizontalrule":
       return "divider";
@@ -243,6 +258,20 @@ function cellText(node: SerializedNode): string | null {
 }
 
 /** Read the label out of a details container's summary child. */
+/**
+ * An image's caption as one inline string, or "" when it has none.
+ *
+ * Joined across the caption's paragraphs rather than taking the first: a
+ * caption typed with a line break is two of them, and reporting only the first
+ * would show an agent a truncated caption it would then write back whole.
+ */
+function captionText(node: SerializedNode): string {
+  return captionChildrenOf(node)
+    .map((block) => renderInline(childrenOf(block)) ?? plainText(childrenOf(block)))
+    .filter((line) => line.length > 0)
+    .join("\n");
+}
+
 const summaryTextOf = (node: SerializedNode): string => {
   const summary = childrenOf(node).find((k) => k.type === "details-summary");
   if (!summary) return "";
@@ -276,7 +305,7 @@ function readKanbanTasks(node: SerializedNode): KanbanTask[] {
 export function nodeToBlock(node: SerializedNode): Block {
   const kids = childrenOf(node);
 
-  switch (node.type) {
+  switch (typeOf(node)) {
     case "horizontalrule":
       return { type: "divider" };
 
@@ -326,6 +355,20 @@ export function nodeToBlock(node: SerializedNode): Block {
       if (node.mimetype !== undefined) block.mimetype = str(node.mimetype);
       if (typeof node.size === "number") block.size = node.size;
       if (typeof node.expanded === "boolean") block.expanded = node.expanded;
+      return block;
+    }
+
+    case "image": {
+      const block: ImageBlock = {
+        type: "image",
+        src: str(node.src),
+        alt: str(node.altText),
+      };
+      const caption = captionText(node);
+      if (caption) block.caption = caption;
+      if (typeof node.showCaption === "boolean") {
+        block.showCaption = node.showCaption;
+      }
       return block;
     }
 
@@ -416,7 +459,9 @@ export function nodeToBlock(node: SerializedNode): Block {
 
   return {
     type: "opaque",
-    nodeType: node.type,
+    // `typeOf`, not `node.type` — a canvas note has none, and an opaque block
+    // naming `undefined` is the one that tells an agent nothing at all.
+    nodeType: typeOf(node),
     summary: describeNode(node),
   };
 }
@@ -519,6 +564,26 @@ const elementNode = (
   children: SerializedNode[],
   extra: Record<string, unknown> = {},
 ): SerializedNode => ({ ...ELEMENT_DEFAULTS, type, ...extra, children });
+
+/**
+ * Replace an image's caption with `text`, one paragraph per line.
+ *
+ * `ensureCaptionChildren` mints the whole `caption.editorState.root` path when
+ * the image has none, so an image that never had a caption can be given one —
+ * and the path is minted by `containers.ts` rather than spelled here, because a
+ * write that builds a *different* path than the read walks is the failure this
+ * whole seam is arranged to make impossible.
+ *
+ * The array is emptied in place rather than reassigned, for the live-array rule
+ * at the head of `containers.ts`.
+ */
+function writeCaption(node: SerializedNode, text: string): void {
+  const children = ensureCaptionChildren(node);
+  children.length = 0;
+  for (const line of text.split("\n")) {
+    children.push(elementNode("paragraph", parseInline(line)));
+  }
+}
 
 /**
  * Build a list item, and the list nested under it.
@@ -688,6 +753,22 @@ export function blockToNode(
         expanded: block.expanded ?? carried?.expanded ?? false,
         editing: false,
       };
+
+    case "image": {
+      const next: SerializedNode = {
+        ...carried,
+        type: "image",
+        version: 1,
+        src: str(block.src, str(carried?.src)),
+        altText: str(block.alt, str(carried?.altText)),
+        showCaption: block.showCaption ?? carried?.showCaption ?? false,
+      };
+      // Only when the caller said something about it. `caption` absent means
+      // "leave the caption alone", which is what carry-through means everywhere
+      // else and what stops a `set_text`-shaped edit from silently emptying one.
+      if (block.caption !== undefined) writeCaption(next, block.caption);
+      return next;
+    }
 
     case "summary":
       return elementNode("details-summary", parseInline(block.text ?? ""), {

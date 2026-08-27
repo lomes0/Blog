@@ -8,7 +8,7 @@
  */
 import type { Address, SerializedNode, StoredState } from "./types";
 import { isBlockId, readBlockId } from "./blockId";
-import { childrenOf } from "./containers";
+import { CANVAS_NOTE_TYPE, childrenOf, typeOf } from "./containers";
 
 /**
  * The only node types whose children are addressed individually.
@@ -50,6 +50,13 @@ export const BLOCK_CONTAINERS: ReadonlySet<string> = new Set([
   // in `containers.ts`, no codec for the interior, `b7.1` is the first file
   // (haklex-reprise §6.2).
   "code-snippet",
+  // A canvas descends to its notes and a note to its blocks — the same two
+  // levels a table descends, and for the same reason: the note is where the
+  // content is, and addressing straight through to it would give one address
+  // for two things. `b7.2.1` is the first block of the second note
+  // (docs/plans/nested-editor-support.md §4).
+  "canvas",
+  CANVAS_NOTE_TYPE,
 ]);
 
 const ADDRESS_RE = /^b\d+(?:\.\d+)*$/;
@@ -71,7 +78,7 @@ export function parseAddress(address: string): number[] | null {
 
 /** True when this node's children get addresses of their own. */
 const isContainer = (node: SerializedNode): boolean =>
-  BLOCK_CONTAINERS.has(node.type) && childrenOf(node).length > 0;
+  BLOCK_CONTAINERS.has(typeOf(node)) && childrenOf(node).length > 0;
 
 export interface Located {
   node: SerializedNode;
