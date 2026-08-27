@@ -13,17 +13,18 @@ for what has landed and when.
 | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [production-deployment.md](./production-deployment.md)     | **Decided 13 Aug 2026, steps 1–4 of §9 done, not yet deployed** — a single VPS running Docker Compose. The third hosting decision in two weeks; the other two are recorded because their reasoning still reads, not because they are live. Re-checked against the tree 15 Aug: §2.1 is new (an object store went from "not a blocker" to a hard prerequisite), §5 now has three things to back up rather than two, §9 grew a scheduler step, and §8's AI-spend blocker is resolved — there is no deployment API key left to spend. **Corrected again 27 Aug**, and mostly by subtraction: the background images §2 called "nearly all of the data" were a removed feature's orphans, so there is one upload volume rather than two, §5's disk side is ~180KB against a bucket holding everything else, and §9's step 7 is copying 11 files. §2 keeps the wrong version alongside the right one — the volume that protected dead data was still the correct call on what was known |
 | [blob-storage.md](./blob-storage.md)                       | **All five phases built for images (15 Aug 2026)** — one content-addressed store for every byte, on R2. Measured before designing, and the migration bore it out: one PNG stored 67 times took the dev database from 34 MB to 19 MB. §3.1, §3.2, §10.1, §11.1 and §11.2 are corrections and findings written while building — §11.1 retires §8's local blob store, whose premise phase 2 had already invalidated, and §11.2 records that the collector has nowhere to run on a schedule until the VPS exists. **§10.2 (27 Aug) closes §10's step 5 by subtraction** — backgrounds were a removed feature's leftovers and are deleted rather than migrated (~19MB, and §10's expected outcome was wrong about them); attachments stay on disk because `PUT /api/attachments/[filename]` edits in place and content addressing cannot express that. What is left: scheduling, and the sketch/graph rendering decision. Supersedes [archive/storage-uploads.md](./archive/storage-uploads.md) |
-| [claude-code-backlog.md](./claude-code-backlog.md)         | **Backlog.** What the content bridge does _not_ do, and why. Several items are decisions rather than work — chiefly §4, nested editors, which gates three codecs and 198 real nodes. That one now has a proposed answer in `haklex-reprise.md` §2.2 |
+| [claude-code-backlog.md](./claude-code-backlog.md)         | **Backlog.** What the content bridge does _not_ do, and why. Several items are decisions rather than work. §4, nested editors, is **answered 27 Aug 2026** — address into them — and the work is `nested-editor-support.md` |
+| [nested-editor-support.md](./nested-editor-support.md)     | **Decided 27 Aug 2026, not started.** Closes `claude-code-backlog.md` §4 and reopens `haklex-reprise.md` §11.3's refusal. The blocker was never nesting: canvas, image and sticky are inline decorators, so they sit inside a paragraph and have no address to descend from. §2 is the re-measurement that unblocks it — all 192 stored canvases and all 67 images are alone in their wrapping paragraph, so the prose-splitting call §11.3 refused on has no instances |
 | [haklex-reprise.md](./haklex-reprise.md)                   | **DONE 14 Aug 2026** — five of seven phases shipped (964 tests); phase 7 refused on evidence, and that refusal invalidates §9's claim that this closes `claude-code-backlog.md` §4. Not archived yet: 41 code comments cite it |
 | [code-block-card.md](./code-block-card.md)                 | **Shipped 14 Aug 2026 (`7ec096a7`)**; its status line said "not started" until 15 Aug. Converges the two code-block chromes (a portalled overlay for the editor, an imperative enhancer for `/view`) onto one card in the node's own DOM. Reopens what `archive/haklex-adoption.md` §6.1 lost as collateral when §10.7 cut Shiki. Ready to archive once its citations are updated |
 | [theme-css-tokenization.md](./theme-css-tokenization.md)   | **Phase 1 shipped 14 Aug 2026**, phases 2–5 open. The lasting half landed: `check:theme` now has a rule about *position* rather than file extension, so a literal outside a token block is an error in `.css` too. What is left is the attachment card and the second syntax theme duplicating `--tok-*`, deferred behind one named entry that fails the run when it stops suppressing anything. §7 records four claims this plan got wrong — chiefly a 5× undercount |
 | [ide-redesign.md](./ide-redesign.md)                       | All three phases of the visible pass shipped; only its deferred list is left — status bar, AI panel restyle, tabs/breadcrumb polish                    |
 | [workspace-url.md](./workspace-url.md)                     | Proposal, 1 Aug 2026 — the workspace URL should stop projecting pane focus and become an entry point. Refines [archive/workspace-panes.md](./archive/workspace-panes.md) §0 rather than reversing it |
 | [bloat-remediation.md](./bloat-remediation.md)             | Steps 1–6 done (re-verified 30 Jul 2026); only step 7 is left, still blocked on the brief below                                                        |
-| [tree-model-brief.md](./tree-model-brief.md)               | Decision brief — awaits one product call: does `/posts` render projects?                                                                               |
+| [tree-model-brief.md](./tree-model-brief.md)               | **Answered 27 Aug 2026: yes, `/posts` renders projects.** Option A — the unified `TreeNode` model in `src/lib/tree/`, net ≈ −135 LOC after ~200 LOC of new project UI. Unblocks step 7 of `bloat-remediation.md` |
 | [ordering-simplification.md](./ordering-simplification.md) | Proposal — see below                                                                                                                                   |
 | [schema-organization.md](./schema-organization.md)         | Proposal — see below                                                                                                                                   |
-| [series-as-node.md](./series-as-node.md)                   | Sketch for comparison, not an approved plan — see below                                                                                                |
+| [series-as-node.md](./series-as-node.md)                   | Sketch for comparison, not an approved plan. **Deferred 27 Aug 2026** until `rank` is gone — not refused, just decided against a base that is about to change |
 
 ## Housekeeping the next pass should do
 
@@ -39,21 +40,23 @@ those citations in the same commit (see the note at the top of this file):
   those close rather than for a citation reason. §10's step 5 is no longer one of
   them: §10.2 closed it on 27 Aug, and neither half ended in the store.
 
-## Blocked on a decision, not on effort
+## Answered 27 Aug 2026
 
-Three items are waiting on a human answer rather than on work. They are listed
-together because a plan blocked on a question reads exactly like one that has
-stalled:
+All three of the items that were blocked on a human answer rather than on work
+have one. Nothing in this file is now waiting on a decision.
 
-- **Does `/posts` render projects?** — blocks `tree-model-brief.md`, and through
-  it step 7 of `bloat-remediation.md`.
-- **Nested editors: address into them, or refuse explicitly?** —
-  `claude-code-backlog.md` §4. Blocks the `image`, `sticky` and `canvas` codecs.
-  **An answer is now on the table** rather than merely a choice:
-  `haklex-reprise.md` proposes "address into them, as ordinary containers", on
-  the ground that the cost §4 deferred on — every op knowing which document it
-  operates on — is a live-editor cost, and the bridge never touches one.
-- **Commit to Plan 3 (series-as-node)?** — the high-churn unification below.
+- **Does `/posts` render projects?** — **yes.** `tree-model-brief.md` takes
+  option A, the unified `TreeNode` model, which unblocks step 7 of
+  `bloat-remediation.md` and fixes the live cross-series drag-reorder bug
+  (`tree-model-brief.md` §3) by construction.
+- **Nested editors: address into them, or refuse explicitly?** — **address into
+  them, fully.** The cost §4 deferred on is a live-editor cost and the bridge
+  never touches one. The work is `nested-editor-support.md`, and the reason it
+  is bigger than a codec is that the real blocker turned out to be `isInline()`
+  rather than nesting.
+- **Commit to Plan 3 (series-as-node)?** — **deferred, not refused.** Revisit
+  after ordering phase 5 deletes `rank`; the sequencing below already put it
+  last, so nothing waits on this.
 
 ---
 

@@ -132,7 +132,13 @@ concrete failure to point at.
 
 ---
 
-## 4. Nested editors — decision required
+## 4. Nested editors — ANSWERED 27 Aug 2026
+
+**Answered: address into them.** The work is
+[nested-editor-support.md](./nested-editor-support.md); this section stays as
+the statement of the problem it solves. What follows is what the question looked
+like before the answer, and the two things that turned out to be wrong about it
+are recorded at the end.
 
 **Blocks three codecs and 198 real nodes.**
 
@@ -163,6 +169,19 @@ the full decision less urgent than it looks.
 **Cost.** The decision is the work; the implementation follows from it.
 
 **Blocked by.** Nothing — but it blocks `image`, `sticky` and `canvas` codecs.
+
+### What the framing above got wrong
+
+Two things, both found on the way to answering it:
+
+1. **The stated cost of "address into them" does not exist.** It was "every op
+   has to know which document it is operating on", which is a *live editor*
+   cost; the bridge only ever walks stored JSON (`haklex-reprise.md` §2.2). In
+   serialized form a nested editor is a children array at an unusual key.
+2. **The blocker was never nesting.** All three nodes are inline decorators, so
+   they sit inside a paragraph and have no address to descend *from*. The counts
+   in the table above are also all-revision counts — current heads hold 4
+   canvases and no images (`nested-editor-support.md` §2).
 
 ---
 

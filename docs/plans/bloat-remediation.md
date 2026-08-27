@@ -1,8 +1,11 @@
 # Bloat & layout remediation plan
 
-**Status as of 2026-07-30 (re-verified against `main` @ `7f6bce1d`): steps 1–6
-are done or effectively done; only step 7 remains, and it is still blocked on
-the same product question.** Each step below carries its own `STATUS` line —
+**Status as of 2026-08-27: steps 1–6 are done or effectively done; step 7 is
+now UNBLOCKED.** The product question it waited on — does `/posts` render
+projects? — was answered **yes** on 27 Aug 2026, so step 7 takes option A of
+[tree-model-brief.md](./tree-model-brief.md) §6: the unified `TreeNode` model in
+`src/lib/tree/`, plus the project UI `/posts` does not have yet. Steps 1–6 were
+last re-verified against `main` @ `7f6bce1d` on 2026-07-30. Each step below carries its own `STATUS` line —
 read it before acting on the step body, which describes the state at the time
 the plan was written.
 
@@ -14,7 +17,7 @@ the plan was written.
 | 4    | Done — `hooks/useResizablePanel.ts` + `Layout/ResizeGripper.tsx` landed     |
 | 5    | Done — `LoadingState.tsx` gone, `DocumentCard/theme.ts` 149 → 72            |
 | 6    | Done — [tree-model-brief.md](./tree-model-brief.md)                         |
-| 7    | **Open and blocked** — partly pre-empted by the shared drag engine          |
+| 7    | **Open, unblocked 27 Aug 2026** — partly pre-empted by the shared drag engine |
 
 Baseline when written: `c366f438`, 71,354 LOC / 451 files. Now 69,777 LOC.
 
@@ -277,7 +280,7 @@ The user answers before step 7 runs.
 
 ---
 
-## Step 7 — Tree-model unification _(blocked)_
+## Step 7 — Tree-model unification _(unblocked 27 Aug 2026)_
 
 > **STATUS: OPEN, and partly pre-empted.** The _drag engine_ was unified ahead
 > of the decision — `src/lib/tree/model.ts` (152) + `src/lib/tree/useTreeDnd.ts`

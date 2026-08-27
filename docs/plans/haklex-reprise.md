@@ -2,7 +2,9 @@
 
 Status: **DONE — five of seven phases shipped 14 Aug 2026.** Phase 7 was
 investigated and **refused on evidence**; §11.3 says why, and it invalidates a
-claim §9 makes about what this plan closes. Nothing in §1–§7 should be read as a
+claim §9 makes about what this plan closes. That refusal was **reopened 27 Aug
+2026** on a re-measurement of the corpus — see §11.3's note and
+[nested-editor-support.md](./nested-editor-support.md). Nothing in §1–§7 should be read as a
 to-do list without reading §11 first — four of its claims turned out to be
 wrong, and one of those was load-bearing.
 
@@ -528,6 +530,15 @@ Worst first, in the shape §10.6.3 of the plan this one annotates took.
   nothing. The enforcement is the lint fence, not the manifest location.
 
 ### 11.3 Phase 7 — refused, not deferred
+
+> **Reopened 27 Aug 2026.** The mechanism below is right and the corpus claim
+> under it is wrong. Re-measured across all 1,475 revisions, **every one of the
+> 192 stored canvases is alone in its wrapping paragraph** — as are all 67
+> images — so the prose-splitting call this section refused on has no instances.
+> The unwrap is mechanical. See
+> [nested-editor-support.md](./nested-editor-support.md) §2, which supersedes the
+> last two paragraphs of this section; the first three still say why the wall is
+> where it is.
 
 `CanvasNode extends DecoratorNode` and never overrides `isInline()`, whose
 Lexical default is `true`; `CanvasPlugin` wraps it on insert with

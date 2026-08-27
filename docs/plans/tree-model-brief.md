@@ -1,8 +1,10 @@
 # Step 6 — Tree-model decision brief
 
-**Status: written brief only. No code changed.** This is Step 6 of
-[bloat-remediation.md](./bloat-remediation.md); Step 7 is blocked until the
-product question in §0 is answered.
+**Status: §0 answered 27 Aug 2026 — YES, `/posts` renders projects.** Step 7 of
+[bloat-remediation.md](./bloat-remediation.md) is unblocked, and the shape to
+build is **option A** in §6/§7: the unified `TreeNode` model in `src/lib/tree/`,
+net ≈ −135 LOC after the ~200 LOC of new project UI §6 enumerates. Everything
+below is the brief as written; nothing in it changed.
 
 ---
 
@@ -12,8 +14,9 @@ product question in §0 is answered.
 > is `/posts` deliberately a flat list of posts and series, with projects
 > existing only in the sidebar?**
 
-Answer that and Step 7 is unblocked. My recommendation, and the reason, is in
-§6.
+**Answered 27 Aug 2026: yes.** A project is a row that contains its series, on
+`/posts` as in the sidebar. Step 7 is unblocked and takes option A. My
+recommendation, and the reason, is in §6.
 
 ---
 
