@@ -409,9 +409,9 @@ export function nodeToBlock(node: SerializedNode): Block {
     case "code-snippet": {
       // Wrapper only. Each file is addressed and edited in its own right
       // through the *default* accessor in `containers.ts` — the point of the
-      // node (docs/plans/archive/haklex-reprise.md §6.2). `filenames` is read-only, and
-      // is here because the wrapper node holds no names: without it an outline
-      // could say a snippet is there and never what is in it.
+      // node (docs/plans/archive/haklex-reprise.md §6.2). `filenames` is
+      // read-only, and is here because the wrapper node holds no names: without
+      // it an outline could say a snippet is there and never what is in it.
       const block: CodeSnippetBlock = {
         type: "code-snippet",
         filenames: kids.map((child) => str(child.filename)),

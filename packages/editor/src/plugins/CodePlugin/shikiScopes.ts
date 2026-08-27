@@ -3,8 +3,8 @@
  *
  * This module is **import-free on purpose**, the same rule `dragGeometry.ts`
  * and `imageLayout.ts` follow: it is the whole of the Shiki phase's correctness
- * risk (docs/plans/archive/haklex-reprise.md §10, "the scope→class table will be the
- * whole of phase 2"), so it has to be exercisable by a spec without a
+ * risk (docs/plans/archive/haklex-reprise.md §10, "the scope→class table will
+ * be the whole of phase 2"), so it has to be exercisable by a spec without a
  * highlighter, an editor or a DOM.
  *
  * The names it returns are **not** class names. They are the keys of

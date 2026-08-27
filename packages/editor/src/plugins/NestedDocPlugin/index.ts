@@ -26,8 +26,8 @@ export const INSERT_NESTED_DOC_COMMAND: LexicalCommand<
  * **No `$wrapNodeInElement`**, unlike `StickyPlugin` and `CanvasPlugin`. Those
  * wrap a root-level insert in a paragraph because their nodes are inline
  * decorators; a paragraph is not an addressable container
- * (docs/plans/archive/haklex-reprise.md §2.4), so wrapping is exactly what puts a
- * sticky's contents beyond the reach of an agent's addresses. `NestedDocNode`
+ * (docs/plans/archive/haklex-reprise.md §2.4), so wrapping is exactly what puts
+ * a sticky's contents beyond the reach of an agent's addresses. `NestedDocNode`
  * returns `false` from `isInline()`, so `$insertNodes` leaves it a block in its
  * own right and it stays one. Adding a wrap here would silently undo the phase.
  */

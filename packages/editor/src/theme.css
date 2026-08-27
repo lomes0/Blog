@@ -993,9 +993,9 @@ iframe {
 }
 
 /* The code snippet — the block itself, for editor and reader alike
-   (docs/plans/archive/haklex-reprise.md §6.2). The tab strip is React and is styled in
-   `nodes/CodeSnippetNode/styles.css.ts`; the two halves are separate on purpose
-   (DESIGN.md §19.4) and both need looking at when either changes.
+   (docs/plans/archive/haklex-reprise.md §6.2). The tab strip is React and is
+   styled in `nodes/CodeSnippetNode/styles.css.ts`; the two halves are separate
+   on purpose (DESIGN.md §19.4) and both need looking at when either changes.
 
    `.code-snippet` and `.code-snippet-files` are what `createDOM` builds, so
    they are shared with the editor and stay layout-only. `.code-snippet-file`

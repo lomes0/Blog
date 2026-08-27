@@ -2,14 +2,14 @@
 /**
  * What the main toolbar offers for the selected figure: the verbs.
  *
- * Edit, annotate, duplicate, download, open, delete, caption, adapt to scheme
- * — each of them a thing to *do* to the figure, which reads fine from a bar at
+ * Edit, annotate, duplicate, download, open, delete, caption, adapt to scheme —
+ * each of them a thing to *do* to the figure, which reads fine from a bar at
  * the top of the page. Size and position used to be here too, the last of them
- * behind a `Scaling` popover; they now live in
- * `plugins/FloatingImageToolbar`, anchored to the figure itself, because
- * judging a width against a column means being able to see both
- * (docs/plans/archive/haklex-reprise.md §7.2). The style *state* below survives that
- * move: "adapt to color scheme" is a `filter` in the same `__style` string.
+ * behind a `Scaling` popover; they now live in `plugins/FloatingImageToolbar`,
+ * anchored to the figure itself, because judging a width against a column means
+ * being able to see both (docs/plans/archive/haklex-reprise.md §7.2). The style
+ * *state* below survives that move: "adapt to color scheme" is a `filter` in
+ * the same `__style` string.
  */
 import {
   $parseSerializedNode,

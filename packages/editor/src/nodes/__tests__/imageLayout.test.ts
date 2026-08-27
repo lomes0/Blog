@@ -14,10 +14,10 @@
  *     answer.
  *  3. **The unit split.** `percentFromPixels` is the whole of what a
  *     `"percent"` node's resize drag does that a `"px"` node's does not
- *     (docs/plans/archive/haklex-reprise.md §7.1). It is exercised here rather than
- *     through the resizer because the resizer needs a browser and this needs
- *     arithmetic — which is the reason the arithmetic lives in an import-free
- *     module in the first place. Which class reports which unit is
+ *     (docs/plans/archive/haklex-reprise.md §7.1). It is exercised here rather
+ *     than through the resizer because the resizer needs a browser and this
+ *     needs arithmetic — which is the reason the arithmetic lives in an
+ *     import-free module in the first place. Which class reports which unit is
  *     `resizeUnit.test.ts`.
  */
 import {

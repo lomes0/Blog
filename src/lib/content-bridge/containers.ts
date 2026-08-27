@@ -1,5 +1,6 @@
 /**
- * Where a container keeps its children (docs/plans/archive/haklex-reprise.md §3).
+ * Where a container keeps its children
+ * (docs/plans/archive/haklex-reprise.md §3).
  *
  * `address.ts`, `blocks.ts` and `ops.ts` each used to answer this with the same
  * two lines — `Array.isArray(node.children) ? node.children : []` — which

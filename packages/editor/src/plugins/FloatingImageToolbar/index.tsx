@@ -7,12 +7,12 @@
  * The controls are not new: the wrap buttons, the alignment set, the percent
  * presets and the width slider were all in `ToolbarPlugin/Tools/ImageTools`,
  * the last three behind a `Scaling` popover. This **moves** them
- * (docs/plans/archive/haklex-reprise.md §7.2). What is left in the main toolbar is the
- * verbs — edit, annotate, duplicate, download, open, delete, caption, adapt to
- * scheme — which read perfectly well from a bar at the top of the page. What
- * moved is everything spatial, which does not: judging a 50% width against a
- * column means seeing the column, and the toolbar is the one place on screen
- * that is nowhere near the figure.
+ * (docs/plans/archive/haklex-reprise.md §7.2). What is left in the main toolbar
+ * is the verbs — edit, annotate, duplicate, download, open, delete, caption,
+ * adapt to scheme — which read perfectly well from a bar at the top of the
+ * page. What moved is everything spatial, which does not: judging a 50% width
+ * against a column means seeing the column, and the toolbar is the one place on
+ * screen that is nowhere near the figure.
  *
  * ## Anchored to the selection, never to hover
  *

@@ -10,8 +10,8 @@
  *  2. **The scoping claim.** jotai is adopted on the condition that it has no
  *     global store — one `Provider` per node subtree, no app-level provider,
  *     and a lint fence keeping `src/**` off it entirely
- *     (docs/plans/archive/haklex-reprise.md §5). A `Provider` *is* a store, so two
- *     stores holding two different figures without seeing each other is the
+ *     (docs/plans/archive/haklex-reprise.md §5). A `Provider` *is* a store, so
+ *     two stores holding two different figures without seeing each other is the
  *     executable form of that condition. If someone later reaches for jotai's
  *     implicit global store, or drops the `key` that gives each figure its own
  *     `Provider`, the last case here is what says so.

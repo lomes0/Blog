@@ -539,9 +539,9 @@ Worst first, in the shape §10.6.3 of the plan this one annotates took.
 > 192 stored canvases is alone in its wrapping paragraph** — as are all 67
 > images — so the prose-splitting call this section refused on has no instances.
 > The unwrap is mechanical. See
-> [nested-editor-support.md](../nested-editor-support.md) §2, which supersedes the
-> last two paragraphs of this section; the first three still say why the wall is
-> where it is.
+> [nested-editor-support.md](../nested-editor-support.md) §2, which supersedes
+> the last two paragraphs of this section; the first three still say why the
+> wall is where it is.
 
 `CanvasNode extends DecoratorNode` and never overrides `isInline()`, whose
 Lexical default is `true`; `CanvasPlugin` wraps it on insert with
