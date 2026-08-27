@@ -325,6 +325,17 @@ export class ImageNode extends DecoratorNode<JSX.Element> {
     return element;
   }
 
+  /**
+   * Block-level, so it is a child of a container rather than of a paragraph and
+   * the content bridge can address it — and address *into* it
+   * (docs/plans/nested-editor-support.md §3). An inline decorator gets wrapped
+   * in a paragraph on insert, and a paragraph is not a `BLOCK_CONTAINER`, so
+   * everything inside one is unreachable however well the seam is written.
+   */
+  isInline(): false {
+    return false;
+  }
+
   updateDOM(
     prevNode: ImageNode,
     dom: HTMLElement,

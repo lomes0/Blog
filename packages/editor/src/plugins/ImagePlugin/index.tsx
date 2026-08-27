@@ -6,15 +6,13 @@
  * LICENSE file in the root directory of this source tree.
  */
 import {
-  $createParagraphNode,
   $insertNodes,
-  $isRootOrShadowRoot,
   LexicalCommand,
   LexicalEditor,
 } from "lexical";
 
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { $wrapNodeInElement, mergeRegister } from "@lexical/utils";
+import { mergeRegister } from "@lexical/utils";
 import {
   $createRangeSelection,
   $getSelection,
@@ -36,6 +34,7 @@ import {
   ImageNode,
   ImagePayload,
 } from "@/editor/nodes/ImageNode";
+import { registerBlockDecoratorUnwrap } from "@/editor/nodes/blockDecoratorUnwrap";
 import { INSERT_GRAPH_COMMAND } from "../GraphPlugin";
 import { INSERT_IFRAME_COMMAND } from "../IFramePlugin";
 import { INSERT_SKETCH_COMMAND } from "../SketchPlugin";
@@ -47,6 +46,13 @@ export type InsertImagePayload = Readonly<ImagePayload>;
 
 export const INSERT_IMAGE_COMMAND: LexicalCommand<InsertImagePayload> =
   createCommand();
+/**
+ * **No `$wrapNodeInElement`** — see `NestedDocPlugin`, which has said why since
+ * before this node could act on it. The node is block-level now
+ * (docs/plans/nested-editor-support.md §3), so `$insertNodes` leaves it a block
+ * in its own right; wrapping it would put its contents back beyond the reach of
+ * an agent's addresses.
+ */
 export default function ImagesPlugin() {
   const [editor] = useLexicalComposerContext();
 
@@ -61,10 +67,6 @@ export default function ImagesPlugin() {
         (payload) => {
           const imageNode = $createImageNode(payload);
           $insertNodes([imageNode]);
-          if ($isRootOrShadowRoot(imageNode.getParentOrThrow())) {
-            $wrapNodeInElement(imageNode, $createParagraphNode)
-              .selectEnd();
-          }
           return true;
         },
         COMMAND_PRIORITY_EDITOR,
@@ -90,6 +92,7 @@ export default function ImagesPlugin() {
         },
         COMMAND_PRIORITY_HIGH,
       ),
+      registerBlockDecoratorUnwrap(editor, ImageNode),
     );
   }, [editor]);
 

@@ -1,21 +1,20 @@
 "use client";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
-  $createParagraphNode,
   $insertNodes,
-  $isRootNode,
   COMMAND_PRIORITY_EDITOR,
   createCommand,
   LexicalCommand,
 } from "lexical";
+import { mergeRegister } from "@lexical/utils";
 import { useEffect } from "react";
-import { $wrapNodeInElement } from "@lexical/utils";
 
 import {
   $createCanvasNode,
   CanvasNode,
   CanvasPayload,
 } from "@/editor/nodes/CanvasNode";
+import { registerBlockDecoratorUnwrap } from "@/editor/nodes/blockDecoratorUnwrap";
 
 export type InsertCanvasPayload = Readonly<CanvasPayload>;
 
@@ -23,6 +22,13 @@ export const INSERT_CANVAS_COMMAND: LexicalCommand<
   InsertCanvasPayload | undefined
 > = createCommand();
 
+/**
+ * **No `$wrapNodeInElement`** — see `NestedDocPlugin`, which has said why since
+ * before this node could act on it. The node is block-level now
+ * (docs/plans/nested-editor-support.md §3), so `$insertNodes` leaves it a block
+ * in its own right; wrapping it would put its contents back beyond the reach of
+ * an agent's addresses.
+ */
 export default function CanvasPlugin() {
   const [editor] = useLexicalComposerContext();
 
@@ -31,17 +37,17 @@ export default function CanvasPlugin() {
       throw new Error("CanvasPlugin: CanvasNode not registered on editor");
     }
 
-    return editor.registerCommand<InsertCanvasPayload | undefined>(
-      INSERT_CANVAS_COMMAND,
-      (payload) => {
-        const canvasNode = $createCanvasNode(payload);
-        $insertNodes([canvasNode]);
-        if ($isRootNode(canvasNode.getParentOrThrow())) {
-          $wrapNodeInElement(canvasNode, $createParagraphNode).selectEnd();
-        }
-        return true;
-      },
-      COMMAND_PRIORITY_EDITOR,
+    return mergeRegister(
+      editor.registerCommand<InsertCanvasPayload | undefined>(
+        INSERT_CANVAS_COMMAND,
+        (payload) => {
+          const canvasNode = $createCanvasNode(payload);
+          $insertNodes([canvasNode]);
+          return true;
+        },
+        COMMAND_PRIORITY_EDITOR,
+      ),
+      registerBlockDecoratorUnwrap(editor, CanvasNode),
     );
   }, [editor]);
 

@@ -8,14 +8,12 @@
 
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
-  $createParagraphNode,
   $insertNodes,
-  $isRootNode,
   LexicalCommand,
   LexicalEditor,
 } from "lexical";
 import { useEffect } from "react";
-import { $wrapNodeInElement, mergeRegister } from "@lexical/utils";
+import { mergeRegister } from "@lexical/utils";
 import {
   $createRangeSelection,
   $getSelection,
@@ -36,12 +34,20 @@ import {
   StickyNode,
   StickyPayload,
 } from "@/editor/nodes/StickyNode";
+import { registerBlockDecoratorUnwrap } from "@/editor/nodes/blockDecoratorUnwrap";
 export type InsertStickyPayload = Readonly<StickyPayload>;
 
 export const INSERT_STICKY_COMMAND: LexicalCommand<
   InsertStickyPayload | undefined
 > = createCommand();
 
+/**
+ * **No `$wrapNodeInElement`** — see `NestedDocPlugin`, which has said why since
+ * before this node could act on it. The node is block-level now
+ * (docs/plans/nested-editor-support.md §3), so `$insertNodes` leaves it a block
+ * in its own right; wrapping it would put its contents back beyond the reach of
+ * an agent's addresses.
+ */
 export default function StickyPlugin() {
   const [editor] = useLexicalComposerContext();
   useEffect(() => {
@@ -56,9 +62,6 @@ export default function StickyPlugin() {
         (payload) => {
           const stickyNode = $createStickyNode(payload);
           $insertNodes([stickyNode]);
-          if ($isRootNode(stickyNode.getParentOrThrow())) {
-            $wrapNodeInElement(stickyNode, $createParagraphNode);
-          }
           stickyNode.focus();
           return true;
         },
@@ -85,6 +88,7 @@ export default function StickyPlugin() {
         },
         COMMAND_PRIORITY_HIGH,
       ),
+      registerBlockDecoratorUnwrap(editor, StickyNode),
     );
   }, [editor]);
 

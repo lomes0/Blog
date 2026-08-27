@@ -514,32 +514,34 @@ describe("a mutated note survives a load", () => {
   });
 
   /**
-   * The load normalizes a root-level note into a paragraph, and that costs the
-   * addresses.
+   * The load leaves the note a root child, so its blocks keep their addresses.
    *
-   * This is the same fact the addressing block pins from the other side: an
-   * inline decorator cannot be a root child, so Lexical wraps it — which is
-   * also what `StickyPlugin` does on insert. The note's content is intact and
-   * `b2.1` no longer names anything, so the seam reaches a note only while it
-   * is a direct child of a container. Recorded here because the round trip is
-   * where someone will hit it.
+   * **This test used to assert the opposite**, and it was right to: an inline
+   * decorator cannot be a root child, so Lexical wrapped it in a paragraph and
+   * `b2.1` stopped naming anything. That was the inline-decorator wall, and the
+   * seam below it reached a note only in states nothing could produce.
+   * `StickyNode.isInline()` returns false now
+   * (docs/plans/nested-editor-support.md §3), which is the whole of what the
+   * seam was waiting for — so this is the acceptance test for that phase, kept
+   * where the limit it replaces was recorded.
    */
-  it("wraps the note in a paragraph, which takes its blocks off the address map", () => {
+  it("keeps the note a root child, so its blocks stay addressable", () => {
     const loaded = roundTrip(
       apply(makeStickyState(), [
         { op: "set_text", id: "b2.1", text: "edited in place" },
       ]).state,
     );
     expect((loaded.root.children as SerializedNode[]).map((n) => n.type))
-      .toEqual(["paragraph", "paragraph", "paragraph"]);
-    expect(note(loaded)).toBeDefined();
+      .toEqual(["paragraph", "sticky", "paragraph"]);
 
     const entries = outline(loaded).blocks;
     expect(entries.map((entry) => entry.kind)).toEqual([
       "paragraph",
+      "sticky",
+      "paragraph",
       "paragraph",
       "paragraph",
     ]);
-    expect(readBlocks(loaded, ["b2.1"]).missing).toEqual(["b2.1"]);
+    expect(readBlocks(loaded, ["b2.1"]).missing).toEqual([]);
   });
 });
