@@ -60,7 +60,6 @@ export const PATCH = userRoute<{ id: string }>(
       published: body.published,
       collab: body.collab,
       private: body.private,
-      background_image: body.background_image,
       status: body.status,
       ...(body.description !== undefined && { description: body.description }),
       ...(body.tabLabel !== undefined && { tabLabel: body.tabLabel }),

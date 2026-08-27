@@ -501,10 +501,19 @@ export type PostCreateInput =
  * Omitting them here is what makes that a fact rather than a convention. The
  * server's update schema is `.strict()` about the same three fields, so the two
  * sides of the seam agree; this half just means the mistake does not compile.
+ *
+ * `background_image` is omitted for a different reason: the feature is gone and
+ * its bytes are deleted (docs/plans/blob-storage.md §10.2). The column stays so
+ * old export bundles still import, and import writes it through the repository —
+ * but no update may set it, because any path it stored would name a file that
+ * cannot exist. `documentUpdateSchema` drops it on the same grounds.
  */
 export type PostUpdateInput =
   & Partial<
-    Omit<PostCreateInput, "id" | "type" | "parentId" | "seriesId" | "rank">
+    Omit<
+      PostCreateInput,
+      "id" | "type" | "parentId" | "seriesId" | "rank" | "background_image"
+    >
   >
   & {
     /**

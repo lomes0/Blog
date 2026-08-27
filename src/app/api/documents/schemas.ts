@@ -48,6 +48,12 @@ export const editorStateSchema = z
  * `parentId` and `seriesId` are *not* here — a document's container is set by
  * `/api/documents/[id]/move`, which authorizes the destination, refuses parent
  * cycles and mints a rank in the target container. See `documentUpdateSchema`.
+ *
+ * `background_image` is not here either, for an unrelated reason: the feature
+ * was removed and its bytes deleted (docs/plans/blob-storage.md §10.2). The
+ * column survives so old export bundles still import, but nothing may write it
+ * through the API — a write would only ever store a path to a file that cannot
+ * exist. Create strips it; update 400s on it.
  */
 const documentFields = {
   name: z.string(),
@@ -55,7 +61,6 @@ const documentFields = {
   handle: z.string().nullish(),
   description: z.string().nullish(),
   tabLabel: z.string().nullish(),
-  background_image: z.string().nullish(),
   createdAt: clientDate,
   updatedAt: clientDate,
   published: z.boolean(),

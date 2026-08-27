@@ -463,6 +463,18 @@ Dropping it needs an irreversible migration for a nullable string, and keeping
 the manifest field means bundles written before this still import without a
 schema-version bump. It is inert: nothing writes it and nothing renders it.
 
+**The API surface is closed too**, which is a second decision rather than part of
+the first. `background_image` left `documentFields` in
+`src/app/api/documents/schemas.ts` and `PostUpdateInput` in `src/types.ts`, so
+the two halves of the seam agree the way they already do for `parentId` /
+`seriesId` / `rank`: the mistake does not compile on the client, and
+`documentUpdateSchema` being `.strict()` makes it a 400 naming the field on the
+server. Create merely strips it — `documentCreateSchema` is not strict, because
+callers legitimately post a whole `Post` through `toCreateInput`. The reason is
+not the container-versus-patch argument those three fields rest on; it is that
+any path such a write could store would name a file that cannot exist. Import
+still sets the column, through the repository rather than the route.
+
 Two consequences worth stating, because both are subtractions from documents
 that argue the opposite:
 
