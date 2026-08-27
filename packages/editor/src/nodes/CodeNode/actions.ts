@@ -1,6 +1,6 @@
 /**
  * What a click on the card's chrome does — once, for both surfaces
- * (docs/plans/code-block-card.md §4.2).
+ * (docs/plans/archive/code-block-card.md §4.2).
  *
  * A published article is `$generateHtmlFromNodes` output with no event handlers
  * in it, so the reader's header would be inert if behaviour lived on the

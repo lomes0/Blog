@@ -54,10 +54,11 @@ export type SerializedCodeNodeWithWidth = Spread<{
  *
  * Also supports dynamic width adjustment via the __width property.
  *
- * Since docs/plans/code-block-card.md the block also **is** its own chrome: the
- * language chip, filename, copy, word-wrap and collapse controls are children
- * of this element rather than a layer floating over it, on both surfaces. See
- * `card.ts` for the DOM contract and why the two overlays it replaced could go.
+ * Since docs/plans/archive/code-block-card.md the block also **is** its own
+ * chrome: the language chip, filename, copy, word-wrap and collapse controls
+ * are children of this element rather than a layer floating over it, on both
+ * surfaces. See `card.ts` for the DOM contract and why the two overlays it
+ * replaced could go.
  */
 export class CodeNode extends LexicalCodeNode {
   __width?: string;
@@ -166,7 +167,7 @@ export class CodeNode extends LexicalCodeNode {
   }
 
   /**
-   * The card, in the editor (docs/plans/code-block-card.md §2).
+   * The card, in the editor (docs/plans/archive/code-block-card.md §2).
    *
    * `super.createDOM` still returns the `<code>` element, so it is still what
    * `editor.getElementByKey` hands back and still what `@lexical/code`'s

@@ -36,8 +36,8 @@ const DEFAULT_GLYPH_FG = "#ffffff";
  * DOM as `--code-glyph-bg` / `--code-glyph-fg`, set inline from JS, so
  * `npm run check:theme` — which reads `.css` and `.css.ts` — cannot see them.
  * That is by construction, and this paragraph is the declaration
- * (docs/plans/code-block-card.md §4.4). Moving them into `--ed-*` would be the
- * actual mistake.
+ * (docs/plans/archive/code-block-card.md §4.4). Moving them into `--ed-*`
+ * would be the actual mistake.
  *
  * **The two that are not brand colours.** `DEFAULT_GLYPH_BG` (#1d222a) and the
  * flat `#000000` entries — JavaScript, `js`, Rust — are the exception §4.4

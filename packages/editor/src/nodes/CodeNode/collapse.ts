@@ -1,6 +1,6 @@
 /**
  * When a code block is long enough to be worth collapsing, and how tall it is
- * once it is (docs/plans/code-block-card.md §4.3).
+ * once it is (docs/plans/archive/code-block-card.md §4.3).
  *
  * Import-free — the `dragGeometry.ts` / `imageLayout.ts` rule — so
  * `__tests__/codeCollapse.test.ts` exercises it with no DOM, no editor and no

@@ -88,7 +88,7 @@ const ViewDocument: React.FC<ViewDocumentProps> = ({
 
   /**
    * The whole of the reader's side of the code block card
-   * (docs/plans/code-block-card.md §4.2).
+   * (docs/plans/archive/code-block-card.md §4.2).
    *
    * The header is in `cloudHtml` already — `CodeNode.exportDOM` emits the same
    * card the editor builds — so nothing here constructs anything. This binds

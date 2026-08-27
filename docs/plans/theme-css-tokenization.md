@@ -145,10 +145,11 @@ four `.css` files are already clean.
   anywhere in the tree. That comment is the file's own description of its scope,
   so it is the first thing a reader of this region trusts.
 - `theme.css:1122` explains a `#ccc`/`#444` pair that no longer exists.
-- `docs/plans/code-block-card.md`'s own status line still says "Not started";
-  `7ec096a7` shipped it and deleted `ViewCodeEnhancer.tsx`. `docs/plans/README.md`
-  already records it as shipped, so the file disagrees with its own index. Not
-  this plan's file, but this plan cites it and the next reader follows the link.
+- `docs/plans/archive/code-block-card.md`'s own status line still says "Not
+  started"; `7ec096a7` shipped it and deleted `ViewCodeEnhancer.tsx`.
+  `docs/plans/README.md` already records it as shipped, so the file disagrees
+  with its own index. Not this plan's file, but this plan cites it and the next
+  reader follows the link.
 
 ## 3. The rule the checker actually wants
 
@@ -295,8 +296,8 @@ because there is one rule set.
 Delete the phase-1 allowlist entry. Rewrite `theme.css:1241–1243` to name what
 exists (`--code-*`, `--tok-*`, `--doc-*`, `--ed-*`) and drop `--cb-*` and
 `toolbar.css`. Delete the dangling explanation at `1122`. Fix
-`docs/plans/code-block-card.md`'s status line to agree with the index that
-already contradicts it, and move this plan's own row to `archive/`.
+`docs/plans/archive/code-block-card.md`'s status line to agree with the index
+that already contradicts it, and move this plan's own row to `archive/`.
 
 Gate: `pnpm check:theme` green **with no exemptions naming `theme.css`** — which
 is the sentence this whole plan exists to be able to write.

@@ -87,9 +87,9 @@ function getSelectableNodeFromElement(
   element: HTMLElement,
 ): { nodeKey: string | null; element: HTMLElement } | null {
   // A code block is selected by clicking within the gutter's width of its left
-  // edge — and since docs/plans/code-block-card.md the card's header shares
-  // that edge, so the language dropdown sits inside the hit area. Chrome is
-  // never a node-selection gesture.
+  // edge — and since docs/plans/archive/code-block-card.md the card's header
+  // shares that edge, so the language dropdown sits inside the hit area. Chrome
+  // is never a node-selection gesture.
   if (element.closest(`[${CARD_CHROME_ATTR}]`)) {
     return null;
   }

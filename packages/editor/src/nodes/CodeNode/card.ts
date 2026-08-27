@@ -1,6 +1,6 @@
 /**
  * The code block's card — its DOM contract, and the one builder that emits it
- * (docs/plans/code-block-card.md §2).
+ * (docs/plans/archive/code-block-card.md §2).
  *
  * **Why the chrome is a child and not an overlay.** It used to be two overlays,
  * and `CodeActionMenuPlugin`'s own header comment gave the reason: "Lexical

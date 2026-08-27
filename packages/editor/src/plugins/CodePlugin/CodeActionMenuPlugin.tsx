@@ -1,6 +1,7 @@
 "use client";
 /**
- * The live half of the code block's card (docs/plans/code-block-card.md).
+ * The live half of the code block's card
+ * (docs/plans/archive/code-block-card.md).
  *
  * The card — header, body, status footer, caret wash — is DOM that
  * `CodeNode.createDOM` builds and `CodeNode.exportDOM` mirrors, so the reader

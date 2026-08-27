@@ -139,10 +139,10 @@ const PaneFrame: React.FC<PaneFrameProps> = ({
           #editor-main-container instead — right at rest, and drifting away from
           the code the moment this pane scrolled, because it was anchored to
           something that does not scroll. That plugin no longer portals anything
-          (docs/plans/code-block-card.md: the chrome is part of the block now),
-          so nothing currently depends on this. Any new scroller around the
-          editor still needs it, and the next plugin that does depend on it will
-          not think to come back here. */
+          (docs/plans/archive/code-block-card.md: the chrome is part of the
+          block now), so nothing currently depends on this. Any new scroller
+          around the editor still needs it, and the next plugin that does depend
+          on it will not think to come back here. */
       }
       <Box
         sx={{

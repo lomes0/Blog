@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * The code block card, as the reader actually receives it
- * (docs/plans/code-block-card.md §4.1, §4.3, §6).
+ * (docs/plans/archive/code-block-card.md §4.1, §4.3, §6).
  *
  * **Through `exportDOM`, not by reading the component.** §6 asks for that
  * explicitly, and it is the difference between testing the rule and testing a

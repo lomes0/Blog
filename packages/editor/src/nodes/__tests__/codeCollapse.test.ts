@@ -1,5 +1,5 @@
 /**
- * The collapse threshold (docs/plans/code-block-card.md §4.3, §6).
+ * The collapse threshold (docs/plans/archive/code-block-card.md §4.3, §6).
  *
  * `collapse.ts` is the only pure logic in the card and §6 names it as the place
  * the arithmetic will be wrong, so it is import-free and this spec runs against

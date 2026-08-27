@@ -98,7 +98,7 @@
 }
 
 /* ============================================================
-   THE CODE BLOCK CARD (docs/plans/code-block-card.md)
+   THE CODE BLOCK CARD (docs/plans/archive/code-block-card.md)
 
    One set of rules for one card, serving both surfaces: the editor builds it in
    `CodeNode.createDOM`, the reader gets the same shape from `exportDOM`. It
@@ -1386,7 +1386,8 @@ html.dark .LexicalTheme__code {
      and Rust's are flat #000000, so those chips sit on a near-identical
      surface and lose their edge entirely. The ring is what gives them one; it
      is not a colour the chip owns, so it does flip with the scheme even though
-     the fill it surrounds cannot (docs/plans/code-block-card.md §4.4). */
+     the fill it surrounds cannot
+     (docs/plans/archive/code-block-card.md §4.4). */
   --code-glyph-ring: rgba(255, 255, 255, 0.16);
 }
 
