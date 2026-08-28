@@ -1,6 +1,9 @@
 # Tokenizing theme.css
 
-Status: **Phases 1–3 shipped (14 and 28 Aug 2026); phases 4–5 open.** §7 is the
+Status: **Phases 1–4 shipped (14 and 28 Aug 2026); phase 5 open.** §4.5's first
+step — deleting the deferral — was pulled forward into phase 4, because the rot
+guard made the two inseparable (§7.7). What is left of phase 5 is prose and
+archival. §7 is the
 execution log, and eight of this plan's own claims are wrong — read it before §2.
 The largest is that §2.1 undercounted the work by a factor of five, because it
 counted hex and not `rgb()`.
@@ -570,3 +573,130 @@ introduced here: `globals.css`'s print block sets `color` on `body` only, so a
 `.attachment-filename` printed from dark mode has always taken a near-white ink
 onto the print card's `#f8f9fa`. The old `html.dark` rule had the identical
 bug (`#e2e8f0`), so this phase preserves it exactly rather than fixing it.
+
+### 7.7 Phase 4 (28 Aug 2026)
+
+Landed: one syntax theme. The GitHub Light / GitHub Dark pair under
+`:is(.attachment-preview, .view-attachment) .token.*` is gone — **13 literals
+across 13 rules, 49 lines on the light half and 53 on the dark** — replaced by
+eight rules reading `--tok-*`. The attachment region now holds **no `html.dark`
+rule at all**, and `check:theme`'s deferral drops from 13 to **0**.
+
+**§4.4's premise was right and its instruction was incomplete: `--tok-*` did
+not resolve on the preview at all.** The palette is declared on
+`.LexicalTheme__code` and `html.dark .LexicalTheme__code` — deliberately, per
+§3, so the card carries it wherever it is mounted — and an attachment preview
+is not inside one. Writing `var(--tok-comment)` there would have rendered the
+inherited ink, silently and in both schemes, which is §7.3's shape a third
+time: **a value-preserving swap is only value-preserving if the variable is in
+scope at the site you write it.** Two selectors carry the fix — both palette
+blocks are now
+`:is(.LexicalTheme__code, .attachment-preview, .view-attachment)`. Hoisting them
+to `:root` / `html.dark` was the obvious alternative and is worse: it publishes
+all eighteen `--code-*` to every element in the app and contradicts §3's own
+reason for the component scoping. `:is()` takes the specificity of its most
+specific argument, all three of which are classes, so the card's cascade is
+unchanged.
+
+**The surface question §4.4 raises is answered the way §4.4 predicted.** All
+eight tokens re-measured in both schemes, against the `--ed-fill-tertiary` the
+`<pre>` carried after phase 3 (`#f6f8fa` / `#2d3748`) and against `--code-bg`
+(`#ffffff` / `#0f1318`):
+
+| token | on `--ed-fill-tertiary` | on `--code-bg` |
+| - | - | - |
+| comment | 2.48 **fail** / 2.11 **fail** | 2.64 **fail** / 3.29 **fail** |
+| punctuation | 4.54 / 3.99 **fail** | 4.83 / 6.21 |
+| property | 4.57 / 6.49 | 4.87 / 10.08 |
+| selector | 4.93 / 6.58 | 5.25 / 10.24 |
+| operator | 11.97 / 7.39 | 12.74 / 11.49 |
+| keyword | 5.11 / 4.47 **fail** | 5.44 / 6.95 |
+| variable | 5.46 / 5.56 | 5.81 / 8.64 |
+| function | 4.53 / 5.57 | 4.82 / 8.66 |
+
+Four failures become one, so the `<pre>` moves to `--code-bg`, superseding
+phase 3's `--ed-fill-tertiary` (§7.6's third judgement call, which said this
+was moot if phase 4 did what it says). `--code-fg` moves with it: unhighlighted
+text and `ViewAttachment`'s plain-text branch set no ink of their own, and a
+background without its paired foreground is the pairing that breaks inside a
+light island.
+
+**`--tok-comment` fails 4.5:1 on `--code-bg` in both schemes and is left
+failing.** It is not a regression this phase introduces — `--tok-*` is the
+editor's shared palette, so the code card has rendered comments at 2.64 / 3.29
+since phase 1 — and it is recorded as a dated known failure at the
+`--tok-comment` declaration itself, with both ratios, rather than retuned or
+exempted. Retuning restyles every code block in the app and deserves its own
+argument and its own visual check; a checker exemption is §5.5's mistake
+applied to a contrast floor instead of a colour literal. Left visible.
+
+Two rendered changes beyond the surface, both correct and both worth expecting:
+
+- **`punctuation` was ungrouped in the GitHub pair** and took the surrounding
+  ink. It now has the family the card gives it. §2.2 counted seven groups
+  against `--tok-*`'s eight and did not say which was missing.
+- **`operator/entity/url` and `atrule/attr-value/keyword` separate.** §2.2
+  noticed they held the same `#d73a49` "by coincidence"; under one palette they
+  are the operator ink (`#2c333d` / `#c3ccd8`) and the keyword red (`#c0392b` /
+  `#e58373`), which is the distinction the code card has always drawn.
+
+The groups themselves are `theme.tsx`'s `codeHighlight` map read backwards —
+that map is the one authority on which Prism token belongs to which family, and
+the two now agree.
+
+#### The rot guard fired, and §4.5's first step came forward into this phase
+
+The moment the last thirteen literals went, `check:theme` **failed** — by
+design, not by accident:
+
+```
+check-theme: deferral `attachment-card` suppresses nothing. The work it was
+waiting on (docs/plans/theme-css-tokenization.md §4.3–§4.4) has landed, or its
+selector no longer matches — either way, delete the entry from PENDING in
+scripts/check-theme.mjs.
+```
+
+§7.2's fifth bullet built that guard on purpose, and this is it working: an
+entry that suppresses nothing is fatal, so the run cannot go green while the
+deferral outlives its debt. **Deleting the deferral is §4.5's step 1**, which
+means §4.4 and the first step of §4.5 are one commit and cannot be two. §4's
+sequencing note — "phase 4 wants phase 3 done first only because they touch
+adjacent lines" — considered which phases touch adjacent lines and never
+considered that the *checker* couples 4 to 5.
+
+So the entry is gone in this commit, and nothing else of phase 5 is: the §4.5
+prose rewrites at `theme.css:1241–1243` and `:1122`, and moving this document to
+`archive/`, stay a separate change. **Phase 5 is now prose and archival only.**
+
+`PENDING` is kept as an empty array rather than deleted, with its docstring
+rewritten to say why: the mechanism is the durable half of this plan — §5.4's
+"the part that outlives the cleanup" — and deleting it because it currently
+holds nothing would mean the next region has to re-argue how a deferral should
+be shaped. The guard and its docstrings are untouched.
+
+The gate §4.5 exists to be able to write now passes verbatim, with no exemption
+naming `theme.css`:
+
+```
+check-theme: clean — 41 style files (33 .css.ts), no scheme-invariant colors.
+```
+
+The guard is right. What it cost is a phase boundary the plan drew before the
+guard existed.
+
+#### Newly found: there is a *third* syntax palette, and it is not in CSS
+
+`src/components/drawers/AttachmentDrawer/AttachmentContentViewer.tsx:26–68`
+styles the same eight `.token.*` families in an MUI `sx`, light and dark, with
+**the sixteen `--tok-*` hex values copied literally** — its own comment says it
+"mirrors the editor's `--tok-*` scheme", and points at `src/editor/theme.css`,
+a path that has not existed since the package extraction. So §2.2's "two syntax
+palettes, 24 literals, for one product" is three and forty, and `check:theme`
+cannot see the third: it globs `.css` and `.css.ts`, and this is `.tsx`.
+
+Out of scope here — different surface (`background.paper`), different file,
+different contrast question, and §4.4 names only the two blocks in `theme.css`.
+Recorded because it is the next instance of exactly what this plan exists to
+remove, and because a copied value drifts silently: the drawer is already
+pinned to phase 1's `--tok-*` values and will not follow the retune
+`--tok-comment` is owed.

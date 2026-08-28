@@ -121,8 +121,20 @@
    palette with the styling that consumes it is one where the next literal
    added reads as belonging, which is how this file's other regions grew. The
    styling half follows immediately below and is the same selector, so the
-   cascade is unchanged. */
-.LexicalTheme__code {
+   cascade is unchanged.
+
+   The selector carries the attachment preview as well, and that is the whole
+   of what phase 4 needed to fold the second syntax theme into `--tok-*`
+   (docs/plans/theme-css-tokenization.md §4.4). The preview's `<pre>` is not
+   inside a `.LexicalTheme__code`, so `var(--tok-…)` written there would have
+   resolved to nothing; the alternatives were hoisting this block to `:root`,
+   which contradicts the reason it sits on the component in the first place, or
+   restating the palette, which is the duplication phase 4 removes. Listing the
+   second consumer keeps the palette on the surfaces that render code and
+   nowhere else. `:is()` takes the specificity of its most specific argument —
+   all three are classes — so the cascade for the card is byte-for-byte what it
+   was. */
+:is(.LexicalTheme__code, .attachment-preview, .view-attachment) {
   --code-bg: #ffffff;
   --code-fg: #2c333d;
   --code-border: #e4e7ec;
@@ -157,6 +169,13 @@
      has neither. */
   --code-head-h: 0px;
   --code-foot-h: 0px;
+  /* KNOWN FAILURE, measured 28 Aug 2026: `--tok-comment` is below WCAG 4.5:1
+     on `--code-bg` in both schemes — 2.64 light, 3.29 dark. Pre-existing and
+     inherited, not introduced by the attachment preview joining this palette:
+     the code card has rendered comments at these ratios since the palette
+     landed. Left visible rather than exempted or retuned, because `--tok-*` is
+     shared and changing it restyles every code block in the app — its own
+     change, with its own argument and its own visual check. */
   --tok-comment: #98a0ab;
   --tok-punctuation: #6b7280;
   --tok-property: #9a6700;
@@ -1369,7 +1388,7 @@ html.dark {
 
 /* Code blocks and the image filter carry their own opaque surface or are
    toggled per-node, so they need no light-island exception. */
-html.dark .LexicalTheme__code {
+html.dark :is(.LexicalTheme__code, .attachment-preview, .view-attachment) {
   --code-bg: #0f1318;
   --code-fg: #c3ccd8;
   --code-border: #232b35;
@@ -1380,6 +1399,8 @@ html.dark .LexicalTheme__code {
   --code-emph-line: rgba(106, 166, 255, 0.1);
   --code-emph-bar: #6aa6ff;
   --code-accent: #6aa6ff;
+  /* 3.29:1 on the `--code-bg` above — the dark half of the known failure
+     recorded at the light declaration. */
   --tok-comment: #5d6875;
   --tok-punctuation: #8b96a4;
   --tok-property: #e2b878;
@@ -1662,11 +1683,20 @@ html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
 :is(.attachment-preview, .view-attachment) pre {
   margin: 0;
   padding: 16px;
-  /* A well recessed into the card, which is what the live preview's
-     `codePane` already is (`styles.css.ts`, `vars.color.fillTertiary`). Phase 4
-     of docs/plans/theme-css-tokenization.md may move this to `--code-bg`: the
-     shared `--tok-*` palette clears 4.5:1 there and not here. */
-  background: var(--ed-fill-tertiary);
+  /* The code card's own surface, and deliberately so. `--tok-*` is tuned
+     against `--code-bg`, and re-measuring the eight tokens over both schemes
+     on the recessed `--ed-fill-tertiary` this used to carry found four below
+     WCAG 4.5:1 — comment in both (2.48 and 2.11), punctuation (3.99) and
+     keyword (4.47) in dark — against one on `--code-bg`, the `--tok-comment`
+     failure recorded at the palette, which the code card already has. So the
+     preview and the card are one surface with one palette rather than two of
+     each
+     (docs/plans/theme-css-tokenization.md §4.4). `--code-fg` comes with it:
+     unhighlighted text and the plain-text branch of `ViewAttachment` inherit
+     their ink from the document otherwise, which is the pairing that keeps
+     this legible inside a light island. */
+  background: var(--code-bg);
+  color: var(--code-fg);
   overflow-x: auto;
   font-size: 0.85rem;
   font-family:
@@ -1743,12 +1773,34 @@ html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
   box-shadow: var(--ed-shadow-menu);
 }
 
-/* Syntax highlighting tokens */
+/* Syntax highlighting — the editor's `--tok-*` palette, which the block above
+   puts in scope on this selector. There used to be a second theme here (GitHub
+   Light and GitHub Dark, 13 literals across 13 rules, one of the two grouped
+   differently from the other) for a product that already had one; phase 4 of
+   docs/plans/theme-css-tokenization.md deleted it. The dark half went with it,
+   because `--tok-*` flips underneath.
+
+   The groups are `theme.tsx`'s `codeHighlight` map read backwards: it names a
+   `.LexicalTheme__token*` class per Prism token, and this is the same eight
+   families spelled against Prism's own `.token.*` classes, which is what the
+   static `exportDOM` markup and `ViewAttachment` emit. Keep the two in step —
+   a token that gains a family there and not here renders at the inherited ink.
+
+   Two changes a reader will see. `punctuation` was ungrouped before and took
+   the surrounding ink; it now has the family the card gives it. And
+   `operator/entity/url` and `atrule/attr-value/keyword` were two rules holding
+   the same `#d73a49` by coincidence (§2.2) — under one palette they are the
+   operator ink and the keyword red, which is the distinction the code card has
+   always drawn. */
 :is(.attachment-preview, .view-attachment) .token.comment,
 :is(.attachment-preview, .view-attachment) .token.prolog,
 :is(.attachment-preview, .view-attachment) .token.doctype,
 :is(.attachment-preview, .view-attachment) .token.cdata {
-  color: #6a737d;
+  color: var(--tok-comment);
+}
+
+:is(.attachment-preview, .view-attachment) .token.punctuation {
+  color: var(--tok-punctuation);
 }
 
 :is(.attachment-preview, .view-attachment) .token.property,
@@ -1758,7 +1810,7 @@ html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
 :is(.attachment-preview, .view-attachment) .token.constant,
 :is(.attachment-preview, .view-attachment) .token.symbol,
 :is(.attachment-preview, .view-attachment) .token.deleted {
-  color: #005cc5;
+  color: var(--tok-property);
 }
 
 :is(.attachment-preview, .view-attachment) .token.selector,
@@ -1767,89 +1819,43 @@ html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
 :is(.attachment-preview, .view-attachment) .token.char,
 :is(.attachment-preview, .view-attachment) .token.builtin,
 :is(.attachment-preview, .view-attachment) .token.inserted {
-  color: #22863a;
+  color: var(--tok-selector);
 }
 
 :is(.attachment-preview, .view-attachment) .token.operator,
 :is(.attachment-preview, .view-attachment) .token.entity,
 :is(.attachment-preview, .view-attachment) .token.url {
-  color: #d73a49;
+  color: var(--tok-operator);
 }
 
 :is(.attachment-preview, .view-attachment) .token.atrule,
 :is(.attachment-preview, .view-attachment) .token.attr-value,
 :is(.attachment-preview, .view-attachment) .token.keyword {
-  color: #d73a49;
+  color: var(--tok-keyword);
 }
 
 :is(.attachment-preview, .view-attachment) .token.function,
 :is(.attachment-preview, .view-attachment) .token.class-name {
-  color: #6f42c1;
+  color: var(--tok-function);
 }
 
 :is(.attachment-preview, .view-attachment) .token.regex,
 :is(.attachment-preview, .view-attachment) .token.important,
 :is(.attachment-preview, .view-attachment) .token.variable {
-  color: #e36209;
+  color: var(--tok-variable);
 }
 
-/* ---- Dark mode ----
-   The card chrome has none. Everything above resolves through `--ed-*`, which
-   `styles/tokens.css.ts` reassigns under `html.dark`, so the ~95 lines that
-   used to restate every surface, hairline and ink here are gone
-   (docs/plans/theme-css-tokenization.md §4.3). What is left is the second
-   syntax theme, which phase 4 folds into `--tok-*`. */
+/* This section has no `html.dark` rules at all. Every colour above resolves
+   through `--ed-*` or `--tok-*`, both of which are reassigned for the dark
+   scheme where they are declared — `styles/tokens.css.ts` for the first, the
+   `html.dark` palette block near the foot of this file for the second. Phase 3
+   deleted 98 lines of hand-written dark chrome here (§4.3) and phase 4 the 53
+   that were the last of it — a GitHub Dark syntax theme in six rules (§4.4). */
 
-/* Syntax highlighting tokens — GitHub Dark */
-html.dark :is(.attachment-preview, .view-attachment) .token.comment,
-html.dark :is(.attachment-preview, .view-attachment) .token.prolog,
-html.dark :is(.attachment-preview, .view-attachment) .token.doctype,
-html.dark :is(.attachment-preview, .view-attachment) .token.cdata {
-  color: #8b949e;
-}
-
-html.dark :is(.attachment-preview, .view-attachment) .token.property,
-html.dark :is(.attachment-preview, .view-attachment) .token.tag,
-html.dark :is(.attachment-preview, .view-attachment) .token.boolean,
-html.dark :is(.attachment-preview, .view-attachment) .token.number,
-html.dark :is(.attachment-preview, .view-attachment) .token.constant,
-html.dark :is(.attachment-preview, .view-attachment) .token.symbol,
-html.dark :is(.attachment-preview, .view-attachment) .token.deleted {
-  color: #79c0ff;
-}
-
-html.dark :is(.attachment-preview, .view-attachment) .token.selector,
-html.dark :is(.attachment-preview, .view-attachment) .token.attr-name,
-html.dark :is(.attachment-preview, .view-attachment) .token.string,
-html.dark :is(.attachment-preview, .view-attachment) .token.char,
-html.dark :is(.attachment-preview, .view-attachment) .token.builtin,
-html.dark :is(.attachment-preview, .view-attachment) .token.inserted {
-  color: #7ee787;
-}
-
-html.dark :is(.attachment-preview, .view-attachment) .token.operator,
-html.dark :is(.attachment-preview, .view-attachment) .token.entity,
-html.dark :is(.attachment-preview, .view-attachment) .token.url,
-html.dark :is(.attachment-preview, .view-attachment) .token.atrule,
-html.dark :is(.attachment-preview, .view-attachment) .token.attr-value,
-html.dark :is(.attachment-preview, .view-attachment) .token.keyword {
-  color: #ff7b72;
-}
-
-html.dark :is(.attachment-preview, .view-attachment) .token.function,
-html.dark :is(.attachment-preview, .view-attachment) .token.class-name {
-  color: #d2a8ff;
-}
-
-html.dark :is(.attachment-preview, .view-attachment) .token.regex,
-html.dark :is(.attachment-preview, .view-attachment) .token.important,
-html.dark :is(.attachment-preview, .view-attachment) .token.variable {
-  color: #ffa657;
-}
-
-/* Print styles. These carry the same selector fix the dark rules did — the
-   card is `.attachment-container`, and both were originally written against
-   `.attachment-link` (see the note at the top of this section).
+/* Print styles. These carry the same selector fix the deleted `html.dark`
+   chrome did — the card is `.attachment-container`, and both were originally
+   written against `.attachment-link` (see the note at the top of this
+   section, which is where that history now lives).
 
    Paper is a light island: the two values below are fixed on purpose and must
    not follow `html.dark`, because a reader who prints from dark mode still

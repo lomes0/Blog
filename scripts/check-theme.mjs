@@ -90,20 +90,21 @@ const CONTRACT = "packages/editor/src/styles/tokens.css.ts";
  * hole. An entry that stops suppressing anything is a hard failure (see the rot
  * guards below) — the whole point is that it cannot outlive the work.
  *
- * Matched on the *enclosing selector* rather than a line range on purpose.
- * Phases 2 and 4 of the plan delete lines above and inside this region, and a
- * line range would then exempt whatever drifted into it — which is the failure
- * mode of every allowlist keyed to a position in a file that is being edited.
+ * Match on the *enclosing selector* rather than a line range. The only entry
+ * this has ever held covered a region whose own cleanup deleted lines above and
+ * inside it on every commit, and a line range would then have exempted whatever
+ * drifted in — the failure mode of every allowlist keyed to a position in a
+ * file that is being edited.
+ *
+ * Empty, and kept empty rather than deleted. The one entry
+ * (`attachment-card`, docs/plans/theme-css-tokenization.md) retired when its
+ * plan's phase 4 landed, which is exactly the rot guard below doing its job:
+ * it failed the run the moment the entry stopped suppressing anything. The
+ * mechanism is the durable half of that plan and the next region will want it,
+ * so what survives here is the shape and the argument for using it, not the
+ * debt it was pointed at.
  */
-const PENDING = [
-  {
-    id: "attachment-card",
-    file: "packages/editor/src/theme.css",
-    selector: /\.attachment-|\.view-attachment/,
-    plan: "docs/plans/theme-css-tokenization.md §4.3–§4.4",
-    why: "the static `exportDOM` half of the attachment node — a hand-paired light/dark palette with no variables, plus a second syntax theme duplicating `--tok-*`",
-  },
-];
+const PENDING = [];
 
 /**
  * Each rule reports on the comment-stripped source, so this file's own prose
