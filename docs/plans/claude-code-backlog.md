@@ -38,8 +38,8 @@ predate that work and have not been re-measured.
 
 So the remaining work is not "finish the codecs", and it is no longer capability
 either. The one correctness hole is closed (item 1, kept here for the record),
-items 2 and 4 are closed by the nested-editor work, 6 is answered and built, and
-**what is left is three decisions**: 3, 5 and 7.
+items 2 and 4 are closed by the nested-editor work, 5 and 6 are answered and
+built, and **what is left is two decisions**: 3 and 7.
 
 ---
 
@@ -200,7 +200,7 @@ Two things, both found on the way to answering it:
 
 ---
 
-## 5. A deleted rich block should be visible in the proposal
+## 5. A deleted rich block should be visible in the proposal — **ANSWERED + DONE (28 Aug 2026)**
 
 An agent can legitimately be asked to delete a canvas or a table, so refusing
 the operation is wrong. But a board of 40 notes disappearing with nothing on
@@ -208,18 +208,55 @@ screen to say so is also wrong. In this blog the deletes that carry
 unrecoverable-looking content are `canvas` (131), `image` (67), `sketch` (64)
 and `table` (263).
 
-The Copilot already has an accept/reject proposal flow, and `ActionPreview.tsx`
-already renders one line per operation — including `delete b7`. What it does not
-do is say _what_ `b7` is, because the preview only sees the op, not the
-document.
+**Answered: an inline note naming what goes, and no second confirmation.** The
+louder option was offered and declined. The gate was never the missing part — a
+proposal is already reviewable and declinable, which is exactly what
+`rename_post` and `delete_post` lack and why *those* two are confirmed. So
+approving stays one click and what was added is the sentence.
 
-Likely answer: the proposal resolves the address and names what it will remove
-("deletes 1 canvas · 7 notes"). Small UI change.
+**The wording is `removes 1 canvas · 7 notes`.** Verb first, count, then the
+block's own descriptor — `1 table · 3 rows × 4 columns`, `1 collapsible
+section · open · Appendix`. Past one block the qualifier is dropped and the
+kinds are counted instead (`removes 2 images and 1 table`), because three
+qualified nouns stop being scannable. None of it is a new vocabulary: the noun
+is the block type `nodeToBlock` reads, and the qualifier is the outline's own
+preview, exported as `blockPreview` so the two cannot drift. Prose is
+deliberately silent — a removed paragraph is legible from the diff beside it,
+and decorating every one of them would bury the case this exists for.
 
-**Cost.** Small, once the wording is decided.
+### Where it says it, and why not where this section said
 
-**Blocked by.** A product call on how loud it should be — inline note, or
-something that demands a second confirmation.
+The premise above had gone stale. `ActionPreview.tsx` stopped rendering content
+ops in [archive/ai-surface-consolidation.md](./archive/ai-surface-consolidation.md)
+§4.4 — a write proposes on the tool call now and is reviewed as a diff — so
+there has been no `delete b7` line to annotate for some time.
+
+An address resolves in exactly one place: **the write**, where the block is
+still in the state the op was addressed against. So `proposeOps`
+(`src/lib/agentWrites.ts`) builds the phrase there and folds it into the
+proposal's `summary`, which `RightRail/ProposalsSection` and `AgentChangeBar`
+already render — the two surfaces carrying an Approve button. Neither had to
+learn anything and nothing loads a revision to find out. That column had no
+other writer: no agent has ever passed a `summary`, so every proposal until now
+read "Edited this document".
+
+The review keeps a call of its own, because it holds the nodes rather than the
+addresses: a delete card in `Diff/ProposalReview` names the block beside
+"Removed", in its heading and its `aria-label`. That is what covers a block
+whose `exportDOM` renders to nothing.
+
+The logic is one import-free module, `content-bridge/removals.ts`, under
+`removals.test.ts` — including the two degradations that matter: an address that
+no longer resolves, and a stored node this build cannot read. Each costs its own
+clause and nothing more. A stale proposal must never be the thing that crashes
+the rail.
+
+**Not covered, on purpose.** `replace_block` can drop a rich block too and is
+not counted — its replacement is on screen next to it in the review. And a
+squash keeps the *latest* batch's note, exactly as it already keeps the latest
+batch's summary, so a canvas deleted in batch 1 stops being named if batch 2
+removes something else. Naming the whole pending proposal instead means diffing
+it against head at write time: a revision load per batch, for a line of prose.
 
 ---
 

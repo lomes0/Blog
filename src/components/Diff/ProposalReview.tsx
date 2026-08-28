@@ -26,6 +26,7 @@ import {
   type ReviewRow,
 } from "@/lib/proposalReview";
 import { emptyState } from "@/lib/content-bridge/ops";
+import { describeRemovedBlock } from "@/lib/content-bridge/removals";
 import type { StoredState } from "@/lib/content-bridge/types";
 import { ICON_SIZE } from "@/theme/icons";
 import type { PendingProposal } from "@/types";
@@ -338,6 +339,16 @@ function ChangeCard(
   const where = row.container
     ? CONTAINER_LABEL[row.container] ?? `in a ${row.container}`
     : null;
+  // What a delete takes with it, named rather than left to the render
+  // (docs/plans/claude-code-backlog.md §5). Deletes only: on the other two kinds
+  // the proposed side is on screen next to the base, so the change is already
+  // legible, and a canvas is the case where it is not. Empty for ordinary prose
+  // — the block below says what that was — and for a block whose stored shape
+  // this build cannot read, which must cost the sentence and not the review.
+  const removed = hunk.kind === "delete" && hunk.base
+    ? describeRemovedBlock(hunk.base)
+    : "";
+  const subtitle = [removed, where].filter(Boolean).join(", ");
 
   // Which side of the card survives the author's decision — the one question a
   // per-hunk review has to answer at a glance, so it is derived once rather
@@ -352,7 +363,7 @@ function ChangeCard(
       component="section"
       aria-label={`${KIND_LABEL[hunk.kind]} block ${
         hunk.baseAddress ?? hunk.proposalAddress ?? ""
-      }`}
+      }${subtitle ? ` — ${subtitle}` : ""}`}
       sx={{
         border: "1px solid",
         borderColor: "divider",
@@ -383,14 +394,14 @@ function ChangeCard(
           sx={{ flex: 1, minWidth: 0, fontWeight: 600 }}
         >
           {KIND_LABEL[hunk.kind]}
-          {where && (
+          {subtitle && (
             <Typography
               variant="micro"
               component="span"
               color="text.secondary"
               sx={{ ml: 1, fontWeight: 400 }}
             >
-              {where}
+              {subtitle}
             </Typography>
           )}
         </Typography>

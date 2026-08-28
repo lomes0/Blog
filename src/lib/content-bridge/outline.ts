@@ -186,6 +186,19 @@ function entryFor(block: Block): { preview: string; chars?: number } {
   }
 }
 
+/**
+ * The shape half of an outline row, on its own — `7 notes`, `3 rows × 4
+ * columns`, the first line of a paragraph.
+ *
+ * Exported so that anything else naming a block by what it holds reuses this
+ * policy rather than inventing a second vocabulary for the same thing (see
+ * `removals.ts`). The outline is where that policy is decided; this is only the
+ * one column of it that a caller outside a terminal listing wants.
+ */
+export function blockPreview(block: Block): string {
+  return entryFor(block).preview;
+}
+
 /** The skeleton: every addressable block, in document order. */
 export function outline(state: StoredState): Outline {
   const blocks = walkBlocks(state).map(({ address, depth, node }) => {

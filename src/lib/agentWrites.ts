@@ -59,6 +59,8 @@ import {
 import {
   applyOps,
   type ApplyResult,
+  deletedNodes,
+  describeRemovals,
   emptyState,
   type Op,
   OpError,
@@ -67,6 +69,7 @@ import {
   stateFromBlocks,
   stateHash,
   type StoredState,
+  withRemovalNote,
   type WritableBlock,
 } from "@/lib/content-bridge";
 
@@ -308,6 +311,13 @@ export async function proposeOps(
       : { ok: false, reason: "invalid", message };
   }
 
+  // What the batch deletes, named while the addresses still resolve — this is
+  // the only moment they do (docs/plans/claude-code-backlog.md §5). It rides on
+  // `summary`, which the rail row and `AgentChangeBar` already render, so a
+  // canvas leaving the document says so on both without either surface having
+  // to load a revision to find out. Nothing else writes this field today.
+  const removed = describeRemovals(deletedNodes(post.state, input.ops));
+
   const proposal = await upsertProposal({
     documentId: post.id,
     authorId: input.authorId,
@@ -318,7 +328,7 @@ export async function proposeOps(
     data: applied.state,
     ops: input.ops,
     origin: input.origin,
-    summary: input.summary,
+    summary: withRemovalNote(input.summary, removed),
     base: post.base,
   });
 
