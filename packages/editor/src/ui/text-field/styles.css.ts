@@ -56,7 +56,7 @@ const controlStates = {
   "&:hover:not(:disabled):not(:focus)": { borderColor: vars.color.text },
   "&:focus": {
     borderColor: vars.color.accent,
-    boxShadow: `0 0 0 2px ${vars.color.accentSoft}`,
+    boxShadow: vars.shadow.focusRing,
   },
   "&:disabled": {
     color: vars.color.textTertiary,
@@ -132,7 +132,7 @@ export const stepper = style({
       color: vars.color.text,
       backgroundColor: vars.color.fillSecondary,
     },
-    "&:focus-visible": { boxShadow: `0 0 0 2px ${vars.color.accentSoft}` },
+    "&:focus-visible": { boxShadow: vars.shadow.focusRing },
     "&:disabled": { opacity: 0.45, cursor: "not-allowed" },
   },
 });

@@ -77,10 +77,14 @@ export const vars = createGlobalThemeContract({
     /** Selection, focus, the one saturated color in the editor. */
     accent: "ed-accent",
     /**
-     * Accent at low alpha — focus rings and the "this control is open" wash.
-     * haklex spells this `accentLight` and defines it as the accent hex with an
-     * `20` suffix; ours is the same idea through the channel variable, so it
-     * follows the palette rather than pinning a second blue.
+     * Accent at low alpha — the "this control is open" wash. haklex spells this
+     * `accentLight` and defines it as the accent hex with an `20` suffix; ours
+     * is the same idea through the channel variable, so it follows the palette
+     * rather than pinning a second blue.
+     *
+     * **Not the focus ring.** It was, at all eight ring sites, and 0.24 alpha
+     * composites to 1.2–1.5:1 against every surface a ring lands on — a
+     * fill's job, not an indicator's. The ring is `shadow.focusRing` below.
      */
     accentSoft: "ed-accent-soft",
     /** Legible ink *on* an accent fill. Not `bg` — the palette decides. */
@@ -130,6 +134,12 @@ export const vars = createGlobalThemeContract({
     menu: "ed-shadow-menu",
     /** Dialogs and anything floating over the document. */
     modal: "ed-shadow-modal",
+    /**
+     * The focus ring, whole — every `:focus-visible` in the package draws this
+     * and nothing else. A `box-shadow` rather than a color because the ring is
+     * two bands and the second one is load-bearing; see `focusRing` below.
+     */
+    focusRing: "ed-shadow-focus-ring",
   },
   /**
    * Deliberately scheme-invariant values — DESIGN.md §19.3's "light islands",
@@ -215,6 +225,30 @@ const constant = {
 };
 
 /**
+ * The focus ring — WCAG 2.2 SC 1.4.11 wants 3:1 against *adjacent* colors, and
+ * a ring is adjacent to whatever it happens to be drawn on.
+ *
+ * Two bands, and the outer one is why this is a shadow token rather than a
+ * color. The accent alone is enough on the canvas (6.3:1 light, 4.6:1 dark) but
+ * not on a sticky note, whose paper is picked by the writer from a 14-swatch
+ * palette and stays that color in both schemes: the dark scheme's lifted indigo
+ * on `#bceac4` paper is 2.3:1, and the light scheme's on `#353535` paper is
+ * 2.0:1. So the accent is ringed by the canvas color, which fails in exactly
+ * the cases the accent passes — across all fourteen swatches, in both schemes,
+ * one band or the other clears 3:1 (worst case 3.4:1). On the canvas itself the
+ * halo is invisible by construction: it *is* the canvas.
+ *
+ * On a color the palette does not offer, the accent/halo boundary inside the
+ * ring still reads at 6.3:1 (light) / 4.6:1 (dark) whatever is behind it — the
+ * two-tone indicator technique, which is why the second band is not decorative.
+ *
+ * Scheme-agnostic as a string: both `--ed-accent` and `--ed-bg` already flip,
+ * so this is assigned unchanged to both blocks below, like `constant`.
+ */
+const focusRing =
+  `0 0 0 2px ${vars.color.accent}, 0 0 0 3px ${vars.color.bg}` as const;
+
+/**
  * `SHADOW.raised` and `SHADOW.floating` from `src/theme/tokens.ts`, transcribed
  * rather than imported: that module imports `alpha`/`Theme` from
  * `@mui/material/styles`, and a `.css.ts` file is *evaluated* by the
@@ -225,11 +259,13 @@ const constant = {
 const shadowLight = {
   menu: "0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)",
   modal: "0 18px 40px -24px rgba(15,23,42,0.35)",
+  focusRing,
 };
 
 const shadowDark = {
   menu: "0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2)",
   modal: "0 18px 40px -24px #0b0d17",
+  focusRing,
 };
 
 createGlobalTheme(":root", vars, { color, shadow: shadowLight, constant });

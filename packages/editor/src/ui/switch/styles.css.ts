@@ -30,7 +30,7 @@ export const track = style({
       backgroundColor: vars.color.accent,
       borderColor: vars.color.accent,
     },
-    "&:focus-visible": { boxShadow: `0 0 0 2px ${vars.color.accentSoft}` },
+    "&:focus-visible": { boxShadow: vars.shadow.focusRing },
     "&[data-disabled]": { opacity: 0.45, cursor: "not-allowed" },
   },
 });

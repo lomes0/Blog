@@ -765,10 +765,15 @@
 /* The ring on a focused checklist box. On the app's accent rather than the
    `#a6cdfe` it was pinned at, so it reads as the same focus ring as every
    other control and flips with the scheme
-   (docs/plans/archive/theme-css-tokenization.md §4.2). */
+   (docs/plans/archive/theme-css-tokenization.md §4.2).
+
+   The whole ring comes from one token because this is the site with the
+   hardest backdrop: a checklist inside a sticky note sits on paper the writer
+   chose, which stays that colour in both schemes. See `shadow.focusRing` in
+   `styles/tokens.css.ts` for why that needs two bands. */
 .LexicalTheme__listItemUnchecked:focus:before,
 .LexicalTheme__listItemChecked:focus:before {
-  box-shadow: 0 0 0 2px var(--ed-accent-soft);
+  box-shadow: var(--ed-shadow-focus-ring);
   border-radius: 2px;
 }
 

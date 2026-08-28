@@ -40,7 +40,7 @@ export const control = style({
   selectors: {
     "&[data-checked]": { borderColor: vars.color.accent },
     "&:hover:not([data-disabled])": { borderColor: vars.color.accent },
-    "&:focus-visible": { boxShadow: `0 0 0 2px ${vars.color.accentSoft}` },
+    "&:focus-visible": { boxShadow: vars.shadow.focusRing },
     "&[data-disabled]": { opacity: 0.45, cursor: "not-allowed" },
   },
 });

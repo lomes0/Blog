@@ -4,7 +4,9 @@
  * Two deliberate departures from the source:
  *
  *  - Retinted. haklex's neutral/blue literals become the `--ed-*` contract:
- *    `accentLight` → `accentSoft`, the `#fff` on an accent fill →
+ *    `accentLight` → `shadow.focusRing` (haklex's ring is that token at low
+ *    alpha, which does not clear WCAG 1.4.11 on any of our surfaces), the
+ *    `#fff` on an accent fill →
  *    `accentContrast` (the palette decides what is legible on primary, not
  *    this file), `alertCaution` → `danger`, and every hand-mixed
  *    `color-mix(text N%, transparent)` hover → the fill ladder that exists for
@@ -57,7 +59,7 @@ export const actionButton = recipe({
     transition,
     outline: "none",
     selectors: {
-      "&:focus-visible": { boxShadow: `0 0 0 2px ${vars.color.accentSoft}` },
+      "&:focus-visible": { boxShadow: vars.shadow.focusRing },
       "&:disabled": { opacity: 0.45, cursor: "not-allowed" },
     },
   },

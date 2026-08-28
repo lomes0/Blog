@@ -35,7 +35,7 @@ export const triggerButton = style({
   ":hover": { background: vars.color.fillQuaternary },
   ":focus-visible": {
     borderColor: vars.color.accent,
-    boxShadow: `0 0 0 3px ${vars.color.accentSoft}`,
+    boxShadow: vars.shadow.focusRing,
   },
   "selectors": {
     "&[data-popup-open]": { background: vars.color.fillQuaternary },

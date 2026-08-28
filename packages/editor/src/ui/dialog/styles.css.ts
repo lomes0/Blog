@@ -173,7 +173,7 @@ export const closeButton = style({
   ":hover": { opacity: 1, color: vars.color.text },
   ":focus-visible": {
     outline: "none",
-    boxShadow: `0 0 0 2px ${vars.color.accentSoft}`,
+    boxShadow: vars.shadow.focusRing,
   },
   "selectors": {
     "&:disabled": { pointerEvents: "none", opacity: 0.5 },
