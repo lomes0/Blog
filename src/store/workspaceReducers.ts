@@ -5,6 +5,7 @@ import {
   clampPaneRatio,
   emptyWorkspace,
   sanitizeWorkspace,
+  type StoredWorkspaceRead,
 } from "../lib/workspaceRestore";
 
 /**
@@ -264,11 +265,21 @@ export const workspaceReducers = {
   /**
    * Install a layout read back from storage (plan §8.2).
    *
-   * The payload is `unknown` and stays that way until {@link
-   * sanitizeWorkspace} has had it. Typing it as a `WorkspaceState` would be
-   * the same compile-time fiction `parseBody` exists to refuse for request
-   * bodies: nothing about a record that has been sitting in a browser since
-   * an older build makes it one.
+   * The record is `unknown` and stays that way until {@link sanitizeWorkspace}
+   * has had it. Typing it as a `WorkspaceState` would be the same compile-time
+   * fiction `parseBody` exists to refuse for request bodies: nothing about a
+   * record that has been sitting in a browser since an older build makes it one.
+   *
+   * **A failed read is not an empty workspace.** The payload carries the read's
+   * outcome rather than just its record, because `{ ok: false }` and
+   * `{ ok: true, stored: undefined }` have to end in the same *layout* — there
+   * is nothing to install either way — and in opposite *permissions*: the second
+   * is a user with nothing stored, and the first is a user whose stored layout
+   * is still there and must not be written over. Hydration completes on both, so
+   * the deep-link seam opens the document either way and the editor is usable;
+   * `workspaceRestoreFailed` is what the persistence middleware refuses on.
+   * Cleared by a read that succeeds, so the restore `workspaceKeyChanged`
+   * re-arms can lift the suppression an earlier failure imposed.
    *
    * Two things it will not do:
    *
@@ -281,13 +292,15 @@ export const workspaceReducers = {
    */
   restoreWorkspace: (
     state: AppState,
-    action: PayloadAction<{ key: string; stored: unknown }>,
+    action: PayloadAction<{ key: string; read: StoredWorkspaceRead }>,
   ) => {
     if (state.ui.workspaceHydrated) return;
-    state.ui.workspaceKey = action.payload.key;
+    const { key, read } = action.payload;
+    state.ui.workspaceKey = key;
     state.ui.workspaceHydrated = true;
+    state.ui.workspaceRestoreFailed = !read.ok;
     if (state.ui.workspace.panes.length > 0) return;
-    state.ui.workspace = sanitizeWorkspace(action.payload.stored);
+    state.ui.workspace = sanitizeWorkspace(read.ok ? read.stored : undefined);
   },
   /**
    * The session turned out to belong to someone else than the layout does.
@@ -302,6 +315,11 @@ export const workspaceReducers = {
    * docs/plans/workspace-url.md §3 that entry comes from a ref in
    * `WorkspacePanes` rather than from the address bar, which has already been
    * consumed by then — the promise this docblock makes is why that ref exists.
+   *
+   * `workspaceRestoreFailed` is deliberately left where it is: the re-armed
+   * restore sets it either way when it lands, and until then `workspaceHydrated`
+   * is down, which already stops the middleware writing. Clearing it here would
+   * only widen the window in which a session that has read nothing may write.
    */
   workspaceKeyChanged: (state: AppState, action: PayloadAction<string>) => {
     if (state.ui.workspaceKey === action.payload) return;

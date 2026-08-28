@@ -239,13 +239,17 @@ const WorkspacePanes: React.FC<WorkspacePanesProps> = ({ rootId }) => {
     if (hydrated) return;
     let cancelled = false;
     const key = readWorkspaceKeyHint();
-    void readStoredWorkspace(key).then((stored) => {
+    void readStoredWorkspace(key).then((read) => {
       if (cancelled) return;
       // Scroll offsets ride in the same record, so they are seeded from this
       // read rather than costing a second one on the way to first paint. Before
       // the dispatch, so a pane that mounts on this commit already has them.
-      primeScrollMemory(stored);
-      dispatch(actions.restoreWorkspace({ key, stored }));
+      primeScrollMemory(read.ok ? read.stored : undefined);
+      // The outcome and not just the record: a read that timed out hydrates —
+      // the seam below must not be left waiting on it — but marks the session
+      // as one that may not write, so the pane it is about to mint cannot land
+      // on top of the layout this read failed to see.
+      dispatch(actions.restoreWorkspace({ key, read }));
     });
     return () => {
       cancelled = true;

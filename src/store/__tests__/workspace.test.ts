@@ -1,4 +1,5 @@
 import { appSlice } from "@/store/app";
+import { workspaceWriteKey } from "@/lib/workspaceRestore";
 import { DEFAULT_PANE_RATIO, MAX_PANES } from "@/types";
 import type { AppState, WorkspacePane } from "@/types";
 
@@ -657,8 +658,12 @@ describe("ui.workspace — restoring a stored layout", () => {
     diffOpen: false,
   });
 
+  /** A read that came back with a record — the ordinary case. */
   const restore = (stored: unknown, key = "user-1"): AppState =>
-    reducer(initial(), actions.restoreWorkspace({ key, stored }));
+    reducer(
+      initial(),
+      actions.restoreWorkspace({ key, read: { ok: true, stored } }),
+    );
 
   it("installs the stored panes, focus and split", () => {
     const state = restore({
@@ -844,7 +849,7 @@ describe("ui.workspace — restoring a stored layout", () => {
       state,
       actions.restoreWorkspace({
         key: "user-1",
-        stored: { panes: [storedPane("p9", "doc-z")] },
+        read: { ok: true, stored: { panes: [storedPane("p9", "doc-z")] } },
       }),
     );
 
@@ -859,7 +864,7 @@ describe("ui.workspace — restoring a stored layout", () => {
       state,
       actions.restoreWorkspace({
         key: "user-1",
-        stored: { panes: [storedPane("p1", "doc-a")] },
+        read: { ok: true, stored: { panes: [storedPane("p1", "doc-a")] } },
       }),
     );
 
@@ -902,6 +907,164 @@ describe("ui.workspace — restoring a stored layout", () => {
 });
 
 /**
+ * A read that never answered, and the layout it must not destroy.
+ *
+ * The bug this describes was silent and irreversible. `readStoredWorkspace`
+ * bounds itself at two seconds — a first-ever visit running the schema upgrade,
+ * an `onblocked` upgrade held by a second tab, a device under IO pressure all
+ * overshoot it — and used to report that timeout as `undefined`, which is also
+ * what "this user has nothing stored" looks like. So the restore installed an
+ * empty workspace, the deep-link seam minted one pane into it because a URL
+ * named a document, and the debounced writer put that single pane over a
+ * multi-pane record it had never managed to read.
+ *
+ * The fix is not to hold hydration back until a read succeeds: hydration is what
+ * unblocks the seam, so gating it would trade a rare data loss for a common
+ * blank editor. It is to let the session run and refuse to *record* it — losing
+ * this session's layout changes rather than the stored layout.
+ *
+ * {@link workspaceWriteKey} is the persistence middleware's write decision,
+ * lifted into `lib/workspaceRestore` so it can be asserted here without
+ * IndexedDB — the same reason `dragGeometry.ts` is import-free.
+ */
+describe("ui.workspace — a restore that never got an answer", () => {
+  /** A stored pane, in the shape the record actually holds. */
+  const storedPane = (id: string, rootId: string) => ({
+    id,
+    rootId,
+    tabIds: [rootId],
+    activeTabId: rootId,
+    mode: "write",
+    diffOpen: false,
+  });
+
+  /** A read that came back — with a record, or with the absence of one. */
+  const restore = (stored: unknown, key = "user-1"): AppState =>
+    reducer(
+      initial(),
+      actions.restoreWorkspace({ key, read: { ok: true, stored } }),
+    );
+
+  const timedOut = (key = "user-1"): AppState =>
+    reducer(
+      initial(),
+      actions.restoreWorkspace({ key, read: { ok: false, reason: "timeout" } }),
+    );
+
+  it("hydrates on a failed read, so the deep-link seam is not left waiting", () => {
+    const state = timedOut();
+
+    // The gate `WorkspacePanes` replays the entry URL behind.
+    expect(state.ui.workspaceHydrated).toBe(true);
+    expect(state.ui.workspaceKey).toBe("user-1");
+    expect(workspaceOf(state).panes).toEqual([]);
+  });
+
+  it("keeps the editor usable — the requested document still opens", () => {
+    const state = reducer(timedOut(), actions.openPane({ rootId: "doc-url" }));
+
+    expect(workspaceOf(state).panes.map((p) => p.rootId)).toEqual(["doc-url"]);
+    expect(workspaceOf(state).focusedPaneId).toBe(
+      workspaceOf(state).panes[0].id,
+    );
+  });
+
+  it("refuses to record over the record it could not read", () => {
+    // The regression, end to end at the store: timed-out read, then the pane
+    // the deep-link seam mints. One pane is not empty, which is why the
+    // never-write-empty guard alone did not catch this.
+    const state = reducer(timedOut(), actions.openPane({ rootId: "doc-url" }));
+
+    expect(state.ui.workspaceRestoreFailed).toBe(true);
+    expect(workspaceOf(state).panes).toHaveLength(1);
+    expect(workspaceWriteKey(state.ui)).toBeNull();
+  });
+
+  it("treats a thrown read the same as one that ran out of time", () => {
+    const state = reducer(
+      reducer(
+        initial(),
+        actions.restoreWorkspace({
+          key: "user-1",
+          read: { ok: false, reason: "error" },
+        }),
+      ),
+      actions.openPane({ rootId: "doc-url" }),
+    );
+
+    expect(state.ui.workspaceRestoreFailed).toBe(true);
+    expect(workspaceWriteKey(state.ui)).toBeNull();
+  });
+
+  it("distinguishes a failed read from a user who has nothing stored", () => {
+    // Same empty layout, opposite permission. A read that answered "no record"
+    // has seen the storage: there is nothing there to overwrite, and the pane
+    // this session opens is the layout worth keeping.
+    const absent = reducer(
+      restore(undefined),
+      actions.openPane({ rootId: "doc-url" }),
+    );
+
+    expect(absent.ui.workspaceRestoreFailed).toBe(false);
+    expect(workspaceWriteKey(absent.ui)).toBe("user-1");
+    expect(workspaceWriteKey(timedOut().ui)).toBeNull();
+  });
+
+  it("clears the failure when a re-armed restore succeeds", () => {
+    // `workspaceKeyChanged` lowers `workspaceHydrated` so the restore runs again
+    // under the right user. If the failure outlived that second read, one early
+    // timeout would silence writes for the rest of the session.
+    let state = timedOut("guest");
+    state = reducer(state, actions.workspaceKeyChanged("user-2"));
+    expect(state.ui.workspaceHydrated).toBe(false);
+    // Still suppressed in the window before the second read lands — and the
+    // lowered hydration flag suppresses it too.
+    expect(workspaceWriteKey(state.ui)).toBeNull();
+
+    state = reducer(
+      state,
+      actions.restoreWorkspace({
+        key: "user-2",
+        read: { ok: true, stored: { panes: [storedPane("p1", "doc-a")] } },
+      }),
+    );
+
+    expect(state.ui.workspaceRestoreFailed).toBe(false);
+    expect(workspaceOf(state).panes.map((p) => p.rootId)).toEqual(["doc-a"]);
+    expect(workspaceWriteKey(state.ui)).toBe("user-2");
+  });
+
+  it("suppresses writes for a second read that fails again", () => {
+    let state = restore({ panes: [storedPane("p1", "doc-a")] }, "guest");
+    expect(workspaceWriteKey(state.ui)).toBe("guest");
+
+    state = reducer(state, actions.workspaceKeyChanged("user-2"));
+    state = reducer(
+      state,
+      actions.restoreWorkspace({
+        key: "user-2",
+        read: { ok: false, reason: "timeout" },
+      }),
+    );
+    state = reducer(state, actions.openPane({ rootId: "doc-url" }));
+
+    expect(state.ui.workspaceRestoreFailed).toBe(true);
+    expect(workspaceWriteKey(state.ui)).toBeNull();
+  });
+
+  it("records nothing before the restore, or once the panes are gone", () => {
+    // The other two halves of the same decision, so the guard is asserted whole.
+    expect(workspaceWriteKey(initial().ui)).toBeNull();
+
+    const closed = reducer(
+      restore({ panes: [storedPane("p1", "doc-a")] }),
+      actions.closeAllPanes(),
+    );
+    expect(workspaceWriteKey(closed.ui)).toBeNull();
+  });
+});
+
+/**
  * What an entry URL means once there is a layout underneath it.
  *
  * `WorkspacePanes` replays `/edit/<id>` as `openPane({ rootId })` — the same
@@ -917,25 +1080,28 @@ describe("ui.workspace — an entry URL, replayed over a restored layout", () =>
       initial(),
       actions.restoreWorkspace({
         key: "user-1",
-        stored: {
-          panes: [
-            {
-              id: "p1",
-              rootId: "doc-a",
-              tabIds: ["doc-a", "c1"],
-              activeTabId: "doc-a",
-              mode: "write",
-            },
-            {
-              id: "p2",
-              rootId: "doc-b",
-              tabIds: ["doc-b"],
-              activeTabId: "doc-b",
-              mode: "write",
-            },
-          ],
-          focusedPaneId: "p2",
-          splitRatio: 0.65,
+        read: {
+          ok: true,
+          stored: {
+            panes: [
+              {
+                id: "p1",
+                rootId: "doc-a",
+                tabIds: ["doc-a", "c1"],
+                activeTabId: "doc-a",
+                mode: "write",
+              },
+              {
+                id: "p2",
+                rootId: "doc-b",
+                tabIds: ["doc-b"],
+                activeTabId: "doc-b",
+                mode: "write",
+              },
+            ],
+            focusedPaneId: "p2",
+            splitRatio: 0.65,
+          },
         },
       }),
     );

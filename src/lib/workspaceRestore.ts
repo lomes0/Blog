@@ -1,4 +1,5 @@
 import {
+  type AppState,
   DEFAULT_PANE_RATIO,
   MAX_PANE_RATIO,
   MAX_PANES,
@@ -40,6 +41,49 @@ export const workspaceKeyFor = (user?: { id: string } | null): string =>
 /** A ratio the splitter can actually reach. */
 export const clampPaneRatio = (ratio: number): number =>
   Math.min(MAX_PANE_RATIO, Math.max(MIN_PANE_RATIO, ratio));
+
+/**
+ * What a read of the stored workspace actually found.
+ *
+ * Three outcomes, and collapsing them into one `undefined` was a way to destroy
+ * a layout: a read that timed out looks exactly like a user with nothing stored,
+ * so the restore installed an empty workspace, the deep-link seam minted a pane
+ * into it, and the debounced writer put that one pane over the record it had
+ * never managed to read. `ok: false` is what stops the writer for the rest of
+ * the session — this session's layout changes are lost, which is the direction
+ * that is allowed to fail.
+ *
+ * `stored` stays `unknown` for the same reason {@link sanitizeWorkspace} exists:
+ * the payload was written by some build of this app at some time, and knowing
+ * the read succeeded says nothing about what it returned.
+ */
+export type StoredWorkspaceRead =
+  | { ok: true; stored: unknown }
+  | { ok: false; reason: "timeout" | "error" };
+
+/**
+ * The key this session may record its layout under, or `null` if it may not.
+ *
+ * The persistence middleware's whole write decision, here rather than there so
+ * it can be exercised without IndexedDB — the same reason `dragGeometry.ts` is
+ * import-free. Four conditions, and each one is a way a write destroys
+ * something:
+ *
+ * 1. **Hydrated.** Before the restore lands the store holds no layout, only a
+ *    default one.
+ * 2. **The read did not fail.** A timed-out or thrown read leaves the stored
+ *    record unseen and still valid. See {@link StoredWorkspaceRead}.
+ * 3. **A key.** There is nothing to write under until the restore names one.
+ * 4. **Non-empty.** `closeAllPanes` fires on every navigation out of `/edit`.
+ *
+ * Returning the key rather than a boolean is what keeps the caller from having
+ * to re-establish that it is non-null.
+ */
+export const workspaceWriteKey = (ui: AppState["ui"]): string | null =>
+  ui.workspaceHydrated && !ui.workspaceRestoreFailed &&
+    ui.workspaceKey !== null && ui.workspace.panes.length > 0
+    ? ui.workspaceKey
+    : null;
 
 /** The workspace of a session that has nothing stored (or nothing usable). */
 export const emptyWorkspace = (): WorkspaceState => ({

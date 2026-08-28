@@ -1,6 +1,10 @@
 import type { Middleware } from "@reduxjs/toolkit";
 import { getStore } from "@/indexeddb";
-import { workspaceKeyFor } from "@/lib/workspaceRestore";
+import {
+  type StoredWorkspaceRead,
+  workspaceKeyFor,
+  workspaceWriteKey,
+} from "@/lib/workspaceRestore";
 import {
   capScrollTops,
   sanitizeScrollTops,
@@ -32,6 +36,14 @@ import { appSlice } from "./app";
  * layout on the way out the door, every time. An empty workspace is therefore
  * not a layout worth recording — and it is not a state a user can sit in
  * either, since the deep-link seam opens a pane the moment the route mounts.
+ *
+ * **Never over a record this session could not read.** That last sentence is
+ * also how a layout was destroyed: a restore that timed out installed an empty
+ * workspace, the seam minted its pane into it, and one pane is not empty. So the
+ * read now says which of its three outcomes happened
+ * ({@link readStoredWorkspace}), and a session that never got an answer stays
+ * usable but writes nothing — losing this session's layout changes rather than
+ * the stored layout.
  */
 
 /** Long enough to swallow a resize drag; short enough to beat a reload. */
@@ -104,10 +116,19 @@ const rememberWorkspaceKeyHint = (key: string) => {
  */
 const READ_TIMEOUT_MS = 2000;
 
+/** Distinguishes the timeout below from a record that is genuinely absent. */
+const TIMED_OUT = Symbol("workspace-read-timeout");
+
 /**
- * The stored layout for a user, `undefined` when there is none.
+ * The stored layout for a user.
  *
- * Typed `unknown` on the way out, and that is the point: what comes back was
+ * Answers with {@link StoredWorkspaceRead} rather than with the record, because
+ * "nothing is stored", "the read threw" and "the read ran out of time" are three
+ * different facts and only the first of them means the user has no layout. The
+ * other two must not be allowed to look like an empty workspace, or the session
+ * writes one back over a record it never read.
+ *
+ * `stored` is typed `unknown`, and that is the point: what comes back was
  * written by some build of this app at some time, and the only way to turn it
  * into a `WorkspaceState` is `sanitizeWorkspace`, which does not trust it.
  * Handing the caller a `StoredWorkspace` here would be the same compile-time
@@ -115,17 +136,28 @@ const READ_TIMEOUT_MS = 2000;
  */
 export const readStoredWorkspace = async (
   key: string,
-): Promise<unknown> => {
+): Promise<StoredWorkspaceRead> => {
   try {
-    return await Promise.race([
+    const stored = await Promise.race([
       workspaceDB.getByID(key),
-      new Promise<undefined>((resolve) =>
-        setTimeout(() => resolve(undefined), READ_TIMEOUT_MS)
+      new Promise<typeof TIMED_OUT>((resolve) =>
+        setTimeout(() => resolve(TIMED_OUT), READ_TIMEOUT_MS)
       ),
     ]);
+    if (stored === TIMED_OUT) {
+      // Warned about for the same reason a thrown read is: the session is about
+      // to open without a layout and refuse to record one, and nothing else says
+      // so. Not an error dialog — a layout is a convenience.
+      console.warn(
+        `stored workspace read timed out after ${READ_TIMEOUT_MS}ms; ` +
+          "opening without a layout and not recording one",
+      );
+      return { ok: false, reason: "timeout" };
+    }
+    return { ok: true, stored };
   } catch (error) {
     console.warn("could not read the stored workspace", error);
-    return undefined;
+    return { ok: false, reason: "error" };
   }
 };
 
@@ -274,7 +306,7 @@ export const workspacePersistenceMiddleware: Middleware =
     // derives `RootState` from a store that this middleware is an argument to,
     // so naming it would be a cycle. `AppState` is that shape.
     const state = store.getState() as AppState;
-    const { workspace, workspaceHydrated, workspaceKey } = state.ui;
+    const { workspace, workspaceKey } = state.ui;
 
     if (sessionResolved) {
       const key = workspaceKeyFor(state.user);
@@ -292,17 +324,30 @@ export const workspacePersistenceMiddleware: Middleware =
       }
     }
 
-    if (
-      workspaceHydrated && workspaceKey !== null && workspace.panes.length > 0
-    ) {
+    // Whether this session may record at all, and under which key — see
+    // `workspaceWriteKey`, which holds the rules so they can be tested without
+    // a browser. The one it refuses that is easy to miss: a session whose read
+    // failed is perfectly usable, but the pane the deep-link seam mints for it
+    // is not a layout, it is what is left when the real one could not be read.
+    const writeKey = workspaceWriteKey(state.ui);
+    if (writeKey !== null) {
       // Held even when the layout itself has not changed, because this is what
       // a scroll write attaches itself to and a scroll is not a store change.
-      lastKey = workspaceKey;
+      lastKey = writeKey;
       lastWorkspace = workspace;
       if (workspace !== lastSeen) {
         lastSeen = workspace;
-        schedule(workspaceKey, workspace);
+        schedule(writeKey, workspace);
       }
+    } else if (state.ui.workspaceRestoreFailed) {
+      // A scroll is not a store change, so it schedules its own write against
+      // the last layout seen — which outlives a navigation on purpose (see
+      // `lastWorkspace`). It must not outlive a failed restore: that layout is
+      // from before this session gave up reading, and scrolling would put it
+      // back over the record through the one path the guard above does not sit
+      // on.
+      lastKey = null;
+      lastWorkspace = null;
     }
 
     return result;

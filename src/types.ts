@@ -312,6 +312,19 @@ export interface AppState {
      * two accounts sharing a browser cannot inherit each other's panes.
      */
     workspaceKey: string | null;
+    /**
+     * Whether the read behind {@link workspaceHydrated} failed — it timed out,
+     * or it threw — rather than answering "nothing stored".
+     *
+     * Two facts, not one, because the session must go on either way but must not
+     * *record* either way. Hydration still completes on a failure, so the
+     * deep-link seam opens the requested document and the editor is usable; this
+     * flag is what stops the persistence middleware writing the pane that seam
+     * mints over a stored layout nobody managed to read. Cleared by the next
+     * restore that succeeds — `workspaceKeyChanged` re-arms one, and a single
+     * early failure must not silence the rest of the session.
+     */
+    workspaceRestoreFailed: boolean;
     sidebarView: SidebarView;
     /** Agent work awaiting review — see {@link ProposalsState}. */
     proposals: ProposalsState;
