@@ -259,6 +259,7 @@ const initialState: AppState = {
     workspaceHydrated: false,
     workspaceKey: null,
     workspaceRestoreFailed: false,
+    workspaceProvisional: false,
     sidebarView: "explorer",
     proposals: {
       byDocId: {},

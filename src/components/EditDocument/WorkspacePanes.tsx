@@ -295,7 +295,13 @@ const WorkspacePanes: React.FC<WorkspacePanesProps> = ({ rootId }) => {
     // the consume the URL can no longer supply it.
     const entry = rootId ?? entryDocId.current;
     if (!entry) return;
-    dispatch(actions.openPane({ rootId: entry }));
+    // `entry: true` — the one `openPane` caller that is a URL rather than a
+    // person (plan §3.3). It still retargets the focused pane, but if that
+    // displaces a document the restore had just put there, the layout is shown
+    // and not recorded until the user changes it on purpose. A bookmark
+    // followed once must not rewrite the split they work in. The replay half
+    // above is a deep-link entry too, so it carries the same flag.
+    dispatch(actions.openPane({ rootId: entry, entry: true }));
     if (rootId) window.history.replaceState(null, "", WORKSPACE_ROUTE);
   }, [dispatch, hydrated, rootId]);
 

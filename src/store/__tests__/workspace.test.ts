@@ -1161,6 +1161,303 @@ describe("ui.workspace — an entry URL, replayed over a restored layout", () =>
   });
 });
 
+/**
+ * A deep link that displaces a pane, and the layout it must not commit.
+ *
+ * Verified in a browser before it was fixed: a stored two-pane layout, a cold
+ * load of `/edit/<a third document>`, and within the write debounce the record
+ * named the third document where the second used to be. Nobody had touched
+ * anything — a bookmark had rewritten a layout. With an id that no longer
+ * resolves it is worse, because the record then names a document that cannot
+ * load and the broken pane comes back on every load after.
+ *
+ * The decision is **retarget, but do not persist** (docs/plans/workspace-url.md
+ * §3.3). What case 3 of `openPane` does to the *view* is right and unchanged —
+ * a deep link means "show me this where I am looking", the same as a sidebar
+ * click. What changes is that an entry which evicts something marks the layout
+ * provisional, and {@link workspaceWriteKey} refuses to name a key for it until
+ * the user changes the layout on purpose. For one session the view and the
+ * stored record disagree; that is the accepted cost, and the reload below is
+ * what it buys.
+ */
+describe("ui.workspace — an entry that displaces a restored pane", () => {
+  /** A stored pane, in the shape the record actually holds. */
+  const storedPane = (id: string, rootId: string) => ({
+    id,
+    rootId,
+    tabIds: [rootId],
+    activeTabId: rootId,
+    mode: "write",
+    diffOpen: false,
+  });
+
+  /** The record the browser repro started from: two panes, the right focused. */
+  const storedPair = () => ({
+    panes: [storedPane("p1", "doc-a"), storedPane("p2", "doc-b")],
+    focusedPaneId: "p2",
+    splitRatio: 0.65,
+  });
+
+  const restore = (stored: unknown, key = "user-1"): AppState =>
+    reducer(
+      initial(),
+      actions.restoreWorkspace({ key, read: { ok: true, stored } }),
+    );
+
+  /** A cold-start `/edit/<id>`, as `WorkspacePanes` replays it. */
+  const enter = (state: AppState, rootId: string): AppState =>
+    reducer(state, actions.openPane({ rootId, entry: true }));
+
+  it("shows the entry document where the focused pane was", () => {
+    // The view half, unchanged. Case 3 is correct and this does not touch it.
+    const state = enter(restore(storedPair()), "doc-c");
+
+    expect(workspaceOf(state).panes.map((p) => p.rootId))
+      .toEqual(["doc-a", "doc-c"]);
+    expect(workspaceOf(state).focusedPaneId).toBe("p2");
+  });
+
+  it("does not permit a write once it has evicted a document", () => {
+    // The regression, at the seam that caused it. `doc-b` is gone from the
+    // view; the middleware must not be allowed to make it gone from the record.
+    const restored = restore(storedPair());
+    expect(workspaceWriteKey(restored.ui)).toBe("user-1");
+
+    const state = enter(restored, "doc-c");
+
+    expect(state.ui.workspaceProvisional).toBe(true);
+    expect(workspaceWriteKey(state.ui)).toBeNull();
+  });
+
+  it("is refused for an entry naming a document that does not exist", () => {
+    // The worse half of the browser repro: nothing here knows the id is dead
+    // (posts are not loaded when the seam runs, and `sanitizeWorkspace` says
+    // why it cannot check). Recording it would put a pane that can only render
+    // "Post Not Found" into the record, on every load from then on.
+    const state = enter(restore(storedPair()), "doc-deleted");
+
+    expect(workspaceWriteKey(state.ui)).toBeNull();
+  });
+
+  it("comes back to the original layout on the next load", () => {
+    // What the suppression is *for*. Nothing was written, so the second cold
+    // start reads the same record and `doc-b` is back where the user left it.
+    const entered = enter(restore(storedPair()), "doc-c");
+    expect(workspaceOf(entered).panes.map((p) => p.rootId))
+      .toEqual(["doc-a", "doc-c"]);
+
+    const reloaded = restore(storedPair());
+
+    expect(workspaceOf(reloaded).panes.map((p) => p.rootId))
+      .toEqual(["doc-a", "doc-b"]);
+    expect(workspaceOf(reloaded).focusedPaneId).toBe("p2");
+    expect(reloaded.ui.workspaceProvisional).toBe(false);
+    expect(workspaceWriteKey(reloaded.ui)).toBe("user-1");
+  });
+
+  it("records normally when there was no layout to displace", () => {
+    // Refinement 1, and a fresh bug if it were missed: a first-ever visit has
+    // nothing stored, so the entry mints the first pane rather than evicting
+    // anything. Suppressing that would mean a new user's layout is never
+    // recorded at all.
+    const state = enter(restore(undefined), "doc-c");
+
+    expect(workspaceOf(state).panes.map((p) => p.rootId)).toEqual(["doc-c"]);
+    expect(state.ui.workspaceProvisional).toBe(false);
+    expect(workspaceWriteKey(state.ui)).toBe("user-1");
+  });
+
+  it("records normally when the entry document is already open", () => {
+    // The other half of refinement 1: case 1, the duplicate-open guard. Both
+    // panes survive and only the focus moved, which is worth keeping.
+    const state = enter(restore(storedPair()), "doc-a");
+
+    expect(workspaceOf(state).panes.map((p) => p.rootId))
+      .toEqual(["doc-a", "doc-b"]);
+    expect(workspaceOf(state).focusedPaneId).toBe("p1");
+    expect(state.ui.workspaceProvisional).toBe(false);
+    expect(workspaceWriteKey(state.ui)).toBe("user-1");
+  });
+
+  it("records normally for an entry naming a restored pane's tab", () => {
+    // Also case 1 — `paneShowing` considers `tabIds` — and also displaces
+    // nothing.
+    const tabbed = restore({
+      panes: [
+        { ...storedPane("p1", "doc-a"), tabIds: ["doc-a", "c1"] },
+        storedPane("p2", "doc-b"),
+      ],
+      focusedPaneId: "p2",
+    });
+    const state = enter(tabbed, "c1");
+
+    expect(workspaceOf(state).focusedPaneId).toBe("p1");
+    expect(paneOf(state, "p1").activeTabId).toBe("c1");
+    expect(state.ui.workspaceProvisional).toBe(false);
+    expect(workspaceWriteKey(state.ui)).toBe("user-1");
+  });
+
+  it("does not suppress an in-session open from the sidebar or palette", () => {
+    // An `openPane` without `entry` is a person. It evicts a document too, and
+    // that is exactly what the user asked for.
+    const state = reducer(
+      restore(storedPair()),
+      actions.openPane({ rootId: "doc-c" }),
+    );
+
+    expect(state.ui.workspaceProvisional).toBe(false);
+    expect(workspaceWriteKey(state.ui)).toBe("user-1");
+  });
+
+  /**
+   * Refinement 2: the flag has to come down, on the common path.
+   *
+   * A provisional flag that never cleared would silence layout writes for the
+   * rest of the session — the same shape of failure as `workspaceRestoreFailed`
+   * stuck on, but reached by following a bookmark rather than by a read timing
+   * out. Every deliberate layout action is asserted here rather than left to
+   * the one the component happens to dispatch today.
+   */
+  describe("clearing it", () => {
+    const provisional = (): AppState => {
+      const state = enter(restore(storedPair()), "doc-c");
+      expect(workspaceWriteKey(state.ui)).toBeNull();
+      return state;
+    };
+
+    const commits = (state: AppState) => {
+      expect(state.ui.workspaceProvisional).toBe(false);
+      expect(workspaceWriteKey(state.ui)).toBe("user-1");
+    };
+
+    it("splitting off a new pane commits", () => {
+      // `pane.split` — an `openPane` that names its pane. Off a single stored
+      // pane, because two is {@link MAX_PANES} and a split would be refused.
+      const single = enter(
+        restore({ panes: [storedPane("p1", "doc-a")] }),
+        "doc-c",
+      );
+      expect(workspaceWriteKey(single.ui)).toBeNull();
+
+      commits(reducer(single, actions.openPane({ paneId: "p3", rootId: "doc-d" })));
+    });
+
+    it("opening another document commits", () => {
+      commits(reducer(provisional(), actions.openPane({ rootId: "doc-d" })));
+    });
+
+    it("closing a pane commits", () => {
+      commits(reducer(provisional(), actions.closePane("p1")));
+    });
+
+    it("maximizing and restoring both commit", () => {
+      const maximized = reducer(
+        provisional(),
+        actions.toggleMaximizePane("p2"),
+      );
+      commits(maximized);
+      commits(reducer(maximized, actions.toggleMaximizePane("p2")));
+      commits(reducer(maximized, actions.unmaximizePane()));
+    });
+
+    it("moving the splitter commits", () => {
+      commits(reducer(provisional(), actions.setSplitRatio(0.4)));
+    });
+
+    it("a dispatch that changed nothing does not commit", () => {
+      // Each `commitLayout` call sits where the action took effect, so a stale
+      // dispatch — a debounced handler, a resolved promise, a pane that has
+      // already gone — cannot commit an eviction on the user's behalf.
+      const state = provisional();
+      expect(workspaceWriteKey(reducer(state, actions.closePane("gone")).ui))
+        .toBeNull();
+      expect(
+        workspaceWriteKey(reducer(state, actions.unmaximizePane()).ui),
+      ).toBeNull();
+      expect(
+        workspaceWriteKey(
+          reducer(state, actions.setSplitRatio(Number.NaN)).ui,
+        ),
+      ).toBeNull();
+      expect(
+        workspaceWriteKey(reducer(state, actions.toggleMaximizePane("gone")).ui),
+      ).toBeNull();
+    });
+
+    it("a scroll is not a deliberate layout change", () => {
+      // `rememberScroll` dispatches nothing at all — reading the document a
+      // deep link just opened is the most likely thing to happen next, and it
+      // must not be what commits the eviction. Asserted as the absence of any
+      // action that could: nothing in the workspace reducers is reached by
+      // scrolling, and the middleware drops its own scroll write path while the
+      // flag is up (see `workspacePersistence`).
+      const scrolled = reducer(provisional(), { type: "app/noSuchAction" });
+
+      expect(scrolled.ui.workspaceProvisional).toBe(true);
+      expect(workspaceWriteKey(scrolled.ui)).toBeNull();
+    });
+
+    it("leaving the workspace clears it rather than carrying it forward", () => {
+      // `closeAllPanes` on unmount, then the restore on the way back in. The
+      // flag describes *an entry*, so it must not outlive the one that set it.
+      const left = reducer(provisional(), actions.closeAllPanes());
+      expect(left.ui.workspaceProvisional).toBe(false);
+
+      const reentered = reducer(
+        left,
+        actions.restoreWorkspace({
+          key: "user-1",
+          read: { ok: true, stored: storedPair() },
+        }),
+      );
+      commits(reentered);
+    });
+
+    it("a re-armed restore under the right user clears it", () => {
+      // `workspaceKeyChanged` — the guessed key named the wrong account. The
+      // replay that follows is an entry again, and gets judged again.
+      let state = enter(restore(storedPair(), "guest"), "doc-c");
+      state = reducer(state, actions.workspaceKeyChanged("user-2"));
+      state = reducer(
+        state,
+        actions.restoreWorkspace({
+          key: "user-2",
+          read: { ok: true, stored: { panes: [storedPane("q1", "doc-x")] } },
+        }),
+      );
+      expect(state.ui.workspaceProvisional).toBe(false);
+      expect(workspaceWriteKey(state.ui)).toBe("user-2");
+
+      // …and the replayed entry displaces `doc-x`, so it is provisional again.
+      state = enter(state, "doc-c");
+      expect(workspaceWriteKey(state.ui)).toBeNull();
+    });
+  });
+
+  it("stays suppressed when the restore also failed", () => {
+    // The two guards compose, and neither is a substitute for the other. A
+    // failed read is refused whatever the entry did — including committing a
+    // deliberate layout change on top of it, which is the case a boolean OR
+    // written the other way round would have got wrong.
+    let state = reducer(
+      initial(),
+      actions.restoreWorkspace({
+        key: "user-1",
+        read: { ok: false, reason: "timeout" },
+      }),
+    );
+    state = enter(state, "doc-c");
+    // Nothing was displaced — the failed read installed no panes — so this is
+    // `workspaceRestoreFailed` alone doing the refusing.
+    expect(state.ui.workspaceProvisional).toBe(false);
+    expect(workspaceWriteKey(state.ui)).toBeNull();
+
+    state = reducer(state, actions.setSplitRatio(0.4));
+    expect(state.ui.workspaceProvisional).toBe(false);
+    expect(workspaceWriteKey(state.ui)).toBeNull();
+  });
+});
+
 describe("ui.workspace — the split ratio", () => {
   it("starts at the default and clamps what it is given", () => {
     expect(workspaceOf(initial()).splitRatio).toBe(DEFAULT_PANE_RATIO);

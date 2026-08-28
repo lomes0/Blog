@@ -325,6 +325,31 @@ export interface AppState {
      * early failure must not silence the rest of the session.
      */
     workspaceRestoreFailed: boolean;
+    /**
+     * Whether {@link workspace} is showing a layout the user never asked to
+     * keep — a cold-start `/edit/<id>` retargeted a pane the restore had just
+     * filled, and evicted whatever was in it.
+     *
+     * A deep link is an *entry*, not a layout change (see
+     * docs/plans/workspace-url.md §3.3). A stale bookmark opened once must not
+     * rewrite the split the user actually works in, and that is what used to
+     * happen: the seam retargeted the focused pane, the debounced writer saw a
+     * changed workspace, and the evicted document was gone from the record
+     * before the user had touched anything. Worse with an id that no longer
+     * resolves, since the record then names a document that cannot load and the
+     * broken pane comes back on every load after.
+     *
+     * So the view retargets and the record does not follow: the middleware
+     * refuses to write while this is set, and the view and the stored record
+     * disagree for as long as the session stays provisional. That is the
+     * accepted cost — a reload lands back on the stored layout, which is the
+     * one the user built.
+     *
+     * Set only when something was actually displaced, and cleared by the first
+     * deliberate layout change (see `commitLayout` in `workspaceReducers.ts`)
+     * and by every restore, so it cannot outlive the entry that raised it.
+     */
+    workspaceProvisional: boolean;
     sidebarView: SidebarView;
     /** Agent work awaiting review — see {@link ProposalsState}. */
     proposals: ProposalsState;

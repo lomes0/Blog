@@ -44,6 +44,16 @@ import { appSlice } from "./app";
  * ({@link readStoredWorkspace}), and a session that never got an answer stays
  * usable but writes nothing — losing this session's layout changes rather than
  * the stored layout.
+ *
+ * **Never a layout the user did not choose.** A cold-start `/edit/<id>`
+ * retargets the focused pane, which on a just-restored split evicts the
+ * document that was in it — and the debounce put that eviction in the record
+ * before the user had touched anything. So an entry that displaces a pane marks
+ * the workspace provisional (`ui.workspaceProvisional`,
+ * docs/plans/workspace-url.md §3.3) and this module writes nothing until a
+ * deliberate layout change lowers the flag. For one session the view and the
+ * record disagree; a reload lands on the record, which is the layout the user
+ * built.
  */
 
 /** Long enough to swallow a resize drag; short enough to beat a reload. */
@@ -339,13 +349,17 @@ export const workspacePersistenceMiddleware: Middleware =
         lastSeen = workspace;
         schedule(writeKey, workspace);
       }
-    } else if (state.ui.workspaceRestoreFailed) {
+    } else if (
+      state.ui.workspaceRestoreFailed || state.ui.workspaceProvisional
+    ) {
       // A scroll is not a store change, so it schedules its own write against
       // the last layout seen — which outlives a navigation on purpose (see
       // `lastWorkspace`). It must not outlive a failed restore: that layout is
       // from before this session gave up reading, and scrolling would put it
       // back over the record through the one path the guard above does not sit
-      // on.
+      // on. Nor a provisional one, and there the trap is sharper: reading the
+      // document a deep link opened is exactly what scrolls, so the side door
+      // would be walked through every time.
       lastKey = null;
       lastWorkspace = null;
     }

@@ -128,6 +128,38 @@ const heldElsewhere = (
       (pane.rootId === docId || pane.tabIds.includes(docId)),
   );
 
+/**
+ * The user just changed the layout on purpose, so this one is theirs to keep.
+ *
+ * Clears `ui.workspaceProvisional`, which a cold-start deep link raises when it
+ * evicts a document the restore had just put in the focused pane (see
+ * {@link workspaceReducers.openPane} and docs/plans/workspace-url.md §3.3).
+ * While it is up the persistence middleware writes nothing, so the flag has to
+ * come down on the ordinary path rather than on a rare one — a provisional flag
+ * that never clears would silence layout writes for the rest of the session,
+ * which is the same failure shape as the one §3.3 exists to fix, only on the
+ * common path.
+ *
+ * Called from the five reducers a user cannot reach except by acting on the
+ * layout itself: splitting or opening a document somewhere ({@link
+ * workspaceReducers.openPane} without `entry`), closing a pane, maximizing or
+ * restoring one, and moving the splitter. Each is called only where the action
+ * actually took effect, so a no-op dispatch does not commit anything.
+ *
+ * Two things deliberately left out. **Tab-level actions** — `setPaneTabs`,
+ * `addTab`, `removeTab`, `setActiveTab` — because none of them can be told from
+ * machinery settling: `setPaneTabs` is a fetch landing, `removeTab` and
+ * `closePane`'s sibling are what `useCloseDeletedDocument` dispatches, and the
+ * entry itself is followed by a tab list arriving for the document it just
+ * opened. Committing on those would commit the eviction a beat after it
+ * happened, which is the bug. And **a scroll**, which is not a store action at
+ * all; `workspacePersistence` drops its own write path while the flag is up so
+ * it cannot smuggle the layout out through the side door.
+ */
+const commitLayout = (state: AppState) => {
+  state.ui.workspaceProvisional = false;
+};
+
 /** Spread into `appSlice`'s `reducers` map. See the module docstring. */
 export const workspaceReducers = {
   // ── Workspace: panes ──────────────────────────────────────────────────
@@ -158,6 +190,24 @@ export const workspaceReducers = {
    *
    * `tabIds` starts empty on a retarget: the children are a fetch away, and
    * every consumer falls back to `rootId` until they land.
+   *
+   * **`entry` marks the one caller that is not the user: a cold-start
+   * `/edit/<id>`.** Case 3 is right for it — a deep link means "show me this
+   * where I am looking" exactly as a sidebar click does, and that is not being
+   * changed — but the *displacement* it causes is nobody's decision. A stale
+   * bookmark retargeting the focused pane used to have the evicted document out
+   * of the stored record inside the write debounce, before the user had touched
+   * anything. So an entry that displaces something raises
+   * `ui.workspaceProvisional`, the view retargets, and the record is left as it
+   * was until the user makes a deliberate layout change ({@link commitLayout}).
+   * A reload in between comes back to the layout they built.
+   *
+   * "Displaces something" is the whole condition, and both halves of the
+   * refinement matter (docs/plans/workspace-url.md §3.3). Case 1 displaces
+   * nothing — the document was already open — and neither does minting the
+   * first pane into an empty workspace, which is a first-ever visit whose one
+   * document must be recorded normally or a new user's layout is never stored
+   * at all.
    */
   openPane: {
     reducer: (
@@ -167,9 +217,10 @@ export const workspaceReducers = {
         rootId: string;
         mode: PaneMode | null;
         activeTabId: string | null;
+        entry: boolean;
       }>,
     ) => {
-      const { paneId, rootId, mode, activeTabId } = action.payload;
+      const { paneId, rootId, mode, activeTabId, entry } = action.payload;
 
       // (1) Already open — focus, never duplicate.
       const existing = paneShowing(state, rootId);
@@ -178,6 +229,9 @@ export const workspaceReducers = {
         if (existing.tabIds.includes(rootId)) existing.activeTabId = rootId;
         if (mode) existing.mode = mode;
         if (diffOpenFor(state, rootId)) existing.diffOpen = true;
+        // Nothing was evicted: an entry naming a document the restored layout
+        // already holds only moved the focus, and that is worth recording.
+        if (!entry) commitLayout(state);
         enforceMaximizeInvariant(state);
         return;
       }
@@ -185,6 +239,11 @@ export const workspaceReducers = {
       // (2)/(3) Which viewport is being retargeted.
       const target = paneId ? paneOf(state, paneId) : focusedPaneOf(state);
       if (target) {
+        // Whatever this pane was showing is about to be gone from it. For an
+        // entry that is the eviction nobody asked for, and the layout stops
+        // being recordable until the user says otherwise.
+        if (!entry) commitLayout(state);
+        else if (target.rootId !== rootId) state.ui.workspaceProvisional = true;
         target.rootId = rootId;
         target.tabIds = [];
         target.activeTabId = activeTabId;
@@ -202,6 +261,11 @@ export const workspaceReducers = {
       }
 
       if (state.ui.workspace.panes.length >= MAX_PANES) return;
+      // Minting rather than retargeting, so there was nothing here to lose:
+      // a first-ever visit, or a workspace with nothing stored. Its pane is
+      // recorded like any other, entry or not — suppressing it would mean a
+      // new user's first document is never remembered.
+      commitLayout(state);
       const id = paneId ?? uuidv4();
       state.ui.workspace.panes.push({
         id,
@@ -228,12 +292,18 @@ export const workspaceReducers = {
        * child tab needs the child, not the root it belongs to.
        */
       activeTabId?: string | null;
+      /**
+       * True only for the cold-start deep-link seam in `WorkspacePanes` — the
+       * one caller that is a URL rather than a person. See the docblock above.
+       */
+      entry?: boolean;
     }) => ({
       payload: {
         paneId: input.paneId ?? null,
         rootId: input.rootId,
         mode: input.mode ?? null,
         activeTabId: input.activeTabId ?? null,
+        entry: input.entry ?? false,
       },
     }),
   },
@@ -241,6 +311,9 @@ export const workspaceReducers = {
     const panes = state.ui.workspace.panes.filter(
       (pane) => pane.id !== action.payload,
     );
+    // A pane actually went, which is a layout the user chose. See
+    // {@link commitLayout}; an unknown id changes nothing and commits nothing.
+    if (panes.length !== state.ui.workspace.panes.length) commitLayout(state);
     state.ui.workspace.panes = panes;
     if (state.ui.workspace.focusedPaneId === action.payload) {
       state.ui.workspace.focusedPaneId = panes[panes.length - 1]?.id ?? null;
@@ -261,6 +334,9 @@ export const workspaceReducers = {
   closeAllPanes: (state: AppState) => {
     state.ui.workspace = emptyWorkspace();
     state.ui.workspaceHydrated = false;
+    // Nothing is open, so nothing is provisional. Re-entering `/edit` restores
+    // and the seam decides again — the flag is a fact about *this* entry.
+    state.ui.workspaceProvisional = false;
   },
   /**
    * Install a layout read back from storage (plan §8.2).
@@ -281,6 +357,11 @@ export const workspaceReducers = {
    * Cleared by a read that succeeds, so the restore `workspaceKeyChanged`
    * re-arms can lift the suppression an earlier failure imposed.
    *
+   * `workspaceProvisional` is lowered here for the same reason, and
+   * unconditionally: it describes an entry that displaced a restored pane, and
+   * this *is* the restore that entry lands on top of. Deriving it on every
+   * restore is what keeps it from outliving the session it belongs to.
+   *
    * Two things it will not do:
    *
    * - **Restore twice.** `workspaceHydrated` gates it, so a second read
@@ -299,6 +380,9 @@ export const workspaceReducers = {
     state.ui.workspaceKey = key;
     state.ui.workspaceHydrated = true;
     state.ui.workspaceRestoreFailed = !read.ok;
+    // Derived on every restore rather than only when it is raised, so a flag
+    // set by one entry cannot survive into the layout of the next.
+    state.ui.workspaceProvisional = false;
     if (state.ui.workspace.panes.length > 0) return;
     state.ui.workspace = sanitizeWorkspace(read.ok ? read.stored : undefined);
   },
@@ -320,6 +404,9 @@ export const workspaceReducers = {
    * restore sets it either way when it lands, and until then `workspaceHydrated`
    * is down, which already stops the middleware writing. Clearing it here would
    * only widen the window in which a session that has read nothing may write.
+   * `workspaceProvisional` is left for the same reason, and the replay that
+   * follows is an entry like the first one: if it displaces a pane of the layout
+   * the *right* user's restore just installed, it raises the flag again.
    */
   workspaceKeyChanged: (state: AppState, action: PayloadAction<string>) => {
     if (state.ui.workspaceKey === action.payload) return;
@@ -353,15 +440,19 @@ export const workspaceReducers = {
     if (!paneOf(state, action.payload)) return;
     if (workspace.maximizedPaneId === action.payload) {
       workspace.maximizedPaneId = null;
+      commitLayout(state);
       return;
     }
     if (workspace.panes.length < 2) return;
     workspace.maximizedPaneId = action.payload;
     workspace.focusedPaneId = action.payload;
+    commitLayout(state);
   },
   /** Esc, and anything else that means "show me both panes again". */
   unmaximizePane: (state: AppState) => {
+    if (state.ui.workspace.maximizedPaneId === null) return;
     state.ui.workspace.maximizedPaneId = null;
+    commitLayout(state);
   },
   /**
    * Where the splitter sits, as the left pane's share of the row.
@@ -373,6 +464,8 @@ export const workspaceReducers = {
   setSplitRatio: (state: AppState, action: PayloadAction<number>) => {
     if (!Number.isFinite(action.payload)) return;
     state.ui.workspace.splitRatio = clampPaneRatio(action.payload);
+    // Dragging the splitter is as deliberate as an act on a layout gets.
+    commitLayout(state);
   },
   setPaneMode: (
     state: AppState,

@@ -133,6 +133,55 @@ The third branch is why the route keeps its optional catch-all: a handle for a
 post not yet in the store still needs the id to travel through the URL to reach
 the seam's fetch. That is the entry path doing exactly what §3.1 describes.
 
+### 3.3 An entry that displaces a pane is shown but not recorded — **added 28 Aug 2026**
+
+§3.1's "entries still work" was true of the view and wrong about the record.
+Verified in a browser: stored layout `[A][B]`, cold load `/edit/C`, and inside
+the 400 ms write debounce the record read `[A][C]`. Nobody had touched anything.
+A bookmark followed once had rewritten the split its owner works in — and with
+an id that no longer resolves the record then names a document that cannot load,
+so the broken pane comes back on every load after.
+
+The retarget itself is right and stays: a deep link means "show me this where I
+am looking", the same sentence a sidebar click means, and `openPane` case 3 is
+the one place that is decided. What was wrong is that the *displacement* was
+treated as a layout change. It is not one — nobody chose it — so:
+
+**Retarget, but do not persist.** An entry that evicts something raises
+`ui.workspaceProvisional`; `workspaceWriteKey` refuses to name a key while it is
+up, and `workspacePersistence` also drops the `lastKey`/`lastWorkspace` pair a
+scroll write would otherwise schedule against. The record is committed by the
+first *deliberate* layout change — a split, a close, maximize or restore, the
+splitter, or opening another document from the sidebar or palette — each cleared
+at the point the reducer actually took effect, so a stale dispatch commits
+nothing. A scroll does not, and neither do the tab-level reducers, because none
+of them can be told from machinery settling (`setPaneTabs` is the entry's own
+children arriving).
+
+```
+restored:  [A][B]   stored: [A][B]
+open /edit/C
+view:      [A][C]   stored: [A][B]   ← untouched
+reload /edit  ->    [A][B]           ← B is back
+user splits/closes/drags
+view:      [A][C]   stored: [A][C]   ← committed
+```
+
+Two refinements, both of which would be fresh bugs if dropped. Provisional only
+when something was **actually displaced**: an entry into an empty workspace
+mints the first pane and is recorded normally, or a new user's first document is
+never stored at all; and an entry naming a document already open is case 1, the
+duplicate-open guard, which moves the focus and evicts nothing. And the flag is
+derived on **every** restore rather than only when raised — the same
+self-clearing shape as `workspaceRestoreFailed` (`d1bf7045`) — because one that
+stuck would silence layout writes for the whole session, which is §3.3's own bug
+reached by the common path instead of a rare one.
+
+**The accepted cost, recorded in the manner of §6.3:** for the rest of that
+session the view and the stored record disagree, and a reload discards the
+entry. That is deliberate. The alternative loses work the user did on purpose to
+a URL they did not.
+
 ---
 
 ## 4. What breaks — the complete list

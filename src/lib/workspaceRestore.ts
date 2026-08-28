@@ -66,21 +66,27 @@ export type StoredWorkspaceRead =
  *
  * The persistence middleware's whole write decision, here rather than there so
  * it can be exercised without IndexedDB — the same reason `dragGeometry.ts` is
- * import-free. Four conditions, and each one is a way a write destroys
+ * import-free. Five conditions, and each one is a way a write destroys
  * something:
  *
  * 1. **Hydrated.** Before the restore lands the store holds no layout, only a
  *    default one.
  * 2. **The read did not fail.** A timed-out or thrown read leaves the stored
  *    record unseen and still valid. See {@link StoredWorkspaceRead}.
- * 3. **A key.** There is nothing to write under until the restore names one.
- * 4. **Non-empty.** `closeAllPanes` fires on every navigation out of `/edit`.
+ * 3. **Not provisional.** A cold-start `/edit/<id>` retargets a pane the
+ *    restore had just filled. Nobody asked for that eviction — a bookmark did
+ *    — so it is shown and not recorded until the user changes the layout on
+ *    purpose. See `AppState["ui"].workspaceProvisional` and
+ *    docs/plans/workspace-url.md §3.3.
+ * 4. **A key.** There is nothing to write under until the restore names one.
+ * 5. **Non-empty.** `closeAllPanes` fires on every navigation out of `/edit`.
  *
  * Returning the key rather than a boolean is what keeps the caller from having
  * to re-establish that it is non-null.
  */
 export const workspaceWriteKey = (ui: AppState["ui"]): string | null =>
   ui.workspaceHydrated && !ui.workspaceRestoreFailed &&
+    !ui.workspaceProvisional &&
     ui.workspaceKey !== null && ui.workspace.panes.length > 0
     ? ui.workspaceKey
     : null;
