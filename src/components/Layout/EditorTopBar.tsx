@@ -232,9 +232,10 @@ const EditorTopBar: React.FC = () => {
           });
         }
         // `docId`, not `segments[1]`: every other value here is read off the
-        // focused pane (see the note by `docId`), so taking the href off the
-        // address bar instead would name a different document than the label
-        // beside it for as long as the URL projection is catching up.
+        // focused pane (see the note by `docId`), and since
+        // docs/plans/workspace-url.md §3 the address bar does not name a
+        // document at all — `/edit` is the steady state, so `segments[1]` is
+        // usually just absent.
         items.push({
           label: docName || "Post",
           href: docId ? `/edit/${docId}` : "/posts",

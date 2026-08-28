@@ -82,9 +82,11 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     dispatch(actions.toggleMaximizePane(paneId));
   }, [dispatch, paneId]);
 
-  // Through the command rather than `closePane` directly: closing a pane also
-  // has to repair the address bar, which still names the document that is going
-  // away, and `pane.close` is where that rule lives.
+  // Through the command rather than `closePane` directly. It no longer repairs
+  // the address bar — the URL stopped naming a document
+  // (docs/plans/workspace-url.md §3) — but `pane.close` is still where the rule
+  // lives: it refuses the last pane, and running it through the registry is
+  // what keeps the button and the Copilot on one definition.
   const handleClosePane = useCallback(() => {
     void run(paneCommands.close, { paneId });
   }, [run, paneId]);

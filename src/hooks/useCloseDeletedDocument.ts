@@ -6,7 +6,6 @@ import {
   selectFocusedDocId,
   selectPaneShowingDoc,
 } from "@/store/selectors/layoutSelectors";
-import { WORKSPACE_ROUTE } from "@/lib/workspaceUrl";
 
 /** Where a workspace with nothing left in it goes. */
 export const HOME_ROUTE = "/";
@@ -67,23 +66,24 @@ export const HOME_ROUTE = "/";
  *
  * ## The address bar
  *
- * The focus projection in `WorkspacePanes` will not repair it: that guard
- * declines while the URL names a document no pane holds, because in every other
- * case that means a navigation is in flight (`lib/workspaceUrl.ts`). Deleting is
- * one of the two ways to reach that state deliberately, so — as in `pane.close`
- * — the closer owns it.
+ * Almost nothing, since docs/plans/workspace-url.md §3 made the URL an entry
+ * point rather than a projection of focus. There used to be a `replaceState` to
+ * whatever pane inherited focus, because the address bar still named the
+ * document that had just been deleted and the focus projection deliberately
+ * declined to repair that case. The address bar reads `/edit` before and after
+ * now, so with a pane left there is simply nothing to do.
  *
- * With a pane left, that is a `replaceState` to whatever inherited focus: not a
- * navigation, so `/edit`'s `force-dynamic` render is not paid for it (see
- * `workspaceUrl.ts` on why Next 15 follows a patched `replaceState`). Which pane
- * inherits is read back rather than predicted — that is `closePane`'s rule, and
- * duplicating it here would be a second copy to keep in step.
+ * With **no** pane left there still is. An empty workspace has nothing to show,
+ * and `WorkspacePanes`' own empty-workspace redirect is a one-shot on *arrival*
+ * — deliberately not a standing watch, precisely so it cannot race this. So the
+ * closer keeps the last-pane case: it leaves the editor for the home route.
+ * `replace`, not `push` — the deleted post is not somewhere Back should be able
+ * to return to, and under the old model it would have restored the same ghost
+ * editor this exists to close.
  *
- * With no pane left there is nothing to point at, and `/edit` with no id is the
- * route's "Document Not Found" splash rather than an empty workspace. So this
- * leaves the editor for the home route. `replace`, not `push`: the deleted
- * post's URL is not somewhere Back should be able to return to — it would
- * restore the same ghost editor this exists to close.
+ * Whether a pane is left is read back rather than predicted, because which pane
+ * inherits focus is `closePane`'s rule and duplicating it here would be a
+ * second copy to keep in step.
  */
 export function useCloseDeletedDocument() {
   const dispatch = useDispatch();
@@ -107,14 +107,9 @@ export function useCloseDeletedDocument() {
     }
     dispatch(actions.closePane(pane.id));
 
-    if (typeof window === "undefined") return;
-    if (!window.location.pathname.startsWith(WORKSPACE_ROUTE)) return;
-
-    const nextDocId = selectFocusedDocId(store.getState());
-    if (nextDocId) {
-      window.history.replaceState(null, "", `${WORKSPACE_ROUTE}/${nextDocId}`);
-      return;
-    }
+    // Something survived, so the workspace still has something to show and the
+    // address bar already reads `/edit`. Nothing to navigate.
+    if (selectFocusedDocId(store.getState())) return;
     router.replace(HOME_ROUTE);
   }, [dispatch, router, store]);
 }

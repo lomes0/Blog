@@ -73,8 +73,8 @@ const enforceMaximizeInvariant = (state: AppState) => {
  * same collision as opening it twice at the top level.
  *
  * Exported so `selectPaneShowingDoc` can answer the same question for readers
- * outside the slice — the URL projection asks it of the document the address bar
- * names — rather than the invariant getting a second, drifting definition.
+ * outside the slice — `useCloseDeletedDocument` asks it of a document that has
+ * just gone — rather than the invariant getting a second, drifting definition.
  */
 export const paneShowing = (
   state: AppState,
@@ -297,8 +297,11 @@ export const workspaceReducers = {
    * device-local note of who was signed in last. Usually right; wrong across
    * an expired cookie, or when a second account signs in on a shared
    * browser. Clearing back to un-hydrated is what makes that self-correcting:
-   * the restore runs again under the right key, and the deep-link seam
-   * replays the URL on top of it exactly as it did the first time.
+   * the restore runs again under the right key, and the deep-link seam replays
+   * the entry on top of it exactly as it did the first time. Since
+   * docs/plans/workspace-url.md §3 that entry comes from a ref in
+   * `WorkspacePanes` rather than from the address bar, which has already been
+   * consumed by then — the promise this docblock makes is why that ref exists.
    */
   workspaceKeyChanged: (state: AppState, action: PayloadAction<string>) => {
     if (state.ui.workspaceKey === action.payload) return;

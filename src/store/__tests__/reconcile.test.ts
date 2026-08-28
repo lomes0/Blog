@@ -187,8 +187,8 @@ describe("reconcilePosts", () => {
    *
    * Removing a post that a pane is rooted at leaves `ui.workspace` exactly as
    * it was. That is deliberate and matches `removePost`: a reducer cannot
-   * navigate, and closing the pane without also fixing the address bar would be
-   * half a repair, which `useCloseDeletedDocument` argues is worse than none. So
+   * navigate, and leaving the workspace on nothing at all is the other half of
+   * the repair, which `useCloseDeletedDocument` argues must not be split. So
    * the pane survives this reducer and `useBackgroundRefresh` closes it in an
    * effect, using the ids reported here.
    */

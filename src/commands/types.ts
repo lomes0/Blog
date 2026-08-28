@@ -25,21 +25,19 @@ export interface CommandRouter {
   push(href: string): void;
   replace(href: string): void;
   refresh(): void;
-  /**
-   * Point the address bar somewhere without navigating.
-   *
-   * `push`/`replace` go through the router, which on a `force-dynamic` route
-   * means a server round trip. `rewrite` goes through `history.replaceState`,
-   * which Next patches into an `ACTION_RESTORE` — `canonicalUrl` moves,
-   * `usePathname()` moves with it, and the page is not re-requested. See the
-   * note in `lib/workspaceUrl.ts`.
-   *
-   * For when the URL is a *projection* of state that has already changed, which
-   * is the workspace's whole model (plan §0). Not for navigation: it adds no
-   * history entry, so the user cannot go back through it.
-   */
-  rewrite(href: string): void;
 }
+
+/*
+ * There used to be a fourth primitive here, `rewrite` — a `history.replaceState`
+ * for pointing the address bar at state that had already changed. It existed
+ * only because the workspace URL was a *projection* of pane focus, and its only
+ * caller was `pane.close` repairing an address bar that named a pane it had
+ * just closed. docs/plans/workspace-url.md §3 made the URL an entry point that
+ * is consumed once instead, so there is nothing left to project and nothing
+ * left to repair: closing a pane is not a URL event. The one surviving
+ * `replaceState` in the app is the consume itself, in `WorkspacePanes`, and it
+ * is not a command.
+ */
 
 /** The active color scheme, as a thing a command can read and set. */
 export interface ThemeBridge {

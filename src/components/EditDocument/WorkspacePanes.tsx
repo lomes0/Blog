@@ -10,11 +10,6 @@ import {
   useStore,
 } from "@/store";
 import type { RootState } from "@/store";
-import {
-  selectFocusedDocId,
-  selectPaneShowingDoc,
-} from "@/store/selectors/layoutSelectors";
-import { workspaceUrlForFocus } from "@/lib/workspaceUrl";
 import { useDragCapture } from "@/hooks/useResizablePanel";
 import ResizeGripper from "@/components/Layout/ResizeGripper";
 import {
@@ -173,6 +168,15 @@ const PaneFrame: React.FC<PaneFrameProps> = ({
  */
 const EMPTY_WORKSPACE_ROUTE = "/posts";
 
+/**
+ * The workspace's own address, and its steady state (plan §3).
+ *
+ * `/edit/<id>` is a door in, not a place to stay: it is consumed on arrival and
+ * replaced by this. A bare literal rather than an import, because the module
+ * that used to export it was the projection machinery this plan deleted.
+ */
+const WORKSPACE_ROUTE = "/edit";
+
 interface WorkspacePanesProps {
   /**
    * The document named by the URL — the deep-link seam's answer — or `null` on
@@ -216,6 +220,11 @@ const WorkspacePanes: React.FC<WorkspacePanesProps> = ({ rootId }) => {
   const hydrated = useSelector(
     (state: RootState) => state.ui.workspaceHydrated,
   );
+  /**
+   * The document the URL arrived with, kept after the address bar has been
+   * cleared of it. Only the re-armed restore below reads it.
+   */
+  const entryDocId = useRef<string | null>(null);
 
   // Read the layout back (plan §8.2). Kicked off here rather than in the app
   // layout because panes are a fact about *this* route: restoring them in the
@@ -258,47 +267,33 @@ const WorkspacePanes: React.FC<WorkspacePanesProps> = ({ rootId }) => {
   // reducer's to decide: a URL naming a restored pane's document focuses that
   // pane, and any other URL retargets the focused one and leaves its neighbour.
   //
-  // The projection back out — plan §0's other direction — is folded into the
-  // *same* effect on purpose. It has to run after the replay above: on the
-  // commit where the restore lands, a stored layout can name a different
-  // focused pane than the URL does, and the URL wins. Reading state only after
-  // `openPane` has settled that is what makes the first pass a no-op instead of
-  // a race, and keeping the two in one effect means a later edit cannot reorder
-  // them apart.
+  // Then the URL is **consumed** (plan §3): one `history.replaceState` back to
+  // `/edit`, and the address bar is out of the workspace's business for good.
+  // It is not a projection of focus any more — clicking between panes, opening
+  // a tab, splitting and closing all touch nothing but the store, which is
+  // where the answer was always more complete than one id could be.
   //
-  // From then on it is `store.subscribe`, not a dependency on a selected value,
-  // for the same reason: the answer must be read at the moment of acting.
-  // `workspaceUrlForFocus` refuses on every input that is not a genuine focus
-  // change, so the listener is a handful of comparisons on almost every action.
+  // `replaceState` rather than a router call for the same reason the projection
+  // used it: Next 15 patches it into an `ACTION_RESTORE`, which only re-points
+  // `canonicalUrl` and never consults the server. `usePathname()` follows, so
+  // `rootId` comes back null on the next commit and this effect re-runs into
+  // its own early return — one pass, then quiet.
   useEffect(() => {
+    if (rootId) entryDocId.current = rootId;
     if (!hydrated) return;
-    // Bare `/edit` names nothing, so there is nothing to replay: the restore
-    // above is the whole answer, and dispatching here would mint a pane rooted
-    // at nothing.
-    if (rootId) dispatch(actions.openPane({ rootId }));
-
-    const project = () => {
-      const state = store.getState();
-      const next = workspaceUrlForFocus({
-        // The address bar rather than `usePathname()`: this is the value being
-        // overwritten, and it is also how the "only on /edit" guard stays true
-        // in the beat between a navigation away and this component unmounting.
-        currentPath: window.location.pathname,
-        workspaceHydrated: state.ui.workspaceHydrated,
-        urlDocId: rootId,
-        focusedDocId: selectFocusedDocId(state),
-        urlDocIsOpen: !!selectPaneShowingDoc(state, rootId),
-      });
-      // Next 15 patches `replaceState` to re-point its own canonical URL, so
-      // `usePathname()` follows without an RSC fetch — see `workspaceUrl.ts`.
-      // That re-render feeds a new `rootId` back into the effect above, which
-      // replays `openPane` on the pane that is already focused: a no-op, which
-      // is why this settles rather than oscillates.
-      if (next) window.history.replaceState(null, "", next);
-    };
-    project();
-    return store.subscribe(project);
-  }, [dispatch, store, hydrated, rootId]);
+    // Bare `/edit` names nothing, so there is usually nothing to replay. The
+    // exception is a re-armed restore: `workspaceKeyChanged` empties the
+    // workspace and lowers `workspaceHydrated` when the guessed key turns out
+    // to be the wrong user, and by then the entry has already been consumed out
+    // of the address bar. Replaying it from the ref is what stops the document
+    // the user actually followed being dropped in favour of the other account's
+    // stored layout — the reducer's docblock promises that replay, and after
+    // the consume the URL can no longer supply it.
+    const entry = rootId ?? entryDocId.current;
+    if (!entry) return;
+    dispatch(actions.openPane({ rootId: entry }));
+    if (rootId) window.history.replaceState(null, "", WORKSPACE_ROUTE);
+  }, [dispatch, hydrated, rootId]);
 
   // The empty-workspace answer (plan §4.3, §6.2): arriving at bare `/edit` with
   // no stored layout leaves nothing to show, so it hands over to `/posts`.

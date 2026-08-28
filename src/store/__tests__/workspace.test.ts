@@ -176,10 +176,12 @@ describe("ui.workspace — panes", () => {
   });
 
   it("leaves the survivor's active tab as the focused document on close", () => {
-    // What `pane.close` rewrites the URL to. It reads this back rather than
-    // predicting it, so this pins the property the rewrite depends on: after
-    // closing the focused pane, the focused *document* is the survivor's active
-    // tab — its child, not its root, when a child was open.
+    // What `useCloseDeletedDocument` reads back to decide whether anything is
+    // left to show. It reads rather than predicts, so this pins the property
+    // that read depends on: after closing the focused pane, the focused
+    // *document* is the survivor's active tab — its child, not its root, when a
+    // child was open. (`pane.close` used to read the same value to rewrite the
+    // URL to it; docs/plans/workspace-url.md §3 retired that, not this.)
     let state = openWithTabs(initial(), "p1", "doc-a", ["c1"]);
     state = reducer(state, actions.setActiveTab({ paneId: "p1", tabId: "c1" }));
     state = openWithTabs(state, "p2", "doc-b");
@@ -900,14 +902,16 @@ describe("ui.workspace — restoring a stored layout", () => {
 });
 
 /**
- * What the URL means once there is a layout underneath it.
+ * What an entry URL means once there is a layout underneath it.
  *
- * `WorkspacePanes` replays the address bar as `openPane({ rootId })` — the same
+ * `WorkspacePanes` replays `/edit/<id>` as `openPane({ rootId })` — the same
  * door a sidebar click and the Copilot use — and waits for the restore before
- * doing it. Both outcomes below are the Phase 5 reducer's, unchanged: that is
- * the point of not giving the restore its own path into the workspace.
+ * doing it, then consumes the URL (docs/plans/workspace-url.md §3). So this is
+ * what a *deep link* does to a stored layout, and it is the only thing the URL
+ * still decides. Every outcome below is the Phase 5 reducer's, unchanged: that
+ * is the point of not giving the restore its own path into the workspace.
  */
-describe("ui.workspace — the URL, replayed over a restored layout", () => {
+describe("ui.workspace — an entry URL, replayed over a restored layout", () => {
   const restoredPair = (): AppState =>
     reducer(
       initial(),
@@ -936,7 +940,7 @@ describe("ui.workspace — the URL, replayed over a restored layout", () => {
       }),
     );
 
-  it("a reload keeps both panes and focuses the one the URL names", () => {
+  it("an entry naming a restored pane keeps both and focuses that one", () => {
     const state = reducer(
       restoredPair(),
       actions.openPane({ rootId: "doc-a" }),
@@ -951,24 +955,24 @@ describe("ui.workspace — the URL, replayed over a restored layout", () => {
     expect(paneOf(state, "p1").tabIds).toEqual(["doc-a", "c1"]);
   });
 
-  it("a reload after a split focuses the pane that was split off", () => {
-    // `pane.split` pushes `/edit/<rootId>` for exactly this: the split pane is
-    // the focused one, and on a cold load the URL is what decides focus — the
-    // restore replays it here. Were the URL still naming the left pane (which
-    // it did until `pane.split` learned to push), both panes and the ratio
-    // would come back and focus would land on the wrong one.
-    const state = reducer(
-      restoredPair(),
-      actions.openPane({ rootId: "doc-b" }),
-    );
+  it("a reload with no entry restores the stored focus, split included", () => {
+    // The property that let `pane.split`'s `router.push` be deleted
+    // (docs/plans/workspace-url.md §5). That push existed because the URL was
+    // what decided focus on a cold load, so without it a reload restored both
+    // panes and then focused the wrong one — the left one, which the address
+    // bar was still naming. `focusedPaneId` is in the stored record and always
+    // was: with the URL consumed there is nothing to replay, and the restore
+    // alone is the whole answer.
+    const state = restoredPair();
 
     expect(workspaceOf(state).panes.map((p) => p.rootId))
       .toEqual(["doc-a", "doc-b"]);
     expect(workspaceOf(state).focusedPaneId).toBe("p2");
+    expect(paneOf(state, "p2").activeTabId).toBe("doc-b");
     expect(workspaceOf(state).splitRatio).toBe(0.65);
   });
 
-  it("a URL naming a restored pane's *tab* focuses that pane and activates it", () => {
+  it("an entry naming a restored pane's *tab* focuses it and activates that tab", () => {
     const state = reducer(restoredPair(), actions.openPane({ rootId: "c1" }));
 
     expect(workspaceOf(state).panes).toHaveLength(2);
@@ -1144,117 +1148,3 @@ describe("ui.workspace — focus is what 'active' means now", () => {
   });
 });
 
-/**
- * The property that lets the URL follow focus without a loop.
- *
- * Clicking between two open panes changes `focusedPaneId` and pushes nothing, so
- * the address bar went on naming the pane the user had just left. `WorkspacePanes`
- * now projects focus back out with `history.replaceState`, and Next 15 syncs
- * `usePathname()` to that — which re-fires the deep-link seam and replays the
- * *focused* document through `openPane`.
- *
- * That replay is only safe if it is a genuine no-op, so it is asserted here
- * rather than reasoned about. The two things that could go wrong:
- *
- * - **It could move focus.** It must not: the pane it finds is the one that is
- *   already focused.
- * - **It could reset the active tab.** This is why the projection uses
- *   `selectFocusedDocId` (`activeTabId ?? rootId`) and not the pane's `rootId`.
- *   Were it the root, a replay while a *child tab* was active would retarget the
- *   pane onto the root — so clicking between panes would silently switch tabs.
- *   The third case below is that bug, in the shape it would have taken.
- *
- * `focusedDocIdOf` mirrors `selectFocusedDocId`; the selector itself is not
- * imported because `@/store/selectors` reaches the configured store, and with it
- * IndexedDB, which these node-environment specs deliberately stay clear of.
- */
-describe("ui.workspace — the URL follows focus", () => {
-  /** What `selectFocusedDocId` answers, and so what the URL is rewritten to. */
-  const focusedDocIdOf = (state: AppState): string => {
-    const { panes, focusedPaneId } = state.ui.workspace;
-    const pane = panes.find((p) => p.id === focusedPaneId);
-    if (!pane) throw new Error("nothing focused");
-    return pane.activeTabId ?? pane.rootId;
-  };
-
-  /** Replay the address bar exactly as the deep-link seam does. */
-  const replayUrl = (state: AppState): AppState =>
-    reducer(state, actions.openPane({ rootId: focusedDocIdOf(state) }));
-
-  /** A split with tabs on the left, focus wherever `focus` says. */
-  const split = (focus: "p1" | "p2"): AppState => {
-    let state = openWithTabs(initial(), "p1", "doc-a", ["c1", "c2"]);
-    state = openWithTabs(state, "p2", "doc-b", ["c3"]);
-    state = reducer(state, actions.setSplitRatio(0.65));
-    return reducer(state, actions.focusPane(focus));
-  };
-
-  it("replaying the focused pane's root changes nothing at all", () => {
-    const before = split("p2");
-    const after = replayUrl(before);
-
-    expect(after.ui.workspace).toEqual(before.ui.workspace);
-    // Spelled out, because "nothing changed" is the whole claim: focus, the
-    // active tab, the tab list, the neighbour and the ratio.
-    expect(after.ui.workspace.focusedPaneId).toBe("p2");
-    expect(paneOf(after, "p2").activeTabId).toBe("doc-b");
-    expect(paneOf(after, "p2").tabIds).toEqual(["doc-b", "c3"]);
-    expect(paneOf(after, "p1")).toEqual(paneOf(before, "p1"));
-    expect(after.ui.workspace.splitRatio).toBe(0.65);
-  });
-
-  it("replaying it again is still a no-op, so the URL settles", () => {
-    const before = split("p1");
-    expect(replayUrl(replayUrl(before)).ui.workspace)
-      .toEqual(before.ui.workspace);
-  });
-
-  it("replaying an active *child tab* keeps that tab active", () => {
-    let before = split("p1");
-    before = reducer(
-      before,
-      actions.setActiveTab({ paneId: "p1", tabId: "c2" }),
-    );
-    // The URL now names the child, not the post it belongs to.
-    expect(focusedDocIdOf(before)).toBe("c2");
-
-    const after = replayUrl(before);
-
-    expect(after.ui.workspace).toEqual(before.ui.workspace);
-    expect(paneOf(after, "p1").activeTabId).toBe("c2");
-    expect(paneOf(after, "p1").rootId).toBe("doc-a");
-  });
-
-  it("replaying a pane whose tabs have not landed yet leaves them unknown", () => {
-    // The window between `openPane` and `setPaneTabs`: `activeTabId` is null, so
-    // the projection names the root — and the guard must not invent a tab.
-    let before = reducer(
-      initial(),
-      actions.openPane({ paneId: "p1", rootId: "doc-a", mode: "write" }),
-    );
-    before = reducer(
-      before,
-      actions.openPane({ paneId: "p2", rootId: "doc-b", mode: "write" }),
-    );
-
-    const after = replayUrl(before);
-
-    expect(after.ui.workspace).toEqual(before.ui.workspace);
-    expect(paneOf(after, "p2").activeTabId).toBeNull();
-    expect(paneOf(after, "p2").tabIds).toEqual([]);
-  });
-
-  it("a focus move then a replay lands on the pane that was clicked", () => {
-    // The sequence the feature exists for: focus p1, the URL is rewritten to
-    // p1's document, and the seam replays it. p2 must survive untouched.
-    const start = split("p2");
-    const clicked = reducer(start, actions.focusPane("p1"));
-
-    expect(focusedDocIdOf(clicked)).toBe("doc-a");
-    const after = replayUrl(clicked);
-
-    expect(after.ui.workspace).toEqual(clicked.ui.workspace);
-    expect(after.ui.workspace.focusedPaneId).toBe("p1");
-    expect(paneOf(after, "p2")).toEqual(paneOf(start, "p2"));
-  });
-});

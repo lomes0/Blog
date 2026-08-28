@@ -63,19 +63,12 @@ export const CommandProvider: React.FC<{ children: React.ReactNode }> = (
   const panes = useSelector(selectPaneDescriptions);
   const resolvedScheme = mode === "system" ? systemMode : mode;
 
-  // Next's router plus `rewrite`, which it has no equivalent of: a URL change
-  // that is not a navigation. Wrapping rather than passing `router` through also
-  // means a command sees exactly the four methods `CommandRouter` declares.
+  // Wrapping rather than passing `router` through, so a command sees exactly
+  // the three methods `CommandRouter` declares and no more.
   const commandRouter = useMemo<CommandRouter>(() => ({
     push: (href) => router.push(href),
     replace: (href) => router.replace(href),
     refresh: () => router.refresh(),
-    rewrite: (href) => {
-      // Guarded because commands are callable from the Copilot's executor, and
-      // nothing structurally stops that running where there is no history.
-      if (typeof window === "undefined") return;
-      window.history.replaceState(null, "", href);
-    },
   }), [router]);
 
   const context = useMemo<CommandContext>(() => ({

@@ -16,18 +16,58 @@ const openParams = z.object({
 type DocumentOpenParams = z.infer<typeof openParams>;
 
 /**
- * Since Phase 5 this drives **workspace state first** and the URL second.
+ * The workspace's own address, and its steady state.
  *
- * Before, it only pushed a path and let the routing seam replay it as a pane.
- * That stopped working once a second pane existed: opening a post that the
- * *other* pane is already showing has to move focus, and `router.push` of a
- * path the address bar already holds is a no-op — so the click did nothing. The
- * dispatch is what actually decides (`openPane` holds the duplicate-open
- * invariant of plan §5.2); the push only keeps the address bar honest, and
- * remains the cold-load path for a handle whose post is not in the store yet.
+ * `/edit/<id>` is a door in, not a place to stay: the seam in `WorkspacePanes`
+ * consumes it on arrival and replaces it with this (docs/plans/workspace-url.md
+ * §3).
+ */
+const WORKSPACE_ROUTE = "/edit";
+
+/**
+ * Is the workspace already on screen?
  *
- * `mode` is a pane mode now, not a route. `/view/[id]` is the public page and is
- * reached by links, never by this command — see plan §4.4.
+ * `/edit/<id>` counts. It is an entry the seam is in the middle of consuming, so
+ * the address bar is about to read `/edit` on its own; pushing across that
+ * window would spend a history entry on an open that is not a navigation. The
+ * `window` guard is for the Copilot's executor, which nothing structurally
+ * stops running where there is no location.
+ */
+const inWorkspace = (): boolean => {
+  if (typeof window === "undefined") return false;
+  const { pathname } = window.location;
+  return pathname === WORKSPACE_ROUTE ||
+    pathname.startsWith(`${WORKSPACE_ROUTE}/`);
+};
+
+/**
+ * Drives **workspace state**, and navigates only when it has to.
+ *
+ * Three branches, and they are docs/plans/workspace-url.md §3.2 verbatim:
+ *
+ * ```
+ * dispatch openPane if the ref resolves
+ *   ├─ resolved + already on /edit  → nothing else
+ *   ├─ resolved + elsewhere         → router.push("/edit")
+ *   └─ unresolved (cold handle)     → router.push(`/edit/${id}`), seam fetches
+ * ```
+ *
+ * The dispatch is what actually decides — `openPane` holds the duplicate-open
+ * invariant of workspace-panes.md §5.2, which is why opening a post the *other*
+ * pane already shows moves focus rather than opening it twice. It used to be
+ * followed unconditionally by a `push` of `/edit/<id>`, keeping the address bar
+ * on the focused document; the URL is an entry point now, so the only pushes
+ * left are the two that genuinely have somewhere to go. The common case — an
+ * open from inside the workspace — is **zero** navigations and zero history
+ * entries.
+ *
+ * The third branch is why the route keeps its optional catch-all. A handle for
+ * a post that is not in the store cannot be resolved to a pane's `rootId` here,
+ * so the id has to travel through the URL to reach the seam, which fetches it
+ * and then consumes the URL exactly as it would a cold deep link.
+ *
+ * `mode` is a pane mode, not a route. `/view/[id]` is the public page and is
+ * reached by links, never by this command — see workspace-panes.md §4.4.
  */
 const open = defineCommand<DocumentOpenParams>({
   id: "document.open",
@@ -43,15 +83,19 @@ const open = defineCommand<DocumentOpenParams>({
   run: async (ctx, { id, mode = "write" }) => {
     const { actions, postsSelectors, store } = await import("@/store");
     // Panes are keyed by document id, so a handle has to be resolved before it
-    // can become one. An unresolvable handle is left to the routing seam, which
-    // fetches it after the navigation below.
+    // can become one. An unresolvable handle is the third branch: it is left to
+    // the routing seam, which fetches it after the navigation.
     const lowered = id.toLowerCase();
     const rootId = postsSelectors.selectById(store.getState(), id)?.id ??
       postsSelectors.selectAll(store.getState()).find(
         (post) => post.handle?.toLowerCase() === lowered,
       )?.id;
-    if (rootId) ctx.dispatch(actions.openPane({ rootId, mode }));
-    ctx.router.push(`/edit/${id}`);
+    if (!rootId) {
+      ctx.router.push(`${WORKSPACE_ROUTE}/${id}`);
+      return commandOk();
+    }
+    ctx.dispatch(actions.openPane({ rootId, mode }));
+    if (!inWorkspace()) ctx.router.push(WORKSPACE_ROUTE);
     return commandOk();
   },
 });

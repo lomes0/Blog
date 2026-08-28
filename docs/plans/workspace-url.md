@@ -1,7 +1,7 @@
 # The workspace URL: from projection to entry point
 
-**Status: Phases A and B shipped 28 Aug 2026** (`c63de634`, `2cf113ae`,
-`2ef0bd39`); C and D open. Written 1 Aug 2026, and §8.1 records what had
+**Status: Phases A–C shipped 28 Aug 2026** (`c63de634`, `2cf113ae`,
+`a3e75990`, `b6919794`); D open. Written 1 Aug 2026, and §8.1 records what had
 drifted underneath it by the time it was built — chiefly that §4 undercounts the
 readers by half. §6's three questions were decided by the author on 28 Aug and
 are recorded there as answers, not options. Follows
@@ -42,7 +42,7 @@ All of this exists to keep one id in sync with focus:
 
 | Thing                                                                    | Size / shape                                                          |
 | ------------------------------------------------------------------------ | --------------------------------------------------------------------- |
-| `src/lib/workspaceUrl.ts`                                                | 97L, five refusal guards                                              |
+| `src/lib/workspaceUrl.ts`                                                | 102L, five refusal guards                                             |
 | `src/lib/__tests__/workspaceUrl.test.ts`                                 | a whole spec for those guards                                         |
 | The `project()` listener in `WorkspacePanes.tsx:250-275`                 | a `store.subscribe` running on **every dispatched action**            |
 | `CommandRouter.rewrite` (`commands/types.ts:32-40`)                      | a third navigation primitive, whose only consumer is `pane.close`     |
@@ -207,7 +207,7 @@ read the URL; they write one, as an entry. **No change.**
 
 ## 5. What deletes
 
-- `src/lib/workspaceUrl.ts` (97L) and its spec.
+- `src/lib/workspaceUrl.ts` (102L) and its spec (116L).
 - The `project()` closure and `store.subscribe` in `WorkspacePanes.tsx:254-274`.
   The effect keeps only `dispatch(openPane({ rootId }))` plus the one-shot
   consume.
@@ -298,7 +298,7 @@ of §0's inverted data flow.
 
 ### Phase B — Empty-workspace answer
 
-**DONE 28 Aug 2026** — `2ef0bd39`.
+**DONE 28 Aug 2026** — `a3e75990`.
 
 §6.2's redirect, behind the `!segment` branch in `EditDocumentContent.tsx`.
 Nothing else changed; bare `/edit` is not reachable in normal use until Phase C.
@@ -317,14 +317,30 @@ than off a selected value.
 
 ### Phase C — Consume the URL
 
-The one-shot: after `openPane` lands, `history.replaceState` to `/edit`. Then
-delete §5's list. `document.open` takes the three-branch shape of §3.2.
+**DONE 28 Aug 2026** — `b6919794`.
 
-_Acceptance:_ opening from the sidebar, `/posts`, the palette, the Copilot and a
-cold deep link all land on `/edit` with the right document focused. Splitting
-and clicking between panes produce **zero** history entries and zero URL
-changes. Reload restores the two-pane layout with the correct pane focused. Back
-from `/edit` leaves the workspace.
+The one-shot: after `openPane` lands, `history.replaceState` to `/edit`. §5's
+list is gone, plus a seventh item §5 did not know about (§8.1.4).
+`document.open` has §3.2's three branches.
+
+Actual size: **508 lines deleted, 202 added, net −306** across 15 files — 255
+deleted from source and 253 from specs. §5's "roughly −250L" was low, mostly
+because it counted `workspaceUrl.test.ts` as "a whole spec" without a number
+(116 lines) and never saw `useCloseDeletedDocument`. Of the 202 added, most is
+prose: the executable delta in non-test source is −80 net against +175 of new
+comment.
+
+_Acceptance, and how far it was actually taken:_ verified by reading —
+`pane.split` and `pane.close` no longer touch the router at all, the
+per-action `store.subscribe` is gone, `document.open` navigates only from
+outside the workspace, and the sidebar / `/posts` / palette / Copilot all reach
+the workspace through that one command. Left for a human at a real browser:
+that a cold deep link lands on `/edit` with the right document focused, that
+splitting and pane clicks add **zero** history entries, that reload restores the
+two-pane layout with the correct pane focused, and that Back from `/edit` leaves
+the workspace. §9's CDP check (stored two-pane record, cold-load a deep link
+naming one of them, confirm the record is unchanged) is the one that matters
+most and has **not** been run.
 
 ### Phase D — Drop `force-dynamic` (if §6.1 says so)
 
@@ -376,6 +392,40 @@ Read them before acting on §4 or attempting Phase B.
 3. **§4's paths are pre-extraction.** They say `src/editor`, which has been
    `packages/editor/src` since the haklex extraction
    (`archive/haklex-adoption.md` §4). Line numbers have moved too.
+
+4. **§5's list is missing a seventh consumer: `useCloseDeletedDocument`.** It
+   carried its own `history.replaceState` to `/edit/<whatever inherited focus>`,
+   and imported `WORKSPACE_ROUTE` from the very module §5 deletes. §4 audited
+   *readers* of the URL and §5 audited the projection's own machinery; nobody
+   audited **writers**, and this is one, reached from five call sites (a delete,
+   a bulk delete, the change feed, the background catch-up, a proposal action).
+   Its repair is now nothing at all when a pane survives.
+
+5. **The consume silently breaks `workspaceKeyChanged`'s documented replay.**
+   That reducer lowers `workspaceHydrated` and empties the workspace when the
+   guessed storage key turns out to name the wrong user, and its docblock
+   promises "the deep-link seam replays the URL on top of it exactly as it did
+   the first time". After the consume there is no URL left to replay — so a user
+   following a deep link across a stale-key correction would have had their
+   document dropped in favour of the other account's stored layout. Fixed by
+   keeping the entry id in a ref in `WorkspacePanes`, which is the only reason
+   that ref exists. The plan's §9 names the consume/restore race as *the* risk
+   and still did not see this one, because the re-arm is a second restore rather
+   than the first.
+
+6. **§3.2's middle branch needs a "where am I" test the diagram does not
+   name.** "resolved + already on `/edit`" has to count `/edit/<id>` as already
+   on `/edit`: that is the beat between a deep link landing and the seam
+   consuming it, and an open in that window would otherwise spend a real
+   navigation and a history entry on an address that is replaced a commit later.
+
+7. **Opening from outside the workspace discards the stored layout, and always
+   has.** `document.open` dispatches `openPane` *before* it navigates, and
+   `restoreWorkspace` refuses to install over a non-empty workspace ("yields to
+   anything the user opened while the read was in flight"). So a click from
+   `/posts` mints one pane and the stored two-pane record is never read in.
+   Unchanged by this plan — the order is the same before and after — but §9
+   reads as though the restore always lands first, and it does not.
 
 One design note, since §4.1 offers a choice that does not survive contact:
 **"or read `selectFocusedDocId`" is wrong.** That selector is *global* focus, so

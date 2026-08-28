@@ -176,12 +176,14 @@ export const PostItem = memo(
     // suppresses navigation; a plain click opens the post in the workspace.
     //
     // The open goes through `document.open` rather than being left to the href,
-    // and the difference is not cosmetic: the command dispatches `openPane`
-    // *before* it pushes, so the duplicate-open guard gets to decide. Opening a
-    // post the other pane already holds then moves focus — whereas a bare
-    // navigation to a path the address bar may already hold can be a no-op, and
-    // the click would do nothing. It also states the mode instead of inheriting
-    // whatever the focused pane was last left in.
+    // and the difference is not cosmetic: the command dispatches `openPane`, so
+    // the duplicate-open guard gets to decide, and opening a post the other pane
+    // already holds moves focus instead of opening it twice. From inside the
+    // workspace it also navigates *nothing*
+    // (docs/plans/workspace-url.md §3.2) — the href would spend a real
+    // navigation and a history entry on a URL that is consumed a commit later.
+    // It also states the mode instead of inheriting whatever the focused pane
+    // was last left in.
     const handleRowClick = useCallback(
       (e: React.MouseEvent) => {
         if (onSelectClick?.(post.id, e)) {

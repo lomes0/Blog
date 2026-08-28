@@ -72,14 +72,14 @@ const split = defineCommand<PaneSplitParams>({
     // The reducer decides either way — see the duplicate-open guard in
     // `openPane`. This only chooses which sentence to say about it.
     ctx.dispatch(actions.openPane({ paneId: uuidv4(), rootId, mode }));
-    // The split pane is now the focused one, and the URL is what decides focus
-    // on a cold load: the restore replays it through `openPane`, whose guard
-    // focuses whichever pane holds that document. Without this push the address
-    // bar would still name the *other* pane, and a reload would restore both
-    // panes correctly and then focus the wrong one. Pushing a resolved id
-    // rather than `id` also keeps clear of the unresolved-handle path, which
-    // remounts the pane tree and would destroy the split we just made.
-    ctx.router.push(`/edit/${rootId}`);
+    // And that is the whole command: **no navigation**. It used to push
+    // `/edit/<rootId>` afterwards, because the split pane is the focused one
+    // and, while the URL was a projection of focus, the URL was also what
+    // decided focus on a cold load — without the push a reload restored both
+    // panes and then focused the wrong one. `focusedPaneId` is in the stored
+    // record and always was, so that push was repairing damage the URL replay
+    // itself caused (docs/plans/workspace-url.md §1.1). Splitting is a pane
+    // event now, and pane events do not touch the address bar.
     return commandOk(
       alreadyOpen ? "Already open — focused that pane." : undefined,
     );
@@ -109,27 +109,15 @@ const close = defineCommand<PaneRefParams>({
     if (!ctx.workspace.panes.some((p) => p.id === target)) {
       return commandFailed(`No pane ${target} is open.`);
     }
-    const { actions, store } = await storeModule();
+    const { actions } = await storeModule();
+    // The whole command. It used to be followed by a `rewrite` to whatever pane
+    // inherited focus, because the address bar still named the pane that had
+    // just been closed and the focus projection deliberately declined to repair
+    // that case. With the URL consumed on entry (docs/plans/workspace-url.md
+    // §3) the address bar is `/edit` before and after, so **closing a pane is
+    // not a URL event** — and the dynamic `layoutSelectors` import that read
+    // the surviving focus back went with it.
     ctx.dispatch(actions.closePane(target));
-    // The URL named the closed pane's document, and the focus projection in
-    // `WorkspacePanes` will not repair it: that guard declines while the URL
-    // names a document no pane holds, because in every *other* case that means
-    // a navigation is in flight (see `lib/workspaceUrl.ts`). Closing is the one
-    // way to reach that state deliberately, so the command owns it — as
-    // `pane.split` and `document.open` own their own pushes.
-    //
-    // Read back rather than predicted: which pane inherits focus is
-    // `closePane`'s rule, and duplicating it here would be a second copy to
-    // keep in step.
-    const { selectFocusedDocId } = await import(
-      "@/store/selectors/layoutSelectors"
-    );
-    const docId = selectFocusedDocId(store.getState());
-    // `rewrite`, not `push`: the surviving pane is not a place the user
-    // navigated to, and a history entry naming it would send Back to a URL
-    // whose pane is gone — which the deep-link seam would then replay, silently
-    // retargeting the survivor instead of restoring anything.
-    if (docId) ctx.router.rewrite(`/edit/${docId}`);
     return commandOk();
   },
 });

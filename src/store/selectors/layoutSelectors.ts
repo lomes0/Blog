@@ -14,7 +14,8 @@ import type { PaneMode, Post, WorkspacePane } from "@/types";
  *
  * These replace the pathname parsing that used to answer "which document is
  * open" in three different places, each with its own rule (plan §0). The URL is
- * now a projection: `/edit/[id]` is what opened the pane, not what defines it.
+ * an entry point, consumed on arrival: `/edit/[id]` is what opened the pane,
+ * never what defines it (docs/plans/workspace-url.md §3).
  */
 export const selectFocusedPaneId = (state: RootState): string | null =>
   state.ui.workspace.focusedPaneId;
@@ -61,10 +62,10 @@ export const selectPaneRootedAt = (
  * The pane showing a document as its root **or as one of its tabs** — "does the
  * workspace hold this at all?".
  *
- * The wider question than {@link selectPaneRootedAt}, and the one the URL
- * projection asks: the address bar can legitimately name a child tab, and a pane
- * holding it is still a pane holding it. Delegates to the same predicate the
- * duplicate-open guard uses, so there is one definition of "showing".
+ * The wider question than {@link selectPaneRootedAt}, and the one a deep link
+ * asks: an entry URL can legitimately name a child tab, and a pane holding it is
+ * still a pane holding it. Delegates to the same predicate the duplicate-open
+ * guard uses, so there is one definition of "showing".
  */
 export const selectPaneShowingDoc = (
   state: RootState,
