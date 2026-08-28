@@ -75,7 +75,7 @@ globals; `compilerOptions.types` is deliberately left unset, because setting it
 would restrict resolution to only its entries and drop every other ambient
 package.
 
-Coverage is 54 specs, 1067 tests, of which the list below walks the ones worth
+Coverage is 59 specs, 1136 tests, of which the list below walks the ones worth
 knowing about rather than all of them. `src/lib/__tests__/blobRefs.test.ts` is
 the newest: what a document's content references, and the two ways getting that
 wrong destroys user work — a reference the scan cannot see, and one revoked

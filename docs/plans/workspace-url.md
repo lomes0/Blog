@@ -1,8 +1,10 @@
 # The workspace URL: from projection to entry point
 
-**Status:** proposed, 1 Aug 2026. Follows
-[workspace-panes.md](./archive/workspace-panes.md), and refines its §0 rather than
-reversing it.
+**Status: Phase A shipped 28 Aug 2026** (`c63de634`, `2cf113ae`); phases B–D
+open. Written 1 Aug 2026, and §8.1 records what had drifted underneath it by the
+time Phase A ran — chiefly that §4 undercounts the readers by half. Follows
+[workspace-panes.md](./archive/workspace-panes.md), and refines its §0 rather
+than reversing it.
 
 ---
 
@@ -269,6 +271,9 @@ Deliberately ordered so that §7.1 is worth doing even if the rest is abandoned.
 
 ### Phase A — Sever the two remaining URL readers
 
+**DONE 28 Aug 2026** — `c63de634` and `2cf113ae`. It was six readers, not
+three; see §8.1.
+
 `AttachmentDialog` (§4.1), `PostItem` and `SidebarSearchView` (§4.2). All three
 move to `ui.workspace` selectors.
 
@@ -321,6 +326,42 @@ be reverted independently if the OG card turns out to matter.
   layout is what keeps the pane tree mounted across it.
 - **`closeAllPanes` on unmount**, and the never-write-empty guard that makes it
   safe.
+
+---
+
+### 8.1 What had drifted by the time Phase A ran (28 Aug 2026)
+
+Three corrections, written after building rather than as part of the design.
+Read them before acting on §4 or attempting Phase B.
+
+1. **§4 undercounts the readers by half.** It names three and calls itself
+   "grepped, not guessed"; there were six. The three it missed:
+   `packages/editor/src/utils/documentContext.ts` (a second parser),
+   `uploadBlob.ts`'s use of it on the blob-upload path, and
+   `CollapsedRail.tsx`'s standalone-post branch — the last being the same
+   pathname-only defect as `SidebarSearchView`, wrong in a split for the same
+   reason.
+
+2. **The handle bug in §4.1 was already half fixed, on the wrong copy.**
+   §4.1 presents the 36-char UUID parser as live. In fact `documentContext.ts`
+   had been *extracted from* `AttachmentDialog` precisely to fix it, and its
+   docblock argues the id-or-handle case correctly — but the dialog was never
+   migrated onto it and kept its broken private copy. So the repo held two
+   parsers and the surface users actually hit ran the bad one. A plan cannot
+   see this kind of drift; only a grep can.
+
+3. **§4's paths are pre-extraction.** They say `src/editor`, which has been
+   `packages/editor/src` since the haklex extraction
+   (`archive/haklex-adoption.md` §4). Line numbers have moved too.
+
+One design note, since §4.1 offers a choice that does not survive contact:
+**"or read `selectFocusedDocId`" is wrong.** That selector is *global* focus, so
+an editor in the unfocused pane would resolve to the focused pane's document —
+an attachment added on the left would land on the right. That fails this phase's
+own acceptance test. The fix is per-editor context
+(`packages/editor/src/context/DocumentContext.tsx`), provided by
+`ConnectedEditor`, which already receives the `Post` and is mounted once per
+open document.
 
 ---
 
