@@ -379,7 +379,6 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
               post={item.posts[0]}
               inSeries={false}
               sidebarOpen={sidebarOpen}
-              pathname={pathname}
               itemActions={bulkAwareItemActions}
               expandedTabs={expandedTabs}
               onToggleTabs={toggleTabs}

@@ -16,6 +16,7 @@ import { INSERT_IMAGE_COMMAND } from "../ImagePlugin";
 import { getImageDimensions } from "@/editor/nodes/utils";
 import { ANNOUNCE_COMMAND } from "@/editor/commands";
 import { blobSrcOrFallback } from "@/editor/utils/uploadBlob";
+import { useEditorDocumentId } from "@/editor/context/DocumentContext";
 
 const ACCEPTABLE_IMAGE_TYPES = [
   "image/",
@@ -27,6 +28,9 @@ const ACCEPTABLE_IMAGE_TYPES = [
 
 export default function DragDropPaste(): null {
   const [editor] = useLexicalComposerContext();
+  // This editor's document, not the focused one: in a split both are mounted,
+  // and a paste into the unfocused pane must land on the document under it.
+  const documentId = useEditorDocumentId();
   useEffect(() => {
     return editor.registerCommand(
       DRAG_DROP_PASTE,
@@ -43,7 +47,7 @@ export default function DragDropPaste(): null {
               // blob URL when the bytes could be stored, and otherwise to the
               // same data URI as before (blob-storage.md §6).
               const dimensions = await getImageDimensions(result);
-              const src = await blobSrcOrFallback(file, result);
+              const src = await blobSrcOrFallback(file, result, documentId);
               // Scale pasted images to 50% of their original size
               const scaledDimensions = {
                 width: Math.round(dimensions.width * 0.35),
@@ -71,6 +75,6 @@ export default function DragDropPaste(): null {
       },
       COMMAND_PRIORITY_LOW,
     );
-  }, [editor]);
+  }, [editor, documentId]);
   return null;
 }

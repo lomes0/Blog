@@ -11,6 +11,7 @@ import { ImageNode } from "@/editor/nodes/ImageNode";
 import { SET_DIALOGS_COMMAND } from "./commands";
 import { getImageDimensions } from "@/editor/nodes/utils";
 import { blobSrcOrFallback } from "@/editor/utils/uploadBlob";
+import { useEditorDocumentId } from "@/editor/context/DocumentContext";
 import {
   ActionButton,
   cx,
@@ -56,6 +57,8 @@ function ImageDialog(
   { editor, node }: { editor: LexicalEditor; node: ImageNode | null },
 ) {
   const srcRef = useRef<HTMLInputElement>(null);
+  // This editor's document, not the focused one: in a split both are mounted.
+  const documentId = useEditorDocumentId();
   const [formData, setFormData] = useState<InsertImagePayload>({
     src: "",
     altText: "",
@@ -118,7 +121,7 @@ function ImageDialog(
         // Store the bytes once and reference them, rather than embedding the
         // data URI in every future revision (blob-storage.md §6). Falls back to
         // `result` when there is nothing to upload to — a guest draft, say.
-        const src = await blobSrcOrFallback(file, result);
+        const src = await blobSrcOrFallback(file, result, documentId);
         try {
           const dimensions = await getImageDimensions(result);
           setFormData({

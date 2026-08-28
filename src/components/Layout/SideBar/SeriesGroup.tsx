@@ -287,7 +287,6 @@ export const SeriesGroup: React.FC<SeriesGroupProps> = ({
               post={post}
               inSeries
               sidebarOpen={sidebarOpen}
-              pathname={pathname}
               itemActions={itemActions}
               expandedTabs={expandedTabs}
               onToggleTabs={onToggleTabs}

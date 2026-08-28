@@ -44,7 +44,6 @@ interface PostItemProps {
   post: Post;
   inSeries: boolean;
   sidebarOpen: boolean;
-  pathname: string;
   itemActions: PostItemActions;
   /** Ids of posts whose tab list is expanded in the sidebar tree. */
   expandedTabs: Set<string>;
@@ -73,7 +72,6 @@ export const PostItem = memo(
       post,
       inSeries,
       sidebarOpen,
-      pathname,
       itemActions,
       expandedTabs,
       onToggleTabs,
@@ -129,14 +127,11 @@ export const PostItem = memo(
     const rootTabLabel = doc?.tabLabel ?? docName;
     // "Open in a pane", not "named by the address bar": with two panes the URL
     // can only name one of them, so `ui.workspace` is the only thing that can
-    // answer for both. The `/edit` check stays as a fallback for the beat
-    // between a navigation landing and the deep-link seam dispatching
-    // `openPane`, when no pane is rooted here yet and the row would otherwise
-    // flash unselected. There is no `/view` fallback any more: after Phase 4
-    // that route left the workspace group entirely, and a sidebar row must
-    // never send the user to it.
-    const isEditing = pathname === `/edit/${post.id}`;
-    const isSelected = isOpenRoot || isEditing;
+    // answer for both. The `/edit/<id>` fallback that used to sit beside this
+    // is gone (docs/plans/workspace-url.md §4.2) — it read a derived copy of
+    // the state right here, and it was only ever covering the beat between a
+    // navigation landing and the deep-link seam dispatching `openPane`.
+    const isSelected = isOpenRoot;
     // The post row renames the post title (`name`); the first sub-tab (same id)
     // renames `tabLabel`. Disambiguate by field so only one input shows.
     const isRenaming = rename.renamingId === post.id &&

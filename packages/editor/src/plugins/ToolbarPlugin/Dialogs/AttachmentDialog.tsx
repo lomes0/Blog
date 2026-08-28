@@ -20,39 +20,17 @@ import { ANNOUNCE_COMMAND } from "@/editor/commands";
 import { INSERT_ATTACHMENT_COMMAND } from "@/editor/plugins/AttachmentPlugin";
 import { apiClient } from "@/api";
 import { ICON_SIZE } from "@/theme/icons";
+import { useEditorDocumentId } from "@/editor/context/DocumentContext";
 
 function AttachmentDialog({ editor }: { editor: LexicalEditor }) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [blankFilename, setBlankFilename] = useState("untitled.txt");
-
-  // Get document ID from URL (assumes format like /edit/:id, /new/:id, /view/:id, etc.)
-  const getDocumentIdFromUrl = (): string | null => {
-    if (typeof window === "undefined") return null;
-    const pathSegments = window.location.pathname.split("/").filter(Boolean);
-
-    // Check for routes like /edit/:id, /new/:id, /view/:id, /documents/:id
-    const routeWithId = ["edit", "new", "view", "documents"];
-    for (let i = 0; i < pathSegments.length - 1; i++) {
-      if (routeWithId.includes(pathSegments[i])) {
-        const potentialId = pathSegments[i + 1];
-        // Basic UUID validation (36 chars with dashes)
-        if (
-          potentialId && potentialId.length === 36 && potentialId.includes("-")
-        ) {
-          return potentialId;
-        }
-      }
-    }
-
-    // Fallback: check if last segment looks like a UUID
-    const lastSegment = pathSegments[pathSegments.length - 1];
-    if (lastSegment && lastSegment.length === 36 && lastSegment.includes("-")) {
-      return lastSegment;
-    }
-
-    return null;
-  };
+  // The document this editor is editing. It used to be parsed out of the
+  // address bar, which named the *focused* pane's document at best and matched
+  // nothing at all on a handle URL — see `EditorDocumentProvider` and
+  // docs/plans/workspace-url.md §4.1.
+  const documentId = useEditorDocumentId();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -74,8 +52,6 @@ function AttachmentDialog({ editor }: { editor: LexicalEditor }) {
     setIsUploading(true);
 
     try {
-      // Get document ID from URL
-      const documentId = getDocumentIdFromUrl();
       if (!documentId) {
         throw new Error("Document ID not found");
       }
@@ -124,8 +100,6 @@ function AttachmentDialog({ editor }: { editor: LexicalEditor }) {
     setIsUploading(true);
 
     try {
-      // Get document ID from URL
-      const documentId = getDocumentIdFromUrl();
       if (!documentId) {
         throw new Error("Document ID not found");
       }

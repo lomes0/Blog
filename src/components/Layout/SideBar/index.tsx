@@ -199,7 +199,7 @@ const SideBar: React.FC = () => {
             }
             {sidebarView === "search" && <SidebarHeader view={sidebarView} />}
             {sidebarView === "search"
-              ? <SidebarSearchView pathname={pathname} />
+              ? <SidebarSearchView />
               : hasContent
               ? (
                 <ActivePostsSection

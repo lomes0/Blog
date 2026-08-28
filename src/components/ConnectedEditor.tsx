@@ -11,6 +11,7 @@ import {
 import { actions, useDispatch } from "@/store";
 import type { EditorState, LexicalEditor } from "lexical";
 import Editor from "@/editor/Editor";
+import { EditorDocumentProvider } from "@/editor/context/DocumentContext";
 
 const ConnectedEditor: React.FC<{
   document: Post;
@@ -115,17 +116,23 @@ const ConnectedEditor: React.FC<{
     ...(namespace ? { namespace } : {}),
   };
 
+  // Which document this editor is editing, for everything inside it that needs
+  // to name one — attachments and image uploads. One provider per mounted
+  // editor is the point: in a split, global focus would answer for the other
+  // pane. See `EditorDocumentProvider`.
   return (
-    <Editor
-      initialConfig={initialConfig}
-      onChange={onChange}
-      editorRef={editorRefCallback}
-      ignoreHistoryMerge={ignoreHistoryMerge}
-      onSave={onSave}
-      onReset={onReset}
-      isActive={isActive}
-      editable={editable}
-    />
+    <EditorDocumentProvider documentId={document.id}>
+      <Editor
+        initialConfig={initialConfig}
+        onChange={onChange}
+        editorRef={editorRefCallback}
+        ignoreHistoryMerge={ignoreHistoryMerge}
+        onSave={onSave}
+        onReset={onReset}
+        isActive={isActive}
+        editable={editable}
+      />
+    </EditorDocumentProvider>
   );
 };
 

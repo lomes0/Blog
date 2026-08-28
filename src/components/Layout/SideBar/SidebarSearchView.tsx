@@ -5,22 +5,84 @@ import { Box, InputBase, Typography } from "@mui/material";
 import { FileText, Search } from "lucide-react";
 import { type RootState, useSelector } from "@/store";
 import { selectAllPosts } from "@/store/selectors/postsSelectors";
+import { selectPaneShowingDoc } from "@/store/selectors/layoutSelectors";
 import { ICON_SIZE } from "@/theme/icons";
 import { MONO_FONT, SB_FONT, SB_ITEM_RADIUS } from "./constants";
 import { SafeNavigationLink } from "./SafeNavigationLink";
 
-interface SidebarSearchViewProps {
-  pathname: string;
+interface SearchResult {
+  id: string;
+  name: string;
+  path: string;
 }
+
+/**
+ * One result row.
+ *
+ * Its own component so it can ask the store whether the post is open. This used
+ * to be `pathname === "/edit/<id>"`, which is a derived copy of `ui.workspace`
+ * and can only ever describe one pane — with a split open it left the other
+ * pane's document looking closed (docs/plans/workspace-url.md §4.2).
+ * `selectPaneShowingDoc` answers for a tab as well as a pane root.
+ */
+const SearchResultRow: React.FC<{ result: SearchResult }> = ({ result }) => {
+  const active = useSelector(
+    (state: RootState) => selectPaneShowingDoc(state, result.id) !== null,
+  );
+
+  return (
+    <Box
+      component={SafeNavigationLink}
+      href={`/edit/${result.id}`}
+      sx={{
+        display: "block",
+        textDecoration: "none",
+        color: "inherit",
+        px: 1,
+        py: 0.625,
+        borderRadius: SB_ITEM_RADIUS,
+        bgcolor: active ? "action.selected" : "transparent",
+        "&:hover": { bgcolor: "action.hover" },
+      }}
+    >
+      <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+        <FileText
+          size={ICON_SIZE.inline}
+          style={{
+            color: "var(--mui-palette-text-secondary)",
+            flexShrink: 0,
+          }}
+        />
+        <Typography
+          variant="dense"
+          noWrap
+          sx={{ fontWeight: 500, color: "text.primary", minWidth: 0 }}
+        >
+          {result.name}
+        </Typography>
+      </Box>
+      <Typography
+        variant="micro"
+        component="p"
+        noWrap
+        sx={{
+          pl: "22px",
+          fontFamily: MONO_FONT,
+          color: "text.disabled",
+        }}
+      >
+        {result.path}
+      </Typography>
+    </Box>
+  );
+};
 
 /**
  * Sidebar "Search" view — a flat, title-filtered list of every post across all
  * folders. Each result shows the post title and a monospace `folder/name`
  * path; clicking opens it in the editor.
  */
-export const SidebarSearchView: React.FC<SidebarSearchViewProps> = (
-  { pathname },
-) => {
+export const SidebarSearchView: React.FC = () => {
   const [query, setQuery] = useState("");
   const posts = useSelector(selectAllPosts);
   const series = useSelector((state: RootState) => state.series);
@@ -31,7 +93,7 @@ export const SidebarSearchView: React.FC<SidebarSearchViewProps> = (
     return map;
   }, [series]);
 
-  const results = useMemo(() => {
+  const results = useMemo<SearchResult[]>(() => {
     const q = query.trim().toLowerCase();
     const rows = posts.map((post) => {
       const doc = post;
@@ -111,61 +173,7 @@ export const SidebarSearchView: React.FC<SidebarSearchViewProps> = (
             </Typography>
           )
           : (
-            results.map((r) => {
-              const active = pathname === `/edit/${r.id}`;
-              return (
-                <Box
-                  key={r.id}
-                  component={SafeNavigationLink}
-                  href={`/edit/${r.id}`}
-                  sx={{
-                    display: "block",
-                    textDecoration: "none",
-                    color: "inherit",
-                    px: 1,
-                    py: 0.625,
-                    borderRadius: SB_ITEM_RADIUS,
-                    bgcolor: active ? "action.selected" : "transparent",
-                    "&:hover": { bgcolor: "action.hover" },
-                  }}
-                >
-                  <Box
-                    sx={{ display: "flex", alignItems: "center", gap: 0.75 }}
-                  >
-                    <FileText
-                      size={ICON_SIZE.inline}
-                      style={{
-                        color: "var(--mui-palette-text-secondary)",
-                        flexShrink: 0,
-                      }}
-                    />
-                    <Typography
-                      variant="dense"
-                      noWrap
-                      sx={{
-                        fontWeight: 500,
-                        color: "text.primary",
-                        minWidth: 0,
-                      }}
-                    >
-                      {r.name}
-                    </Typography>
-                  </Box>
-                  <Typography
-                    variant="micro"
-                    component="p"
-                    noWrap
-                    sx={{
-                      pl: "22px",
-                      fontFamily: MONO_FONT,
-                      color: "text.disabled",
-                    }}
-                  >
-                    {r.path}
-                  </Typography>
-                </Box>
-              );
-            })
+            results.map((r) => <SearchResultRow key={r.id} result={r} />)
           )}
       </Box>
     </Box>

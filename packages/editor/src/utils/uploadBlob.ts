@@ -1,5 +1,3 @@
-import { getDocumentRefFromUrl } from "./documentContext";
-
 /**
  * Put an image into the content-addressed blob store and get back a URL to
  * reference it by — docs/plans/blob-storage.md §6.
@@ -24,6 +22,15 @@ import { getDocumentRefFromUrl } from "./documentContext";
  * own blob store. Until then, and for any transient failure, the old data-URI
  * behaviour is kept: the image still lands, in the shape that always worked.
  * Callers get the data URI back and cannot tell the difference.
+ *
+ * ## The document is passed in, never discovered
+ *
+ * These are plain async functions, so they cannot read the editor's document
+ * context themselves — and reading the URL instead is what
+ * docs/plans/workspace-url.md §4.1 removed. The caller is a component or a
+ * plugin inside one editor, and it passes that editor's `documentId` down; a
+ * module-level "current document" would be the same wrong answer in a split as
+ * the address bar was.
  */
 
 /** Lowercase hex SHA-256 of a file's bytes, computed in the browser. */
@@ -42,10 +49,14 @@ export async function hashFile(file: File | Blob): Promise<string> {
  *
  * Never throws. A blob upload failing must not cost the user their paste.
  */
-export async function uploadBlob(file: File | Blob): Promise<string | null> {
+export async function uploadBlob(
+  file: File | Blob,
+  documentId: string | null,
+): Promise<string | null> {
   try {
-    const documentRef = getDocumentRefFromUrl();
-    if (!documentRef) return null;
+    // The server side of this resolves an id or a handle; what arrives here is
+    // always an id, because it came from the store.
+    if (!documentId) return null;
 
     const hash = await hashFile(file);
 
@@ -53,7 +64,7 @@ export async function uploadBlob(file: File | Blob): Promise<string | null> {
     const linked = await fetch("/api/blob/link", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ documentRef, hash }),
+      body: JSON.stringify({ documentRef: documentId, hash }),
     });
     if (linked.ok) {
       const { data } = await linked.json();
@@ -65,7 +76,7 @@ export async function uploadBlob(file: File | Blob): Promise<string | null> {
 
     const form = new FormData();
     form.append("file", file);
-    form.append("documentRef", documentRef);
+    form.append("documentRef", documentId);
 
     const uploaded = await fetch("/api/blob", { method: "POST", body: form });
     if (!uploaded.ok) return null;
@@ -88,6 +99,7 @@ export async function uploadBlob(file: File | Blob): Promise<string | null> {
 export async function blobSrcOrFallback(
   file: File | Blob,
   dataUri: string,
+  documentId: string | null,
 ): Promise<string> {
-  return (await uploadBlob(file)) ?? dataUri;
+  return (await uploadBlob(file, documentId)) ?? dataUri;
 }
