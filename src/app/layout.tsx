@@ -10,9 +10,9 @@ import "@/editor/theme.css";
 // `@/editor/theme.tsx` — which is the only other thing that pulls it in, and
 // which a route rendering *stored* HTML never loads. `theme.css` is app-wide
 // (the line above), so a rule in it that reads `var(--ed-…)` would resolve on
-// the editor's routes and not on `/view` or print. Inert today, because nothing
-// in plain CSS reads the contract yet; it is here so that phase 3 of
-// docs/plans/theme-css-tokenization.md can, unconditionally.
+// the editor's routes and not on `/view` or print. Not hypothetical since
+// phase 3 of docs/plans/archive/theme-css-tokenization.md: the attachment card
+// in `theme.css` reads `--ed-*` throughout, and this import is what lets it.
 import "@/editor/styles/tokens.css";
 import "./globals.css";
 

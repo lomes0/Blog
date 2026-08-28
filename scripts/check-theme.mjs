@@ -31,8 +31,8 @@
  *      but it cannot be spelled as a pattern, because a literal in `:root` or
  *      `html.dark` is the one place a literal belongs. See
  *      `color-literal-outside-token-block` below and
- *      docs/plans/theme-css-tokenization.md §2.5 for why this rule is about
- *      position rather than file extension.
+ *      docs/plans/archive/theme-css-tokenization.md §2.5 for why this rule
+ *      is about position rather than file extension.
  *
  * `[data-theme="dark"]` is banned for the same reason as `[theme="dark"]`, and
  * is listed separately because it is not a hypothetical: it is how haklex's own
@@ -97,8 +97,9 @@ const CONTRACT = "packages/editor/src/styles/tokens.css.ts";
  * file that is being edited.
  *
  * Empty, and kept empty rather than deleted. The one entry
- * (`attachment-card`, docs/plans/theme-css-tokenization.md) retired when its
- * plan's phase 4 landed, which is exactly the rot guard below doing its job:
+ * (`attachment-card`, docs/plans/archive/theme-css-tokenization.md) retired
+ * when its plan's phase 4 landed, which is exactly the rot guard below doing
+ * its job:
  * it failed the run the moment the entry stopped suppressing anything. The
  * mechanism is the durable half of that plan and the next region will want it,
  * so what survives here is the shape and the argument for using it, not the
@@ -201,8 +202,9 @@ const COLOR_LITERAL = /#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?)\(\s*(?!var\(--)/g;
  * a variable, which is circular.
  *
  * Whether they should exist at all is a separate question, and
- * docs/plans/theme-css-tokenization.md §4.2 answered it: the eight `--tok-*`
- * defaults inherited from Lexical's stock theme were unreachable — every one
+ * docs/plans/archive/theme-css-tokenization.md §4.2 answered it: the eight
+ * `--tok-*` defaults inherited from Lexical's stock theme were unreachable —
+ * every one
  * is declared on `.LexicalTheme__code`, the only ancestor a
  * `.LexicalTheme__token*` span can have, in both schemes — and are gone. The
  * two `--code-glyph-*` remain, because no rule declares those at all:

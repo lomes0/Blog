@@ -1,12 +1,14 @@
 # Tokenizing theme.css
 
-Status: **Phases 1–4 shipped (14 and 28 Aug 2026); phase 5 open.** §4.5's first
-step — deleting the deferral — was pulled forward into phase 4, because the rot
-guard made the two inseparable (§7.7). What is left of phase 5 is prose and
-archival. §7 is the
-execution log, and eight of this plan's own claims are wrong — read it before §2.
-The largest is that §2.1 undercounted the work by a factor of five, because it
-counted hex and not `rgb()`.
+Status: **Shipped — all five phases (phase 1: 14 Aug 2026; phases 2–5: 28 Aug
+2026).** `packages/editor/src/theme.css` now holds no color literal outside a
+token block, and `check:theme` runs green with no exemption naming it — the
+sentence this whole plan existed to be able to write. §4.5's first step —
+deleting the deferral — was pulled forward into phase 4, because the rot guard
+made the two inseparable (§7.7), so phase 5 was prose and this archival (§7.8).
+§7 is the execution log, and **thirteen** of this plan's own claims are wrong —
+read it before §2. The largest is that §2.1 undercounted the work by a factor of
+five, because it counted hex and not `rgb()`.
 
 `packages/editor/src/theme.css` is the last stylesheet in the tree that holds
 raw color literals, and it is the one file `pnpm check:theme` cannot see them
@@ -651,7 +653,8 @@ design, not by accident:
 
 ```
 check-theme: deferral `attachment-card` suppresses nothing. The work it was
-waiting on (docs/plans/theme-css-tokenization.md §4.3–§4.4) has landed, or its
+waiting on (docs/plans/archive/theme-css-tokenization.md §4.3–§4.4) has
+landed, or its
 selector no longer matches — either way, delete the entry from PENDING in
 scripts/check-theme.mjs.
 ```
@@ -700,3 +703,37 @@ Recorded because it is the next instance of exactly what this plan exists to
 remove, and because a copied value drifts silently: the drawer is already
 pinned to phase 1's `--tok-*` values and will not follow the retune
 `--tok-comment` is owed.
+
+### 7.8 Phase 5 (28 Aug 2026)
+
+Prose and archival, as §7.7 left it. Two stale comments in `theme.css`, both
+named by §2.6 and both located by content rather than by the line numbers that
+section recorded — four phases had moved them:
+
+- The color-theme section's **Scope** paragraph named `--cb-*` and "the toolbar
+  (`--tb-*` in toolbar.css)". None of the three exists: `--cb-*` has no
+  definition anywhere, `plugins/ToolbarPlugin/toolbarLayout.css.ts:12` records
+  the `--tb-*` retirement, and `toolbar.css` is gone. Rewritten to name what is
+  actually there — `--doc-*` for content, `--tok-*`/`--code-*` for the syntax
+  theme, `--ed-*` for the chrome contract this file reads and does not declare.
+- The `#ccc`/`#444` history note on `.LexicalTheme__layoutItem::after` was
+  doubly dangling: the literals it described were gone before phase 1, and
+  `.LexicalTheme__hr`, which it points at as "a few rules down", is a hundred
+  lines *above* it. Deleted.
+
+Nothing else in the file was stale. Checked mechanically rather than by eye:
+every `--*` family and every file path named inside a comment was matched
+against the tree, and `--cb-*`, `--tb-*` and `toolbar.css` were the only three
+with no referent. `src/app/layout.tsx`'s import note was stale in the other
+direction and is fixed here — it said the contract import was "inert today,
+because nothing in plain CSS reads the contract yet", which phase 3 made false
+by putting the whole attachment card on `--ed-*`.
+
+The one thing §4.5 asks for that needed no work: `archive/code-block-card.md`'s
+status line was corrected on 15 Aug, before this phase reached it.
+
+**Still owed, and not discharged by any phase:** the four visual checks in §6,
+and the third syntax palette §7.7 found in
+`AttachmentDrawer/AttachmentContentViewer.tsx` — sixteen `--tok-*` hex values
+copied into an MUI `sx`, which `check:theme` cannot see because it globs `.css`
+and `.css.ts`.

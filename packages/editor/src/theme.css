@@ -125,15 +125,15 @@
 
    The selector carries the attachment preview as well, and that is the whole
    of what phase 4 needed to fold the second syntax theme into `--tok-*`
-   (docs/plans/theme-css-tokenization.md §4.4). The preview's `<pre>` is not
-   inside a `.LexicalTheme__code`, so `var(--tok-…)` written there would have
-   resolved to nothing; the alternatives were hoisting this block to `:root`,
-   which contradicts the reason it sits on the component in the first place, or
-   restating the palette, which is the duplication phase 4 removes. Listing the
-   second consumer keeps the palette on the surfaces that render code and
-   nowhere else. `:is()` takes the specificity of its most specific argument —
-   all three are classes — so the cascade for the card is byte-for-byte what it
-   was. */
+   (docs/plans/archive/theme-css-tokenization.md §4.4). The preview's `<pre>`
+   is not inside a `.LexicalTheme__code`, so `var(--tok-…)` written there would
+   have resolved to nothing; the alternatives were hoisting this block to
+   `:root`, which contradicts the reason it sits on the component in the first
+   place, or restating the palette, which is the duplication phase 4 removes.
+   Listing the second consumer keeps the palette on the surfaces that render
+   code and nowhere else. `:is()` takes the specificity of its most specific
+   argument — all three are classes — so the cascade for the card is
+   byte-for-byte what it was. */
 :is(.LexicalTheme__code, .attachment-preview, .view-attachment) {
   --code-bg: #ffffff;
   --code-fg: #2c333d;
@@ -363,7 +363,7 @@
      default is what a chip built without them would render as. They are
      `DEFAULT_GLYPH_FG` / `DEFAULT_GLYPH_BG` from `utils/codeLanguage.ts`,
      spelled identically so a grep finds both
-     (docs/plans/theme-css-tokenization.md §4.2). */
+     (docs/plans/archive/theme-css-tokenization.md §4.2). */
   color: var(--code-glyph-fg, #ffffff);
   background: var(--code-glyph-bg, #1d222a);
   box-shadow: inset 0 0 0 1px var(--code-glyph-ring);
@@ -753,7 +753,7 @@
 /* The ring on a focused checklist box. On the app's accent rather than the
    `#a6cdfe` it was pinned at, so it reads as the same focus ring as every
    other control and flips with the scheme
-   (docs/plans/theme-css-tokenization.md §4.2). */
+   (docs/plans/archive/theme-css-tokenization.md §4.2). */
 .LexicalTheme__listItemUnchecked:focus:before,
 .LexicalTheme__listItemChecked:focus:before {
   box-shadow: 0 0 0 2px var(--ed-accent-soft);
@@ -923,7 +923,7 @@ iframe {
    choosing a colour — it must stay a literal or it stops matching, and it is
    not the theme's to flip. `check:theme` reads declaration values only, so it
    never sees this (`scripts/check-theme.mjs`, `directDeclarations`;
-   docs/plans/theme-css-tokenization.md §3.1.1). */
+   docs/plans/archive/theme-css-tokenization.md §3.1.1). */
 .LexicalTheme__image svg [fill="#ffffff"] {
   fill: transparent;
 }
@@ -1179,8 +1179,6 @@ iframe {
   ); /* Position exactly in the middle of the gap, accounting for 2px separator width */
   height: auto; /* Let it stretch between top and bottom */
   width: 2px;
-  /* Was a #ccc/#444 pair with its own html.dark rule, while `.LexicalTheme__hr`
-     a few rules down already drew the same idea from the palette. */
   background-color: var(--mui-palette-divider);
 }
 
@@ -1298,10 +1296,12 @@ iframe {
    rules, so a light island can restore them for its own subtree in one place
    instead of restating each rule.
 
-   Scope: this covers document *content*. The syntax themes (`--tok-*`,
-   `--code-*`, `--cb-*`) and the toolbar (`--tb-*` in toolbar.css) are already
-   two-block token sets of their own and stay that way — a syntax theme is not
-   a content color (DESIGN.md §3.3 / §17.6).
+   Scope: this covers document *content*, whose scheme-flipping values are
+   `--doc-*`. Two neighbours below are deliberately not content colors and stay
+   out of it: the syntax theme (`--tok-*`, `--code-*`) is a two-block token set
+   of its own — a syntax theme is not a content color (DESIGN.md §3.3 / §17.6)
+   — and `--ed-*`, the package's chrome contract, is read here and declared in
+   `styles/tokens.css.ts`, so it flips with the scheme on its own.
    --------------------------------------------------------------------------- */
 
 :root,
@@ -1460,8 +1460,8 @@ html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
 /* The card's palette is the editor's `--ed-*` contract
    (`styles/tokens.css.ts`), which flips with `html.dark` on its own — so these
    rules are written once and there is no hand-written dark twin below.
-   Phase 3 of docs/plans/theme-css-tokenization.md; §5.2 is why the card joins
-   `--ed-*` rather than getting a contract of its own. */
+   Phase 3 of docs/plans/archive/theme-css-tokenization.md; §5.2 is why the
+   card joins `--ed-*` rather than getting a contract of its own. */
 /* Hide the static HTML attachments immediately - React will replace them with ViewAttachment component */
 /* This prevents the flash of unstyled content on page load */
 .document-container .attachment-wrapper {
@@ -1534,7 +1534,7 @@ html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
    `hueTrack` and `checkerboard` — so "this does not change with the scheme" is
    a statement the file makes rather than something a reader has to infer from
    the absence of an `html.dark` twin
-   (docs/plans/theme-css-tokenization.md §5.5).
+   (docs/plans/archive/theme-css-tokenization.md §5.5).
 
    These seven are the only custom properties the attachment card declares.
    Everything else about it — surface, hairline, ink, muted ink, hover — comes
@@ -1690,11 +1690,10 @@ html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
      keyword (4.47) in dark — against one on `--code-bg`, the `--tok-comment`
      failure recorded at the palette, which the code card already has. So the
      preview and the card are one surface with one palette rather than two of
-     each
-     (docs/plans/theme-css-tokenization.md §4.4). `--code-fg` comes with it:
-     unhighlighted text and the plain-text branch of `ViewAttachment` inherit
-     their ink from the document otherwise, which is the pairing that keeps
-     this legible inside a light island. */
+     each (docs/plans/archive/theme-css-tokenization.md §4.4). `--code-fg`
+     comes with it: unhighlighted text and the plain-text branch of
+     `ViewAttachment` inherit their ink from the document otherwise, which is
+     the pairing that keeps this legible inside a light island. */
   background: var(--code-bg);
   color: var(--code-fg);
   overflow-x: auto;
@@ -1777,8 +1776,8 @@ html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
    puts in scope on this selector. There used to be a second theme here (GitHub
    Light and GitHub Dark, 13 literals across 13 rules, one of the two grouped
    differently from the other) for a product that already had one; phase 4 of
-   docs/plans/theme-css-tokenization.md deleted it. The dark half went with it,
-   because `--tok-*` flips underneath.
+   docs/plans/archive/theme-css-tokenization.md deleted it. The dark half went
+   with it, because `--tok-*` flips underneath.
 
    The groups are `theme.tsx`'s `codeHighlight` map read backwards: it names a
    `.LexicalTheme__token*` class per Prism token, and this is the same eight
@@ -1861,7 +1860,7 @@ html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
    not follow `html.dark`, because a reader who prints from dark mode still
    prints onto white. Stated as constants for the same reason as the file-type
    tiles above — a declaration rather than an inference from a rule with no
-   dark twin (docs/plans/theme-css-tokenization.md §5.5). */
+   dark twin (docs/plans/archive/theme-css-tokenization.md §5.5). */
 @media print {
   .attachment-container {
     --attachment-print-bg: #f8f9fa;
