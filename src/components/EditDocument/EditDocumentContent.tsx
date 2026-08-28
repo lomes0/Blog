@@ -60,12 +60,16 @@ const DocumentEditor: React.FC<React.PropsWithChildren> = () => {
       .catch(() => setMissingFor(segment));
   }, [dispatch, segment, isId, resolvedId, fetchedFor]);
 
-  if (!segment) {
-    return <SplashScreen title="Document Not Found" />;
-  }
+  // No segment is not "not found" — it is the workspace with no entry attached,
+  // which is bare `/edit`'s meaning under docs/plans/workspace-url.md §3. Whether
+  // there is anything to show is a question only the restore can answer, and
+  // the stored record lives in IndexedDB, so no server render and nothing above
+  // this component can answer it. It goes to `WorkspacePanes` as a null
+  // `rootId`, which is also the "nothing to replay" signal for the deep-link
+  // seam there.
+  const rootId = !segment ? null : isId ? segment : resolvedId;
 
-  const rootId = isId ? segment : resolvedId;
-  if (!rootId) {
+  if (segment && !rootId) {
     // Not-found is terminal and belongs to the whole route, so it keeps the
     // splash. Resolving a handle is transient and belongs to the pane about to
     // appear, so it gets the pane's own stand-in — see `PaneSkeleton`.

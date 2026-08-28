@@ -1,5 +1,6 @@
 "use client";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Box } from "@mui/material";
 import {
   actions,
@@ -160,9 +161,26 @@ const PaneFrame: React.FC<PaneFrameProps> = ({
   );
 };
 
+/**
+ * Where a workspace with nothing to restore sends you.
+ *
+ * Bare `/edit` is the workspace's own address (docs/plans/workspace-url.md §3),
+ * so "no document named" stopped meaning "not found". With a stored layout
+ * there is a workspace to show. With none there is nothing at all, and `/posts`
+ * is the existing "what do I have" surface — no new UI, and no product argument
+ * attached to a refactor (§6.2, decided). A home pane can take this over later
+ * without anything else here changing.
+ */
+const EMPTY_WORKSPACE_ROUTE = "/posts";
+
 interface WorkspacePanesProps {
-  /** The document named by the URL — the deep-link seam's answer. */
-  rootId: string;
+  /**
+   * The document named by the URL — the deep-link seam's answer — or `null` on
+   * bare `/edit`, which names none and is the steady state after §3's consume.
+   * Null means "nothing to replay": the stored layout is the whole answer, and
+   * if there is no stored layout either, see {@link EMPTY_WORKSPACE_ROUTE}.
+   */
+  rootId: string | null;
 }
 
 /**
@@ -184,6 +202,7 @@ interface WorkspacePanesProps {
 const WorkspacePanes: React.FC<WorkspacePanesProps> = ({ rootId }) => {
   const dispatch = useDispatch();
   const store = useStore();
+  const router = useRouter();
   const panes = useSelector((state: RootState) => state.ui.workspace.panes);
   const focusedPaneId = useSelector(
     (state: RootState) => state.ui.workspace.focusedPaneId,
@@ -253,7 +272,10 @@ const WorkspacePanes: React.FC<WorkspacePanesProps> = ({ rootId }) => {
   // change, so the listener is a handful of comparisons on almost every action.
   useEffect(() => {
     if (!hydrated) return;
-    dispatch(actions.openPane({ rootId }));
+    // Bare `/edit` names nothing, so there is nothing to replay: the restore
+    // above is the whole answer, and dispatching here would mint a pane rooted
+    // at nothing.
+    if (rootId) dispatch(actions.openPane({ rootId }));
 
     const project = () => {
       const state = store.getState();
@@ -277,6 +299,32 @@ const WorkspacePanes: React.FC<WorkspacePanesProps> = ({ rootId }) => {
     project();
     return store.subscribe(project);
   }, [dispatch, store, hydrated, rootId]);
+
+  // The empty-workspace answer (plan §4.3, §6.2): arriving at bare `/edit` with
+  // no stored layout leaves nothing to show, so it hands over to `/posts`.
+  //
+  // **The layout is checked first, and that ordering is the whole risk here.**
+  // The gate is `workspaceHydrated`, which nothing but `restoreWorkspace`
+  // raises — so by the time this runs the stored record has already been read
+  // and installed, layout or nothing. The panes are then read back through
+  // `store.getState()` rather than off the selected value, so "were there panes
+  // at the moment we decided" is a fact rather than a render-timing
+  // coincidence. Redirecting a user who has a perfectly good stored workspace
+  // is the failure this is shaped against.
+  //
+  // One shot, and deliberately not a standing watch on an empty workspace. The
+  // question is about *arrival* — "I came to /edit and there is nothing here" —
+  // not about the workspace becoming empty later: closing the last pane out
+  // from under a deleted document is `useCloseDeletedDocument`'s to answer, and
+  // a second navigation racing that one would be the bug.
+  const emptyDecided = useRef(false);
+  useEffect(() => {
+    if (!hydrated || rootId || emptyDecided.current) return;
+    emptyDecided.current = true;
+    if (store.getState().ui.workspace.panes.length === 0) {
+      router.replace(EMPTY_WORKSPACE_ROUTE);
+    }
+  }, [hydrated, rootId, router, store]);
 
   // Leaving the editor closes the workspace: nothing should survive to be
   // re-adopted by an unrelated route. What is *stored* survives — the

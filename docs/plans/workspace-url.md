@@ -1,8 +1,10 @@
 # The workspace URL: from projection to entry point
 
-**Status: Phase A shipped 28 Aug 2026** (`c63de634`, `2cf113ae`); phases B–D
-open. Written 1 Aug 2026, and §8.1 records what had drifted underneath it by the
-time Phase A ran — chiefly that §4 undercounts the readers by half. Follows
+**Status: Phases A and B shipped 28 Aug 2026** (`c63de634`, `2cf113ae`,
+`2ef0bd39`); C and D open. Written 1 Aug 2026, and §8.1 records what had
+drifted underneath it by the time it was built — chiefly that §4 undercounts the
+readers by half. §6's three questions were decided by the author on 28 Aug and
+are recorded there as answers, not options. Follows
 [workspace-panes.md](./archive/workspace-panes.md), and refines its §0 rather
 than reversing it.
 
@@ -226,42 +228,50 @@ subscription.
 
 ---
 
-## 6. Open questions — need a human
+## 6. The three decisions
 
-### 6.1 Does `/edit`'s `generateMetadata` earn its cost?
+Answered by the author 28 Aug 2026, before Phase B. All three took the
+recommendation.
 
-It runs a `findDocument` on every open to build an `/api/og` card for a route
-only the author can use, and a `<title>` the client overwrites. Keeping it means
-keeping `force-dynamic`, which means `push` stays expensive — though after this
-plan far fewer pushes happen, so the pressure is lower either way.
+### 6.1 Does `/edit`'s `generateMetadata` earn its cost? — **no, both go**
 
-**Recommendation: delete both.** If an `/edit` link is ever unfurled in Slack,
-the useful preview is the _public_ one, and `/view/[id]` already has it.
+It ran a `findDocument` on every open to build an `/api/og` card for a route
+only the author can use, and a `<title>` the client overwrites. If an `/edit`
+link is ever unfurled in Slack the useful preview is the _public_ one, and
+`/view/[id]` already has it. `generateMetadata` and `force-dynamic` are both
+deleted — Phase D.
 
-### 6.2 What does an empty workspace show?
+### 6.2 What does an empty workspace show? — **redirect to `/posts`**
 
-Bare `/edit` with no stored layout. Options: the AI home pane (memory records
-that a composer-only home pane was built and then deliberately pared back), a
-recent-documents list, or a redirect to `/posts`.
+Bare `/edit` with no stored layout goes to `/posts`: the existing "what do I
+have" surface, no new UI, and no product argument attached to a refactor. A home
+pane can replace it later without changing anything here. Explicitly **not** a
+recent-documents list, and explicitly **not** a resurrection of the AI home pane
+— that was deliberately pared back in Jul 2026.
 
-**Recommendation: redirect to `/posts`.** It is the existing "what do I have"
-surface, it needs no new UI, and it means this plan ships without a product
-argument attached. The home pane can replace it later without changing anything
-here.
+The decision it drags with it is *where* the redirect goes. The stored layout is
+in IndexedDB, so nothing on the server and nothing above `WorkspacePanes` can
+answer "is there a workspace to restore" — the redirect has to be client-side,
+and it has to be gated on `workspaceHydrated`, which only `restoreWorkspace`
+raises. It is also a **one-shot on arrival**, not a watch on an empty workspace:
+the last pane closing under a delete is `useCloseDeletedDocument`'s to answer,
+and two navigations racing would be the bug.
 
-### 6.3 Multi-browser-tab is made slightly worse — accept?
+### 6.3 Multi-browser-tab is made slightly worse — **accepted, recorded**
 
 Two browser tabs in the same workspace already clobber each other: both write
 the same user-keyed record and last-writer-wins
-(`workspacePersistence.ts:168-208`). This plan does not change that.
+(`workspacePersistence.ts`). This plan does not change that.
 
-It does change recovery. **Today** each tab's URL still names its own document,
-so a reload in tab A recovers what tab A was on. **After**, both reload into the
-shared record.
+It does change recovery. **Before** each tab's URL still named its own document,
+so a reload in tab A recovered what tab A was on. **After**, both reload into
+the shared stored record. This changes recovery, not correctness — the record
+was already last-writer-wins.
 
-**Recommendation: accept and record it.** A real fix is per-browser-tab layout
-keying (`sessionStorage` scope id), which is a larger change that should be
-argued on its own merits, not smuggled in here.
+Accepted as-is. A real fix is per-browser-tab layout keying (a `sessionStorage`
+scope id), which is a larger change that deserves its own argument and must not
+be smuggled in here. `workspacePersistence.ts` is explicitly **out of scope**
+for this plan.
 
 ---
 
@@ -288,9 +298,22 @@ of §0's inverted data flow.
 
 ### Phase B — Empty-workspace answer
 
-Whatever §6.2 decides, behind the `!segment` branch at
-`EditDocumentContent.tsx:62`. Nothing else changes yet; bare `/edit` is not
-reachable in normal use until Phase C.
+**DONE 28 Aug 2026** — `2ef0bd39`.
+
+§6.2's redirect, behind the `!segment` branch in `EditDocumentContent.tsx`.
+Nothing else changed; bare `/edit` is not reachable in normal use until Phase C.
+
+What it took, since the plan's one line understates it: `!segment` stopped being
+an early return and became a **null `rootId` threaded into `WorkspacePanes`**,
+whose prop went `string` → `string | null`. That is the only shape in which the
+stored layout can be consulted before the redirect is decided — the restore
+lives in that component and reads IndexedDB, so no ancestor and no server render
+can answer it. The deep-link seam skips its `openPane` on a null `rootId`
+(nothing to replay), the projection's `urlDocIsOpen` guard already refused a
+null `urlDocId` so bare `/edit` stayed bare for the one commit before Phase C
+deleted it, and the redirect is a separate `useRef`-guarded one-shot gated on
+`workspaceHydrated` that reads `panes` back through `store.getState()` rather
+than off a selected value.
 
 ### Phase C — Consume the URL
 
