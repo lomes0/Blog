@@ -196,13 +196,17 @@ const COLOR_LITERAL = /#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?)\(\s*(?!var\(--)/g;
  * and line numbers still hold.
  *
  * A fallback is not a color choice; it is what renders if a variable that
- * should exist does not. `theme.css` carries nine of them (the `--tok-*`
- * defaults inherited from Lexical's stock theme, and the two `--code-glyph-*`
- * that `nodes/CodeNode/card.ts` sets inline per language). Flagging them would
- * be asking for the fallback to be a variable, which is circular.
+ * should exist does not. Flagging them would be asking for the fallback to be
+ * a variable, which is circular.
  *
  * Whether they should exist at all is a separate question, and
- * docs/plans/theme-css-tokenization.md §4.2 answers it.
+ * docs/plans/theme-css-tokenization.md §4.2 answered it: the eight `--tok-*`
+ * defaults inherited from Lexical's stock theme were unreachable — every one
+ * is declared on `.LexicalTheme__code`, the only ancestor a
+ * `.LexicalTheme__token*` span can have, in both schemes — and are gone. The
+ * two `--code-glyph-*` remain, because no rule declares those at all:
+ * `nodes/CodeNode/card.ts` sets them inline per language, so the fallback is
+ * the real default rather than dead text.
  */
 function maskVarFallbacks(src) {
   return src.replace(

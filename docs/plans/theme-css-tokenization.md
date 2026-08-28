@@ -1,8 +1,8 @@
 # Tokenizing theme.css
 
-Status: **Phase 1 shipped 14 Aug 2026; phases 2–5 open.** §7 is the execution
-log, and four of this plan's own claims are wrong — read it before §2. The
-largest is that §2.1 undercounted the work by a factor of five, because it
+Status: **Phases 1–2 shipped (14 and 28 Aug 2026); phases 3–5 open.** §7 is the
+execution log, and six of this plan's own claims are wrong — read it before §2.
+The largest is that §2.1 undercounted the work by a factor of five, because it
 counted hex and not `rgb()`.
 
 `packages/editor/src/theme.css` is the last stylesheet in the tree that holds
@@ -436,3 +436,56 @@ in `globals.css` were **deleted** rather than rewritten — the scrollbar trio,
 and the diff pair — because the token flips underneath them. That is the same
 deletion §4.3 predicts at a larger scale for the attachment card's ~95 dark
 lines, and it is now demonstrated rather than assumed.
+
+### 7.5 Phase 2 (28 Aug 2026)
+
+Landed: the focus ring on `--ed-accent-soft`, eight of the ten `var(--x,
+fallback)` defaults deleted, and the `[fill="#ffffff"]` comment. `check:theme`
+unchanged at `clean — 41 style files … · 108 deferred (attachment-card)`;
+`tsc`, `lint` and 1136 tests green. **The visual gate §4.2 asks for — a focused
+checklist item and a sticky note in both schemes — was not discharged and is
+still owed**, and the focus ring is the one place this phase changed a rendered
+colour.
+
+Two more of the plan's claims were wrong, both in §4.2's third bullet.
+
+- **It is ten fallbacks, not nine.** The same hex-only grep behind §7.2's
+  miscount: §4.2 wrote "`758–784`, `328–329`" and then said "nine", but that is
+  eight `--tok-*` plus two `--code-glyph-*`.
+
+- **"`--tok-*` and `--code-glyph-*` are unconditionally defined by the rules
+  above them" is true of the first set and false of the second, so only eight
+  fallbacks were deletable.** `--tok-*` is declared on `.LexicalTheme__code`
+  (light, `theme.css:160`) and `html.dark .LexicalTheme__code` (dark, `1371`),
+  and `theme.tsx:21–22` is what makes that unconditional: `codeHighlight`'s
+  classes are emitted by `CodeHighlightNode`, which only exists inside a
+  `CodeNode`, so a `.LexicalTheme__token*` span cannot render outside that
+  ancestor. Those eight fallbacks were genuinely unreachable and are gone.
+
+  `--code-glyph-fg` / `--code-glyph-bg` are declared by **no rule at all** —
+  `codeLanguageGlyph()` sets them inline per language from
+  `utils/codeLanguage.ts`'s `GLYPH_MAP`, at `nodes/CodeNode/card.ts:203` and
+  `plugins/CodePlugin/CodeActionMenuPlugin.tsx:181`. The CSS fallback is
+  therefore the real default for a chip built without them, not dead text, and
+  deleting it would trade a legible dark chip for transparent-on-inherited ink.
+  Kept, with the reason at the declaration, and the `#fff` normalized to
+  `#ffffff` so it greps against `DEFAULT_GLYPH_FG`. The plan's stated benefit —
+  removing a way for a typo'd variable to render plausibly — is real for the
+  eight and inverted for the two.
+
+  The general shape, alongside §7.3's: **a `var()` fallback is only dead if the
+  variable is declared in CSS.** One supplied from JavaScript looks identical in
+  the stylesheet and has the opposite answer.
+
+`--doc-focus-ring` was **deleted rather than kept as an alias** — §4.2's
+decision was the contract, and one indirection to reach it is one more than
+zero. `.LexicalTheme__listItem*:focus:before` now reads `var(--ed-accent-soft)`
+directly, which is also the shape §4.3 will use at scale. §7.4's table still
+lists the token, correctly, as what phase 1 introduced.
+
+§4.2's other two bullets no longer match the tree, both because phase 1 got
+there first (§7.2): `716`'s literal had already become `--doc-focus-ring`, and
+`921`'s `#999` had already become `--note-placeholder-fg`, declared at
+`theme.css:916` in a pure-token block on `.sticky-note` with the note's other
+two fixed inks. That is exactly the island value §4.2 asked for, so phase 2
+changed nothing there.

@@ -338,7 +338,14 @@
   font-size: 9.5px;
   font-weight: 600;
   line-height: 1;
-  color: var(--code-glyph-fg, #fff);
+  /* These two are the only `var(--x, …)` fallbacks left in this file, and they
+     are the reachable kind. Unlike `--tok-*` above, neither is declared by any
+     rule: `codeLanguageGlyph()` sets them inline per language, so CSS's own
+     default is what a chip built without them would render as. They are
+     `DEFAULT_GLYPH_FG` / `DEFAULT_GLYPH_BG` from `utils/codeLanguage.ts`,
+     spelled identically so a grep finds both
+     (docs/plans/theme-css-tokenization.md §4.2). */
+  color: var(--code-glyph-fg, #ffffff);
   background: var(--code-glyph-bg, #1d222a);
   box-shadow: inset 0 0 0 1px var(--code-glyph-ring);
 }
@@ -724,9 +731,13 @@
   right: 0;
 }
 
+/* The ring on a focused checklist box. On the app's accent rather than the
+   `#a6cdfe` it was pinned at, so it reads as the same focus ring as every
+   other control and flips with the scheme
+   (docs/plans/theme-css-tokenization.md §4.2). */
 .LexicalTheme__listItemUnchecked:focus:before,
 .LexicalTheme__listItemChecked:focus:before {
-  box-shadow: 0 0 0 2px var(--doc-focus-ring);
+  box-shadow: 0 0 0 2px var(--ed-accent-soft);
   border-radius: 2px;
 }
 
@@ -763,36 +774,36 @@
 }
 
 .LexicalTheme__tokenComment {
-  color: var(--tok-comment, slategray);
+  color: var(--tok-comment);
   font-style: italic;
 }
 
 .LexicalTheme__tokenPunctuation {
-  color: var(--tok-punctuation, #999);
+  color: var(--tok-punctuation);
 }
 
 .LexicalTheme__tokenProperty {
-  color: var(--tok-property, #905);
+  color: var(--tok-property);
 }
 
 .LexicalTheme__tokenSelector {
-  color: var(--tok-selector, #690);
+  color: var(--tok-selector);
 }
 
 .LexicalTheme__tokenOperator {
-  color: var(--tok-operator, #9a6e3a);
+  color: var(--tok-operator);
 }
 
 .LexicalTheme__tokenAttr {
-  color: var(--tok-keyword, #07a);
+  color: var(--tok-keyword);
 }
 
 .LexicalTheme__tokenVariable {
-  color: var(--tok-variable, #e90);
+  color: var(--tok-variable);
 }
 
 .LexicalTheme__tokenFunction {
-  color: var(--tok-function, #dd4a68);
+  color: var(--tok-function);
 }
 
 .LexicalTheme__mark {
@@ -889,6 +900,11 @@ iframe {
   height: auto;
 }
 
+/* A hex inside a *selector*, matching markup in a pasted SVG rather than
+   choosing a colour — it must stay a literal or it stops matching, and it is
+   not the theme's to flip. `check:theme` reads declaration values only, so it
+   never sees this (`scripts/check-theme.mjs`, `directDeclarations`;
+   docs/plans/theme-css-tokenization.md §3.1.1). */
 .LexicalTheme__image svg [fill="#ffffff"] {
   fill: transparent;
 }
@@ -1318,10 +1334,6 @@ html.dark {
   /* Zebra striping, a mid-slate at 10%. Distinct from `--doc-table-header-bg`,
      which does flip: a header is a surface, a stripe is a tint over one. */
   --doc-table-stripe-bg: rgb(120 132 157 / 10%);
-  /* The ring on a focused checklist box. Pinned here to preserve the value it
-     has always had; docs/plans/theme-css-tokenization.md §4.2 decides whether
-     it should instead follow `--ed-accent-soft` and track the app's accent. */
-  --doc-focus-ring: #a6cdfe;
   /* Highlight marks, as a channel triple rather than five paired literals: the
      four states below differ only in alpha, and spelling that as one hue plus
      `/ N%` is what stops a fifth state inventing a sixth yellow. */
