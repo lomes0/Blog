@@ -1,7 +1,8 @@
 # The workspace URL: from projection to entry point
 
-**Status: Phases A–C shipped 28 Aug 2026** (`c63de634`, `2cf113ae`,
-`a3e75990`, `b6919794`); D open. Written 1 Aug 2026, and §8.1 records what had
+**Status: complete — all four phases shipped 28 Aug 2026** (`c63de634`,
+`2cf113ae`, `a3e75990`, `31573df5`, and the commit this line ships in).
+Written 1 Aug 2026, and §8.1 records what had
 drifted underneath it by the time it was built — chiefly that §4 undercounts the
 readers by half. §6's three questions were decided by the author on 28 Aug and
 are recorded there as answers, not options. Follows
@@ -217,11 +218,9 @@ read the URL; they write one, as an entry. **No change.**
   `layoutSelectors` import. Closing a pane stops being a URL event.
 - `pane.split`'s push (`commands/pane.ts:74-82`) — `focusedPaneId` is persisted,
   which is what that push was compensating for.
-- Probably `generateMetadata` + `force-dynamic` on `edit/[[...id]]/page.tsx`
-  (§6, needs a call). If they go, the page file goes entirely and
-  `edit/
-  layout.tsx` can hold a plain `page.tsx` returning `null` — or the
-  catch-all collapses to a `/edit/[[...id]]` that is purely an entry.
+- `generateMetadata` + `force-dynamic` on `edit/[[...id]]/page.tsx` (§6.1 said
+  yes). The page file itself **stays** — see Phase D; only the catch-all-as-pure-
+  entry branch of this bullet survives contact with Next 15.
 
 Net: roughly −250L of mechanism, −1 navigation primitive, −1 per-action store
 subscription.
@@ -317,7 +316,7 @@ than off a selected value.
 
 ### Phase C — Consume the URL
 
-**DONE 28 Aug 2026** — `b6919794`.
+**DONE 28 Aug 2026** — `31573df5`.
 
 The one-shot: after `openPane` lands, `history.replaceState` to `/edit`. §5's
 list is gone, plus a seventh item §5 did not know about (§8.1.4).
@@ -342,10 +341,25 @@ the workspace. §9's CDP check (stored two-pane record, cold-load a deep link
 naming one of them, confirm the record is unchanged) is the one that matters
 most and has **not** been run.
 
-### Phase D — Drop `force-dynamic` (if §6.1 says so)
+### Phase D — Drop `force-dynamic`
 
-Separate commit, because it is the one with a measurable perf claim and should
-be reverted independently if the OG card turns out to matter.
+**DONE 28 Aug 2026**, in the commit this line ships in. Kept separate, per this
+section, because it is the one with a measurable perf claim and should be
+revertable on its own if the OG card turns out to matter.
+
+**The page file does not go.** §5 floated deleting it and giving `edit/` a plain
+`page.tsx`, and that is wrong twice over in Next 15: a segment with no `page` is
+not routable at all, so `/edit` would 404 — and an `edit/page.tsx` cannot
+coexist with `edit/[[...id]]/page.tsx` anyway, because the optional catch-all
+already matches the bare path. §5's *other* branch is the right one: the
+catch-all collapses to a pure entry. What is left in the file is
+`const page = () => null` and a docblock. Metadata falls back to the root
+layout's `title: "Blog"`, which the focused `EditorTabPanel` overwrites
+client-side exactly as it did before.
+
+The claim, measured: `next build` moves `/edit/[[...id]]` from `ƒ (Dynamic)` —
+server-rendered on demand — to `○ (Static)`. There is no longer a render, or a
+`findDocument`, per navigation into the workspace.
 
 ---
 

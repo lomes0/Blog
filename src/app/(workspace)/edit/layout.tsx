@@ -19,9 +19,11 @@ import EditDocument from "@/components/EditDocument";
  * dispatching `openPane`. Leaving `/edit` entirely still unmounts this layout,
  * so `closeAllPanes` keeps meaning what it says.
  *
- * `children` is deliberately dropped: the page below renders nothing, and exists
- * for `generateMetadata` and `force-dynamic`, which are per-document and so have
- * to stay on the segment that names one.
+ * `children` is deliberately dropped: the page below renders nothing at all and
+ * exists only to make `/edit/<id>` routable. It used to also carry
+ * `generateMetadata` and `force-dynamic`, which were per-document and so had to
+ * sit on the segment that names one; docs/plans/workspace-url.md §6.1 deleted
+ * both, and there is nothing per-document left down there.
  */
 export default function EditLayout() {
   return <EditDocument />;
