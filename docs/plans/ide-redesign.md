@@ -1,13 +1,19 @@
 # IDE Redesign — Phased Plan (visible pass)
 
-**Status: all three phases of this pass have shipped.** Phase 0 (⌘K palette) and
-Phase 1 (`fda8cb70` — search pill + Read/Edit toggle) are in `EditorTopBar.tsx`;
-Phase 2's Explorer restyle landed over `4e138db5`…`13c32850`; Phase 3 is
-`Layout/ActivityRail.tsx`, `SideBar/SidebarSearchView.tsx` and `ui.sidebarView`
-in `store/app.ts`. **What is left is only the "Deferred (next pass)" list
-below** — the status bar (nothing renders one today), the AI panel restyle, and
-the tabs/breadcrumb polish. This file stays out of `archive/` for that list
-alone; §"Locked decisions" and the phase bodies are now history.
+**Status: all three phases of this pass have shipped, and so has the status
+bar.** Phase 0 (⌘K palette) and Phase 1 (`fda8cb70` — search pill + Read/Edit
+toggle) are in `EditorTopBar.tsx`; Phase 2's Explorer restyle landed over
+`4e138db5`…`13c32850`; Phase 3 is `Layout/ActivityRail.tsx`,
+`SideBar/SidebarSearchView.tsx` and `ui.sidebarView` in `store/app.ts`. The
+status bar is `Layout/StatusBar.tsx` — see the deferred list below for what it
+does and does not show, and why.
+
+**Nothing here is actionable any more.** The two remaining deferred items are
+**blocked on respecification**, not on effort: both name their target by
+reference to the Blog IDE proposal bundle, and that bundle is no longer in the
+repo (see the line under this one). Somebody has to decide what "restyle the AI
+panel" means before it can be built. This file stays out of `archive/` to hold
+that fact; §"Locked decisions" and the phase bodies are history.
 
 Applying the **Blog IDE** proposal to this app. (The proposal bundle itself is
 no longer in the repo; the locked decisions below are what survived of it.)
@@ -71,7 +77,7 @@ no longer in the repo; the locked decisions below are what survived of it.)
 | Read/Edit switch       | ⚠️ mode detected, no control            | **Phase 1** (small add) |
 | Tabs + breadcrumb      | ✅ in `EditorTopBar`                    | polish only (later)     |
 | AI panel               | ✅ `CopilotPanel`                       | restyle later           |
-| Status bar             | ❌ none                                 | later                   |
+| Status bar             | ✅ `Layout/StatusBar.tsx`               | done (see below)        |
 
 ---
 
@@ -162,13 +168,63 @@ buttons).
 
 ---
 
-## Deferred (next pass, not this one)
+## Deferred (next pass) — what became of it
 
-- **Status bar** (bottom, full-width): save state · mode · word count ·
-  read-time · "AI ready". Compute word count from the active doc.
-- **AI panel restyle**: Copilot → suggested-action cards + IDE chat styling.
-- **Tabs/breadcrumb polish**, front-matter card in the doc body, formatting
-  toolbar grouping to match the proposal's button set.
+### Status bar — SHIPPED, and two of its five fields were dropped
+
+`src/components/Layout/StatusBar.tsx`, mounted at the foot of the document
+column in `AppLayoutContent` and rendered on `/edit` only.
+
+The line this section used to carry was _"save state · mode · word count ·
+read-time · 'AI ready'"_. Written ~Jul 2026, it was overtaken twice before it
+was built, so what shipped is **save trouble · mode · word count · read-time**:
+
+- **Save state is exception-only.** docs/plans/archive/quiet-autosave.md shipped
+  after this plan was written and deliberately removed _eight_ always-on
+  save-state surfaces — "say nothing while saving works". A field alternating
+  "Saved"/"Saving…" would have been the ninth. The bar reads
+  `selectAnySaveTrouble` instead, which is documented in `store/index.ts` as the
+  selector "for always-visible chrome" and folds both `idle` and `saving` into
+  `undefined`; the field renders nothing at all on the happy path, and appears
+  only for `retrying` and `error`.
+- **"AI ready" is gone, not deferred.** It predates
+  docs/plans/archive/byo-provider-keys.md, after which there is no deployment
+  API key to be ready — each user brings their own, and whether one is present
+  is already answered by `RightRail/ProviderKeys.tsx`. A copy in the status bar
+  would be a third surface for one fact. Do not add a substitute AI indicator.
+
+Two smaller decisions worth not relitigating:
+
+- **Scope is the workspace, not the app.** Two of the four readings are
+  properties of an open document, so an app-wide bar would stand empty on
+  `/posts` and `/user/…`. `/edit` is the only route in this shell with panes at
+  all — `/view/[id]` renders `PublicShell` — which makes it the scope where
+  every field has an answer.
+- **Width is the document column, not the window.** The four chrome columns
+  beside it are each `100vh`, and the sidebar's drawer paper is
+  `position: fixed`, so a bar spanning all five would have to thread its own
+  height back through every one of them for the sake of 26px. It reads as a
+  footer to the thing it describes.
+
+Word count and read-time were already computed in two places, disagreeing about
+where the rate lived (a named `WORDS_PER_MIN` in `OutlineSection`, a literal
+`200` in `PropertiesSection`). Both now call `readingMinutes` in
+`utils/editorContent.ts`, next to `countWords`, so the three callers agree by
+construction rather than by luck.
+
+### AI panel restyle — BLOCKED on respecification
+
+### Tabs/breadcrumb polish, front-matter card, toolbar grouping — BLOCKED on respecification
+
+Neither is "not started". Both specify their target _by reference_: "Copilot →
+suggested-action cards + IDE chat styling" and "to match the proposal's button
+set" only mean something next to the **Blog IDE proposal bundle**, and that
+bundle is no longer in the repo (see the note under this file's title — the
+locked decisions are all that survived of it). There is nothing to build
+against, and guessing at it would produce a restyle nobody asked for.
+
+Reopening either one starts with a human deciding what it should look like now,
+not with reading this file.
 
 ## Cross-cutting: state & architecture
 

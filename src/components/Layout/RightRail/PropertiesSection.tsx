@@ -8,7 +8,7 @@ import type { RootState } from "@/store";
 import { shallowEqual } from "react-redux";
 import { DateDisplay } from "@/components/shared/DateDisplay";
 import { DocumentStatus } from "@/types";
-import { countWords } from "@/utils/editorContent";
+import { countWords, readingMinutes } from "@/utils/editorContent";
 import { seriesPositionOf } from "@/utils/posts/seriesGrouping";
 import RailSection from "./RailSection";
 import { selectFocusedPane } from "@/store/selectors/layoutSelectors";
@@ -81,7 +81,7 @@ export default function PropertiesSection({
   );
 
   const wordCount = countWords(activeLocalDoc?.data);
-  const readMin = Math.max(1, Math.ceil(wordCount / 200));
+  const readMin = readingMinutes(wordCount);
 
   const statusColors: Record<DocumentStatus, string> = {
     [DocumentStatus.ACTIVE]: "info",

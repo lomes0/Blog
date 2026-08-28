@@ -10,6 +10,7 @@ import { CONTENT_PAD_X } from "./contentInset";
 import HydrationManager from "./HydrationManager";
 import EditorTopBar from "./EditorTopBar";
 import RightRail from "./RightRail";
+import StatusBar from "./StatusBar";
 import CopilotPanel from "@/components/CopilotPanel/CopilotPanel";
 import InlineCopilotBar, {
   hasInlineCopilotBar,
@@ -132,77 +133,110 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
           >
             <Box id="back-to-top-anchor" />
             <EditorTopBar />
-            <HydrationManager>
-              <Container
-                className="editor-container"
-                id="editor-main-container"
-                maxWidth={false}
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  mx: 0,
-                  // The workspace gets no top margin: the first thing in its
-                  // scroller is a sticky pane header, and a header is chrome —
-                  // it has to meet the bar above it. This margin used to fall
-                  // *below* the toolbar, which hung outside the scroller in the
-                  // app shell; moving the toolbar into the pane put the same
-                  // 16px above it, as a band of background that never scrolls
-                  // away. Every other route still opens on content, which wants
-                  // the breathing room.
-                  mt: isWorkspace ? 0 : 2,
-                  mb: 2,
-                  flex: 1,
-                  minHeight: 0,
-                  position: "relative",
-                  overflow: "auto",
-                  // A stacking context, so that every z-index raised *inside*
-                  // the document stays inside it. `position: relative` alone
-                  // does not make one (z-index stays `auto`), and neither does
-                  // `overflow` — so plugin chrome that portals out of the
-                  // Lexical subtree and asserts a z-index used to resolve as a
-                  // sibling of the Copilot bar in the root stacking context and
-                  // paint straight over it. The code block's header/footer
-                  // (z-index 24) and language menu (30) beat the bar's 3 and
-                  // sliced across the chat card. Isolating here fixes the whole
-                  // class rather than that one pair, which is why it is not a
-                  // larger number on the bar: content passes *under* the bar,
-                  // and that has to hold for the next plugin too.
-                  isolation: "isolate",
-                  width: "100%",
-                  // The editor route alone — DESIGN.md §12's exception. Every
-                  // other route's overflow is a page of cards that wants its
-                  // bar; the workspace's is a document whose scroller *is* the
-                  // page, so the bar is a permanent rule down its inside edge,
-                  // and a split draws two of them, one against the splitter.
-                  // Scrolling is untouched, only the indicator.
-                  ...(isWorkspace ? hiddenScrollbarSx : {}),
-                  pl: {
-                    xs: CONTENT_PAD_X.xs.left,
-                    sm: CONTENT_PAD_X.sm.left,
-                    md: CONTENT_PAD_X.md.left,
-                  },
-                  pr: {
-                    xs: CONTENT_PAD_X.xs.right,
-                    sm: CONTENT_PAD_X.sm.right,
-                    md: CONTENT_PAD_X.md.right,
-                  },
-                  // Room to scroll the end of a document out from under the
-                  // resting Copilot bar.
-                  pb: hasInlineCopilotBar(pathname)
-                    ? `${INLINE_BAR_CLEARANCE}px`
-                    : 0,
-                }}
-              >
-                {children}
-              </Container>
-            </HydrationManager>
             {
-              /* A sibling of the scrolling container, not a child of it: the
-                  bar is anchored to the foot of the pane and must not scroll
-                  away with the document it is asking about. `#app-main` is the
-                  positioned ancestor it hangs from. */
+              /* The document column proper — the scroller and the bar that
+                  floats over it — as one positioned block, so the status bar
+                  below is a *sibling* of the pair rather than something the
+                  Copilot bar's `bottom: 0` would sit on top of. Without this
+                  wrapper the two share `#app-main` and overlap by ~10px. */
             }
-            <InlineCopilotBar documentId={copilotDocumentId} />
+            <Box
+              sx={{
+                position: "relative",
+                flex: 1,
+                minHeight: 0,
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              <HydrationManager>
+                <Container
+                  className="editor-container"
+                  id="editor-main-container"
+                  maxWidth={false}
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    mx: 0,
+                    // The workspace gets no top margin: the first thing in its
+                    // scroller is a sticky pane header, and a header is chrome —
+                    // it has to meet the bar above it. This margin used to fall
+                    // *below* the toolbar, which hung outside the scroller in the
+                    // app shell; moving the toolbar into the pane put the same
+                    // 16px above it, as a band of background that never scrolls
+                    // away. Every other route still opens on content, which wants
+                    // the breathing room.
+                    mt: isWorkspace ? 0 : 2,
+                    mb: 2,
+                    flex: 1,
+                    minHeight: 0,
+                    position: "relative",
+                    overflow: "auto",
+                    // A stacking context, so that every z-index raised *inside*
+                    // the document stays inside it. `position: relative` alone
+                    // does not make one (z-index stays `auto`), and neither does
+                    // `overflow` — so plugin chrome that portals out of the
+                    // Lexical subtree and asserts a z-index used to resolve as a
+                    // sibling of the Copilot bar in the root stacking context and
+                    // paint straight over it. The code block's header/footer
+                    // (z-index 24) and language menu (30) beat the bar's 3 and
+                    // sliced across the chat card. Isolating here fixes the whole
+                    // class rather than that one pair, which is why it is not a
+                    // larger number on the bar: content passes *under* the bar,
+                    // and that has to hold for the next plugin too.
+                    isolation: "isolate",
+                    width: "100%",
+                    // The editor route alone — DESIGN.md §12's exception. Every
+                    // other route's overflow is a page of cards that wants its
+                    // bar; the workspace's is a document whose scroller *is* the
+                    // page, so the bar is a permanent rule down its inside edge,
+                    // and a split draws two of them, one against the splitter.
+                    // Scrolling is untouched, only the indicator.
+                    ...(isWorkspace ? hiddenScrollbarSx : {}),
+                    pl: {
+                      xs: CONTENT_PAD_X.xs.left,
+                      sm: CONTENT_PAD_X.sm.left,
+                      md: CONTENT_PAD_X.md.left,
+                    },
+                    pr: {
+                      xs: CONTENT_PAD_X.xs.right,
+                      sm: CONTENT_PAD_X.sm.right,
+                      md: CONTENT_PAD_X.md.right,
+                    },
+                    // Room to scroll the end of a document out from under the
+                    // resting Copilot bar.
+                    pb: hasInlineCopilotBar(pathname)
+                      ? `${INLINE_BAR_CLEARANCE}px`
+                      : 0,
+                  }}
+                >
+                  {children}
+                </Container>
+              </HydrationManager>
+              {
+                /* A sibling of the scrolling container, not a child of it: the
+                    bar is anchored to the foot of the pane and must not scroll
+                    away with the document it is asking about. The wrapper above
+                    is the positioned ancestor it hangs from — it used to be
+                    `#app-main`, which now also holds the status bar. */
+              }
+              <InlineCopilotBar documentId={copilotDocumentId} />
+            </Box>
+            {
+              /* Workspace chrome, not app chrome. Two of its four readings —
+                  word count and read-time — are properties of an open document,
+                  so on `/posts` or `/user/…` the bar would be a permanent empty
+                  strip. `/edit` is the only route in this shell that has panes
+                  at all (`/view/[id]` renders `PublicShell` instead), which
+                  makes it exactly the scope where every field has an answer.
+
+                  Full width of the document column rather than of the window:
+                  the four chrome columns beside it are each `100vh` and two of
+                  them are `position: fixed`/`sticky`, so a bar under all five
+                  would have to thread its height back through every one of
+                  them. It reads as a footer to the thing it describes. */
+            }
+            {isWorkspace && <StatusBar />}
           </Box>
           {
             /* Always keep a grid item in the copilot slot so the rail stays

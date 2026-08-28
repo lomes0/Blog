@@ -7,11 +7,10 @@ import {
   countWords,
   extractHeadings,
   type OutlineHeading,
+  readingMinutes,
 } from "@/utils/editorContent";
 import RailSection from "./RailSection";
 import { ICON_SIZE } from "@/theme/icons";
-
-const WORDS_PER_MIN = 200;
 
 interface OutlineSectionProps {
   activeDocId: string | null;
@@ -67,7 +66,7 @@ export default function OutlineSection({ activeDocId }: OutlineSectionProps) {
     observer.observe(el, { childList: true, subtree: true });
     return () => observer.disconnect();
   }, [needsDomFallback]);
-  const readMinutes = Math.max(1, Math.ceil(wordCount / WORDS_PER_MIN));
+  const readMinutes = readingMinutes(wordCount);
 
   useEffect(() => {
     const el = document.getElementById("app-main");
