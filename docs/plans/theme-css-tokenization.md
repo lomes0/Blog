@@ -1,7 +1,7 @@
 # Tokenizing theme.css
 
-Status: **Phases 1–2 shipped (14 and 28 Aug 2026); phases 3–5 open.** §7 is the
-execution log, and six of this plan's own claims are wrong — read it before §2.
+Status: **Phases 1–3 shipped (14 and 28 Aug 2026); phases 4–5 open.** §7 is the
+execution log, and eight of this plan's own claims are wrong — read it before §2.
 The largest is that §2.1 undercounted the work by a factor of five, because it
 counted hex and not `rgb()`.
 
@@ -489,3 +489,84 @@ there first (§7.2): `716`'s literal had already become `--doc-focus-ring`, and
 `theme.css:916` in a pure-token block on `.sticky-note` with the note's other
 two fixed inks. That is exactly the island value §4.2 asked for, so phase 2
 changed nothing there.
+
+### 7.6 Phase 3 (28 Aug 2026)
+
+Landed: the attachment card's chrome on `--ed-*`. **95 of the region's 108
+deferred literals are gone** — 80 replaced by contract variables, 15 moved into
+two definition blocks — and `check:theme` drops from `108 deferred` to `13`,
+which is exactly the two syntax palettes phase 4 owns. The measurable claim
+held: **the `html.dark` chrome block was deleted, not rewritten — 98 lines
+(41 literals across 17 rules, plus its 9-line comment header) replaced by a
+6-line note.** `tsc`, `lint` and 1136 tests green.
+
+The mapping, one row per role, chosen to agree with `nodes/AttachmentNode/
+styles.css.ts` — the *live* surface of the same component, already on `vars.*`
+— wherever the two disagreed:
+
+| Role | Was (light / dark) | Now |
+| - | - | - |
+| Card + preview frame + button fill | `#ffffff→#f8f9fa` gradient / `#2d3748→#1a202c` | `--ed-bg-secondary` |
+| Hairline | `#e1e4e8` / `#4a5568` | `--ed-border` |
+| Hairline on hover | `#c8cdd2` / `#718096` | `--ed-text-tertiary` |
+| Ink | `#24292e` / `#e2e8f0` | `--ed-text` |
+| Muted ink | `#6a737d` / `#a0aec0` | `--ed-text-secondary` |
+| Toggle rest / hover / active | `rgba(0,0,0,.02/.05/.08)` / white at `.03/.07/.1` | `--ed-fill-quaternary` / `-tertiary` / `-secondary` |
+| Preview `<pre>`, header, loading | `#f6f8fa` / `#2d3748` | `--ed-fill-tertiary` |
+| Download chip | `rgba(102,126,234,.1/.2)` on `#667eea` / a lifted `#9aa5f5` | `color-mix(… var(--ed-accent) 12%/20% …)` on `--ed-accent` |
+| Card + preview shadow | four hand-tuned pairs | `--ed-shadow-menu` |
+| Preview error band | `#fff3cd`/`#856404`/`#ffc107` | `--ed-warning-soft` / `--ed-warning` |
+
+Two more of the plan's claims were wrong, and one of its instructions could not
+be followed as written.
+
+- **§4.3's "~66 literals" is out by half, in the same direction as §7.2's
+  miscount and for the same reason.** The region held 95 outside the syntax
+  themes: 52 in the light chrome (13 of them the icon gradients), 41 in the dark
+  twin, 2 in print. §2.1's table said "~90" for the whole region and was closer
+  than the phase that had to do the work.
+
+- **§4.3's "the entire `html.dark` block at `1698–1792` disappears, ~95 lines"
+  was right about the shape and short on the count.** It is 98 lines, because
+  the block's own comment header — nine lines recording the
+  `.attachment-link` → `.attachment-container` selector bug the dark rules were
+  written against — goes with it. That history is not about dark mode, so it
+  moved to the top of the section rather than being deleted with the rules.
+
+- **§4.3 says to keep the print block's comment, which is not possible
+  verbatim: it reads "same misdirected selector as the dark rules above", and
+  this phase deletes the rules it points at.** Kept and re-pointed at the note
+  that now carries the history. The instruction is right about what must
+  survive — the recorded bug — and wrong that keeping the text achieves it.
+
+Three judgement calls, all of which change a rendered pixel and none of which
+`check:theme` has an opinion about:
+
+- **The card's two gradients become one flat surface.** `--ed-bg-secondary` is
+  the card, and there is no scheme-aware spelling of a sheen from white to
+  near-white; the same applies to the preview header's `180deg` pair, which is
+  now `--ed-fill-tertiary`.
+- **Hover loses its heavier drop shadow.** `--ed-shadow-modal` is a 40px blur
+  for something floating over the document, not for a 70px card, so hover is
+  the hairline and the 1px lift. Light mode never changed the card's fill on
+  hover either — only the dark twin did — so that half is now faithful in both.
+- **The `<pre>` moves from a pinned `#f6f8fa`/`#2d3748` to
+  `--ed-fill-tertiary`,** which lands within a point or two of both and is what
+  the live `codePane` already uses. §4.4's contrast measurement was taken
+  against those two hexes and still holds to that tolerance — and is moot if
+  phase 4 does what it says and moves the `<pre>` to `--code-bg`.
+
+The two definition blocks are `.attachment-icon`'s seven `--attachment-tile-*`
+constants (six file-type gradients and the indigo glow under the default one)
+and `@media print`'s two `--attachment-print-*`. Neither is a palette: nothing
+reassigns them under `html.dark`, which is the whole statement they exist to
+make (§5.5). §5.2 held — no `--att-*` surface, hairline or ink token was
+created, and every one of those roles reads `--ed-*` directly.
+
+**The visual gate §4.3 asks for — print preview and `/view` with JavaScript
+disabled, both schemes — was not discharged and is still owed**, alongside
+§4.2's. One thing for whoever discharges it, found while reading and *not*
+introduced here: `globals.css`'s print block sets `color` on `body` only, so a
+`.attachment-filename` printed from dark mode has always taken a near-white ink
+onto the print card's `#f8f9fa`. The old `html.dark` rule had the identical
+bug (`#e2e8f0`), so this phase preserves it exactly rather than fixing it.

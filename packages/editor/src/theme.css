@@ -1428,6 +1428,19 @@ html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
 }
 
 /* Attachment Styles - Modern Design */
+/* The card surface is `.attachment-container`; `.attachment-content` is the
+   padded row and `.attachment-link` the inner flex box, which carries
+   `color: inherit` and no box of its own. Dark mode and print were both
+   written against `.attachment-link`, predating the container/content/link
+   split in `AttachmentNode.createDOM` — so dark painted a gradient across part
+   of an otherwise white card and left the filename light. Print still carries
+   the fix; the dark rules it was recorded alongside are gone with the palette
+   below. */
+/* The card's palette is the editor's `--ed-*` contract
+   (`styles/tokens.css.ts`), which flips with `html.dark` on its own — so these
+   rules are written once and there is no hand-written dark twin below.
+   Phase 3 of docs/plans/theme-css-tokenization.md; §5.2 is why the card joins
+   `--ed-*` rather than getting a contract of its own. */
 /* Hide the static HTML attachments immediately - React will replace them with ViewAttachment component */
 /* This prevents the flash of unstyled content on page load */
 .document-container .attachment-wrapper {
@@ -1452,17 +1465,20 @@ html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
 .attachment-container {
   display: flex;
   align-items: stretch;
-  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-  border: 1px solid #e1e4e8;
+  background: var(--ed-bg-secondary);
+  border: 1px solid var(--ed-border);
   border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--ed-shadow-menu);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* The hover cue is the hairline and the lift. The heavier drop shadow it used
+   to add has no `--ed-*` spelling — `--ed-shadow-modal` is a 40px blur for
+   something floating over the document, not a 70px card — and light mode never
+   changed the fill here, only the dark twin did. */
 .attachment-container:hover {
-  border-color: #c8cdd2;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.08);
+  border-color: var(--ed-text-tertiary);
   transform: translateY(-1px);
 }
 
@@ -1490,46 +1506,68 @@ html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
   opacity: 0.85;
 }
 
+/* The six file-type tiles, and the glow under the default one. Decorative
+   brand gradients on a saturated 36px square: they read correctly on either
+   canvas and must *not* follow the toggle, which is DESIGN.md §19.3's first
+   shape. Declared here as constants — the shape `styles/tokens.css.ts` uses for
+   `hueTrack` and `checkerboard` — so "this does not change with the scheme" is
+   a statement the file makes rather than something a reader has to infer from
+   the absence of an `html.dark` twin
+   (docs/plans/theme-css-tokenization.md §5.5).
+
+   These seven are the only custom properties the attachment card declares.
+   Everything else about it — surface, hairline, ink, muted ink, hover — comes
+   from `--ed-*`; there is deliberately no `--att-*` palette (§5.2). */
+.attachment-icon {
+  --attachment-tile: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --attachment-tile-glow: 0 2px 4px rgba(102, 126, 234, 0.25);
+  --attachment-tile-pdf: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --attachment-tile-archive: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  --attachment-tile-script: linear-gradient(135deg, #ffa751 0%, #ffe259 100%);
+  --attachment-tile-shell: linear-gradient(135deg, #48c6ef 0%, #6f86d6 100%);
+  --attachment-tile-prose: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+}
+
 .attachment-icon {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 36px;
   height: 36px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--attachment-tile);
   border-radius: 8px;
   font-size: 18px;
   flex-shrink: 0;
-  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.25);
+  box-shadow: var(--attachment-tile-glow);
 }
 
 .attachment-icon[data-ext="pdf"] {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  background: var(--attachment-tile-pdf);
 }
 
 .attachment-icon[data-ext="zip"],
 .attachment-icon[data-ext="rar"],
 .attachment-icon[data-ext="tar"] {
-  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  background: var(--attachment-tile-archive);
 }
 
 .attachment-icon[data-ext="js"],
 .attachment-icon[data-ext="ts"],
 .attachment-icon[data-ext="jsx"],
 .attachment-icon[data-ext="tsx"] {
-  background: linear-gradient(135deg, #ffa751 0%, #ffe259 100%);
+  background: var(--attachment-tile-script);
 }
 
 .attachment-icon[data-ext="py"],
 .attachment-icon[data-ext="sh"],
 .attachment-icon[data-ext="bash"] {
-  background: linear-gradient(135deg, #48c6ef 0%, #6f86d6 100%);
+  background: var(--attachment-tile-shell);
 }
 
 .attachment-icon[data-ext="txt"],
 .attachment-icon[data-ext="md"],
 .attachment-icon[data-ext="markdown"] {
-  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+  background: var(--attachment-tile-prose);
 }
 
 .attachment-text {
@@ -1544,7 +1582,7 @@ html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
   font-weight: 600;
   font-size: 0.9rem;
   line-height: 1.3;
-  color: #24292e;
+  color: var(--ed-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1552,7 +1590,7 @@ html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
 
 .attachment-info {
   font-size: 0.75rem;
-  color: #6a737d;
+  color: var(--ed-text-secondary);
   font-weight: 500;
   line-height: 1.2;
   white-space: nowrap;
@@ -1565,17 +1603,21 @@ html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
   justify-content: center;
   width: 32px;
   height: 32px;
-  background: rgba(102, 126, 234, 0.1);
+  background: color-mix(in srgb, var(--ed-accent) 12%, transparent);
   border-radius: 6px;
   font-size: 14px;
-  color: #667eea;
+  color: var(--ed-accent);
   transition: all 0.15s ease;
   cursor: pointer;
   flex-shrink: 0;
 }
 
+/* The same two mixes of the accent as the live chip's selected states
+   (`nodes/AttachmentNode/styles.css.ts`) — the indigo this used to pin *is*
+   the brand accent, and the dark twin only existed because #667eea lands at
+   ~2.8:1 on a dark card. `--ed-accent` is lifted for dark by the palette. */
 .attachment-download:hover {
-  background: rgba(102, 126, 234, 0.2);
+  background: color-mix(in srgb, var(--ed-accent) 20%, transparent);
   transform: scale(1.05);
 }
 
@@ -1585,21 +1627,21 @@ html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
   justify-content: center;
   width: 44px;
   padding: 0;
-  background: rgba(0, 0, 0, 0.02);
+  background: var(--ed-fill-quaternary);
   border: none;
-  border-left: 1px solid #e1e4e8;
+  border-left: 1px solid var(--ed-border);
   cursor: pointer;
   transition: all 0.15s ease;
-  color: #6a737d;
+  color: var(--ed-text-secondary);
 }
 
 .attachment-toggle:hover {
-  background: rgba(0, 0, 0, 0.05);
-  color: #24292e;
+  background: var(--ed-fill-tertiary);
+  color: var(--ed-text);
 }
 
 .attachment-toggle:active {
-  background: rgba(0, 0, 0, 0.08);
+  background: var(--ed-fill-secondary);
 }
 
 .attachment-toggle-icon {
@@ -1610,17 +1652,21 @@ html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
 
 .attachment-preview {
   margin-top: 8px;
-  border: 1px solid #e1e4e8;
+  border: 1px solid var(--ed-border);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--ed-bg-secondary);
   overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--ed-shadow-menu);
 }
 
 :is(.attachment-preview, .view-attachment) pre {
   margin: 0;
   padding: 16px;
-  background: #f6f8fa;
+  /* A well recessed into the card, which is what the live preview's
+     `codePane` already is (`styles.css.ts`, `vars.color.fillTertiary`). Phase 4
+     of docs/plans/theme-css-tokenization.md may move this to `--code-bg`: the
+     shared `--tok-*` palette clears 4.5:1 there and not here. */
+  background: var(--ed-fill-tertiary);
   overflow-x: auto;
   font-size: 0.85rem;
   font-family:
@@ -1647,16 +1693,16 @@ html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
 .attachment-preview-loading {
   padding: 20px;
   text-align: center;
-  color: #6a737d;
+  color: var(--ed-text-secondary);
   font-size: 0.875rem;
-  background: #f6f8fa;
+  background: var(--ed-fill-tertiary);
 }
 
 .attachment-preview-error {
   padding: 12px 16px;
-  background: #fff3cd;
-  color: #856404;
-  border-left: 4px solid #ffc107;
+  background: var(--ed-warning-soft);
+  color: var(--ed-warning);
+  border-left: 4px solid var(--ed-warning);
   font-size: 0.875rem;
 }
 
@@ -1665,10 +1711,10 @@ html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
   justify-content: space-between;
   align-items: center;
   padding: 10px 16px;
-  background: linear-gradient(180deg, #fafbfc 0%, #f6f8fa 100%);
-  border-bottom: 1px solid #e1e4e8;
+  background: var(--ed-fill-tertiary);
+  border-bottom: 1px solid var(--ed-border);
   font-size: 0.75rem;
-  color: #6a737d;
+  color: var(--ed-text-secondary);
   font-weight: 600;
   letter-spacing: 0.02em;
 }
@@ -1680,10 +1726,10 @@ html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
 
 .attachment-preview-btn {
   padding: 4px 10px;
-  background: #ffffff;
-  border: 1px solid #e1e4e8;
+  background: var(--ed-bg-secondary);
+  border: 1px solid var(--ed-border);
   border-radius: 6px;
-  color: #6a737d;
+  color: var(--ed-text-secondary);
   cursor: pointer;
   font-size: 0.75rem;
   font-weight: 600;
@@ -1691,10 +1737,10 @@ html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
 }
 
 .attachment-preview-btn:hover {
-  background: #f6f8fa;
-  border-color: #c8cdd2;
-  color: #24292e;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  background: var(--ed-fill-tertiary);
+  border-color: var(--ed-text-tertiary);
+  color: var(--ed-text);
+  box-shadow: var(--ed-shadow-menu);
 }
 
 /* Syntax highlighting tokens */
@@ -1748,102 +1794,11 @@ html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg) {
 }
 
 /* ---- Dark mode ----
-   The card surface is `.attachment-container`; `.attachment-link` is the inner
-   flex row and carries `color: inherit` with no box of its own. These rules
-   used to target `.attachment-link`, which predates the
-   container/content/link split in `AttachmentNode.createDOM` — so dark mode
-   painted a dark gradient across part of an otherwise white card and left the
-   filename at its light `#24292e`. They now target the real surfaces.
-
-   Neutrals reuse the block's existing dark hexes; syntax tokens are GitHub
-   Dark, matching the GitHub Light set used above. */
-html.dark .attachment-container {
-  background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
-  border-color: #4a5568;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
-}
-
-html.dark .attachment-container:hover {
-  background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
-  border-color: #718096;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-html.dark .attachment-filename {
-  color: #e2e8f0;
-}
-
-html.dark .attachment-info {
-  color: #a0aec0;
-}
-
-/* Same indigo family as the icon gradients, lifted for contrast on #2d3748
-   (#667eea lands at ~2.8:1 there). */
-html.dark .attachment-download {
-  background: rgba(154, 165, 245, 0.14);
-  color: #9aa5f5;
-}
-
-html.dark .attachment-download:hover {
-  background: rgba(154, 165, 245, 0.24);
-}
-
-html.dark .attachment-toggle {
-  background: rgba(255, 255, 255, 0.03);
-  border-color: #4a5568;
-  color: #a0aec0;
-}
-
-html.dark .attachment-toggle:hover {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: #718096;
-  color: #e2e8f0;
-}
-
-html.dark .attachment-toggle:active {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-html.dark .attachment-preview {
-  background: #1a202c;
-  border-color: #4a5568;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-html.dark :is(.attachment-preview, .view-attachment) pre {
-  background: #2d3748;
-}
-
-html.dark .attachment-preview-loading {
-  background: #2d3748;
-  color: #a0aec0;
-}
-
-html.dark .attachment-preview-error {
-  background: rgba(255, 193, 7, 0.12);
-  color: #ffd970;
-  border-left-color: #ffc107;
-}
-
-html.dark .attachment-preview-header {
-  background: #2d3748;
-  border-color: #4a5568;
-  color: #a0aec0;
-}
-
-/* Light mode gives this a #ffffff fill, so the base needs a dark surface too —
-   without it the button stayed white — and hover lifts rather than darkens. */
-html.dark .attachment-preview-btn {
-  background: #2d3748;
-  border-color: #4a5568;
-  color: #a0aec0;
-}
-
-html.dark .attachment-preview-btn:hover {
-  background: #4a5568;
-  border-color: #718096;
-  color: #e2e8f0;
-}
+   The card chrome has none. Everything above resolves through `--ed-*`, which
+   `styles/tokens.css.ts` reassigns under `html.dark`, so the ~95 lines that
+   used to restate every surface, hairline and ink here are gone
+   (docs/plans/theme-css-tokenization.md §4.3). What is left is the second
+   syntax theme, which phase 4 folds into `--tok-*`. */
 
 /* Syntax highlighting tokens — GitHub Dark */
 html.dark :is(.attachment-preview, .view-attachment) .token.comment,
@@ -1892,17 +1847,29 @@ html.dark :is(.attachment-preview, .view-attachment) .token.variable {
   color: #ffa657;
 }
 
-/* Print styles — same misdirected selector as the dark rules above: the card
-   is `.attachment-container`. */
+/* Print styles. These carry the same selector fix the dark rules did — the
+   card is `.attachment-container`, and both were originally written against
+   `.attachment-link` (see the note at the top of this section).
+
+   Paper is a light island: the two values below are fixed on purpose and must
+   not follow `html.dark`, because a reader who prints from dark mode still
+   prints onto white. Stated as constants for the same reason as the file-type
+   tiles above — a declaration rather than an inference from a rule with no
+   dark twin (docs/plans/theme-css-tokenization.md §5.5). */
 @media print {
   .attachment-container {
-    background: #f8f9fa;
-    border: 1px solid #dee2e6;
+    --attachment-print-bg: #f8f9fa;
+    --attachment-print-border: #dee2e6;
+  }
+
+  .attachment-container {
+    background: var(--attachment-print-bg);
+    border: 1px solid var(--attachment-print-border);
     box-shadow: none;
   }
 
   .attachment-container:hover {
-    background: #f8f9fa;
+    background: var(--attachment-print-bg);
     transform: none;
   }
 }
