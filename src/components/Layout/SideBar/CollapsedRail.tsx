@@ -6,7 +6,9 @@ import type { SeriesGroupItem } from "@/utils/posts/seriesGrouping";
 import { SafeNavigationLink } from "./SafeNavigationLink";
 import { ICON_SIZE } from "@/theme/icons";
 import { SB_ITEM_RADIUS } from "./constants";
-import { useSelector } from "@/store";
+import { type RootState, useSelector } from "@/store";
+import { selectPaneShowingDoc } from "@/store/selectors/layoutSelectors";
+import type { Post } from "@/types";
 import {
   type AgentMarker,
   rollUpMarkers,
@@ -128,6 +130,44 @@ const MarkerDot: React.FC<{ marker: AgentMarker; label: string }> = ({
 );
 
 /**
+ * One standalone post's rail entry.
+ *
+ * Its own component so it can ask the store whether the post is open. This used
+ * to be `pathname === "/edit/<id>"`, which is a derived copy of `ui.workspace`
+ * and can only ever describe one pane — with a split open it left the other
+ * pane's document looking closed (docs/plans/workspace-url.md §4.2).
+ * `selectPaneShowingDoc` answers for a tab as well as a pane root. The marker
+ * arrives as a prop rather than a second subscription, so the rail keeps its
+ * one `selectMarkerByDocId` read for the whole list.
+ */
+const PostRailItem: React.FC<{
+  post: Post;
+  marker: AgentMarker | null;
+}> = ({ post, marker }) => {
+  const selected = useSelector(
+    (state: RootState) => selectPaneShowingDoc(state, post.id) !== null,
+  );
+  const name = post.name || "Untitled";
+  const markerLabel = marker ? MARKER_LABELS[marker] : null;
+
+  return (
+    <RailItem
+      // `/edit`, not `/view`: the rail is workspace chrome, and since Phase 4
+      // `/view/[id]` is the store-free public page — a rail item pointing
+      // there would close the panes the rail is drawn beside.
+      href={`/edit/${post.id}`}
+      selected={selected}
+      title={markerLabel ? `${name} — ${markerLabel}` : name}
+    >
+      <FileText size={ICON_SIZE.dense} strokeWidth={1.7} />
+      {marker && markerLabel && (
+        <MarkerDot marker={marker} label={markerLabel} />
+      )}
+    </RailItem>
+  );
+};
+
+/**
  * Compact "summary" rail shown when the sidebar is dragged shut: the file tree
  * collapses to one icon per top-level entry — a folder (with post count) for
  * each series collection and a file icon for each standalone post.
@@ -203,30 +243,14 @@ export const CollapsedRail: React.FC<CollapsedRailProps> = ({
 
         const post = g.posts[0];
         if (!post) return null;
-        const doc = post;
-        const name = doc?.name || "Untitled";
-        // `/edit`, not `/view`: the rail is workspace chrome, and since Phase 4
-        // `/view/[id]` is the store-free public page — a rail item pointing
-        // there would close the panes the rail is drawn beside.
-        const href = `/edit/${post.id}`;
-        const selected = pathname === href;
-
-        // Standalone post: its own marker, straight off the map.
-        const postMarker: AgentMarker | null = markerByDocId[post.id] ?? null;
-        const markerLabel = postMarker ? MARKER_LABELS[postMarker] : null;
 
         return (
-          <RailItem
+          <PostRailItem
             key={`post-${post.id}`}
-            href={href}
-            selected={selected}
-            title={markerLabel ? `${name} — ${markerLabel}` : name}
-          >
-            <FileText size={ICON_SIZE.dense} strokeWidth={1.7} />
-            {postMarker && markerLabel && (
-              <MarkerDot marker={postMarker} label={markerLabel} />
-            )}
-          </RailItem>
+            post={post}
+            // Standalone post: its own marker, straight off the map.
+            marker={markerByDocId[post.id] ?? null}
+          />
         );
       })}
     </Box>
