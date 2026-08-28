@@ -147,6 +147,60 @@ const sourceNote = (post: AgentReadState): string => {
 };
 
 /**
+ * The author's series, narrow: what `list_series` returns, and what
+ * `create_post` offers back as candidates.
+ *
+ * Author-scoped by argument, like every other query in this file — the public
+ * `findAllSeries` would show a candidate belonging to someone else, and the
+ * owner-scoped `findSeriesByAuthorId` drags every post and revision along for a
+ * three-column read.
+ */
+const authorSeries = (authorId: string) =>
+  prisma.series.findMany({
+    where: { authorId },
+    select: { id: true, title: true, description: true },
+    orderBy: { rank: "asc" },
+  });
+
+/** How many candidate series `create_post` names before deferring to `list_series`. */
+const SERIES_SUGGESTION_LIMIT = 20;
+
+/**
+ * What `create_post` says about series when the caller named none.
+ *
+ * The decision this encodes is "agent proposes, does not decide"
+ * (docs/plans/claude-code-backlog.md §6): the post lands at root — no silent
+ * placement, ever — but the candidates travel back with it, so a suggestion the
+ * agent could cheaply make is not lost to a round trip nobody makes. The server
+ * ranks nothing and picks nothing; the model reads the titles and proposes one
+ * to the author, who files it. Nothing here files anything, and the wording
+ * says so, because a model that reads "series: …" and concludes the post is in
+ * one will report a placement that did not happen.
+ */
+const seriesSuggestion = (
+  series: { id: string; title: string; description: string | null }[],
+): string => {
+  const head = `\n\nNot filed: it is at the root of the library, because no ` +
+    `seriesId was given. `;
+  if (series.length === 0) {
+    return head + `The author has no series, so root is the only place for it.`;
+  }
+  const shown = series.slice(0, SERIES_SUGGESTION_LIMIT);
+  const rest = series.length - shown.length;
+  return head +
+    `If one of the author's series fits, say which and why and let them file ` +
+    `it — moving a post between series is their step, in the app, and no tool ` +
+    `here does it. (Pass seriesId to create_post next time the author has ` +
+    `already chosen.)\nCandidate series:\n` +
+    shown
+      .map((s) =>
+        `- ${s.id} — ${s.title}${s.description ? `: ${s.description}` : ""}`
+      )
+      .join("\n") +
+    (rest > 0 ? `\n…and ${rest} more (list_series).` : "");
+};
+
+/**
  * Build a server bound to one author.
  *
  * Every tool resolves the author first and passes it down; nothing here reads
@@ -253,12 +307,7 @@ export function createContentServer(
     },
     metered("read", async () => {
       const authorId = await getAuthorId();
-      const series = await prisma.series.findMany({
-        where: { authorId },
-        select: { id: true, title: true, description: true },
-        orderBy: { rank: "asc" },
-      });
-      return json(series);
+      return json(await authorSeries(authorId));
     }),
   );
 
@@ -667,11 +716,17 @@ export function createContentServer(
         "there is nothing to overwrite — but it is flagged agent-created: it " +
         "arrives in the author's library as an unpublished draft awaiting their " +
         "accept or discard, and nobody else can read it until it is published. " +
+        "Without seriesId it lands at the root of the library and the result " +
+        "lists the author's series as candidates to suggest — it never files " +
+        "the post itself. " +
         BLOCK_DOC,
       inputSchema: {
         title: z.string().min(1).describe("Post title"),
         blocks: z.array(blockSchema).min(1).describe("Body, in order"),
-        seriesId: z.string().optional().describe("Series id to file it under"),
+        seriesId: z.string().optional().describe(
+          "Series id to file it under. Omit unless the author chose one — the " +
+            "result then suggests candidates rather than guessing.",
+        ),
       },
     },
     metered("write", async ({ title, blocks, seriesId }) => {
@@ -694,11 +749,18 @@ export function createContentServer(
         );
       }
 
+      // A caller that named a series has already decided; only the other
+      // branch pays for the extra read, and it is three columns.
+      const placement = seriesId
+        ? `\n\nFiled under series ${seriesId}, as asked.`
+        : seriesSuggestion(await authorSeries(authorId));
+
       return text(
         `Created post ${result.id} ("${title}") with ${result.blockCount} block` +
           `${result.blockCount === 1 ? "" : "s"} — an unpublished draft, flagged ` +
           `agent-created and awaiting the author's accept or discard. Nobody ` +
-          `else can read it until they publish it.\nstateHash: ${result.stateHash}`,
+          `else can read it until they publish it.\nstateHash: ${result.stateHash}` +
+          placement,
       );
     }),
   );

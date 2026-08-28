@@ -38,8 +38,8 @@ predate that work and have not been re-measured.
 
 So the remaining work is not "finish the codecs", and it is no longer capability
 either. The one correctness hole is closed (item 1, kept here for the record),
-items 2 and 4 are closed by the nested-editor work, and **what is left is four
-decisions**: 3, 5, 6 and 7.
+items 2 and 4 are closed by the nested-editor work, 6 is answered and built, and
+**what is left is three decisions**: 3, 5 and 7.
 
 ---
 
@@ -223,16 +223,47 @@ something that demands a second confirmation.
 
 ---
 
-## 6. Series placement on create
+## 6. Series placement on create — **ANSWERED + DONE (28 Aug 2026)**
 
-`create_post` takes an optional `seriesId` and otherwise lands the post at root,
-unpublished. When you say "publish this session as an article", should the agent
-pick a series itself (it can list them), or always land at root for you to file?
+The question: `create_post` takes an optional `seriesId` and otherwise lands the
+post at root, unpublished. When you say "publish this session as an article",
+should the agent pick a series itself (it can list them), or always land at root
+for you to file?
 
-**Cost.** Trivial either way.
+**The answer: agent proposes, does not decide.** The post still lands at root —
+no silent placement, ever — but the create's result carries the author's series
+back as candidates, so a suggestion the agent could cheaply make is not lost to
+a round trip nobody makes. The agent names one and says why; filing it stays
+the author's action, in the app.
 
-**Blocked by.** Your preference. This is the only item here that is purely a
-taste question.
+Two options rejected, recorded so nobody drifts back to them:
+
+- _Always root, and say nothing._ Loses a suggestion that costs one three-column
+  query, and leaves the agent's read of the piece on the floor.
+- _Let the agent file it._ A wrong guess buries a post somewhere unexpected, and
+  a create is not reviewable the way `apply_ops` is — there is no proposal to
+  decline.
+
+**What the tool returns now** (`src/lib/mcp/server.ts`, `create_post`):
+
+- With `seriesId`: unchanged behaviour, plus one line saying it was filed there.
+  The caller already decided, so there is nothing to suggest and no extra query.
+- Without: the post lands at root, and the response says `Not filed`, lists the
+  author's series (`id — title: description`, their own order, capped at 20 with
+  a pointer to `list_series` past that), and states that no tool here moves a
+  post between series. The wording is deliberately blunt about being advice: a
+  model that read a series list and concluded the post was in one would report a
+  placement that did not happen.
+- The candidates come from the same author-scoped query `list_series` uses
+  (`prisma.series.findMany({ where: { authorId } })`, shared as `authorSeries`),
+  never the public `findAllSeries`.
+
+Nothing about the created document changed: `seriesId` is still whatever the
+caller passed, and a caller that ignores the suggestion gets exactly the old
+behaviour. There is one tool definition — `mcp/content-server.ts` is only a
+transport — so the stdio server and `POST /api/mcp` got this together. Covered
+in `src/lib/mcp/__tests__/server.test.ts`, including the case that matters most:
+an explicit `seriesId` suggests nothing and costs no read.
 
 ---
 

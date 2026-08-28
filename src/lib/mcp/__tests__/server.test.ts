@@ -20,15 +20,17 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const findMany = vi.fn();
+const seriesFindMany = vi.fn();
 const revisionFindMany = vi.fn();
 const proposeOps = vi.fn();
+const proposeNewPost = vi.fn();
 const renameOwnedDocument = vi.fn();
 const deleteOwnedDocument = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     document: { findMany: (...args: unknown[]) => findMany(...args) },
-    series: { findMany: () => Promise.resolve([]) },
+    series: { findMany: (...args: unknown[]) => seriesFindMany(...args) },
     revision: {
       findMany: (...args: unknown[]) => revisionFindMany(...args),
       findUnique: () => Promise.resolve(null),
@@ -46,7 +48,7 @@ vi.mock("@/repositories/document", () => ({
 vi.mock("@/lib/agentWrites", () => ({
   readAgentState: () => Promise.resolve(null),
   proposeOps: (...args: unknown[]) => proposeOps(...args),
-  proposeNewPost: () => Promise.resolve({ ok: false, reason: "invalid-blocks", message: "stub" }),
+  proposeNewPost: (...args: unknown[]) => proposeNewPost(...args),
 }));
 
 const { createContentServer } = await import("../server");
@@ -71,7 +73,14 @@ async function connect(
 beforeEach(() => {
   vi.clearAllMocks();
   findMany.mockResolvedValue([]);
+  seriesFindMany.mockResolvedValue([]);
   revisionFindMany.mockResolvedValue([]);
+  proposeNewPost.mockResolvedValue({
+    ok: true,
+    id: "doc-new",
+    blockCount: 2,
+    stateHash: "h_1",
+  });
   proposeOps.mockResolvedValue({
     ok: false,
     reason: "not-found",
@@ -409,5 +418,102 @@ describe("createContentServer", () => {
     await client.callTool({ name: "list_posts", arguments: {} });
     await client.callTool({ name: "list_posts", arguments: {} });
     expect(resolve).toHaveBeenCalledOnce();
+  });
+});
+
+/**
+ * Series placement on create (docs/plans/claude-code-backlog.md §6).
+ *
+ * The decision is "agent proposes, does not decide": a create with no series
+ * lands at root and carries the candidates back so the suggestion is not lost,
+ * and a create that named one is left alone. Both halves are asserted, because
+ * the failure that matters is not a missing suggestion — it is a placement the
+ * author did not ask for, or a response a model reads as one.
+ */
+describe("create_post series placement", () => {
+  const created = async (args: Record<string, unknown>) => {
+    const client = await connect(async () => "author-a");
+    const result = await client.callTool({ name: "create_post", arguments: args });
+    return (result.content as { text: string }[])[0].text;
+  };
+
+  const body = {
+    title: "On ranks",
+    blocks: [{ type: "paragraph", text: "hello" }],
+  };
+
+  it("files nothing, and offers the author's series as candidates", async () => {
+    seriesFindMany.mockResolvedValue([
+      { id: "ser-1", title: "Fractional indexing", description: "ranks" },
+      { id: "ser-2", title: "Postgres notes", description: null },
+    ]);
+
+    const text = await created(body);
+
+    // Nothing was placed: the argument the write got is the one it was given.
+    expect(proposeNewPost.mock.calls[0][0].seriesId).toBeUndefined();
+    expect(text).toMatch(/Not filed/);
+    expect(text).toMatch(/ser-1 — Fractional indexing: ranks/);
+    expect(text).toMatch(/ser-2 — Postgres notes/);
+    // Advice, and said to be: a model must not read this as a placement.
+    expect(text).toMatch(/let them file it/);
+  });
+
+  it("reads candidates scoped to the resolved author", async () => {
+    // The suggestion is built from a query like any other, so it is subject to
+    // the same rule as every read here: another author's series is not a
+    // candidate, because it is not visible.
+    await created(body);
+
+    expect(seriesFindMany).toHaveBeenCalledOnce();
+    expect(seriesFindMany.mock.calls[0][0].where).toEqual({
+      authorId: "author-a",
+    });
+  });
+
+  it("suggests nothing when the caller named a series", async () => {
+    const text = await created({ ...body, seriesId: "ser-1" });
+
+    expect(proposeNewPost.mock.calls[0][0].seriesId).toBe("ser-1");
+    expect(seriesFindMany).not.toHaveBeenCalled();
+    expect(text).toMatch(/Filed under series ser-1/);
+    expect(text).not.toMatch(/Candidate series/);
+  });
+
+  it("says so when there is nothing to suggest", async () => {
+    const text = await created(body);
+
+    expect(text).toMatch(/no series/);
+    expect(text).not.toMatch(/Candidate series/);
+  });
+
+  it("defers to list_series past the cap rather than pasting the library", async () => {
+    seriesFindMany.mockResolvedValue(
+      Array.from({ length: 23 }, (_, i) => ({
+        id: `ser-${i}`,
+        title: `Series ${i}`,
+        description: null,
+      })),
+    );
+
+    const text = await created(body);
+
+    expect(text).toMatch(/ser-19 — Series 19/);
+    expect(text).not.toMatch(/ser-20 — Series 20/);
+    expect(text).toMatch(/…and 3 more \(list_series\)/);
+  });
+
+  it("suggests nothing when the create failed", async () => {
+    proposeNewPost.mockResolvedValue({
+      ok: false,
+      reason: "invalid-blocks",
+      message: "unknown block type",
+    });
+
+    const client = await connect(async () => "author-a");
+    const result = await client.callTool({ name: "create_post", arguments: body });
+
+    expect(result.isError).toBe(true);
+    expect(seriesFindMany).not.toHaveBeenCalled();
   });
 });
