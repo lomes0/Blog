@@ -346,6 +346,18 @@
   background: var(--code-chrome-hover);
 }
 
+/* Base UI renders `Select.Value` as a plain inline span, and the glyph chip is
+   a `display: grid` block box — so without this the chip and the label wrap
+   onto two lines and the header doubles in height. The reader's static card
+   escapes it because `.code-card-lang` is itself a flex container. */
+.code-card-head .code-card-lang-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
 .code-card-glyph {
   display: grid;
   place-items: center;

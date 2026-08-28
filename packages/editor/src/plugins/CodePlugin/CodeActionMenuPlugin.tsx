@@ -168,7 +168,7 @@ function LanguageSelect(
           aria-label="Code language"
           className="code-card-lang-trigger"
         >
-          <SelectValue>
+          <SelectValue className="code-card-lang-value">
             {(value: string | null) => {
               const glyph = codeLanguageGlyph(value);
               return (
