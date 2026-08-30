@@ -181,8 +181,9 @@ const PostsViewContent: React.FC<PostsViewProps> = (
 
   // Standalone posts in manual order — their slots in the author's root list,
   // which they share with series and projects
-  // (docs/plans/ordering-simplification.md §2). The list view re-derives the
-  // full interleaving from the same array; this is the grid's subset of it.
+  // (docs/plans/archive/ordering-simplification.md §2). The list view
+  // re-derives the full interleaving from the same array; this is the grid's
+  // subset of it.
   const sortedStandalonePosts = useMemo(
     () => orderBy(rootOrder, standalonePosts),
     [rootOrder, standalonePosts],

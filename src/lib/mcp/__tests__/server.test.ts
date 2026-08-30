@@ -33,8 +33,8 @@ vi.mock("@/lib/prisma", () => ({
     document: { findMany: (...args: unknown[]) => findMany(...args) },
     series: { findMany: (...args: unknown[]) => seriesFindMany(...args) },
     // The author's `rootOrder`: series candidates come back in the order the
-    // author keeps them in (docs/plans/ordering-simplification.md §2), not in
-    // whatever order the rows arrive.
+    // author keeps them in (docs/plans/archive/ordering-simplification.md §2),
+    // not in whatever order the rows arrive.
     user: { findUnique: (...args: unknown[]) => userFindUnique(...args) },
     revision: {
       findMany: (...args: unknown[]) => revisionFindMany(...args),

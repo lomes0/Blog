@@ -33,8 +33,8 @@ function compareObjectsByKey(key: string, ascending = true) {
 // Sort a document browser's list by an explicit key (Updated / Created / Name).
 // Manual ordering is applied by the content surfaces (posts list, series,
 // sidebar) from the container's own order array
-// (docs/plans/ordering-simplification.md §2); this browser sort is a deliberate
-// alternate view, so it sorts purely by the chosen key.
+// (docs/plans/archive/ordering-simplification.md §2); this browser sort is a
+// deliberate alternate view, so it sorts purely by the chosen key.
 export const sortDocuments = (
   documents: Post[],
   sortkey: string,

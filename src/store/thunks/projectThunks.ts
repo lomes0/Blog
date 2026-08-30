@@ -29,7 +29,7 @@ export const updateProject = createApiThunk(
 // A project has no container to change — it only ever lives in the author's
 // root list — so it has no move of its own. Reordering one is a `setOrder` on
 // root, exactly as it is for a standalone post or an ungrouped series
-// (docs/plans/ordering-simplification.md §4).
+// (docs/plans/archive/ordering-simplification.md §4).
 
 export const deleteProject = createApiThunk(
   "app/deleteProject",

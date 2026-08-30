@@ -100,7 +100,7 @@ const SideBar: React.FC = () => {
 
   // Nested root tree: projects wrapping their series, interleaved with ungrouped
   // series and standalone posts in the author's `rootOrder`
-  // (docs/plans/ordering-simplification.md §2).
+  // (docs/plans/archive/ordering-simplification.md §2).
   const groupedRootItems = useMemo(
     () =>
       groupRootItems(filteredDocuments, seriesMap, projectsList || [], rootOrder),

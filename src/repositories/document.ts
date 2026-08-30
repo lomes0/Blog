@@ -85,8 +85,8 @@ const documentCoreSelect = {
   baseId: true,
   parentId: true,
   // The order of this post's child tabs, for the client's tab strips
-  // (docs/plans/ordering-simplification.md §2). Empty for the posts that have
-  // no tabs, which is most of them.
+  // (docs/plans/archive/ordering-simplification.md §2). Empty for the posts
+  // that have no tabs, which is most of them.
   tabOrder: true,
   head: true,
   type: true,
@@ -381,8 +381,8 @@ const findPublishedDocumentsByAuthorId = async (authorId: string) => {
 
 // Where in its container the new document lands: `placement` says which end,
 // and the container's order array is what records it
-// (docs/plans/ordering-simplification.md §6, "Create"). There is no position on
-// the row itself any more.
+// (docs/plans/archive/ordering-simplification.md §6, "Create"). There is no
+// position on the row itself any more.
 type CreateDocumentInput =
   & Prisma.DocumentUncheckedCreateInput
   & { placement?: DocumentPlacement };
@@ -424,10 +424,10 @@ const createDocument = async (
   await prisma.$transaction(statements);
 
   // The container's order array gains the new id
-  // (docs/plans/ordering-simplification.md §6, "Create"). This is the whole of
-  // where the post lands: `placement: "start"` is the case that needs it, since
-  // without an entry the tolerant reader shows a new row *last*, which is right
-  // for an append and wrong for a prepend.
+  // (docs/plans/archive/ordering-simplification.md §6, "Create"). This is the
+  // whole of where the post lands: `placement: "start"` is the case that needs
+  // it, since without an entry the tolerant reader shows a new row *last*,
+  // which is right for an append and wrong for a prepend.
   await addToOrder(
     prisma,
     containerOf(container),
@@ -637,9 +637,10 @@ const deleteDocumentRow = async (
   await freeIntoRoot(tx, doc.authorId, children);
 
   // The container it was in loses the id. The tolerant reader already ignores
-  // an id with no row (docs/plans/ordering-simplification.md §6), so this is
-  // hygiene rather than correctness — but leaving deleted ids to accumulate
-  // would make every array a growing record of what used to be there.
+  // an id with no row (docs/plans/archive/ordering-simplification.md §6), so
+  // this is hygiene rather than correctness — but leaving deleted ids to
+  // accumulate would make every array a growing record of what used to be
+  // there.
   await removeFromOrder(tx, containerOf(deleted), [doc.id]);
 
   await notifyChange(tx, {
@@ -800,7 +801,7 @@ const findUnownedDocumentIds = async (
 
 /**
  * A tabbed post's child tabs, in the parent's own `tabOrder`
- * (docs/plans/ordering-simplification.md §3).
+ * (docs/plans/archive/ordering-simplification.md §3).
  *
  * `createdAt` is selected but not returned: it is the tiebreaker the tolerant
  * reader uses for a child the array has not heard of yet (§6).

@@ -61,8 +61,9 @@ interface PostsListViewProps {
   /**
    * The order array of the container the top-level rows live in — the author's
    * `rootOrder`, or a series' `postOrder` in series mode
-   * (docs/plans/ordering-simplification.md §2). Pairs with `rootContainer`:
-   * they name the same container, one for reads and one for writes.
+   * (docs/plans/archive/ordering-simplification.md §2). Pairs with
+   * `rootContainer`: they name the same container, one for reads and one for
+   * writes.
    */
   rootOrder?: readonly string[];
   density: ListDensity;
@@ -329,7 +330,7 @@ export function PostsListView({
   const handleMoveToSeries = useCallback(
     async (postId: string, seriesId: string) => {
       // movePost sets seriesId *and* appends the id to the destination's
-      // order array (docs/plans/ordering-simplification.md §4).
+      // order array (docs/plans/archive/ordering-simplification.md §4).
       await dispatch(
         actions.movePost({ id: postId, destination: { seriesId } }),
       );
@@ -341,8 +342,8 @@ export function PostsListView({
   // ── Manual reorder (menu / keyboard) ──────────────────────────────────────
   // One shape for all three: take the ids the surface is rendering, move one of
   // them, and write the container's array
-  // (docs/plans/ordering-simplification.md §4). No container changes, so no
-  // move — a reorder is now only an order write.
+  // (docs/plans/archive/ordering-simplification.md §4). No container changes,
+  // so no move — a reorder is now only an order write.
   const reorder = useCallback(
     async (container: TreeContainer, orderedIds: string[]) => {
       await dispatch(actions.setOrder({ container, orderedIds }));

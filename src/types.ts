@@ -250,7 +250,7 @@ export interface AppState {
   series: Series[];
   projects: Project[];
   /**
-   * A guest's root order (docs/plans/ordering-simplification.md §7).
+   * A guest's root order (docs/plans/archive/ordering-simplification.md §7).
    *
    * The signed-in half of this lives on `user.rootOrder`, because the row that
    * owns the author's root list *is* the user. IndexedDB has no such row, so a
@@ -394,10 +394,11 @@ export interface Series {
   // standalone posts, ungrouped series and projects).
   projectId?: string | null;
   /**
-   * This series' posts, in order (docs/plans/ordering-simplification.md §2).
-   * The container owns the order of its children, so `posts` is sorted by this
-   * rather than by a key on each post — through `orderBy` in
-   * `@/lib/orderArray`, which tolerates an array that has drifted from the rows.
+   * This series' posts, in order (docs/plans/archive/ordering-simplification.md
+   * §2). The container owns the order of its children, so `posts` is sorted by
+   * this rather than by a key on each post — through `orderBy` in
+   * `@/lib/orderArray`, which tolerates an array that has drifted from the
+   * rows.
    */
   postOrder?: string[];
   author: User;
@@ -491,8 +492,9 @@ export type Post = {
   seriesId?: string | null;
   series?: Series | null;
   /**
-   * This post's child tabs, in order (docs/plans/ordering-simplification.md §2).
-   * Empty or absent for a post with no tabs, which is most of them.
+   * This post's child tabs, in order
+   * (docs/plans/archive/ordering-simplification.md §2). Empty or absent for a
+   * post with no tabs, which is most of them.
    */
   tabOrder?: string[];
   status?: DocumentStatus;
@@ -606,7 +608,7 @@ export type PostContainer = {
 /**
  * Where a post should land. Not *where among its new siblings*: a move appends,
  * and the destination container's order array places it
- * (docs/plans/ordering-simplification.md §4, decided).
+ * (docs/plans/archive/ordering-simplification.md §4, decided).
  */
 export type MovePostArg = {
   id: string;
@@ -673,7 +675,8 @@ export interface User {
   image: string | null;
   /**
    * The author's root list, in order: standalone post ids, series ids and
-   * project ids in one array (docs/plans/ordering-simplification.md §2).
+   * project ids in one array (docs/plans/archive/ordering-simplification.md
+   * §2).
    *
    * Reaches the client through the session — `session.user` is the `User` row
    * (`src/lib/next-auth.d.ts`), so the column travels with it and no route had

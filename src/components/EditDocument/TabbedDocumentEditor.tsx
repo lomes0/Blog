@@ -295,9 +295,9 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     });
 
     // Persist it as the parent's `tabOrder`
-    // (docs/plans/ordering-simplification.md §4). The root tab is the parent
-    // itself, not one of its children, so it is not in the array — the strip
-    // renders it first and the array orders what follows.
+    // (docs/plans/archive/ordering-simplification.md §4). The root tab is the
+    // parent itself, not one of its children, so it is not in the array — the
+    // strip renders it first and the array orders what follows.
     const children = orderedIds.filter((id) => id !== rootId);
     if (children.join() === prevOrder.filter((id) => id !== rootId).join()) {
       return;
@@ -367,8 +367,9 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
 
     // A re-home, not a field edit: `movePost` authorizes the destination,
     // refuses a parent cycle, and appends the tab to the destination's order
-    // array (docs/plans/ordering-simplification.md §4). Patching `parentId` did
-    // none of those — the tab landed in a list that had never heard of it.
+    // array (docs/plans/archive/ordering-simplification.md §4). Patching
+    // `parentId` did none of those — the tab landed in a list that had never
+    // heard of it.
     await dispatch(
       actions.movePost({
         id: tabId,

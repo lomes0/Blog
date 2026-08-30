@@ -29,7 +29,7 @@ const projectSelect = {
   // The order of this project's member series. Sent to the client, which is
   // where a project's children are ordered — the series slice carries every
   // series and joins them by `projectId`
-  // (docs/plans/ordering-simplification.md §5).
+  // (docs/plans/archive/ordering-simplification.md §5).
   seriesOrder: true,
   author: { select: authorSelect },
 };

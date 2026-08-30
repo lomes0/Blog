@@ -100,7 +100,7 @@ const publiclyVisiblePosts = {
 
 /**
  * A series' posts in the order the series itself records
- * (`Series.postOrder`, docs/plans/ordering-simplification.md §3).
+ * (`Series.postOrder`, docs/plans/archive/ordering-simplification.md §3).
  *
  * The query carries no `orderBy`, because order is not a column on the post: it
  * is the container's array, which SQL cannot sort by.

@@ -1,6 +1,6 @@
 /**
  * The tolerant reader for container order arrays
- * (docs/plans/ordering-simplification.md §6).
+ * (docs/plans/archive/ordering-simplification.md §6).
  *
  * Order lives on the container that owns the list — `User.rootOrder`,
  * `Series.postOrder`, `Project.seriesOrder`, `Document.tabOrder` — as an ordered

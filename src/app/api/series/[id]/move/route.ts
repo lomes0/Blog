@@ -11,9 +11,9 @@ export const dynamic = "force-dynamic";
 
 // `destination.projectId` re-homes the series into a project, or to the root
 // list when null. It is required, and the move appends
-// (docs/plans/ordering-simplification.md §4): a reorder within a container is
-// not this endpoint any more, it is the container's own order write, so
-// "destination omitted, keep the container" no longer means anything.
+// (docs/plans/archive/ordering-simplification.md §4): a reorder within a
+// container is not this endpoint any more, it is the container's own order
+// write, so "destination omitted, keep the container" no longer means anything.
 const moveSchema = z.object({
   destination: z.object({
     projectId: z.string().uuid().nullish(),

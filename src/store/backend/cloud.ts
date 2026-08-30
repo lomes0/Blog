@@ -97,7 +97,7 @@ export const cloudBackend: PostBackend = {
   // right endpoint directly; nothing here has to run.
   /**
    * One `PATCH` to the endpoint of whichever container owns the list
-   * (docs/plans/ordering-simplification.md §4). Four containers, four
+   * (docs/plans/archive/ordering-simplification.md §4). Four containers, four
    * endpoints — the plan's §4 names three and misses `Project`.
    */
   async reorder(container: TreeContainer, orderedIds: string[]) {

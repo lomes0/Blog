@@ -141,7 +141,8 @@ function applyPost(
 const updatedAtMs = (post: Post) => new Date(post.updatedAt).getTime();
 
 /** Drop a post from the store and from any series that lists it. */
-// ── Order arrays in the store (docs/plans/ordering-simplification.md §6) ────
+// ── Order arrays in the store (docs/plans/archive/ordering-simplification.md
+// §6) ────
 //
 // The server maintains each container's array explicitly on every write, and
 // the store maintains the same arrays for the writes it applies optimistically.
@@ -413,8 +414,8 @@ export const load = createApiThunk("app/load", async (_, thunkAPI) => {
   await thunkAPI.dispatch(importGuestDrafts());
   await thunkAPI.dispatch(loadPosts());
   // A guest's root order lives in IndexedDB rather than on the session, so it
-  // is a read of its own (docs/plans/ordering-simplification.md §7). A no-op
-  // when signed in — the cloud backend answers null.
+  // is a read of its own (docs/plans/archive/ordering-simplification.md §7). A
+  // no-op when signed in — the cloud backend answers null.
   await thunkAPI.dispatch(loadRootOrder());
 
   // Series must settle after posts so `series.posts` wins for shared entries.
@@ -753,9 +754,9 @@ export const appSlice = createSlice({
       .addCase(updateUser.fulfilled, (state, action) => {
         // `PATCH /api/users/[id]` answers with the profile fields it may write,
         // and `rootOrder` is not one of them — it is the author's root list
-        // (docs/plans/ordering-simplification.md §2), which a rename has no
-        // opinion about. Carry it across, or changing a handle would drop the
-        // whole sidebar back to createdAt order until the next reload.
+        // (docs/plans/archive/ordering-simplification.md §2), which a rename
+        // has no opinion about. Carry it across, or changing a handle would
+        // drop the whole sidebar back to createdAt order until the next reload.
         const rootOrder = action.payload.rootOrder ?? state.user?.rootOrder;
         state.user = { ...action.payload, rootOrder };
       })
@@ -877,7 +878,7 @@ export const appSlice = createSlice({
       .addCase(deleteProject.rejected, (state, action) => {
         announceFailure(state, action.payload);
       })
-      // ── Order (docs/plans/ordering-simplification.md §4/§5) ──
+      // ── Order (docs/plans/archive/ordering-simplification.md §4/§5) ──
       .addCase(loadRootOrder.fulfilled, (state, action) => {
         // Null means the session's root order came in with the session itself;
         // only a guest's has to be read from storage (§7).

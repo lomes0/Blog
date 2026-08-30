@@ -1,15 +1,17 @@
 # Series-as-node variant (sketch)
 
 The unifying alternative to the two-plan approach
-([`ordering-simplification.md`](./ordering-simplification.md) +
+([`ordering-simplification.md`](./archive/ordering-simplification.md) +
 [`schema-organization.md`](./schema-organization.md)): make **`Series` a kind of
 `Document` node** so the whole content model is one tree, and ordering becomes
 **one mechanism** — `childOrder` on the parent — everywhere.
 
 This is a _sketch for comparison_, not an approved plan. §7 is the honest cost.
 
-**Status: deferred 27 Aug 2026 — revisit once `rank` is gone.** Not refused and
-not committed to. The sequencing in [README.md](./README.md) already puts this
+**Status: the blocker is gone — `rank` was deleted 30 Aug 2026 by phase 5 of
+[archive/ordering-simplification.md](./archive/ordering-simplification.md), so
+this is now decidable on its merits rather than deferred.** Deferred 27 Aug 2026
+only until that landed. Still not refused and not committed to. The sequencing in [README.md](./README.md) already puts this
 last, after `ordering-simplification.md` phase 5 deletes `rank`, so deciding now
 buys nothing and decides against a base that is about to change. Re-read §7
 against the tree at that point rather than against this one.

@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * PATCH /api/documents/[id]/tab-order — the order of a tabbed post's child tabs
- * (docs/plans/ordering-simplification.md §4).
+ * (docs/plans/archive/ordering-simplification.md §4).
  *
  * `own` rather than `write`: reordering a post's tabs acts on the post as an
  * object, the same way moving or renaming it does, so a collaborator with

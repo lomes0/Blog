@@ -145,8 +145,8 @@ export const forkPost = createApiThunk(
  *
  * Where it lands *within* the destination is not this action's business: the
  * order arrays say that, and the drop handler has already written them
- * (docs/plans/ordering-simplification.md §4 — a re-home appends, a follow-up
- * order write positions). No rollback by design.
+ * (docs/plans/archive/ordering-simplification.md §4 — a re-home appends, a
+ * follow-up order write positions). No rollback by design.
  */
 export const applyPostContainer = createAction<
   { id: string; seriesId: string | null; parentId: string | null }

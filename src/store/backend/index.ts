@@ -32,7 +32,7 @@ export interface PostBackend {
   delete(id: string): Promise<string>;
   /**
    * Re-home a post into another container. **Appends** there
-   * (docs/plans/ordering-simplification.md §4, decided) — where in the
+   * (docs/plans/archive/ordering-simplification.md §4, decided) — where in the
    * destination it lands is the container's order array, written separately.
    */
   move(arg: MovePostArg): Promise<Post>;
@@ -40,7 +40,7 @@ export interface PostBackend {
   /**
    * Persist the order of a container's children — the array, verbatim, on
    * whatever holds that container's order
-   * (docs/plans/ordering-simplification.md §4).
+   * (docs/plans/archive/ordering-simplification.md §4).
    *
    * One mechanism on both sides of the seam since §7 landed: the cloud writes
    * the column on the row that owns the list, the local library writes the same
@@ -88,7 +88,7 @@ export const backendFor = (user?: User | null): PostBackend =>
  *
  * `tabOrder` goes for the same reason in a different currency: it names the
  * *original's* child tabs, which the copy does not have
- * (docs/plans/ordering-simplification.md §2).
+ * (docs/plans/archive/ordering-simplification.md §2).
  */
 export function toCreateInput(
   post: Post,

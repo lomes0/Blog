@@ -88,8 +88,8 @@ export const actions = {
   updateProject,
   deleteProject,
 
-  // Order (docs/plans/ordering-simplification.md §4): `applyOrder` paints a
-  // container's new order into the store, `setOrder` persists it.
+  // Order (docs/plans/archive/ordering-simplification.md §4): `applyOrder`
+  // paints a container's new order into the store, `setOrder` persists it.
   applyOrder,
   setOrder,
 

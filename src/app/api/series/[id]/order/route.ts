@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * PATCH /api/series/[id]/order — the order of a series' posts
- * (docs/plans/ordering-simplification.md §4).
+ * (docs/plans/archive/ordering-simplification.md §4).
  *
  * Two checks, in this order: the series is the caller's, and every id in the
  * body is a post *of that series*. The second is what stops a body from

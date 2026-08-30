@@ -465,7 +465,8 @@ export async function proposeNewPost(
   ]);
 
   // This create does not go through `createDocument`, so the container's order
-  // array is maintained here too (docs/plans/ordering-simplification.md §6).
+  // array is maintained here too (docs/plans/archive/ordering-simplification.md
+  // §6).
   await addToOrder(
     prisma,
     containerOf({ authorId: input.authorId, seriesId, parentId: null }),

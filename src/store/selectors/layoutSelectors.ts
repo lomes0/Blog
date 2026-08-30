@@ -149,10 +149,10 @@ export const selectRootPosts = createSelector(
 
 /**
  * Child posts (tabs) grouped by parent id, in the parent's own `tabOrder`
- * (docs/plans/ordering-simplification.md §2). A tabbed post is a root post with
- * one child per extra tab (see `mergePostsIntoTabs`). The sidebar reads from
- * here so it can render a post's tabs regardless of which post is currently
- * open — `ui.workspace` only knows the open ones.
+ * (docs/plans/archive/ordering-simplification.md §2). A tabbed post is a root
+ * post with one child per extra tab (see `mergePostsIntoTabs`). The sidebar
+ * reads from here so it can render a post's tabs regardless of which post is
+ * currently open — `ui.workspace` only knows the open ones.
  *
  * No branch on the session: `tabOrder` is a field of the post in both
  * libraries — a column on `Document` in the cloud, a key on the IndexedDB
@@ -178,7 +178,7 @@ export const selectChildPostsByParent = createSelector(
 
 /**
  * The author's root list, in order: the array its container owns
- * (docs/plans/ordering-simplification.md §2).
+ * (docs/plans/archive/ordering-simplification.md §2).
  *
  * Root is the one container whose owner is not a row both libraries have. The
  * cloud hangs it on `User`, and it arrives on the session; IndexedDB has no

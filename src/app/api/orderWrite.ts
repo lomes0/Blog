@@ -4,7 +4,7 @@ import { type OrderContainer, setOrderTx } from "@/repositories/ordering";
 
 /**
  * The body every order endpoint takes, and the one refusal all four share
- * (docs/plans/ordering-simplification.md §4).
+ * (docs/plans/archive/ordering-simplification.md §4).
  *
  * An order write's body is *a list of ids*, which is the shape that invites
  * checking only the first one — so the check answers for the whole array in one

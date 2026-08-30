@@ -26,7 +26,7 @@ const addPostSchema = z.object({
 
 // `postsToAdd` accepts bare ids or legacy `{ postId, order }` objects; `order` is
 // ignored either way, since position within a series is the series'
-// `postOrder` (docs/plans/ordering-simplification.md §2).
+// `postOrder` (docs/plans/archive/ordering-simplification.md §2).
 const batchPostsSchema = z.object({
   postsToAdd: z
     .array(

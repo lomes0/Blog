@@ -17,7 +17,6 @@ for what has landed and when.
 | [nested-editor-support.md](./nested-editor-support.md)     | **DONE — both phases shipped 27 Aug 2026** (`e8d1abd1`, `5c56c06c`). Closed `claude-code-backlog.md` §4 and §2, and overturned `archive/haklex-reprise.md` §11.3's refusal — which was right about the mechanism and wrong about the corpus. The blocker was never nesting: canvas, image and sticky were inline decorators, so they sat inside a paragraph with no address to descend from. They are block-level now, `pnpm nodes:unwrap` rewrote the stored revisions (259 wrapper paragraphs, 5 documents, 0 skipped), a canvas's notes address as `b2.1` and their blocks as `b2.1.1`, and an image's caption is a codec field. §7 records the two things this plan got wrong — threading the parent was avoidable, and neither a canvas nor a note needs a codec. Not archived: `containers.ts` and `address.ts` cite it |
 | [ide-redesign.md](./ide-redesign.md)                       | All three phases of the visible pass shipped; only its deferred list is left — status bar, AI panel restyle, tabs/breadcrumb polish                    |
 | [bloat-remediation.md](./bloat-remediation.md)             | **Steps 1–7 done (27 Aug 2026).** Step 7 shipped the day its product question was answered — `/posts` builds its root list with `groupRootItems` and `rootItemsToTreeNodes`, the same pair the sidebar uses, and `ProjectRow` gives a project a row containing its series. What is left is not code: cross-series drag reorder and multi-select drag have never been exercised in a browser, and both have broken on this surface before. The brief it waited on is [archive/tree-model-brief.md](./archive/tree-model-brief.md) |
-| [ordering-simplification.md](./ordering-simplification.md) | **Phases 1-4 shipped 30 Aug 2026** — four order arrays (the plan's §2 and §4 both miss `Project`), and every read *and* write now goes through them: one array write per gesture, no rank in the path. `rank` survives on the create path only, because the columns are still `NOT NULL` and populating them is the rollback. Phase 5 (drop the columns, indexes, collation migrations and `fractional-indexing`) is not started. §11 is the phase log, and its twelve entries are the reason to read it before trusting any section |
 | [schema-organization.md](./schema-organization.md)         | **Phase A shipped 30 Aug 2026** — `timestamptz` on all 21 bare `DateTime` columns, the OAuth1 leftovers and the redundant `Series` index gone, `User.role` an enum. Phases B–D are proposal; see below. §6 is the phase log, and the two findings worth carrying forward are that "no app-logic change" was false (two admin checks compared `role` to a string) and that Prisma's generated SQL for the enum would have dropped the column |
 | [series-as-node.md](./series-as-node.md)                   | Sketch for comparison, not an approved plan. **Deferred 27 Aug 2026** until `rank` is gone — not refused, just decided against a base that is about to change |
 
@@ -52,7 +51,7 @@ Read them in this order:
 
 | # | Plan                                                       | Owns                                                                                       | Churn        |
 | - | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ------------ |
-| 1 | [ordering-simplification.md](./ordering-simplification.md) | Replace fractional `rank` with an ordered id array per container                           | Low–moderate |
+| 1 | [archive/ordering-simplification.md](./archive/ordering-simplification.md) | ~~Replace fractional `rank` with an ordered id array per container~~ — **done, all 5 phases, 30 Aug 2026** | Low–moderate |
 | 2 | [schema-organization.md](./schema-organization.md)         | Idiomatic schema cleanup (timestamptz, real FKs, enums, dead-field/index removal, renames) | Low–moderate |
 | 3 | [series-as-node.md](./series-as-node.md)                   | Fold `Series` into the `Document` node tree so ordering is one `childOrder` mechanism      | High         |
 
@@ -78,36 +77,46 @@ possible model and will spend the refactor once.
 Land the small, safe work first; sequence the high-churn unification **last**,
 on top of an already-simplified base — never all at once.
 
-1. **Schema Phase A — the safe sweep** (from Plan 2): `timestamptz` everywhere,
-   drop OAuth1 columns, drop redundant `[authorId]` indexes, `role` → enum. Pure
-   DB / no app-logic change. Ship it independently.
+**Steps 1, 2, 3 and 5 all shipped on 30 Aug 2026** — the whole of Plan 1 and the
+safe half of Plan 2. What is left is step 4 (Schema B–D) and then the step 6
+decision. Struck text below is done; it is kept because the reasoning for the
+*order* still reads.
 
-2. **Ordering, Phases 1–3** (from Plan 1): add order-array columns, backfill
+1. ~~**Schema Phase A — the safe sweep** (from Plan 2): `timestamptz` everywhere,
+   drop OAuth1 columns, drop redundant `[authorId]` indexes, `role` → enum. Pure
+   DB / no app-logic change. Ship it independently.~~ — **done**, and "no
+   app-logic change" turned out to be false; see that plan's §6.
+
+2. ~~**Ordering, Phases 1–3** (from Plan 1): add order-array columns, backfill
    from `rank`, switch _reads_ to the arrays + tolerant `orderBy`. Order is now
    array-driven for reads while writes still go through `rank` — safe cutover
    point. This also fixes the latent bug where grouped/time views still sort by
-   `createdAt`.
+   `createdAt`.~~ — **done**; the arrays are four, not three, and the safety of
+   this step depended on a dual write the plan does not mention.
 
-3. **Ordering, Phase 4 — write cutover** (from Plan 1): new order endpoints +
+3. ~~**Ordering, Phase 4 — write cutover** (from Plan 1): new order endpoints +
    thunks, UI drag/menu builds id arrays, remove the `between`/bracketing
-   plumbing.
+   plumbing.~~ — **done**, four endpoints rather than three.
 
-4. **Schema Phases B–D** (from Plan 2): `head` → real FK, `name → title` /
+4. **Schema Phases B–D** — **the only implementation work left on this page.** (from Plan 2): `head` → real FK, `name → title` /
    `background_image → backgroundImage` renames, drop dead `type`/coauthors.
    Coordinate Phase D with the next step (both touch `Document` indexes).
 
-5. **Ordering, Phase 5 — delete `rank`** (from Plan 1): drop the `rank`
+5. ~~**Ordering, Phase 5 — delete `rank`** (from Plan 1): drop the `rank`
    columns/indexes, the `fractional-indexing` dep, `lib/ordering.ts`,
-   `lib/documentOrder.ts`, most of `repositories/ordering.ts`.
+   `lib/documentOrder.ts`, most of `repositories/ordering.ts`.~~ — **done**, and
+   it took the local library with it: IndexedDB orders by array now too, so
+   there is one ordering mechanism in the codebase rather than two.
 
-   → At this point the two-plan approach is **complete**. Everything below is
-   optional and only if you commit to Plan 3.
+   → The two-plan approach is now **complete apart from step 4**. Everything
+   below is optional and only if you commit to Plan 3.
 
 6. **Series-as-node** (Plan 3): project each `Series` row into a `kind = SERIES`
    `Document` (preserving id), repoint posts' `parentId`, fold the three order
    arrays into one `childOrder`, collapse the `series` Redux slice into a node
    selector, retire `repositories/series.ts` and `/api/series/*`. Do this as one
-   focused refactor once `rank` is already gone.
+   focused refactor once `rank` is already gone — **which it now is, so this is
+   decidable rather than blocked.**
 
 ## Decisions locked so far
 
@@ -124,4 +133,7 @@ on top of an already-simplified base — never all at once.
   stubbed to `[]` and meaningless single-user. (Plan 2 §5.)
 - **Commit to Plan 3 (Series-as-node)?** The high-churn unification — do it
   last, or not at all if blast radius matters more than a fully uniform model.
-- `timestamptz` backfill assumes stored values are UTC; confirm before the cast.
+  **No longer blocked:** it waited on `rank`, and `rank` is gone.
+- ~~`timestamptz` backfill assumes stored values are UTC; confirm before the
+  cast.~~ **Confirmed and done** — the evidence is in
+  `schema-organization.md` §6.

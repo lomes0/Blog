@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * PATCH /api/projects/[id]/order — the order of a project's member series
- * (docs/plans/ordering-simplification.md §4).
+ * (docs/plans/archive/ordering-simplification.md §4).
  *
  * The fourth container. The plan's §2 table names three and misses this one,
  * which both sits in the root list and owns the order of its members — see §11.

@@ -585,7 +585,7 @@ export const apiClient = {
      * PATCH /api/users/me/root-order — order the session's own root list.
      *
      * No id: the container is the caller, which is also the whole of the
-     * ownership check (docs/plans/ordering-simplification.md §4).
+     * ownership check (docs/plans/archive/ordering-simplification.md §4).
      */
     rootOrder: (
       orderedIds: string[],

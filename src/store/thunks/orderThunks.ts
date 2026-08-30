@@ -6,7 +6,7 @@ import { createApiThunk } from "./createApiThunk";
 
 /**
  * Read the session's root order from storage, for the session where storage is
- * where it lives (docs/plans/ordering-simplification.md §7).
+ * where it lives (docs/plans/archive/ordering-simplification.md §7).
  *
  * A guest's is a record in IndexedDB and has to be fetched; a signed-in
  * author's rides on the session, so the cloud backend answers `null` and the
@@ -26,7 +26,7 @@ export interface OrderArg {
 
 /**
  * Write a container's order into the store, now
- * (docs/plans/ordering-simplification.md §5).
+ * (docs/plans/archive/ordering-simplification.md §5).
  *
  * Split out from {@link setOrder} rather than folded into it because a re-home
  * needs it *first*: a cross-container drag is two calls (§4), and dispatching

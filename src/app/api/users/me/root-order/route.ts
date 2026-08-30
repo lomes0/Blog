@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * PATCH /api/users/me/root-order — the order of the author's root list
- * (docs/plans/ordering-simplification.md §4).
+ * (docs/plans/archive/ordering-simplification.md §4).
  *
  * The one list that spans three tables: standalone documents, ungrouped series
  * and projects share it, which is why they interleave. There is no id in the

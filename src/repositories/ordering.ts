@@ -6,7 +6,7 @@ import { notifyChange } from "@/lib/changes/notify";
 
 /**
  * Server-side ordering: the order arrays, and re-homing a row between
- * containers (docs/plans/ordering-simplification.md §4).
+ * containers (docs/plans/archive/ordering-simplification.md §4).
  *
  * A list's order lives on the row that owns the list, as an ordered array of
  * child ids — `User.rootOrder`, `Series.postOrder`, `Project.seriesOrder`,
@@ -251,7 +251,7 @@ export function validateOrder(
 }
 
 /**
- * Write a container's order (docs/plans/ordering-simplification.md §4).
+ * Write a container's order (docs/plans/archive/ordering-simplification.md §4).
  *
  * Rejects a foreign or repeated id (see {@link validateOrder}); otherwise
  * persists `orderedIds` followed by every current member the caller did not

@@ -2,7 +2,7 @@
 
 **Goal:** make the Prisma schema idiomatic and clear, optimizing for
 maintainability under a **single-user** blog. Companion to
-[`ordering-simplification.md`](./ordering-simplification.md) — that plan owns
+[`ordering-simplification.md`](./archive/ordering-simplification.md) — that plan owns
 the `rank` → order-array change; this plan owns everything else. Where they
 touch the same models, this doc omits the ordering columns to avoid
 double-specifying.

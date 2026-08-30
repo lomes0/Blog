@@ -3,9 +3,10 @@ import { apiClient } from "@/api";
 import { createApiThunk, fail } from "./createApiThunk";
 
 /**
- * Optimistically re-home a series so a cross-container drag paints at once.
- * Its position *within* the destination comes from that container's order array
- * (docs/plans/ordering-simplification.md §4); this only says which container.
+ * Optimistically re-home a series so a cross-container drag paints at once. Its
+ * position *within* the destination comes from that container's order array
+ * (docs/plans/archive/ordering-simplification.md §4); this only says which
+ * container.
  */
 export const applySeriesProject = createAction<
   { id: string; projectId: string | null }

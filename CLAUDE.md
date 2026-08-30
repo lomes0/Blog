@@ -75,22 +75,24 @@ globals; `compilerOptions.types` is deliberately left unset, because setting it
 would restrict resolution to only its entries and drop every other ambient
 package.
 
-Coverage is 61 specs, 1190 tests, of which the list below walks the ones worth
+Coverage is 61 specs, 1203 tests, of which the list below walks the ones worth
 knowing about rather than all of them. `src/lib/__tests__/orderArray.test.ts` is
 the newest: the tolerant reader that turns a container's order array into a
-rendered order (docs/plans/ordering-simplification.md §6). It is entirely about
-drift, because drift is the whole risk — an array and its rows can always
-disagree, and the spec pins that a row the array has never heard of still
-renders (last, oldest first, ties by id), that an id whose row is gone is
-ignored rather than leaving a hole, that an empty array means createdAt order,
-and that repeated calls give the same answer.
+rendered order (docs/plans/archive/ordering-simplification.md §6), plus the
+`withIds`/`withoutIds` maintenance the server repository and the guest library
+now share. It is entirely about drift, because drift is the whole risk — an
+array and its rows can always disagree, and the spec pins that a row the array
+has never heard of still renders (last, oldest first, ties by id), that an id
+whose row is gone is ignored rather than leaving a hole, that an empty array
+means createdAt order, and that repeated calls give the same answer.
+`src/lib/__tests__/orderMove.test.ts` is its write-side counterpart: what a
+drag or a menu move does to an array, including the subset case a root list
+rendered as two sections needs.
 `src/lib/__tests__/blobRefs.test.ts` is the one before it: what a document's
 content references, and the two ways getting that wrong destroys user work — a
 reference the scan cannot see, and one revoked inside the upload-before-save
 window (docs/plans/blob-storage.md §3.1, §3.2).
-The rest: `src/lib/__tests__/ordering.test.ts`
-(fractional rank keys),
-`src/components/Layout/SideBar/__tests__/
+The rest: `src/components/Layout/SideBar/__tests__/
 dragGeometry.test.ts` (sidebar drag
 thresholds — `dragGeometry.ts` is kept import-free precisely so it is testable
 without a browser), `src/store/__tests__/workspace.test.ts` (the `ui.workspace`
@@ -606,8 +608,8 @@ Start at [docs/README.md](./docs/README.md), which indexes the rest.
 **A plan is not a description of the current tree.** `docs/plans/` holds live
 proposals; each states its own status at the top, and that line is the thing to
 read first. A plan that ships moves to `docs/plans/archive/` rather than being
-deleted, because **the code cites these documents by section number** — 339
-comments across 226 files, and two tools (`eslint.config.mjs`'s MUI rule and
+deleted, because **the code cites these documents by section number** — 411
+comments across 257 files, and two tools (`eslint.config.mjs`'s MUI rule and
 `scripts/check-codecs.mjs`) print a path from there in their failure output. So:
 
 - Moving or renaming anything under `docs/plans/` means updating those

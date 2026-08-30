@@ -122,13 +122,13 @@ const idbConfig = {
       indices: [{ name: "updatedAt", keyPath: "updatedAt" }],
     },
     {
-      // A guest's container order arrays (docs/plans/ordering-simplification.md
-      // §7), keyed by container. Today that is exactly one record — `"root"` —
-      // because the only other local container is a tabbed post, whose order
-      // lives on the post record itself as `tabOrder`, exactly as it lives on
-      // the `Document` row in the cloud. Root is the one container with no row
-      // of its own to hang an array on: the cloud puts it on `User`, and
-      // IndexedDB has no user.
+      // A guest's container order arrays
+      // (docs/plans/archive/ordering-simplification.md §7), keyed by container.
+      // Today that is exactly one record — `"root"` — because the only other
+      // local container is a tabbed post, whose order lives on the post record
+      // itself as `tabOrder`, exactly as it lives on the `Document` row in the
+      // cloud. Root is the one container with no row of its own to hang an
+      // array on: the cloud puts it on `User`, and IndexedDB has no user.
       name: "orders",
       id: { keyPath: "id" },
       indices: [],

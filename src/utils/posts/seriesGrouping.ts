@@ -35,8 +35,8 @@ export type RootItem = ProjectGroupItem | SeriesGroupItem;
 
 /**
  * A post's 1-based position within its series, read from the series' own
- * `postOrder` (docs/plans/ordering-simplification.md §2). Returns null if the
- * doc isn't found in the series.
+ * `postOrder` (docs/plans/archive/ordering-simplification.md §2). Returns null
+ * if the doc isn't found in the series.
  */
 export const seriesPositionOf = (
   series: Series | null | undefined,
@@ -61,7 +61,7 @@ const groupCreatedAt = (item: SeriesGroupItem): string | Date | undefined =>
 /**
  * Order a list of root-level items (or a project's members) by a container's
  * order array — `User.rootOrder` for the root list, `Project.seriesOrder` for a
- * project's series (docs/plans/ordering-simplification.md §2).
+ * project's series (docs/plans/archive/ordering-simplification.md §2).
  *
  * The items are groups rather than rows, so each is presented to `orderBy` as
  * the id and creation time of the thing it stands for: a series for a series
@@ -87,8 +87,8 @@ const orderItems = <T extends RootItem>(
  * Group posts by series and return a mixed list of series groups and standalone
  * posts. **Unordered** — the container's array decides the order of the result,
  * and only the caller knows which container that is
- * (docs/plans/ordering-simplification.md §2), so {@link groupRootItems} applies
- * it.
+ * (docs/plans/archive/ordering-simplification.md §2), so {@link groupRootItems}
+ * applies it.
  *
  * - Uses series.posts from seriesMap as the authoritative source for series posts
  * - Only posts NOT in any series are added as standalone posts

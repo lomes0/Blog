@@ -1,7 +1,7 @@
 /**
  * The write side of container order
- * (docs/plans/ordering-simplification.md §4/§5): given the ids a list is
- * currently rendering, produce the ids it should render after a gesture.
+ * (docs/plans/archive/ordering-simplification.md §4/§5): given the ids a list
+ * is currently rendering, produce the ids it should render after a gesture.
  *
  * This is the whole of what a reorder computes now. There is no rank to mint,
  * no bracket to derive from neighbours, and nothing the server has to

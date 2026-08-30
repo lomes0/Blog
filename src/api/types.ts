@@ -92,7 +92,7 @@ export interface UpdateSeriesPostsInput {
 // `destination` fully specifies the new container (series / tab-group / root) —
 // it is not a partial patch. The move **appends** to that container; a caller
 // that dropped the row at a slot follows with an order write to position it
-// (docs/plans/ordering-simplification.md §4, decided).
+// (docs/plans/archive/ordering-simplification.md §4, decided).
 export interface MoveDocumentInput {
   destination: { seriesId?: string | null; parentId?: string | null };
 }
@@ -108,9 +108,9 @@ export interface MoveSeriesInput {
 // -----------------------------------------------------------------------
 // A reorder is one array write: the client sends the order it already rendered
 // and the server persists it verbatim, after proving every id is a member of
-// that container (docs/plans/ordering-simplification.md §4). An id the caller
-// did not name keeps its place rather than being dropped, so a list that lags
-// the server by a row is safe to send.
+// that container (docs/plans/archive/ordering-simplification.md §4). An id the
+// caller did not name keeps its place rather than being dropped, so a list that
+// lags the server by a row is safe to send.
 export interface OrderInput {
   orderedIds: string[];
 }

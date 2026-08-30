@@ -41,7 +41,7 @@ type StoredPost = Omit<
 
 /**
  * Where a guest's container orders live
- * (docs/plans/ordering-simplification.md §7).
+ * (docs/plans/archive/ordering-simplification.md §7).
  *
  * A tabbed post's order is `tabOrder` on the post record, exactly as it is on
  * the `Document` row in the cloud. Root is the one container with no row of its
@@ -221,8 +221,8 @@ export const localBackend: PostBackend = {
     await postDB.add(stored as Post);
     if (revisions?.length) await revisionDB.addMany(revisions);
     // Its container's array gains the id, at the end it was asked for
-    // (docs/plans/ordering-simplification.md §6, "Create"). The cloud does the
-    // same thing in `createDocument`; this is the guest's half of it.
+    // (docs/plans/archive/ordering-simplification.md §6, "Create"). The cloud
+    // does the same thing in `createDocument`; this is the guest's half of it.
     await addToLocalOrder(
       containerOfPost(post),
       input.id,
@@ -267,7 +267,7 @@ export const localBackend: PostBackend = {
   /**
    * A guest's reorder: the array, stored verbatim, exactly as the cloud stores
    * it on the container that owns the list
-   * (docs/plans/ordering-simplification.md §7).
+   * (docs/plans/archive/ordering-simplification.md §7).
    *
    * Ids with no local post are dropped rather than persisted — the caller is a
    * surface shared with the signed-in library, and a stored id naming nothing

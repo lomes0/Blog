@@ -6,8 +6,8 @@ import {
 
 /**
  * The write side of container order
- * (docs/plans/ordering-simplification.md §4), which is what replaced the
- * bracketing this file's neighbour — `ordering.test.ts` — used to cover.
+ * (docs/plans/archive/ordering-simplification.md §4), which is what replaced
+ * the bracketing this file's neighbour — `ordering.test.ts` — used to cover.
  *
  * Everything a reorder computes is here, so these are the cases that decide
  * whether a drag lands where the user watched it go.

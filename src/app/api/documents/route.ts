@@ -84,7 +84,7 @@ export const POST = userRoute(async (request, { user }) => {
   await ingestInlineBlobs(body.data);
 
   // Where it lands is the container's order array, which createDocument
-  // appends to (docs/plans/ordering-simplification.md §6).
+  // appends to (docs/plans/archive/ordering-simplification.md §6).
   const input: Prisma.DocumentUncheckedCreateInput = {
     id: body.id,
     authorId: user.id,

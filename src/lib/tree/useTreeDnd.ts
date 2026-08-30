@@ -123,11 +123,12 @@ export interface TreeDndResult {
  *   - project → between root rows           → reorder the project in the root list
  *
  * A "reorder" drop rewrites one container's order array
- * (docs/plans/ordering-simplification.md §4). A row arriving from another
- * container is re-homed first — which *appends* it there — and the order write
- * that follows is what puts it at the slot it was dropped on. Two calls, and the
- * final order is painted into the store before either, so the row never appears
- * at the end of its new list on the way to where it was dropped.
+ * (docs/plans/archive/ordering-simplification.md §4). A row arriving from
+ * another container is re-homed first — which *appends* it there — and the
+ * order write that follows is what puts it at the slot it was dropped on. Two
+ * calls, and the final order is painted into the store before either, so the
+ * row never appears at the end of its new list on the way to where it was
+ * dropped.
  *
  * When the grabbed row is part of the multi-selection, `getDragSet` expands the
  * drag to the whole selection (render order); the set is dropped as one

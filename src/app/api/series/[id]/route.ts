@@ -20,7 +20,8 @@ export const dynamic = "force-dynamic";
 // `projectId` is absent, and so is any position: a series' container is set by
 // PATCH /api/series/[id]/move, which authorizes the destination project and
 // appends the series to it, and its place within that container is the
-// container's own order array (docs/plans/ordering-simplification.md §4).
+// container's own order array (docs/plans/archive/ordering-simplification.md
+// §4).
 const seriesUpdateSchema = z.object({
   title: z.string().min(1),
   description: z.string(),

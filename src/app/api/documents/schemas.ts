@@ -125,8 +125,8 @@ export const documentCreateSchema = z.object({
  *
  * No position is accepted either, because there is no position on a post to
  * accept: a container's order lives on the container
- * (docs/plans/ordering-simplification.md §4) and is written by that container's
- * order endpoint, never field-by-field here.
+ * (docs/plans/archive/ordering-simplification.md §4) and is written by that
+ * container's order endpoint, never field-by-field here.
  *
  * `expectedHead` is the one field here that is not a column. It is the
  * compare-and-set: send the head this write is based on and the update is

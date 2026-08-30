@@ -326,7 +326,7 @@ before.
 
 Both drag cases this file called unexercised were driven in headless Chrome
 against the sidebar, signed in as the real author over a session row, with
-`docs/plans/ordering-simplification.md` phases 1–3 in the tree — so the run
+`docs/plans/archive/ordering-simplification.md` phases 1–3 in the tree — so the run
 doubles as the check that reads-from-arrays and writes-through-`rank` agree
 under a real gesture.
 

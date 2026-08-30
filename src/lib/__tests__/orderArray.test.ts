@@ -1,7 +1,7 @@
 import { orderBy, withIds, withoutIds } from "@/lib/orderArray";
 
 /**
- * The tolerant reader of docs/plans/ordering-simplification.md §6.
+ * The tolerant reader of docs/plans/archive/ordering-simplification.md §6.
  *
  * What is being pinned is the *drift* behaviour, because that is the half that
  * decides whether a stale array is cosmetic or a broken view: an id the array

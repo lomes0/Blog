@@ -347,9 +347,9 @@ export const POST = userRoute(async (request, { user }) => {
 
   // Every imported row is appended to the array of the container it landed in,
   // batched by container so a bundle costs one write per list rather than one
-  // per row (docs/plans/ordering-simplification.md §6, "Create"). It cannot be a
-  // recompute: the array is the only record of the order there is, so
-  // recomputing would overwrite the author's manual order with import order.
+  // per row (docs/plans/archive/ordering-simplification.md §6, "Create"). It
+  // cannot be a recompute: the array is the only record of the order there is,
+  // so recomputing would overwrite the author's manual order with import order.
   const byContainer = new Map<string, { kind: string; ids: string[] }>();
   for (const entry of imported) {
     const key = JSON.stringify(entry.container);

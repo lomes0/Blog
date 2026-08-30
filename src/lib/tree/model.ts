@@ -111,8 +111,8 @@ export interface TreeIndex {
   targetInfo: Map<string, TreeTargetInfo>;
   /**
    * `containerKey` → that container's row ids, in render order. This *is* the
-   * order a drop rewrites (docs/plans/ordering-simplification.md §4), so it
-   * comes from what the surface drew rather than from anything stored: a
+   * order a drop rewrites (docs/plans/archive/ordering-simplification.md §4),
+   * so it comes from what the surface drew rather than from anything stored: a
    * container whose array has drifted renders through the tolerant reader, and
    * the write has to agree with the screen, not with the drift.
    */
