@@ -121,7 +121,7 @@ export function PostsListView({
    * The root list, built by the **same** function the sidebar builds it with.
    *
    * This was two implementations of one tree until 27 Aug 2026 — a nested one
-   * here and a flat `{kind, id, rank}` union there — which is what
+   * here and a flat `{kind, id}` union there — which is what
    * `docs/plans/bloat-remediation.md` step 7 existed to collapse. The order
    * comes from one array shared by projects, ungrouped series and standalone
    * posts, so the result must stay in that order: don't group or re-sort it for
@@ -286,10 +286,10 @@ export function PostsListView({
   const { handleBulkDelete } = bulk;
 
   // ── Drag and drop ─────────────────────────────────────────────────────────
-  // The rendered tree, as the shared engine indexes it: the root list, with each
-  // series carrying its *full* rank-ordered post list (not the truncated preview
-  // `SeriesRow` shows past 20), since that list is the source of the sibling
-  // ranks that bracket a drop.
+  // The rendered tree, as the shared engine indexes it: the root list, with
+  // each series carrying its *full* ordered post list (not the truncated
+  // preview `SeriesRow` shows past 20), since a drop rewrites that whole list
+  // and a truncated one would persist the truncation.
   const treeNodes = useMemo(
     () => rootItemsToTreeNodes(rootItems),
     [rootItems],
@@ -328,7 +328,8 @@ export function PostsListView({
 
   const handleMoveToSeries = useCallback(
     async (postId: string, seriesId: string) => {
-      // movePost sets seriesId *and* a fresh rank in the destination.
+      // movePost sets seriesId *and* appends the id to the destination's
+      // order array (docs/plans/ordering-simplification.md §4).
       await dispatch(
         actions.movePost({ id: postId, destination: { seriesId } }),
       );
@@ -507,8 +508,8 @@ export function PostsListView({
 
       {
         /* Projects and ungrouped series, below the standalone posts — one
-          rank-ordered section, so a project and a loose series interleave here
-          exactly as they do in the sidebar. */
+          section ordered by `rootOrder`, so a project and a loose series
+          interleave here exactly as they do in the sidebar. */
       }
       {groupItems.length > 0 && (
         <Box sx={{ mb: 1 }}>

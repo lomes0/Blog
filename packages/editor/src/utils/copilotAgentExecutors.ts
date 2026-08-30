@@ -73,9 +73,9 @@ const getDocs = (): Post[] => postsSelectors.selectAll(store.getState());
 
 /**
  * Series as the agent sees them: the same three fields `list_series` returns
- * over MCP, in the order the store already holds (what the sidebar shows)
- * rather than by `rank`, which is scoped to a project and so does not order the
- * flat list this hands back.
+ * over MCP, in the order the store already holds (what the sidebar shows). A
+ * flat list of every series has no order of its own: a project's members are
+ * ordered by that project, not against the root list.
  */
 const getSeries = () =>
   store.getState().series.map((s) => ({

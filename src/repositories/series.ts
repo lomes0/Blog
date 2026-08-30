@@ -6,7 +6,6 @@ import {
   addToOrder,
   freeIntoRoot,
   movePost,
-  rankForAppendSeries,
   removeFromOrder,
   seriesContainerOf,
 } from "./ordering";
@@ -61,7 +60,6 @@ const postSelect = (author: typeof authorSelect | typeof publicAuthorSelect) =>
     status: true,
     seriesId: true,
     background_image: true,
-    rank: true,
     baseId: true,
     parentId: true,
     type: true,
@@ -104,8 +102,8 @@ const publiclyVisiblePosts = {
  * A series' posts in the order the series itself records
  * (`Series.postOrder`, docs/plans/ordering-simplification.md §3).
  *
- * The query no longer carries `orderBy: { rank }`, because order is no longer a
- * column on the post: it is the container's array, which SQL cannot sort by.
+ * The query carries no `orderBy`, because order is not a column on the post: it
+ * is the container's array, which SQL cannot sort by.
  * Sorting here instead is not a cost — the posts of one series are already
  * materialised, and `orderBy` is a single pass over them.
  *
@@ -143,7 +141,6 @@ export async function findAllSeries(): Promise<Series[]> {
       updatedAt: true,
       authorId: true,
       projectId: true,
-      rank: true,
       postOrder: true,
       author: {
         select: publicAuthorSelect,
@@ -190,7 +187,6 @@ export async function findPublicSeriesById(
       updatedAt: true,
       authorId: true,
       projectId: true,
-      rank: true,
       postOrder: true,
       author: {
         select: publicAuthorSelect,
@@ -240,7 +236,6 @@ export async function findSeriesById(id: string): Promise<Series | null> {
       updatedAt: true,
       authorId: true,
       projectId: true,
-      rank: true,
       postOrder: true,
       author: {
         select: authorSelect,
@@ -282,7 +277,6 @@ export async function findSeriesByAuthorId(
       updatedAt: true,
       authorId: true,
       projectId: true,
-      rank: true,
       postOrder: true,
       author: {
         select: authorSelect,
@@ -314,13 +308,9 @@ export async function findSeriesByAuthorId(
 // Create series and return full entity with relations
 export async function createSeries(data: SeriesCreateInput): Promise<Series> {
   // A series may be born inside a project — the sidebar's per-project "+"
-  // creates one there directly. Its rank belongs to whichever space it lands
-  // in, so the container decides it rather than the call site.
+  // creates one there directly — so the container is decided here rather than
+  // at the call site, and it is what the id is appended to below.
   const projectId = data.projectId ?? null;
-  const rank = await rankForAppendSeries(prisma, {
-    authorId: data.authorId,
-    projectId,
-  });
   await prisma.series.create({
     data: {
       id: data.id,
@@ -328,7 +318,6 @@ export async function createSeries(data: SeriesCreateInput): Promise<Series> {
       description: data.description,
       authorId: data.authorId,
       projectId,
-      rank,
     },
   });
 
@@ -368,8 +357,8 @@ export async function updateSeries(
 }
 
 // Delete a series; its posts are re-homed to the end of the author's root list
-// (in their prior order) in the same transaction, so they don't keep ranks that
-// belonged to the now-deleted series' space.
+// (in their prior order) in the same transaction, so the list they are freed
+// into knows about them.
 export async function deleteSeries(id: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const series = await tx.series.findUnique({
@@ -381,7 +370,7 @@ export async function deleteSeries(id: string): Promise<void> {
     if (!series) throw new Error("Series not found");
 
     // The series' own `postOrder` decides the order its posts arrive at root
-    // in; `orderBy: { rank }` no longer answers that (§4).
+    // in — it is the only record of that order there is (§4).
     const memberRows = await tx.document.findMany({
       where: { seriesId: id },
       select: { id: true, createdAt: true },

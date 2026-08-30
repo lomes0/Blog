@@ -324,8 +324,8 @@ export function useTreeDnd(
 
       let dragged = resolved.dragged;
       if (resolved.foreign) {
-        // A foreign gesture can name an absolute destination but not a slot: the
-        // block's render order and this list's sibling ranks are not its own.
+        // A foreign gesture can name an absolute destination but not a slot:
+        // the block's render order is not this list's order array.
         if (c.mode === "reorder") return;
         const payload = event && readDragPayload(event.dataTransfer);
         if (!payload) return;

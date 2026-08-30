@@ -1,9 +1,22 @@
 import { createAction } from "@reduxjs/toolkit";
-import { apiClient } from "@/api";
 import { backendFor } from "@/store/backend";
 import type { TreeContainer } from "@/lib/tree/model";
 import type { AppState } from "@/types";
 import { createApiThunk } from "./createApiThunk";
+
+/**
+ * Read the session's root order from storage, for the session where storage is
+ * where it lives (docs/plans/ordering-simplification.md §7).
+ *
+ * A guest's is a record in IndexedDB and has to be fetched; a signed-in
+ * author's rides on the session, so the cloud backend answers `null` and the
+ * reducer leaves `user.rootOrder` alone.
+ */
+export const loadRootOrder = createApiThunk(
+  "app/loadRootOrder",
+  async (_, thunkAPI) =>
+    await backendFor((thunkAPI.getState() as AppState).user).rootOrder(),
+);
 
 /** A container's new child order, as the surface that rendered it saw it. */
 export interface OrderArg {
@@ -44,11 +57,6 @@ const rootMembers = (state: AppState, ids: string[]): string[] => {
   return ids.filter((id) => !filed.has(id));
 };
 
-/** Where a guest's reorder lands: ranks, applied to the store's posts. */
-export const applyLocalRanks = createAction<{ id: string; rank: string }[]>(
-  "app/applyLocalRanks",
-);
-
 /**
  * Persist a container's order.
  *
@@ -65,30 +73,14 @@ export const setOrder = createApiThunk(
     const { container, orderedIds, optimistic = true } = arg;
     if (optimistic) thunkAPI.dispatch(applyOrder({ container, orderedIds }));
 
+    // One call, either side of the storage seam: the array as rendered, stored
+    // verbatim by whatever holds this container's order (§7 — the local library
+    // is on arrays too now, so there is no guest branch left here).
     const state = thunkAPI.getState() as AppState;
-    if (!state.user) {
-      // A guest's library is IndexedDB, which has no container row to hold an
-      // array (§7). The seam rewrites ranks over the same ids instead, and the
-      // store takes them so the optimistic paint and the stored order agree.
-      const ranked = await backendFor(state.user).reorder(orderedIds);
-      thunkAPI.dispatch(applyLocalRanks(ranked));
-      return { container, orderedIds };
-    }
-
-    switch (container.type) {
-      case "root":
-        await apiClient.users.rootOrder(rootMembers(state, orderedIds));
-        break;
-      case "series":
-        await apiClient.series.order(container.seriesId, orderedIds);
-        break;
-      case "project":
-        await apiClient.projects.order(container.projectId, orderedIds);
-        break;
-      case "tabs":
-        await apiClient.documents.tabOrder(container.parentId, orderedIds);
-        break;
-    }
+    await backendFor(state.user).reorder(
+      container,
+      container.type === "root" ? rootMembers(state, orderedIds) : orderedIds,
+    );
     return { container, orderedIds };
   },
   { title: "Failed to reorder" },

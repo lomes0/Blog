@@ -1,4 +1,5 @@
 import { cloudBackend, localBackend, toCreateInput } from "@/store/backend";
+import { orderBy } from "@/lib/orderArray";
 import { EMPTY_EDITOR_STATE, Revision } from "@/types";
 import { createApiThunk, fail } from "./createApiThunk";
 
@@ -21,8 +22,14 @@ export const importGuestDrafts = createApiThunk(
     const { user } = thunkAPI.getState();
     if (!user) return 0;
 
-    const drafts = await localBackend.list();
-    if (drafts.length === 0) return 0;
+    const unordered = await localBackend.list();
+    if (unordered.length === 0) return 0;
+
+    // Uploaded in the order the guest had them in, because the cloud appends
+    // each create to `User.rootOrder` (docs/plans/ordering-simplification.md
+    // §6) — so the sequence of uploads *is* where they land. The local root
+    // order does not travel with them; this is what carries it over.
+    const drafts = orderBy(await localBackend.rootOrder() ?? [], unordered);
 
     // A local record whose id the account already owns is not a draft — it is
     // a leftover mirror from when every post was stored in both places. Those

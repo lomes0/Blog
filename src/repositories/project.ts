@@ -3,7 +3,6 @@ import { orderBy } from "@/lib/orderArray";
 import {
   addToOrder,
   freeSeriesIntoRoot,
-  rankForAppend,
   removeFromOrder,
 } from "./ordering";
 import { Project, ProjectCreateInput, ProjectUpdateInput } from "@/types";
@@ -27,7 +26,6 @@ const projectSelect = {
   createdAt: true,
   updatedAt: true,
   authorId: true,
-  rank: true,
   // The order of this project's member series. Sent to the client, which is
   // where a project's children are ordered — the series slice carries every
   // series and joins them by `projectId`
@@ -72,18 +70,12 @@ export async function findProjectsByAuthorId(
 export async function createProject(
   data: ProjectCreateInput,
 ): Promise<Project> {
-  const rank = await rankForAppend(prisma, {
-    authorId: data.authorId,
-    seriesId: null,
-    parentId: null,
-  });
   await prisma.project.create({
     data: {
       id: data.id,
       title: data.title,
       description: data.description,
       authorId: data.authorId,
-      rank,
     },
   });
 
@@ -121,8 +113,8 @@ export async function updateProject(
 }
 
 // Delete a project; its member series are re-homed to the end of the author's
-// root list (in their prior order) in the same transaction, so they don't keep
-// ranks that belonged to the now-deleted project's space. Posts are untouched.
+// root list (in their prior order) in the same transaction, so the list they
+// are freed into knows about them. Posts are untouched.
 export async function deleteProject(id: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const project = await tx.project.findUnique({
@@ -133,7 +125,7 @@ export async function deleteProject(id: string): Promise<void> {
     if (!project) throw new Error("Project not found");
 
     // The project's own `seriesOrder` decides the order its series arrive at
-    // root in; `orderBy: { rank }` no longer answers that (§4).
+    // root in — it is the only record of that order there is (§4).
     const memberRows = await tx.series.findMany({
       where: { projectId: id },
       select: { id: true, createdAt: true },

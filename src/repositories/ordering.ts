@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { rankBetween, ranksAfter } from "@/lib/ordering";
+import { withIds, withoutIds } from "@/lib/orderArray";
 import { APP_ORIGIN } from "@/lib/changes/events";
 import { notifyChange } from "@/lib/changes/notify";
 
@@ -12,26 +12,15 @@ import { notifyChange } from "@/lib/changes/notify";
  * child ids — `User.rootOrder`, `Series.postOrder`, `Project.seriesOrder`,
  * `Document.tabOrder`. A reorder is one array write: the client sends the array
  * it already rendered and this module persists it verbatim. Nothing here
- * computes a position.
- *
- * `rank` survives on the *create* path only, and only until phase 5 drops the
- * columns. The three columns are `NOT NULL`, so every insert still has to put
- * something there; minting an append key is the one choice that keeps phase 4 a
- * pure ordering change and keeps the rollback (revert the code, the ranks are
- * still the order they always were). No reorder writes a rank, and no read
- * consults one.
+ * computes a position, and since phase 5 there is no per-row ordering column
+ * left to compute one *from* — a create appends to its container's array the
+ * same way a re-home does.
  *
  * Everything here accepts a Prisma client or an interactive-transaction client
  * (`PrismaClient` is structurally assignable to `TransactionClient`), so a
  * single move can run standalone or be composed into a larger transaction.
  */
 type Db = Prisma.TransactionClient;
-
-export interface Container {
-  authorId: string;
-  seriesId: string | null;
-  parentId: string | null;
-}
 
 /**
  * One list whose order is stored as an array of ids on the row that owns it.
@@ -299,10 +288,9 @@ export async function setOrder(
  * Add `ids` to the end (or, with `at: "start"`, the front) of a container's
  * array, ignoring any already present.
  *
- * The create/re-home half of §6's bookkeeping. A full recompute is impossible
- * now — the ranks it used to recompute from are no longer maintained — so array
- * maintenance is explicit at every write, and this is the one place that does
- * it.
+ * The create/re-home half of §6's bookkeeping. There is nothing to recompute an
+ * array *from* — it is the only record of the order there is — so maintenance
+ * is explicit at every write, and this is the one place that does it.
  */
 export async function addToOrder(
   db: Db,
@@ -312,14 +300,9 @@ export async function addToOrder(
 ): Promise<void> {
   if (ids.length === 0) return;
   const current = await readOrder(db, container);
-  const present = new Set(current);
-  const fresh = ids.filter((id) => !present.has(id));
-  if (fresh.length === 0) return;
-  await writeOrder(
-    db,
-    container,
-    at === "start" ? [...fresh, ...current] : [...current, ...fresh],
-  );
+  const next = withIds(current, ids, at);
+  if (next.length === current.length) return;
+  await writeOrder(db, container, next);
 }
 
 /** Drop `ids` from a container's array (the delete/re-home half of §6). */
@@ -330,204 +313,9 @@ export async function removeFromOrder(
 ): Promise<void> {
   if (ids.length === 0) return;
   const current = await readOrder(db, container);
-  const gone = new Set(ids);
-  const next = current.filter((id) => !gone.has(id));
+  const next = withoutIds(current, ids);
   if (next.length === current.length) return;
   await writeOrder(db, container, next);
-}
-
-// ─── Append ranks for the create path ────────────────────────────────────────
-
-/**
- * Largest rank in the author's *root* list, or null when empty. The root is a
- * shared rank space across three kinds of row — standalone documents, ungrouped
- * series (`projectId = null`) and projects — so they interleave freely.
- */
-async function maxRootRank(
-  db: Db,
-  authorId: string,
-  exclude: { docIds?: string[]; seriesIds?: string[] } = {},
-): Promise<string | null> {
-  const docNotSelf = exclude.docIds?.length
-    ? { id: { notIn: exclude.docIds } }
-    : {};
-  const seriesNotSelf = exclude.seriesIds?.length
-    ? { id: { notIn: exclude.seriesIds } }
-    : {};
-  const [topDoc, topSeries, topProject] = await Promise.all([
-    db.document.findFirst({
-      where: { authorId, seriesId: null, parentId: null, ...docNotSelf },
-      orderBy: { rank: "desc" },
-      select: { rank: true },
-    }),
-    db.series.findFirst({
-      where: { authorId, projectId: null, ...seriesNotSelf },
-      orderBy: { rank: "desc" },
-      select: { rank: true },
-    }),
-    db.project.findFirst({
-      where: { authorId },
-      orderBy: { rank: "desc" },
-      select: { rank: true },
-    }),
-  ]);
-  return maxStr(
-    maxStr(topDoc?.rank ?? null, topSeries?.rank ?? null),
-    topProject?.rank ?? null,
-  );
-}
-
-/** Largest rank currently in `container`, or null when it is empty. */
-async function maxRank(
-  db: Db,
-  container: Container,
-  excludeDocIds: string[] = [],
-): Promise<string | null> {
-  const notSelf = excludeDocIds.length ? { id: { notIn: excludeDocIds } } : {};
-
-  if (container.seriesId) {
-    const top = await db.document.findFirst({
-      where: { seriesId: container.seriesId, ...notSelf },
-      orderBy: { rank: "desc" },
-      select: { rank: true },
-    });
-    return top?.rank ?? null;
-  }
-  if (container.parentId) {
-    const top = await db.document.findFirst({
-      where: { parentId: container.parentId, ...notSelf },
-      orderBy: { rank: "desc" },
-      select: { rank: true },
-    });
-    return top?.rank ?? null;
-  }
-  // Root: standalone documents + ungrouped series + projects share one space.
-  return maxRootRank(db, container.authorId, { docIds: excludeDocIds });
-}
-
-/**
- * Smallest rank in the author's *root* list, or null when empty. The mirror of
- * {@link maxRootRank} — same three-table space, opposite end.
- */
-async function minRootRank(
-  db: Db,
-  authorId: string,
-  exclude: { docIds?: string[]; seriesIds?: string[] } = {},
-): Promise<string | null> {
-  const docNotSelf = exclude.docIds?.length
-    ? { id: { notIn: exclude.docIds } }
-    : {};
-  const seriesNotSelf = exclude.seriesIds?.length
-    ? { id: { notIn: exclude.seriesIds } }
-    : {};
-  const [firstDoc, firstSeries, firstProject] = await Promise.all([
-    db.document.findFirst({
-      where: { authorId, seriesId: null, parentId: null, ...docNotSelf },
-      orderBy: { rank: "asc" },
-      select: { rank: true },
-    }),
-    db.series.findFirst({
-      where: { authorId, projectId: null, ...seriesNotSelf },
-      orderBy: { rank: "asc" },
-      select: { rank: true },
-    }),
-    db.project.findFirst({
-      where: { authorId },
-      orderBy: { rank: "asc" },
-      select: { rank: true },
-    }),
-  ]);
-  return minStr(
-    minStr(firstDoc?.rank ?? null, firstSeries?.rank ?? null),
-    firstProject?.rank ?? null,
-  );
-}
-
-/** Smallest rank currently in `container`, or null when it is empty. */
-async function minRank(
-  db: Db,
-  container: Container,
-  excludeDocIds: string[] = [],
-): Promise<string | null> {
-  const notSelf = excludeDocIds.length ? { id: { notIn: excludeDocIds } } : {};
-
-  if (container.seriesId) {
-    const first = await db.document.findFirst({
-      where: { seriesId: container.seriesId, ...notSelf },
-      orderBy: { rank: "asc" },
-      select: { rank: true },
-    });
-    return first?.rank ?? null;
-  }
-  if (container.parentId) {
-    const first = await db.document.findFirst({
-      where: { parentId: container.parentId, ...notSelf },
-      orderBy: { rank: "asc" },
-      select: { rank: true },
-    });
-    return first?.rank ?? null;
-  }
-  return minRootRank(db, container.authorId, { docIds: excludeDocIds });
-}
-
-/**
- * A rank that appends a new row to the end of `container`.
- *
- * Ordering does not read this any more; it exists because `Document.rank` is
- * `NOT NULL` until phase 5 drops it, and an insert must write *something*. See
- * this module's header for why that something is still a real append key.
- */
-export async function rankForAppend(
-  db: Db,
-  container: Container,
-  excludeDocIds: string[] = [],
-): Promise<string> {
-  return rankBetween(await maxRank(db, container, excludeDocIds), null);
-}
-
-/** A rank that puts a new row at the start of `container`. */
-export async function rankForPrepend(
-  db: Db,
-  container: Container,
-  excludeDocIds: string[] = [],
-): Promise<string> {
-  return rankBetween(null, await minRank(db, container, excludeDocIds));
-}
-
-/** Largest rank among a project's member series, or null when it is empty. */
-async function maxSeriesRankInProject(
-  db: Db,
-  projectId: string,
-  excludeSeriesId?: string,
-): Promise<string | null> {
-  const top = await db.series.findFirst({
-    where: {
-      projectId,
-      ...(excludeSeriesId ? { id: { not: excludeSeriesId } } : {}),
-    },
-    orderBy: { rank: "desc" },
-    select: { rank: true },
-  });
-  return top?.rank ?? null;
-}
-
-/**
- * A rank that appends a series to the end of its container: the project's member
- * list when `projectId` is set, otherwise the author's root list. The
- * {@link rankForAppend} of a series — a series' container rule (project XOR
- * root) is not the document rule (series XOR tab-group XOR root).
- */
-export async function rankForAppendSeries(
-  db: Db,
-  args: { authorId: string; projectId?: string | null },
-  excludeSeriesId?: string,
-): Promise<string> {
-  const base = args.projectId
-    ? await maxSeriesRankInProject(db, args.projectId, excludeSeriesId)
-    : await maxRootRank(db, args.authorId, {
-      seriesIds: excludeSeriesId ? [excludeSeriesId] : [],
-    });
-  return rankBetween(base, null);
 }
 
 // ─── Re-homing ───────────────────────────────────────────────────────────────
@@ -569,17 +357,7 @@ export async function movePost(
 
   await db.document.update({
     where: { id: args.id },
-    data: {
-      seriesId,
-      parentId,
-      // Still `NOT NULL`; a fresh append key keeps the column meaningful for
-      // the phase-5 rollback without any read depending on it.
-      rank: await rankForAppend(
-        db,
-        { authorId: doc.authorId, seriesId, parentId },
-        [args.id],
-      ),
-    },
+    data: { seriesId, parentId },
   });
 
   // Both ends of the move, in the same transaction as the move itself. A move
@@ -612,22 +390,14 @@ export async function freeIntoRoot(
   docIds: string[],
 ): Promise<void> {
   if (docIds.length === 0) return;
-  const base = await maxRank(
-    db,
-    { authorId, seriesId: null, parentId: null },
-    docIds,
-  );
-  const keys = ranksAfter(base, docIds.length);
-  await Promise.all(
-    docIds.map((id, i) =>
-      db.document.update({
-        where: { id },
-        data: { rank: keys[i], seriesId: null, parentId: null },
-      })
-    ),
-  );
+  await db.document.updateMany({
+    where: { id: { in: docIds } },
+    data: { seriesId: null, parentId: null },
+  });
   // The container they came from is being deleted by the caller, so only root
-  // has an array left to fix.
+  // has an array left to fix. `docIds` arrives in the order the dead container
+  // held them, and `addToOrder` appends in that order, so the group lands at
+  // the end of root having kept its own shape.
   await addToOrder(db, { kind: "root", authorId }, docIds);
 }
 
@@ -676,17 +446,7 @@ export async function moveSeries(
   const from = seriesContainerOf(series);
   const to = seriesContainerOf({ authorId: series.authorId, projectId });
 
-  await db.series.update({
-    where: { id: args.id },
-    data: {
-      projectId,
-      rank: await rankForAppendSeries(
-        db,
-        { authorId: series.authorId, projectId },
-        args.id,
-      ),
-    },
-  });
+  await db.series.update({ where: { id: args.id }, data: { projectId } });
 
   await removeFromOrder(db, from, [args.id]);
   await addToOrder(db, to, [args.id]);
@@ -696,8 +456,6 @@ export async function moveSeries(
  * Append `seriesIds` (in the given order) to the end of the author's root list
  * and clear their `projectId`. Used when a project is deleted and its member
  * series are freed to root; the mirror of {@link freeIntoRoot} for series.
- *
- * Call this *after* the project row is gone so the root scan doesn't count it.
  */
 export async function freeSeriesIntoRoot(
   db: Db,
@@ -705,24 +463,12 @@ export async function freeSeriesIntoRoot(
   seriesIds: string[],
 ): Promise<void> {
   if (seriesIds.length === 0) return;
-  const base = await maxRootRank(db, authorId, { seriesIds });
-  const keys = ranksAfter(base, seriesIds.length);
-  await Promise.all(
-    seriesIds.map((id, i) =>
-      db.series.update({
-        where: { id },
-        data: { rank: keys[i], projectId: null },
-      })
-    ),
-  );
+  await db.series.updateMany({
+    where: { id: { in: seriesIds } },
+    data: { projectId: null },
+  });
   await addToOrder(db, { kind: "root", authorId }, seriesIds);
 }
-
-const maxStr = (a: string | null, b: string | null): string | null =>
-  a == null ? b : b == null ? a : a > b ? a : b;
-
-const minStr = (a: string | null, b: string | null): string | null =>
-  a == null ? b : b == null ? a : a < b ? a : b;
 
 // Convenience: run a re-home outside an existing transaction.
 export const moveDocumentTx = (

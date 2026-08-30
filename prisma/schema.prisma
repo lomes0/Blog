@@ -16,11 +16,6 @@ model Project {
   updatedAt   DateTime @updatedAt @db.Timestamptz
   authorId    String   @db.Uuid
 
-  // Position in the author's root list. Shares the fractional-index `rank` space
-  // with root Documents and root (ungrouped) Series, so projects, loose series
-  // and standalone posts interleave freely.
-  rank String
-
   // The order of this project's member series, newest model
   // (docs/plans/ordering-simplification.md §2). Holds `Series.id`s; the array is
   // the container's own list rather than a key on each child, which is what lets
@@ -33,7 +28,6 @@ model Project {
   series Series[] @relation("ProjectSeries")
 
   @@index([authorId])
-  @@index([authorId, rank]) // Root-list ordering (shared space with Series/Documents)
 }
 
 // Series model for organizing blog posts
@@ -45,14 +39,10 @@ model Series {
   updatedAt   DateTime @updatedAt @db.Timestamptz
   authorId    String   @db.Uuid
 
-  // Optional membership in a Project. When set, this series' `rank` is scoped to
-  // its project's members; when null the series lives at the author's root list.
+  // Optional membership in a Project. When set this series is one of that
+  // project's members and is ordered by its `seriesOrder`; when null the series
+  // lives in the author's root list and is ordered by `User.rootOrder`.
   projectId String? @db.Uuid
-
-  // Position among this series' siblings: the project's members when `projectId`
-  // is set, otherwise the author's root list (shared rank space with root
-  // Documents), so posts and series freely interleave.
-  rank String
 
   // The order of this series' posts (docs/plans/ordering-simplification.md §2).
   // Holds `Document.id`s. Read through `orderBy` in src/lib/orderArray.ts, so
@@ -69,9 +59,7 @@ model Series {
   // "Migration phases", Phase A).
   @@index([title])
   @@index([authorId, createdAt])
-  @@index([authorId, rank]) // Root-list ordering (shared space with Documents)
   @@index([projectId]) // Membership lookups
-  @@index([projectId, rank]) // Order of series within a project
 }
 
 // Main content model with hierarchical structure (used for both posts and directories)
@@ -102,11 +90,6 @@ model Document {
   // For tabbed posts: the label shown on this document's own tab. Lets the
   // first (root) tab carry a name distinct from the post title in `name`.
   tabLabel String?
-
-  // Manual position among siblings in this document's container (its series,
-  // its parent tab-group, or the author's root list). Fractional-index key —
-  // see src/lib/ordering.
-  rank String
 
   // The order of this document's child tabs
   // (docs/plans/ordering-simplification.md §2). Holds `Document.id`s and is
@@ -142,9 +125,12 @@ model Document {
   @@index([seriesId])
   @@index([authorId, published]) // Index for finding user's published posts
   @@index([published, type]) // Index for finding published posts/documents
-  @@index([seriesId, rank]) // Order of posts within a series
-  @@index([parentId, rank]) // Order of child tabs within a tabbed post
-  @@index([authorId, rank]) // Order of the author's root list
+  // `parentId` alone, because the composite it used to share with `rank` is
+  // gone and this is the only index left serving "the children of this post"
+  // (docs/plans/ordering-simplification.md §3). The other two dropped
+  // composites each still have a leading-column index: `seriesId` above,
+  // `authorId` in `@@index([authorId, published])`.
+  @@index([parentId]) // A tabbed post's child tabs
 }
 
 enum DocumentType {

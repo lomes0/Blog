@@ -79,8 +79,8 @@ export interface AgentPostResult {
 // -----------------------------------------------------------------------
 // Series posts (PATCH /api/series/:id/posts)
 // -----------------------------------------------------------------------
-// Posts are appended to the series; manual position is controlled via `rank`,
-// so add/remove take bare post ids.
+// Posts are appended to the series; where they sit in it is `Series.postOrder`,
+// written by PATCH /api/series/:id/order, so add/remove take bare post ids.
 export interface UpdateSeriesPostsInput {
   postsToAdd: string[];
   postsToRemove: string[];

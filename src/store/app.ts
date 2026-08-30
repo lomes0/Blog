@@ -48,8 +48,8 @@ import {
   updateProject,
 } from "./thunks/projectThunks";
 import {
-  applyLocalRanks,
   applyOrder,
+  loadRootOrder,
   setOrder,
 } from "./thunks/orderThunks";
 import {
@@ -145,10 +145,9 @@ const updatedAtMs = (post: Post) => new Date(post.updatedAt).getTime();
 //
 // The server maintains each container's array explicitly on every write, and
 // the store maintains the same arrays for the writes it applies optimistically.
-// There is nothing left to derive them from: a reorder no longer touches a
-// `rank`, so the array *is* the order and a create / delete / re-home edits it
-// directly rather than recomputing it (which is what `store/orderSync.ts` did,
-// and why it is gone).
+// There is nothing to derive them from: the array *is* the order, so a create /
+// delete / re-home edits it directly rather than recomputing it (which is what
+// `store/orderSync.ts` did, and why it is gone).
 //
 // Drift is not an error — the tolerant reader shows a row the array has not
 // heard of last, which is exactly where the server appended it — so these are
@@ -167,7 +166,11 @@ function readStoreOrder(
 ): string[] | null {
   switch (container.type) {
     case "root":
-      return state.user ? (state.user.rootOrder ?? []) : null;
+      // A guest's root list is `guestRootOrder`, the in-memory half of the
+      // IndexedDB record (§7). The branch is on which storage the session uses,
+      // never on whether an array happens to be empty: a signed-in author with
+      // an empty `rootOrder` genuinely has no manual order.
+      return state.user ? (state.user.rootOrder ?? []) : state.guestRootOrder;
     case "series":
       return state.series.find((s) => s.id === container.seriesId)?.postOrder ??
         null;
@@ -187,6 +190,7 @@ function writeStoreOrder(
   switch (container.type) {
     case "root":
       if (state.user) state.user.rootOrder = ids;
+      else state.guestRootOrder = ids;
       return;
     case "series": {
       const series = state.series.find((s) => s.id === container.seriesId);
@@ -237,6 +241,9 @@ function removeFromStoreOrder(
 function forgetFromOrders(state: AppState, id: string): void {
   if (state.user?.rootOrder?.includes(id)) {
     state.user.rootOrder = state.user.rootOrder.filter((each) => each !== id);
+  }
+  if (state.guestRootOrder.includes(id)) {
+    state.guestRootOrder = state.guestRootOrder.filter((each) => each !== id);
   }
   for (const series of state.series) {
     if (series.postOrder?.includes(id)) {
@@ -358,6 +365,7 @@ const initialState: AppState = {
   posts: postsAdapter.getInitialState(),
   series: [],
   projects: [],
+  guestRootOrder: [],
   ui: {
     announcements: [],
     alerts: [],
@@ -404,6 +412,10 @@ export const load = createApiThunk("app/load", async (_, thunkAPI) => {
   await thunkAPI.dispatch(loadSession());
   await thunkAPI.dispatch(importGuestDrafts());
   await thunkAPI.dispatch(loadPosts());
+  // A guest's root order lives in IndexedDB rather than on the session, so it
+  // is a read of its own (docs/plans/ordering-simplification.md §7). A no-op
+  // when signed in — the cloud backend answers null.
+  await thunkAPI.dispatch(loadRootOrder());
 
   // Series must settle after posts so `series.posts` wins for shared entries.
   // Projects only group series, so they need not block.
@@ -561,6 +573,17 @@ export const appSlice = createSlice({
       })
       .addCase(createPost.fulfilled, (state, action) => {
         applyPost(state.posts, state.series, action.payload);
+        // The container's array gains the id, at the end the create asked for —
+        // the store's half of what `createDocument` does server-side and
+        // `localBackend.create` does in IndexedDB (§6, "Create"). Without it a
+        // `placement: "start"` post reads *last* until the next load, because
+        // the tolerant reader appends what the array has not heard of.
+        addToStoreOrder(
+          state,
+          postContainer(action.payload),
+          action.payload.id,
+          action.meta.arg.placement === "start" ? "start" : "end",
+        );
       })
       .addCase(createPost.rejected, (state, action) => {
         announceFailure(state, action.payload);
@@ -573,6 +596,12 @@ export const appSlice = createSlice({
       })
       .addCase(duplicatePost.fulfilled, (state, action) => {
         applyPost(state.posts, state.series, action.payload);
+        // A copy is appended, as both backends append it (§6, "Create").
+        addToStoreOrder(
+          state,
+          postContainer(action.payload),
+          action.payload.id,
+        );
       })
       .addCase(duplicatePost.rejected, (state, action) => {
         announceFailure(state, action.payload);
@@ -751,7 +780,17 @@ export const appSlice = createSlice({
         announceFailure(state, action.payload);
       })
       .addCase(createSeries.fulfilled, (state, action) => {
-        if (action.payload) state.series.unshift(action.payload);
+        if (!action.payload) return;
+        state.series.unshift(action.payload);
+        // The container it was born in gains the id — its project when it has
+        // one, otherwise the root list (§6, "Create").
+        addToStoreOrder(
+          state,
+          action.payload.projectId
+            ? { type: "project", projectId: action.payload.projectId }
+            : { type: "root" },
+          action.payload.id,
+        );
       })
       .addCase(createSeries.rejected, (state, action) => {
         announceFailure(state, action.payload);
@@ -805,7 +844,10 @@ export const appSlice = createSlice({
         announceFailure(state, action.payload);
       })
       .addCase(createProject.fulfilled, (state, action) => {
-        if (action.payload) state.projects.unshift(action.payload);
+        if (!action.payload) return;
+        state.projects.unshift(action.payload);
+        // A project only ever lives at root (§11, entry 9).
+        addToStoreOrder(state, { type: "root" }, action.payload.id);
       })
       .addCase(createProject.rejected, (state, action) => {
         announceFailure(state, action.payload);
@@ -836,20 +878,17 @@ export const appSlice = createSlice({
         announceFailure(state, action.payload);
       })
       // ── Order (docs/plans/ordering-simplification.md §4/§5) ──
+      .addCase(loadRootOrder.fulfilled, (state, action) => {
+        // Null means the session's root order came in with the session itself;
+        // only a guest's has to be read from storage (§7).
+        if (action.payload) state.guestRootOrder = action.payload;
+      })
       .addCase(applyOrder, (state, action) => {
         writeStoreOrder(
           state,
           action.payload.container,
           action.payload.orderedIds,
         );
-      })
-      .addCase(applyLocalRanks, (state, action) => {
-        // A guest's reorder came back as ranks (§7): the local library has no
-        // container row to hold an array, so the store's posts carry the order.
-        for (const { id, rank } of action.payload) {
-          const post = state.posts.entities[id];
-          if (post) post.rank = rank;
-        }
       })
       .addCase(setOrder.rejected, (state, action) => {
         announceFailure(state, action.payload);
@@ -902,8 +941,8 @@ export {
   updateProject,
 } from "./thunks/projectThunks";
 export {
-  applyLocalRanks,
   applyOrder,
+  loadRootOrder,
   type OrderArg,
   setOrder,
 } from "./thunks/orderThunks";

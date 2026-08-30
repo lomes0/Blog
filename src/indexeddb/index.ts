@@ -55,10 +55,11 @@ const idbConfig = {
   // retired once every profile had been swept, so there is nothing left to
   // follow this one. See `docs/plans/archive/legacy-idb-retirement.md`.
   databaseName: "blog-simple",
-  // 7 adds `workspaces`; 6 added `copilotThreads`. Bumping the version is what
-  // runs `onupgradeneeded`, which creates any store in this list the database
-  // does not already have — existing stores and their contents are untouched.
-  version: 7,
+  // 8 adds `orders`; 7 added `workspaces`; 6 added `copilotThreads`. Bumping
+  // the version is what runs `onupgradeneeded`, which creates any store in this
+  // list the database does not already have — existing stores and their
+  // contents are untouched.
+  version: 8,
   stores: [
     {
       name: "documents",
@@ -120,6 +121,18 @@ const idbConfig = {
       id: { keyPath: "id" },
       indices: [{ name: "updatedAt", keyPath: "updatedAt" }],
     },
+    {
+      // A guest's container order arrays (docs/plans/ordering-simplification.md
+      // §7), keyed by container. Today that is exactly one record — `"root"` —
+      // because the only other local container is a tabbed post, whose order
+      // lives on the post record itself as `tabOrder`, exactly as it lives on
+      // the `Document` row in the cloud. Root is the one container with no row
+      // of its own to hang an array on: the cloud puts it on `User`, and
+      // IndexedDB has no user.
+      name: "orders",
+      id: { keyPath: "id" },
+      indices: [],
+    },
   ],
 };
 
@@ -132,3 +145,11 @@ export const attachmentContentDB = getStore<AttachmentContentCache>(
   "attachmentContent",
 );
 export const pendingSaveDB = getStore<PendingSave>("pendingSaves");
+
+/** One local container's order: `id` is the container, `ids` its children. */
+export interface LocalOrder {
+  id: string;
+  ids: string[];
+}
+
+export const orderDB = getStore<LocalOrder>("orders");

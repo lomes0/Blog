@@ -91,9 +91,9 @@ export function useBulkPostActions({
   // (`useRowSelection` never prunes), and the "N selected" count still counts it,
   // so those rows sort last rather than dropping out of the operation.
   const orderedSelection = useMemo(() => {
-    const rank = new Map(orderedIds.map((id, i) => [id, i]));
+    const slotOf = new Map(orderedIds.map((id, i) => [id, i]));
     return [...selectedIds]
-      .map((id, i) => ({ id, at: rank.get(id) ?? orderedIds.length + i }))
+      .map((id, i) => ({ id, at: slotOf.get(id) ?? orderedIds.length + i }))
       .sort((a, b) => a.at - b.at)
       .map((entry) => entry.id);
   }, [orderedIds, selectedIds]);

@@ -1,3 +1,4 @@
+import type { TreeContainer } from "@/lib/tree/model";
 import type {
   MovePostArg,
   Post,
@@ -37,15 +38,26 @@ export interface PostBackend {
   move(arg: MovePostArg): Promise<Post>;
 
   /**
-   * Persist the order of a container's children.
+   * Persist the order of a container's children — the array, verbatim, on
+   * whatever holds that container's order
+   * (docs/plans/ordering-simplification.md §4).
    *
-   * The cloud writes the array on the container that owns it and is done. The
-   * local library has no such row — IndexedDB holds posts and nothing else, so
-   * there is no `User` to hang a `rootOrder` on (§7 is not this phase) — so it
-   * rewrites the posts' `rank` keys to match the array instead, and returns
-   * what it wrote so the store's copies agree with storage.
+   * One mechanism on both sides of the seam since §7 landed: the cloud writes
+   * the column on the row that owns the list, the local library writes the same
+   * array to IndexedDB (a keyval record for root, `tabOrder` on the post for a
+   * tab strip). Neither computes anything, so neither has anything to return.
    */
-  reorder(orderedIds: string[]): Promise<{ id: string; rank: string }[]>;
+  reorder(container: TreeContainer, orderedIds: string[]): Promise<void>;
+
+  /**
+   * The session's root order, when storage is where it lives.
+   *
+   * `null` for the cloud, whose copy arrives on the session — `session.user` is
+   * the `User` row, and `rootOrder` is a column on it, so there is nothing to
+   * fetch. The local library has no user row, so its root order is a record in
+   * IndexedDB and this is the only way to read it (§7).
+   */
+  rootOrder(): Promise<string[] | null>;
 
   revisions: {
     /** A revision *including* its content. */
@@ -73,6 +85,10 @@ export const backendFor = (user?: User | null): PostBackend =>
  * its collaborators, and its revision history. A copy is the caller's own,
  * starting a fresh history — carrying any of that over would attribute the new
  * post to the wrong people.
+ *
+ * `tabOrder` goes for the same reason in a different currency: it names the
+ * *original's* child tabs, which the copy does not have
+ * (docs/plans/ordering-simplification.md §2).
  */
 export function toCreateInput(
   post: Post,
@@ -82,6 +98,7 @@ export function toCreateInput(
     author: _author,
     coauthors: _coauthors,
     revisions: _revisions,
+    tabOrder: _tabOrder,
     ...rest
   } = post;
   return { ...rest, ...overrides };

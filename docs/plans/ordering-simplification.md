@@ -5,14 +5,14 @@ simplest thing that supports manual drag/menu reorder, optimizing for **less
 code and easier maintenance**. Single-user is an accepted assumption — we drop
 the multi-client / offline-collision robustness the current design pays for.
 
-Status: **phases 1-4 implemented, 30 Aug 2026.** The order arrays exist, are
-backfilled, are what every read sorts by, and are now what every reorder
-*writes* — one array write per gesture, no rank anywhere in the path. `rank`
-survives on the create path only, because the three columns are still `NOT NULL`
-and because keeping them populated is the rollback. Phase 5 (drop the columns,
-the indexes, the collation migrations and `fractional-indexing`) is not started.
-The phase log in §11 records everything below this line that the tree has since
-made false — read it before trusting a section.
+Status: **all five phases implemented, 30 Aug 2026.** The order arrays are the
+only ordering mechanism in the codebase. They exist, are backfilled, are what
+every read sorts by and what every write writes, on both sides of the storage
+seam — `rank` and its indexes are dropped, `src/lib/ordering.ts`,
+`src/lib/documentOrder.ts` and the `fractional-indexing` dependency are gone,
+and the local (IndexedDB) library is on arrays too (§7). The phase log in §11
+records everything below this line that the tree has since made false — read it
+before trusting a section.
 
 ---
 
@@ -464,3 +464,100 @@ directly including its refusals: 400 foreign, 400 duplicate, 400 unknown key,
 (`placement: "start"` prepends; a deleted series leaves `rootOrder` and its
 posts join the end of it). Every row touched was restored, and the tables are
 byte-identical to the pre-change dump.
+
+### 30 Aug 2026 — phase 5 (`rank` is gone)
+
+Shipped: the migration that drops `Document.rank`, `Series.rank`,
+`Project.rank` and their indexes; the create path, which was the last thing
+minting a key; `src/lib/ordering.ts`, `src/lib/documentOrder.ts`,
+`prisma/scripts/backfill-order.ts` and the `fractional-indexing` dependency; and
+**§7**, the local side, which phases 3 and 4 both deferred. There is now one
+ordering mechanism in the tree — an ordered array of child ids on the container
+— on both sides of the storage seam.
+
+**§7 was done properly rather than worked around.** The alternative was keeping
+`rank` as a local-only field: Postgres loses the column, IndexedDB keeps it.
+That was rejected — it leaves two ordering mechanisms and keeps the dependency,
+which is the duplication this plan exists to remove — and the reason §11 entry 5
+gave for deferring turned out to be about *where the array lives*, not about
+whether one can. So:
+
+- A tabbed post's order is `tabOrder` **on the post record**, exactly as it is a
+  column on `Document` in the cloud. That is what lets
+  `selectChildPostsByParent` lose its session branch entirely: `tabOrder` is a
+  field of the post in both libraries.
+- Root is the one container whose owner is not a row both libraries have. The
+  cloud hangs it on `User` and it arrives on the session; IndexedDB has no user,
+  so a guest's is a keyval record in a new `orders` store
+  (`{ id: "root", ids }`, database version 8), read once by `loadRootOrder` and
+  held in
+  `AppState.guestRootOrder`. `selectRootOrder` still branches, but on *which
+  storage the session uses*, not on arrays-versus-ranks.
+- `PostBackend.reorder` now takes the container and returns nothing. It used to
+  hand back freshly minted ranks for the store to apply, which is why
+  `applyLocalRanks` existed; there is nothing to hand back when both sides store
+  the array verbatim, so that action and the guest branch in the `setOrder`
+  thunk are both gone. The cloud backend picks the endpoint by container kind,
+  which moved the last `apiClient` call out of the thunk.
+
+**Where this document is *still* wrong, on top of the phases 1-4 list.**
+
+11. **§3 says "drop these indexes" and lists four; there are six.** The same
+    omission as §2's table and §4's endpoint list — `Project @@index([authorId,
+    rank])` is missing, and so is `Series @@index([projectId, rank])`. The
+    migration names all six.
+12. **§9 says "2 collation migrations"; there is one.**
+    `20260630013820_rank_c_collation` covers both columns in one file, and
+    `Project.rank` was never collated at all — it was added later and nothing
+    ever compared it as a byte string. Nothing was reverted either way: an
+    applied migration is checksummed, so phase 5 adds a new one that drops the
+    columns the old one typed.
+13. **Dropping the columns leaves `Document.parentId` unindexed.** Its only
+    index was the composite with `rank`, and "the children of this post" is a
+    live query (`findDocumentChildren`, every tab strip). The migration replaces
+    it with a plain `@@index([parentId])`. The other two Document composites had
+    a leading-column index already (`Document_seriesId_idx`, and
+    `Document_authorId_published_idx` for `authorId`), as did `Series` and
+    `Project`, so those three go without replacement.
+14. **§8 step 5's "update `src/lib/__tests__/ordering.test.ts`" is a delete.**
+    Every case in it was about minting or comparing fractional keys, so nothing
+    in it had a subject left. `withIds` / `withoutIds` — the array maintenance
+    both sides now share, lifted into `src/lib/orderArray.ts` so the server repo
+    and the guest library cannot drift — are specced in its place
+    (`orderArray.test.ts`). Net: 62 files / 1208 tests → 61 / 1203.
+15. **`prisma/scripts/backfill-order.ts` is deleted, not kept.** It seeds the
+    arrays *from* `rank` and cannot run once the column is gone. It had already
+    served its purpose, and there is no second environment to run it against.
+16. **The create path was not maintaining the store's arrays.** Phase 4 added
+    `addToStoreOrder` for re-homes but left creates to the tolerant reader,
+    which appends what it has not heard of — so a `placement: "start"` post
+    read *last* until the next load. Invisible while the server still prepended
+    it and a reload settled it; not invisible for a guest, whose store *is* the
+    read. `createPost`, `duplicatePost`, `createSeries` and `createProject`
+    now do the same bookkeeping their server halves do.
+17. **§7's "the merged view orders by the cloud array when present, else the
+    local array" describes a merge that does not exist.** There is one library
+    at a time — `backendFor(user)` picks it from the session — so there is
+    nothing to merge. What the sentence is really about is sign-in, and that is
+    `importGuestDrafts`: it now uploads the drafts in the guest's own root
+    order, because each cloud create appends, so the upload sequence *is* where
+    they land.
+
+**Verified.** A real browser against the live database
+(`BUILD_DIR=.next-verify pnpm dev -p 3007`), signed in via a session cookie:
+root reorder, within-series reorder, cross-series drag (two calls in order, the
+id added to the destination at the dropped slot and removed from the source) and
+a multi-select drag landing two rows as one contiguous block — each checked in
+Postgres. The two paths this phase changed were exercised end to end: a create
+with `placement: "end"` lands at the tail of `rootOrder` and one with `"start"`
+at its head; deleting a series leaves `rootOrder` and frees its posts to the end
+of root **in the series' own `postOrder`** — the case `freeIntoRoot` used to
+mint a batch of ranks for; and deleting a post drops its id from the array.
+Signed **out**, in a fresh profile: three drafts created at `/new` land in the
+IndexedDB `orders` record in creation order with no `rank` field on any record,
+"Move to top" and "Move down" rewrite that array and survive a reload, a draft
+created with `?parentId=` lands in its parent's `tabOrder` and not in
+`rootOrder`, "Split off as new post" moves it out of one and onto the end of the
+other, a delete drops it — and the whole session makes zero `/api` writes. Every
+row touched was restored and all eight tables are byte-identical to the
+pre-change dump.

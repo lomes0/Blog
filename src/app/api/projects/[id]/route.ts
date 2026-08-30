@@ -7,8 +7,9 @@ import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
-// `authorId` and `rank` are absent: ownership is fixed, and a project's position
-// in the author's root list is set by PATCH /api/projects/[id]/move.
+// `authorId` is absent, and so is any position: ownership is fixed, and a
+// project's place in the author's root list lives in `User.rootOrder`, written
+// by PATCH /api/users/me/root-order (docs/plans/ordering-simplification.md §4).
 const projectUpdateSchema = z.object({
   title: z.string().min(1),
   description: z.string(),

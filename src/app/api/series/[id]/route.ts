@@ -17,9 +17,10 @@ import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
-// `projectId` and `rank` are absent: a series' container and its position in it
-// are set by PATCH /api/series/[id]/move, which authorizes the destination
-// project and ranks the series among its members.
+// `projectId` is absent, and so is any position: a series' container is set by
+// PATCH /api/series/[id]/move, which authorizes the destination project and
+// appends the series to it, and its place within that container is the
+// container's own order array (docs/plans/ordering-simplification.md §4).
 const seriesUpdateSchema = z.object({
   title: z.string().min(1),
   description: z.string(),

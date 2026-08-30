@@ -27,7 +27,6 @@
     "ai:rotate": "node --import tsx --env-file=.env prisma/scripts/ai-rotate.ts",
     "blobs:migrate": "node --import tsx --env-file=.env prisma/scripts/migrate-blobs.ts",
     "blobs:collect": "node --import tsx --env-file=.env prisma/scripts/collect-blobs.ts",
-    "order:backfill": "node --import tsx --env-file=.env prisma/scripts/backfill-order.ts",
     "nodes:unwrap": "node --import tsx --env-file=.env prisma/scripts/unwrap-decorators.ts"
   },
   "dependencies": {
@@ -71,7 +70,6 @@
     "ai": "6.0.27",
     "date-fns": "^4.4.0",
     "docx": "^9.7.1",
-    "fractional-indexing": "^3.4.0",
     "htmr": "^1.0.2",
     "image-size": "^2.0.1",
     "jotai": "^2.20.2",

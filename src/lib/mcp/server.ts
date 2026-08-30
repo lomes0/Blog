@@ -170,9 +170,9 @@ const authorSeries = async (authorId: string) => {
   // Root order, which names the author's *ungrouped* series
   // (docs/plans/ordering-simplification.md §2). A series inside a project is not
   // in that array and so falls to the end by `createdAt`, which is the tolerant
-  // reader's rule (§6) and is no worse than what the old `orderBy: { rank }`
-  // gave here: it compared keys from two different rank spaces, which never
-  // meant anything either.
+  // reader's rule (§6). A flat list of every series has no single order to be
+  // in: a project's members are ordered by that project, not against the root
+  // list, so there is nothing better to sort them by here.
   return orderBy(author?.rootOrder ?? [], series).map(
     ({ createdAt: _createdAt, ...s }) => s,
   );

@@ -71,3 +71,33 @@ export function orderBy<T extends Orderable>(
 
   return [...placed.map((p) => p.row), ...rest];
 }
+
+/**
+ * `order` with `ids` added — at the end, or at the front with `at: "start"` —
+ * ignoring any that are already in it.
+ *
+ * The create / re-home half of §6's bookkeeping, as a pure function, because
+ * both sides of the storage seam now do exactly this: the server writes it to
+ * the container's column (`addToOrder` in `src/repositories/ordering.ts`) and
+ * the guest library writes it to IndexedDB (`src/store/backend/local.ts`).
+ * Returns `order` itself when there is nothing to add.
+ */
+export function withIds(
+  order: readonly string[],
+  ids: readonly string[],
+  at: "start" | "end" = "end",
+): string[] {
+  const present = new Set(order);
+  const fresh = ids.filter((id) => !present.has(id));
+  if (fresh.length === 0) return [...order];
+  return at === "start" ? [...fresh, ...order] : [...order, ...fresh];
+}
+
+/** `order` with `ids` dropped — the delete / re-home half of the same rule. */
+export function withoutIds(
+  order: readonly string[],
+  ids: readonly string[],
+): string[] {
+  const gone = new Set(ids);
+  return order.filter((id) => !gone.has(id));
+}

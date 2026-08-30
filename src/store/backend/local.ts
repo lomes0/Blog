@@ -1,5 +1,6 @@
-import { getStore } from "@/indexeddb";
-import { rankAtStart, ranksForList } from "@/lib/ordering";
+import { getStore, type LocalOrder } from "@/indexeddb";
+import { orderBy, withIds, withoutIds } from "@/lib/orderArray";
+import type { TreeContainer } from "@/lib/tree/model";
 import type {
   MovePostArg,
   Post,
@@ -26,6 +27,7 @@ import type { PostBackend } from "./index";
 
 const postDB = getStore<Post>("documents");
 const revisionDB = getStore<Revision>("revisions");
+const orderDB = getStore<LocalOrder>("orders");
 
 /** IndexedDB round-trips `Date`s; the store keeps timestamps as ISO strings. */
 const iso = (value: string | Date): string =>
@@ -36,6 +38,86 @@ type StoredPost = Omit<
   Post,
   "author" | "coauthors" | "published" | "collab" | "private" | "series"
 >;
+
+/**
+ * Where a guest's container orders live
+ * (docs/plans/ordering-simplification.md §7).
+ *
+ * A tabbed post's order is `tabOrder` on the post record, exactly as it is on
+ * the `Document` row in the cloud. Root is the one container with no row of its
+ * own — the cloud hangs it on `User` and there is no user here — so it is a
+ * keyval record in the `orders` store, under this key.
+ */
+const ROOT_ORDER_KEY = "root";
+
+/**
+ * The stored order of a local container; `[]` when it has never been written.
+ *
+ * A guest has no series and no projects, so those two container kinds cannot
+ * arise here. They answer `[]` rather than throwing: the ordering surfaces are
+ * shared with the signed-in ones, and a guest reaching one of them should be a
+ * no-op, not an error.
+ */
+async function readLocalOrder(container: TreeContainer): Promise<string[]> {
+  if (container.type === "tabs") {
+    const parent = await postDB.getByID(container.parentId) as Post | undefined;
+    return parent?.tabOrder ?? [];
+  }
+  if (container.type !== "root") return [];
+  const record = await orderDB.getByID(ROOT_ORDER_KEY) as
+    | LocalOrder
+    | undefined;
+  return record?.ids ?? [];
+}
+
+/** Persist a local container's order. See {@link readLocalOrder} on kinds. */
+async function writeLocalOrder(
+  container: TreeContainer,
+  ids: string[],
+): Promise<void> {
+  if (container.type === "tabs") {
+    await postDB.patch(container.parentId, { tabOrder: ids });
+    return;
+  }
+  if (container.type !== "root") return;
+  await orderDB.update({ id: ROOT_ORDER_KEY, ids });
+}
+
+/** The container a local post is in: a guest's posts are root posts or tabs. */
+const containerOfPost = (
+  post: { parentId?: string | null },
+): TreeContainer =>
+  post.parentId ? { type: "tabs", parentId: post.parentId } : { type: "root" };
+
+/** Put `id` into its container's array (the create / re-home half of §6). */
+async function addToLocalOrder(
+  container: TreeContainer,
+  id: string,
+  at: "start" | "end",
+): Promise<void> {
+  const current = await readLocalOrder(container);
+  const next = withIds(current, [id], at);
+  if (next.length !== current.length) await writeLocalOrder(container, next);
+}
+
+/**
+ * Drop `id` from every local array that could name it (the delete half of §6).
+ *
+ * Every array rather than the one it lived in, because a delete is also the
+ * path where the row is already gone by the time anyone asks where it was.
+ */
+async function forgetFromLocalOrders(id: string): Promise<void> {
+  const root = await readLocalOrder({ type: "root" });
+  if (root.includes(id)) {
+    await writeLocalOrder({ type: "root" }, withoutIds(root, [id]));
+  }
+  for (const post of await postDB.getAll()) {
+    if (post.tabOrder?.includes(id)) {
+      const tabOrder = withoutIds(post.tabOrder, [id]);
+      await postDB.patch(post.id, { tabOrder });
+    }
+  }
+}
 
 // `coauthors` is `User[]` on a Post but `string[]` (emails) on a create input;
 // both are dropped, so the key list is typed rather than destructured.
@@ -53,11 +135,6 @@ const NOT_STORED = [
   "expectedHead",
   // Where in the container to land, not where it is: consumed by `create`.
   "placement",
-  // A cloud container's child order (docs/plans/ordering-simplification.md §2).
-  // The local library still orders by `rank` — §7 is phase 4+ work — so storing
-  // this would persist an array nothing here reads, and a duplicated post would
-  // carry the *original's* child ids into IndexedDB.
-  "tabOrder",
 ] as const;
 
 /** Drop cloud-only fields and content-adjacent collections before persisting. */
@@ -87,31 +164,6 @@ function hydrate(
     revisions,
     ...(options.withData ? { data } : {}),
   };
-}
-
-/**
- * A rank that puts a new post above every ranked sibling in its container.
- *
- * Container membership mirrors the server's: a series wins over a parent,
- * otherwise root. Siblings without a rank are ignored — they already sort last.
- */
-async function rankAtStartOf(
-  post: { seriesId?: string | null; parentId?: string | null },
-): Promise<string> {
-  const seriesId = post.seriesId ?? null;
-  const parentId = seriesId ? null : (post.parentId ?? null);
-  const posts = await postDB.getAll();
-  const siblings = posts
-    .filter((sibling) =>
-      seriesId
-        ? sibling.seriesId === seriesId
-        : parentId
-        ? sibling.parentId === parentId
-        : !sibling.seriesId && !sibling.parentId
-    )
-    .filter((sibling) => typeof sibling.rank === "string")
-    .map((sibling) => ({ id: sibling.id, rank: sibling.rank as string }));
-  return rankAtStart(siblings);
 }
 
 async function readPost(id: string): Promise<Post | undefined> {
@@ -149,25 +201,33 @@ export const localBackend: PostBackend = {
   },
 
   async children(id) {
-    const posts = await postDB.getAll();
-    return posts
+    const [posts, parent] = await Promise.all([
+      postDB.getAll(),
+      postDB.getByID(id) as Promise<Post | undefined>,
+    ]);
+    const children = posts
       .filter((post) => post.parentId === id)
-      .map((post) => hydrate(post, [], { withData: false }))
-      .sort((a, b) => (a.rank ?? "") < (b.rank ?? "") ? -1 : 1);
+      .map((post) => hydrate(post, [], { withData: false }));
+    return orderBy(parent?.tabOrder ?? [], children);
   },
 
   async create(input: PostCreateInput) {
     const { revisions, ...post } = input;
-    // The cloud mints the rank server-side from `placement`; there is no server
-    // here, so the same key is minted against the sibling records. Only a
-    // `"start"` placement needs one: an unranked post already sorts after every
-    // ranked sibling (`comparePostsByRank`), which is what "end" means.
-    const stored = toStored(post);
-    if (input.placement === "start" && post.rank == null) {
-      stored.rank = await rankAtStartOf(post);
-    }
+    // Every record carries a `tabOrder`, empty until the post has tabs, so the
+    // stored shape matches the cloud's `Document.tabOrder @default([])`. An
+    // incoming one is not trusted: it would be the *original's* child ids on a
+    // duplicate (`toCreateInput` drops it for that reason).
+    const stored = { ...toStored(post), tabOrder: post.tabOrder ?? [] };
     await postDB.add(stored as Post);
     if (revisions?.length) await revisionDB.addMany(revisions);
+    // Its container's array gains the id, at the end it was asked for
+    // (docs/plans/ordering-simplification.md §6, "Create"). The cloud does the
+    // same thing in `createDocument`; this is the guest's half of it.
+    await addToLocalOrder(
+      containerOfPost(post),
+      input.id,
+      input.placement === "start" ? "start" : "end",
+    );
     const created = await readPost(input.id);
     if (!created) throw new Error("failed to create post");
     return created;
@@ -185,6 +245,7 @@ export const localBackend: PostBackend = {
   async delete(id) {
     await postDB.deleteByID(id);
     await revisionDB.deleteManyByKey("documentId", id);
+    await forgetFromLocalOrders(id);
     return id;
   },
 
@@ -193,31 +254,33 @@ export const localBackend: PostBackend = {
     // a parent, so the two backends can never disagree about where a post lives.
     const seriesId = destination.seriesId ?? null;
     const parentId = seriesId ? null : (destination.parentId ?? null);
-    // Appended, as the cloud appends: an absent rank already sorts after every
-    // ranked sibling (`comparePostsByRank`), which is what "end" means here.
-    await postDB.patch(id, { rank: null, seriesId, parentId });
+    await postDB.patch(id, { seriesId, parentId });
+    // Both ends of the move, as `movePost` does them server-side: the container
+    // it leaves loses the id, the one it joins appends it (§4, "appends only").
+    await forgetFromLocalOrders(id);
+    await addToLocalOrder(containerOfPost({ parentId }), id, "end");
     const moved = await readPost(id);
     if (!moved) throw new Error("failed to move post");
     return moved;
   },
 
   /**
-   * A guest's reorder, in the only currency IndexedDB has: fresh ranks over the
-   * ids, in the order given (docs/plans/ordering-simplification.md §7 — the
-   * local side keeps `rank` until that section is done).
+   * A guest's reorder: the array, stored verbatim, exactly as the cloud stores
+   * it on the container that owns the list
+   * (docs/plans/ordering-simplification.md §7).
    *
-   * The whole container is rewritten rather than one key spliced between
-   * neighbours, which is both simpler and what makes the result agree with the
-   * caller's array exactly, whatever the previous keys were. Ids with no local
-   * post — a root list's series and project ids, in principle — are skipped.
+   * Ids with no local post are dropped rather than persisted — the caller is a
+   * surface shared with the signed-in library, and a stored id naming nothing
+   * is drift the tolerant reader would have to ignore on every read.
    */
-  async reorder(orderedIds: string[]) {
+  async reorder(container: TreeContainer, orderedIds: string[]) {
     const known = new Set((await postDB.getAll()).map((post) => post.id));
-    const ids = orderedIds.filter((id) => known.has(id));
-    const keys = ranksForList(ids.length);
-    const written = ids.map((id, i) => ({ id, rank: keys[i] }));
-    for (const { id, rank } of written) await postDB.patch(id, { rank });
-    return written;
+    await writeLocalOrder(container, orderedIds.filter((id) => known.has(id)));
+  },
+
+  /** A guest's root list, as stored. Empty until the first create. */
+  async rootOrder() {
+    return await readLocalOrder({ type: "root" });
   },
 
   revisions: {

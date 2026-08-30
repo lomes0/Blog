@@ -89,7 +89,7 @@ const documentFields = {
  *
  * Unknown keys are stripped rather than rejected (unlike the update schema): the
  * route allowlists the columns it writes, and callers legitimately post a whole
- * `Post` through `toCreateInput` — `rank`, a joined `series`, seed `revisions` —
+ * `Post` through `toCreateInput` — a joined `series`, seed `revisions` —
  * of which this endpoint uses only some.
  */
 export const documentCreateSchema = z.object({
@@ -123,9 +123,10 @@ export const documentCreateSchema = z.object({
  * landed in. The comment saying membership changes go through `/move` is now
  * enforced.
  *
- * `rank` is likewise not accepted, and nothing reads it any more: a container's
- * order lives on the container (docs/plans/ordering-simplification.md §4) and
- * is written by that container's order endpoint, never field-by-field here.
+ * No position is accepted either, because there is no position on a post to
+ * accept: a container's order lives on the container
+ * (docs/plans/ordering-simplification.md §4) and is written by that container's
+ * order endpoint, never field-by-field here.
  *
  * `expectedHead` is the one field here that is not a column. It is the
  * compare-and-set: send the head this write is based on and the update is

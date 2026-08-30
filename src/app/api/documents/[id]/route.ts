@@ -65,11 +65,11 @@ export const PATCH = userRoute<{ id: string }>(
       ...(body.tabLabel !== undefined && { tabLabel: body.tabLabel }),
     };
 
-    // Container changes — `parentId`, `seriesId`, `rank` — are not reachable from
+    // Container changes — `parentId` and `seriesId` — are not reachable from
     // here: they are absent from `documentUpdateSchema`, which is `.strict()`, so
     // sending one is a 400 naming the field. They go through PATCH
     // /api/documents/[id]/move, which authorizes the destination, refuses parent
-    // cycles, and assigns a rank in the container the document lands in.
+    // cycles, and appends the document to the container it lands in.
 
     if (body.handle && body.handle !== userPost.handle) {
       input.handle = body.handle.toLowerCase();

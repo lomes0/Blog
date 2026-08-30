@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 // container — it is not a partial patch — and the move **appends** there
 // (docs/plans/ordering-simplification.md §4, decided). A caller that dropped the
 // row at a particular slot follows with an order write to position it; there is
-// no combined position payload, so nothing here takes a rank or a neighbour.
+// no combined position payload, so nothing here takes a position at all.
 const moveSchema = z.object({
   destination: z.object({
     seriesId: z.string().uuid().nullish(),

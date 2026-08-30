@@ -48,7 +48,7 @@ import { DocumentType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { changeNotification } from "@/lib/changes/notify";
 import { isProposalStale, selectAgentRead } from "@/lib/proposals";
-import { addToOrder, containerOf, rankForAppend } from "@/repositories/ordering";
+import { addToOrder, containerOf } from "@/repositories/ordering";
 import { reconcileDocumentBlobs } from "@/repositories/blob";
 import { blobHashesFor } from "@/lib/blobRefs";
 import {
@@ -420,11 +420,6 @@ export async function proposeNewPost(
 
   const id = randomUUID();
   const revisionId = randomUUID();
-  const rank = await rankForAppend(prisma, {
-    authorId: input.authorId,
-    seriesId,
-    parentId: null,
-  });
   // The one write in this codebase that does not go through a repository, so it
   // is the one hand-placed notify (docs/plans/archive/changes-detection.md §2.1) —
   // everything else here reaches Postgres through `src/repositories/*`, which
@@ -445,7 +440,6 @@ export async function proposeNewPost(
         name: input.title,
         authorId: input.authorId,
         type: DocumentType.DOCUMENT,
-        rank,
         seriesId,
         head: revisionId,
         agentCreatedAt: new Date(),

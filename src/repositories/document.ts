@@ -15,8 +15,6 @@ import {
   addToOrder,
   containerOf,
   freeIntoRoot,
-  rankForAppend,
-  rankForPrepend,
   removeFromOrder,
 } from "./ordering";
 import { APP_ORIGIN } from "@/lib/changes/events";
@@ -86,7 +84,6 @@ const documentCoreSelect = {
   private: true,
   baseId: true,
   parentId: true,
-  rank: true,
   // The order of this post's child tabs, for the client's tab strips
   // (docs/plans/ordering-simplification.md §2). Empty for the posts that have
   // no tabs, which is most of them.
@@ -382,11 +379,13 @@ const findPublishedDocumentsByAuthorId = async (authorId: string) => {
   return docs.map(toCloudDocument);
 };
 
-// `rank` is computed here (from `placement` within the document's container),
-// so callers need not supply it — though they may to pin an explicit position.
+// Where in its container the new document lands: `placement` says which end,
+// and the container's order array is what records it
+// (docs/plans/ordering-simplification.md §6, "Create"). There is no position on
+// the row itself any more.
 type CreateDocumentInput =
-  & Omit<Prisma.DocumentUncheckedCreateInput, "rank">
-  & { rank?: string | null; placement?: DocumentPlacement };
+  & Prisma.DocumentUncheckedCreateInput
+  & { placement?: DocumentPlacement };
 
 /** Which end of its container a new document lands at. Default `"end"`. */
 export type DocumentPlacement = "start" | "end";
@@ -396,21 +395,17 @@ const createDocument = async (
 ) => {
   if (!data.id) return null;
 
-  // Position new documents within their container (series / tab-group / root)
-  // unless the caller already supplied a rank.
+  // Which container the new document is born into (series / tab-group / root);
+  // its order array is updated once the row commits, below.
   const container = {
     authorId: data.authorId,
     seriesId: (data.seriesId as string | null | undefined) ?? null,
     parentId: (data.parentId as string | null | undefined) ?? null,
   };
-  const rank = data.rank ??
-    (placement === "start"
-      ? await rankForPrepend(prisma, container)
-      : await rankForAppend(prisma, container));
 
   // Ensure it's always a DOCUMENT type, not DIRECTORY
   const create = prisma.document.create({
-    data: { ...data, type: PrismaDocumentType.DOCUMENT, rank },
+    data: { ...data, type: PrismaDocumentType.DOCUMENT },
   });
 
   // The create and its notification commit together (docs/plans/
@@ -429,10 +424,10 @@ const createDocument = async (
   await prisma.$transaction(statements);
 
   // The container's order array gains the new id
-  // (docs/plans/ordering-simplification.md §6, "Create"). An explicit append —
-  // there is no rank order left to recompute it from — and `placement: "start"`
-  // is the case that needs it: without the entry a new row reads *last*, which
-  // is right for an append and wrong for a prepend.
+  // (docs/plans/ordering-simplification.md §6, "Create"). This is the whole of
+  // where the post lands: `placement: "start"` is the case that needs it, since
+  // without an entry the tolerant reader shows a new row *last*, which is right
+  // for an append and wrong for a prepend.
   await addToOrder(
     prisma,
     containerOf(container),
@@ -585,8 +580,8 @@ const updateDocument = async (
 /**
  * A parent's child-tab ids in the parent's own `tabOrder`, with anything the
  * array has not heard of appended (the tolerant reader's rule, §6). The delete
- * path needs it because `orderBy: { rank }` no longer answers this question —
- * a reorder writes the array, not the ranks.
+ * path needs it because the order is the container's array, not a column SQL
+ * could sort the children by.
  */
 const orderedChildIds = async (
   tx: Prisma.TransactionClient,
@@ -611,8 +606,8 @@ const orderedChildIds = async (
  * Split out because the delete has a second entry point (`discardAgentDocument`)
  * that differs only in how the row is found — and the part worth not
  * duplicating is what happens *after* the delete: child tabs are promoted to
- * root by `onDelete: SetNull`, which leaves them holding ranks from a container
- * they are no longer in, so they have to be re-ranked into root here.
+ * root by `onDelete: SetNull`, which does nothing about the root list they land
+ * in, so they have to be appended to it here.
  *
  * It is also the single emit site for `document.deleted`, which is what makes it
  * cover `deleteDocument` and `discardAgentDocument` at once — and the notify goes
@@ -808,8 +803,7 @@ const findUnownedDocumentIds = async (
  * (docs/plans/ordering-simplification.md §3).
  *
  * `createdAt` is selected but not returned: it is the tiebreaker the tolerant
- * reader uses for a child the array has not heard of yet (§6), which is what
- * the old `orderBy: [{ rank }, { createdAt }]` second key was doing.
+ * reader uses for a child the array has not heard of yet (§6).
  */
 const findDocumentChildren = async (parentId: string) => {
   const [parent, children] = await Promise.all([
@@ -819,7 +813,7 @@ const findDocumentChildren = async (parentId: string) => {
     }),
     prisma.document.findMany({
       where: { parentId },
-      select: { id: true, name: true, rank: true, createdAt: true },
+      select: { id: true, name: true, createdAt: true },
     }),
   ]);
   return orderBy(parent?.tabOrder ?? [], children).map(

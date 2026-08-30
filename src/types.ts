@@ -249,6 +249,19 @@ export interface AppState {
   posts: EntityState<Post, string>;
   series: Series[];
   projects: Project[];
+  /**
+   * A guest's root order (docs/plans/ordering-simplification.md §7).
+   *
+   * The signed-in half of this lives on `user.rootOrder`, because the row that
+   * owns the author's root list *is* the user. IndexedDB has no such row, so a
+   * guest's copy is a keyval record there and this is where it is held in
+   * memory. Read only when `user` is absent — a signed-in author with an empty
+   * `rootOrder` genuinely has no manual order and must get the tolerant
+   * reader's createdAt fallback, not a guest's array.
+   *
+   * It holds document ids only: a guest has no series and no projects.
+   */
+  guestRootOrder: string[];
   ui: {
     announcements: Announcement[];
     alerts: Alert[];
@@ -375,13 +388,11 @@ export interface Series {
   createdAt: string | Date;
   updatedAt: string | Date;
   authorId: string;
-  // Optional membership in a Project. When set, this series' `rank` is scoped to
-  // its project's members; when null the series lives at the author's root list.
+  // Optional membership in a Project. When set the series is one of that
+  // project's members, ordered by `Project.seriesOrder`; when null it lives in
+  // the author's root list, ordered by `User.rootOrder` (which interleaves
+  // standalone posts, ungrouped series and projects).
   projectId?: string | null;
-  // Manual position among the series' siblings: the project's members when
-  // `projectId` is set, otherwise the author's root list (shared rank space with
-  // root Documents, so posts and series interleave).
-  rank?: string | null;
   /**
    * This series' posts, in order (docs/plans/ordering-simplification.md §2).
    * The container owns the order of its children, so `posts` is sorted by this
@@ -422,14 +433,10 @@ export interface Project {
   createdAt: string | Date;
   updatedAt: string | Date;
   authorId: string;
-  // Manual position in the author's root list (shared rank space with root
-  // Documents and ungrouped Series, so projects, loose series and standalone
-  // posts interleave).
-  rank?: string | null;
   /** This project's member series, in order (ordering-simplification.md §2). */
   seriesOrder?: string[];
   author: User;
-  // Member series, ordered by rank within the project. Optional because the API
+  // Member series, ordered by `seriesOrder`. Optional because the API
   // returns project metadata only; the client joins series to their project by
   // `series.projectId` (see the sidebar grouping selectors).
   series?: Series[];
@@ -483,8 +490,6 @@ export type Post = {
   baseId?: string | null;
   seriesId?: string | null;
   series?: Series | null;
-  /** Manual position within its container (fractional index). */
-  rank?: string | null;
   /**
    * This post's child tabs, in order (docs/plans/ordering-simplification.md §2).
    * Empty or absent for a post with no tabs, which is most of them.
@@ -535,8 +540,8 @@ export type PostCreateInput =
     revisions?: Revision[];
     /**
      * Which end of its container the new post lands at. Not a column: both
-     * backends turn it into a `rank` among the live siblings and drop it.
-     * Defaults to `"end"`.
+     * backends turn it into the position the new id takes in the container's
+     * order array, and drop it. Defaults to `"end"`.
      */
     placement?: "start" | "end";
   };
@@ -544,15 +549,17 @@ export type PostCreateInput =
 /**
  * The fields an update may change.
  *
- * A post's *container* is not among them. `parentId`, `seriesId` and `rank`
- * describe where a post sits relative to others, which is a move: it has to
- * authorize the destination, refuse parent cycles, and mint a rank among the new
- * siblings — all of which `movePost` / `PATCH /api/documents/[id]/move` do in one
- * transaction, and none of which a field-by-field patch can.
+ * A post's *container* is not among them. `parentId` and `seriesId` describe
+ * where a post sits relative to others, which is a move: it has to authorize
+ * the destination, refuse parent cycles, and put the id into the destination's
+ * order array — all of which `movePost` / `PATCH /api/documents/[id]/move` do
+ * in one transaction, and none of which a field-by-field patch can. `tabOrder`
+ * is excluded on the same grounds from the other side: a container's order is
+ * written by that container's order endpoint.
  *
  * Omitting them here is what makes that a fact rather than a convention. The
- * server's update schema is `.strict()` about the same three fields, so the two
- * sides of the seam agree; this half just means the mistake does not compile.
+ * server's update schema is `.strict()` about the same fields, so the two sides
+ * of the seam agree; this half just means the mistake does not compile.
  *
  * `background_image` is omitted for a different reason: the feature is gone and
  * its bytes are deleted (docs/plans/blob-storage.md §10.2). The column stays so
@@ -568,7 +575,6 @@ export type PostUpdateInput =
       | "type"
       | "parentId"
       | "seriesId"
-      | "rank"
       | "tabOrder"
       | "background_image"
     >

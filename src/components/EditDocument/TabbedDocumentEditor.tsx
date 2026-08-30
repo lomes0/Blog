@@ -365,10 +365,10 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
     const tabId = moveDialogTabId;
     setMoveDialogTabId(null);
 
-    // A re-home, not a field edit: `movePost` authorizes the destination, refuses
-    // a parent cycle, and ranks the tab among its new siblings. Patching
-    // `parentId` did none of those — the tab landed carrying the rank it held in
-    // this post's container.
+    // A re-home, not a field edit: `movePost` authorizes the destination,
+    // refuses a parent cycle, and appends the tab to the destination's order
+    // array (docs/plans/ordering-simplification.md §4). Patching `parentId` did
+    // none of those — the tab landed in a list that had never heard of it.
     await dispatch(
       actions.movePost({
         id: tabId,
@@ -387,7 +387,7 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
 
   const handleSplitOff = useCallback(async (tabId: string) => {
     // Detach the tab from this post — it becomes a standalone document, which
-    // means a move to the author's root list and a rank in it.
+    // means a move to the author's root list and a place in `rootOrder`.
     await dispatch(
       actions.movePost({ id: tabId, destination: { parentId: null } }),
     );

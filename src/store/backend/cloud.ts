@@ -1,4 +1,5 @@
 import { apiClient } from "@/api";
+import type { TreeContainer } from "@/lib/tree/model";
 import type {
   MovePostArg,
   Post,
@@ -94,8 +95,31 @@ export const cloudBackend: PostBackend = {
   // reach the cloud through this seam — which only knows about posts and could
   // not address a root list holding series and project ids. `setOrder` calls the
   // right endpoint directly; nothing here has to run.
-  async reorder() {
-    return [];
+  /**
+   * One `PATCH` to the endpoint of whichever container owns the list
+   * (docs/plans/ordering-simplification.md §4). Four containers, four
+   * endpoints — the plan's §4 names three and misses `Project`.
+   */
+  async reorder(container: TreeContainer, orderedIds: string[]) {
+    switch (container.type) {
+      case "root":
+        await apiClient.users.rootOrder(orderedIds);
+        return;
+      case "series":
+        await apiClient.series.order(container.seriesId, orderedIds);
+        return;
+      case "project":
+        await apiClient.projects.order(container.projectId, orderedIds);
+        return;
+      case "tabs":
+        await apiClient.documents.tabOrder(container.parentId, orderedIds);
+        return;
+    }
+  },
+
+  /** Null: the signed-in root order rides on the session, not on a fetch. */
+  async rootOrder() {
+    return null;
   },
 
   revisions: {

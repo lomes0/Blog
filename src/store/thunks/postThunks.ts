@@ -87,7 +87,6 @@ export const duplicatePost = createApiThunk(
       id: arg.newId,
       name: arg.newName,
       handle: null, // handles are unique; the copy earns its own
-      rank: null, // appended to its container rather than tying with the source
       head,
       createdAt: now,
       updatedAt: now,

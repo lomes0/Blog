@@ -126,9 +126,9 @@ const groupPostsBySeries = (
       // Mark all series post IDs so they don't appear as standalone
       series.posts.forEach((post) => seriesPostIds.add(post.id));
 
-      // Prefer the store's copy of each post — it carries anything loaded since
-      // the series was fetched (content, fresher rank) — and fall back to the
-      // copy embedded in the series.
+      // Prefer the store's copy of each post — it carries anything loaded
+      // since the series was fetched (content, a fresher name) — and fall back
+      // to the copy embedded in the series.
       const seriesPosts: Post[] = series.posts.map((post) =>
         postsByIdMap.get(post.id) ?? post
       );

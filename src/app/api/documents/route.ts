@@ -83,8 +83,9 @@ export const POST = userRoute(async (request, { user }) => {
   // (docs/plans/blob-storage.md §8).
   await ingestInlineBlobs(body.data);
 
-  // rank is assigned by createDocument (appended to the document's container).
-  const input: Omit<Prisma.DocumentUncheckedCreateInput, "rank"> = {
+  // Where it lands is the container's order array, which createDocument
+  // appends to (docs/plans/ordering-simplification.md §6).
+  const input: Prisma.DocumentUncheckedCreateInput = {
     id: body.id,
     authorId: user.id,
     name: body.name,

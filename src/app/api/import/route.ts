@@ -29,7 +29,6 @@ import {
   addToOrder,
   containerOf,
   type OrderContainer,
-  rankForAppend,
 } from "@/repositories/ordering";
 import { reconcileDocumentBlobs } from "@/repositories/blob";
 import { blobHashesFor } from "@/lib/blobRefs";
@@ -118,11 +117,6 @@ export const POST = userRoute(async (request, { user }) => {
             title: s.title,
             description: s.description ?? null,
             authorId: user.id, // import under the authenticated user
-            rank: await rankForAppend(prisma, {
-              authorId: user.id,
-              seriesId: null,
-              parentId: null,
-            }),
             createdAt: new Date(s.createdAt),
             updatedAt: new Date(s.updatedAt),
           },
@@ -244,11 +238,6 @@ export const POST = userRoute(async (request, { user }) => {
           type: "DOCUMENT",
           status: (docExport.status as "ACTIVE" | "DONE") ?? "ACTIVE",
           background_image: docExport.background_image ?? null,
-          rank: await rankForAppend(prisma, {
-            authorId: user.id,
-            seriesId,
-            parentId: docExport.parentId ?? null,
-          }),
           seriesId,
           createdAt: new Date(docExport.createdAt),
           updatedAt: new Date(docExport.updatedAt),
@@ -359,8 +348,8 @@ export const POST = userRoute(async (request, { user }) => {
   // Every imported row is appended to the array of the container it landed in,
   // batched by container so a bundle costs one write per list rather than one
   // per row (docs/plans/ordering-simplification.md §6, "Create"). It cannot be a
-  // recompute: nothing derives an order from `rank` any more, so recomputing
-  // would overwrite the author's existing manual order with import order.
+  // recompute: the array is the only record of the order there is, so
+  // recomputing would overwrite the author's manual order with import order.
   const byContainer = new Map<string, { kind: string; ids: string[] }>();
   for (const entry of imported) {
     const key = JSON.stringify(entry.container);

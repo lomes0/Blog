@@ -1,4 +1,4 @@
-import { orderBy } from "@/lib/orderArray";
+import { orderBy, withIds, withoutIds } from "@/lib/orderArray";
 
 /**
  * The tolerant reader of docs/plans/ordering-simplification.md §6.
@@ -104,5 +104,47 @@ describe("orderBy", () => {
   it("carries the row through, not a copy of its id", () => {
     const only = { id: "a", name: "post" };
     expect(orderBy(["a"], [only])[0]).toBe(only);
+  });
+});
+
+/**
+ * The array-maintenance half of §6, shared by the server's `addToOrder` /
+ * `removeFromOrder` and the guest library's IndexedDB writes since §7 landed.
+ * Both sides do exactly this, so it is pinned once rather than twice.
+ */
+describe("withIds / withoutIds", () => {
+  it("appends by default and prepends on request", () => {
+    expect(withIds(["a", "b"], ["c"])).toEqual(["a", "b", "c"]);
+    expect(withIds(["a", "b"], ["c"], "start")).toEqual(["c", "a", "b"]);
+  });
+
+  it("ignores an id the array already names, at either end", () => {
+    expect(withIds(["a", "b"], ["a"])).toEqual(["a", "b"]);
+    expect(withIds(["a", "b"], ["b"], "start")).toEqual(["a", "b"]);
+  });
+
+  it("adds only the ids that are new, keeping their given order", () => {
+    expect(withIds(["a"], ["a", "c", "b"])).toEqual(["a", "c", "b"]);
+  });
+
+  it("never mutates its input", () => {
+    const order = ["a", "b"];
+    withIds(order, ["c"]);
+    withoutIds(order, ["a"]);
+    expect(order).toEqual(["a", "b"]);
+  });
+
+  it("returns a copy even when there is nothing to add", () => {
+    const order = ["a"];
+    expect(withIds(order, ["a"])).not.toBe(order);
+  });
+
+  it("drops every mention of an id, and ignores one it does not hold", () => {
+    expect(withoutIds(["a", "b", "a"], ["a"])).toEqual(["b"]);
+    expect(withoutIds(["a"], ["zz"])).toEqual(["a"]);
+  });
+
+  it("round-trips: adding then removing restores the array", () => {
+    expect(withoutIds(withIds(["a", "b"], ["c"]), ["c"])).toEqual(["a", "b"]);
   });
 });

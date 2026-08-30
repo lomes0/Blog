@@ -13,7 +13,7 @@ import { type OrderContainer, setOrderTx } from "@/repositories/ordering";
  * 400 that names it, never a silent write that adopts it into this author's
  * list.
  *
- * `.strict()`: an order write takes an array and nothing else. A `rank`, a
+ * `.strict()`: an order write takes an array and nothing else. A position, a
  * `between` or a stray `destination` arriving here is a client that has not been
  * updated, and it should hear about that rather than have the field dropped.
  */
