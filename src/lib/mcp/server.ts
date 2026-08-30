@@ -20,6 +20,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { DocumentType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { orderBy } from "@/lib/orderArray";
 // The read, the ops and the proposal write are shared with the in-app Copilot's
 // route — one execution of `applyOps` against one authoritative base, rather
 // than two implementations that happen to write the same columns. See
@@ -155,12 +156,27 @@ const sourceNote = (post: AgentReadState): string => {
  * owner-scoped `findSeriesByAuthorId` drags every post and revision along for a
  * three-column read.
  */
-const authorSeries = (authorId: string) =>
-  prisma.series.findMany({
-    where: { authorId },
-    select: { id: true, title: true, description: true },
-    orderBy: { rank: "asc" },
-  });
+const authorSeries = async (authorId: string) => {
+  const [series, author] = await Promise.all([
+    prisma.series.findMany({
+      where: { authorId },
+      select: { id: true, title: true, description: true, createdAt: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: authorId },
+      select: { rootOrder: true },
+    }),
+  ]);
+  // Root order, which names the author's *ungrouped* series
+  // (docs/plans/ordering-simplification.md §2). A series inside a project is not
+  // in that array and so falls to the end by `createdAt`, which is the tolerant
+  // reader's rule (§6) and is no worse than what the old `orderBy: { rank }`
+  // gave here: it compared keys from two different rank spaces, which never
+  // meant anything either.
+  return orderBy(author?.rootOrder ?? [], series).map(
+    ({ createdAt: _createdAt, ...s }) => s,
+  );
+};
 
 /** How many candidate series `create_post` names before deferring to `list_series`. */
 const SERIES_SUGGESTION_LIMIT = 20;

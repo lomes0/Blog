@@ -21,6 +21,13 @@ model Project {
   // and standalone posts interleave freely.
   rank String
 
+  // The order of this project's member series, newest model
+  // (docs/plans/ordering-simplification.md §2). Holds `Series.id`s; the array is
+  // the container's own list rather than a key on each child, which is what lets
+  // a reorder be one write. Tolerant on read: a member missing from it sorts
+  // last, an id with no row is ignored (§6).
+  seriesOrder String[] @default([])
+
   // Relations
   author User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   series Series[] @relation("ProjectSeries")
@@ -46,6 +53,11 @@ model Series {
   // is set, otherwise the author's root list (shared rank space with root
   // Documents), so posts and series freely interleave.
   rank String
+
+  // The order of this series' posts (docs/plans/ordering-simplification.md §2).
+  // Holds `Document.id`s. Read through `orderBy` in src/lib/orderArray.ts, so
+  // drift in either direction is cosmetic rather than a broken view (§6).
+  postOrder String[] @default([])
 
   // Relations
   author  User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
@@ -95,6 +107,11 @@ model Document {
   // its parent tab-group, or the author's root list). Fractional-index key —
   // see src/lib/ordering.
   rank String
+
+  // The order of this document's child tabs
+  // (docs/plans/ordering-simplification.md §2). Holds `Document.id`s and is
+  // empty for a post that has no tabs, which is most of them.
+  tabOrder String[] @default([])
 
   // Fork relationship
   baseId String?    @db.Uuid
@@ -203,6 +220,14 @@ model User {
   lastLogin      DateTime?           @db.Timestamptz
   image          String?
   role           UserRole            @default(USER)
+
+  // The author's root list, in order (docs/plans/ordering-simplification.md §2).
+  // The one array that is *not* single-typed: root holds standalone documents,
+  // ungrouped series and projects in one space, so this interleaves ids from
+  // three tables. They are all v4 UUIDs from separate `@default(uuid())`
+  // columns, so an id resolves to at most one row (§10) — a lookup, not a
+  // guess.
+  rootOrder      String[]            @default([])
   accounts       Account[]
   sessions       Session[]
   revisions      Revision[]

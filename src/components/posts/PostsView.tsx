@@ -10,7 +10,8 @@ import { Post, Series, User } from "@/types";
 import { DocumentURLProvider } from "@/contexts/DocumentURLContext";
 import { actions, useDispatch, useSelector } from "@/store";
 import { selectStandalonePosts } from "@/store/selectors/postsSelectors";
-import { comparePostsByRank } from "@/lib/documentOrder";
+import { selectRootOrder } from "@/store/selectors/layoutSelectors";
+import { orderBy } from "@/lib/orderArray";
 import { capabilities } from "@/lib/capabilities";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { useTimeEditing } from "@/hooks/useTimeEditing";
@@ -124,6 +125,7 @@ const PostsViewContent: React.FC<PostsViewProps> = (
 
   // ── Redux (all-posts mode) ────────────────────────────────────────────────
   const standalonePosts = useSelector(selectStandalonePosts);
+  const rootOrder = useSelector(selectRootOrder);
   const seriesList = useSelector((state) => state.series);
   const projectsList = useSelector((state) => state.projects);
 
@@ -177,10 +179,13 @@ const PostsViewContent: React.FC<PostsViewProps> = (
     [isSeries, isTimeEditMode, sortedWithPending, series],
   );
 
-  // Standalone posts in manual (rank) order.
+  // Standalone posts in manual order — their slots in the author's root list,
+  // which they share with series and projects
+  // (docs/plans/ordering-simplification.md §2). The list view re-derives the
+  // full interleaving from the same array; this is the grid's subset of it.
   const sortedStandalonePosts = useMemo(
-    () => [...standalonePosts].sort(comparePostsByRank),
-    [standalonePosts],
+    () => orderBy(rootOrder, standalonePosts),
+    [rootOrder, standalonePosts],
   );
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -304,6 +309,11 @@ const PostsViewContent: React.FC<PostsViewProps> = (
                     posts={seriesUserDocs}
                     series={[]}
                     rootContainer={{ seriesId: series!.id }}
+                    // Series mode's top level is one series' posts, so the
+                    // order array is that series' own (§2) — passing the root
+                    // list's would order these rows against a list they are
+                    // not in.
+                    rootOrder={series!.postOrder ?? []}
                     moveTargetSeries={seriesList.filter((s) =>
                       s.id !== series!.id
                     )}
@@ -342,6 +352,7 @@ const PostsViewContent: React.FC<PostsViewProps> = (
               posts={sortedStandalonePosts}
               series={seriesList}
               projects={listProjects}
+              rootOrder={rootOrder}
               density={density}
             />
           );

@@ -59,6 +59,13 @@ interface PostsListViewProps {
    * from its series.
    */
   rootContainer?: PostContainer;
+  /**
+   * The order array of the container the top-level rows live in — the author's
+   * `rootOrder`, or a series' `postOrder` in series mode
+   * (docs/plans/ordering-simplification.md §2). Pairs with `rootContainer`:
+   * they name the same container, one for reads and one for writes.
+   */
+  rootOrder?: readonly string[];
   density: ListDensity;
 }
 
@@ -77,6 +84,7 @@ export function PostsListView({
   projects,
   moveTargetSeries,
   rootContainer = {},
+  rootOrder = [],
   density,
 }: PostsListViewProps) {
   const dispatch = useDispatch();
@@ -115,20 +123,21 @@ export function PostsListView({
    *
    * This was two implementations of one tree until 27 Aug 2026 — a nested one
    * here and a flat `{kind, id, rank}` union there — which is what
-   * `docs/plans/bloat-remediation.md` step 7 existed to collapse. The rank space
-   * is shared across projects, ungrouped series and standalone posts, so it must
-   * stay rank-monotonic: don't group or re-sort it for presentation.
+   * `docs/plans/bloat-remediation.md` step 7 existed to collapse. The order
+   * comes from one array shared by projects, ungrouped series and standalone
+   * posts, so the result must stay in that order: don't group or re-sort it for
+   * presentation.
    */
   const rootItems = useMemo(
-    () => groupRootItems(posts, seriesMap, projects ?? []),
-    [posts, seriesMap, projects],
+    () => groupRootItems(posts, seriesMap, projects ?? [], rootOrder),
+    [posts, seriesMap, projects, rootOrder],
   );
 
-  // Split the rank-ordered root list into the two rendered sections — standalone
+  // Split the ordered root list into the two rendered sections — standalone
   // posts above, projects and ungrouped series below — matching the sidebar,
-  // which renders the same tree as "Notes" then "Projects". The rank space stays
-  // shared (so a drag between the sections is still a single well-ordered move);
-  // each section is just a rank-sorted subset of it.
+  // which renders the same tree as "Notes" then "Projects". The order space
+  // stays shared (so a drag between the sections is still a single well-ordered
+  // move); each section is just an ordered subset of it.
   const { noteItems: postItems, groupItems } = useMemo(
     () => partitionRootItems(rootItems),
     [rootItems],

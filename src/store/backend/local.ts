@@ -53,6 +53,11 @@ const NOT_STORED = [
   "expectedHead",
   // Where in the container to land, not where it is: consumed by `create`.
   "placement",
+  // A cloud container's child order (docs/plans/ordering-simplification.md §2).
+  // The local library still orders by `rank` — §7 is phase 4+ work — so storing
+  // this would persist an array nothing here reads, and a duplicated post would
+  // carry the *original's* child ids into IndexedDB.
+  "tabOrder",
 ] as const;
 
 /** Drop cloud-only fields and content-adjacent collections before persisting. */

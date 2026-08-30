@@ -25,7 +25,7 @@ import {
   type SeriesExport,
   validateManifest,
 } from "@/lib/export/manifest";
-import { rankForAppend } from "@/repositories/ordering";
+import { rankForAppend, resyncAuthorOrder } from "@/repositories/ordering";
 import { reconcileDocumentBlobs } from "@/repositories/blob";
 import { blobHashesFor } from "@/lib/blobRefs";
 import { blobExists, hashBytes, isValidHash, putBlob } from "@/lib/storage";
@@ -334,6 +334,11 @@ export const POST = userRoute(async (request, { user }) => {
       });
     }
   }
+
+  // Every imported row was ranked one at a time; fold the whole result into
+  // the order arrays in one pass rather than syncing per row
+  // (docs/plans/ordering-simplification.md §6).
+  await resyncAuthorOrder(prisma, user.id);
 
   // Revalidate relevant paths
   revalidatePath("/");

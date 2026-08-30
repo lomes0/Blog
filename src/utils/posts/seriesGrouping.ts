@@ -1,6 +1,6 @@
 import { Post, Project, Series } from "@/types";
-import { comparePostsByRank, rankOf } from "@/lib/documentOrder";
-import { compareRankThenId } from "@/lib/ordering";
+import { rankOf } from "@/lib/documentOrder";
+import { orderBy } from "@/lib/orderArray";
 import type { TreeNode } from "@/lib/tree/model";
 
 /**
@@ -35,20 +35,16 @@ export interface ProjectGroupItem {
 export type RootItem = ProjectGroupItem | SeriesGroupItem;
 
 /**
- * A post's 1-based position within its series, derived from the manual `rank`
- * ordering of the series' posts (replaces the former stored `seriesOrder`).
- * Returns null if the doc isn't found in the series.
+ * A post's 1-based position within its series, read from the series' own
+ * `postOrder` (docs/plans/ordering-simplification.md §2). Returns null if the
+ * doc isn't found in the series.
  */
 export const seriesPositionOf = (
   series: Series | null | undefined,
   docId: string,
 ): number | null => {
   if (!series?.posts?.length) return null;
-  const ordered = [...series.posts].sort((a, b) => {
-    const ar = a.rank ?? "";
-    const br = b.rank ?? "";
-    return ar < br ? -1 : ar > br ? 1 : a.id < b.id ? -1 : 1;
-  });
+  const ordered = orderBy(series.postOrder ?? [], series.posts);
   const idx = ordered.findIndex((p) => p.id === docId);
   return idx === -1 ? null : idx + 1;
 };
@@ -63,21 +59,43 @@ const groupRank = (item: SeriesGroupItem): string | null =>
 const groupId = (item: SeriesGroupItem): string =>
   item.type === "series" ? (item.series?.id ?? "") : (item.posts[0]?.id ?? "");
 
+/** When a group's subject was created — the tolerant reader's tiebreaker. */
+const groupCreatedAt = (item: SeriesGroupItem): string | Date | undefined =>
+  item.type === "series"
+    ? item.series?.createdAt
+    : item.posts[0]?.createdAt;
+
 /**
- * Order standalone posts and series in one shared rank space (ascending) — the
- * same space /posts ranks them in (see PostsListView), so the two surfaces agree
- * on order even though each splits the result into its own sections. Unranked
- * groups sort last; ties break by id so the result is total and stable.
+ * Order a list of root-level items (or a project's members) by a container's
+ * order array — `User.rootOrder` for the root list, `Project.seriesOrder` for a
+ * project's series (docs/plans/ordering-simplification.md §2).
+ *
+ * The items are groups rather than rows, so each is presented to `orderBy` as
+ * the id and creation time of the thing it stands for: a series for a series
+ * group, the lone post for a standalone one, the project for a project row.
+ * That is the whole of what makes one array able to order three kinds of thing
+ * at once — the ids come from three tables but never collide, being UUIDs
+ * (§10).
  */
-const compareGroupsByRank = (
-  a: SeriesGroupItem,
-  b: SeriesGroupItem,
-): number =>
-  compareRankThenId(groupRank(a), groupId(a), groupRank(b), groupId(b));
+const orderItems = <T extends RootItem>(
+  order: readonly string[],
+  items: T[],
+): T[] =>
+  orderBy(
+    order,
+    items.map((item) => ({
+      id: rootItemId(item),
+      createdAt: rootItemCreatedAt(item),
+      item,
+    })),
+  ).map((wrapped) => wrapped.item);
 
 /**
  * Group posts by series and return a mixed list of series groups and standalone
- * posts, interleaved in one shared rank space (see {@link compareGroupsByRank}).
+ * posts. **Unordered** — the container's array decides the order of the result,
+ * and only the caller knows which container that is
+ * (docs/plans/ordering-simplification.md §2), so {@link groupRootItems} applies
+ * it.
  *
  * - Uses series.posts from seriesMap as the authoritative source for series posts
  * - Only posts NOT in any series are added as standalone posts
@@ -85,7 +103,7 @@ const compareGroupsByRank = (
  *
  * @param posts - Array of Post posts (used only for standalone posts)
  * @param seriesMap - Map of series ID to Series object (series.posts is the source of truth)
- * @returns Array of SeriesGroupItem in manual (rank) order
+ * @returns Array of SeriesGroupItem, in no particular order
  */
 const groupPostsBySeries = (
   posts: Post[],
@@ -122,12 +140,10 @@ const groupPostsBySeries = (
         postsByIdMap.get(post.id) ?? post
       );
 
-      const sortedPosts = [...seriesPosts].sort(comparePostsByRank);
-
       result.push({
         type: "series",
         series,
-        posts: sortedPosts,
+        posts: orderBy(series.postOrder ?? [], seriesPosts),
       });
     }
   });
@@ -142,17 +158,12 @@ const groupPostsBySeries = (
     }
   });
 
-  // Interleave standalone posts and series by their manual rank.
-  result.sort(compareGroupsByRank);
-
   return result;
 };
 
 /**
  * Like groupPostsBySeries but also includes series that have no posts in the
- * current partition. Standalone posts and series are interleaved in one shared
- * rank space (matching the /posts root list), so manual reordering on /posts is
- * reflected here.
+ * current partition. Also unordered; see {@link groupRootItems}.
  */
 const groupPostsBySeriesWithEmpty = (
   posts: Post[],
@@ -174,33 +185,30 @@ const groupPostsBySeriesWithEmpty = (
       });
     }
   });
-  return [...baseGroups, ...emptyGroups].sort(compareGroupsByRank);
+  return [...baseGroups, ...emptyGroups];
 };
 
-/** The rank governing a root item's position in the interleaved root list. */
+/**
+ * The rank governing a root item's position in the interleaved root list.
+ *
+ * Reads no longer use it — order comes from the container's array — but the
+ * *writes* still do: a drag hands `movePost` the ranks bracketing its drop.
+ * Phase 4 of the plan is what removes this.
+ */
 export const rootItemRank = (item: RootItem): string | null =>
   item.type === "project" ? (item.project.rank ?? null) : groupRank(item);
 
-/** Stable tie-breaker id for a root item when ranks are equal or absent. */
+/** The id of the row a root item stands for: its project, series, or post. */
 export const rootItemId = (item: RootItem): string =>
   item.type === "project" ? item.project.id : groupId(item);
 
-/**
- * Order projects, ungrouped series and standalone posts in one shared rank space
- * (ascending) — the same space the server ranks them in, so drag-reorder and
- * this view agree. Unranked entries sort last; ties break by id.
- */
-const compareRootItemsByRank = (a: RootItem, b: RootItem): number =>
-  compareRankThenId(
-    rootItemRank(a),
-    rootItemId(a),
-    rootItemRank(b),
-    rootItemId(b),
-  );
+/** When that row was created — the tolerant reader's tiebreaker (§6). */
+const rootItemCreatedAt = (item: RootItem): string | Date | undefined =>
+  item.type === "project" ? item.project.createdAt : groupCreatedAt(item);
 
 /**
  * Build the sidebar's nested root tree: projects (each wrapping its member series
- * groups), ungrouped series and standalone posts, interleaved by rank.
+ * groups), ungrouped series and standalone posts, interleaved in `order`.
  *
  * Starts from {@link groupPostsBySeriesWithEmpty} (flat series groups + standalone
  * posts, empty series included), then lifts every series whose `projectId` names
@@ -210,13 +218,21 @@ const compareRootItemsByRank = (a: RootItem, b: RootItem): number =>
  *
  * @param posts - Standalone-post source (series posts come from seriesMap).
  * @param seriesMap - Series ID → Series (series.posts is authoritative).
- * @param projects - The author's projects, in any order (sorted here by rank).
- * @returns Root items sorted by their shared rank (newest manual order).
+ * @param projects - The author's projects, in any order.
+ * @param order - The order array of the container these rows live in: the
+ *   author's `rootOrder` on /posts and in the sidebar, a series' `postOrder`
+ *   when /posts is rendering one series' posts as its top level. Passing the
+ *   wrong one is the same class of mistake `buildIndex`'s `root` argument
+ *   guards against, which is why it is a parameter rather than read from the
+ *   store here.
+ * @returns Root items in that order, with anything the array does not name
+ *   falling to the end by creation time (§6).
  */
 export const groupRootItems = (
   posts: Post[],
   seriesMap: Map<string, Series>,
   projects: Project[],
+  order: readonly string[] = [],
 ): RootItem[] => {
   const flatGroups = groupPostsBySeriesWithEmpty(posts, seriesMap);
   const knownProjectIds = new Set(projects.map((p) => p.id));
@@ -238,22 +254,24 @@ export const groupRootItems = (
     }
   }
 
+  // A project's children are ordered by the project's own array, not by root's.
   const projectItems: RootItem[] = projects.map((project) => ({
     type: "project",
     project,
-    children: (membersByProject.get(project.id) ?? []).sort(
-      compareGroupsByRank,
+    children: orderItems(
+      project.seriesOrder ?? [],
+      membersByProject.get(project.id) ?? [],
     ),
   }));
 
-  return [...projectItems, ...rootGroups].sort(compareRootItemsByRank);
+  return orderItems(order, [...projectItems, ...rootGroups]);
 };
 
 /**
- * Split the rank-ordered root list into the two sections the sidebar renders:
+ * Split the ordered root list into the two sections the sidebar renders:
  * standalone posts ("Notes"), then projects and ungrouped series ("Projects").
- * The shared rank space is untouched — each section is a rank-sorted subset of
- * it, so drag-reorder still agrees with the server.
+ * The shared space is untouched — each section is an ordered subset of it, so
+ * drag-reorder still agrees with the server.
  *
  * Lives here rather than in the tree component because the compact rail orders
  * itself the same way; see {@link flattenRootItems}.

@@ -1,7 +1,14 @@
 import { DocumentType as PrismaDocumentType } from "@prisma/client";
 import { validate } from "uuid";
 import { prisma } from "@/lib/prisma";
-import { movePost, rankForAppendSeries, reRankIntoRoot } from "./ordering";
+import { orderBy } from "@/lib/orderArray";
+import {
+  movePost,
+  rankForAppendSeries,
+  reRankIntoRoot,
+  seriesContainerOf,
+  syncOrder,
+} from "./ordering";
 import {
   CloudPost,
   RevisionMeta,
@@ -93,6 +100,24 @@ const publiclyVisiblePosts = {
 } as const;
 
 /**
+ * A series' posts in the order the series itself records
+ * (`Series.postOrder`, docs/plans/ordering-simplification.md §3).
+ *
+ * The query no longer carries `orderBy: { rank }`, because order is no longer a
+ * column on the post: it is the container's array, which SQL cannot sort by.
+ * Sorting here instead is not a cost — the posts of one series are already
+ * materialised, and `orderBy` is a single pass over them.
+ *
+ * Tolerant by construction (§6): a post the array has not heard of sorts last
+ * rather than vanishing, so a series read between a create and its sync is
+ * merely one post out of place.
+ */
+const orderedPosts = <T extends { id: string; createdAt: Date }>(series: {
+  postOrder: string[];
+  posts: T[];
+}): T[] => orderBy(series.postOrder, series.posts);
+
+/**
  * Every series that has something public to show, for anonymous surfaces (the
  * landing page, `GET /api/series` without a session).
  *
@@ -118,15 +143,13 @@ export async function findAllSeries(): Promise<Series[]> {
       authorId: true,
       projectId: true,
       rank: true,
+      postOrder: true,
       author: {
         select: publicAuthorSelect,
       },
       posts: {
         select: postSelect(publicAuthorSelect),
         where: publiclyVisiblePosts,
-        orderBy: {
-          rank: "asc",
-        },
       },
     },
     orderBy: {
@@ -136,7 +159,7 @@ export async function findAllSeries(): Promise<Series[]> {
 
   return series.map((s) => ({
     ...s,
-    posts: s.posts.map((p) => ({
+    posts: orderedPosts(s).map((p) => ({
       ...p,
       type: p.type as "DOCUMENT",
       head: p.head || "",
@@ -167,15 +190,13 @@ export async function findPublicSeriesById(
       authorId: true,
       projectId: true,
       rank: true,
+      postOrder: true,
       author: {
         select: publicAuthorSelect,
       },
       posts: {
         select: postSelect(publicAuthorSelect),
         where: publiclyVisiblePosts,
-        orderBy: {
-          rank: "asc",
-        },
       },
     },
   });
@@ -184,7 +205,7 @@ export async function findPublicSeriesById(
 
   return {
     ...series,
-    posts: series.posts.map((p) => ({
+    posts: orderedPosts(series).map((p) => ({
       ...p,
       type: p.type as "DOCUMENT",
       head: p.head || "",
@@ -219,6 +240,7 @@ export async function findSeriesById(id: string): Promise<Series | null> {
       authorId: true,
       projectId: true,
       rank: true,
+      postOrder: true,
       author: {
         select: authorSelect,
       },
@@ -226,9 +248,6 @@ export async function findSeriesById(id: string): Promise<Series | null> {
         select: postSelect(authorSelect),
         where: {
           type: PrismaDocumentType.DOCUMENT,
-        },
-        orderBy: {
-          rank: "asc",
         },
       },
     },
@@ -238,7 +257,7 @@ export async function findSeriesById(id: string): Promise<Series | null> {
 
   return {
     ...series,
-    posts: series.posts.map((p) => ({
+    posts: orderedPosts(series).map((p) => ({
       ...p,
       type: p.type as "DOCUMENT",
       head: p.head || "",
@@ -263,6 +282,7 @@ export async function findSeriesByAuthorId(
       authorId: true,
       projectId: true,
       rank: true,
+      postOrder: true,
       author: {
         select: authorSelect,
       },
@@ -270,9 +290,6 @@ export async function findSeriesByAuthorId(
         select: postSelect(authorSelect),
         where: {
           type: PrismaDocumentType.DOCUMENT,
-        },
-        orderBy: {
-          rank: "asc",
         },
       },
     },
@@ -283,7 +300,7 @@ export async function findSeriesByAuthorId(
 
   return series.map((s) => ({
     ...s,
-    posts: s.posts.map((p) => ({
+    posts: orderedPosts(s).map((p) => ({
       ...p,
       type: p.type as "DOCUMENT",
       head: p.head || "",
@@ -313,6 +330,12 @@ export async function createSeries(data: SeriesCreateInput): Promise<Series> {
       rank,
     },
   });
+
+  // The container it was born in gains the id (§6, "Create").
+  await syncOrder(prisma, seriesContainerOf({
+    authorId: data.authorId,
+    projectId,
+  }));
 
   const series = await findSeriesById(data.id);
   if (!series) {
@@ -349,7 +372,8 @@ export async function deleteSeries(id: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const series = await tx.series.findUnique({
       where: { id },
-      select: { authorId: true },
+      // `projectId` for the order array of whichever container it sits in.
+      select: { authorId: true, projectId: true },
     });
     if (!series) throw new Error("Series not found");
 
@@ -360,7 +384,16 @@ export async function deleteSeries(id: string): Promise<void> {
     });
 
     await tx.series.delete({ where: { id } });
+    // Root is resynced by `reRankIntoRoot` below (the freed posts land there,
+    // and the deleted series drops out of the array with them); a series that
+    // lived in a project has to be dropped from that project's array here.
+    if (series.projectId) {
+      await syncOrder(tx, { kind: "project", projectId: series.projectId });
+    }
     await reRankIntoRoot(tx, series.authorId, members.map((m) => m.id));
+    // `reRankIntoRoot` returns early for a series with no posts, so root is
+    // synced explicitly rather than as a side effect of having members.
+    await syncOrder(tx, { kind: "root", authorId: series.authorId });
   });
 }
 

@@ -2,6 +2,7 @@ import {
   createEntityAdapter,
   createSlice,
   EntityState,
+  isAnyOf,
   PayloadAction,
 } from "@reduxjs/toolkit";
 import {
@@ -57,6 +58,7 @@ import {
   rejectProposal,
 } from "./thunks/proposalThunks";
 import { catchUpPosts, fetchChangedPosts } from "./thunks/changeThunks";
+import { syncOrderArrays } from "./orderSync";
 import { alert, updateUser } from "./thunks/userThunks";
 import { importGuestDrafts } from "./thunks/importGuestDrafts";
 import { createApiThunk, type Failure } from "./thunks/createApiThunk";
@@ -585,7 +587,13 @@ export const appSlice = createSlice({
       })
       // ── User ──
       .addCase(updateUser.fulfilled, (state, action) => {
-        state.user = action.payload;
+        // `PATCH /api/users/[id]` answers with the profile fields it may write,
+        // and `rootOrder` is not one of them — it is the author's root list
+        // (docs/plans/ordering-simplification.md §2), which a rename has no
+        // opinion about. Carry it across, or changing a handle would drop the
+        // whole sidebar back to createdAt order until the next reload.
+        const rootOrder = action.payload.rootOrder ?? state.user?.rootOrder;
+        state.user = { ...action.payload, rootOrder };
       })
       .addCase(updateUser.rejected, (state, action) => {
         announceFailure(state, action.payload);
@@ -699,7 +707,39 @@ export const appSlice = createSlice({
       })
       .addCase(deleteProject.rejected, (state, action) => {
         announceFailure(state, action.payload);
-      });
+      })
+      /**
+       * Every action that changes a `rank` or a container's membership, in one
+       * place, because they all owe the same follow-up: the order arrays the
+       * views read from have to be recomputed from the ranks just written
+       * (docs/plans/ordering-simplification.md §8 — see `store/orderSync`).
+       *
+       * A matcher rather than a line in each case reducer: matchers run after
+       * the case reducers, so this sees the state each of them left behind, and
+       * a new rank-writing action cannot forget to call it — it is added here or
+       * it does not reorder.
+       */
+      .addMatcher(
+        isAnyOf(
+          applyPostRank,
+          movePost.fulfilled,
+          createPost.fulfilled,
+          duplicatePost.fulfilled,
+          forkPost.fulfilled,
+          deletePost.fulfilled,
+          applySeriesRank,
+          moveSeries.fulfilled,
+          createSeries.fulfilled,
+          deleteSeries.fulfilled,
+          applyProjectRank,
+          moveProject.fulfilled,
+          createProject.fulfilled,
+          deleteProject.fulfilled,
+        ),
+        (state) => {
+          syncOrderArrays(state);
+        },
+      );
   },
 });
 

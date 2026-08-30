@@ -2,6 +2,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import { postsSelectors, type RootState } from "@/store";
 import { paneShowing } from "@/store/app";
 import { comparePostsByRank } from "@/lib/documentOrder";
+import { orderBy } from "@/lib/orderArray";
 import type { PaneDescription } from "@/commands/types";
 import type { PaneMode, Post, WorkspacePane } from "@/types";
 
@@ -130,6 +131,9 @@ export const selectMaximizedPaneId = (state: RootState): string | null =>
 
 const selectAllPosts = (state: RootState) => postsSelectors.selectAll(state);
 
+/** The signed-in user, or undefined for a guest whose posts live in IndexedDB. */
+const selectSessionUser = (state: RootState) => state.user;
+
 /**
  * Root posts owned by the current session — everything the sidebar lists at top
  * level. Tabs (posts with a `parentId`) are excluded; they render nested under
@@ -145,14 +149,16 @@ export const selectRootPosts = createSelector(
 );
 
 /**
- * Child posts (tabs) grouped by parent id, ordered by manual `rank`. A tabbed
- * post is a root post with one child per extra tab (see `mergePostsIntoTabs`).
- * The sidebar reads from here so it can render a post's tabs regardless of which
- * post is currently open — `ui.workspace` only knows the open ones.
+ * Child posts (tabs) grouped by parent id, in the parent's own `tabOrder`
+ * (docs/plans/ordering-simplification.md §2). A tabbed post is a root post with
+ * one child per extra tab (see `mergePostsIntoTabs`). The sidebar reads from
+ * here so it can render a post's tabs regardless of which post is currently
+ * open — `ui.workspace` only knows the open ones.
  */
 export const selectChildPostsByParent = createSelector(
-  [selectAllPosts],
-  (posts): Map<string, Post[]> => {
+  [selectAllPosts, selectSessionUser],
+  (posts, user): Map<string, Post[]> => {
+    const tabOrderOf = new Map(posts.map((post) => [post.id, post.tabOrder]));
     const map = new Map<string, Post[]>();
     for (const post of posts) {
       if (!post.parentId) continue;
@@ -160,7 +166,40 @@ export const selectChildPostsByParent = createSelector(
       if (siblings) siblings.push(post);
       else map.set(post.parentId, [post]);
     }
-    for (const siblings of map.values()) siblings.sort(comparePostsByRank);
+    for (const [parentId, siblings] of map) {
+      map.set(
+        parentId,
+        user
+          ? orderBy(tabOrderOf.get(parentId) ?? [], siblings)
+          : [...siblings].sort(comparePostsByRank),
+      );
+    }
     return map;
   },
+);
+
+/**
+ * The author's root list, in order: the array its container owns
+ * (docs/plans/ordering-simplification.md §2).
+ *
+ * This and {@link selectChildPostsByParent} are the two places that know the
+ * local library is not on arrays yet, and they say so the same way. A guest's
+ * posts live in IndexedDB, which has no `User` row to hang a `rootOrder` on and
+ * no series or projects at all, so they keep the `rank` ordering they already
+ * had — §7 is phase 4+ work, and this phase deliberately leaves the local side
+ * alone. It cannot be pushed down to the `PostBackend` seam, which trades in
+ * posts and so has nowhere to put a *root list* that also holds series and
+ * project ids.
+ *
+ * The branch is on which backend the session uses, not on whether an array
+ * happens to be empty: a signed-in author with an empty `rootOrder` genuinely
+ * has no manual order and must get the tolerant reader's createdAt fallback,
+ * not a silent return to rank.
+ */
+export const selectRootOrder = createSelector(
+  [selectSessionUser, selectRootPosts],
+  (user, posts): string[] =>
+    user
+      ? (user.rootOrder ?? [])
+      : [...posts].sort(comparePostsByRank).map((post) => post.id),
 );

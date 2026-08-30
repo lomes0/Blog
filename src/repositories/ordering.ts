@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { rankBetween, ranksAfter } from "@/lib/ordering";
+import { compareRankThenId, rankBetween, ranksAfter } from "@/lib/ordering";
 import { APP_ORIGIN } from "@/lib/changes/events";
 import { notifyChange } from "@/lib/changes/notify";
 
@@ -16,6 +16,15 @@ import { notifyChange } from "@/lib/changes/notify";
  * Everything here accepts a Prisma client or an interactive-transaction client
  * (`PrismaClient` is structurally assignable to `TransactionClient`), so a
  * single move can run standalone or be composed into a larger transaction.
+ *
+ * **It also keeps the order arrays** — `User.rootOrder`, `Series.postOrder`,
+ * `Project.seriesOrder`, `Document.tabOrder` — in step with the ranks it writes
+ * (docs/plans/ordering-simplification.md §8, phases 1-3). Reads come from the
+ * arrays now, so a reorder that moved only a `rank` would leave the array
+ * stale and the reorder would appear to do nothing. Every rank write is
+ * therefore followed by {@link syncOrder} on the container(s) it touched, in
+ * the same transaction, and this is the only file that does it — phase 4
+ * deletes the rank half of each pair rather than adding the array half.
  */
 type Db = Prisma.TransactionClient;
 
@@ -158,6 +167,170 @@ async function minRank(
   return minRootRank(db, container.authorId, { docIds: excludeDocIds });
 }
 
+/**
+ * One list whose order is stored as an array of ids on the row that owns it.
+ *
+ * Four kinds, because there are four containers — the plan's §2 table names
+ * only three and misses `Project`, which both sits in the root list and owns
+ * the order of its member series.
+ */
+export type OrderContainer =
+  | { kind: "root"; authorId: string }
+  | { kind: "series"; seriesId: string }
+  | { kind: "project"; projectId: string }
+  | { kind: "tabs"; parentId: string };
+
+/** The order container a document lives in, from its own columns. */
+export const containerOf = (doc: {
+  authorId: string;
+  seriesId: string | null;
+  parentId: string | null;
+}): OrderContainer =>
+  doc.seriesId
+    ? { kind: "series", seriesId: doc.seriesId }
+    : doc.parentId
+    ? { kind: "tabs", parentId: doc.parentId }
+    : { kind: "root", authorId: doc.authorId };
+
+/** The order container a series lives in: its project, or the root list. */
+export const seriesContainerOf = (series: {
+  authorId: string;
+  projectId: string | null;
+}): OrderContainer =>
+  series.projectId
+    ? { kind: "project", projectId: series.projectId }
+    : { kind: "root", authorId: series.authorId };
+
+const byRankThenId = (
+  a: { id: string; rank: string | null },
+  b: { id: string; rank: string | null },
+) => compareRankThenId(a.rank, a.id, b.rank, b.id);
+
+const rankedIds = (rows: { id: string; rank: string | null }[]): string[] =>
+  [...rows].sort(byRankThenId).map((row) => row.id);
+
+/**
+ * Recompute one container's order array from the ranks of its live rows, and
+ * write it.
+ *
+ * A full recompute rather than a splice, for two reasons: it is what makes the
+ * array self-heal from any drift (a row created by a path that forgot to sync,
+ * an id left behind by a delete), and it keeps the two representations
+ * derivable from each other while both exist. It is a small read — one
+ * container's rows, ids and ranks only — on lists that are tens of rows long.
+ *
+ * Runs on the caller's client, so inside a transaction it commits with the move
+ * that prompted it: a reorder can never half-happen.
+ */
+export async function syncOrder(
+  db: Db,
+  container: OrderContainer,
+): Promise<void> {
+  switch (container.kind) {
+    case "root": {
+      // The shared root space: standalone documents, ungrouped series and
+      // projects. Read the same three sets `maxRootRank` does, for the same
+      // reason — they interleave.
+      const [docs, series, projects] = await Promise.all([
+        db.document.findMany({
+          where: {
+            authorId: container.authorId,
+            seriesId: null,
+            parentId: null,
+          },
+          select: { id: true, rank: true },
+        }),
+        db.series.findMany({
+          where: { authorId: container.authorId, projectId: null },
+          select: { id: true, rank: true },
+        }),
+        db.project.findMany({
+          where: { authorId: container.authorId },
+          select: { id: true, rank: true },
+        }),
+      ]);
+      await db.user.update({
+        where: { id: container.authorId },
+        data: { rootOrder: rankedIds([...docs, ...series, ...projects]) },
+      });
+      return;
+    }
+    case "series": {
+      const posts = await db.document.findMany({
+        where: { seriesId: container.seriesId },
+        select: { id: true, rank: true },
+      });
+      await db.series.update({
+        where: { id: container.seriesId },
+        data: { postOrder: rankedIds(posts) },
+      });
+      return;
+    }
+    case "project": {
+      const members = await db.series.findMany({
+        where: { projectId: container.projectId },
+        select: { id: true, rank: true },
+      });
+      await db.project.update({
+        where: { id: container.projectId },
+        data: { seriesOrder: rankedIds(members) },
+      });
+      return;
+    }
+    case "tabs": {
+      const children = await db.document.findMany({
+        where: { parentId: container.parentId },
+        select: { id: true, rank: true },
+      });
+      await db.document.update({
+        where: { id: container.parentId },
+        data: { tabOrder: rankedIds(children) },
+      });
+      return;
+    }
+  }
+}
+
+/** {@link syncOrder} for a source/destination pair, skipping the repeat. */
+async function syncOrders(
+  db: Db,
+  containers: OrderContainer[],
+): Promise<void> {
+  const seen = new Set<string>();
+  for (const container of containers) {
+    const key = JSON.stringify(container);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    await syncOrder(db, container);
+  }
+}
+
+/**
+ * Recompute *every* order array an author owns.
+ *
+ * For the bulk paths that mint many ranks and would otherwise need a sync per
+ * row — the import route. Cheaper than that, and the same answer.
+ */
+export async function resyncAuthorOrder(
+  db: Db,
+  authorId: string,
+): Promise<void> {
+  const [series, projects, parents] = await Promise.all([
+    db.series.findMany({ where: { authorId }, select: { id: true } }),
+    db.project.findMany({ where: { authorId }, select: { id: true } }),
+    db.document.findMany({
+      where: { authorId, children: { some: {} } },
+      select: { id: true },
+    }),
+  ]);
+  await syncOrder(db, { kind: "root", authorId });
+  for (const s of series) await syncOrder(db, { kind: "series", seriesId: s.id });
+  for (const p of projects) {
+    await syncOrder(db, { kind: "project", projectId: p.id });
+  }
+  for (const d of parents) await syncOrder(db, { kind: "tabs", parentId: d.id });
+}
+
 /** A rank that appends a new row to the end of `container`. */
 export async function rankForAppend(
   db: Db,
@@ -195,7 +368,9 @@ export async function movePost(
 ): Promise<void> {
   const doc = await db.document.findUnique({
     where: { id: args.id },
-    select: { authorId: true },
+    // `seriesId` and `parentId` are read for the order arrays: the container
+    // the document is *leaving* owns one too, and it has to lose the id.
+    select: { authorId: true, seriesId: true, parentId: true },
   });
   if (!doc) throw new Error(`movePost: document ${args.id} not found`);
 
@@ -218,6 +393,13 @@ export async function movePost(
     where: { id: args.id },
     data: { seriesId, parentId, rank },
   });
+
+  // Both ends of the move, in the same transaction as the move itself. A
+  // reorder within one container names it twice; `syncOrders` writes it once.
+  await syncOrders(db, [
+    containerOf({ authorId: doc.authorId, seriesId, parentId }),
+    containerOf(doc),
+  ]);
 
   // `document.updated` — a move changes where the sidebar draws the row, which
   // is a change the client answers exactly as it answers a rename (docs/plans/
@@ -260,6 +442,9 @@ export async function reRankIntoRoot(
       })
     ),
   );
+  // The container they came from is being deleted by the caller, so only root
+  // has an array left to fix.
+  await syncOrder(db, { kind: "root", authorId });
 }
 
 /** Walk parent links up from `parentId`; throw if it loops back to `movingId`. */
@@ -371,6 +556,11 @@ export async function moveSeries(
     where: { id: args.id },
     data: { projectId, rank },
   });
+
+  await syncOrders(db, [
+    seriesContainerOf({ authorId: series.authorId, projectId }),
+    seriesContainerOf(series),
+  ]);
 }
 
 /**
@@ -397,6 +587,7 @@ export async function moveProject(
     : rankBetween(await maxRootRank(db, project.authorId), null);
 
   await db.project.update({ where: { id: args.id }, data: { rank } });
+  await syncOrder(db, { kind: "root", authorId: project.authorId });
 }
 
 /**
@@ -424,6 +615,8 @@ export async function reRankSeriesIntoRoot(
       })
     ),
   );
+  // As in `reRankIntoRoot`: the project they came from is already gone.
+  await syncOrder(db, { kind: "root", authorId });
 }
 
 const maxStr = (a: string | null, b: string | null): string | null =>

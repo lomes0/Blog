@@ -21,6 +21,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const findMany = vi.fn();
 const seriesFindMany = vi.fn();
+const userFindUnique = vi.fn();
 const revisionFindMany = vi.fn();
 const proposeOps = vi.fn();
 const proposeNewPost = vi.fn();
@@ -31,6 +32,10 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     document: { findMany: (...args: unknown[]) => findMany(...args) },
     series: { findMany: (...args: unknown[]) => seriesFindMany(...args) },
+    // The author's `rootOrder`: series candidates come back in the order the
+    // author keeps them in (docs/plans/ordering-simplification.md §2), not in
+    // whatever order the rows arrive.
+    user: { findUnique: (...args: unknown[]) => userFindUnique(...args) },
     revision: {
       findMany: (...args: unknown[]) => revisionFindMany(...args),
       findUnique: () => Promise.resolve(null),
@@ -74,6 +79,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   findMany.mockResolvedValue([]);
   seriesFindMany.mockResolvedValue([]);
+  userFindUnique.mockResolvedValue({ rootOrder: [] });
   revisionFindMany.mockResolvedValue([]);
   proposeNewPost.mockResolvedValue({
     ok: true,
@@ -495,6 +501,11 @@ describe("create_post series placement", () => {
         description: null,
       })),
     );
+    // In the author's own order, which is what decides *which* twenty the cap
+    // keeps — so the array is what the assertion below is really about.
+    userFindUnique.mockResolvedValue({
+      rootOrder: Array.from({ length: 23 }, (_, i) => `ser-${i}`),
+    });
 
     const text = await created(body);
 

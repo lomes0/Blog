@@ -364,6 +364,7 @@ const SeriesGroupCard: React.FC<SeriesGroupCardProps> = memo(({
   const { isCollapsed, sortedPosts, handleToggle, handleCardClick } =
     useSeriesGroupState(
       posts,
+      series.postOrder ?? [],
       defaultExpanded,
       series.id,
       onExpand,

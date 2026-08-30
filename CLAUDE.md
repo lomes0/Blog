@@ -75,11 +75,19 @@ globals; `compilerOptions.types` is deliberately left unset, because setting it
 would restrict resolution to only its entries and drop every other ambient
 package.
 
-Coverage is 59 specs, 1136 tests, of which the list below walks the ones worth
-knowing about rather than all of them. `src/lib/__tests__/blobRefs.test.ts` is
-the newest: what a document's content references, and the two ways getting that
-wrong destroys user work — a reference the scan cannot see, and one revoked
-inside the upload-before-save window (docs/plans/blob-storage.md §3.1, §3.2).
+Coverage is 61 specs, 1190 tests, of which the list below walks the ones worth
+knowing about rather than all of them. `src/lib/__tests__/orderArray.test.ts` is
+the newest: the tolerant reader that turns a container's order array into a
+rendered order (docs/plans/ordering-simplification.md §6). It is entirely about
+drift, because drift is the whole risk — an array and its rows can always
+disagree, and the spec pins that a row the array has never heard of still
+renders (last, oldest first, ties by id), that an id whose row is gone is
+ignored rather than leaving a hole, that an empty array means createdAt order,
+and that repeated calls give the same answer.
+`src/lib/__tests__/blobRefs.test.ts` is the one before it: what a document's
+content references, and the two ways getting that wrong destroys user work — a
+reference the scan cannot see, and one revoked inside the upload-before-save
+window (docs/plans/blob-storage.md §3.1, §3.2).
 The rest: `src/lib/__tests__/ordering.test.ts`
 (fractional rank keys),
 `src/components/Layout/SideBar/__tests__/

@@ -3,7 +3,10 @@ import { useMemo } from "react";
 import { usePathname } from "next/navigation";
 import { type RootState, useSelector } from "@/store";
 import { capabilities } from "@/lib/capabilities";
-import { selectRootPosts } from "@/store/selectors/layoutSelectors";
+import {
+  selectRootOrder,
+  selectRootPosts,
+} from "@/store/selectors/layoutSelectors";
 import { Box, Drawer } from "@mui/material";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
@@ -88,6 +91,7 @@ const SideBar: React.FC = () => {
   const seriesList = useSelector((state: RootState) => state.series);
   const projectsList = useSelector((state: RootState) => state.projects);
   const sidebarView = useSelector((state: RootState) => state.ui.sidebarView);
+  const rootOrder = useSelector(selectRootOrder);
 
   const seriesMap = useMemo(
     () => buildSeriesMap(seriesList || []),
@@ -95,10 +99,12 @@ const SideBar: React.FC = () => {
   );
 
   // Nested root tree: projects wrapping their series, interleaved with ungrouped
-  // series and standalone posts by rank.
+  // series and standalone posts in the author's `rootOrder`
+  // (docs/plans/ordering-simplification.md §2).
   const groupedRootItems = useMemo(
-    () => groupRootItems(filteredDocuments, seriesMap, projectsList || []),
-    [filteredDocuments, seriesMap, projectsList],
+    () =>
+      groupRootItems(filteredDocuments, seriesMap, projectsList || [], rootOrder),
+    [filteredDocuments, seriesMap, projectsList, rootOrder],
   );
 
   // Flat list for the compact rail: notes first, then series (projects collapse

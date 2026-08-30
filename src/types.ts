@@ -382,6 +382,13 @@ export interface Series {
   // `projectId` is set, otherwise the author's root list (shared rank space with
   // root Documents, so posts and series interleave).
   rank?: string | null;
+  /**
+   * This series' posts, in order (docs/plans/ordering-simplification.md §2).
+   * The container owns the order of its children, so `posts` is sorted by this
+   * rather than by a key on each post — through `orderBy` in
+   * `@/lib/orderArray`, which tolerates an array that has drifted from the rows.
+   */
+  postOrder?: string[];
   author: User;
   posts: Post[];
 }
@@ -419,6 +426,8 @@ export interface Project {
   // Documents and ungrouped Series, so projects, loose series and standalone
   // posts interleave).
   rank?: string | null;
+  /** This project's member series, in order (ordering-simplification.md §2). */
+  seriesOrder?: string[];
   author: User;
   // Member series, ordered by rank within the project. Optional because the API
   // returns project metadata only; the client joins series to their project by
@@ -476,6 +485,11 @@ export type Post = {
   series?: Series | null;
   /** Manual position within its container (fractional index). */
   rank?: string | null;
+  /**
+   * This post's child tabs, in order (docs/plans/ordering-simplification.md §2).
+   * Empty or absent for a post with no tabs, which is most of them.
+   */
+  tabOrder?: string[];
   status?: DocumentStatus;
   background_image?: string | null;
   /** Label for this post's own tab in a tabbed post. */
@@ -550,7 +564,13 @@ export type PostUpdateInput =
   & Partial<
     Omit<
       PostCreateInput,
-      "id" | "type" | "parentId" | "seriesId" | "rank" | "background_image"
+      | "id"
+      | "type"
+      | "parentId"
+      | "seriesId"
+      | "rank"
+      | "tabOrder"
+      | "background_image"
     >
   >
   & {
@@ -643,6 +663,16 @@ export interface User {
    */
   email?: string;
   image: string | null;
+  /**
+   * The author's root list, in order: standalone post ids, series ids and
+   * project ids in one array (docs/plans/ordering-simplification.md §2).
+   *
+   * Reaches the client through the session — `session.user` is the `User` row
+   * (`src/lib/next-auth.d.ts`), so the column travels with it and no route had
+   * to be invented to serve it. Absent for a guest, who has no `User` row at
+   * all; see `selectRootOrder` for what orders their library instead.
+   */
+  rootOrder?: string[];
 }
 
 /**

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { rankForAppend, reRankSeriesIntoRoot } from "./ordering";
+import { orderBy } from "@/lib/orderArray";
+import { rankForAppend, reRankSeriesIntoRoot, syncOrder } from "./ordering";
 import { Project, ProjectCreateInput, ProjectUpdateInput } from "@/types";
 
 // Standard author selection for consistency (matches series repository).
@@ -22,6 +23,11 @@ const projectSelect = {
   updatedAt: true,
   authorId: true,
   rank: true,
+  // The order of this project's member series. Sent to the client, which is
+  // where a project's children are ordered — the series slice carries every
+  // series and joins them by `projectId`
+  // (docs/plans/ordering-simplification.md §5).
+  seriesOrder: true,
   author: { select: authorSelect },
 };
 
@@ -34,16 +40,27 @@ export async function findProjectById(id: string): Promise<Project | null> {
   return project ? (project as Project) : null;
 }
 
-// Find all projects for an author, ordered by their manual root-list rank.
+/**
+ * An author's projects, in root-list order.
+ *
+ * A project's position lives in `User.rootOrder` alongside the author's
+ * standalone posts and ungrouped series — one shared space, so this list is a
+ * subset of it rather than an order of its own. Ordering by the array here
+ * makes the payload arrive already in the order the client renders; the client
+ * re-derives the interleaving anyway, since it is the only side holding all
+ * three kinds at once.
+ */
 export async function findProjectsByAuthorId(
   authorId: string,
 ): Promise<Project[]> {
-  const projects = await prisma.project.findMany({
-    where: { authorId },
-    select: projectSelect,
-    orderBy: { rank: "asc" },
-  });
-  return projects as Project[];
+  const [projects, author] = await Promise.all([
+    prisma.project.findMany({ where: { authorId }, select: projectSelect }),
+    prisma.user.findUnique({
+      where: { id: authorId },
+      select: { rootOrder: true },
+    }),
+  ]);
+  return orderBy(author?.rootOrder ?? [], projects) as Project[];
 }
 
 // Create a project, appended to the end of the author's root list.
@@ -64,6 +81,9 @@ export async function createProject(
       rank,
     },
   });
+
+  // The root list gains the id (§6, "Create").
+  await syncOrder(prisma, { kind: "root", authorId: data.authorId });
 
   const project = await findProjectById(data.id);
   if (!project) {
@@ -112,5 +132,8 @@ export async function deleteProject(id: string): Promise<void> {
 
     await tx.project.delete({ where: { id } });
     await reRankSeriesIntoRoot(tx, project.authorId, members.map((m) => m.id));
+    // Empty project: `reRankSeriesIntoRoot` returns early, so root would keep
+    // the deleted id.
+    await syncOrder(tx, { kind: "root", authorId: project.authorId });
   });
 }

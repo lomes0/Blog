@@ -5,8 +5,12 @@ simplest thing that supports manual drag/menu reorder, optimizing for **less
 code and easier maintenance**. Single-user is an accepted assumption — we drop
 the multi-client / offline-collision robustness the current design pays for.
 
-Status: proposal. Nothing implemented yet. Current ordering lives on branch
-`feat/manual-ordering` (commits `52a1442d`…`de53f4aa`).
+Status: **phases 1-3 implemented, 30 Aug 2026.** The order arrays exist, are
+backfilled, and are what every read sorts by; `rank` is still what every *write*
+writes, and is dual-written into the arrays (see §11). Phases 4 (write cutover)
+and 5 (delete rank) are not started. The phase log in §11 records everything
+below this line that the tree has since made false — read it before trusting a
+section.
 
 ---
 
@@ -259,5 +263,85 @@ collation migrations · 4 rank indexes · the two-table root merge.
 - Keep `authorId` scoping on everything (cheap) even under the single-user
   assumption, so a future multi-user story isn't blocked.
 
-```
-```
+---
+
+## 11. Phase log
+
+### 30 Aug 2026 — phases 1-3
+
+Shipped: the four order-array columns, the backfill that seeds them from `rank`,
+and every read switched to them through one tolerant reader
+(`src/lib/orderArray.ts`, spec beside it). Verified against the dev database:
+all 54 containers came out byte-identical to their rank order, and the app
+serves a series' posts in exactly `postOrder`.
+
+**Where this document was already wrong.** It was written 30 Jul 2026 and the
+tree moved under it:
+
+1. **§2's table misses a container.** `Project` both sits in the author's root
+   list on the shared rank space *and* owns the order of its member series
+   (`Series @@index([projectId, rank])`). So there are **four** arrays, not
+   three — `Project.seriesOrder String[]` is the fourth — and `User.rootOrder`
+   interleaves ids from three tables (documents, series, projects), not two.
+   §10's first open question is answered the same way and stays answered: all
+   three ids are v4 UUIDs minted by separate `@default(uuid())` columns, so an
+   id resolves to at most one row.
+2. **§5's list of sort surfaces is stale.** `src/lib/tree/` (27 Aug) put
+   `groupRootItems` / `rootItemsToTreeNodes` behind *both* the sidebar and
+   /posts, so "the inline comparators in PostsListView" is now one shared
+   builder. The real set is in the phase-3 notes below.
+3. **§5's "also fixes the latent bug" is already fixed.** `seriesGrouping.ts`
+   stopped sorting by `createdAt` when manual ranks landed; it sorted by rank
+   before this phase and by the arrays after it. There is no gap left to close.
+4. **§8 step 2's script no longer compiles.** `prisma/scripts/backfill-ranks.ts`
+   reads `sort_order` and `seriesOrder`, columns dropped by
+   `20260703162638_drop_legacy_order_fields`. It is replaced rather than edited:
+   `prisma/scripts/backfill-order.ts`, `pnpm order:backfill [--dry]`.
+5. **§7 is not reachable from this phase.** The local side is posts only —
+   series and projects are cloud-only, and IndexedDB has no `User` row to hang a
+   `rootOrder` on. It therefore stays on `rank`, and the two places that know
+   this are named in the phase-3 notes.
+6. **§8's "steps 1-3 are safe while writes still go through rank" is false as
+   stated.** Once reads come from the arrays, a reorder that writes only a rank
+   leaves the array stale and the reorder appears to do nothing — the tolerant
+   reader falls back to `createdAt`, never to rank. Resolved by dual-writing;
+   see below.
+
+**The dual write (what phase 4 has to delete).** Every rank write is now
+followed by a recompute of the container's array from the rank order, in the
+same transaction:
+
+- server: `syncOrder(db, container)` in `src/repositories/ordering.ts`, called
+  from `movePost`, `moveSeries`, `moveProject`, `reRankIntoRoot`,
+  `reRankSeriesIntoRoot`, and from the create/delete paths in the document,
+  series and project repositories. `resyncAuthorOrder` does a whole author at
+  once, for the import route.
+- client: `syncOrderArrays(state)` in `src/store/orderSync.ts`, run by one
+  matcher in `src/store/app.ts` over every rank-writing action — the optimistic
+  `apply*Rank` actions and the move/create/delete `fulfilled` cases. Without it
+  a drag would not move on screen until the next full load, because the store's
+  copy of the arrays is not what the move response returns.
+
+Phase 4 deletes the rank half of each pair rather than adding an array half:
+`syncOrder` becomes the `setXOrder` writers of §4, and `syncOrderArrays`
+disappears entirely once the client sends the array it already rendered.
+
+**Reads switched (the real §5 list).** Server: the four series queries in
+`repositories/series.ts` (their nested `orderBy: { rank }` is gone — SQL cannot
+sort by an array on the parent, so `orderedPosts` does it in one pass),
+`findProjectsByAuthorId`, `findDocumentChildren`, and `authorSeries` in
+`src/lib/mcp/server.ts`. Client: `seriesGrouping.ts` (`groupRootItems` now takes
+the container's order array, a project's children come from
+`Project.seriesOrder`, a series' posts from `Series.postOrder`,
+`seriesPositionOf` likewise), `selectChildPostsByParent` and the new
+`selectRootOrder` in `store/selectors/layoutSelectors.ts`, `PostsView`,
+`PostsListView` (new `rootOrder` prop, pairing with the existing
+`rootContainer`), the sidebar, and `useSeriesGroupState`. `User.rootOrder`
+reaches the client on the session — `session.user` is the `User` row, so no
+route had to be invented.
+
+Still on rank, deliberately: everything that *writes* order —
+`src/lib/ordering.ts`, `src/lib/documentOrder.ts` (`ranksBracketing`,
+`bracketForDrop`), `lib/tree/model.ts`'s `TreeNode.rank`, `useTreeDnd`, the
+`between` plumbing through the move routes and thunks — plus the local
+(IndexedDB) backend, which is phase 4+ work per §7.

@@ -1,5 +1,6 @@
 import { DocumentType as PrismaDocumentType, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { orderBy } from "@/lib/orderArray";
 import {
   CloudPost,
   DocumentStatus,
@@ -10,7 +11,13 @@ import {
 import { validate } from "uuid";
 import { historyOf, selectHead } from "@/lib/proposals";
 import { getCachedRevision, markProposalsStale } from "./revision";
-import { rankForAppend, rankForPrepend, reRankIntoRoot } from "./ordering";
+import {
+  containerOf,
+  rankForAppend,
+  rankForPrepend,
+  reRankIntoRoot,
+  syncOrder,
+} from "./ordering";
 import { APP_ORIGIN } from "@/lib/changes/events";
 import { changeNotification, notifyChange } from "@/lib/changes/notify";
 
@@ -79,6 +86,10 @@ const documentCoreSelect = {
   baseId: true,
   parentId: true,
   rank: true,
+  // The order of this post's child tabs, for the client's tab strips
+  // (docs/plans/ordering-simplification.md §2). Empty for the posts that have
+  // no tabs, which is most of them.
+  tabOrder: true,
   head: true,
   type: true,
   status: true,
@@ -416,6 +427,13 @@ const createDocument = async (
   if (notification) statements.push(notification);
   await prisma.$transaction(statements);
 
+  // The container's order array gains the new id
+  // (docs/plans/ordering-simplification.md §6, "Create"). After the commit
+  // rather than inside it: the recompute has to see the row it is ordering, and
+  // a `"start"` placement is the case that needs this — an appended row already
+  // reads last without it, a prepended one would read last and be wrong.
+  await syncOrder(prisma, containerOf(container));
+
   return findDocument(data.id);
 };
 
@@ -598,6 +616,12 @@ const deleteDocumentRow = async (
 
   await reRankIntoRoot(tx, doc.authorId, children.map((c) => c.id));
 
+  // The container it was in loses the id. The tolerant reader already ignores
+  // an id with no row (docs/plans/ordering-simplification.md §6), so this is
+  // hygiene rather than correctness — but leaving deleted ids to accumulate
+  // would make every array a growing record of what used to be there.
+  await syncOrder(tx, containerOf(deleted));
+
   await notifyChange(tx, {
     kind: "document.deleted",
     id: doc.id,
@@ -754,12 +778,28 @@ const findUnownedDocumentIds = async (
   return ids.filter((id) => !ownedIds.has(id));
 };
 
+/**
+ * A tabbed post's child tabs, in the parent's own `tabOrder`
+ * (docs/plans/ordering-simplification.md §3).
+ *
+ * `createdAt` is selected but not returned: it is the tiebreaker the tolerant
+ * reader uses for a child the array has not heard of yet (§6), which is what
+ * the old `orderBy: [{ rank }, { createdAt }]` second key was doing.
+ */
 const findDocumentChildren = async (parentId: string) => {
-  return prisma.document.findMany({
-    where: { parentId },
-    select: { id: true, name: true, rank: true },
-    orderBy: [{ rank: "asc" }, { createdAt: "asc" }],
-  });
+  const [parent, children] = await Promise.all([
+    prisma.document.findUnique({
+      where: { id: parentId },
+      select: { tabOrder: true },
+    }),
+    prisma.document.findMany({
+      where: { parentId },
+      select: { id: true, name: true, rank: true, createdAt: true },
+    }),
+  ]);
+  return orderBy(parent?.tabOrder ?? [], children).map(
+    ({ createdAt: _createdAt, ...child }) => child,
+  );
 };
 
 // ─── Agent-created posts (docs/plans/archive/agent-gating.md §3.7) ───────────────────
