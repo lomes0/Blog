@@ -135,7 +135,7 @@ const MarkerDot: React.FC<{ marker: AgentMarker; label: string }> = ({
  * Its own component so it can ask the store whether the post is open. This used
  * to be `pathname === "/edit/<id>"`, which is a derived copy of `ui.workspace`
  * and can only ever describe one pane — with a split open it left the other
- * pane's document looking closed (docs/plans/workspace-url.md §4.2).
+ * pane's document looking closed (docs/plans/archive/workspace-url.md §4.2).
  * `selectPaneShowingDoc` answers for a tab as well as a pane root. The marker
  * arrives as a prop rather than a second subscription, so the rail keeps its
  * one `selectMarkerByDocId` read for the whole list.

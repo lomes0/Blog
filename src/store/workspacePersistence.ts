@@ -50,10 +50,10 @@ import { appSlice } from "./app";
  * document that was in it — and the debounce put that eviction in the record
  * before the user had touched anything. So an entry that displaces a pane marks
  * the workspace provisional (`ui.workspaceProvisional`,
- * docs/plans/workspace-url.md §3.3) and this module writes nothing until a
- * deliberate layout change lowers the flag. For one session the view and the
- * record disagree; a reload lands on the record, which is the layout the user
- * built.
+ * docs/plans/archive/workspace-url.md §3.3) and this module writes nothing
+ * until a deliberate layout change lowers the flag. For one session the view
+ * and the record disagree; a reload lands on the record, which is the layout
+ * the user built.
  */
 
 /** Long enough to swallow a resize drag; short enough to beat a reload. */

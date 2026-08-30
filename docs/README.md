@@ -43,8 +43,8 @@ describe intended or observed states, not necessarily the current one.
 
 | File                                                             | Description                                                                        |
 | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| [plans/README.md](./plans/README.md)                             | The twelve live plans, and the three decisions blocking them                       |
-| [plans/archive/README.md](./plans/archive/README.md)             | Shipped plans, kept because 184 code comments cite them by section number          |
+| [plans/README.md](./plans/README.md)                             | The nine live plans; nothing is waiting on a decision                              |
+| [plans/archive/README.md](./plans/archive/README.md)             | Closed plans, kept because 260 code comments cite them by section number           |
 | [plans/claude-code-backlog.md](./plans/claude-code-backlog.md)   | Backlog for the Claude Code / Copilot content bridge — what is left, and why       |
 | [reviews/](./reviews/)                                           | Point-in-time code reviews, dated                                                  |
 

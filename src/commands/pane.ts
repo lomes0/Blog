@@ -78,8 +78,8 @@ const split = defineCommand<PaneSplitParams>({
     // decided focus on a cold load — without the push a reload restored both
     // panes and then focused the wrong one. `focusedPaneId` is in the stored
     // record and always was, so that push was repairing damage the URL replay
-    // itself caused (docs/plans/workspace-url.md §1.1). Splitting is a pane
-    // event now, and pane events do not touch the address bar.
+    // itself caused (docs/plans/archive/workspace-url.md §1.1). Splitting is a
+    // pane event now, and pane events do not touch the address bar.
     return commandOk(
       alreadyOpen ? "Already open — focused that pane." : undefined,
     );
@@ -113,10 +113,11 @@ const close = defineCommand<PaneRefParams>({
     // The whole command. It used to be followed by a `rewrite` to whatever pane
     // inherited focus, because the address bar still named the pane that had
     // just been closed and the focus projection deliberately declined to repair
-    // that case. With the URL consumed on entry (docs/plans/workspace-url.md
-    // §3) the address bar is `/edit` before and after, so **closing a pane is
-    // not a URL event** — and the dynamic `layoutSelectors` import that read
-    // the surviving focus back went with it.
+    // that case. With the URL consumed on entry
+    // (docs/plans/archive/workspace-url.md §3) the address bar is `/edit`
+    // before and after, so **closing a pane is not a URL event** — and the
+    // dynamic `layoutSelectors` import that read the surviving focus back went
+    // with it.
     ctx.dispatch(actions.closePane(target));
     return commandOk();
   },

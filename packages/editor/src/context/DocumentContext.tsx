@@ -7,12 +7,12 @@ const DocumentIdContext = createContext<string | null>(null);
  * Which document *this* editor is editing.
  *
  * Every consumer below used to answer that by parsing
- * `window.location.pathname` (docs/plans/workspace-url.md §4.1) — a derived,
- * eventually-consistent copy of a value the store already holds. It was wrong
- * twice over: on a handle URL (`/edit/my-post`) the parser matched nothing and
- * attaching a file failed with "Document ID not found", and in a split the
- * address bar names only the focused pane, so an upload started in the other
- * pane would attach to the wrong document.
+ * `window.location.pathname` (docs/plans/archive/workspace-url.md §4.1) — a
+ * derived, eventually-consistent copy of a value the store already holds. It
+ * was wrong twice over: on a handle URL (`/edit/my-post`) the parser matched
+ * nothing and attaching a file failed with "Document ID not found", and in a
+ * split the address bar names only the focused pane, so an upload started in
+ * the other pane would attach to the wrong document.
  *
  * It is a context rather than `selectFocusedDocId` for that second reason:
  * global focus is one document and there can be two editors mounted.

@@ -132,8 +132,8 @@ const heldElsewhere = (
  * The user just changed the layout on purpose, so this one is theirs to keep.
  *
  * Clears `ui.workspaceProvisional`, which a cold-start deep link raises when it
- * evicts a document the restore had just put in the focused pane (see
- * {@link workspaceReducers.openPane} and docs/plans/workspace-url.md §3.3).
+ * evicts a document the restore had just put in the focused pane (see {@link
+ * workspaceReducers.openPane} and docs/plans/archive/workspace-url.md §3.3).
  * While it is up the persistence middleware writes nothing, so the flag has to
  * come down on the ordinary path rather than on a rare one — a provisional flag
  * that never clears would silence layout writes for the rest of the session,
@@ -203,11 +203,11 @@ export const workspaceReducers = {
    * A reload in between comes back to the layout they built.
    *
    * "Displaces something" is the whole condition, and both halves of the
-   * refinement matter (docs/plans/workspace-url.md §3.3). Case 1 displaces
-   * nothing — the document was already open — and neither does minting the
-   * first pane into an empty workspace, which is a first-ever visit whose one
-   * document must be recorded normally or a new user's layout is never stored
-   * at all.
+   * refinement matter (docs/plans/archive/workspace-url.md §3.3). Case 1
+   * displaces nothing — the document was already open — and neither does
+   * minting the first pane into an empty workspace, which is a first-ever visit
+   * whose one document must be recorded normally or a new user's layout is
+   * never stored at all.
    */
   openPane: {
     reducer: (
@@ -396,7 +396,7 @@ export const workspaceReducers = {
    * browser. Clearing back to un-hydrated is what makes that self-correcting:
    * the restore runs again under the right key, and the deep-link seam replays
    * the entry on top of it exactly as it did the first time. Since
-   * docs/plans/workspace-url.md §3 that entry comes from a ref in
+   * docs/plans/archive/workspace-url.md §3 that entry comes from a ref in
    * `WorkspacePanes` rather than from the address bar, which has already been
    * consumed by then — the promise this docblock makes is why that ref exists.
    *

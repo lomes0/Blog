@@ -159,12 +159,13 @@ const PaneFrame: React.FC<PaneFrameProps> = ({
 /**
  * Where a workspace with nothing to restore sends you.
  *
- * Bare `/edit` is the workspace's own address (docs/plans/workspace-url.md §3),
- * so "no document named" stopped meaning "not found". With a stored layout
- * there is a workspace to show. With none there is nothing at all, and `/posts`
- * is the existing "what do I have" surface — no new UI, and no product argument
- * attached to a refactor (§6.2, decided). A home pane can take this over later
- * without anything else here changing.
+ * Bare `/edit` is the workspace's own address
+ * (docs/plans/archive/workspace-url.md §3), so "no document named" stopped
+ * meaning "not found". With a stored layout there is a workspace to show. With
+ * none there is nothing at all, and `/posts` is the existing "what do I have"
+ * surface — no new UI, and no product argument attached to a refactor (§6.2,
+ * decided). A home pane can take this over later without anything else here
+ * changing.
  */
 const EMPTY_WORKSPACE_ROUTE = "/posts";
 

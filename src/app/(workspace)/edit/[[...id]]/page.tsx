@@ -5,8 +5,8 @@
  * so that navigating between documents does not remount it — see the note
  * there. This file exists only to make the segment routable.
  *
- * It used to carry two things, and docs/plans/workspace-url.md §6.1 deleted
- * both:
+ * It used to carry two things, and docs/plans/archive/workspace-url.md §6.1
+ * deleted both:
  *
  * - `generateMetadata`, a `findDocument` on every open, building an `/api/og`
  *   card for a route only the document's author can use and a `<title>` the

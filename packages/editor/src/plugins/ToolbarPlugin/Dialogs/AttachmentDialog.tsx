@@ -29,7 +29,7 @@ function AttachmentDialog({ editor }: { editor: LexicalEditor }) {
   // The document this editor is editing. It used to be parsed out of the
   // address bar, which named the *focused* pane's document at best and matched
   // nothing at all on a handle URL — see `EditorDocumentProvider` and
-  // docs/plans/workspace-url.md §4.1.
+  // docs/plans/archive/workspace-url.md §4.1.
   const documentId = useEditorDocumentId();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {

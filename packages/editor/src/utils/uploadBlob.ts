@@ -27,10 +27,10 @@
  *
  * These are plain async functions, so they cannot read the editor's document
  * context themselves — and reading the URL instead is what
- * docs/plans/workspace-url.md §4.1 removed. The caller is a component or a
- * plugin inside one editor, and it passes that editor's `documentId` down; a
- * module-level "current document" would be the same wrong answer in a split as
- * the address bar was.
+ * docs/plans/archive/workspace-url.md §4.1 removed. The caller is a component
+ * or a plugin inside one editor, and it passes that editor's `documentId` down;
+ * a module-level "current document" would be the same wrong answer in a split
+ * as the address bar was.
  */
 
 /** Lowercase hex SHA-256 of a file's bytes, computed in the browser. */

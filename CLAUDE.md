@@ -598,8 +598,8 @@ Start at [docs/README.md](./docs/README.md), which indexes the rest.
 **A plan is not a description of the current tree.** `docs/plans/` holds live
 proposals; each states its own status at the top, and that line is the thing to
 read first. A plan that ships moves to `docs/plans/archive/` rather than being
-deleted, because **the code cites these documents by section number** — 240
-comments across 178 files, and two tools (`eslint.config.mjs`'s MUI rule and
+deleted, because **the code cites these documents by section number** — 339
+comments across 226 files, and two tools (`eslint.config.mjs`'s MUI rule and
 `scripts/check-codecs.mjs`) print a path from there in their failure output. So:
 
 - Moving or renaming anything under `docs/plans/` means updating those

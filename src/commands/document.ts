@@ -19,8 +19,8 @@ type DocumentOpenParams = z.infer<typeof openParams>;
  * The workspace's own address, and its steady state.
  *
  * `/edit/<id>` is a door in, not a place to stay: the seam in `WorkspacePanes`
- * consumes it on arrival and replaces it with this (docs/plans/workspace-url.md
- * §3).
+ * consumes it on arrival and replaces it with this
+ * (docs/plans/archive/workspace-url.md §3).
  */
 const WORKSPACE_ROUTE = "/edit";
 
@@ -43,7 +43,8 @@ const inWorkspace = (): boolean => {
 /**
  * Drives **workspace state**, and navigates only when it has to.
  *
- * Three branches, and they are docs/plans/workspace-url.md §3.2 verbatim:
+ * Three branches, and they are docs/plans/archive/workspace-url.md §3.2
+ * verbatim:
  *
  * ```
  * dispatch openPane if the ref resolves

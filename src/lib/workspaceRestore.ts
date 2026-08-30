@@ -77,7 +77,7 @@ export type StoredWorkspaceRead =
  *    restore had just filled. Nobody asked for that eviction — a bookmark did
  *    — so it is shown and not recorded until the user changes the layout on
  *    purpose. See `AppState["ui"].workspaceProvisional` and
- *    docs/plans/workspace-url.md §3.3.
+ *    docs/plans/archive/workspace-url.md §3.3.
  * 4. **A key.** There is nothing to write under until the restore names one.
  * 5. **Non-empty.** `closeAllPanes` fires on every navigation out of `/edit`.
  *

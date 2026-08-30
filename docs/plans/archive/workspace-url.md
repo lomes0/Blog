@@ -6,7 +6,7 @@ Written 1 Aug 2026, and §8.1 records what had
 drifted underneath it by the time it was built — chiefly that §4 undercounts the
 readers by half. §6's three questions were decided by the author on 28 Aug and
 are recorded there as answers, not options. Follows
-[workspace-panes.md](./archive/workspace-panes.md), and refines its §0 rather
+[workspace-panes.md](./workspace-panes.md), and refines its §0 rather
 than reversing it.
 
 ---

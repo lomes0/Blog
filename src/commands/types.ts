@@ -28,15 +28,15 @@ export interface CommandRouter {
 }
 
 /*
- * There used to be a fourth primitive here, `rewrite` — a `history.replaceState`
- * for pointing the address bar at state that had already changed. It existed
- * only because the workspace URL was a *projection* of pane focus, and its only
- * caller was `pane.close` repairing an address bar that named a pane it had
- * just closed. docs/plans/workspace-url.md §3 made the URL an entry point that
- * is consumed once instead, so there is nothing left to project and nothing
- * left to repair: closing a pane is not a URL event. The one surviving
- * `replaceState` in the app is the consume itself, in `WorkspacePanes`, and it
- * is not a command.
+ * There used to be a fourth primitive here, `rewrite` — a
+ * `history.replaceState` for pointing the address bar at state that had already
+ * changed. It existed only because the workspace URL was a *projection* of pane
+ * focus, and its only caller was `pane.close` repairing an address bar that
+ * named a pane it had just closed. docs/plans/archive/workspace-url.md §3 made
+ * the URL an entry point that is consumed once instead, so there is nothing
+ * left to project and nothing left to repair: closing a pane is not a URL
+ * event. The one surviving `replaceState` in the app is the consume itself, in
+ * `WorkspacePanes`, and it is not a command.
  */
 
 /** The active color scheme, as a thing a command can read and set. */

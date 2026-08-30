@@ -1,13 +1,13 @@
 # Archived plans — closed work
 
-These seventeen plans are **closed**: sixteen shipped, and one
+These eighteen plans are **closed**: seventeen shipped, and one
 ([storage-uploads.md](./storage-uploads.md)) was superseded before it was built.
 A superseded plan is archived rather than deleted for the same reason a shipped
 one is — the reasoning is cited elsewhere and outlived the plan.
 
 They are kept, not deleted, for two reasons:
 
-1. **The code points at them.** 252 comments across 171 source files cite these
+1. **The code points at them.** 260 comments across 184 source files cite these
    documents by section number as the standing rationale for an invariant —
    `src/lib/proposals.ts` names `agent-gating.md` §3.2 and §3.4 as the spec for
    the squash, every module in `src/lib/changes/` names a section of
@@ -43,6 +43,7 @@ extraction. Do not read one as a description of the current tree.
 | [byo-provider-keys.md](./byo-provider-keys.md)             | 15 Aug 2026, 5 phases      | AI provider keys moved from the deployment's `.env` to a per-user encrypted row, with no fallback — the codebase's first **reversible** secret, and the reason §4.2 (AAD, IV, key versioning) and §6 (what this does *not* protect) carry its weight |
 | [tree-model-brief.md](./tree-model-brief.md)               | 27 Aug 2026, answered + built | Answered "does `/posts` render projects?" with **yes**, and took option A — the unified `TreeNode` model in `src/lib/tree/`. The follow-on is step 7 of [../bloat-remediation.md](../bloat-remediation.md), which stays live: drag still needs a browser |
 | [theme-css-tokenization.md](./theme-css-tokenization.md)   | 14–28 Aug 2026, 5 phases   | `theme.css`'s last color literals onto tokens, and `check:theme` taught a rule about *position* rather than file extension — a literal outside a token block is now an error in `.css` too. §7 records **thirteen** claims the plan got wrong, chiefly a 5× undercount of its own work |
+| [workspace-url.md](./workspace-url.md)                     | 28 Aug 2026, 4 phases      | The workspace URL stopped projecting pane focus and became an entry point consumed on arrival — `workspaceUrl.ts`, the `project()` listener, the `rewrite` primitive and `/edit`'s `force-dynamic` + `generateMetadata` all deleted. §8.1 records what had drifted before Phase A ran: §4 named three of the six URL readers |
 
 Deliberately left undone, recorded so they are not re-proposed as oversights:
 

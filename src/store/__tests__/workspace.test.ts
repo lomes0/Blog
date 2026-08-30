@@ -182,7 +182,8 @@ describe("ui.workspace — panes", () => {
     // that read depends on: after closing the focused pane, the focused
     // *document* is the survivor's active tab — its child, not its root, when a
     // child was open. (`pane.close` used to read the same value to rewrite the
-    // URL to it; docs/plans/workspace-url.md §3 retired that, not this.)
+    // URL to it; docs/plans/archive/workspace-url.md §3 retired that, not
+    // this.)
     let state = openWithTabs(initial(), "p1", "doc-a", ["c1"]);
     state = reducer(state, actions.setActiveTab({ paneId: "p1", tabId: "c1" }));
     state = openWithTabs(state, "p2", "doc-b");
@@ -1069,10 +1070,11 @@ describe("ui.workspace — a restore that never got an answer", () => {
  *
  * `WorkspacePanes` replays `/edit/<id>` as `openPane({ rootId })` — the same
  * door a sidebar click and the Copilot use — and waits for the restore before
- * doing it, then consumes the URL (docs/plans/workspace-url.md §3). So this is
- * what a *deep link* does to a stored layout, and it is the only thing the URL
- * still decides. Every outcome below is the Phase 5 reducer's, unchanged: that
- * is the point of not giving the restore its own path into the workspace.
+ * doing it, then consumes the URL (docs/plans/archive/workspace-url.md §3). So
+ * this is what a *deep link* does to a stored layout, and it is the only thing
+ * the URL still decides. Every outcome below is the Phase 5 reducer's,
+ * unchanged: that is the point of not giving the restore its own path into the
+ * workspace.
  */
 describe("ui.workspace — an entry URL, replayed over a restored layout", () => {
   const restoredPair = (): AppState =>
@@ -1123,12 +1125,12 @@ describe("ui.workspace — an entry URL, replayed over a restored layout", () =>
 
   it("a reload with no entry restores the stored focus, split included", () => {
     // The property that let `pane.split`'s `router.push` be deleted
-    // (docs/plans/workspace-url.md §5). That push existed because the URL was
-    // what decided focus on a cold load, so without it a reload restored both
-    // panes and then focused the wrong one — the left one, which the address
-    // bar was still naming. `focusedPaneId` is in the stored record and always
-    // was: with the URL consumed there is nothing to replay, and the restore
-    // alone is the whole answer.
+    // (docs/plans/archive/workspace-url.md §5). That push existed because the
+    // URL was what decided focus on a cold load, so without it a reload
+    // restored both panes and then focused the wrong one — the left one, which
+    // the address bar was still naming. `focusedPaneId` is in the stored record
+    // and always was: with the URL consumed there is nothing to replay, and the
+    // restore alone is the whole answer.
     const state = restoredPair();
 
     expect(workspaceOf(state).panes.map((p) => p.rootId))
@@ -1171,14 +1173,14 @@ describe("ui.workspace — an entry URL, replayed over a restored layout", () =>
  * resolves it is worse, because the record then names a document that cannot
  * load and the broken pane comes back on every load after.
  *
- * The decision is **retarget, but do not persist** (docs/plans/workspace-url.md
- * §3.3). What case 3 of `openPane` does to the *view* is right and unchanged —
- * a deep link means "show me this where I am looking", the same as a sidebar
- * click. What changes is that an entry which evicts something marks the layout
- * provisional, and {@link workspaceWriteKey} refuses to name a key for it until
- * the user changes the layout on purpose. For one session the view and the
- * stored record disagree; that is the accepted cost, and the reload below is
- * what it buys.
+ * The decision is **retarget, but do not persist**
+ * (docs/plans/archive/workspace-url.md §3.3). What case 3 of `openPane` does to
+ * the *view* is right and unchanged — a deep link means "show me this where I
+ * am looking", the same as a sidebar click. What changes is that an entry which
+ * evicts something marks the layout provisional, and {@link workspaceWriteKey}
+ * refuses to name a key for it until the user changes the layout on purpose.
+ * For one session the view and the stored record disagree; that is the accepted
+ * cost, and the reload below is what it buys.
  */
 describe("ui.workspace — an entry that displaces a restored pane", () => {
   /** A stored pane, in the shape the record actually holds. */

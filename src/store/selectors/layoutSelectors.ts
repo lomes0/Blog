@@ -15,7 +15,7 @@ import type { PaneMode, Post, WorkspacePane } from "@/types";
  * These replace the pathname parsing that used to answer "which document is
  * open" in three different places, each with its own rule (plan §0). The URL is
  * an entry point, consumed on arrival: `/edit/[id]` is what opened the pane,
- * never what defines it (docs/plans/workspace-url.md §3).
+ * never what defines it (docs/plans/archive/workspace-url.md §3).
  */
 export const selectFocusedPaneId = (state: RootState): string | null =>
   state.ui.workspace.focusedPaneId;

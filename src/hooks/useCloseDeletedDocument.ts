@@ -66,12 +66,12 @@ export const HOME_ROUTE = "/";
  *
  * ## The address bar
  *
- * Almost nothing, since docs/plans/workspace-url.md §3 made the URL an entry
- * point rather than a projection of focus. There used to be a `replaceState` to
- * whatever pane inherited focus, because the address bar still named the
- * document that had just been deleted and the focus projection deliberately
- * declined to repair that case. The address bar reads `/edit` before and after
- * now, so with a pane left there is simply nothing to do.
+ * Almost nothing, since docs/plans/archive/workspace-url.md §3 made the URL an
+ * entry point rather than a projection of focus. There used to be a
+ * `replaceState` to whatever pane inherited focus, because the address bar
+ * still named the document that had just been deleted and the focus projection
+ * deliberately declined to repair that case. The address bar reads `/edit`
+ * before and after now, so with a pane left there is simply nothing to do.
  *
  * With **no** pane left there still is. An empty workspace has nothing to show,
  * and `WorkspacePanes`' own empty-workspace redirect is a one-shot on *arrival*

@@ -128,9 +128,10 @@ export const PostItem = memo(
     // "Open in a pane", not "named by the address bar": with two panes the URL
     // can only name one of them, so `ui.workspace` is the only thing that can
     // answer for both. The `/edit/<id>` fallback that used to sit beside this
-    // is gone (docs/plans/workspace-url.md §4.2) — it read a derived copy of
-    // the state right here, and it was only ever covering the beat between a
-    // navigation landing and the deep-link seam dispatching `openPane`.
+    // is gone (docs/plans/archive/workspace-url.md §4.2) — it read a derived
+    // copy of the state right here, and it was only ever covering the beat
+    // between a navigation landing and the deep-link seam dispatching
+    // `openPane`.
     const isSelected = isOpenRoot;
     // The post row renames the post title (`name`); the first sub-tab (same id)
     // renames `tabLabel`. Disambiguate by field so only one input shows.
@@ -180,7 +181,7 @@ export const PostItem = memo(
     // the duplicate-open guard gets to decide, and opening a post the other pane
     // already holds moves focus instead of opening it twice. From inside the
     // workspace it also navigates *nothing*
-    // (docs/plans/workspace-url.md §3.2) — the href would spend a real
+    // (docs/plans/archive/workspace-url.md §3.2) — the href would spend a real
     // navigation and a history entry on a URL that is consumed a commit later.
     // It also states the mode instead of inheriting whatever the focused pane
     // was last left in.
