@@ -29,7 +29,7 @@ const post = (id: string, updatedAt: string, extra: Partial<Post> = {}): Post =>
   ({
     id,
     name: id,
-    head: `${id}-head`,
+    headRevisionId: `${id}-head`,
     type: "DOCUMENT",
     createdAt: T(0),
     updatedAt,
@@ -62,12 +62,12 @@ describe("reconcilePosts", () => {
     const after = reducer(
       before,
       actions.reconcilePosts({
-        changed: [post("b", T(11), { name: "renamed" })],
+        changed: [post("b", T(11), { title: "renamed" })],
         deletedIds: [],
       }),
     );
 
-    expect(after.posts.entities.b.name).toBe("renamed");
+    expect(after.posts.entities.b.title).toBe("renamed");
     // Identity, not equality: an untouched entity must come out of the reducer
     // as the very object that went in, or every row re-renders on every poll.
     expect(after.posts.entities.a).toBe(before.posts.entities.a);
@@ -148,12 +148,12 @@ describe("reconcilePosts", () => {
     const after = reducer(
       before,
       actions.reconcilePosts({
-        changed: [post("open", T(13), { name: "renamed" })],
+        changed: [post("open", T(13), { title: "renamed" })],
         deletedIds: [],
       }),
     );
 
-    expect(after.posts.entities.open.name).toBe("renamed");
+    expect(after.posts.entities.open.title).toBe("renamed");
     expect(after.posts.entities.open.data).toBe(data);
   });
 
@@ -172,13 +172,13 @@ describe("reconcilePosts", () => {
     const after = reducer(
       before,
       actions.reconcilePosts({
-        changed: [post("a", T(13), { seriesId: "s1", name: "renamed" })],
+        changed: [post("a", T(13), { seriesId: "s1", title: "renamed" })],
         deletedIds: ["gone"],
       }),
     );
 
     expect(after.series[0].posts.map((p) => p.id)).toEqual(["a"]);
-    expect(after.series[0].posts[0].name).toBe("renamed");
+    expect(after.series[0].posts[0].title).toBe("renamed");
   });
 
   /**

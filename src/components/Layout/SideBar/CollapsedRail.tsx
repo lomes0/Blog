@@ -147,7 +147,7 @@ const PostRailItem: React.FC<{
   const selected = useSelector(
     (state: RootState) => selectPaneShowingDoc(state, post.id) !== null,
   );
-  const name = post.name || "Untitled";
+  const name = post.title || "Untitled";
   const markerLabel = marker ? MARKER_LABELS[marker] : null;
 
   return (

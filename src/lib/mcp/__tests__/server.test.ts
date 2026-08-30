@@ -92,7 +92,7 @@ beforeEach(() => {
     reason: "not-found",
     message: "stub",
   });
-  renameOwnedDocument.mockResolvedValue({ ok: true, previousName: "Before" });
+  renameOwnedDocument.mockResolvedValue({ ok: true, previousTitle: "Before" });
   deleteOwnedDocument.mockResolvedValue({
     ok: false,
     reason: "unconfirmed",
@@ -303,7 +303,7 @@ describe("createContentServer", () => {
     expect(renameOwnedDocument.mock.calls[0][0]).toMatchObject({
       id: "doc-1",
       ownedBy: "author-a",
-      name: "After",
+      title: "After",
     });
     expect(deleteOwnedDocument.mock.calls[0][0]).toMatchObject({
       id: "doc-1",

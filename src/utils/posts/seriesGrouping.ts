@@ -290,7 +290,7 @@ export const railItems = (items: RootItem[]): SeriesGroupItem[] => {
 const postTreeNode = (post: Post): TreeNode => ({
   kind: "post",
   id: post.id,
-  label: post.name,
+  label: post.title,
 });
 
 /** A series group, or the lone post a standalone group wraps. */

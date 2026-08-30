@@ -73,7 +73,7 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
   // post it is rooted at.
   const paneTitle = useSelector((state) => {
     const doc = postsSelectors.selectById(state, activeTabId ?? rootId);
-    return doc?.tabLabel ?? doc?.name;
+    return doc?.tabLabel ?? doc?.title;
   });
   const run = useCommandRun();
   const closeDeleted = useCloseDeletedDocument();
@@ -119,10 +119,9 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
 
   // All root-level posts for the "Move to other post" picker.
   const allDocuments = useSelector((state) => postsSelectors.selectAll(state));
-  const availablePosts = allDocuments.filter((doc) => {
-    const d = doc;
-    return d?.type === "DOCUMENT" && !d?.parentId && doc.id !== rootId;
-  });
+  const availablePosts = allDocuments.filter(
+    (doc) => !doc.parentId && doc.id !== rootId,
+  );
 
   // Which tab panels have been mounted at least once (lazy-mount pattern).
   const [_mountedTabIds, setMountedTabIds] = useState<Set<string>>(
@@ -159,7 +158,7 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
   // every open read the same record — and its revision index — twice.
   const rootLabel = useSelector((state) => {
     const doc = postsSelectors.selectById(state, rootId);
-    return doc?.tabLabel ?? doc?.name;
+    return doc?.tabLabel ?? doc?.title;
   });
   // Read inside the effect below without being a dependency of it: a rename
   // must not re-run the children fetch.
@@ -185,7 +184,7 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
 
     const metas: TabMeta[] = [
       { id: rootId, name: rootLabelRef.current ?? "Document" },
-      ...(children ?? []).map((c) => ({ id: c.id, name: c.name })),
+      ...(children ?? []).map((c) => ({ id: c.id, name: c.title })),
     ];
     setTabMetas(metas);
     setMountedTabIds(new Set([rootId]));
@@ -217,11 +216,10 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
 
     const newDoc: PostCreateInput = {
       id,
-      name: "Untitled",
-      head: revisionId,
+      title: "Untitled",
+      headRevisionId: revisionId,
       createdAt: now,
       updatedAt: now,
-      type: "DOCUMENT",
       parentId: rootId,
       data: EMPTY_EDITOR_STATE,
       revisions: [{
@@ -339,7 +337,7 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
 
   const handleDuplicate = useCallback(async (tabId: string) => {
     const source = allDocuments.find((d) => d.id === tabId);
-    const newName = `${source?.name ?? "Copy"} (copy)`;
+    const newName = `${source?.title ?? "Copy"} (copy)`;
     const id = uuidv4();
     try {
       await dispatch(
@@ -529,7 +527,7 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
                 <List dense disablePadding>
                   {availablePosts.map((doc) => {
                     const d = doc;
-                    const name = d?.name ?? doc.id;
+                    const name = d?.title ?? doc.id;
                     return (
                       <ListItemButton
                         key={doc.id}

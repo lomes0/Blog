@@ -7,11 +7,20 @@ the `rank` → order-array change; this plan owns everything else. Where they
 touch the same models, this doc omits the ordering columns to avoid
 double-specifying.
 
-**Status: Phase A shipped 30 Aug 2026** (migration
-`20260830113000_phase_a_schema_sweep`). Phases B–D are still proposal. §6
-records what Phase A found that this document got wrong — chiefly that its
-column list was a third of the real one, that one of the two indexes it names
-does not exist, and that "no app-logic change" was false.
+**Status: all four phases shipped.** Phase A on 30 Aug 2026
+(`20260830113000_phase_a_schema_sweep`); B, C and D on 31 Aug 2026
+(`20260831090000_head_revision_fk`, `20260831100000_document_title_rename`,
+`20260831110000_drop_document_type`). §6 records what each phase found that this
+document got wrong — chiefly that Phase A's column list was a third of the real
+one, that §C's `background_image` rename was stale, and that Prisma generates a
+destructive `DROP` + `ADD` for all three of the column changes these phases
+make.
+
+Two things this document does **not** describe, both settled by the author when
+Phase D came round: `DocumentCoauthors`, `Document.coauthors`, `Document.collab`
+and `User.coauthored` **stay** — §5's first open decision was declined, and they
+are kept as a placeholder for collaborative editing. And `background_image` is
+**dropped**, not renamed as §C proposes.
 
 ## Decisions locked
 
@@ -306,3 +315,103 @@ yields NULL and trips the NOT NULL rather than quietly becoming `USER`.
 `handle` — `Document_handle_key` and a legacy `documents_handle_key`. Prisma
 reports no drift over it, so a migration created it. Dead weight for a later
 phase, and out of Phase A's scope.
+
+---
+
+## 7. Phases B–D, as built (31 Aug 2026)
+
+Three migrations, all hand-written:
+`20260831090000_head_revision_fk`, `20260831100000_document_title_rename`,
+`20260831110000_drop_document_type`. Nine corrections and findings, of which the
+first four are the ones worth carrying forward.
+
+**Prisma's generated SQL was destructive for all three column changes, and
+Phase A's `role` was not a one-off.** `migrate diff` produces `DROP COLUMN
+"head"` + `ADD COLUMN "headRevisionId"` (discards 206 pointers), `DROP COLUMN
+"name"` + `ADD COLUMN "title" TEXT NOT NULL` (discards 206 titles — and would
+not even run, since the table has rows and the column has no default), and only
+for §D — where there is genuinely nothing to keep — is it right. Four schema
+changes across the four phases, three of which the tool would have destroyed.
+Read the generated SQL every time; the rule is not "watch out for enums".
+
+**§C's `background_image → backgroundImage` was stale, and the column is
+dropped.** The feature was removed and its bytes deleted (blob-storage.md
+§10.2), no code writes or renders it, and it was 0 non-null across all 206
+documents. Renaming it would have given a dead column a tidier name to be dead
+under. The export bundle still *reads* the field, so an old `.zip` still
+imports; it just no longer has anywhere to put it.
+
+**§5's third open decision has a better answer than "keep it nullable".** The
+column is nullable — but not as a hedge. `onDelete: SetNull` is what it is
+*for*, and Prisma requires an optional field to express it, so nullable was
+never a choice. The create order is: document row, then the revision, then the
+pointer, all in one transaction. `createDocument` takes `headRevisionId` as a
+separate argument for exactly this reason and its type `Omit`s it from the
+create input, so passing it through `data` — which could only ever be a foreign
+key violation — does not compile. `proposeNewPost` grew a third statement in its
+existing `$transaction`, and `/api/import` was restructured. A post therefore
+still never commits without a head, and `null` now means "the head revision was
+deleted", which is the state `findDocument`'s repair already handles.
+
+**`updateDocument`'s write order became load-bearing.** A content save arrives
+as a nested `revisions.connectOrCreate` and a scalar `headRevisionId` naming the
+row it creates. The compare-and-set arm used to write the scalars *first* and
+replay the relations afterwards, which with a foreign key is a violation every
+time; leaving both in one `update` would have put the ordering in Prisma's
+hands. Both arms now split the relation writes off and run them first,
+unconditionally. Safe to do before the guard because a save that loses the
+compare-and-set rolls the revision back with it.
+
+**`/api/import` could never have imported a new document.** It created each
+document's revisions before the document row they point at, so
+`Revision_documentId_fkey` refused the first one and the whole import failed —
+on any document this deployment had not already seen. Nothing caught it because
+nothing exercised it: there is no spec, and the round-trip had not been run.
+Phase B had to reorder these writes anyway; the fix came with it.
+
+**Four silent breaks `tsc` could not see, and one class of place to look.**
+Renaming a Prisma field is compiler-checked almost everywhere, which is the
+method §C prescribes and it works — but four sites escaped it:
+`documentCoreSelect` and `proposalSummarySelect` are `as const` objects whose
+keys Prisma only validates at query time; `toCloudDocument` takes
+`Record<string, unknown>` and returns `as unknown as CloudPost`; and two
+`$queryRaw` templates name `d.name` and `d."type"` as text. All four would have
+been 500s on the main read path. `grep -rn "name: true\|head: true"` and
+`grep -rn '\$queryRaw'` are what found them.
+
+**The wire field names had to move with the model.** `documentFields` in
+`api/documents/schemas.ts` is the request body for create and update, and both
+ends of that seam are this app: the client sends a `Post`, so leaving the schema
+on `name`/`head` would have made every create silently mint the wrong revision
+id and every save 400 on the `.strict()` update schema. They are `title` and
+`headRevisionId` now. `expectedHead` keeps its own name — it is a precondition,
+not a column. The command registry's `document.rename` parameter moved from
+`name` to `title` as well, which is a change to the in-app agent tool surface,
+and makes it agree with `rename_post` on the MCP side, which already said
+`title`.
+
+**The export bundle keeps its own vocabulary.** `documents/{id}.json` still
+carries `name`, `head` and `type`; the model's names are read as alternatives by
+`readDocumentExport`, which both importers now go through. A bundle is a format
+with copies in users' hands, not a projection of the schema, so the mapping
+lives in one function rather than in the columns. `background_image` is the one
+field export no longer *writes*, because there is nothing left to write.
+`CURRENT_SCHEMA_VERSION` is unchanged: nothing incompatible happened.
+
+**The IndexedDB half is a real migration now, and the first version of it lost
+two changes out of three.** A guest's drafts are the only copy that exists, and
+up to v8 every bump only *added* a store, so `onupgradeneeded` had never
+rewritten a record. v9, v10 and v11 rename fields those records already carry.
+The first implementation ran one cursor pass per version over the `documents`
+store — and three cursors open on one store each hold the record as they found
+it, so they took turns writing back the original plus their own change and the
+last one won. A v8 profile came out of the upgrade with `type` dropped and
+`name`/`head` untouched, while the index swaps beside them had succeeded, so it
+looked like it had worked. Migrations now *declare* their record transform
+(`IndexedDBMigration.records`) and the opener composes every crossed version
+into one pass per store. `recordTransformsFor` is that composition, exported so
+`src/indexeddb/__tests__/migrations.test.ts` exercises the same function the
+browser does — a spec that composed them by hand agreed with itself while the
+real thing was broken. Verified against a profile whose drafts were written by
+the previous build: both survive v8 → v11 with their titles, their content
+byte-identical, and the root order intact.

@@ -80,7 +80,7 @@ export function useSave(
   postRef.current = post;
 
   useEffect(() => {
-    lastSavedHead.current = postRef.current?.head ?? null;
+    lastSavedHead.current = postRef.current?.headRevisionId ?? null;
     conflicted.current = false;
   }, [postId]);
 
@@ -177,7 +177,7 @@ export function useSave(
         actions.updatePost({
           id: postId,
           partial: {
-            head: headId,
+            headRevisionId: headId,
             updatedAt,
             data,
             expectedHead: lastSavedHead.current,

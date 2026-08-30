@@ -13,11 +13,11 @@ export const GET = optionalUserRoute<{ id: string }>(
       revisions: revisionId,
       subtitle: "You are not authorized to fork this document",
     });
-    if (!cloudDocument.head) {
+    if (!cloudDocument.headRevisionId) {
       throw new ApiError(404, "Document not found");
     }
     const revision = await getCachedRevision(
-      revisionId ?? cloudDocument.head,
+      revisionId ?? cloudDocument.headRevisionId,
     );
     // A pending agent proposal is not history and not the document, so it is
     // not something to fork — and `?v=` is caller-supplied, so without this a

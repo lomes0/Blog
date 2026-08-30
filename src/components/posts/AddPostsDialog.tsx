@@ -65,7 +65,7 @@ function PostListItem(
           />
         </ListItemIcon>
         <ListItemText
-          primary={post.name}
+          primary={post.title}
           secondary={post.description || (
             <>
               Updated <DateDisplay date={post.updatedAt} variant="medium" />

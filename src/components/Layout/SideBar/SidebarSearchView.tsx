@@ -97,7 +97,7 @@ export const SidebarSearchView: React.FC = () => {
     const q = query.trim().toLowerCase();
     const rows = posts.map((post) => {
       const doc = post;
-      const name = doc?.name || "Untitled";
+      const name = doc?.title || "Untitled";
       const folder = seriesByPostId.get(post.id) ?? "posts";
       return { id: post.id, name, path: `${folder}/${name}` };
     });

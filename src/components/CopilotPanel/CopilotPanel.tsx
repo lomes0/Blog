@@ -54,7 +54,7 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
   const doc = useSelector((state) =>
     documentId ? postsSelectors.selectById(state, documentId) : undefined
   );
-  const documentTitle = doc?.name ?? "Untitled";
+  const documentTitle = doc?.title ?? "Untitled";
   const scope = documentId ?? WORKSPACE_SCOPE;
 
   const handleAcceptAll = () => {

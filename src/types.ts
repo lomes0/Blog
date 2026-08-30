@@ -479,11 +479,32 @@ export type Revision = RevisionMeta & { data: SerializedEditorState };
 
 export type Post = {
   id: string;
-  name: string;
-  head: string;
+  /**
+   * The post's title (docs/plans/schema-organization.md §C).
+   *
+   * Was `name`, which collided with `User.name`, `Series.title`, the
+   * `NotesCanvas.name`, every DOM node and every IndexedDB store descriptor —
+   * so a rename could not be done by search-and-replace and was done by letting
+   * the compiler name the sites instead.
+   */
+  title: string;
+  /**
+   * The revision this post's content belongs to.
+   *
+   * In the cloud this is a real foreign key onto `Revision`
+   * (docs/plans/schema-organization.md §B); locally it is a plain string, and
+   * IndexedDB has no constraint to make it one — a guest's library is the same
+   * seam the container order arrays are (ordering-simplification §7), where the
+   * invariant is kept by the one write path rather than by the store. The local
+   * backend writes the revision before the post that names it, which is the
+   * same ordering the FK forces on the cloud side.
+   *
+   * `""` is how both backends spell "no revision yet": the repositories map a
+   * null column to it rather than making every reader handle two empty values.
+   */
+  headRevisionId: string;
   createdAt: string | Date;
   updatedAt: string | Date;
-  type: "DOCUMENT";
   description?: string | null;
   handle?: string | null;
   /** Parent post when this is a tab of a tabbed post. */
@@ -498,7 +519,6 @@ export type Post = {
    */
   tabOrder?: string[];
   status?: DocumentStatus;
-  background_image?: string | null;
   /** Label for this post's own tab in a tabbed post. */
   tabLabel?: string | null;
 
@@ -563,22 +583,21 @@ export type PostCreateInput =
  * server's update schema is `.strict()` about the same fields, so the two sides
  * of the seam agree; this half just means the mistake does not compile.
  *
- * `background_image` is omitted for a different reason: the feature is gone and
- * its bytes are deleted (docs/plans/blob-storage.md §10.2). The column stays so
- * old export bundles still import, and import writes it through the repository —
- * but no update may set it, because any path it stored would name a file that
- * cannot exist. `documentUpdateSchema` drops it on the same grounds.
+ * `background_image` used to be omitted here for a different reason, and is now
+ * gone from the model entirely (docs/plans/schema-organization.md §C): the
+ * feature was removed and its bytes deleted (docs/plans/blob-storage.md §10.2),
+ * so every path the column could hold named a file that cannot exist. An old
+ * export bundle still carries the field and still imports — the importers read
+ * it and drop it.
  */
 export type PostUpdateInput =
   & Partial<
     Omit<
       PostCreateInput,
       | "id"
-      | "type"
       | "parentId"
       | "seriesId"
       | "tabOrder"
-      | "background_image"
     >
   >
   & {

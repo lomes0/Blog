@@ -1,4 +1,4 @@
-import { DocumentType as PrismaDocumentType, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { orderBy } from "@/lib/orderArray";
 import {
@@ -75,7 +75,7 @@ const revisionsSelect = {
 const documentCoreSelect = {
   id: true,
   handle: true,
-  name: true,
+  title: true,
   description: true,
   createdAt: true,
   updatedAt: true,
@@ -88,10 +88,8 @@ const documentCoreSelect = {
   // (docs/plans/archive/ordering-simplification.md §2). Empty for the posts
   // that have no tabs, which is most of them.
   tabOrder: true,
-  head: true,
-  type: true,
+  headRevisionId: true,
   status: true,
-  background_image: true,
   tabLabel: true,
   seriesId: true,
 } as const;
@@ -100,7 +98,7 @@ const documentCoreSelect = {
 const toCloudDocument = (
   post: Record<string, unknown> & {
     collab: boolean | null;
-    head: string | null;
+    headRevisionId: string | null;
     status: string | null;
     revisions: {
       id: string;
@@ -118,13 +116,12 @@ const toCloudDocument = (
 ): CloudPost => {
   const revisions = post.collab
     ? post.revisions
-    : post.revisions.filter((r) => r.id === post.head);
+    : post.revisions.filter((r) => r.id === post.headRevisionId);
   return {
     ...post,
     coauthors: [],
     revisions: revisions as RevisionMeta[],
-    type: PrismaDocumentType.DOCUMENT,
-    head: post.head || "",
+    headRevisionId: post.headRevisionId || "",
     status: post.status as DocumentStatus | undefined,
   } as unknown as CloudPost;
 };
@@ -149,7 +146,6 @@ const findPublishedDocuments = async (limit?: number) => {
     where: {
       published: true,
       private: false,
-      type: PrismaDocumentType.DOCUMENT,
     },
     select: {
       ...documentCoreSelect,
@@ -171,7 +167,6 @@ const findDocument = async (
     where: {
       AND: [
         validate(handle) ? { id: handle } : { handle: handle.toLowerCase() },
-        { type: PrismaDocumentType.DOCUMENT }, // Only regular documents, not directories
       ],
     },
     include: {
@@ -226,8 +221,7 @@ const findDocument = async (
   const cloudDoc: CloudPost = {
     ...doc,
     coauthors: [], // Remove coauthor complexity
-    type: PrismaDocumentType.DOCUMENT,
-    head: doc.head || "",
+    headRevisionId: doc.headRevisionId || "",
     revisions: history.map(asMeta),
     status: doc.status as DocumentStatus,
   };
@@ -240,7 +234,7 @@ const findDocument = async (
       : undefined;
 
     if (!revisions) {
-      const selection = selectHead(doc.revisions, doc.head);
+      const selection = selectHead(doc.revisions, doc.headRevisionId);
       revision = selection.revision ?? undefined;
 
       if (!revision) {
@@ -261,11 +255,11 @@ const findDocument = async (
         await prisma.$transaction(async (tx) => {
           await tx.document.update({
             where: { id: doc.id },
-            data: { head: repaired },
+            data: { headRevisionId: repaired },
           });
           await markProposalsStale(tx, { id: doc.id }, repaired);
         });
-        cloudDoc.head = repaired;
+        cloudDoc.headRevisionId = repaired;
       }
     }
 
@@ -302,7 +296,7 @@ const findDocumentsByAuthorId = async (
     AUTHOR_DOCUMENTS_PAGE_SIZE,
   );
   const docs = await prisma.document.findMany({
-    where: { authorId, type: PrismaDocumentType.DOCUMENT },
+    where: { authorId },
     select: {
       ...documentCoreSelect,
       revisions: revisionsSelect,
@@ -356,7 +350,7 @@ const findDocumentsByAuthorId = async (
  */
 const findDocumentIdsByAuthorId = async (authorId: string) =>
   await prisma.document.findMany({
-    where: { authorId, type: PrismaDocumentType.DOCUMENT },
+    where: { authorId },
     select: { id: true, updatedAt: true },
     orderBy: { updatedAt: "desc" },
   });
@@ -366,7 +360,6 @@ const findPublishedDocumentsByAuthorId = async (authorId: string) => {
     where: {
       authorId,
       published: true,
-      type: PrismaDocumentType.DOCUMENT,
     },
     select: {
       ...documentCoreSelect,
@@ -384,14 +377,28 @@ const findPublishedDocumentsByAuthorId = async (authorId: string) => {
 // (docs/plans/archive/ordering-simplification.md §6, "Create"). There is no
 // position on the row itself any more.
 type CreateDocumentInput =
-  & Prisma.DocumentUncheckedCreateInput
-  & { placement?: DocumentPlacement };
+  & Omit<Prisma.DocumentUncheckedCreateInput, "headRevisionId">
+  & {
+    placement?: DocumentPlacement;
+    /**
+     * The revision this document is born pointing at — created alongside it, by
+     * the nested `revisions.create` in the same input.
+     *
+     * Separate from the rest of the column set because it cannot be written in
+     * the same statement as the row (docs/plans/schema-organization.md §B):
+     * `headRevisionId` is a foreign key, and the revision it names is inserted
+     * *by* this create, so the pointer is a second statement inside the same
+     * transaction. Passing it through `data` would only produce a foreign-key
+     * violation, which is why the type no longer admits it.
+     */
+    headRevisionId?: string | null;
+  };
 
 /** Which end of its container a new document lands at. Default `"end"`. */
 export type DocumentPlacement = "start" | "end";
 
 const createDocument = async (
-  { placement = "end", ...data }: CreateDocumentInput,
+  { placement = "end", headRevisionId, ...data }: CreateDocumentInput,
 ) => {
   if (!data.id) return null;
 
@@ -403,9 +410,8 @@ const createDocument = async (
     parentId: (data.parentId as string | null | undefined) ?? null,
   };
 
-  // Ensure it's always a DOCUMENT type, not DIRECTORY
   const create = prisma.document.create({
-    data: { ...data, type: PrismaDocumentType.DOCUMENT },
+    data,
   });
 
   // The create and its notification commit together (docs/plans/
@@ -420,6 +426,18 @@ const createDocument = async (
     origin: APP_ORIGIN,
   });
   const statements: Prisma.PrismaPromise<unknown>[] = [create];
+  // Second, and only after the nested `revisions.create` above has put the row
+  // there: the pointer is a foreign key now, so a document cannot be born
+  // naming a revision that does not exist yet. Same transaction, so a post
+  // still never commits without its head — the two writes are ordered, not
+  // separable, which is the answer to §5's third open decision. A create that
+  // fails at either statement leaves nothing behind.
+  if (headRevisionId) {
+    statements.push(prisma.document.update({
+      where: { id: data.id },
+      data: { headRevisionId },
+    }));
+  }
   if (notification) statements.push(notification);
   await prisma.$transaction(statements);
 
@@ -452,15 +470,16 @@ export class StaleHeadError extends Error {
 }
 
 /**
- * The literal value a write is setting `head` to, or `undefined` when it is not
- * setting one at all — a rename, a publish toggle, a move.
+ * The literal value a write is setting `headRevisionId` to, or `undefined` when
+ * it is not setting one at all — a rename, a publish toggle, a move.
  *
- * Prisma's update input admits both `head: "…"` and `head: { set: "…" }`, and
- * the difference matters here only because getting it wrong would silently skip
- * the stale marking on a save. Both shapes are read rather than one assumed.
+ * Prisma's update input admits both `headRevisionId: "…"` and
+ * `headRevisionId: { set: "…" }`, and the difference matters here only because
+ * getting it wrong would silently skip the stale marking on a save. Both shapes
+ * are read rather than one assumed.
  */
 const literalHead = (
-  head: Prisma.DocumentUncheckedUpdateInput["head"],
+  head: Prisma.DocumentUncheckedUpdateInput["headRevisionId"],
 ): string | null | undefined => {
   if (head === undefined || head === null || typeof head === "string") {
     return head;
@@ -500,56 +519,81 @@ const updateDocument = async (
   handle: string,
   data: Prisma.DocumentUncheckedUpdateInput,
   /**
-   * Compare-and-set on `head`. `undefined` writes unconditionally — a rename or
-   * a publish toggle is not racing anyone over content. Any other value,
-   * including `null` for "this document has no revision yet", makes the whole
-   * write conditional on the stored head still being that.
+   * Compare-and-set on `headRevisionId`. `undefined` writes unconditionally — a
+   * rename or a publish toggle is not racing anyone over content. Any other
+   * value, including `null` for "this document has no revision yet", makes the
+   * whole write conditional on the stored head still being that.
    */
   expectedHead?: string | null,
 ) => {
-  // Ensure type remains DOCUMENT
-  const docData = {
-    ...data,
-    type: PrismaDocumentType.DOCUMENT,
-  };
-
   const where = validate(handle)
     ? { id: handle }
     : { handle: handle.toLowerCase() };
 
-  // A save moves `head`, and a proposal built on the head it moves off can no
-  // longer be approved (docs/plans/archive/agent-gating.md §3.6). Marking travels with
-  // the move, in whichever transaction the move is happening in — the two must
-  // not be separable, or a crash between them leaves the rail offering an
-  // Approve button that can only 409, with nothing left to come back and fix it.
-  const nextHead = literalHead(docData.head);
+  // A save moves `headRevisionId`, and a proposal built on the head it moves off
+  // can no longer be approved (docs/plans/archive/agent-gating.md §3.6). Marking
+  // travels with the move, in whichever transaction the move is happening in —
+  // the two must not be separable, or a crash between them leaves the rail
+  // offering an Approve button that can only 409, with nothing left to come back
+  // and fix it.
+  const nextHead = literalHead(data.headRevisionId);
+
+  // Split unconditionally, because the *order* of the two halves is now load
+  // bearing rather than a detail of how the guard is spelled
+  // (docs/plans/schema-organization.md §B). `headRevisionId` is a foreign key,
+  // so the revision a save is pointing at has to exist before the pointer is
+  // written — and a save arrives here as exactly that pair: a nested
+  // `revisions.connectOrCreate` and a scalar `headRevisionId` naming the row it
+  // creates. Leaving both in one `update` would put the ordering in Prisma's
+  // hands; leaving the scalars first, as the compare-and-set arm used to, gets
+  // it wrong outright. Relations first, then the scalars, on every path.
+  //
+  // Rolling back is what makes this safe to do before the guard: a revision
+  // written for a save that then loses the compare-and-set goes away with the
+  // transaction.
+  const { revisions, coauthors, ...scalars } = data;
+  const writeRelations = async (tx: Prisma.TransactionClient) => {
+    if (revisions === undefined && coauthors === undefined) return;
+    await tx.document.update({
+      where,
+      data: {
+        ...(revisions !== undefined && { revisions }),
+        ...(coauthors !== undefined && { coauthors }),
+      },
+    });
+  };
 
   if (expectedHead === undefined) {
-    if (nextHead === undefined) {
-      await prisma.document.update({ where, data: docData });
+    if (nextHead === undefined && revisions === undefined &&
+      coauthors === undefined
+    ) {
+      await prisma.document.update({ where, data });
       return announceUpdate(handle);
     }
     await prisma.$transaction(async (tx) => {
-      await tx.document.update({ where, data: docData });
-      await markProposalsStale(tx, where, nextHead);
+      await writeRelations(tx);
+      await tx.document.update({ where, data: scalars });
+      if (nextHead !== undefined) {
+        await markProposalsStale(tx, where, nextHead);
+      }
     });
     return announceUpdate(handle);
   }
 
-  // `updateMany` is the only shape that can carry the guard, because `head` is
-  // not a unique column and `update`'s `where` will not take it. It also takes
-  // scalars only, so the nested relation writes are split off and replayed
-  // afterwards on the row the guard has already locked.
+  // `updateMany` is the only shape that can carry the guard, because
+  // `headRevisionId` is not a unique column and `update`'s `where` will not take
+  // it. It also takes scalars only, which is the second reason the relation
+  // writes are split off above.
   //
   // The order is what makes this a compare-and-set rather than a check followed
   // by a hope: Postgres holds a row lock from the moment the UPDATE matches, so
-  // a writer arriving mid-transaction blocks and then re-evaluates `head`
+  // a writer arriving mid-transaction blocks and then re-evaluates the head
   // against what we committed rather than against what it originally read.
-  const { revisions, coauthors, ...scalars } = docData;
-
   await prisma.$transaction(async (tx) => {
+    await writeRelations(tx);
+
     const { count } = await tx.document.updateMany({
-      where: { ...where, head: expectedHead },
+      where: { ...where, headRevisionId: expectedHead },
       // The relation keys are gone; what is left is the scalar column set,
       // which `updateMany` accepts and the wider `Unchecked…Input` type does not
       // narrow to on its own.
@@ -558,16 +602,6 @@ const updateDocument = async (
     // Callers reach this having already proven the document exists (see
     // `requireDocument`), so a miss is a head mismatch rather than a 404.
     if (count === 0) throw new StaleHeadError(expectedHead);
-
-    if (revisions || coauthors) {
-      await tx.document.update({
-        where,
-        data: {
-          ...(revisions !== undefined && { revisions }),
-          ...(coauthors !== undefined && { coauthors }),
-        },
-      });
-    }
 
     if (nextHead !== undefined) {
       await markProposalsStale(tx, where, nextHead);
@@ -673,7 +707,6 @@ const deleteDocument = async (handle: string) => {
       where: {
         AND: [
           validate(handle) ? { id: handle } : { handle: handle.toLowerCase() },
-          { type: PrismaDocumentType.DOCUMENT },
         ],
       },
       select: { id: true, authorId: true },
@@ -692,14 +725,13 @@ const findEditorDocument = async (handle: string) => {
     where: {
       AND: [
         validate(handle) ? { id: handle } : { handle: handle.toLowerCase() },
-        { type: PrismaDocumentType.DOCUMENT }, // Only regular documents, not directories
       ],
     },
   });
 
   if (!doc) return null;
 
-  let revision = doc.head ? await getCachedRevision(doc.head) : null;
+  let revision = doc.headRevisionId ? await getCachedRevision(doc.headRevisionId) : null;
   // A `head` naming a pending proposal is a broken state rather than an
   // impossible one — nothing constrains the pointer — and serving it would put
   // an unapproved agent write in the editor. Treat it as missing and repair.
@@ -723,7 +755,7 @@ const findEditorDocument = async (handle: string) => {
       await prisma.$transaction(async (tx) => {
         await tx.document.update({
           where: { id: docId },
-          data: { head: latestRevision.id },
+          data: { headRevisionId: latestRevision.id },
         });
         await markProposalsStale(tx, { id: docId }, latestRevision.id);
       });
@@ -733,7 +765,7 @@ const findEditorDocument = async (handle: string) => {
         data: latestRevision.data as unknown as Revision["data"],
       };
       // Update doc.head so the editorDocument below is consistent
-      doc = { ...doc, head: latestRevision.id };
+      doc = { ...doc, headRevisionId: latestRevision.id };
     }
   }
 
@@ -742,22 +774,27 @@ const findEditorDocument = async (handle: string) => {
   const editorDocument: Post = {
     ...doc,
     data: revision.data as unknown as Post["data"],
-    type: PrismaDocumentType.DOCUMENT,
     status: doc.status as DocumentStatus,
-    head: doc.head || "",
+    headRevisionId: doc.headRevisionId || "",
   };
 
   return editorDocument;
 };
 
-// Find cloud storage usage by author ID (documents only)
+// Find cloud storage usage by author ID (documents only).
+//
+// The `d.title AS name` below is an alias, not a leftover:
+// `DocumentStorageUsage.name` is a label on a chart rather than the post model,
+// so it kept its own word when the column became `title`
+// (docs/plans/schema-organization.md §C). The guest half of the same reading,
+// `fetchStorageUsage`, maps it identically.
 const findCloudStorageUsageByAuthorId = async (authorId: string) => {
   const docSizes = await prisma.$queryRaw<
     { id: string; name: string; size: number }[]
   >`
     SELECT
       d.id,
-      d.name,
+      d.title AS name,
       (pg_column_size(d.*) + SUM(pg_column_size(r.*)))::float AS size
     FROM
       "Document" d
@@ -767,7 +804,6 @@ const findCloudStorageUsageByAuthorId = async (authorId: string) => {
       d.id = r."documentId"
     WHERE
       d."authorId" = ${authorId}::uuid
-      AND d."type" = 'DOCUMENT'
     GROUP BY
       d.id
     ORDER BY
@@ -814,7 +850,7 @@ const findDocumentChildren = async (parentId: string) => {
     }),
     prisma.document.findMany({
       where: { parentId },
-      select: { id: true, name: true, createdAt: true },
+      select: { id: true, title: true, createdAt: true },
     }),
   ]);
   return orderBy(parent?.tabOrder ?? [], children).map(
@@ -835,7 +871,6 @@ const countAgentCreatedDocuments = async (authorId: string) =>
   prisma.document.count({
     where: {
       authorId,
-      type: PrismaDocumentType.DOCUMENT,
       agentCreatedAt: { not: null },
     },
   });
@@ -852,12 +887,11 @@ const findAgentCreatedDocuments = async (authorId: string) =>
   prisma.document.findMany({
     where: {
       authorId,
-      type: PrismaDocumentType.DOCUMENT,
       agentCreatedAt: { not: null },
     },
     select: {
       id: true,
-      name: true,
+      title: true,
       handle: true,
       agentCreatedAt: true,
       agentOrigin: true,
@@ -920,7 +954,6 @@ const discardAgentDocument = async (id: string) =>
     const doc = await tx.document.findFirst({
       where: {
         id,
-        type: PrismaDocumentType.DOCUMENT,
         agentCreatedAt: { not: null },
       },
       select: { id: true, authorId: true },
@@ -941,38 +974,38 @@ const discardAgentDocument = async (id: string) =>
  * whole authorization is the author it resolved — so the filter has to be *in*
  * the query, where forgetting it is impossible rather than merely unlikely.
  *
- * Only `name`. Not the handle (it is a URL, and changing it breaks links), not
+ * Only `title`. Not the handle (it is a URL, and changing it breaks links), not
  * `published` (a publish is a decision, not a rename), and not the container
  * fields, which belong to the move routes.
  *
- * No compare-and-set on `head`: a rename does not touch content, so it cannot
- * race a save and cannot invalidate a pending proposal.
+ * No compare-and-set on `headRevisionId`: a rename does not touch content, so it
+ * cannot race a save and cannot invalidate a pending proposal.
  */
 const renameOwnedDocument = async (
-  { id, ownedBy, name, origin = APP_ORIGIN }: {
+  { id, ownedBy, title, origin = APP_ORIGIN }: {
     id: string;
     ownedBy: string;
-    name: string;
+    title: string;
     origin?: string;
   },
 ): Promise<
-  { ok: true; previousName: string } | { ok: false; reason: "not-found" }
+  { ok: true; previousTitle: string } | { ok: false; reason: "not-found" }
 > =>
   prisma.$transaction(async (tx) => {
     const doc = await tx.document.findFirst({
-      where: { id, authorId: ownedBy, type: PrismaDocumentType.DOCUMENT },
-      select: { id: true, name: true },
+      where: { id, authorId: ownedBy },
+      select: { id: true, title: true },
     });
     if (!doc) return { ok: false as const, reason: "not-found" as const };
 
-    await tx.document.update({ where: { id: doc.id }, data: { name } });
+    await tx.document.update({ where: { id: doc.id }, data: { title } });
     await notifyChange(tx, {
       kind: "document.updated",
       id: doc.id,
       authorId: ownedBy,
       origin,
     });
-    return { ok: true as const, previousName: doc.name };
+    return { ok: true as const, previousTitle: doc.title };
   });
 
 /**
@@ -1010,10 +1043,10 @@ const deleteOwnedDocument = async (
 > =>
   prisma.$transaction(async (tx) => {
     const doc = await tx.document.findFirst({
-      where: { id, authorId: ownedBy, type: PrismaDocumentType.DOCUMENT },
+      where: { id, authorId: ownedBy },
       select: {
         id: true,
-        name: true,
+        title: true,
         authorId: true,
         published: true,
         _count: { select: { revisions: true } },
@@ -1024,18 +1057,18 @@ const deleteOwnedDocument = async (
     // Trimmed, but not case-folded: this is a copy of a title the caller was
     // just shown, so tolerating stray whitespace is kindness and tolerating a
     // different capitalisation would be tolerating a different post.
-    if (confirmName === undefined || confirmName.trim() !== doc.name.trim()) {
+    if (confirmName === undefined || confirmName.trim() !== doc.title.trim()) {
       return {
         ok: false as const,
         reason: "unconfirmed" as const,
-        name: doc.name,
+        name: doc.title,
         revisions: doc._count.revisions,
         published: doc.published,
       };
     }
 
     await deleteDocumentRow(tx, doc, origin);
-    return { ok: true as const, name: doc.name };
+    return { ok: true as const, name: doc.title };
   });
 
 export {

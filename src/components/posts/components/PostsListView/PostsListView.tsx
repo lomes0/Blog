@@ -189,10 +189,10 @@ export function PostsListView({
     getId: (post) => post.id,
     // The row shows "Untitled" for an empty name, so the field opens with it —
     // but it is compared against the stored "" so typing it counts as a change.
-    getTitle: (post) => post.name || "Untitled",
-    getStoredTitle: (post) => post.name || "",
-    onCommit: (post, name) => {
-      dispatch(actions.updatePost({ id: post.id, partial: { name } }));
+    getTitle: (post) => post.title || "Untitled",
+    getStoredTitle: (post) => post.title || "",
+    onCommit: (post, title) => {
+      dispatch(actions.updatePost({ id: post.id, partial: { title } }));
       router.refresh();
     },
     initialContext: undefined,
@@ -227,7 +227,7 @@ export function PostsListView({
 
   // ── Delete handlers ───────────────────────────────────────────────────────
   const handleDeletePost = useCallback(async (post: Post) => {
-    const name = post.name || "This post";
+    const name = post.title || "This post";
     const confirmed = await confirm({
       title: "Delete Post",
       content: `Delete "${name}"? This cannot be undone.`,

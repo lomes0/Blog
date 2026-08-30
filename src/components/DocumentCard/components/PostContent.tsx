@@ -28,7 +28,7 @@ const PostContent: React.FC<PostContentProps> = ({
   // own query-string pushes.
   const router = useRouter();
   const document = post;
-  const title = document?.name || "Untitled Post";
+  const title = document?.title || "Untitled Post";
   const createdAt = document?.createdAt;
 
   // Format the date

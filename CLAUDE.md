@@ -75,10 +75,21 @@ globals; `compilerOptions.types` is deliberately left unset, because setting it
 would restrict resolution to only its entries and drop every other ambient
 package.
 
-Coverage is 61 specs, 1203 tests, of which the list below walks the ones worth
-knowing about rather than all of them. `src/lib/__tests__/orderArray.test.ts` is
-the newest: the tolerant reader that turns a container's order array into a
-rendered order (docs/plans/archive/ordering-simplification.md §6), plus the
+Coverage is 62 specs, 1221 tests, of which the list below walks the ones worth
+knowing about rather than all of them. The newest is
+`src/indexeddb/__tests__/migrations.test.ts`: what a version bump does to a
+guest's stored drafts (docs/plans/schema-organization.md §7). It goes through
+`recordTransformsFor`, the same composition the opener uses, and that is the
+point — the first version of the upgrade ran one cursor per migration, three
+cursors on one store
+overwrote each other, and a v8 profile came out having had exactly one of three
+renames applied. A spec that composed the transforms by hand agreed with itself
+while the browser silently lost two. The DOM half — the `versionchange`
+transaction and the index swaps — is verified by hand against a profile whose
+drafts were written by the previous build.
+`src/lib/__tests__/orderArray.test.ts` is next-newest: the tolerant reader
+that turns a container's order array into a rendered order
+(docs/plans/archive/ordering-simplification.md §6), plus the
 `withIds`/`withoutIds` maintenance the server repository and the guest library
 now share. It is entirely about drift, because drift is the whole risk — an
 array and its rows can always disagree, and the spec pins that a row the array

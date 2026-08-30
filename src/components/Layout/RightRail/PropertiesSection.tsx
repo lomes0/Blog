@@ -287,8 +287,8 @@ export default function PropertiesSection({
               alignItems: "baseline",
             }}
           >
-            {activeLocalDoc?.name && (
-              <KVRow k="Title" v={activeLocalDoc.name} />
+            {activeLocalDoc?.title && (
+              <KVRow k="Title" v={activeLocalDoc.title} />
             )}
             {activeLocalDoc?.updatedAt && (
               <KVRow

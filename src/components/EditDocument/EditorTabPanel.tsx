@@ -205,7 +205,7 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
         title: "Replace your unsaved edits?",
         content:
           `“${
-            reduxPost?.name ?? "This document"
+            reduxPost?.title ?? "This document"
           }” has changes here that were ` +
           "never saved, and the change you just approved replaces them. " +
           "Keep editing to save yours first — the approved version is already " +
@@ -222,12 +222,12 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
     editor.dispatchCommand(CLEAR_HISTORY_COMMAND, undefined);
     // The tab's save precondition has to move with the content, or its next
     // autosave carries the head it loaded at and 409s against the approval.
-    adoptSavedState(post.head, dataStr);
+    adoptSavedState(post.headRevisionId, dataStr);
   }, [
     editorRef,
     hasUnsavedChanges,
     confirm,
-    reduxPost?.name,
+    reduxPost?.title,
     dispatch,
     docId,
     adoptSavedState,
@@ -279,7 +279,7 @@ const EditorTabPanel: React.FC<EditorTabPanelProps> = ({
       {documentForEditor && (
         <>
           {/* One tab in one pane names the page. */}
-          {isFocused && <title>{documentForEditor.name}</title>}
+          {isFocused && <title>{documentForEditor.title}</title>}
           <DocumentHeader docId={docId} rootId={rootId}>
             {
               /* Only the visible panel draws them — the others are `display:

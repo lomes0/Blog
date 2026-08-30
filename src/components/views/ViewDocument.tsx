@@ -134,7 +134,7 @@ const ViewDocument: React.FC<ViewDocumentProps> = ({
         {/* Post header */}
         <Box sx={{ pt: 2, pb: 0 }}>
           <Typography variant="h4" component="h1" fontWeight={700} gutterBottom>
-            {cloudDocument.name}
+            {cloudDocument.title}
           </Typography>
           <Box
             sx={{

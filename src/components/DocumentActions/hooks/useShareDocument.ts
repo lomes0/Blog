@@ -11,14 +11,14 @@ export function useShareDocument(post: Post) {
   const isCollab = !!post.collab;
   const isPrivate = !!post.private;
   const id = post.id;
-  const name = post.name ?? "Untitled Document";
+  const name = post.title ?? "Untitled Document";
   const handle = post.handle ?? null;
 
   const formats = ["view", "embed", "pdf", "docx"];
   if (isAuthor || isCollab) formats.push("edit");
 
   const [format, setFormat] = useState("view");
-  const [revision, setRevision] = useState(post.head ?? null);
+  const [revision, setRevision] = useState(post.headRevisionId ?? null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const shareFormRef = useRef<HTMLFormElement>(null);
   const searchParams = useSearchParams();
@@ -26,7 +26,7 @@ export function useShareDocument(post: Post) {
   const openShareDialog = () => {
     setFormat(post.collab ? "edit" : "view");
     const v = searchParams.get("v");
-    setRevision(v || (post.head ?? null));
+    setRevision(v || (post.headRevisionId ?? null));
     setShareDialogOpen(true);
   };
 
@@ -38,7 +38,7 @@ export function useShareDocument(post: Post) {
   function getShareUrl(formdata: FormData) {
     const url = new URL(window.location.origin);
     url.pathname = `/${format}/${handle || id}`;
-    if (revision && revision !== post.head) {
+    if (revision && revision !== post.headRevisionId) {
       url.searchParams.append("v", revision);
     }
     if (format === "pdf") {

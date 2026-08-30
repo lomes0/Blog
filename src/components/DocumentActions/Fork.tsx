@@ -20,7 +20,7 @@ const ForkDocument: React.FC<
 > = ({ post, variant = "iconbutton", closeMenu }) => {
   const id = post.id;
   const handle = post.handle ?? null;
-  const head = post.head;
+  const head = post.headRevisionId;
   const searchParams = useSearchParams();
   const revisionId = searchParams.get("v");
   const run = useCommandRun();

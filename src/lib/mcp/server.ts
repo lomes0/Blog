@@ -18,7 +18,6 @@
 // tsx process.
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { DocumentType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { orderBy } from "@/lib/orderArray";
 // The read, the ops and the proposal write are shared with the in-app Copilot's
@@ -300,10 +299,10 @@ export function createContentServer(
     metered("read", async () => {
       const authorId = await getAuthorId();
       const docs = await prisma.document.findMany({
-        where: { authorId, type: DocumentType.DOCUMENT },
+        where: { authorId },
         select: {
           id: true,
-          name: true,
+          title: true,
           handle: true,
           published: true,
           seriesId: true,
@@ -439,10 +438,9 @@ export function createContentServer(
       const docs = await prisma.document.findMany({
         where: {
           authorId,
-          type: DocumentType.DOCUMENT,
           ...(id ? { id } : {}),
         },
-        select: { id: true, name: true, head: true },
+        select: { id: true, title: true, headRevisionId: true },
         orderBy: { updatedAt: "desc" },
       });
 
@@ -474,9 +472,9 @@ export function createContentServer(
       for (const doc of docs) {
         if (hits.length >= limit) break;
         const data = proposed.get(doc.id) ??
-          (doc.head
+          (doc.headRevisionId
             ? (await prisma.revision.findUnique({
-              where: { id: doc.head },
+              where: { id: doc.headRevisionId },
               select: { data: true },
             }))?.data
             : null);
@@ -491,7 +489,7 @@ export function createContentServer(
           const at = haystack.toLowerCase().indexOf(needle);
           hits.push({
             postId: doc.id,
-            title: doc.name,
+            title: doc.title,
             blockId: address,
             kind: block.type === "opaque" ? block.nodeType : block.type,
             preview: haystack
@@ -544,12 +542,12 @@ export function createContentServer(
         const result = await renameOwnedDocument({
           id,
           ownedBy: authorId,
-          name: title,
+          title,
           origin,
         });
         if (!result.ok) return fail(`Post ${id} not found (or not yours).`);
         return text(
-          `Renamed "${result.previousName}" to "${title}". This is live — the ` +
+          `Renamed "${result.previousTitle}" to "${title}". This is live — the ` +
             `post is now titled that in the author's library.`,
         );
       }),

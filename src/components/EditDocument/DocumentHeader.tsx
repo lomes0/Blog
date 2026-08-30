@@ -25,7 +25,7 @@ export default function DocumentHeader({
       return {
         // Show this tab's own label when set (root tab can differ from the post
         // title); otherwise fall back to the post/document name.
-        name: post?.tabLabel ?? post?.name ?? "Untitled",
+        name: post?.tabLabel ?? post?.title ?? "Untitled",
       };
     },
     shallowEqual,

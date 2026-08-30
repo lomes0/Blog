@@ -17,6 +17,7 @@ import { attachmentContentDB, documentDB, revisionDB } from "@/indexeddb";
 import type { AttachmentContentCache } from "@/indexeddb";
 import {
   type DocumentExport,
+  readDocumentExport,
   type ImportSummary,
   validateManifest,
 } from "@/lib/export/manifest";
@@ -71,7 +72,7 @@ export async function importLocalBackupZip(
     let docExport: DocumentExport;
     try {
       const raw = await zip.file(docFileName)!.async("string");
-      docExport = JSON.parse(raw) as DocumentExport;
+      docExport = readDocumentExport(JSON.parse(raw));
     } catch {
       summary.errors.push({ id: docFileName, reason: "Failed to parse JSON" });
       continue;
@@ -135,9 +136,9 @@ export async function importLocalBackupZip(
 
       const docRecord: Post = {
         id: docExport.id,
-        name: docExport.name,
+        title: docExport.name,
         description: docExport.description,
-        head: docExport.head,
+        headRevisionId: docExport.head,
         data: headRev?.data ??
           {
             root: {
@@ -154,11 +155,10 @@ export async function importLocalBackupZip(
         handle: docExport.handle,
         baseId: docExport.baseId,
         parentId: docExport.parentId,
-        type: "DOCUMENT",
         status: docExport.status
           ? (docExport.status as DocumentStatus)
           : undefined,
-        background_image: docExport.background_image,
+        // See the cloud importer: read from the bundle, dropped on the way in.
         seriesId: docExport.seriesId,
       };
 

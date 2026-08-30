@@ -62,11 +62,18 @@ model Series {
   @@index([projectId]) // Membership lookups
 }
 
-// Main content model with hierarchical structure (used for both posts and directories)
+// A post. Self-referential: `parent`/`children` are a tabbed post and its tabs,
+// `base`/`forks` the copy relationship. There is no second kind of node — the
+// `DocumentType` discriminator that once suggested one had a single member and
+// is gone (docs/plans/schema-organization.md §D).
 model Document {
   id          String   @id @default(uuid()) @db.Uuid
   handle      String?  @unique
-  name        String
+  // The post's title (docs/plans/schema-organization.md §C). `name` is what it
+  // was called, and what the export bundle still calls it — the bundle is a
+  // format with copies in users' hands, so it keeps its own vocabulary and the
+  // importers map between the two (`readDocumentExport`).
+  title       String
   description String?
   createdAt   DateTime @default(now()) @db.Timestamptz
   updatedAt   DateTime @updatedAt @db.Timestamptz
@@ -74,8 +81,23 @@ model Document {
   published   Boolean  @default(false)
   private     Boolean  @default(false)
 
-  // Document-specific fields
-  head   String? @db.Uuid
+  // Which revision is this document's committed content
+  // (docs/plans/schema-organization.md §B). A real foreign key rather than the
+  // loose client-minted UUID it replaces, so a pointer at a revision that never
+  // existed — or at one a delete removed — is no longer expressible.
+  //
+  // Nullable, and not as a hedge: `onDelete: SetNull` is what the column is
+  // *for*, and Prisma requires an optional field to express it. Deleting the
+  // head revision leaves the document without content rather than dangling at a
+  // row that is gone, which is the state `findDocument`'s head repair already
+  // knows how to recover from.
+  //
+  // Every create path still sets it, in the same transaction as the revision it
+  // names — see `createDocument` and `proposeNewPost`. Null therefore means
+  // "the head revision was deleted", never "this post was born without one".
+  headRevisionId String?   @db.Uuid
+  headRevision   Revision? @relation("HeadRevision", fields: [headRevisionId], references: [id], onDelete: SetNull)
+
   collab Boolean @default(false)
 
   // Status field for marking documents as active or done
@@ -84,11 +106,8 @@ model Document {
   // Series support for blog posts
   seriesId String? @db.Uuid
 
-  // Background image for posts (optional)
-  background_image String?
-
   // For tabbed posts: the label shown on this document's own tab. Lets the
-  // first (root) tab carry a name distinct from the post title in `name`.
+  // first (root) tab carry a label distinct from the post's own `title`.
   tabLabel String?
 
   // The order of this document's child tabs
@@ -101,13 +120,10 @@ model Document {
   base   Document?  @relation("BaseForks", fields: [baseId], references: [id], onDelete: SetNull)
   forks  Document[] @relation("BaseForks")
 
-  // Hierarchical relationships (for future features if needed)
+  // Hierarchical relationships: a tabbed post and its tabs
   parentId String?    @db.Uuid
   parent   Document?  @relation("DocumentHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
   children Document[] @relation("DocumentHierarchy")
-
-  // Type discrimination
-  type DocumentType
 
   // An agent-created post lands normally but stays flagged until you accept it
   // (docs/plans/archive/agent-gating.md §3.7). `published` defaults to false, so this is
@@ -118,23 +134,19 @@ model Document {
   // Relations
   author    User                @relation(fields: [authorId], references: [id], onDelete: Cascade)
   coauthors DocumentCoauthors[]
-  revisions Revision[]
+  revisions Revision[]          @relation("DocumentRevisions")
   series    Series?             @relation("SeriesPosts", fields: [seriesId], references: [id], onDelete: SetNull)
   blobs     BlobRef[]
 
   @@index([seriesId])
   @@index([authorId, published]) // Index for finding user's published posts
-  @@index([published, type]) // Index for finding published posts/documents
+  @@index([published]) // Index for finding published posts
   // `parentId` alone, because the composite it used to share with `rank` is
   // gone and this is the only index left serving "the children of this post"
   // (docs/plans/ordering-simplification.md §3). The other two dropped
   // composites each still have a leading-column index: `seriesId` above,
   // `authorId` in `@@index([authorId, published])`.
   @@index([parentId]) // A tabbed post's child tabs
-}
-
-enum DocumentType {
-  DOCUMENT
 }
 
 enum DocumentStatus {
@@ -151,10 +163,22 @@ model Revision {
   id         String   @id @default(uuid()) @db.Uuid
   data       Json
   createdAt  DateTime @default(now()) @db.Timestamptz
-  documentId String   @db.Uuid // References posts (Document with type DOCUMENT)
-  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId String   @db.Uuid
+  // Named because there are now two relations between these two models, and
+  // Prisma will not guess which is which: this one is "the revisions of a
+  // document", `HeadRevision` below is "the one revision a document is
+  // currently at". The names are client-side only — neither the column nor the
+  // constraint changes.
+  document   Document @relation("DocumentRevisions", fields: [documentId], references: [id], onDelete: Cascade)
   authorId   String   @db.Uuid
   author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  // Back-relation for `Document.headRevision`. Nothing reads it — it exists
+  // because Prisma requires both ends of a relation to be declared — so there
+  // is deliberately no index behind it: the only traversal in this direction is
+  // the `SET NULL` Postgres performs when a head revision is deleted, over a
+  // table with one row per post.
+  headOf     Document[] @relation("HeadRevision")
 
   // Which blobs this revision's content references (docs/plans/blob-storage.md
   // §3). Derived from `data` and written with it — a cache, not a second source

@@ -11,6 +11,7 @@ import { ingestInlineBlobs } from "@/lib/blobIngest";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
+import { randomUUID } from "crypto";
 import { validateHandle } from "./utils";
 import { documentCreateSchema } from "./schemas";
 
@@ -85,23 +86,29 @@ export const POST = userRoute(async (request, { user }) => {
 
   // Where it lands is the container's order array, which createDocument
   // appends to (docs/plans/archive/ordering-simplification.md §6).
+  // Minted here when the client did not supply one, because the id has to be
+  // known on *this* side to point the document at it: the pointer is a foreign
+  // key now, so `createDocument` writes it as a second statement after the
+  // nested revision commits (docs/plans/schema-organization.md §B). Letting
+  // Prisma default it would create the revision and leave nothing able to name
+  // it.
+  const headRevisionId = body.headRevisionId ?? randomUUID();
+
   const input: Prisma.DocumentUncheckedCreateInput = {
     id: body.id,
     authorId: user.id,
-    name: body.name,
+    title: body.title,
     createdAt: body.createdAt,
-    head: body.head,
     published: body.published,
     collab: body.collab,
     private: body.private,
     parentId: body.parentId,
-    type: body.type || "DOCUMENT",
     ...(body.description !== undefined && { description: body.description }),
     ...(body.tabLabel !== undefined && { tabLabel: body.tabLabel }),
     ...(body.seriesId !== undefined && { seriesId: body.seriesId }),
     revisions: {
       create: {
-        id: body.head || undefined,
+        id: headRevisionId,
         data: body.data as unknown as Prisma.JsonObject,
         // With the content, always (docs/plans/blob-storage.md §3).
         blobHashes: blobHashesFor(body.data),
@@ -158,7 +165,11 @@ export const POST = userRoute(async (request, { user }) => {
     if (basePost) input.baseId = body.baseId;
   }
 
-  const data = await createDocument({ ...input, placement: body.placement });
+  const data = await createDocument({
+    ...input,
+    headRevisionId,
+    placement: body.placement,
+  });
 
   // A fork, a duplicate or a guest draft being uploaded arrives with content
   // that already references blobs, and no upload happened to record them

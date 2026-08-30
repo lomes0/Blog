@@ -15,8 +15,8 @@ export const GET = optionalUserRoute<{ id: string }>(
     const userDocument = await requireDocument(params.id, user, "read", {
       subtitle: "You are not authorized to View this document",
     });
-    const thumbnail = userDocument.head
-      ? await findRevisionThumbnail(userDocument.head)
+    const thumbnail = userDocument.headRevisionId
+      ? await findRevisionThumbnail(userDocument.headRevisionId)
       : null;
     return NextResponse.json({ data: thumbnail });
   },

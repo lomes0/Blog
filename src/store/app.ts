@@ -726,7 +726,7 @@ export const appSlice = createSlice({
         // carries the right compare-and-set precondition rather than 409ing
         // against the head it was loaded at.
         const post = state.posts.entities[documentId];
-        if (post && head) post.head = head;
+        if (post && head) post.headRevisionId = head;
       })
       .addCase(approveProposal.rejected, (state, action) => {
         announceFailure(state, action.payload);

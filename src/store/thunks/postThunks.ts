@@ -81,17 +81,17 @@ export const duplicatePost = createApiThunk(
     const source = await backend.get(arg.id);
     if (!source) fail("post not found");
     const now = new Date().toISOString();
-    const head = uuidv4();
+    const headRevisionId = uuidv4();
     const data = source.data ?? EMPTY_EDITOR_STATE;
     return await backend.create(toCreateInput(source, {
       id: arg.newId,
-      name: arg.newName,
+      title: arg.newName,
       handle: null, // handles are unique; the copy earns its own
-      head,
+      headRevisionId,
       createdAt: now,
       updatedAt: now,
       data,
-      revisions: [{ id: head, documentId: arg.newId, createdAt: now, data }],
+      revisions: [{ id: headRevisionId, documentId: arg.newId, createdAt: now, data }],
     }));
   },
 );
@@ -111,12 +111,12 @@ export const forkPost = createApiThunk(
       const backend = backendOf(thunkAPI.getState);
       const own = await backend.get(id);
       if (own) {
-        if (!revisionId || revisionId === own.head) return own;
+        if (!revisionId || revisionId === own.headRevisionId) return own;
         const revision = await backend.revisions.get(revisionId);
         if (!revision) fail("revision not found");
         return {
           ...own,
-          head: revision.id,
+          headRevisionId: revision.id,
           updatedAt: revision.createdAt,
           data: revision.data,
         };
@@ -185,20 +185,19 @@ export const mergePostsIntoTabs = createApiThunk(
     const { targetId, sourceIds } = arg;
     const backend = backendOf(thunkAPI.getState);
 
-    const createTab = async (name: string, data: SerializedEditorState) => {
+    const createTab = async (title: string, data: SerializedEditorState) => {
       const now = new Date().toISOString();
       const id = uuidv4();
-      const head = uuidv4();
+      const headRevisionId = uuidv4();
       await backend.create({
         id,
-        name,
-        head,
+        title,
+        headRevisionId,
         createdAt: now,
         updatedAt: now,
-        type: "DOCUMENT",
         parentId: targetId,
         data,
-        revisions: [{ id: head, documentId: id, createdAt: now, data }],
+        revisions: [{ id: headRevisionId, documentId: id, createdAt: now, data }],
       });
     };
 
@@ -209,12 +208,12 @@ export const mergePostsIntoTabs = createApiThunk(
       // Flatten: the source's own child tabs become siblings too.
       const childStubs = await backend.children(sourceId);
 
-      await createTab(source.name, source.data ?? EMPTY_EDITOR_STATE);
+      await createTab(source.title, source.data ?? EMPTY_EDITOR_STATE);
       for (const stub of childStubs) {
         const child = await backend.get(stub.id);
         if (!child) continue;
         await createTab(
-          child.name ?? stub.name,
+          child.title ?? stub.title,
           child.data ?? EMPTY_EDITOR_STATE,
         );
       }

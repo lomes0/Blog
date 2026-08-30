@@ -2,6 +2,7 @@
 import { IDB_KEY } from "./constants";
 import { getActions, getConnection } from "./idb";
 import { IndexedDBConfig } from "./interfaces";
+import { migrations } from "./migrations";
 import { Post, Revision } from "@/types";
 import type { SerializedEditorState } from "lexical";
 
@@ -55,11 +56,19 @@ const idbConfig = {
   // retired once every profile had been swept, so there is nothing left to
   // follow this one. See `docs/plans/archive/legacy-idb-retirement.md`.
   databaseName: "blog-simple",
-  // 8 adds `orders`; 7 added `workspaces`; 6 added `copilotThreads`. Bumping
-  // the version is what runs `onupgradeneeded`, which creates any store in this
-  // list the database does not already have — existing stores and their
-  // contents are untouched.
-  version: 8,
+  // 11 drops `type`; 10 renamed `name` to `title` and dropped
+  // `background_image`; 9 renamed `head` to `headRevisionId`; 8 added `orders`;
+  // 7 added `workspaces`; 6 added `copilotThreads`. Bumping the version is what
+  // runs
+  // `onupgradeneeded`, which creates any store in this list the database does
+  // not already have — existing stores and their contents are untouched.
+  //
+  // Untouched is the part that stopped being enough at 9. Up to 8 every bump
+  // only *added* a store, so there was nothing to convert; from 9 on the bumps
+  // rename fields the stored records already carry, and a guest's records are
+  // the only copy of those drafts that exists. `migrations` below is what
+  // rewrites them — see `./migrations.ts`.
+  version: 11,
   stores: [
     {
       name: "documents",
@@ -70,12 +79,12 @@ const idbConfig = {
           keyPath: "handle",
           options: { unique: true },
         },
-        { name: "name", keyPath: "name" },
+        { name: "title", keyPath: "title" },
         { name: "data", keyPath: "data" },
         { name: "createdAt", keyPath: "createdAt" },
         { name: "updatedAt", keyPath: "updatedAt" },
         { name: "baseId", keyPath: "baseId" },
-        { name: "head", keyPath: "head" },
+        { name: "headRevisionId", keyPath: "headRevisionId" },
       ],
     },
     {
@@ -134,6 +143,7 @@ const idbConfig = {
       indices: [],
     },
   ],
+  migrations,
 };
 
 if (typeof window !== "undefined") {

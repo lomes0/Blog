@@ -36,7 +36,7 @@ export async function generateMetadata(
   const document = await getCachedUserDocument(id[0], searchParams.v);
   if (document) {
     if (document.collab || document.published) {
-      metadata.title = `Fork ${document.name}`;
+      metadata.title = `Fork ${document.title}`;
       const formattedDate = format(
         new Date(document.updatedAt),
         "MMMM d, yyyy, h:mm a",
@@ -113,7 +113,7 @@ export default async function Page(
       );
     }
   }
-  const revisionId = searchParams.v || document.head;
+  const revisionId = searchParams.v || document.headRevisionId;
   const thumbnails = {
     [revisionId]: findRevisionThumbnail(revisionId),
   };

@@ -32,7 +32,7 @@ const DownloadDocument: React.FC<
     }
     const revisions: Revision[] = [];
     for (const meta of full.revisions ?? []) {
-      if (meta.id === full.head) continue; // already carried as `data`
+      if (meta.id === full.headRevisionId) continue; // already carried as `data`
       try {
         revisions.push(await dispatch(actions.getRevision(meta.id)).unwrap());
       } catch {
@@ -59,7 +59,7 @@ const DownloadDocument: React.FC<
     // the domain of the project this app was forked from, registered as a file
     // handler in the manifest. Nothing reads the extension back — the import
     // panel only accepts `.zip` — so no existing backup is invalidated.
-    link.download = backupDocument.name + ".json";
+    link.download = backupDocument.title + ".json";
     link.href = window.URL.createObjectURL(blob);
     link.dataset.downloadurl = ["text/json", link.download, link.href].join(
       ":",

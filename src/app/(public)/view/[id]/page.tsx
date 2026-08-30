@@ -34,8 +34,8 @@ const getTabs = async (document: Post): Promise<ViewTab[]> => {
   const children = await findDocumentChildren(rootId);
   return [
     // The root tab can carry its own label distinct from the post title.
-    { id: rootId, name: root?.tabLabel ?? root?.name ?? "Post" },
-    ...children.map((child) => ({ id: child.id, name: child.name })),
+    { id: rootId, name: root?.tabLabel ?? root?.title ?? "Post" },
+    ...children.map((child) => ({ id: child.id, name: child.title })),
   ];
 };
 
@@ -57,7 +57,7 @@ export async function generateMetadata(
   const metadata: OgMetadata = { id: params.id, title: "View Post" };
   const document = await getCachedUserDocument(params.id, "all");
   if (document) {
-    const revisionId = searchParams.v ?? document.head;
+    const revisionId = searchParams.v ?? document.headRevisionId;
     const revision = document.revisions.find((revision) =>
       revision.id === revisionId
     );
@@ -67,7 +67,7 @@ export async function generateMetadata(
       const isAuthor = user && user.id === document.author.id;
       // Simplified blog structure: no coauthors, only authors can access private posts
       if (isAuthor) {
-        metadata.title = document.name;
+        metadata.title = document.title;
         metadata.description = document.description || undefined;
         metadata.subtitle = revision
           ? `Last updated: ${
@@ -84,7 +84,7 @@ export async function generateMetadata(
         metadata.subtitle = "If you have access, please sign in to view it";
       }
     } else {
-      metadata.title = document.name;
+      metadata.title = document.title;
       metadata.description = document.description || undefined;
       metadata.subtitle = revision
         ? `Last updated: ${
@@ -126,7 +126,7 @@ export default async function Page(
   try {
     const document = await getCachedUserDocument(params.id, "all");
     if (!document) return <SplashScreen title="Post not found" />;
-    const revisionId = searchParams.v ?? document.head;
+    const revisionId = searchParams.v ?? document.headRevisionId;
     const revision = document.revisions.find((revision) =>
       revision.id === revisionId
     );
@@ -192,7 +192,7 @@ export default async function Page(
         tabs={tabs}
         isAuthor={!!user && user.id === document.author.id}
         isSignedIn={!!user}
-        pinnedRevisionId={revisionId !== document.head ? revisionId : undefined}
+        pinnedRevisionId={revisionId !== document.headRevisionId ? revisionId : undefined}
       />
     );
   } catch (error) {

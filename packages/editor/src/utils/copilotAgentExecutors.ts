@@ -113,7 +113,7 @@ function pendingProposalFor(
   const state = store.getState();
   const proposal = state.ui.proposals.byDocId[id];
   if (!proposal) return null;
-  const head = postsSelectors.selectById(state, id)?.head ?? proposal.head;
+  const head = postsSelectors.selectById(state, id)?.headRevisionId ?? proposal.head;
   return { proposal, stale: isProposalStale(proposal, head ?? null) };
 }
 
@@ -181,7 +181,7 @@ async function load(
 
   // View mode has no editor, and cloud-only documents deliberately omit
   // revision bodies from Redux. Hydrate the cloud head on demand.
-  const revisionId = docs.find((doc) => doc.id === id)?.head;
+  const revisionId = docs.find((doc) => doc.id === id)?.headRevisionId;
   if (!revisionId) return null;
   const revision = await apiClient.revisions.get(revisionId);
   if (!revision?.data) return null;

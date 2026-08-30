@@ -26,8 +26,8 @@ const hashIn = (s: string): string => /stateHash:\s*(\S+)/.exec(s)?.[1] ?? "";
 
 /** Read `head` directly — the tools deliberately never move it, so assert it. */
 const headOf = async (id: string) =>
-  (await prisma.document.findUnique({ where: { id }, select: { head: true } }))
-    ?.head ?? null;
+  (await prisma.document.findUnique({ where: { id }, select: { headRevisionId: true } }))
+    ?.headRevisionId ?? null;
 
 async function main() {
   const transport = new StdioClientTransport({

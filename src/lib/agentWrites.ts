@@ -44,7 +44,6 @@
  * checks who the caller is.
  */
 import { randomUUID } from "node:crypto";
-import { DocumentType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { changeNotification } from "@/lib/changes/notify";
 import { isProposalStale, selectAgentRead } from "@/lib/proposals";
@@ -141,9 +140,8 @@ export async function readAgentState(
       ...(options.ownedBy ? { authorId: options.ownedBy } : {}),
       // Only regular documents. The enum has one member today, so this filter
       // costs nothing and states the intent for the day it does not.
-      type: DocumentType.DOCUMENT,
     },
-    select: { id: true, name: true, head: true, authorId: true },
+    select: { id: true, title: true, headRevisionId: true, authorId: true },
   });
   if (!doc) return null;
 
@@ -157,7 +155,7 @@ export async function readAgentState(
   // agent reading the current content. `selectAgentRead` makes the same call
   // from the same function; this one only decides whether the committed state is
   // worth fetching, since it is the whole document state.
-  const usePending = !!pending && !isProposalStale(pending, doc.head);
+  const usePending = !!pending && !isProposalStale(pending, doc.headRevisionId);
 
   // Only looked up when there is no proposal to read instead. Both arms filter
   // `proposedAt: null`: the no-head fallback in particular used to be a bare
@@ -167,9 +165,9 @@ export async function readAgentState(
   // wrong.
   const committed = usePending
     ? null
-    : doc.head
+    : doc.headRevisionId
     ? await prisma.revision.findFirst({
-      where: { id: doc.head, proposedAt: null },
+      where: { id: doc.headRevisionId, proposedAt: null },
       select: { id: true, data: true },
     })
     : await prisma.revision.findFirst({
@@ -178,14 +176,14 @@ export async function readAgentState(
       select: { id: true, data: true },
     });
 
-  const read = selectAgentRead({ head: doc.head, pending, committed });
+  const read = selectAgentRead({ head: doc.headRevisionId, pending, committed });
 
   // A document with no revision yet is an empty document, not an error — it can
   // be written to like any other.
   const data = read.revision?.data;
   return {
     id: doc.id,
-    name: doc.name,
+    name: doc.title,
     ownerId: doc.authorId,
     state: (data as StoredState | undefined) ?? emptyState(),
     base: read.base,
@@ -433,15 +431,19 @@ export async function proposeNewPost(
     authorId: input.authorId,
     origin: input.origin,
   });
+  // Three statements where there used to be two, and the order is the whole
+  // point: `headRevisionId` is a foreign key
+  // (docs/plans/schema-organization.md §B), so the document is created without
+  // one, the revision it will name goes in next, and the pointer is written
+  // last. All inside the same transaction, so a post still never commits
+  // without its head.
   await prisma.$transaction([
     prisma.document.create({
       data: {
         id,
-        name: input.title,
+        title: input.title,
         authorId: input.authorId,
-        type: DocumentType.DOCUMENT,
         seriesId,
-        head: revisionId,
         agentCreatedAt: new Date(),
         agentOrigin: input.origin,
       },
@@ -460,6 +462,10 @@ export async function proposeNewPost(
         // null while every revision `proposeOps` writes carried its origin.
         origin: input.origin,
       },
+    }),
+    prisma.document.update({
+      where: { id },
+      data: { headRevisionId: revisionId },
     }),
     ...(notification ? [notification] : []),
   ]);

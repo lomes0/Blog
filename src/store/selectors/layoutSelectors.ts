@@ -112,7 +112,7 @@ export const selectPaneDescriptions = createSelector(
       return {
         id: pane.id,
         docId,
-        title: (docId ? entities[docId]?.name : null) ?? null,
+        title: (docId ? entities[docId]?.title : null) ?? null,
         mode: pane.mode,
         focused: pane.id === focusedPaneId,
         maximized: pane.id === maximizedPaneId,

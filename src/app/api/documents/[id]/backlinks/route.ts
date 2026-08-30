@@ -25,16 +25,16 @@ export const GET = userRoute<{ id: string }>(
     // Find documents (root-level, not child tabs) whose latest revision JSON
     // contains a reference to the target document id.
     const rows = await prisma.$queryRaw<
-      { id: string; name: string; handle: string | null }[]
+      { id: string; title: string; handle: string | null }[]
     >`
-      SELECT DISTINCT d.id, d.name, d.handle
+      SELECT DISTINCT d.id, d.title, d.handle
       FROM "Revision" r
       JOIN "Document" d ON d.id = r."documentId"
       WHERE d."authorId" = ${user.id}::uuid
         AND r.data::text LIKE ${"%" + documentId + "%"}
         AND d.id != ${documentId}::uuid
         AND d."parentId" IS NULL
-      ORDER BY d.name
+      ORDER BY d.title
       LIMIT 20
     `;
 

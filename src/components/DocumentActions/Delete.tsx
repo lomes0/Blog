@@ -19,7 +19,7 @@ const DeletePost: React.FC<{
   const dispatch = useDispatch();
   const router = useRouter();
   const id = post.id;
-  const name = post.name || "This Item";
+  const name = post.title || "This Item";
 
   const handleDelete = async () => {
     if (closeMenu) closeMenu();

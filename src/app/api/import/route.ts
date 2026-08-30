@@ -21,6 +21,7 @@ import JSZip from "jszip";
 import { revalidatePath } from "next/cache";
 import {
   type DocumentExport,
+  readDocumentExport,
   type ImportSummary,
   type SeriesExport,
   validateManifest,
@@ -144,7 +145,7 @@ export const POST = userRoute(async (request, { user }) => {
     let docExport: DocumentExport;
     try {
       const raw = await zip.file(docFileName)!.async("string");
-      docExport = JSON.parse(raw) as DocumentExport;
+      docExport = readDocumentExport(JSON.parse(raw));
     } catch {
       summary.errors.push({ id: docFileName, reason: "Failed to parse JSON" });
       continue;
@@ -192,7 +193,42 @@ export const POST = userRoute(async (request, { user }) => {
         }
       }
 
-      // Create revisions first (preserving original IDs and timestamps)
+      // The document row first, and deliberately: its revisions carry
+      // `documentId` as a foreign key, so creating them ahead of it — which is
+      // what this route did until docs/plans/schema-organization.md §B went
+      // looking — is a constraint violation that fails every import of a
+      // document this deployment has not already seen.
+      //
+      // It is born without a head. `headRevisionId` is a foreign key too now,
+      // pointing the other way, so the pointer can only be written once the
+      // revision it names exists; that is the update below. Between the two,
+      // the document is a post whose content has not landed yet, which is a
+      // state the whole route is already wrapped in a transaction against.
+      await prisma.document.create({
+        data: {
+          id: docExport.id,
+          title: docExport.name,
+          description: docExport.description ?? null,
+          handle: docExport.handle ?? null,
+          authorId: user.id,
+          published: docExport.published ?? false,
+          collab: docExport.collab ?? false,
+          private: docExport.private ?? false,
+          baseId: docExport.baseId ?? null,
+          parentId: docExport.parentId ?? null,
+          status: (docExport.status as "ACTIVE" | "DONE") ?? "ACTIVE",
+          // `docExport.background_image` is read and dropped: an old bundle
+          // still carries it, and there is no longer a column to put it in
+          // (docs/plans/schema-organization.md §C). It named a file whose bytes
+          // were deleted (docs/plans/blob-storage.md §10.2), so nothing is lost
+          // that a restore could have brought back.
+          seriesId,
+          createdAt: new Date(docExport.createdAt),
+          updatedAt: new Date(docExport.updatedAt),
+        },
+      });
+
+      // Then the revisions (preserving original IDs and timestamps)
       for (const rev of docExport.revisions) {
         const revExists = await prisma.revision.findUnique({
           where: { id: rev.id },
@@ -217,32 +253,17 @@ export const POST = userRoute(async (request, { user }) => {
         }
       }
 
-      // Determine head revision — fall back to the last revision if not among imported
+      // Last, the head pointer — fall back to the newest revision when the
+      // bundle's own head is not among the ones that landed. `undefined` leaves
+      // it null, which is a document whose content the bundle did not carry.
       const headRevisionId = docExport.head ??
         docExport.revisions[docExport.revisions.length - 1]?.id;
-
-      // Create the document, appended to the end of its container.
-      await prisma.document.create({
-        data: {
-          id: docExport.id,
-          name: docExport.name,
-          description: docExport.description ?? null,
-          head: headRevisionId ?? null,
-          handle: docExport.handle ?? null,
-          authorId: user.id,
-          published: docExport.published ?? false,
-          collab: docExport.collab ?? false,
-          private: docExport.private ?? false,
-          baseId: docExport.baseId ?? null,
-          parentId: docExport.parentId ?? null,
-          type: "DOCUMENT",
-          status: (docExport.status as "ACTIVE" | "DONE") ?? "ACTIVE",
-          background_image: docExport.background_image ?? null,
-          seriesId,
-          createdAt: new Date(docExport.createdAt),
-          updatedAt: new Date(docExport.updatedAt),
-        },
-      });
+      if (headRevisionId) {
+        await prisma.document.update({
+          where: { id: docExport.id },
+          data: { headRevisionId },
+        });
+      }
 
       imported.push({
         container: containerOf({

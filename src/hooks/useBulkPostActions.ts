@@ -195,7 +195,7 @@ export function useBulkPostActions({
   const handleBulkMerge = useCallback(async () => {
     if (!canMerge) return;
     const [target, ...sources] = selectedPosts;
-    const targetName = target.name || "this post";
+    const targetName = target.title || "this post";
     const confirmed = await confirm({
       title: "Merge into tabs",
       content: `Merge ${sources.length + 1} posts into "${targetName}"? ` +

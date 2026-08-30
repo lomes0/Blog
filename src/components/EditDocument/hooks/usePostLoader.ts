@@ -96,7 +96,7 @@ export function usePostLoader(
       const pending = await readPendingSave(post.id);
       if (isCancelled()) return;
 
-      if (isPendingSaveAhead(pending, post.head)) {
+      if (isPendingSaveAhead(pending, post.headRevisionId)) {
         // An earlier save never made it through. Show that content and flag it
         // for delivery once the editor is up.
         setLoadedPost({ ...post, data: pending.data });
@@ -132,24 +132,23 @@ async function createNotesPost(
 ): Promise<Post> {
   const now = new Date().toISOString();
   const id = uuidv4();
-  const head = uuidv4();
+  const headRevisionId = uuidv4();
   const data = WELCOME_NOTES_EDITOR_STATE;
 
   const created = await dispatch(
     actions.createPost({
       id,
-      name: "My Notes",
+      title: "My Notes",
       description: "Your personal notes document",
       handle: "notes",
-      head,
+      headRevisionId,
       createdAt: now,
       updatedAt: now,
-      type: "DOCUMENT",
       private: true,
       published: false,
       collab: false,
       data,
-      revisions: [{ id: head, documentId: id, createdAt: now, data }],
+      revisions: [{ id: headRevisionId, documentId: id, createdAt: now, data }],
     }),
   ).unwrap();
 

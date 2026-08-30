@@ -12,14 +12,11 @@ interface UseDocumentFilteringProps {
 export const useDocumentFiltering = ({
   documents,
 }: UseDocumentFilteringProps) => {
-  const regularDocuments = useMemo(
-    () =>
-      documents.filter((doc) => {
-        const docData = doc;
-        return docData?.type === "DOCUMENT";
-      }),
-    [documents],
-  );
+  // Every document *is* a post: the `type` discriminator had one value and is
+  // gone (docs/plans/schema-organization.md §D), so the filter it fed matched
+  // everything. Kept as a memo of the same list rather than deleted outright,
+  // because the caller's prop is what names it "regular".
+  const regularDocuments = useMemo(() => documents, [documents]);
 
   return { regularDocuments };
 };

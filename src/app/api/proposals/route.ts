@@ -38,9 +38,9 @@ export const GET = userRoute(
       id: row.id,
       version: row.version,
       documentId: row.documentId,
-      documentName: row.document.name,
+      documentName: row.document.title,
       documentHandle: row.document.handle,
-      head: row.document.head,
+      head: row.document.headRevisionId,
       baseRevisionId: row.baseRevisionId,
       // Non-null by the query's own `where`; the column is nullable because
       // "not a proposal" is the ordinary case for a revision row.
@@ -52,7 +52,7 @@ export const GET = userRoute(
 
     const agentPosts: AgentCreatedPost[] = agentDocs.map((doc) => ({
       id: doc.id,
-      name: doc.name,
+      name: doc.title,
       handle: doc.handle,
       agentCreatedAt: (doc.agentCreatedAt ?? new Date()).toISOString(),
       agentOrigin: doc.agentOrigin,

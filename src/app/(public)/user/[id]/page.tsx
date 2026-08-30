@@ -76,7 +76,7 @@ const UserDocumentsWrapper = async (
     currentPage * pageSize,
   );
   const thumbnails = pageDocuments.reduce((acc, document) => {
-    acc[document.head] = findRevisionThumbnail(document.head);
+    acc[document.headRevisionId] = findRevisionThumbnail(document.headRevisionId);
     return acc;
   }, {} as Record<string, Promise<string | null>>);
 

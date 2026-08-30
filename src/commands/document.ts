@@ -155,8 +155,14 @@ const fork = defineCommand<DocumentForkParams>({
 
 const renameParams = z.object({
   id: documentRef,
-  /** Matches the rename affordances in the UI, which also trim and require one. */
-  name: z.string().trim().min(1, "A post needs a title"),
+  /**
+   * Matches the rename affordances in the UI, which also trim and require one.
+   *
+   * `title`, not `name`, since docs/plans/schema-organization.md §C: it is the
+   * spelling the model uses and the one `rename_post` on the MCP side already
+   * took, so the app's two agent surfaces now name the same field the same way.
+   */
+  title: z.string().trim().min(1, "A post needs a title"),
 });
 type DocumentRenameParams = z.infer<typeof renameParams>;
 
@@ -178,25 +184,25 @@ const rename = defineCommand<DocumentRenameParams>({
   params: renameParams,
   effect: "mutate",
   scopes: ["document"],
-  preview: async (_ctx, { id, name }) => {
+  preview: async (_ctx, { id, title }) => {
     const { postsSelectors, store } = await import("@/store");
     const post = postsSelectors.selectById(store.getState(), id);
     return {
       summary: post
-        ? `Rename “${post.name}” to “${name}”`
-        : `Rename ${id} to “${name}”`,
-      detail: { id, name, previousName: post?.name ?? null },
+        ? `Rename “${post.title}” to “${title}”`
+        : `Rename ${id} to “${title}”`,
+      detail: { id, title, previousTitle: post?.title ?? null },
     };
   },
-  run: async (ctx, { id, name }) => {
+  run: async (ctx, { id, title }) => {
     const { actions } = await import("@/store");
     const result = await ctx.dispatch(
-      actions.updatePost({ id, partial: { name } }),
+      actions.updatePost({ id, partial: { title } }),
     );
     if (actions.updatePost.rejected.match(result)) {
       return commandFailed(`Could not rename ${id}.`);
     }
-    return commandOk(`Renamed to “${name}”.`);
+    return commandOk(`Renamed to “${title}”.`);
   },
 });
 

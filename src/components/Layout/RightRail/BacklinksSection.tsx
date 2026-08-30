@@ -10,7 +10,7 @@ import { useCommandRun } from "@/commands/CommandProvider";
 
 interface BacklinkDoc {
   id: string;
-  name: string;
+  title: string;
   handle: string | null;
 }
 
@@ -109,7 +109,7 @@ export default function BacklinksSection({ rootId }: BacklinksSectionProps) {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  {doc.name}
+                  {doc.title}
                 </Box>
               </Link>
             ))}

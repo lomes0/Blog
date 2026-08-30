@@ -107,9 +107,9 @@ export async function buildLocalBackupZip(): Promise<LocalBundleResult> {
 
     const docExport: DocumentExport = {
       id: doc.id,
-      name: doc.name,
+      name: doc.title,
       description: doc.description,
-      head: doc.head,
+      head: doc.headRevisionId,
       handle: doc.handle,
       createdAt: doc.createdAt instanceof Date
         ? doc.createdAt.toISOString()
@@ -119,7 +119,7 @@ export async function buildLocalBackupZip(): Promise<LocalBundleResult> {
         : doc.updatedAt,
       type: "DOCUMENT",
       status: doc.status ?? "ACTIVE",
-      background_image: doc.background_image,
+      // See the cloud bundler: the column is gone, the field stays readable.
       seriesId: doc.seriesId,
       baseId: doc.baseId,
       parentId: doc.parentId,

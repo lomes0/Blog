@@ -102,7 +102,7 @@ const EditorTopBar: React.FC = () => {
       const dSeriesId = doc?.seriesId;
 
       return {
-        docName: doc?.name,
+        docName: doc?.title,
         docSeriesId: dSeriesId,
         seriesTitle: urlSeriesId
           ? state.series.find((s) => s.id === urlSeriesId)?.title

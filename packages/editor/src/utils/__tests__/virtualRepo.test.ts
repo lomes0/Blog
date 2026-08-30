@@ -38,12 +38,12 @@ const paragraph = (value: string) => ({
 
 const doc = (
   id: string,
-  name: string,
+  title: string,
   children?: unknown[],
 ): Post =>
   ({
     id,
-    name,
+    title,
     seriesId: null,
     ...(children
       ? {

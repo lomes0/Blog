@@ -218,8 +218,16 @@ export const localBackend: PostBackend = {
     // incoming one is not trusted: it would be the *original's* child ids on a
     // duplicate (`toCreateInput` drops it for that reason).
     const stored = { ...toStored(post), tabOrder: post.tabOrder ?? [] };
-    await postDB.add(stored as Post);
+    // Revisions first, then the record that names one as its head. IndexedDB
+    // has no foreign keys, so nothing here *enforces* the order the cloud's
+    // `headRevisionId` constraint enforces (docs/plans/schema-organization.md
+    // §B) — it is kept by this write path being the only one, the same way a
+    // guest's container order arrays are kept
+    // (docs/plans/archive/ordering-simplification.md §7). Getting it backwards
+    // costs a post that survives a crash pointing at a revision that does not,
+    // which is the one shape of broken the cloud can no longer represent.
     if (revisions?.length) await revisionDB.addMany(revisions);
+    await postDB.add(stored as Post);
     // Its container's array gains the id, at the end it was asked for
     // (docs/plans/archive/ordering-simplification.md §6, "Create"). The cloud
     // does the same thing in `createDocument`; this is the guest's half of it.
@@ -235,8 +243,10 @@ export const localBackend: PostBackend = {
 
   async update(id, partial: PostUpdateInput) {
     const { revisions, ...post } = partial;
-    await postDB.patch(id, toStored(post));
+    // Same order as `create`, for the same reason: a save writes the new
+    // revision and then moves the pointer onto it.
     if (revisions?.length) await revisionDB.addMany(revisions);
+    await postDB.patch(id, toStored(post));
     const updated = await readPost(id);
     if (!updated) throw new Error("failed to update post");
     return updated;

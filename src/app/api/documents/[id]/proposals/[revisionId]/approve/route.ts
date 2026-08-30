@@ -122,7 +122,7 @@ export const POST = userRoute<{ id: string; revisionId: string }>(
         // this revision the caller's intent is satisfied, and a second click on
         // a rail button should not read as an error. Anything else genuinely is
         // not there: no such revision, or one belonging to another document.
-        if (userPost.head === params.revisionId) {
+        if (userPost.headRevisionId === params.revisionId) {
           return NextResponse.json({
             data: {
               id: userPost.id,

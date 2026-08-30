@@ -52,7 +52,7 @@ export const cloudBackend: PostBackend = {
     // come from the editor payload, which is what the editor actually renders.
     return {
       ...toPost(cloudDocument),
-      head: editorDocument.head,
+      head: editorDocument.headRevisionId,
       updatedAt: editorDocument.updatedAt,
       data: editorDocument.data,
     };

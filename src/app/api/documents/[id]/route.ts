@@ -53,8 +53,8 @@ export const PATCH = userRoute<{ id: string }>(
     const body = await parseBody(request, documentUpdateSchema);
 
     const input: Prisma.DocumentUncheckedUpdateInput = {
-      name: body.name,
-      head: body.head,
+      title: body.title,
+      headRevisionId: body.headRevisionId,
       handle: body.handle,
       createdAt: body.createdAt,
       published: body.published,
@@ -120,12 +120,12 @@ export const PATCH = userRoute<{ id: string }>(
 
     // `head` names the revision the content belongs to, so content without one
     // has nowhere to go — previously it reached Prisma as `where: { id: undefined }`.
-    if (body.data && body.head) {
+    if (body.data && body.headRevisionId) {
       input.revisions = {
         connectOrCreate: {
-          where: { id: body.head },
+          where: { id: body.headRevisionId },
           create: {
-            id: body.head,
+            id: body.headRevisionId,
             authorId: user.id,
             createdAt: body.updatedAt,
             data: body.data as unknown as Prisma.InputJsonObject,
@@ -161,7 +161,7 @@ export const PATCH = userRoute<{ id: string }>(
     // The content is committed; bring the document's blob references in line
     // with it (docs/plans/blob-storage.md §3). Only a content save can change
     // them — a rename or a publish toggle carries no `data`.
-    if (body.data && body.head) {
+    if (body.data && body.headRevisionId) {
       await reconcileDocumentBlobs(params.id);
     }
 

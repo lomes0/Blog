@@ -50,15 +50,21 @@ export const editorStateSchema = z
  * cycles and appends it to the target container's order array. See
  * `documentUpdateSchema`.
  *
- * `background_image` is not here either, for an unrelated reason: the feature
- * was removed and its bytes deleted (docs/plans/blob-storage.md §10.2). The
- * column survives so old export bundles still import, but nothing may write it
- * through the API — a write would only ever store a path to a file that cannot
- * exist. Create strips it; update 400s on it.
+ * `background_image` is not here either, and no longer anywhere: the feature was
+ * removed, its bytes deleted (docs/plans/blob-storage.md §10.2) and the column
+ * dropped (docs/plans/schema-organization.md §C). An old export bundle still
+ * carries the field; import reads it and drops it.
  */
 const documentFields = {
-  name: z.string(),
-  head: z.string().uuid(),
+  // `title`, matching `Document.title` and the `Post` type the client sends
+  // (docs/plans/schema-organization.md §C). The wire name moves with the model
+  // rather than being pinned: both ends of this seam are this app, and the
+  // update schema is `.strict()`, so a client still sending `name` gets a 400
+  // that says so instead of a silent no-op rename.
+  title: z.string(),
+  // `headRevisionId`, matching the column and the `Post` type
+  // (docs/plans/schema-organization.md §B) — same reasoning as `title` above.
+  headRevisionId: z.string().uuid(),
   handle: z.string().nullish(),
   description: z.string().nullish(),
   tabLabel: z.string().nullish(),
@@ -95,12 +101,11 @@ const documentFields = {
 export const documentCreateSchema = z.object({
   ...documentFields,
   id: z.string().uuid(),
-  type: z.literal("DOCUMENT").optional(),
   parentId: z.string().uuid().nullish(),
   seriesId: z.string().uuid().nullish(),
   baseId: z.string().uuid().nullish(),
   placement: z.enum(["start", "end"]).optional(),
-  head: documentFields.head.optional(),
+  headRevisionId: documentFields.headRevisionId.optional(),
   createdAt: clientDate.optional(),
   updatedAt: clientDate.optional(),
   published: z.boolean().optional(),
@@ -128,7 +133,8 @@ export const documentCreateSchema = z.object({
  * (docs/plans/archive/ordering-simplification.md §4) and is written by that
  * container's order endpoint, never field-by-field here.
  *
- * `expectedHead` is the one field here that is not a column. It is the
+ * `expectedHead` is the one field here that is not a column, and keeps its own
+ * name for that reason — it is a precondition, not a value to store. It is the
  * compare-and-set: send the head this write is based on and the update is
  * refused with a 409 if storage has moved on, which is what stops a long-open
  * tab from pointing `head` back at its own revision and orphaning whatever an

@@ -33,14 +33,14 @@ export async function generateMetadata(
   const metadata: OgMetadata = { id: params.id, title: "Editor" };
   const document = await getCachedUserDocument(params.id, searchParams.v);
   if (document) {
-    const revisionId = searchParams.v ?? document.head;
+    const revisionId = searchParams.v ?? document.headRevisionId;
     const revision = document.revisions.find((revision) =>
       revision.id === revisionId
     );
     if (document.private) {
       metadata.title = "Private Document";
     } else {
-      metadata.title = document.name;
+      metadata.title = document.title;
       metadata.subtitle = revision
         ? `Last updated: ${
           format(new Date(revision.createdAt), "MMMM d, yyyy, h:mm a")
@@ -83,7 +83,7 @@ export default async function Page(
     if (document.private) {
       return <SplashScreen title="This document is private" />;
     }
-    const revisionId = searchParams.v ?? document.head;
+    const revisionId = searchParams.v ?? document.headRevisionId;
     if (!validate(revisionId)) {
       return <SplashScreen title="Revision not found" />;
     }

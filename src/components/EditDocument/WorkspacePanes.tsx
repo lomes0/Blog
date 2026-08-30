@@ -80,7 +80,7 @@ const PaneFrame: React.FC<PaneFrameProps> = ({
   const docId = pane.activeTabId ?? pane.rootId;
   const title = useSelector(
     (state: RootState) =>
-      postsSelectors.selectById(state, docId)?.name ?? "Untitled",
+      postsSelectors.selectById(state, docId)?.title ?? "Untitled",
   );
 
   const activate = useCallback(() => {

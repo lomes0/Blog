@@ -113,14 +113,14 @@ export const ActivePostsSection: React.FC<ActivePostsSectionProps> = ({
         }
         const filteredPosts = group.posts.filter((post) => {
           const doc = post;
-          return doc?.name?.toLowerCase().includes(searchLower);
+          return doc?.title?.toLowerCase().includes(searchLower);
         });
         return filteredPosts.length > 0
           ? { ...group, posts: filteredPosts }
           : null;
       }
       const doc = group.posts[0];
-      return doc?.name?.toLowerCase().includes(searchLower) ? group : null;
+      return doc?.title?.toLowerCase().includes(searchLower) ? group : null;
     };
     return rootItems
       .map((item): RootItem | null => {

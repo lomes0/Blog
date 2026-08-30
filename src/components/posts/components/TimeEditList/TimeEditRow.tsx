@@ -132,7 +132,7 @@ const TimeEditRow: React.FC<TimeEditRowProps> = ({
               // renamed may claim it — otherwise the last row rendered would
               // steal the hook's focus effect.
               inputRef={isEditing ? rename.inputRef : undefined}
-              value={isEditing ? rename.value : (post.name || "")}
+              value={isEditing ? rename.value : (post.title || "")}
               onChange={handleNameChange}
               onFocus={handleNameFocus}
               onBlur={rename.handleBlur}

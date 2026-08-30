@@ -111,7 +111,7 @@ export interface SidebarActionsResult {
 
 /** Title a post's inline field opens with, per renamed field. */
 function postTitle(post: Post, field: RenameField): string {
-  const name = post.name || "Untitled";
+  const name = post.title || "Untitled";
   // The first tab's label can differ from the post title; fall back to it.
   return field === "tabLabel" ? post.tabLabel ?? name : name;
 }
@@ -173,7 +173,7 @@ export function useSidebarActions(): SidebarActionsResult {
     // Compare against the raw stored value, not `postTitle`'s "Untitled"
     // placeholder, so naming an untitled post "Untitled" for real still writes.
     getStoredTitle: (post, field) =>
-      (field === "tabLabel" ? post.tabLabel : post.name) ?? "",
+      (field === "tabLabel" ? post.tabLabel : post.title) ?? "",
     initialContext: "name",
     onCommit: (post, title, field) => {
       const partial: { name?: string; tabLabel?: string } = { [field]: title };
@@ -184,8 +184,8 @@ export function useSidebarActions(): SidebarActionsResult {
       // separate first-tab item, so their heading keeps following the post name.
       if (field === "name") {
         const hasTabs = documents.some((doc) => doc.parentId === post.id);
-        if (hasTabs && !post.tabLabel && post.name) {
-          partial.tabLabel = post.name;
+        if (hasTabs && !post.tabLabel && post.title) {
+          partial.tabLabel = post.title;
         }
       }
       dispatch(actions.updatePost({ id: post.id, partial }));
@@ -263,7 +263,7 @@ export function useSidebarActions(): SidebarActionsResult {
     async (seriesId?: string | null) => {
       try {
         const payload = buildPostCreateInput({
-          name: UNTITLED_POST,
+          title: UNTITLED_POST,
           // A post born from a "+" is a draft. `/new` shows the visibility
           // checkboxes before anything is created; a one-click affordance has no
           // such moment, and `published && !private` is exactly the pair that

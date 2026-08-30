@@ -35,7 +35,7 @@ export const usePostState = (post?: Post, user?: User) => {
       seriesOrder: seriesPositionOf(post?.series, post?.id ?? ""),
     };
 
-    const ariaLabel = post ? `Open ${post.name} post` : "Loading post";
+    const ariaLabel = post ? `Open ${post.title} post` : "Loading post";
 
     return {
       document: post ?? null,

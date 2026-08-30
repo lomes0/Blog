@@ -11,7 +11,7 @@ export function useDocumentSubmit(
   const document = post;
   const id = post.id;
 
-  const name = post.name ?? "Untitled Document";
+  const name = post.title ?? "Untitled Document";
   const handle = post.handle ?? null;
   const isPrivate = !!post.private;
   const isPublished = !!post.published;
@@ -22,8 +22,8 @@ export function useDocumentSubmit(
     event.preventDefault();
     onClose();
     const partial: Partial<PostUpdateInput> = {};
-    if (input.name !== name) {
-      partial.name = input.name;
+    if (input.title !== name) {
+      partial.title = input.title;
       partial.updatedAt = new Date().toISOString();
     }
     if (input.handle !== handle) partial.handle = input.handle || null;

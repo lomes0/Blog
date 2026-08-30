@@ -284,7 +284,7 @@ const proposalSummarySelect = {
   summary: true,
   baseRevisionId: true,
   staleAt: true,
-  document: { select: { name: true, handle: true, head: true } },
+  document: { select: { title: true, handle: true, headRevisionId: true } },
 } as const;
 
 export type ProposalSummaryRow = Prisma.RevisionGetPayload<
@@ -821,8 +821,8 @@ const approveProposal = async (
       }
 
       const { count } = await tx.document.updateMany({
-        where: { id: documentId, head: plan.expectedHead },
-        data: { head: revisionId },
+        where: { id: documentId, headRevisionId: plan.expectedHead },
+        data: { headRevisionId: revisionId },
       });
       if (count === 0) return { ok: false, reason: "conflict" };
 

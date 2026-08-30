@@ -39,16 +39,16 @@ export const TimeEditList: React.FC<TimeEditListProps> = ({
   const rename = useInlineRename<Post, undefined>({
     items: posts,
     getId: (post) => post.id,
-    getTitle: (post) => post.name || "",
-    onCommit: (post, name) => {
-      dispatch(actions.updatePost({ id: post.id, partial: { name } }));
+    getTitle: (post) => post.title || "",
+    onCommit: (post, title) => {
+      dispatch(actions.updatePost({ id: post.id, partial: { title } }));
       router.refresh();
     },
     initialContext: undefined,
   });
 
   const handleDelete = async (post: Post) => {
-    const name = post.name || "This post";
+    const name = post.title || "This post";
     const alertPayload = {
       title: "Delete Post",
       content:

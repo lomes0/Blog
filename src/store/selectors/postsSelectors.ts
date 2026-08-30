@@ -15,7 +15,7 @@ export const selectStandalonePosts = createSelector(
     const seriesPostIds = new Set<string>();
     series.forEach((s) => s.posts?.forEach((p) => seriesPostIds.add(p.id)));
     return posts.filter((post) =>
-      post.type === "DOCUMENT" && !seriesPostIds.has(post.id) && !post.parentId
+      !seriesPostIds.has(post.id) && !post.parentId
     );
   },
 );
@@ -43,7 +43,7 @@ export const selectAllPosts = createSelector(
     });
 
     const standalonePosts = posts.filter((post) =>
-      post.type === "DOCUMENT" && !seriesPostIds.has(post.id) && !post.parentId
+      !seriesPostIds.has(post.id) && !post.parentId
     );
 
     return [...seriesPosts, ...standalonePosts];

@@ -26,7 +26,7 @@ export async function fetchStorageUsage(
     if (!full) continue;
     usage.push({
       id: full.id,
-      name: full.name,
+      name: full.title,
       size: new Blob([JSON.stringify(full)]).size,
     });
   }

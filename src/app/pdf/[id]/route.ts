@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     // Redirect to embed page
     const embedUrl = new URL(url);
     embedUrl.pathname = `/embed/${handle}`;
-    if (!revision) embedUrl.searchParams.set("v", document.head);
+    if (!revision) embedUrl.searchParams.set("v", document.headRevisionId);
 
     return NextResponse.redirect(embedUrl.toString());
   } catch (error) {

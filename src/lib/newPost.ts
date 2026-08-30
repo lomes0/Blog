@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 import type { PostCreateInput } from "@/types";
 import { getEditorData } from "@/utils/getEditorData";
 
-/** The name a post is born with when its surface never asked for one. */
+/** The title a post is born with when its surface never asked for one. */
 export const UNTITLED_POST = "Untitled Document";
 
 /**
@@ -26,10 +26,9 @@ export function buildPostCreateInput(
   return {
     ...overrides,
     id: overrides.id ?? uuidv4(),
-    head: overrides.head ?? uuidv4(),
-    name: overrides.name || UNTITLED_POST,
+    headRevisionId: overrides.headRevisionId ?? uuidv4(),
+    title: overrides.title || UNTITLED_POST,
     data: overrides.data ?? getEditorData(),
-    type: "DOCUMENT",
     parentId: overrides.parentId ?? null,
     seriesId: overrides.seriesId ?? null,
     createdAt: overrides.createdAt ?? now,

@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     if (!document || document.private) {
       throw new Error("Document not found");
     }
-    if (!revision) url.searchParams.set("v", document.head);
+    if (!revision) url.searchParams.set("v", document.headRevisionId);
     url.pathname = `/api/docx/${handle}`;
     if (url.hostname === "localhost") url.protocol = "http:";
     const response = await fetch(url.toString());
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
         "Content-Type":
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "Content-Disposition": `inline; filename="${
-          encodeURIComponent(document.name)
+          encodeURIComponent(document.title)
         }.docx"`,
       },
     });

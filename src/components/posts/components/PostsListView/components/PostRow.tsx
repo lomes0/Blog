@@ -70,7 +70,7 @@ export const PostRow = React.memo(function PostRow({
 }: PostRowProps) {
   const run = useCommandRun();
   const document = post;
-  const name = document?.name || "Untitled";
+  const name = document?.title || "Untitled";
   const date = document?.updatedAt || document?.createdAt;
   const isEditing = rename.renamingId === post.id;
   const rowHeight = density === "compact" ? 36 : 44;

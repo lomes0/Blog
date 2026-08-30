@@ -58,7 +58,18 @@ export interface DocumentExport {
   id: string;
   name: string;
   description?: string | null;
-  head: string; // UUID of the current/head revision
+  /**
+   * UUID of the current/head revision — `Document.headRevisionId`
+   * (docs/plans/schema-organization.md §B).
+   *
+   * Kept under its old name here even though the column was renamed, because
+   * the bundle is a format and not a projection of the schema: a `.zip` written
+   * a year ago is still sitting in someone's downloads folder, and it is the
+   * only copy of what it holds. Renaming the key would cost nothing today —
+   * `readDocumentExport` below would accept both — and would still be a
+   * gratuitous second spelling for every future reader to know about.
+   */
+  head: string;
   handle?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -88,6 +99,52 @@ export interface DocumentExport {
    * both shapes: an old bundle is still a complete backup of what it was.
    */
   referencedBlobs?: BlobExport[];
+}
+
+/**
+ * A document entry as it may actually arrive from a `.zip`.
+ *
+ * Every field is optional and unknown ones are kept, because the file on disk
+ * was written by whatever build the user had at the time and is the only copy
+ * of what it holds. The current spellings are admitted alongside the bundle's
+ * own, so a bundle that ever does get written from the model's vocabulary still
+ * reads — see {@link readDocumentExport}.
+ */
+export type StoredDocumentExport =
+  & Partial<DocumentExport>
+  & {
+    /** The model's names for the three fields the bundle spells differently. */
+    title?: string;
+    headRevisionId?: string;
+  };
+
+/**
+ * Normalise one `documents/{id}.json` entry to the shape the importers read.
+ *
+ * The bundle keeps the field names it was born with (`name`, `head`), and the
+ * `Document` columns behind them have since been renamed
+ * (docs/plans/schema-organization.md §B, §C). Both importers go through here so
+ * that fact lives in one place rather than as a `??` at each of the two dozen
+ * sites that read an entry — and so that "which spellings does import accept?"
+ * has an answer that can be read rather than reconstructed.
+ *
+ * Anything the entry does not carry is left absent; the callers already supply
+ * defaults, and inventing them here would hide a bundle that is genuinely short
+ * of a field.
+ */
+export function readDocumentExport(raw: unknown): DocumentExport {
+  const entry = (raw ?? {}) as StoredDocumentExport;
+  return {
+    ...entry,
+    id: entry.id as string,
+    name: entry.name ?? entry.title ?? "",
+    head: entry.head ?? entry.headRevisionId ?? "",
+    createdAt: entry.createdAt as string,
+    updatedAt: entry.updatedAt as string,
+    type: "DOCUMENT",
+    revisions: entry.revisions ?? [],
+    referencedAssets: entry.referencedAssets ?? [],
+  };
 }
 
 /** Minimal series record: series/series.json is SeriesExport[] */

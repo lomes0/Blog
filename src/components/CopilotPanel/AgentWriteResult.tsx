@@ -85,7 +85,7 @@ export default function AgentWriteResult(
     documentId ? appState.ui.proposals.byDocId[documentId] : undefined
   );
   const head = useSelector((appState) =>
-    documentId ? postsSelectors.selectById(appState, documentId)?.head : null
+    documentId ? postsSelectors.selectById(appState, documentId)?.headRevisionId : null
   );
 
   // Loading (DESIGN.md §9), and the default for every state that is not yet a

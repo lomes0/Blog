@@ -132,9 +132,9 @@ export const GET = userRoute(async (_request, { user }) => {
 
     const docExport: DocumentExport = {
       id: doc.id,
-      name: doc.name,
+      name: doc.title,
       description: doc.description,
-      head: doc.head ?? revisions[revisions.length - 1]?.id ?? "",
+      head: doc.headRevisionId ?? revisions[revisions.length - 1]?.id ?? "",
       handle: doc.handle,
       createdAt: doc.createdAt.toISOString(),
       updatedAt: doc.updatedAt.toISOString(),
@@ -145,7 +145,10 @@ export const GET = userRoute(async (_request, { user }) => {
       parentId: doc.parentId,
       type: "DOCUMENT",
       status: (doc.status as "ACTIVE" | "DONE") ?? "ACTIVE",
-      background_image: doc.background_image,
+      // No `background_image`: the column is gone
+      // (docs/plans/schema-organization.md §C). The field stays on
+      // `DocumentExport` because bundles already written carry it, and import
+      // still reads them — this end simply has nothing left to put there.
       seriesId: doc.seriesId,
       revisions,
       referencedAssets,

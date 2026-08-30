@@ -441,8 +441,8 @@ async function main(): Promise<void> {
       try {
         const skeleton = textOf(await client.callTool({ name: "outline", arguments: { id: newId } }));
         const headBefore = (
-          await prisma.document.findUnique({ where: { id: newId }, select: { head: true } })
-        )?.head;
+          await prisma.document.findUnique({ where: { id: newId }, select: { headRevisionId: true } })
+        )?.headRevisionId;
 
         await client.callTool({
           name: "apply_ops",
@@ -458,8 +458,8 @@ async function main(): Promise<void> {
           select: { origin: true },
         });
         const headAfter = (
-          await prisma.document.findUnique({ where: { id: newId }, select: { head: true } })
-        )?.head;
+          await prisma.document.findUnique({ where: { id: newId }, select: { headRevisionId: true } })
+        )?.headRevisionId;
 
         expect(proposals.length === 1, `expected exactly 1 pending proposal, got ${proposals.length}`);
         expect(headAfter === headBefore, "head moved — a remote write committed instead of proposing");

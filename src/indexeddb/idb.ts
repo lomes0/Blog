@@ -1,6 +1,7 @@
 "use client";
 import { IDB_KEY } from "./constants";
 import { IndexedDBConfig } from "./interfaces";
+import { recordTransformsFor, schemaStepsFor } from "./migrations";
 import { waitUntil } from "./utils";
 
 declare global {
@@ -76,7 +77,8 @@ export async function getConnection(
         reject(request.error?.name ?? "Unknown error");
       };
 
-      // Creates any store in the config the database does not already have.
+      // Creates any store in the config the database does not already have,
+      // then runs whatever data migrations the version jump crossed.
       // It does not resolve: `onsuccess` always fires after the upgrade
       // transaction commits, and resolving here handed the caller a connection
       // that had just been closed. Nothing noticed, because the only caller on
@@ -92,6 +94,66 @@ export async function getConnection(
             });
           }
         });
+
+        // `oldVersion === 0` is a database being created, not upgraded: the
+        // stores above were just made from the current config and hold nothing,
+        // so there is nothing for a migration to rewrite and running one would
+        // only be a chance to get it wrong.
+        if (e.oldVersion === 0) return;
+
+        // `request.transaction` is the `versionchange` transaction — the only
+        // one that may touch schema and data in the same breath, and the reason
+        // a rename of a stored field and of the index over it commit together
+        // or not at all. A migration that throws aborts it, which leaves the
+        // database at its old version with its records untouched: the next open
+        // tries again rather than leaving a guest with a half-renamed library.
+        const tx = request.transaction;
+        if (!tx || !_config.migrations?.length) return;
+        const migrations = _config.migrations;
+
+        try {
+          // Schema first, in version order: an index has to exist over the key
+          // the records are about to be given.
+          for (
+            const migration of schemaStepsFor(
+              e.oldVersion,
+              _config.version,
+              migrations,
+            )
+          ) {
+            migration.schema!(tx);
+          }
+
+          // Then **one** cursor pass per store, over the composed transform of
+          // every version being crossed. One pass rather than one per version,
+          // because two cursors open on the same store each hold the record as
+          // they found it: they would take turns writing back the original plus
+          // their own change, and the survivor would be whichever finished
+          // last. That is not a hypothetical — it is what a v8 profile did on
+          // the first run of this, applying the third rename and losing the
+          // other two while the index changes beside them succeeded, so it
+          // looked like it had worked.
+          for (
+            const [storeName, transform] of recordTransformsFor(
+              e.oldVersion,
+              _config.version,
+              migrations,
+            )
+          ) {
+            if (!db.objectStoreNames.contains(storeName)) continue;
+            const cursorRequest = tx.objectStore(storeName).openCursor();
+            cursorRequest.onsuccess = () => {
+              const cursor = cursorRequest.result;
+              if (!cursor) return;
+              const next = transform(cursor.value as Record<string, unknown>);
+              if (next) cursor.update(next);
+              cursor.continue();
+            };
+          }
+        } catch (error) {
+          console.error("[idb] upgrade failed", error);
+          throw error;
+        }
       };
     } else {
       reject("Failed to connect");

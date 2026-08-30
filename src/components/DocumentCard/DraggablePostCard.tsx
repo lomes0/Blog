@@ -36,7 +36,7 @@ const DraggablePostCard: React.FC<DraggablePostCardProps> = ({
   const document = post;
 
   const handleDragStart = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    setDragPayload(e.dataTransfer, [post.id], document?.name);
+    setDragPayload(e.dataTransfer, [post.id], document?.title);
 
     if (cardRef.current) {
       const rect = cardRef.current.getBoundingClientRect();
@@ -49,7 +49,7 @@ const DraggablePostCard: React.FC<DraggablePostCardProps> = ({
 
     setIsDragging(true);
     setGlobalDragging(true);
-  }, [post.id, document?.name, setGlobalDragging]);
+  }, [post.id, document?.title, setGlobalDragging]);
 
   const handleDragEnd = useCallback(() => {
     setIsDragging(false);
@@ -75,8 +75,8 @@ const DraggablePostCard: React.FC<DraggablePostCardProps> = ({
       onDrop={handleDrop}
       role="button"
       tabIndex={0}
-      aria-label={document?.name
-        ? `Draggable ${document.name}`
+      aria-label={document?.title
+        ? `Draggable ${document.title}`
         : "Draggable post"}
       sx={{
         cursor: "grab",

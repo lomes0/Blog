@@ -40,7 +40,7 @@ export interface RepoSearchHit {
   text: string;
 }
 
-const titleOf = (doc: Post): string => doc.name ?? "Untitled";
+const titleOf = (doc: Post): string => doc.title ?? "Untitled";
 const stateOf = (doc: Post): StoredState | undefined =>
   doc.data as StoredState | undefined;
 

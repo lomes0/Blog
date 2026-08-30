@@ -1,4 +1,3 @@
-import { DocumentType as PrismaDocumentType } from "@prisma/client";
 import { validate } from "uuid";
 import { prisma } from "@/lib/prisma";
 import { orderBy } from "@/lib/orderArray";
@@ -48,21 +47,19 @@ const postSelect = (author: typeof authorSelect | typeof publicAuthorSelect) =>
   ({
     id: true,
     handle: true,
-    name: true,
+    title: true,
     description: true,
     createdAt: true,
     updatedAt: true,
     authorId: true,
     published: true,
     private: true,
-    head: true,
+    headRevisionId: true,
     collab: true,
     status: true,
     seriesId: true,
-    background_image: true,
     baseId: true,
     parentId: true,
-    type: true,
     author: { select: author },
     coauthors: {
       select: { user: { select: author } },
@@ -93,7 +90,6 @@ const postSelect = (author: typeof authorSelect | typeof publicAuthorSelect) =>
  * `findPublishedDocuments` in the document repository.
  */
 const publiclyVisiblePosts = {
-  type: PrismaDocumentType.DOCUMENT,
   published: true,
   private: false,
 } as const;
@@ -159,8 +155,7 @@ export async function findAllSeries(): Promise<Series[]> {
     ...s,
     posts: orderedPosts(s).map((p) => ({
       ...p,
-      type: p.type as "DOCUMENT",
-      head: p.head || "",
+      headRevisionId: p.headRevisionId || "",
       coauthors: p.coauthors.map((c) => c.user),
       revisions: p.revisions as RevisionMeta[],
     })) as CloudPost[],
@@ -204,8 +199,7 @@ export async function findPublicSeriesById(
     ...series,
     posts: orderedPosts(series).map((p) => ({
       ...p,
-      type: p.type as "DOCUMENT",
-      head: p.head || "",
+      headRevisionId: p.headRevisionId || "",
       coauthors: p.coauthors.map((c) => c.user),
       revisions: p.revisions as RevisionMeta[],
     })) as CloudPost[],
@@ -243,7 +237,6 @@ export async function findSeriesById(id: string): Promise<Series | null> {
       posts: {
         select: postSelect(authorSelect),
         where: {
-          type: PrismaDocumentType.DOCUMENT,
         },
       },
     },
@@ -255,8 +248,7 @@ export async function findSeriesById(id: string): Promise<Series | null> {
     ...series,
     posts: orderedPosts(series).map((p) => ({
       ...p,
-      type: p.type as "DOCUMENT",
-      head: p.head || "",
+      headRevisionId: p.headRevisionId || "",
       coauthors: p.coauthors.map((c) => c.user),
       revisions: p.revisions as RevisionMeta[],
     })) as CloudPost[],
@@ -284,7 +276,6 @@ export async function findSeriesByAuthorId(
       posts: {
         select: postSelect(authorSelect),
         where: {
-          type: PrismaDocumentType.DOCUMENT,
         },
       },
     },
@@ -297,8 +288,7 @@ export async function findSeriesByAuthorId(
     ...s,
     posts: orderedPosts(s).map((p) => ({
       ...p,
-      type: p.type as "DOCUMENT",
-      head: p.head || "",
+      headRevisionId: p.headRevisionId || "",
       coauthors: p.coauthors.map((c) => c.user),
       revisions: p.revisions as RevisionMeta[],
     })) as CloudPost[],
@@ -427,7 +417,6 @@ export async function getAvailablePostsForSeries(
     where: {
       authorId,
       seriesId: null,
-      type: PrismaDocumentType.DOCUMENT,
     },
     select: postSelect(authorSelect),
     orderBy: {
@@ -437,8 +426,7 @@ export async function getAvailablePostsForSeries(
 
   return posts.map((p) => ({
     ...p,
-    type: p.type as "DOCUMENT",
-    head: p.head || "",
+    headRevisionId: p.headRevisionId || "",
     coauthors: p.coauthors.map((c) => c.user),
     revisions: p.revisions as RevisionMeta[],
   })) as CloudPost[];

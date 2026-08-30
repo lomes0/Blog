@@ -122,7 +122,7 @@ export const PostItem = memo(
     );
 
     const doc = post;
-    const docName = doc?.name || "Untitled";
+    const docName = doc?.title || "Untitled";
     // The first tab's label can differ from the post title; fall back to it.
     const rootTabLabel = doc?.tabLabel ?? docName;
     // "Open in a pane", not "named by the address bar": with two panes the URL
@@ -152,7 +152,7 @@ export const PostItem = memo(
       for (const child of children) {
         entries.push({
           id: child.id,
-          name: child?.name || "Untitled",
+          name: child?.title || "Untitled",
         });
       }
       return entries;

@@ -108,8 +108,8 @@ const EditDocumentDialog: React.FC<{
             }}
           >
             <EditTitleField
-              value={input.name || ""}
-              onChange={(name) => updateInput({ name })}
+              value={input.title || ""}
+              onChange={(title) => updateInput({ title })}
             />
             <EditDescriptionField
               value={input.description || ""}

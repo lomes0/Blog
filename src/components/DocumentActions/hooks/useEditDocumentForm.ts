@@ -15,11 +15,11 @@ export function useEditDocumentForm(post: Post) {
   const isAuthor = post.author ? post.author.id === user?.id : true;
   const currentStatus = post.status || DocumentStatus.ACTIVE;
 
-  const name = post.name ?? "Untitled Document";
+  const title = post.title ?? "Untitled Document";
   const handle = post.handle ?? null;
 
   const [input, setInput] = useState<Partial<PostUpdateInput>>({
-    name,
+    title,
     handle,
     coauthors: post.coauthors?.flatMap((u) => u.email ? [u.email] : []) ?? [],
     private: isPrivate,
@@ -54,7 +54,7 @@ export function useEditDocumentForm(post: Post) {
 
   useEffect(() => {
     setInput({
-      name,
+      title,
       handle,
       description: document?.description || "",
       coauthors: post.coauthors?.flatMap((u) => u.email ? [u.email] : []) ?? [],
@@ -76,7 +76,7 @@ export function useEditDocumentForm(post: Post) {
     isCollab,
     isPrivate,
     isPublished,
-    name,
+    title,
     resetValidation,
   ]);
 

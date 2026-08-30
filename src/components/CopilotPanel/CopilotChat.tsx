@@ -117,7 +117,7 @@ const CopilotChat: React.FC<CopilotChatProps> = (
   const doc = useSelector((state) =>
     documentId ? postsSelectors.selectById(state, documentId) : undefined
   );
-  const documentTitle = doc?.name ?? "Untitled";
+  const documentTitle = doc?.title ?? "Untitled";
   // Storage is scoped per conversation, and a document-less conversation is
   // still a conversation worth keeping across a panel close.
   const scope = documentId ?? WORKSPACE_SCOPE;

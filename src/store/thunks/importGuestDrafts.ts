@@ -56,9 +56,9 @@ export const importGuestDrafts = createApiThunk(
         }
         // A draft always needs at least its head revision, or the cloud copy
         // would have no content to render.
-        if (!revisions.some((r) => r.id === full.head)) {
+        if (!revisions.some((r) => r.id === full.headRevisionId)) {
           revisions.push({
-            id: full.head,
+            id: full.headRevisionId,
             documentId: full.id,
             createdAt: full.updatedAt,
             data: full.data ?? EMPTY_EDITOR_STATE,
@@ -73,7 +73,7 @@ export const importGuestDrafts = createApiThunk(
         imported++;
       } catch (error: unknown) {
         console.error(error);
-        failures.push(draft.name);
+        failures.push(draft.title);
       }
     }
 

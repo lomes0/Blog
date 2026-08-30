@@ -20,7 +20,7 @@ interface DocItemProps {
  */
 const DocItem: React.FC<DocItemProps> = ({ document }) => {
   const doc = document;
-  const title = doc?.name || "Untitled";
+  const title = doc?.title || "Untitled";
   const docId = document.id;
   const run = useCommandRun();
 
