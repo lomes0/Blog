@@ -9,22 +9,16 @@ import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
-// `destination.projectId` re-homes the series into a project (or to the root
-// list when null); omit `destination` to keep its current container. `between`
-// gives the neighbour ranks to drop between; omit it to append.
+// `destination.projectId` re-homes the series into a project, or to the root
+// list when null. It is required, and the move appends
+// (docs/plans/ordering-simplification.md §4): a reorder within a container is
+// not this endpoint any more, it is the container's own order write, so
+// "destination omitted, keep the container" no longer means anything.
 const moveSchema = z.object({
-  destination: z
-    .object({
-      projectId: z.string().uuid().nullish(),
-    })
-    .optional(),
-  between: z
-    .object({
-      afterRank: z.string().nullish(),
-      beforeRank: z.string().nullish(),
-    })
-    .optional(),
-});
+  destination: z.object({
+    projectId: z.string().uuid().nullish(),
+  }),
+}).strict();
 
 // PATCH /api/series/[id]/move → reorder a series within the root list
 export const PATCH = userRoute<{ id: string }>(
@@ -39,10 +33,10 @@ export const PATCH = userRoute<{ id: string }>(
       "You can only reorder your own series",
     );
 
-    const { destination, between } = await parseBody(request, moveSchema);
+    const { destination } = await parseBody(request, moveSchema);
 
     // Moving into a project: the destination must be the caller's own project.
-    if (destination?.projectId) {
+    if (destination.projectId) {
       await requireOwnedProject(
         destination.projectId,
         user,
@@ -50,7 +44,7 @@ export const PATCH = userRoute<{ id: string }>(
       );
     }
 
-    await moveSeriesTx({ id: params.id, destination, between });
+    await moveSeriesTx({ id: params.id, destination });
 
     revalidatePath("/");
     revalidatePath("/series");

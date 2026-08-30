@@ -364,7 +364,7 @@ export const SeriesRow = React.memo(function SeriesRow({
           }}
         >
           {visiblePosts.map((p) => {
-            // Reorder against the full rank-ordered list, not the (possibly
+            // Reorder against the full ordered list, not the (possibly
             // date-sorted, truncated) preview slice.
             const fullIdx = posts.findIndex((x) => x.id === p.id);
             return (

@@ -12,11 +12,12 @@ import { validate } from "uuid";
 import { historyOf, selectHead } from "@/lib/proposals";
 import { getCachedRevision, markProposalsStale } from "./revision";
 import {
+  addToOrder,
   containerOf,
+  freeIntoRoot,
   rankForAppend,
   rankForPrepend,
-  reRankIntoRoot,
-  syncOrder,
+  removeFromOrder,
 } from "./ordering";
 import { APP_ORIGIN } from "@/lib/changes/events";
 import { changeNotification, notifyChange } from "@/lib/changes/notify";
@@ -428,11 +429,16 @@ const createDocument = async (
   await prisma.$transaction(statements);
 
   // The container's order array gains the new id
-  // (docs/plans/ordering-simplification.md §6, "Create"). After the commit
-  // rather than inside it: the recompute has to see the row it is ordering, and
-  // a `"start"` placement is the case that needs this — an appended row already
-  // reads last without it, a prepended one would read last and be wrong.
-  await syncOrder(prisma, containerOf(container));
+  // (docs/plans/ordering-simplification.md §6, "Create"). An explicit append —
+  // there is no rank order left to recompute it from — and `placement: "start"`
+  // is the case that needs it: without the entry a new row reads *last*, which
+  // is right for an append and wrong for a prepend.
+  await addToOrder(
+    prisma,
+    containerOf(container),
+    [data.id],
+    placement === "start" ? "start" : "end",
+  );
 
   return findDocument(data.id);
 };
@@ -577,6 +583,29 @@ const updateDocument = async (
 };
 
 /**
+ * A parent's child-tab ids in the parent's own `tabOrder`, with anything the
+ * array has not heard of appended (the tolerant reader's rule, §6). The delete
+ * path needs it because `orderBy: { rank }` no longer answers this question —
+ * a reorder writes the array, not the ranks.
+ */
+const orderedChildIds = async (
+  tx: Prisma.TransactionClient,
+  parentId: string,
+): Promise<string[]> => {
+  const [parent, children] = await Promise.all([
+    tx.document.findUnique({
+      where: { id: parentId },
+      select: { tabOrder: true },
+    }),
+    tx.document.findMany({
+      where: { parentId },
+      select: { id: true, createdAt: true },
+    }),
+  ]);
+  return orderBy(parent?.tabOrder ?? [], children).map((child) => child.id);
+};
+
+/**
  * Delete one already-located document, inside the caller's transaction.
  *
  * Split out because the delete has a second entry point (`discardAgentDocument`)
@@ -602,25 +631,21 @@ const deleteDocumentRow = async (
    */
   origin: string = APP_ORIGIN,
 ) => {
-  // Child tabs are promoted to root via onDelete: SetNull — capture them
-  // (in order) so we can re-home them with fresh root ranks below.
-  const children = await tx.document.findMany({
-    where: { parentId: doc.id },
-    orderBy: { rank: "asc" },
-    select: { id: true },
-  });
+  // Child tabs are promoted to root via onDelete: SetNull — capture them, in
+  // the order the parent held them in, so they arrive at root in that order.
+  const children = await orderedChildIds(tx, doc.id);
 
   const deleted = await tx.document.delete({
     where: { id: doc.id },
   });
 
-  await reRankIntoRoot(tx, doc.authorId, children.map((c) => c.id));
+  await freeIntoRoot(tx, doc.authorId, children);
 
   // The container it was in loses the id. The tolerant reader already ignores
   // an id with no row (docs/plans/ordering-simplification.md §6), so this is
   // hygiene rather than correctness — but leaving deleted ids to accumulate
   // would make every array a growing record of what used to be there.
-  await syncOrder(tx, containerOf(deleted));
+  await removeFromOrder(tx, containerOf(deleted), [doc.id]);
 
   await notifyChange(tx, {
     kind: "document.deleted",
@@ -632,10 +657,10 @@ const deleteDocumentRow = async (
   // rows survive, so a client that only heard about the delete would keep
   // rendering them as tabs of a post that no longer exists until the next poll.
   // Usually an empty list.
-  for (const child of children) {
+  for (const childId of children) {
     await notifyChange(tx, {
       kind: "document.updated",
-      id: child.id,
+      id: childId,
       authorId: doc.authorId,
       origin,
     });

@@ -84,16 +84,18 @@ export const cloudBackend: PostBackend = {
     return deletedId;
   },
 
-  // `rank` is intentionally unused: the server recomputes the authoritative rank
-  // from `between` inside a transaction, which is what keeps concurrent reorders
-  // consistent. The caller's rank only drives the optimistic update.
-  async move({ id, destination, between }: MovePostArg & { rank: string }) {
-    const document = await apiClient.documents.move(id, {
-      destination,
-      between,
-    });
+  async move({ id, destination }: MovePostArg) {
+    const document = await apiClient.documents.move(id, { destination });
     if (!document) throw new Error("failed to move post");
     return toPost(document);
+  },
+
+  // Order is written on the container that owns it, by container, so it does not
+  // reach the cloud through this seam — which only knows about posts and could
+  // not address a root list holding series and project ids. `setOrder` calls the
+  // right endpoint directly; nothing here has to run.
+  async reorder() {
+    return [];
   },
 
   revisions: {

@@ -23,21 +23,29 @@ export interface PostBackend {
   list(): Promise<Post[]>;
   /** One post *including* its `data`. Accepts an id or a handle. */
   get(id: string): Promise<Post | undefined>;
-  /** A tabbed post's child tabs, rank-ordered, without their content. */
+  /** A tabbed post's child tabs, in the parent's order, without content. */
   children(id: string): Promise<Post[]>;
   create(input: PostCreateInput): Promise<Post>;
   update(id: string, partial: PostUpdateInput): Promise<Post>;
   /** Resolves to the deleted post's id. */
   delete(id: string): Promise<string>;
   /**
-   * Re-home and/or reorder a post.
-   *
-   * `rank` is computed client-side so the move can be applied optimistically.
-   * The cloud backend ignores it and lets the server assign the authoritative
-   * rank from `between` (the two agree by construction — same algorithm, same
-   * inputs); the local backend, which has no server, applies it directly.
+   * Re-home a post into another container. **Appends** there
+   * (docs/plans/ordering-simplification.md §4, decided) — where in the
+   * destination it lands is the container's order array, written separately.
    */
-  move(arg: MovePostArg & { rank: string }): Promise<Post>;
+  move(arg: MovePostArg): Promise<Post>;
+
+  /**
+   * Persist the order of a container's children.
+   *
+   * The cloud writes the array on the container that owns it and is done. The
+   * local library has no such row — IndexedDB holds posts and nothing else, so
+   * there is no `User` to hang a `rootOrder` on (§7 is not this phase) — so it
+   * rewrites the posts' `rank` keys to match the array instead, and returns
+   * what it wrote so the store's copies agree with storage.
+   */
+  reorder(orderedIds: string[]): Promise<{ id: string; rank: string }[]>;
 
   revisions: {
     /** A revision *including* its content. */

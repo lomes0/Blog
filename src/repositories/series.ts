@@ -3,11 +3,12 @@ import { validate } from "uuid";
 import { prisma } from "@/lib/prisma";
 import { orderBy } from "@/lib/orderArray";
 import {
+  addToOrder,
+  freeIntoRoot,
   movePost,
   rankForAppendSeries,
-  reRankIntoRoot,
+  removeFromOrder,
   seriesContainerOf,
-  syncOrder,
 } from "./ordering";
 import {
   CloudPost,
@@ -332,10 +333,11 @@ export async function createSeries(data: SeriesCreateInput): Promise<Series> {
   });
 
   // The container it was born in gains the id (§6, "Create").
-  await syncOrder(prisma, seriesContainerOf({
-    authorId: data.authorId,
-    projectId,
-  }));
+  await addToOrder(
+    prisma,
+    seriesContainerOf({ authorId: data.authorId, projectId }),
+    [data.id],
+  );
 
   const series = await findSeriesById(data.id);
   if (!series) {
@@ -372,28 +374,25 @@ export async function deleteSeries(id: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const series = await tx.series.findUnique({
       where: { id },
-      // `projectId` for the order array of whichever container it sits in.
-      select: { authorId: true, projectId: true },
+      // `projectId` for the order array of whichever container it sits in;
+      // `postOrder` for the order its posts are freed into root in.
+      select: { authorId: true, projectId: true, postOrder: true },
     });
     if (!series) throw new Error("Series not found");
 
-    const members = await tx.document.findMany({
+    // The series' own `postOrder` decides the order its posts arrive at root
+    // in; `orderBy: { rank }` no longer answers that (§4).
+    const memberRows = await tx.document.findMany({
       where: { seriesId: id },
-      orderBy: { rank: "asc" },
-      select: { id: true },
+      select: { id: true, createdAt: true },
     });
+    const members = orderBy(series.postOrder, memberRows).map((m) => m.id);
 
     await tx.series.delete({ where: { id } });
-    // Root is resynced by `reRankIntoRoot` below (the freed posts land there,
-    // and the deleted series drops out of the array with them); a series that
-    // lived in a project has to be dropped from that project's array here.
-    if (series.projectId) {
-      await syncOrder(tx, { kind: "project", projectId: series.projectId });
-    }
-    await reRankIntoRoot(tx, series.authorId, members.map((m) => m.id));
-    // `reRankIntoRoot` returns early for a series with no posts, so root is
-    // synced explicitly rather than as a side effect of having members.
-    await syncOrder(tx, { kind: "root", authorId: series.authorId });
+    // The deleted series leaves whichever array held it, and its posts join the
+    // root list at the end (§6, "Delete" and "Re-home").
+    await removeFromOrder(tx, seriesContainerOf(series), [id]);
+    await freeIntoRoot(tx, series.authorId, members);
   });
 }
 

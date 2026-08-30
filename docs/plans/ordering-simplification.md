@@ -5,12 +5,14 @@ simplest thing that supports manual drag/menu reorder, optimizing for **less
 code and easier maintenance**. Single-user is an accepted assumption — we drop
 the multi-client / offline-collision robustness the current design pays for.
 
-Status: **phases 1-3 implemented, 30 Aug 2026.** The order arrays exist, are
-backfilled, and are what every read sorts by; `rank` is still what every *write*
-writes, and is dual-written into the arrays (see §11). Phases 4 (write cutover)
-and 5 (delete rank) are not started. The phase log in §11 records everything
-below this line that the tree has since made false — read it before trusting a
-section.
+Status: **phases 1-4 implemented, 30 Aug 2026.** The order arrays exist, are
+backfilled, are what every read sorts by, and are now what every reorder
+*writes* — one array write per gesture, no rank anywhere in the path. `rank`
+survives on the create path only, because the three columns are still `NOT NULL`
+and because keeping them populated is the rollback. Phase 5 (drop the columns,
+the indexes, the collation migrations and `fractional-indexing`) is not started.
+The phase log in §11 records everything below this line that the tree has since
+made false — read it before trusting a section.
 
 ---
 
@@ -345,3 +347,120 @@ Still on rank, deliberately: everything that *writes* order —
 `bracketForDrop`), `lib/tree/model.ts`'s `TreeNode.rank`, `useTreeDnd`, the
 `between` plumbing through the move routes and thunks — plus the local
 (IndexedDB) backend, which is phase 4+ work per §7.
+
+### 30 Aug 2026 — phase 4 (the write cutover)
+
+Shipped: four order endpoints, the drag and menu handlers rewritten to build id
+arrays, and **both halves of the phase-3 dual write deleted**. Nothing computes
+a position on either side of the wire any more: the client sends the array it
+already rendered and the server stores it verbatim.
+
+**`rank` on the create path, deliberately.** `Document.rank`, `Series.rank` and
+`Project.rank` are `NOT NULL`, so every insert still has to write something. Of
+the three options — keep minting an append key, make the column nullable now, or
+give it a default — the first was chosen. Making it nullable is a migration
+phase 5 immediately reverses, and it breaks the rollback: reverting phase 4 onto
+rows with a null rank would order them by nothing. So `rankForAppend`,
+`rankForPrepend` and `rankForAppendSeries` survive, `freeIntoRoot` /
+`freeSeriesIntoRoot` still mint a batch for rows a delete frees into root, and
+**no reorder writes a rank and no read consults one**. `src/lib/ordering.ts`
+therefore survives in reduced form (`rankAtEnd` is gone — nothing appends
+client-side any more), and so does `src/lib/documentOrder.ts`, cut to `rankOf` +
+`comparePostsByRank` for the local (IndexedDB) library, which §7 leaves on rank.
+
+**Where this document is *still* wrong, on top of the phases 1-3 list.**
+
+7. **§4 names three endpoints; there are four.** Same omission as §2's table —
+   `Project.seriesOrder` needs its own. The set is
+   `PATCH /api/users/me/root-order`, `/api/series/[id]/order`,
+   `/api/projects/[id]/order`, `/api/documents/[id]/tab-order`.
+8. **§4's `setXOrder(...)` signatures are the wrong shape.** They read as pure
+   writers; each is really a validated write, because the body is a *list of
+   ids* and that is the shape that invites checking only the first one. One
+   function does it: `setOrder(db, container, ids)` over an `OrderContainer`,
+   with `orderMemberIds` answering for the whole set in one query per table.
+9. **§4's `moveProject` has nothing left to do.** A project only ever lives at
+   root, so it has no container to change; reordering one is a root-order write
+   like any other row's. `PATCH /api/projects/[id]/move`, the `moveProject`
+   thunk and `applyProjectRank` are deleted outright rather than converted.
+10. **§8's rollback line ("roll back by reverting step 4") holds, but only
+    because of the create-path decision above.** Had the ranks stopped being
+    minted, a revert would have found rows with no key at all.
+
+**Refusals (§4 "validates ownership + that every id is a legal member").** The
+container is proven the caller's first — `requireOwnedSeries`,
+`requireOwnedProject`, `requireDocument(..., "own")`, or the session itself for
+root — and then every id in the body is checked against that container's live
+membership. A **foreign** id is refused (400): it is never a race, it is a
+caller reaching into another list, and accepting it would adopt the row. A
+**repeated** id is refused (400): the tolerant reader silently collapses a
+duplicate to its first mention, so accepting one would hide the bug that made
+it. A **missing** member is *accepted*, and `setOrder` appends the unnamed
+members in their existing relative order rather than dropping them — a client
+sends the list it rendered, which can legitimately lag by a row created in
+another tab, and rejecting would make every reorder in that window fail.
+
+**Re-home is two calls, and it does not flicker.** The drop handler computes the
+destination's finished array, dispatches `applyOrder` into the store *before*
+either request, then re-homes (which appends server-side) and then writes the
+order. The row is therefore drawn at the slot it was dropped on from the first
+frame. If the second call fails the first has already landed: the row is in its
+new container but at the end of it, the failure is announced, and the next load
+settles it — the same no-rollback bargain the rank-era optimistic reorder made.
+
+**A tab-order write pins `updatedAt`.** The other three containers are the
+list's *owner* (a user, a series, a project), for which "its order changed" is a
+change to the row. A tabbed post is not: `@updatedAt` would have pushed it to
+the top of every recency-sorted list because someone dragged a tab.
+
+**Deleted, against §5's list.** `syncOrder` / `syncOrders` / `resyncAuthorOrder`
+(server) and `src/store/orderSync.ts` plus its `app.ts` matcher (client) — the
+whole dual write. `moveRank`, `containerSiblings`, `applyPostRank`,
+`applySeriesRank`, `applyProjectRank`, `ranksBracketing`, `bracketForDrop`,
+`RankedSibling`, `rankAtEnd`, `TreeNode.rank`, `rootItemRank`, the `between`
+plumbing through `MovePostArg` / the API types / the two move routes, the
+project move route and thunk, and `PostBackend.move`'s `rank` argument.
+**Survived**, with reasons: `src/lib/ordering.ts` and
+`src/lib/documentOrder.ts` (above), and `compareRankThenId`, which
+`prisma/scripts/backfill-order.ts` still needs.
+
+**Added.** `src/lib/orderMove.ts` — `moveByDirection`, `moveToTarget`,
+`applySubsetOrder` — the whole of what a reorder now computes, import-free and
+specced beside itself (`orderMove.test.ts`, 18 cases). `applySubsetOrder` is the
+one that is not obvious: the root list is one array rendered as two sections, so
+a menu reorder inside a section writes its rows back into the slots the section
+already occupied, leaving the other section's rows where they are. That is what
+bracketing a rank against the section used to buy. `src/app/api/orderWrite.ts`
+holds the shared `.strict()` body schema and the one refusal path.
+`src/store/thunks/orderThunks.ts` holds `applyOrder` (paint) and `setOrder`
+(persist); `app.ts` gained explicit `addToStoreOrder` / `removeFromStoreOrder` /
+`forgetFromOrders`, because with no ranks to derive from, the store maintains
+its arrays the same way the server does.
+
+**The local backend is a `reorder` on the seam now.** `PostBackend.reorder`
+takes the array; the cloud backend does nothing (order is written per container,
+by a container the post-only seam could not address), and the local one rewrites
+the posts' ranks to match the array and hands them back for the store. So the
+*interface* is already phase-4 shaped while IndexedDB stays on `rank` per §7.
+
+**One asymmetry worth knowing.** A surface that does not render projects draws
+their member series inline at root, so a root reorder there can name a series
+that is really a project's — not a root member, and the endpoint refuses it. The
+`setOrder` thunk drops those ids before sending, which lands the rest of the
+gesture and leaves the invisible filing alone. That is exactly what
+`rendersProjects` already promised; the server check stays the guarantee.
+
+**Verified.** All four gestures in a real browser (`BUILD_DIR=.next-verify pnpm
+dev -p 3005`, sidebar drag, session cookie), each checked in Postgres: a root
+reorder (one `PATCH /api/users/me/root-order`, and `rootOrder` matches the
+screen), a within-series reorder (one `/api/series/[id]/order`), a cross-series
+drag (two
+calls in order — `/move` then `/order` — the id added to the destination *at the
+dropped slot* and removed from the source), and a multi-select drag (two rows
+land as one contiguous block, one root-order write). Every endpoint exercised
+directly including its refusals: 400 foreign, 400 duplicate, 400 unknown key,
+400 non-uuid, 400 malformed JSON, 403 another author's container, 404 missing,
+401 signed out. Create / re-home / delete array bookkeeping exercised end to end
+(`placement: "start"` prepends; a deleted series leaves `rootOrder` and its
+posts join the end of it). Every row touched was restored, and the tables are
+byte-identical to the pre-change dump.

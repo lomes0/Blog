@@ -2,7 +2,6 @@ import {
   createEntityAdapter,
   createSlice,
   EntityState,
-  isAnyOf,
   PayloadAction,
 } from "@reduxjs/toolkit";
 import {
@@ -19,7 +18,7 @@ import {
 // ── Domain thunks (split into separate files for maintainability) ────────────
 import { loadSession } from "./thunks/sessionThunks";
 import {
-  applyPostRank,
+  applyPostContainer,
   createPost,
   deletePost,
   duplicatePost,
@@ -35,7 +34,7 @@ import {
   getRevision,
 } from "./thunks/revisionThunks";
 import {
-  applySeriesRank,
+  applySeriesProject,
   createSeries,
   deleteSeries,
   loadSeries,
@@ -43,13 +42,16 @@ import {
   updateSeries,
 } from "./thunks/seriesThunks";
 import {
-  applyProjectRank,
   createProject,
   deleteProject,
   loadProjects,
-  moveProject,
   updateProject,
 } from "./thunks/projectThunks";
+import {
+  applyLocalRanks,
+  applyOrder,
+  setOrder,
+} from "./thunks/orderThunks";
 import {
   acceptAgentPost,
   approveProposal,
@@ -58,11 +60,11 @@ import {
   rejectProposal,
 } from "./thunks/proposalThunks";
 import { catchUpPosts, fetchChangedPosts } from "./thunks/changeThunks";
-import { syncOrderArrays } from "./orderSync";
 import { alert, updateUser } from "./thunks/userThunks";
 import { importGuestDrafts } from "./thunks/importGuestDrafts";
 import { createApiThunk, type Failure } from "./thunks/createApiThunk";
 import { paneShowing, workspaceReducers } from "./workspaceReducers";
+import { containerFromPost, type TreeContainer } from "@/lib/tree/model";
 
 // Re-exported so `@/store/app` remains the one import path for the slice's
 // public surface; `selectPaneShowingDoc` reads it from here.
@@ -139,6 +141,120 @@ function applyPost(
 const updatedAtMs = (post: Post) => new Date(post.updatedAt).getTime();
 
 /** Drop a post from the store and from any series that lists it. */
+// ── Order arrays in the store (docs/plans/ordering-simplification.md §6) ────
+//
+// The server maintains each container's array explicitly on every write, and
+// the store maintains the same arrays for the writes it applies optimistically.
+// There is nothing left to derive them from: a reorder no longer touches a
+// `rank`, so the array *is* the order and a create / delete / re-home edits it
+// directly rather than recomputing it (which is what `store/orderSync.ts` did,
+// and why it is gone).
+//
+// Drift is not an error — the tolerant reader shows a row the array has not
+// heard of last, which is exactly where the server appended it — so these are
+// about what the user sees *now*, before the next load settles it.
+
+/** The container a post lives in, as the order arrays address containers. */
+const postContainer = (post: {
+  seriesId?: string | null;
+  parentId?: string | null;
+}): TreeContainer => containerFromPost(post);
+
+/** The stored order of a container, or null when the store has no such row. */
+function readStoreOrder(
+  state: AppState,
+  container: TreeContainer,
+): string[] | null {
+  switch (container.type) {
+    case "root":
+      return state.user ? (state.user.rootOrder ?? []) : null;
+    case "series":
+      return state.series.find((s) => s.id === container.seriesId)?.postOrder ??
+        null;
+    case "project":
+      return state.projects.find((p) => p.id === container.projectId)
+        ?.seriesOrder ?? null;
+    case "tabs":
+      return state.posts.entities[container.parentId]?.tabOrder ?? null;
+  }
+}
+
+function writeStoreOrder(
+  state: AppState,
+  container: TreeContainer,
+  ids: string[],
+): void {
+  switch (container.type) {
+    case "root":
+      if (state.user) state.user.rootOrder = ids;
+      return;
+    case "series": {
+      const series = state.series.find((s) => s.id === container.seriesId);
+      if (series) series.postOrder = ids;
+      return;
+    }
+    case "project": {
+      const project = state.projects.find((p) => p.id === container.projectId);
+      if (project) project.seriesOrder = ids;
+      return;
+    }
+    case "tabs": {
+      const parent = state.posts.entities[container.parentId];
+      if (parent) parent.tabOrder = ids;
+      return;
+    }
+  }
+}
+
+/** Put `id` into a container's array if it is not already there. */
+function addToStoreOrder(
+  state: AppState,
+  container: TreeContainer,
+  id: string,
+  at: "start" | "end" = "end",
+): void {
+  const current = readStoreOrder(state, container);
+  if (current === null || current.includes(id)) return;
+  writeStoreOrder(
+    state,
+    container,
+    at === "start" ? [id, ...current] : [...current, id],
+  );
+}
+
+/** Drop `id` from a container's array. */
+function removeFromStoreOrder(
+  state: AppState,
+  container: TreeContainer,
+  id: string,
+): void {
+  const current = readStoreOrder(state, container);
+  if (current === null || !current.includes(id)) return;
+  writeStoreOrder(state, container, current.filter((each) => each !== id));
+}
+
+/** Drop `id` from every array that could be naming it. */
+function forgetFromOrders(state: AppState, id: string): void {
+  if (state.user?.rootOrder?.includes(id)) {
+    state.user.rootOrder = state.user.rootOrder.filter((each) => each !== id);
+  }
+  for (const series of state.series) {
+    if (series.postOrder?.includes(id)) {
+      series.postOrder = series.postOrder.filter((each) => each !== id);
+    }
+  }
+  for (const project of state.projects) {
+    if (project.seriesOrder?.includes(id)) {
+      project.seriesOrder = project.seriesOrder.filter((each) => each !== id);
+    }
+  }
+  for (const post of Object.values(state.posts.entities)) {
+    if (post?.tabOrder?.includes(id)) {
+      post.tabOrder = post.tabOrder.filter((each) => each !== id);
+    }
+  }
+}
+
 function removePost(state: AppState, id: string) {
   postsAdapter.removeOne(state.posts, id);
   for (const series of state.series) {
@@ -154,6 +270,7 @@ function removePost(state: AppState, id: string) {
   // which is what lets the discard path call one of them first.
   forgetProposal(state, id);
   forgetAgentPost(state, id);
+  forgetFromOrders(state, id);
 }
 
 /** What a background catch-up has learned: rows to upsert, rows proven gone. */
@@ -470,14 +587,32 @@ export const appSlice = createSlice({
       .addCase(deletePost.rejected, (state, action) => {
         announceFailure(state, action.payload);
       })
-      .addCase(applyPostRank, (state, action) => {
-        const { id, rank } = action.payload;
+      .addCase(applyPostContainer, (state, action) => {
+        const { id, seriesId, parentId } = action.payload;
         const post = state.posts.entities[id];
-        if (post) post.rank = rank;
-        // Reflect on the copy inside its series (for series-internal reorder).
-        for (const s of state.series) {
-          const p = s.posts.find((post) => post.id === id);
-          if (p) p.rank = rank;
+        if (!post) return;
+        // The array it is leaving loses the id; the one it joins gains it at
+        // the end, which is where the server appends it (§4). A drop at a slot
+        // has already dispatched `applyOrder` for the destination, so the add
+        // is a no-op there.
+        removeFromStoreOrder(state, postContainer(post), id);
+        post.seriesId = seriesId;
+        post.parentId = parentId;
+        addToStoreOrder(state, postContainer(post), id);
+        // The series copies are a second view of the same rows: a post that
+        // left a series must leave that series' `posts`, or the grouping keeps
+        // drawing it there.
+        for (const series of state.series) {
+          if (series.id === seriesId) {
+            // A copy rather than the entity itself: `series.posts` is a second
+            // view of the same row, and `applyPost` replaces it wholesale when
+            // the server answers.
+            if (!series.posts.some((p) => p.id === id)) {
+              series.posts.push({ ...post });
+            }
+          } else if (series.posts?.length) {
+            series.posts = series.posts.filter((p) => p.id !== id);
+          }
         }
       })
       .addCase(movePost.fulfilled, (state, action) => {
@@ -630,24 +765,25 @@ export const appSlice = createSlice({
       .addCase(updateSeries.rejected, (state, action) => {
         announceFailure(state, action.payload);
       })
-      .addCase(applySeriesRank, (state, action) => {
-        const s = state.series.find((x) => x.id === action.payload.id);
-        if (!s) return;
-        s.rank = action.payload.rank;
-        // Only touch membership when the caller included it (a move), so a plain
-        // reorder never clears the series' project.
-        if ("projectId" in action.payload) {
-          s.projectId = action.payload.projectId ?? null;
-        }
+      .addCase(applySeriesProject, (state, action) => {
+        const { id, projectId } = action.payload;
+        const series = state.series.find((x) => x.id === id);
+        if (!series) return;
+        const from: TreeContainer = series.projectId
+          ? { type: "project", projectId: series.projectId }
+          : { type: "root" };
+        const to: TreeContainer = projectId
+          ? { type: "project", projectId }
+          : { type: "root" };
+        removeFromStoreOrder(state, from, id);
+        series.projectId = projectId;
+        addToStoreOrder(state, to, id);
       })
       .addCase(moveSeries.fulfilled, (state, action) => {
         const updated = action.payload;
         if (!updated) return;
         const s = state.series.find((x) => x.id === updated.id);
-        if (s) {
-          s.rank = updated.rank;
-          s.projectId = updated.projectId ?? null;
-        }
+        if (s) s.projectId = updated.projectId ?? null;
       })
       .addCase(moveSeries.rejected, (state, action) => {
         announceFailure(state, action.payload);
@@ -655,6 +791,7 @@ export const appSlice = createSlice({
       .addCase(deleteSeries.fulfilled, (state, action) => {
         if (action.payload) {
           state.series = state.series.filter((s) => s.id !== action.payload);
+          forgetFromOrders(state, action.payload);
         }
       })
       .addCase(deleteSeries.rejected, (state, action) => {
@@ -682,25 +819,15 @@ export const appSlice = createSlice({
       .addCase(updateProject.rejected, (state, action) => {
         announceFailure(state, action.payload);
       })
-      .addCase(applyProjectRank, (state, action) => {
-        const p = state.projects.find((x) => x.id === action.payload.id);
-        if (p) p.rank = action.payload.rank;
-      })
-      .addCase(moveProject.fulfilled, (state, action) => {
-        const updated = action.payload;
-        if (!updated) return;
-        const p = state.projects.find((x) => x.id === updated.id);
-        if (p) p.rank = updated.rank;
-      })
-      .addCase(moveProject.rejected, (state, action) => {
-        announceFailure(state, action.payload);
-      })
       .addCase(deleteProject.fulfilled, (state, action) => {
         const deletedId = action.payload;
         if (!deletedId) return;
         state.projects = state.projects.filter((p) => p.id !== deletedId);
-        // The deleted project's series are freed to root; reflect that so the
-        // sidebar stops nesting them (a reload settles their exact rank).
+        forgetFromOrders(state, deletedId);
+        // The deleted project's series are freed to the end of the root list,
+        // which is where the server put them; the tolerant reader draws an id
+        // the array has not heard of exactly there, so nothing has to be
+        // appended for the two to agree.
         state.series.forEach((s) => {
           if (s.projectId === deletedId) s.projectId = null;
         });
@@ -708,38 +835,25 @@ export const appSlice = createSlice({
       .addCase(deleteProject.rejected, (state, action) => {
         announceFailure(state, action.payload);
       })
-      /**
-       * Every action that changes a `rank` or a container's membership, in one
-       * place, because they all owe the same follow-up: the order arrays the
-       * views read from have to be recomputed from the ranks just written
-       * (docs/plans/ordering-simplification.md §8 — see `store/orderSync`).
-       *
-       * A matcher rather than a line in each case reducer: matchers run after
-       * the case reducers, so this sees the state each of them left behind, and
-       * a new rank-writing action cannot forget to call it — it is added here or
-       * it does not reorder.
-       */
-      .addMatcher(
-        isAnyOf(
-          applyPostRank,
-          movePost.fulfilled,
-          createPost.fulfilled,
-          duplicatePost.fulfilled,
-          forkPost.fulfilled,
-          deletePost.fulfilled,
-          applySeriesRank,
-          moveSeries.fulfilled,
-          createSeries.fulfilled,
-          deleteSeries.fulfilled,
-          applyProjectRank,
-          moveProject.fulfilled,
-          createProject.fulfilled,
-          deleteProject.fulfilled,
-        ),
-        (state) => {
-          syncOrderArrays(state);
-        },
-      );
+      // ── Order (docs/plans/ordering-simplification.md §4/§5) ──
+      .addCase(applyOrder, (state, action) => {
+        writeStoreOrder(
+          state,
+          action.payload.container,
+          action.payload.orderedIds,
+        );
+      })
+      .addCase(applyLocalRanks, (state, action) => {
+        // A guest's reorder came back as ranks (§7): the local library has no
+        // container row to hold an array, so the store's posts carry the order.
+        for (const { id, rank } of action.payload) {
+          const post = state.posts.entities[id];
+          if (post) post.rank = rank;
+        }
+      })
+      .addCase(setOrder.rejected, (state, action) => {
+        announceFailure(state, action.payload);
+      });
   },
 });
 
@@ -747,7 +861,7 @@ export const appSlice = createSlice({
 export { loadSession } from "./thunks/sessionThunks";
 
 export {
-  applyPostRank,
+  applyPostContainer,
   createPost,
   deletePost,
   duplicatePost,
@@ -774,6 +888,7 @@ export {
 } from "./thunks/storageThunks";
 
 export {
+  applySeriesProject,
   createSeries,
   deleteSeries,
   loadSeries,
@@ -784,9 +899,14 @@ export {
   createProject,
   deleteProject,
   loadProjects,
-  moveProject,
   updateProject,
 } from "./thunks/projectThunks";
+export {
+  applyLocalRanks,
+  applyOrder,
+  type OrderArg,
+  setOrder,
+} from "./thunks/orderThunks";
 export {
   acceptAgentPost,
   approveProposal,

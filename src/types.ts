@@ -597,13 +597,15 @@ export type PostContainer = {
   parentId?: string | null;
 };
 
-/** Where a post should land, plus where among its new siblings. */
+/**
+ * Where a post should land. Not *where among its new siblings*: a move appends,
+ * and the destination container's order array places it
+ * (docs/plans/ordering-simplification.md §4, decided).
+ */
 export type MovePostArg = {
   id: string;
   /** Fully specifies the destination container (not a partial patch). */
   destination: PostContainer;
-  /** Neighbour ranks to drop between; omit to append to the end. */
-  between?: { afterRank?: string | null; beforeRank?: string | null };
 };
 // Utility for creating empty editor states
 export const EMPTY_EDITOR_STATE: SerializedEditorState = {

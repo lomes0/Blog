@@ -1,6 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { orderBy } from "@/lib/orderArray";
-import { rankForAppend, reRankSeriesIntoRoot, syncOrder } from "./ordering";
+import {
+  addToOrder,
+  freeSeriesIntoRoot,
+  rankForAppend,
+  removeFromOrder,
+} from "./ordering";
 import { Project, ProjectCreateInput, ProjectUpdateInput } from "@/types";
 
 // Standard author selection for consistency (matches series repository).
@@ -83,7 +88,9 @@ export async function createProject(
   });
 
   // The root list gains the id (§6, "Create").
-  await syncOrder(prisma, { kind: "root", authorId: data.authorId });
+  await addToOrder(prisma, { kind: "root", authorId: data.authorId }, [
+    data.id,
+  ]);
 
   const project = await findProjectById(data.id);
   if (!project) {
@@ -120,20 +127,23 @@ export async function deleteProject(id: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const project = await tx.project.findUnique({
       where: { id },
-      select: { authorId: true },
+      // `seriesOrder` for the order its members are freed into root in.
+      select: { authorId: true, seriesOrder: true },
     });
     if (!project) throw new Error("Project not found");
 
-    const members = await tx.series.findMany({
+    // The project's own `seriesOrder` decides the order its series arrive at
+    // root in; `orderBy: { rank }` no longer answers that (§4).
+    const memberRows = await tx.series.findMany({
       where: { projectId: id },
-      orderBy: { rank: "asc" },
-      select: { id: true },
+      select: { id: true, createdAt: true },
     });
+    const members = orderBy(project.seriesOrder, memberRows).map((m) => m.id);
 
     await tx.project.delete({ where: { id } });
-    await reRankSeriesIntoRoot(tx, project.authorId, members.map((m) => m.id));
-    // Empty project: `reRankSeriesIntoRoot` returns early, so root would keep
-    // the deleted id.
-    await syncOrder(tx, { kind: "root", authorId: project.authorId });
+    await removeFromOrder(tx, { kind: "root", authorId: project.authorId }, [
+      id,
+    ]);
+    await freeSeriesIntoRoot(tx, project.authorId, members);
   });
 }

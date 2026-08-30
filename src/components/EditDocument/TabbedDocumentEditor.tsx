@@ -294,33 +294,21 @@ const TabbedDocumentEditor: React.FC<TabbedDocumentEditorProps> = ({
       return orderedIds.map((id) => map.get(id)!).filter(Boolean);
     });
 
-    // Persist the moved tab's new position as a rank. Child tabs live in the
-    // root tab's container; the root tab itself has no rank among children.
-    // The moved tab is the one whose removal makes both orders identical.
-    const movedId = orderedIds.find((id) =>
-      orderedIds.filter((x) => x !== id).join() ===
-        prevOrder.filter((x) => x !== id).join()
-    );
-    if (!movedId || movedId === rootId) return;
-
+    // Persist it as the parent's `tabOrder`
+    // (docs/plans/ordering-simplification.md §4). The root tab is the parent
+    // itself, not one of its children, so it is not in the array — the strip
+    // renders it first and the array orders what follows.
     const children = orderedIds.filter((id) => id !== rootId);
-    const idx = children.indexOf(movedId);
-    const rankOfId = (id: string) => {
-      return allDocuments.find((x) => x.id === id)?.rank ?? null;
-    };
+    if (children.join() === prevOrder.filter((id) => id !== rootId).join()) {
+      return;
+    }
     await dispatch(
-      actions.movePost({
-        id: movedId,
-        destination: { parentId: rootId },
-        between: {
-          afterRank: idx > 0 ? rankOfId(children[idx - 1]) : null,
-          beforeRank: idx < children.length - 1
-            ? rankOfId(children[idx + 1])
-            : null,
-        },
+      actions.setOrder({
+        container: { type: "tabs", parentId: rootId },
+        orderedIds: children,
       }),
     );
-  }, [dispatch, tabMetas, allDocuments, rootId, paneId]);
+  }, [dispatch, tabMetas, rootId, paneId]);
 
   // ---- Context menu ----
 

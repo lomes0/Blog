@@ -25,7 +25,8 @@ const addPostSchema = z.object({
 }).strict();
 
 // `postsToAdd` accepts bare ids or legacy `{ postId, order }` objects; `order` is
-// ignored either way, since position within a series is a `rank`.
+// ignored either way, since position within a series is the series'
+// `postOrder` (docs/plans/ordering-simplification.md §2).
 const batchPostsSchema = z.object({
   postsToAdd: z
     .array(
@@ -38,7 +39,7 @@ const batchPostsSchema = z.object({
   postsToRemove: z.array(z.string().uuid()).default([]),
 }).strict();
 
-// GET /api/series/[id]/posts → get posts in series (ordered by rank)
+// GET /api/series/[id]/posts → get posts in series (in its `postOrder`)
 export const GET = optionalUserRoute<{ id: string }>(
   async (_request, { params, user }) => {
     if (!validate(params.id)) {
@@ -79,7 +80,7 @@ export const POST = userRoute<{ id: string }>(
       subtitle: "You can only add your own posts to series",
     });
 
-    // Add post to the series (appended; manual order is set via rank)
+    // Add post to the series (appended; manual order is a separate write)
     await addPostToSeries(params.id, postId);
 
     // Revalidate all relevant paths

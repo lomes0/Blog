@@ -1,4 +1,3 @@
-import type { RankedSibling } from "@/lib/documentOrder";
 import type { PostContainer } from "@/types";
 
 /**
@@ -10,8 +9,8 @@ import type { PostContainer } from "@/types";
  * Their row components are *not* interchangeable and are not meant to be; what
  * they share is the tree beneath them, and the drag engine that operates on it
  * (`./useTreeDnd`). This module is that tree, stated once and structurally: an
- * id, a rank, a kind and children. Neither surface's render model is imported
- * here — each adapts into `TreeNode` at its own edge.
+ * id, a kind and children. Neither surface's render model is imported here —
+ * each adapts into `TreeNode` at its own edge.
  */
 
 export type TreeNodeKind = "post" | "series" | "project";
@@ -25,16 +24,16 @@ export type TreeNodeKind = "post" | "series" | "project";
 export interface TreeNode {
   kind: TreeNodeKind;
   id: string;
-  rank: string | null;
   /** Display name, carried in the drag payload for confirm prompts. */
   label?: string;
   children?: TreeNode[];
 }
 
 /**
- * The container a row lives in, or that a container row stands for. Containers
- * each own a rank space (root: projects + ungrouped series + standalone posts;
- * a project: its series; a series: its posts; a post: its tabs).
+ * The container a row lives in, or that a container row stands for. Each owns
+ * the order of its children as an array of ids on its own row (root: projects +
+ * ungrouped series + standalone posts, on `User.rootOrder`; a project: its
+ * series; a series: its posts; a post: its tabs).
  */
 export type TreeContainer =
   | { type: "root" }
@@ -110,36 +109,41 @@ export interface TreeTargetInfo {
 export interface TreeIndex {
   /** Row id → what it is and where it lives. */
   targetInfo: Map<string, TreeTargetInfo>;
-  /** `containerKey` → that container's rows, in render (rank) order. */
-  siblings: Map<string, RankedSibling[]>;
+  /**
+   * `containerKey` → that container's row ids, in render order. This *is* the
+   * order a drop rewrites (docs/plans/ordering-simplification.md §4), so it
+   * comes from what the surface drew rather than from anything stored: a
+   * container whose array has drifted renders through the tolerant reader, and
+   * the write has to agree with the screen, not with the drift.
+   */
+  siblings: Map<string, string[]>;
 }
 
 /**
  * Index a rendered tree for drag-and-drop: every row's kind and container, plus
- * the rank-ordered sibling list of each container (the source of the neighbour
- * ranks that bracket a drop).
+ * each container's sibling ids in render order (the list a drop rewrites).
  *
  * `root` names the container the top-level rows belong to. It is usually the
  * author's root list, but not always: `/posts/[seriesId]` renders *one series'
- * posts* as its top level, and passing `{ type: "root" }` there would rank every
- * reorder against the root list and detach the post from its series.
+ * posts* as its top level, and passing `{ type: "root" }` there would write the
+ * series' order into the author's root array and detach every post from it.
  */
 export function buildIndex(
   nodes: readonly TreeNode[],
   root: TreeContainer = ROOT_CONTAINER,
 ): TreeIndex {
   const targetInfo = new Map<string, TreeTargetInfo>();
-  const siblings = new Map<string, RankedSibling[]>();
+  const siblings = new Map<string, string[]>();
 
   const walk = (level: readonly TreeNode[], container: TreeContainer) => {
-    const list: RankedSibling[] = [];
+    const list: string[] = [];
     for (const node of level) {
       targetInfo.set(node.id, {
         kind: node.kind,
         container,
         label: node.label,
       });
-      list.push({ id: node.id, rank: node.rank });
+      list.push(node.id);
       // `[]` still registers the (empty) container, so a drop into an empty
       // series resolves to a real sibling list rather than a missing one.
       if (node.children) walk(node.children, childContainer(node));

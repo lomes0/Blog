@@ -37,8 +37,8 @@ import type {
   CreateNoteInput,
   DocumentChanges,
   MoveDocumentInput,
-  MoveProjectInput,
   MoveSeriesInput,
+  OrderInput,
   NotesCanvas,
   PaginatedDocuments,
   UpdateDocumentTimesInput,
@@ -222,7 +222,7 @@ export const apiClient = {
         ...json(partial),
       }),
 
-    /** PATCH /api/documents/:id/move — reorder / re-home a document */
+    /** PATCH /api/documents/:id/move — re-home a document (appends) */
     move: (
       id: string,
       payload: MoveDocumentInput,
@@ -230,6 +230,16 @@ export const apiClient = {
       request<Post>(`/api/documents/${id}/move`, {
         method: "PATCH",
         ...json(payload),
+      }),
+
+    /** PATCH /api/documents/:id/tab-order — order a tabbed post's child tabs */
+    tabOrder: (
+      id: string,
+      orderedIds: string[],
+    ): Promise<{ tabOrder: string[] } | undefined> =>
+      request<{ tabOrder: string[] }>(`/api/documents/${id}/tab-order`, {
+        method: "PATCH",
+        ...json({ orderedIds } satisfies OrderInput),
       }),
 
     /** DELETE /api/documents/:id */
@@ -476,11 +486,21 @@ export const apiClient = {
     }): Promise<Series | undefined> =>
       request<Series>("/api/series", { method: "POST", ...json(input) }),
 
-    /** PATCH /api/series/:id/move — reorder a series within the root list */
+    /** PATCH /api/series/:id/move — re-home a series into/out of a project */
     move: (id: string, payload: MoveSeriesInput): Promise<Series | undefined> =>
       request<Series>(`/api/series/${id}/move`, {
         method: "PATCH",
         ...json(payload),
+      }),
+
+    /** PATCH /api/series/:id/order — order the series' posts */
+    order: (
+      id: string,
+      orderedIds: string[],
+    ): Promise<{ postOrder: string[] } | undefined> =>
+      request<{ postOrder: string[] }>(`/api/series/${id}/order`, {
+        method: "PATCH",
+        ...json({ orderedIds } satisfies OrderInput),
       }),
 
     /** PATCH /api/series/:id */
@@ -528,14 +548,14 @@ export const apiClient = {
     }): Promise<Project | undefined> =>
       request<Project>("/api/projects", { method: "POST", ...json(input) }),
 
-    /** PATCH /api/projects/:id/move — reorder a project within the root list */
-    move: (
+    /** PATCH /api/projects/:id/order — order the project's member series */
+    order: (
       id: string,
-      payload: MoveProjectInput,
-    ): Promise<Project | undefined> =>
-      request<Project>(`/api/projects/${id}/move`, {
+      orderedIds: string[],
+    ): Promise<{ seriesOrder: string[] } | undefined> =>
+      request<{ seriesOrder: string[] }>(`/api/projects/${id}/order`, {
         method: "PATCH",
-        ...json(payload),
+        ...json({ orderedIds } satisfies OrderInput),
       }),
 
     /** PATCH /api/projects/:id */
@@ -560,6 +580,20 @@ export const apiClient = {
     /** PATCH /api/users/:id */
     update: (id: string, data: Partial<User>): Promise<User | undefined> =>
       request<User>(`/api/users/${id}`, { method: "PATCH", ...json(data) }),
+
+    /**
+     * PATCH /api/users/me/root-order — order the session's own root list.
+     *
+     * No id: the container is the caller, which is also the whole of the
+     * ownership check (docs/plans/ordering-simplification.md §4).
+     */
+    rootOrder: (
+      orderedIds: string[],
+    ): Promise<{ rootOrder: string[] } | undefined> =>
+      request<{ rootOrder: string[] }>("/api/users/me/root-order", {
+        method: "PATCH",
+        ...json({ orderedIds } satisfies OrderInput),
+      }),
   },
 
   // -------------------------------------------------------------------------

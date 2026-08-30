@@ -40,7 +40,7 @@ interface ViewDocumentProps {
   cloudDocument: Post;
   /** Stored revision HTML for `cloudDocument`, rendered by the server. */
   cloudHtml: string;
-  /** Root post first, then its child tabs, in rank order. */
+  /** Root post first, then its child tabs, in the parent's `tabOrder`. */
   tabs: ViewTab[];
   /** True when the session owns this post — gates "Open in workspace". */
   isAuthor: boolean;

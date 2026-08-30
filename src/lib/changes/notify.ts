@@ -17,7 +17,7 @@ import { CHANGE_CHANNEL, type ChangeEvent, encodeChangeEvent } from "./events";
  *   handler under `src/app/api/**` touches Prisma directly.
  * - `mcp/content-server.ts` imports the *same* `@/lib/prisma` singleton and
  *   calls the same repository functions (`upsertProposal` via
- *   `proposeRevision`, `rankForAppend`).
+ *   `proposeRevision`, `setOrder`).
  *
  * So a notify in the repository covers the app and the out-of-band MCP writer
  * at once — which is the whole point of the feature, since §1.1's problem is

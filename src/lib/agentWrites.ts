@@ -48,7 +48,7 @@ import { DocumentType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { changeNotification } from "@/lib/changes/notify";
 import { isProposalStale, selectAgentRead } from "@/lib/proposals";
-import { containerOf, rankForAppend, syncOrder } from "@/repositories/ordering";
+import { addToOrder, containerOf, rankForAppend } from "@/repositories/ordering";
 import { reconcileDocumentBlobs } from "@/repositories/blob";
 import { blobHashesFor } from "@/lib/blobRefs";
 import {
@@ -472,11 +472,11 @@ export async function proposeNewPost(
 
   // This create does not go through `createDocument`, so the container's order
   // array is maintained here too (docs/plans/ordering-simplification.md §6).
-  await syncOrder(prisma, containerOf({
-    authorId: input.authorId,
-    seriesId,
-    parentId: null,
-  }));
+  await addToOrder(
+    prisma,
+    containerOf({ authorId: input.authorId, seriesId, parentId: null }),
+    [id],
+  );
 
   // Blocks copied from another post can carry a blob reference into a post that
   // has never seen an upload (docs/plans/blob-storage.md §3).

@@ -1,12 +1,5 @@
-import { createAction } from "@reduxjs/toolkit";
 import { apiClient } from "@/api";
-import { rankBetween } from "@/lib/ordering";
-import { createApiThunk, fail } from "./createApiThunk";
-
-// Optimistically set a project's rank so a reorder is reflected immediately.
-export const applyProjectRank = createAction<{ id: string; rank: string }>(
-  "app/applyProjectRank",
-);
+import { createApiThunk } from "./createApiThunk";
 
 interface ProjectCreateInput {
   title: string;
@@ -33,33 +26,10 @@ export const updateProject = createApiThunk(
   ) => await apiClient.projects.update(id, data),
 );
 
-export const moveProject = createApiThunk(
-  "app/moveProject",
-  async (
-    arg: {
-      id: string;
-      between?: { afterRank?: string | null; beforeRank?: string | null };
-    },
-    thunkAPI,
-  ) => {
-    // Optimistic: for a positioned move the client computes the same rank the
-    // server will, so reflect it immediately. No rollback by design.
-    const { afterRank, beforeRank } = arg.between ?? {};
-    if (afterRank != null || beforeRank != null) {
-      thunkAPI.dispatch(
-        applyProjectRank({
-          id: arg.id,
-          rank: rankBetween(afterRank ?? null, beforeRank ?? null),
-        }),
-      );
-    }
-    const data = await apiClient.projects.move(arg.id, {
-      between: arg.between,
-    });
-    if (!data) fail("failed to move project");
-    return data;
-  },
-);
+// A project has no container to change — it only ever lives in the author's
+// root list — so it has no move of its own. Reordering one is a `setOrder` on
+// root, exactly as it is for a standalone post or an ungrouped series
+// (docs/plans/ordering-simplification.md §4).
 
 export const deleteProject = createApiThunk(
   "app/deleteProject",

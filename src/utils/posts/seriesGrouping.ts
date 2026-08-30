@@ -1,5 +1,4 @@
 import { Post, Project, Series } from "@/types";
-import { rankOf } from "@/lib/documentOrder";
 import { orderBy } from "@/lib/orderArray";
 import type { TreeNode } from "@/lib/tree/model";
 
@@ -16,20 +15,20 @@ export interface SeriesGroupItem {
 
 /**
  * A project group in the sidebar tree: a named grouping whose children are the
- * series groups assigned to it (`series.projectId`), ordered by rank within the
- * project.
+ * series groups assigned to it (`series.projectId`), in the project's own
+ * `seriesOrder`.
  */
 export interface ProjectGroupItem {
   type: "project";
   project: Project;
-  /** Member series groups, ordered by rank within the project. */
+  /** Member series groups, in the project's own `seriesOrder`. */
   children: SeriesGroupItem[];
 }
 
 /**
  * A top-level entry in the author's root list as rendered by the sidebar: a
- * project, an ungrouped series, or a standalone post. Projects, ungrouped series
- * and standalone posts share one rank space, so they interleave (see
+ * project, an ungrouped series, or a standalone post. All three are named by
+ * one array — `User.rootOrder` — so they interleave (see
  * {@link groupRootItems}).
  */
 export type RootItem = ProjectGroupItem | SeriesGroupItem;
@@ -49,13 +48,7 @@ export const seriesPositionOf = (
   return idx === -1 ? null : idx + 1;
 };
 
-/** The rank governing a group's position in the interleaved root list. */
-const groupRank = (item: SeriesGroupItem): string | null =>
-  item.type === "series"
-    ? (item.series?.rank ?? null)
-    : (item.posts[0] ? rankOf(item.posts[0]) : null);
-
-/** Stable tie-breaker id for a group when ranks are equal or absent. */
+/** The id of the row a group stands for: its series, or its lone post. */
 const groupId = (item: SeriesGroupItem): string =>
   item.type === "series" ? (item.series?.id ?? "") : (item.posts[0]?.id ?? "");
 
@@ -188,16 +181,6 @@ const groupPostsBySeriesWithEmpty = (
   return [...baseGroups, ...emptyGroups];
 };
 
-/**
- * The rank governing a root item's position in the interleaved root list.
- *
- * Reads no longer use it — order comes from the container's array — but the
- * *writes* still do: a drag hands `movePost` the ranks bracketing its drop.
- * Phase 4 of the plan is what removes this.
- */
-export const rootItemRank = (item: RootItem): string | null =>
-  item.type === "project" ? (item.project.rank ?? null) : groupRank(item);
-
 /** The id of the row a root item stands for: its project, series, or post. */
 export const rootItemId = (item: RootItem): string =>
   item.type === "project" ? item.project.id : groupId(item);
@@ -307,7 +290,6 @@ export const railItems = (items: RootItem[]): SeriesGroupItem[] => {
 const postTreeNode = (post: Post): TreeNode => ({
   kind: "post",
   id: post.id,
-  rank: rankOf(post),
   label: post.name,
 });
 
@@ -317,7 +299,6 @@ const groupTreeNode = (group: SeriesGroupItem): TreeNode | null => {
     return {
       kind: "series",
       id: group.series.id,
-      rank: group.series.rank ?? null,
       label: group.series.title,
       children: group.posts.map(postTreeNode),
     };
@@ -338,7 +319,6 @@ export const rootItemsToTreeNodes = (items: RootItem[]): TreeNode[] =>
       return [{
         kind: "project",
         id: item.project.id,
-        rank: item.project.rank ?? null,
         label: item.project.title,
         children: item.children.flatMap((child) => {
           const node = groupTreeNode(child);

@@ -1,5 +1,5 @@
 import { getStore } from "@/indexeddb";
-import { rankAtStart } from "@/lib/ordering";
+import { rankAtStart, ranksForList } from "@/lib/ordering";
 import type {
   MovePostArg,
   Post,
@@ -188,15 +188,36 @@ export const localBackend: PostBackend = {
     return id;
   },
 
-  async move({ id, destination, rank }: MovePostArg & { rank: string }) {
+  async move({ id, destination }: MovePostArg) {
     // Container exclusivity mirrors the server: a series destination wins over
     // a parent, so the two backends can never disagree about where a post lives.
     const seriesId = destination.seriesId ?? null;
     const parentId = seriesId ? null : (destination.parentId ?? null);
-    await postDB.patch(id, { rank, seriesId, parentId });
+    // Appended, as the cloud appends: an absent rank already sorts after every
+    // ranked sibling (`comparePostsByRank`), which is what "end" means here.
+    await postDB.patch(id, { rank: null, seriesId, parentId });
     const moved = await readPost(id);
     if (!moved) throw new Error("failed to move post");
     return moved;
+  },
+
+  /**
+   * A guest's reorder, in the only currency IndexedDB has: fresh ranks over the
+   * ids, in the order given (docs/plans/ordering-simplification.md §7 — the
+   * local side keeps `rank` until that section is done).
+   *
+   * The whole container is rewritten rather than one key spliced between
+   * neighbours, which is both simpler and what makes the result agree with the
+   * caller's array exactly, whatever the previous keys were. Ids with no local
+   * post — a root list's series and project ids, in principle — are skipped.
+   */
+  async reorder(orderedIds: string[]) {
+    const known = new Set((await postDB.getAll()).map((post) => post.id));
+    const ids = orderedIds.filter((id) => known.has(id));
+    const keys = ranksForList(ids.length);
+    const written = ids.map((id, i) => ({ id, rank: keys[i] }));
+    for (const { id, rank } of written) await postDB.patch(id, { rank });
+    return written;
   },
 
   revisions: {

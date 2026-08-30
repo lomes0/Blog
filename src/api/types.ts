@@ -87,28 +87,32 @@ export interface UpdateSeriesPostsInput {
 }
 
 // -----------------------------------------------------------------------
-// Move / reorder a document (PATCH /api/documents/:id/move)
+// Re-home a document (PATCH /api/documents/:id/move)
 // -----------------------------------------------------------------------
 // `destination` fully specifies the new container (series / tab-group / root) —
-// it is not a partial patch. Omitting `between` appends to the end; otherwise
-// the document is placed between the given neighbour ranks.
+// it is not a partial patch. The move **appends** to that container; a caller
+// that dropped the row at a slot follows with an order write to position it
+// (docs/plans/ordering-simplification.md §4, decided).
 export interface MoveDocumentInput {
   destination: { seriesId?: string | null; parentId?: string | null };
-  between?: { afterRank?: string | null; beforeRank?: string | null };
 }
 
-// Move / reorder a series (PATCH /api/series/:id/move). `destination.projectId`
-// re-homes the series into a project (or to root when null); omit `destination`
-// to keep its current container. Omit `between` to append; otherwise it is
-// placed between the given neighbour ranks.
+// Re-home a series (PATCH /api/series/:id/move): into a project, or to the root
+// list when `projectId` is null. Appends, as above.
 export interface MoveSeriesInput {
-  destination?: { projectId?: string | null };
-  between?: { afterRank?: string | null; beforeRank?: string | null };
+  destination: { projectId?: string | null };
 }
 
-// Reorder a project within the root list (PATCH /api/projects/:id/move).
-export interface MoveProjectInput {
-  between?: { afterRank?: string | null; beforeRank?: string | null };
+// -----------------------------------------------------------------------
+// Container order (PATCH .../root-order | .../order | .../tab-order)
+// -----------------------------------------------------------------------
+// A reorder is one array write: the client sends the order it already rendered
+// and the server persists it verbatim, after proving every id is a member of
+// that container (docs/plans/ordering-simplification.md §4). An id the caller
+// did not name keeps its place rather than being dropped, so a list that lags
+// the server by a row is safe to send.
+export interface OrderInput {
+  orderedIds: string[];
 }
 
 // -----------------------------------------------------------------------

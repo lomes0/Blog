@@ -1,16 +1,15 @@
 import { createAction } from "@reduxjs/toolkit";
 import { apiClient } from "@/api";
-import { rankBetween } from "@/lib/ordering";
 import { createApiThunk, fail } from "./createApiThunk";
 
-// Optimistically set a series' rank (and optionally its project membership) so a
-// reorder / move is reflected immediately. `projectId` is applied only when the
-// key is present, so a pure reorder leaves the current membership untouched.
-export const applySeriesRank = createAction<
-  { id: string; rank: string; projectId?: string | null }
->(
-  "app/applySeriesRank",
-);
+/**
+ * Optimistically re-home a series so a cross-container drag paints at once.
+ * Its position *within* the destination comes from that container's order array
+ * (docs/plans/ordering-simplification.md §4); this only says which container.
+ */
+export const applySeriesProject = createAction<
+  { id: string; projectId: string | null }
+>("app/applySeriesProject");
 
 interface SeriesCreateInput {
   title: string;
@@ -39,34 +38,24 @@ export const updateSeries = createApiThunk(
   ) => await apiClient.series.update(id, data),
 );
 
+/**
+ * Re-home a series into a project, or out to the root list. **Appends** there
+ * (§4, decided); pair it with `setOrder` on the destination to place it.
+ */
 export const moveSeries = createApiThunk(
   "app/moveSeries",
   async (
-    arg: {
-      id: string;
-      destination?: { projectId?: string | null };
-      between?: { afterRank?: string | null; beforeRank?: string | null };
-    },
+    arg: { id: string; destination: { projectId?: string | null } },
     thunkAPI,
   ) => {
-    // Optimistic: for a positioned move the client computes the same rank the
-    // server will, so reflect it (and any membership change) immediately. No
-    // rollback by design.
-    const { afterRank, beforeRank } = arg.between ?? {};
-    if (afterRank != null || beforeRank != null) {
-      thunkAPI.dispatch(
-        applySeriesRank({
-          id: arg.id,
-          rank: rankBetween(afterRank ?? null, beforeRank ?? null),
-          ...(arg.destination
-            ? { projectId: arg.destination.projectId ?? null }
-            : {}),
-        }),
-      );
-    }
+    thunkAPI.dispatch(
+      applySeriesProject({
+        id: arg.id,
+        projectId: arg.destination.projectId ?? null,
+      }),
+    );
     const data = await apiClient.series.move(arg.id, {
       destination: arg.destination,
-      between: arg.between,
     });
     if (!data) fail("failed to move series");
     return data;

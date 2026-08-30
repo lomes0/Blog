@@ -10,7 +10,6 @@ import {
   PostCreateInput,
   PostUpdateInput,
 } from "@/types";
-import { rankAtEnd, rankBetween, type Ranked } from "@/lib/ordering";
 import type { SerializedEditorState } from "lexical";
 import { createApiThunk, fail, ThunkFailure } from "./createApiThunk";
 
@@ -34,7 +33,7 @@ export const getPost = createApiThunk(
   },
 );
 
-/** A tabbed post's child tabs, rank-ordered, without their content. */
+/** A tabbed post's child tabs, in the parent's `tabOrder`, without content. */
 export const getPostChildren = createApiThunk(
   "app/getPostChildren",
   async (id: string, thunkAPI) =>
@@ -140,68 +139,32 @@ export const forkPost = createApiThunk(
   },
 );
 
-// ─── Move / reorder ──────────────────────────────────────────────────────────
+// ─── Re-home ─────────────────────────────────────────────────────────────────
 
 /**
- * Ranks of a container's current members, read from Redux. Root mixes standalone
- * posts and series in one rank space, mirroring the server.
+ * Optimistically re-home a post so a cross-container drag paints at once.
+ *
+ * Where it lands *within* the destination is not this action's business: the
+ * order arrays say that, and the drop handler has already written them
+ * (docs/plans/ordering-simplification.md §4 — a re-home appends, a follow-up
+ * order write positions). No rollback by design.
  */
-function containerSiblings(
-  state: AppState,
-  destination: MovePostArg["destination"],
-  excludeId: string,
-): Ranked[] {
-  const seriesId = destination.seriesId ?? null;
-  const parentId = seriesId ? null : (destination.parentId ?? null);
-  const out: Ranked[] = [];
-  for (const post of Object.values(state.posts.entities)) {
-    if (!post || post.id === excludeId || post.rank == null) continue;
-    const postSeries = post.seriesId ?? null;
-    const postParent = post.parentId ?? null;
-    const inContainer = seriesId
-      ? postSeries === seriesId
-      : parentId
-      ? postParent === parentId
-      : !postSeries && !postParent;
-    if (inContainer) out.push({ id: post.id, rank: post.rank });
-  }
-  if (!seriesId && !parentId) {
-    for (const s of state.series) {
-      if (s.rank != null) out.push({ id: s.id, rank: s.rank });
-    }
-  }
-  return out;
-}
+export const applyPostContainer = createAction<
+  { id: string; seriesId: string | null; parentId: string | null }
+>("app/applyPostContainer");
 
 /**
- * The rank a moved post should take, computed client-side. Deterministic, so it
- * matches what the server derives for positioned moves — which is what lets the
- * move be applied optimistically and lets the local backend reorder with no
- * server at all.
+ * Move a post into another container. **Appends** there (§4, decided); pair it
+ * with `setOrder` on the destination to drop it at a slot.
  */
-function moveRank(state: AppState, arg: MovePostArg): string {
-  const { afterRank, beforeRank } = arg.between ?? {};
-  if (afterRank != null || beforeRank != null) {
-    return rankBetween(afterRank ?? null, beforeRank ?? null);
-  }
-  return rankAtEnd(containerSiblings(state, arg.destination, arg.id));
-}
-
-/**
- * Optimistically set a post's rank so a reorder feels instant. The backend's
- * response (identical for positioned moves) confirms it on fulfilment. No
- * rollback by design — a failed reorder settles on the next load.
- */
-export const applyPostRank = createAction<{ id: string; rank: string }>(
-  "app/applyPostRank",
-);
-
 export const movePost = createApiThunk(
   "app/movePost",
   async (arg: MovePostArg, thunkAPI) => {
-    const rank = moveRank(thunkAPI.getState(), arg);
-    thunkAPI.dispatch(applyPostRank({ id: arg.id, rank }));
-    return await backendOf(thunkAPI.getState).move({ ...arg, rank });
+    // Container exclusivity mirrors the server's: a series wins over a parent.
+    const seriesId = arg.destination.seriesId ?? null;
+    const parentId = seriesId ? null : (arg.destination.parentId ?? null);
+    thunkAPI.dispatch(applyPostContainer({ id: arg.id, seriesId, parentId }));
+    return await backendOf(thunkAPI.getState).move(arg);
   },
 );
 

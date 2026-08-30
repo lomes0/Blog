@@ -92,7 +92,7 @@ const PostsGrid: React.FC<{ posts: Post[]; user?: User }> = (
  *                 series first, then standalone posts. Compact view uses
  *                 PostsListView, which renders standalone posts above series
  *                 (matching the sidebar's Notes-then-Projects split) while
- *                 ranking both in one shared space.
+ *                 ordering both from one shared array (`User.rootOrder`).
  */
 const PostsViewContent: React.FC<PostsViewProps> = (
   { series, user: serverUser },
@@ -171,9 +171,9 @@ const PostsViewContent: React.FC<PostsViewProps> = (
     handleDiscardTimeChanges,
   } = useTimeEditing(series?.posts ?? []);
 
-  // Manual rank order is the default (series.posts arrives rank-ordered from
-  // the server); time-edit mode swaps in the date-sorted-with-pending list while
-  // the user adjusts post dates.
+  // Manual order is the default (series.posts arrives in the series' own
+  // `postOrder` from the server); time-edit mode swaps in the
+  // date-sorted-with-pending list while the user adjusts post dates.
   const seriesUserDocs: Post[] = useMemo(
     () => isSeries ? (isTimeEditMode ? sortedWithPending : series!.posts) : [],
     [isSeries, isTimeEditMode, sortedWithPending, series],

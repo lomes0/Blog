@@ -48,7 +48,7 @@ import {
 interface ProjectRowProps {
   project: Project;
   /**
-   * Member series groups, already rank-ordered by `groupRootItems`.
+   * Member series groups, already ordered by `groupRootItems`.
    *
    * Named `groups` rather than `children` on purpose: React gives that name a
    * meaning of its own, and a prop that shadows it reads as JSX content at every

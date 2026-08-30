@@ -25,7 +25,12 @@ import {
   type SeriesExport,
   validateManifest,
 } from "@/lib/export/manifest";
-import { rankForAppend, resyncAuthorOrder } from "@/repositories/ordering";
+import {
+  addToOrder,
+  containerOf,
+  type OrderContainer,
+  rankForAppend,
+} from "@/repositories/ordering";
 import { reconcileDocumentBlobs } from "@/repositories/blob";
 import { blobHashesFor } from "@/lib/blobRefs";
 import { blobExists, hashBytes, isValidHash, putBlob } from "@/lib/storage";
@@ -82,6 +87,10 @@ export const POST = userRoute(async (request, { user }) => {
    */
   const restoredBlobs = new Set<string>();
 
+  // What each imported row's container array has to gain, applied in one write
+  // per container once the whole bundle has landed (see the end of this route).
+  const imported: { container: OrderContainer; id: string }[] = [];
+
   const seriesFile = zip.file("series/series.json");
   if (seriesFile) {
     let seriesList: SeriesExport[] = [];
@@ -117,6 +126,10 @@ export const POST = userRoute(async (request, { user }) => {
             createdAt: new Date(s.createdAt),
             updatedAt: new Date(s.updatedAt),
           },
+        });
+        imported.push({
+          container: { kind: "root", authorId: user.id },
+          id: s.id,
         });
         summary.imported.series++;
       } catch (err) {
@@ -242,6 +255,14 @@ export const POST = userRoute(async (request, { user }) => {
         },
       });
 
+      imported.push({
+        container: containerOf({
+          authorId: user.id,
+          seriesId,
+          parentId: docExport.parentId ?? null,
+        }),
+        id: docExport.id,
+      });
       summary.imported.documents++;
 
       // Restore the bundle's blobs before reconciling, because a reference can
@@ -335,10 +356,21 @@ export const POST = userRoute(async (request, { user }) => {
     }
   }
 
-  // Every imported row was ranked one at a time; fold the whole result into
-  // the order arrays in one pass rather than syncing per row
-  // (docs/plans/ordering-simplification.md §6).
-  await resyncAuthorOrder(prisma, user.id);
+  // Every imported row is appended to the array of the container it landed in,
+  // batched by container so a bundle costs one write per list rather than one
+  // per row (docs/plans/ordering-simplification.md §6, "Create"). It cannot be a
+  // recompute: nothing derives an order from `rank` any more, so recomputing
+  // would overwrite the author's existing manual order with import order.
+  const byContainer = new Map<string, { kind: string; ids: string[] }>();
+  for (const entry of imported) {
+    const key = JSON.stringify(entry.container);
+    const bucket = byContainer.get(key);
+    if (bucket) bucket.ids.push(entry.id);
+    else byContainer.set(key, { kind: key, ids: [entry.id] });
+  }
+  for (const [key, bucket] of byContainer) {
+    await addToOrder(prisma, JSON.parse(key) as OrderContainer, bucket.ids);
+  }
 
   // Revalidate relevant paths
   revalidatePath("/");

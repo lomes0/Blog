@@ -6,6 +6,7 @@ import {
 import {
   acceptAgentPost,
   alert,
+  applyOrder,
   approveProposal,
   appSlice,
   catchUpPosts,
@@ -34,11 +35,11 @@ import {
   loadSeries,
   mergePostsIntoTabs,
   movePost,
-  moveProject,
   moveSeries,
   postsAdapter,
   refreshProposals,
   rejectProposal,
+  setOrder,
   updatePost,
   updateProject,
   updateSeries,
@@ -86,7 +87,11 @@ export const actions = {
   createProject,
   updateProject,
   deleteProject,
-  moveProject,
+
+  // Order (docs/plans/ordering-simplification.md §4): `applyOrder` paints a
+  // container's new order into the store, `setOrder` persists it.
+  applyOrder,
+  setOrder,
 
   refreshProposals,
   approveProposal,

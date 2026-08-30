@@ -47,7 +47,8 @@ export const editorStateSchema = z
  *
  * `parentId` and `seriesId` are *not* here — a document's container is set by
  * `/api/documents/[id]/move`, which authorizes the destination, refuses parent
- * cycles and mints a rank in the target container. See `documentUpdateSchema`.
+ * cycles and appends it to the target container's order array. See
+ * `documentUpdateSchema`.
  *
  * `background_image` is not here either, for an unrelated reason: the feature
  * was removed and its bytes deleted (docs/plans/blob-storage.md §10.2). The
@@ -75,16 +76,16 @@ const documentFields = {
  * POST /api/documents.
  *
  * `parentId` and `seriesId` *are* accepted here — a new tab is born inside its
- * parent, and `createDocument` ranks it in that container — but the route must
- * prove the caller owns the destination before using them. Same for `baseId`,
+ * parent, and `createDocument` adds it to that container's order — but the
+ * route must prove the caller owns the destination before using them. Same for `baseId`,
  * which names the document this one is a fork of.
  *
  * `authorId` is not accepted: it comes from the session.
  *
  * `placement` says which *end* of the container the new document lands at, and
- * is the only ordering input taken here: the rank itself is still minted
- * server-side against the live siblings, so a client cannot pin a position it
- * computed from a stale list. Defaults to `"end"`.
+ * is the only ordering input taken here: which slot it occupies is the
+ * container's own order array, written by its order endpoint, so a client
+ * cannot pin a position it computed from a stale list. Defaults to `"end"`.
  *
  * Unknown keys are stripped rather than rejected (unlike the update schema): the
  * route allowlists the columns it writes, and callers legitimately post a whole
@@ -118,11 +119,13 @@ export const documentCreateSchema = z.object({
  * field instead of a value that reaches Prisma. Before this, `parentId` went
  * straight into the update: any signed-in user could graft their own document
  * into *anyone else's* post as a child tab — no ownership check on the
- * destination, no cycle check, and no rank in the container it landed in. The
- * comment saying membership changes go through `/move` is now enforced.
+ * destination, no cycle check, and no place in the order of the container it
+ * landed in. The comment saying membership changes go through `/move` is now
+ * enforced.
  *
- * `rank` is likewise not accepted: it is derived from `between` inside the move
- * transaction, which is what keeps concurrent reorders consistent.
+ * `rank` is likewise not accepted, and nothing reads it any more: a container's
+ * order lives on the container (docs/plans/ordering-simplification.md §4) and
+ * is written by that container's order endpoint, never field-by-field here.
  *
  * `expectedHead` is the one field here that is not a column. It is the
  * compare-and-set: send the head this write is based on and the update is

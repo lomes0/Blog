@@ -91,7 +91,7 @@ export function useInlineRename<T, C = undefined>(
   const inputRef = useCallback((node: HTMLInputElement | null) => {
     inputNode.current = node;
     if (!node) return;
-    // Reveal before focusing. A row created by a "+" is ranked to the *end* of
+    // Reveal before focusing. A row created by a "+" is appended to the end of
     // its container (every `create*` repository call appends), so on any
     // non-trivial tree the field opens below the fold.
     node.scrollIntoView({ block: "nearest" });

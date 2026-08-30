@@ -1,16 +1,23 @@
 import {
   byRank,
-  rankAtEnd,
   rankAtStart,
   rankBetween,
   type Ranked,
+  ranksAfter,
   ranksForList,
 } from "@/lib/ordering";
 
-// NOTE: No test runner is configured in this repo yet (see CLAUDE.md). These
-// specs follow a standard `describe`/`it`/`expect` shape so they run as-is once
-// vitest/jest is wired up. Until then, the logic is verified ad hoc via
-// scripts (see the ordering plan, Phase 1).
+/**
+ * What is left of the fractional keys after
+ * docs/plans/ordering-simplification.md §4.
+ *
+ * Ordering is the order arrays now (`orderArray.test.ts` reads them,
+ * `orderMove.test.ts` writes them). These four survive for the create path,
+ * whose ranks nothing sorts by, and for the local library, which does — so the
+ * cases that went with bracketing a *reorder* (`rankAtEnd` and the pair of
+ * neighbours that positioned a drop) are gone with the code they covered, and
+ * what remains is what still has a caller.
+ */
 
 const ranked = (id: string, rank: string): Ranked => ({ id, rank });
 
@@ -18,7 +25,7 @@ describe("ordering", () => {
   describe("rankBetween", () => {
     it("mints a key strictly between two neighbours", () => {
       const a = rankBetween(null, null);
-      const b = rankAtEnd([ranked("1", a)]);
+      const b = rankBetween(a, null);
       const mid = rankBetween(a, b);
       expect(a < mid).toBe(true);
       expect(mid < b).toBe(true);
@@ -49,18 +56,34 @@ describe("ordering", () => {
     });
   });
 
-  describe("rankAtEnd / rankAtStart", () => {
-    it("appends after the max and prepends before the min, unsorted input ok", () => {
+  describe("rankAtStart", () => {
+    it("prepends before the min, unsorted input ok", () => {
       const [r0, r1, r2] = ranksForList(3);
       const siblings = [ranked("b", r1), ranked("c", r2), ranked("a", r0)];
-      const end = rankAtEnd(siblings);
-      const start = rankAtStart(siblings);
-      expect(r2 < end).toBe(true);
-      expect(start < r0).toBe(true);
+      expect(rankAtStart(siblings) < r0).toBe(true);
     });
 
     it("seeds an empty container", () => {
-      expect(rankAtEnd([])).toBe(rankAtStart([]));
+      expect(rankAtStart([])).toBe(rankBetween(null, null));
+    });
+  });
+
+  describe("ranksAfter", () => {
+    // The batch the delete paths mint: a freed series' posts, or a deleted
+    // project's series, arriving at the end of the root list together.
+    it("returns ascending keys that all sort after the base", () => {
+      const base = rankBetween(null, null);
+      const keys = ranksAfter(base, 3);
+      expect(keys).toHaveLength(3);
+      expect(base < keys[0]).toBe(true);
+      for (let i = 1; i < keys.length; i++) {
+        expect(keys[i - 1] < keys[i]).toBe(true);
+      }
+    });
+
+    it("treats a null base as the start of the list", () => {
+      expect(ranksAfter(null, 2)).toHaveLength(2);
+      expect(ranksAfter(null, 0)).toEqual([]);
     });
   });
 

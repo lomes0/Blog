@@ -2,8 +2,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { actions, useDispatch } from "@/store";
-import { rankBetween } from "@/lib/ordering";
-import { bracketForDrop } from "@/lib/documentOrder";
+import { moveToTarget } from "@/lib/orderMove";
 import {
   buildIndex,
   containerKey,
@@ -109,8 +108,9 @@ export interface TreeDndResult {
 }
 
 /**
- * Native HTML5 drag-and-drop for the post tree, dispatching the `movePost` /
- * `moveSeries` / `moveProject` thunks. One pair of row handlers covers every
+ * Native HTML5 drag-and-drop for the post tree, dispatching the `setOrder`
+ * thunk and — for a drop that crosses containers — `movePost` / `moveSeries`
+ * first. One pair of row handlers covers every
  * case; the meaning of a drop is resolved from the *target* row and the grabbed
  * row's *kind*:
  *
@@ -122,18 +122,21 @@ export interface TreeDndResult {
  *   - series → between root rows            → reorder / move out to the root list
  *   - project → between root rows           → reorder the project in the root list
  *
- * Containers share one rank space per level (see `TreeContainer`), so a
- * "reorder" drop both re-homes and re-ranks a row against the target's siblings.
- * The destination is always the container in *full* — never a patch of it — so a
- * reorder inside a series keeps its rows in that series.
+ * A "reorder" drop rewrites one container's order array
+ * (docs/plans/ordering-simplification.md §4). A row arriving from another
+ * container is re-homed first — which *appends* it there — and the order write
+ * that follows is what puts it at the slot it was dropped on. Two calls, and the
+ * final order is painted into the store before either, so the row never appears
+ * at the end of its new list on the way to where it was dropped.
  *
  * When the grabbed row is part of the multi-selection, `getDragSet` expands the
- * drag to the whole selection (render order); the set is dropped as a contiguous
- * block, each item taking a **chained** rank so their relative order is
- * preserved. Dispatching the block against one shared bracket would scramble it.
+ * drag to the whole selection (render order); the set is dropped as one
+ * contiguous block, which is what `moveToTarget` splices in — the chained ranks
+ * this used to need are gone with the ranks.
  *
- * `nodes` is the rendered, rank-ordered tree — the source of the sibling ranks
- * that bracket a drop. Both the sidebar and the posts list adapt into it.
+ * `nodes` is the rendered tree, in the order it is on screen — which is the
+ * order a drop rewrites, so it comes from what was drawn rather than from
+ * anything stored. Both the sidebar and the posts list adapt into it.
  */
 export function useTreeDnd(
   nodes: readonly TreeNode[],
@@ -157,7 +160,7 @@ export function useTreeDnd(
   const getDragSetRef = useRef<DragSetResolver | undefined>(getDragSet);
   getDragSetRef.current = getDragSet;
 
-  // Row → container/kind lookup, plus each container's rank-ordered siblings.
+  // Row → container/kind lookup, plus each container's siblings in render order.
   const { targetInfo, siblings } = useMemo(
     () => buildIndex(nodes, root),
     [nodes, root],
@@ -357,62 +360,65 @@ export function useTreeDnd(
         return;
       }
 
-      // Reorder: drop the set as a contiguous block at the target slot. The
-      // block's outer bracket comes from the target's neighbours (the whole
-      // dragged set removed first); each item then takes a chained rank so the
-      // set's internal order is preserved.
+      // Reorder: drop the set as a contiguous block at the target slot, by
+      // rewriting the container's order array.
       const container = c.container;
-      // Null covers both "target vanished" and a degenerate slot whose colliding
-      // neighbour ranks would make rankBetween throw — see bracketForDrop.
-      const bracket = bracketForDrop(
-        siblings.get(containerKey(container)) ?? [],
-        dragged.idSet,
+      const rendered = siblings.get(containerKey(container)) ?? [];
+      const present = new Set(rendered);
+      // Rows the drop brings in from elsewhere. They are appended to the list
+      // first, because that is where their re-home will land them server-side;
+      // `moveToTarget` then moves the whole block to the drop slot, so the one
+      // array covers the arrivals and the rows that were already here.
+      const arriving = dragged.ids.filter((id) => !present.has(id));
+      const orderedIds = moveToTarget(
+        [...rendered, ...arriving],
+        dragged.ids,
         targetId,
         position,
       );
-      if (!bracket) return;
+      // Null means the drop cannot be expressed here: the target is gone, or is
+      // one of the dragged rows.
+      if (!orderedIds) return;
+
+      // Paint the finished order before the first request. A cross-container
+      // drop is a re-home *and* an order write (§4, decided), and without this
+      // the row would sit at the end of its new container for a round trip.
+      dispatch(actions.applyOrder({ container, orderedIds }));
 
       const destination = postDestination(container);
-      const beforeRank = bracket.beforeRank;
-      let afterRank = bracket.afterRank;
-      for (const id of dragged.ids) {
+      for (const id of arriving) {
         const kind = targetInfo.get(id)?.kind ?? "post";
-        const between = { afterRank, beforeRank };
         if (kind === "post") {
           // Posts can't live directly in a project; skip them there.
           if (!destination) continue;
-          await dispatch(actions.movePost({ id, destination, between }));
+          await dispatch(actions.movePost({ id, destination }));
         } else if (kind === "series") {
           if (container.type === "project") {
             await dispatch(
               actions.moveSeries({
                 id,
                 destination: { projectId: container.projectId },
-                between,
               }),
             );
-          } else if (container.type === "root") {
+          } else if (container.type === "root" && rendersProjects) {
+            // Only a surface that renders projects may assert membership: on one
+            // that does not, a series' filing is invisible and must be left
+            // alone rather than silently cleared.
             await dispatch(
-              actions.moveSeries({
-                id,
-                // Only a surface that renders projects may assert membership.
-                ...(rendersProjects
-                  ? { destination: { projectId: null } }
-                  : {}),
-                between,
-              }),
+              actions.moveSeries({ id, destination: { projectId: null } }),
             );
-          } else {
-            // A series can nest in neither a series nor a tab group.
-            continue;
           }
-        } else {
-          if (container.type !== "root") continue;
-          await dispatch(actions.moveProject({ id, between }));
+          // A series can nest in neither a series nor a tab group.
         }
-        // Chain: the next item slots just after the one just placed.
-        afterRank = rankBetween(afterRank, beforeRank);
+        // A project has no container to change — it only ever lives at root.
       }
+
+      // If this write fails the re-homes above have already landed, so the row
+      // is in its new container but at the end of it. Announced by the thunk and
+      // settled by the next load; no rollback, as everywhere else here.
+      await dispatch(
+        actions.setOrder({ container, orderedIds, optimistic: false }),
+      );
       router.refresh();
     },
     [classify, dispatch, router, siblings, targetInfo, rendersProjects],

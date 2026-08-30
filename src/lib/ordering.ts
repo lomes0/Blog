@@ -1,23 +1,30 @@
 import { generateKeyBetween, generateNKeysBetween } from "fractional-indexing";
 
 /**
- * Manual-ordering primitive.
+ * Manual-ordering primitive: a fractional-index key giving a row's position
+ * among its siblings. Compared as plain strings, so a row can be positioned by
+ * writing one new key *between* its neighbours.
  *
- * Every orderable row (a {@link import("@/types").Post} or a Series)
- * stores a `rank`: a fractional-index key giving its position among its
- * siblings within its container (its series, its parent tab-group, or the
- * author's root list). Ranks are compared as plain strings — `a.rank < b.rank`
- * — so a row can be re-positioned by writing a single new key *between* its
- * neighbours, with no renumbering of the rest of the list.
+ * **Ordering no longer reads any of this.** Phase 4 of
+ * docs/plans/ordering-simplification.md moved every read and every reorder onto
+ * the containers' order arrays; what is left has three callers and no bearing
+ * on what order anything appears in:
  *
- * This module is the only place that mints or reasons about rank keys. All
- * repositories, thunks and selectors go through it.
+ * - {@link rankBetween} and {@link ranksAfter}, for the *create* path in
+ *   `repositories/ordering.ts`. `Document.rank`, `Series.rank` and
+ *   `Project.rank` are `NOT NULL` until phase 5 drops them, so an insert still
+ *   has to write something, and an honest append key is what keeps the phase-5
+ *   rollback exact.
+ * - {@link rankAtStart} and {@link ranksForList}, for the local (IndexedDB)
+ *   library, which has no container rows to hang arrays on and so stays on
+ *   `rank` until §7 is done.
+ * - {@link compareRankThenId} and {@link byRank}, for reading that local
+ *   library, and for `prisma/scripts/backfill-order.ts`, which seeded the
+ *   arrays from the ranks in the first place.
  *
  * Collision note: two clients editing offline can mint the same key for the
  * same slot. {@link byRank} breaks such ties deterministically by `id`, so
- * display order is always total and stable. Jittered keys (to also keep future
- * inserts *between* the colliding pair from wedging) are deferred until
- * concurrent offline reordering is wired up — see the ordering plan.
+ * display order is always total and stable.
  */
 
 /** Minimal shape this module needs: anything with a stable id and a rank. */
@@ -80,11 +87,6 @@ export function rankBetween(
   return generateKeyBetween(u, l);
 }
 
-/** A rank that sorts after every sibling (append to the end of the list). */
-export function rankAtEnd(siblings: readonly Ranked[]): string {
-  return generateKeyBetween(maxRank(siblings), null);
-}
-
 /** A rank that sorts before every sibling (prepend to the start of the list). */
 export function rankAtStart(siblings: readonly Ranked[]): string {
   return generateKeyBetween(null, minRank(siblings));
@@ -114,8 +116,8 @@ export function ranksAfter(after: string | null, count: number): string[] {
  * ascending by `rank`, unranked (`null`) entries sort last, and equal/absent
  * ranks break by `id` so the order is always total and stable.
  *
- * This is the one primitive every rank-ordered surface builds on — the root
- * list on /posts, the sidebar tree's group/root ordering, and {@link byRank}.
+ * The one primitive the surviving rank-ordered readers build on: the local
+ * library's {@link byRank}, and the phase-2 backfill.
  */
 export function compareRankThenId(
   aRank: string | null,
@@ -139,20 +141,11 @@ export function byRank(a: Ranked, b: Ranked): number {
   return compareRankThenId(a.rank, a.id, b.rank, b.id);
 }
 
-function maxRank(siblings: readonly Ranked[]): string | null {
-  let max: string | null = null;
-  for (const s of siblings) {
-    // Ignore malformed keys so a corrupt sibling can't become the bound we
-    // then feed to generateKeyBetween (which would throw).
-    if (!isValidRank(s.rank)) continue;
-    if (max === null || s.rank > max) max = s.rank;
-  }
-  return max;
-}
-
 function minRank(siblings: readonly Ranked[]): string | null {
   let min: string | null = null;
   for (const s of siblings) {
+    // Ignore malformed keys so a corrupt sibling can't become the bound we
+    // then feed to generateKeyBetween (which would throw).
     if (!isValidRank(s.rank)) continue;
     if (min === null || s.rank < min) min = s.rank;
   }

@@ -10,22 +10,17 @@ import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
-// A re-home: where the document should land (its new container) and, optionally,
-// the ranks of the neighbours it is dropped between. Omitting `between` appends
-// it to the end of the destination container. `destination` fully specifies the
-// container — it is not a partial patch.
+// A re-home: where the document should land. `destination` fully specifies the
+// container — it is not a partial patch — and the move **appends** there
+// (docs/plans/ordering-simplification.md §4, decided). A caller that dropped the
+// row at a particular slot follows with an order write to position it; there is
+// no combined position payload, so nothing here takes a rank or a neighbour.
 const moveSchema = z.object({
   destination: z.object({
     seriesId: z.string().uuid().nullish(),
     parentId: z.string().uuid().nullish(),
   }),
-  between: z
-    .object({
-      afterRank: z.string().nullish(),
-      beforeRank: z.string().nullish(),
-    })
-    .optional(),
-});
+}).strict();
 
 // PATCH /api/documents/[id]/move → reorder / re-home a document
 export const PATCH = userRoute<{ id: string }>(
@@ -38,7 +33,7 @@ export const PATCH = userRoute<{ id: string }>(
       subtitle: "You can only reorder your own documents",
     });
 
-    const { destination, between } = await parseBody(request, moveSchema);
+    const { destination } = await parseBody(request, moveSchema);
 
     // Container exclusivity: a series destination wins over a parent.
     const seriesId = destination.seriesId ?? null;
@@ -61,11 +56,7 @@ export const PATCH = userRoute<{ id: string }>(
       });
     }
 
-    await moveDocumentTx({
-      id: params.id,
-      destination: { seriesId, parentId },
-      between,
-    });
+    await moveDocumentTx({ id: params.id, destination: { seriesId, parentId } });
 
     const data = await findDocument(params.id);
 

@@ -6,17 +6,16 @@ import { actions, useDispatch } from "@/store";
 import { useRouter } from "next/navigation";
 import { useExpandedState } from "@/hooks/useExpandedState";
 import {
-  rankOf,
-  ranksBracketing,
+  applySubsetOrder,
+  moveByDirection,
   type ReorderDirection,
-} from "@/lib/documentOrder";
-import { containerFromPost } from "@/lib/tree/model";
+} from "@/lib/orderMove";
+import { containerFromPost, type TreeContainer } from "@/lib/tree/model";
 import {
   groupRootItems,
   partitionRootItems,
   type RootItem,
   rootItemId,
-  rootItemRank,
   rootItemsToTreeNodes,
   type SeriesGroupItem,
 } from "@/utils/posts/seriesGrouping";
@@ -339,78 +338,73 @@ export function PostsListView({
   );
 
   // ── Manual reorder (menu / keyboard) ──────────────────────────────────────
+  // One shape for all three: take the ids the surface is rendering, move one of
+  // them, and write the container's array
+  // (docs/plans/ordering-simplification.md §4). No container changes, so no
+  // move — a reorder is now only an order write.
+  const reorder = useCallback(
+    async (container: TreeContainer, orderedIds: string[]) => {
+      await dispatch(actions.setOrder({ container, orderedIds }));
+      router.refresh();
+    },
+    [dispatch, router],
+  );
+
   // Reposition a post among its siblings within its own container (a series or
-  // a tab-group). `siblings` is the rendered, rank-ordered list.
+  // a tab-group). `siblings` is the rendered list.
   const handleReorderPost = useCallback(
     async (
       siblings: Post[],
       postId: string,
       direction: ReorderDirection,
     ) => {
-      const i = siblings.findIndex((p) => p.id === postId);
-      if (i === -1) return;
-      const between = ranksBracketing(siblings.map(rankOf), i, direction);
-      if (!between) return;
-
-      // Keep the post in its current container; only its position changes.
-      const doc = siblings[i];
-      const destination = doc?.seriesId
-        ? { seriesId: doc.seriesId }
-        : doc?.parentId
-        ? { parentId: doc.parentId }
-        : {};
-
-      await dispatch(
-        actions.movePost({ id: postId, destination, between }),
+      const doc = siblings.find((p) => p.id === postId);
+      if (!doc) return;
+      const next = moveByDirection(
+        siblings.map((p) => p.id),
+        postId,
+        direction,
       );
-      router.refresh();
+      if (!next) return;
+      await reorder(containerFromPost(doc), next);
     },
-    [dispatch, router],
+    [reorder],
   );
 
-  // Reposition a root-level item within its own rendered section — `section` is
-  // the posts list or the series list, both rank-ordered subsets of the shared
-  // root rank space. Bracketing against the *section* (rather than the whole
-  // root list) is what makes "move down" land where the user sees the row go: a
-  // rank drawn between two posts is still between them when a series' rank sits
-  // in the gap. Posts move via movePost, series via moveSeries.
+  // Reposition a root-level item within its own rendered *section* — the posts
+  // list or the projects/series list, each an ordered subset of the one root
+  // array. The section is reordered and then written back into the slots it
+  // already occupies (`applySubsetOrder`), which is what makes "move down" land
+  // where the user watched the row go: the other section's rows sit between
+  // them and must not shift.
   const handleReorderRoot = useCallback(
     async (
       section: RootItem[],
       index: number,
       direction: ReorderDirection,
     ) => {
-      const between = ranksBracketing(
-        section.map(rootItemRank),
-        index,
+      const id = rootItemId(section[index]);
+      const nextSection = moveByDirection(
+        section.map(rootItemId),
+        id,
         direction,
       );
-      if (!between) return;
-      const item = section[index];
-      const id = rootItemId(item);
-      if (item.type === "project") {
-        await dispatch(actions.moveProject({ id, between }));
-      } else if (item.type === "series") {
-        await dispatch(actions.moveSeries({ id, between }));
-      } else {
-        await dispatch(
-          actions.movePost({ id, destination: container, between }),
-        );
-      }
-      router.refresh();
+      if (!nextSection) return;
+      await reorder(
+        dndRoot,
+        applySubsetOrder(rootItems.map(rootItemId), nextSection),
+      );
     },
-    [dispatch, router, container],
+    [reorder, dndRoot, rootItems],
   );
 
   /**
    * Reposition a series among the members of one project.
    *
-   * A separate handler from the root one because the rank space is different:
-   * a project's children are ranked against each other, not against the root
-   * list, so bracketing against the wrong list produces a rank that reads
-   * correctly here and puts the series somewhere else on the next load. The
-   * destination names the project in full, for the reason `PostContainer`'s
-   * docstring gives — a partial destination re-homes the row it moves.
+   * A separate handler from the root one because it is a different container:
+   * a project owns the order of its members in its own `seriesOrder`, and
+   * writing that list into the root array instead would take every one of them
+   * out of the project as far as any read is concerned.
    */
   const handleReorderProjectSeries = useCallback(
     async (
@@ -419,24 +413,17 @@ export function PostsListView({
       index: number,
       direction: ReorderDirection,
     ) => {
-      const between = ranksBracketing(
-        siblings.map((group) => group.series?.rank ?? null),
-        index,
-        direction,
-      );
-      if (!between) return;
       const seriesId = siblings[index]?.series?.id;
       if (!seriesId) return;
-      await dispatch(
-        actions.moveSeries({
-          id: seriesId,
-          destination: { projectId },
-          between,
-        }),
+      const next = moveByDirection(
+        siblings.map((group) => group.series?.id ?? ""),
+        seriesId,
+        direction,
       );
-      router.refresh();
+      if (!next) return;
+      await reorder({ type: "project", projectId }, next);
     },
-    [dispatch, router],
+    [reorder],
   );
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
