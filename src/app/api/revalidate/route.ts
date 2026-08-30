@@ -1,4 +1,5 @@
 import { ApiError, parseBody, userRoute } from "@/lib/api-utils";
+import { UserRole } from "@prisma/client";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 
@@ -8,7 +9,7 @@ const revalidateSchema = z.object({
 }).strict();
 
 export const POST = userRoute(async (request, { user }) => {
-  if (user.role !== "admin") {
+  if (user.role !== UserRole.ADMIN) {
     throw new ApiError(
       403,
       "Unauthorized",

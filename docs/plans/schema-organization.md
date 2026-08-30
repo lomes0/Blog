@@ -7,7 +7,11 @@ the `rank` → order-array change; this plan owns everything else. Where they
 touch the same models, this doc omits the ordering columns to avoid
 double-specifying.
 
-Status: proposal. Nothing implemented.
+**Status: Phase A shipped 30 Aug 2026** (migration
+`20260830113000_phase_a_schema_sweep`). Phases B–D are still proposal. §6
+records what Phase A found that this document got wrong — chiefly that its
+column list was a third of the real one, that one of the two indexes it names
+does not exist, and that "no app-logic change" was false.
 
 ## Decisions locked
 
@@ -250,3 +254,55 @@ Clearer single-node identity · timezone-safe timestamps · referential integrit
 on the head-revision pointer · enums instead of magic strings · no dead OAuth1 /
 `type` / coauthor cruft · fewer indexes · consistent field naming. All without
 adding a single table.
+
+---
+
+## 6. Phase A, as built (30 Aug 2026)
+
+Migration `20260830113000_phase_a_schema_sweep`, hand-written rather than
+generated. Four corrections to the text above, and the last two matter beyond
+this phase.
+
+**The `USING` clause is explicit.** The casts read
+`USING "col" AT TIME ZONE 'UTC'`, not the bare `SET DATA TYPE TIMESTAMPTZ`
+Prisma generates. Both agree on a server whose `TimeZone` is UTC, which this
+one's is — but the implicit form reads the zone off the *applying session*, so a
+future migration applied over a connection that sets `timezone` would rewrite
+every timestamp, wrongly and without complaint. The explicit form states a fact
+about the writer instead of about whoever runs the migration.
+
+**The UTC assumption (§5.2) was verified, not assumed.** `mcp/smokeHttp.ts`
+names each throwaway token `smoke-http ${new Date().toISOString()}` — an
+unambiguous UTC instant inside the row's own `name` — and the bare `createdAt`
+written in the same statement agrees with it to the millisecond, on a machine
+whose local zone is +03:00. A local-time write would have been off by three
+hours.
+
+**21 columns, not the 7 Phase A enumerates.** The list above predates
+`AgentToken` and `ProviderCredential` entirely, and missed
+`Document.agentCreatedAt`, `Revision.proposedAt`/`staleAt` and
+`DocumentCoauthors.createdAt` on models it does name. It also never mentions the
+two NextAuth adapter tables: `Session.expires` and `VerificationToken.expires`
+are converted too, because the adapter dictates those columns' *names* and not
+their type, and an expiry compared against `now()` is exactly the value a
+zoneless timestamp gets wrong. `Blob`/`BlobRef` were already `@db.Timestamptz`.
+
+**`Document @@index([authorId])` does not exist** — not in the schema, not in
+the database. Only `Series @@index([authorId])` was there to drop.
+`Document_authorId_published_idx` and `Document_authorId_rank_idx` already lead
+with `authorId`.
+
+**"No app-logic change" was false.** Converting `User.role` broke two admin
+checks — `api/revalidate/route.ts` and `api/users/[id]/route.ts` compared it to
+the string `"admin"`, which stops matching once the stored value is `ADMIN`.
+`tsc` caught both as TS2367; had the column been left untyped they would have
+sent every admin a 403. Two things guard the conversion itself: it alters the
+column **in place**, because Prisma's own generated SQL for this change is
+`DROP COLUMN` + `ADD COLUMN` and would have discarded every stored role; and the
+`CASE` is deliberately total, so a value that is neither `user` nor `admin`
+yields NULL and trips the NOT NULL rather than quietly becoming `USER`.
+
+**Noticed, not touched.** `Document` carries two identical unique indexes on
+`handle` — `Document_handle_key` and a legacy `documents_handle_key`. Prisma
+reports no drift over it, so a migration created it. Dead weight for a later
+phase, and out of Phase A's scope.

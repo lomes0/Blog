@@ -52,7 +52,9 @@ model Series {
   project Project?   @relation("ProjectSeries", fields: [projectId], references: [id], onDelete: SetNull)
   posts   Document[] @relation("SeriesPosts")
 
-  @@index([authorId])
+  // No standalone @@index([authorId]): both composites below lead with it, so
+  // an authorId-only lookup is already served (docs/plans/schema-organization.md
+  // "Migration phases", Phase A).
   @@index([title])
   @@index([authorId, createdAt])
   @@index([authorId, rank]) // Root-list ordering (shared space with Documents)
@@ -66,8 +68,8 @@ model Document {
   handle      String?  @unique
   name        String
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now()) @db.Timestamptz
+  updatedAt   DateTime @updatedAt @db.Timestamptz
   authorId    String   @db.Uuid
   published   Boolean  @default(false)
   private     Boolean  @default(false)
@@ -110,7 +112,7 @@ model Document {
   // An agent-created post lands normally but stays flagged until you accept it
   // (docs/plans/archive/agent-gating.md §3.7). `published` defaults to false, so this is
   // a draft nobody else can read meanwhile.
-  agentCreatedAt DateTime?
+  agentCreatedAt DateTime? @db.Timestamptz
   agentOrigin    String?
 
   // Relations
@@ -137,10 +139,15 @@ enum DocumentStatus {
   DONE
 }
 
+enum UserRole {
+  USER
+  ADMIN
+}
+
 model Revision {
   id         String   @id @default(uuid()) @db.Uuid
   data       Json
-  createdAt  DateTime @default(now())
+  createdAt  DateTime @default(now()) @db.Timestamptz
   documentId String   @db.Uuid // References posts (Document with type DOCUMENT)
   document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
   authorId   String   @db.Uuid
@@ -163,7 +170,7 @@ model Revision {
   // write that `Document.head` does not point at, and every history read
   // filters it out with `proposedAt: null`. Approval clears the flag, which is
   // what turns the row into history; rejection deletes it.
-  proposedAt     DateTime?
+  proposedAt     DateTime? @db.Timestamptz
   origin         String? // where the write came from, e.g. "claude-code"
   // The head this proposal was built on. **Written once**, on creation — a
   // squash must never refresh it (§3.2), because approval's compare-and-set on
@@ -171,7 +178,7 @@ model Revision {
   baseRevisionId String?   @db.Uuid
   ops            Json? // the batches folded into this proposal (§3.3)
   summary        String? // one line, for the rail
-  staleAt        DateTime? // set when the base stops being head (§3.6)
+  staleAt        DateTime? @db.Timestamptz // set when the base stops being head (§3.6)
   // CAS token for the squash (§3.2). Once `head` stops moving on an agent
   // write, this is the only thing serializing two folds onto the same row.
   version        Int       @default(0)
@@ -189,13 +196,13 @@ model User {
   handle         String?             @unique
   name           String
   email          String              @unique
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
+  createdAt      DateTime            @default(now()) @db.Timestamptz
+  updatedAt      DateTime            @updatedAt @db.Timestamptz
   disabled       Boolean             @default(false)
-  emailVerified  DateTime?
-  lastLogin      DateTime?
+  emailVerified  DateTime?           @db.Timestamptz
+  lastLogin      DateTime?           @db.Timestamptz
   image          String?
-  role           String              @default("user")
+  role           UserRole            @default(USER)
   accounts       Account[]
   sessions       Session[]
   revisions      Revision[]
@@ -248,21 +255,22 @@ model AgentToken {
   hash String @unique
 
   /// What this token may do: "read" (list/outline/read/search) and "propose"
-  /// (apply_ops, create_post). A plain string list rather than an enum, matching
-  /// `User.role` — the set will grow, and growing it should not be a migration.
+  /// (apply_ops, create_post). A plain string list rather than an enum: the set
+  /// will grow, and growing it should not be a migration. `User.role` is an enum
+  /// for the opposite reason — its two values are the whole domain.
   scopes String[]
 
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @db.Timestamptz
 
   /// Throttled to at most one write a minute per token, so a chatty agent does
   /// not turn every read into a write (mcp_support.md phase 5).
-  lastUsedAt DateTime?
+  lastUsedAt DateTime? @db.Timestamptz
 
-  expiresAt DateTime?
+  expiresAt DateTime? @db.Timestamptz
 
   /// Set rather than deleting the row: a revoked token's `lastUsedAt` is
   /// evidence about what a leaked credential did, and deleting destroys it.
-  revokedAt DateTime?
+  revokedAt DateTime? @db.Timestamptz
 
   @@index([userId])
 }
@@ -292,8 +300,8 @@ model ProviderCredential {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   /// Which provider, spelled as `AIModel.provider` spells it. A plain string
-  /// rather than an enum, matching `AgentToken.scopes` and `User.role` — the set
-  /// grows, and growing it should not be a migration.
+  /// rather than an enum, matching `AgentToken.scopes` — the set grows, and
+  /// growing it should not be a migration.
   provider String
 
   /// The AES-256-GCM parts, in three columns rather than one packed blob: a
@@ -314,15 +322,15 @@ model ProviderCredential {
   /// another, not a meaningful fraction of the secret.
   last4 String
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
 
   /// Last time a completion used it — the evidence for "is this key still live".
   /// Throttled like `AgentToken.lastUsedAt`; see `shouldTouch`.
-  lastUsedAt DateTime?
+  lastUsedAt DateTime? @db.Timestamptz
 
   /// Last time it was checked against the provider and worked.
-  lastVerifiedAt DateTime?
+  lastVerifiedAt DateTime? @db.Timestamptz
 
   /// One key per provider per user. Several keys for one provider would need a
   /// "which is the default" concept for no benefit — a user replacing a key
@@ -336,26 +344,24 @@ model DocumentCoauthors {
   userEmail  String
   document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
   user       User     @relation(fields: [userEmail], references: [email], onDelete: Cascade)
-  createdAt  DateTime @default(now())
+  createdAt  DateTime @default(now()) @db.Timestamptz
 
   @@id([documentId, userEmail])
 }
 
 model Account {
-  id                 String  @id @default(uuid()) @db.Uuid
-  userId             String  @db.Uuid
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String?
-  access_token       String?
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String?
-  session_state      String?
-  oauth_token_secret String?
-  oauth_token        String?
+  id                String  @id @default(uuid()) @db.Uuid
+  userId            String  @db.Uuid
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -366,7 +372,7 @@ model Session {
   id           String   @id @default(uuid()) @db.Uuid
   sessionToken String   @unique
   userId       String   @db.Uuid
-  expires      DateTime
+  expires      DateTime @db.Timestamptz
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
@@ -374,7 +380,7 @@ model VerificationToken {
   id         Int      @id @default(autoincrement())
   identifier String
   token      String   @unique
-  expires    DateTime
+  expires    DateTime @db.Timestamptz
 
   @@unique([identifier, token])
 }

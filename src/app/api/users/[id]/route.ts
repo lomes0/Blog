@@ -8,7 +8,7 @@ import {
 import { deleteUser, findUser, updateUser } from "@/repositories/user";
 import { NextResponse } from "next/server";
 import { validate } from "uuid";
-import { Prisma } from "@prisma/client";
+import { Prisma, UserRole } from "@prisma/client";
 import { validateHandle } from "../utils";
 import { z } from "zod";
 
@@ -94,7 +94,7 @@ export const DELETE = userRoute<{ id: string }>(
     if (!validate(params.id)) {
       throw new ApiError(400, "Bad Request", "Invalid user id");
     }
-    if (user.role !== "admin") {
+    if (user.role !== UserRole.ADMIN) {
       throw new ApiError(
         403,
         "Forbidden",
