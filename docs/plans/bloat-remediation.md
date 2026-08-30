@@ -4,8 +4,10 @@
 shipped the same day the product question was answered — `/posts` builds its
 root list with `groupRootItems` and adapts it with `rootItemsToTreeNodes`, the
 same two functions the sidebar uses, and `ProjectRow` gives a project a row that
-contains its series. What is left is not code: **drag reorder across series
-boundaries and multi-select drag have not been exercised in a browser**, and
+contains its series. **Both drag cases were exercised in a browser on 30 Aug
+2026 and both pass** — see the note at the end of this file. Previously: what is
+left is not code: **drag reorder across series boundaries and multi-select drag
+have not been exercised in a browser**, and
 both have broken on this surface before.
 
 Previously: **steps 1–6 are done or effectively done; step 7 is
@@ -25,7 +27,7 @@ which describes the state at the time the plan was written.
 | 4    | Done — `hooks/useResizablePanel.ts` + `Layout/ResizeGripper.tsx` landed     |
 | 5    | Done — `LoadingState.tsx` gone, `DocumentCard/theme.ts` 149 → 72            |
 | 6    | Done — [tree-model-brief.md](./archive/tree-model-brief.md)                 |
-| 7    | **Done 27 Aug 2026** — needs browser eyes on drag, see the status note      |
+| 7    | **Done 27 Aug 2026**; drag verified in a browser 30 Aug 2026                |
 
 Baseline when written: `c366f438`, 71,354 LOC / 451 files. Now 69,777 LOC.
 
@@ -317,3 +319,40 @@ split into its own sequence of commits (model first, then each consumer moved
 over), and it _needs eyes_ on both `/posts` and the sidebar — including drag
 reorder across series boundaries and multi-select drag, which has broken here
 before.
+
+---
+
+## Browser verification, 30 Aug 2026
+
+Both drag cases this file called unexercised were driven in headless Chrome
+against the sidebar, signed in as the real author over a session row, with
+`docs/plans/ordering-simplification.md` phases 1–3 in the tree — so the run
+doubles as the check that reads-from-arrays and writes-through-`rank` agree
+under a real gesture.
+
+The surface is the **sidebar**, not the `/posts` grid: the grid's post chips are
+not `draggable`, and all 101 draggable nodes on the page are sidebar rows.
+
+Four gestures, each verified in the database rather than on screen:
+
+1. **Root reorder** — a note dragged to the head of the list. `rank` moved
+   `at`→`aJ`, `User.rootOrder` followed, and the two still agreed.
+2. **Within-series reorder** — the last post of `Linux` dragged to its head.
+   `Series.postOrder` followed.
+3. **Cross-series drag** — a post dragged from `Linux` into `Performance`. Both
+   arrays were corrected: the id was appended to the destination at the drop
+   slot *and removed from the source*, leaving no orphan. This is the case that
+   had broken here before.
+4. **Multi-select drag** — two rows ctrl-clicked and dragged together. The
+   payload carried both ids, both moves fired, and relative order was kept.
+
+After all four: `rootOrder`, `postOrder`, `tabOrder` and `seriesOrder` each
+still equalled their container's `rank` order exactly, zero orphaned ids, row
+counts unchanged. The author's data was then restored to its original ranks from
+the pre-work dump and the arrays resynced, so the run left nothing behind.
+
+One trap worth keeping. Selection is `useRowSelection(ids, "clear")` on the
+sidebar, and under `"clear"` a *plain* click sets only the anchor — it does not
+select. Multi-select needs the modifier on **every** click, including the first;
+a plain click followed by a ctrl-click selects one row, and the drag then
+carries that row alone while looking like it should carry two.
