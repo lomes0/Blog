@@ -10,71 +10,22 @@
  * Phase 1 (this module) is pure logic over serialized JSON — no DOM, no
  * `@lexical/headless`, no node classes — so it runs identically in the browser
  * and in the MCP server, and is testable without mounting anything.
+ *
+ * **This is a convenience aggregate, not a declared API surface.** Consumers
+ * import deep paths (`content-bridge/types`, `/ops`, `/schema`, `/address`, …)
+ * about as often as they import this file, and `schema.ts` is deliberately kept
+ * out of it (see `agentWrites.ts`). So it re-exports what is actually imported
+ * *through* it and nothing else — a name nobody takes from here is rot, not
+ * API, and adding one back is free the moment something wants it. It used to
+ * publish 43 names no importer named, which is what made `knip`'s report on
+ * this directory unreadable.
  */
-export {
-  BLOCK_CONTAINERS,
-  formatAddress,
-  locate,
-  parseAddress,
-  pathOf,
-  walkBlocks,
-} from "./address";
-export { blockIdState, isBlockId, mintBlockId, readBlockId } from "./blockId";
-export {
-  blockText,
-  blockToNode,
-  canSetText,
-  describeNode,
-  isTextEditable,
-  nodeToBlock,
-  TEXT_BLOCKS,
-} from "./blocks";
-export { normalizeInline, parseInline, renderInline } from "./inline";
-export {
-  applyOps,
-  emptyState,
-  OpError,
-  stampBlockIds,
-  stateFromBlocks,
-} from "./ops";
-export type { ApplyResult, InsertTarget, Op, OpErrorCode } from "./ops";
-export {
-  blockPreview,
-  formatOutline,
-  outline,
-  readAll,
-  readBlocks,
-} from "./outline";
-export type { BlocksRead, Outline, OutlineEntry } from "./outline";
-export {
-  deletedNodes,
-  describeRemovals,
-  describeRemovedBlock,
-  removalOf,
-  withRemovalNote,
-} from "./removals";
-export type { Removal } from "./removals";
-export { assertFresh, StaleStateError, stateHash } from "./stateHash";
-export type {
-  Address,
-  AddressedBlock,
-  AttachmentBlock,
-  Block,
-  CodeBlock,
-  DetailsBlock,
-  DividerBlock,
-  HeadingBlock,
-  KanbanBlock,
-  KanbanTask,
-  LayoutBlock,
-  ListBlock,
-  ListItem,
-  OpaqueBlock,
-  ParagraphBlock,
-  QuoteBlock,
-  SerializedNode,
-  StoredState,
-  SummaryBlock,
-  WritableBlock,
-} from "./types";
-export { isWritableBlock } from "./types";
+export { BLOCK_CONTAINERS, formatAddress, walkBlocks } from "./address";
+export { blockIdState } from "./blockId";
+export { blockText, nodeToBlock } from "./blocks";
+export { applyOps, emptyState, OpError, stateFromBlocks } from "./ops";
+export type { ApplyResult, Op, OpErrorCode } from "./ops";
+export { formatOutline, outline, readAll, readBlocks } from "./outline";
+export { deletedNodes, describeRemovals, withRemovalNote } from "./removals";
+export { StaleStateError, stateHash } from "./stateHash";
+export type { StoredState, WritableBlock } from "./types";
