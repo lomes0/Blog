@@ -8,13 +8,16 @@ The unifying alternative to the two-plan approach
 
 This is a _sketch for comparison_, not an approved plan. §7 is the honest cost.
 
-**Status: the blocker is gone — `rank` was deleted 30 Aug 2026 by phase 5 of
-[archive/ordering-simplification.md](./archive/ordering-simplification.md), so
-this is now decidable on its merits rather than deferred.** Deferred 27 Aug 2026
-only until that landed. Still not refused and not committed to. The sequencing in [README.md](./README.md) already puts this
-last, after `ordering-simplification.md` phase 5 deletes `rank`, so deciding now
-buys nothing and decides against a base that is about to change. Re-read §7
-against the tree at that point rather than against this one.
+**Status: decidable, and now re-costed. Awaiting the author's call.** The
+deferral of 27 Aug 2026 ran only until `rank` was gone; phase 5 of
+[archive/ordering-simplification.md](./archive/ordering-simplification.md)
+deleted it on 30 Aug, and phases B–D of
+[schema-organization.md](./schema-organization.md) landed on 31 Aug. This sketch
+asked to be re-read against the tree at that point rather than against the one it
+was written on — **§9 is that re-reading**, and §1–§8 below are left as written
+so the two can be compared. Read §9 first: three of §7's four cost bullets are
+overstated or false, the §3 payoff is half-delivered already, and there is one
+new question (`Project`) the sketch never had to ask.
 
 ---
 
@@ -238,5 +241,103 @@ then collapse `Series` into the node model as a focused domain refactor once the
 `rank` machinery is already gone. That sequences the high-churn step last, on
 top of an already-simplified base, instead of doing everything at once.
 
-```
-```
+---
+
+## 9. Re-costed against the tree (31 Aug 2026)
+
+Written after the base this sketch waited on actually arrived. Measured, not
+estimated; every number below is a command against the tree at `455e6bdf`.
+
+### 9.1 What the base change did to the argument
+
+`rank` is gone, and with it `lib/ordering.ts`, `lib/documentOrder.ts` and the
+`fractional-indexing` dependency. `Document.type`, `DocumentType` and
+`background_image` are gone too. So §5's migration sketch is partly **already
+done**: its step 4 no longer backfills from `rank` (the arrays exist and are
+authoritative), and its step 5 has only `Series`/`seriesId` left to drop.
+
+The part of §3 this sketch sells hardest is also **half-delivered without it.**
+`repositories/ordering.ts` already carries a container-parameterised core —
+`OrderContainer`, `containerOf`, `readOrder`, `orderMemberIds`, `validateOrder`,
+`setOrder`, `addToOrder`, `removeFromOrder` — about 240 of its 487 lines, shared
+by every container kind today. Series-as-node does not buy that; it is bought.
+
+What is still doubled is the **move** half, and only that:
+
+| Doubled today                                | Lines |
+| -------------------------------------------- | ----- |
+| `seriesContainerOf` (beside `containerOf`)   | 11    |
+| `moveSeries` (beside `movePost`)             | 25    |
+| `freeSeriesIntoRoot` (beside `freeIntoRoot`) | 14    |
+| `moveSeriesTx` (beside `moveDocumentTx`)     | 5     |
+
+**~55 lines**, plus `POST /api/series/[id]/move` sitting beside
+`POST /api/documents/[id]/move`. That is the honest size of §4's "one `moveNode`
+instead of two" — a real simplification, and a much smaller one than §3's table
+implies.
+
+### 9.2 The new question the sketch never had to ask: `Project`
+
+§3's table lists three containers. **There are four.** `Project` owns its member
+series' order (`Project.seriesOrder`) *and* sits in the root list itself, so
+`User.rootOrder` interleaves ids from **three** tables, not the two §6 calls
+"the two-table root merge". The ordering plan hit this the same way — its §2 and
+§4 both missed `Project`.
+
+This matters because it is the one place series-as-node as sketched **does not
+deliver its own headline**. Fold `Series` into `Document` and leave `Project`
+alone, and the root array is still polymorphic — documents and projects instead
+of documents, series and projects. "The two-table root merge disappears
+structurally" becomes false; it merely gets smaller.
+
+So the decision is really between three options, not two:
+
+- **(a) Leave it.** Four containers, two move paths, ~55 doubled lines.
+- **(b) Series-as-node as sketched.** Three containers, one move path for
+  posts and series — and a root array that is still polymorphic, across
+  `Document` and `Project`.
+- **(c) Series *and* Project as nodes.** `kind = SERIES` and `kind = PROJECT`,
+  one `childOrder`, root homogeneous, one `moveNode` for everything. This is the
+  only version that actually delivers §6's claim. It costs a further
+  `repositories/project.ts` (141 lines), 3 routes under `/api/projects/*`, and
+  `projectId` across 22 files.
+
+**(b) is the one option that pays most of the cost without buying the headline
+benefit.** If this is worth doing it is worth doing as (c).
+
+### 9.3 §7's numbers, re-measured
+
+| §7 claims                            | Actually                                                                       |
+| ------------------------------------ | ------------------------------------------------------------------------------ |
+| "Series" in **56 source files**      | **76** — 57 of them mention `seriesId`. Wider than stated                       |
+| **459-line** `repositories/series.ts` | **433**, of which 128 are imports/selects/mappers that get rewritten, not deleted |
+| **5 API routes** under `/api/series/*` | **5**, correct — plus 3 under `/api/projects/*` the sketch never counted        |
+| Own Redux state key                  | Correct, but see below                                                          |
+
+### 9.4 Two of §7's four cost bullets are wrong, both in the cheap direction
+
+**The Redux ripple is much smaller than §7 fears.** It names
+`SeriesGrid`/`SeriesView`/`SeriesCard` as the components that would have to
+change. **All three no longer exist** — the tree-model work
+(`bloat-remediation.md` step 7, `archive/tree-model-brief.md`) deleted them, and
+a series is now a row that contains its posts, built by `groupRootItems` +
+`rootItemsToTreeNodes` from `src/lib/tree/`. Only **11 files** read
+`state.series` / `state.projects` at all.
+
+**The IndexedDB bullet is simply false.** There is no local series store to
+fold: `src/store/backend/local.ts` says so in as many words — *"A guest has no
+series and no projects, so those two container kinds cannot…"* — and
+`grep -i series src/indexeddb/` returns nothing. Series-as-node has **no
+local-storage half**.
+
+### 9.5 What that leaves
+
+Cheaper than §7 says on the client, wider than §7 says on the server, and buying
+less than §3 says because ordering already generalised. The remaining case for
+it is not "one ordering mechanism" — that is mostly built — but **one content
+model**: `kind` instead of two tables, one homogeneous root array, one
+`moveNode`, and `SeriesActions` / `DocumentActions` collapsing.
+
+The recommendation in §8 stands with one amendment: **if you take it, take
+option (c).** Option (b) is the trap — most of the churn, and the root array
+stays polymorphic anyway.
