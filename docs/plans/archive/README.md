@@ -1,9 +1,12 @@
 # Archived plans — closed work
 
-These nineteen plans are **closed**: eighteen shipped, and one
-([storage-uploads.md](./storage-uploads.md)) was superseded before it was built.
-A superseded plan is archived rather than deleted for the same reason a shipped
-one is — the reasoning is cited elsewhere and outlived the plan.
+These twenty plans are **closed**: eighteen shipped, one
+([storage-uploads.md](./storage-uploads.md)) was superseded before it was built,
+and one ([series-as-node.md](./series-as-node.md)) was **declined** after being
+costed against the finished tree. Neither of the two unbuilt ones is deleted,
+for the same reason a shipped one is not — the reasoning is cited elsewhere and
+outlived the plan, and a declined plan is the only record of *why* the thing it
+proposes is not there.
 
 They are kept, not deleted, for two reasons:
 
@@ -45,6 +48,7 @@ extraction. Do not read one as a description of the current tree.
 | [theme-css-tokenization.md](./theme-css-tokenization.md)   | 14–28 Aug 2026, 5 phases   | `theme.css`'s last color literals onto tokens, and `check:theme` taught a rule about *position* rather than file extension — a literal outside a token block is now an error in `.css` too. §7 records **thirteen** claims the plan got wrong, chiefly a 5× undercount of its own work |
 | [workspace-url.md](./workspace-url.md)                     | 28 Aug 2026, 4 phases      | The workspace URL stopped projecting pane focus and became an entry point consumed on arrival — `workspaceUrl.ts`, the `project()` listener, the `rewrite` primitive and `/edit`'s `force-dynamic` + `generateMetadata` all deleted. §8.1 records what had drifted before Phase A ran: §4 named three of the six URL readers |
 | [ordering-simplification.md](./ordering-simplification.md) | 30 Aug 2026, 5 phases      | Fractional `rank` replaced by an ordered id array per container — four arrays, not the three §2 names, because `Project` owns its members' order too. `rank`, its six indexes and `fractional-indexing` are gone, and the local library moved with it, so ordering is one mechanism rather than two. §11 is a seventeen-entry phase log; the plan is wrong often enough that it should be read first |
+| [series-as-node.md](./series-as-node.md)                   | **Declined** 31 Aug 2026 — never built | Fold `Series` (and, per §9.2, `Project`) into the `Document` tree so everything is one node kind with one `childOrder`. Deferred until `rank` was gone, then re-costed against the tree that arrived: §3's ordering payoff had already been collected — `repositories/ordering.ts` is container-parameterised without it, and only ~55 lines of *move* code are doubled — leaving one *content* model as the whole remaining prize, at 76 files, two repositories and eight routes. §9 is the re-costing, §10 the call, and §9.2 the finding to read before reopening it |
 
 Deliberately left undone, recorded so they are not re-proposed as oversights:
 

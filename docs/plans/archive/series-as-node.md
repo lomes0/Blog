@@ -1,23 +1,25 @@
 # Series-as-node variant (sketch)
 
 The unifying alternative to the two-plan approach
-([`ordering-simplification.md`](./archive/ordering-simplification.md) +
-[`schema-organization.md`](./schema-organization.md)): make **`Series` a kind of
+([`ordering-simplification.md`](./ordering-simplification.md) +
+[`schema-organization.md`](../schema-organization.md)): make **`Series` a kind of
 `Document` node** so the whole content model is one tree, and ordering becomes
 **one mechanism** — `childOrder` on the parent — everywhere.
 
 This is a _sketch for comparison_, not an approved plan. §7 is the honest cost.
 
-**Status: decidable, and now re-costed. Awaiting the author's call.** The
-deferral of 27 Aug 2026 ran only until `rank` was gone; phase 5 of
-[archive/ordering-simplification.md](./archive/ordering-simplification.md)
-deleted it on 30 Aug, and phases B–D of
-[schema-organization.md](./schema-organization.md) landed on 31 Aug. This sketch
-asked to be re-read against the tree at that point rather than against the one it
-was written on — **§9 is that re-reading**, and §1–§8 below are left as written
-so the two can be compared. Read §9 first: three of §7's four cost bullets are
-overstated or false, the §3 payoff is half-delivered already, and there is one
-new question (`Project`) the sketch never had to ask.
+**Status: DECLINED 31 Aug 2026 — never built. Archived for its reasoning.**
+The deferral of 27 Aug ran only until `rank` was gone; phase 5 of
+[ordering-simplification.md](./ordering-simplification.md) deleted it on 30 Aug,
+and phases B–D of [schema-organization.md](../schema-organization.md) landed on
+31 Aug. This sketch asked to be re-read against the tree at that point rather
+than against the one it was written on — **§9 is that re-reading and §10 is the
+call.** §1–§8 are left exactly as written so the two can be compared, which
+means most of this file argues *for* a thing that was not done: read §9 and §10
+first. Their short form is that §3's payoff was delivered by the ordering work
+without this refactor, that three of §7's four cost bullets are overstated or
+false, and that the sketch missed `Project` — which makes folding `Series`
+alone the one option that pays the churn without buying the benefit.
 
 ---
 
@@ -319,7 +321,7 @@ benefit.** If this is worth doing it is worth doing as (c).
 **The Redux ripple is much smaller than §7 fears.** It names
 `SeriesGrid`/`SeriesView`/`SeriesCard` as the components that would have to
 change. **All three no longer exist** — the tree-model work
-(`bloat-remediation.md` step 7, `archive/tree-model-brief.md`) deleted them, and
+(`../bloat-remediation.md` step 7, `tree-model-brief.md`) deleted them, and
 a series is now a row that contains its posts, built by `groupRootItems` +
 `rootItemsToTreeNodes` from `src/lib/tree/`. Only **11 files** read
 `state.series` / `state.projects` at all.
@@ -341,3 +343,35 @@ model**: `kind` instead of two tables, one homogeneous root array, one
 The recommendation in §8 stands with one amendment: **if you take it, take
 option (c).** Option (b) is the trap — most of the churn, and the root array
 stays polymorphic anyway.
+
+---
+
+## 10. Decision — declined, 31 Aug 2026
+
+**Option (a): leave it.** `Series` and `Project` stay as their own tables. The
+sketch is closed, not deferred again — the deferral of 27 Aug had a condition
+(`rank` gone) and that condition has been met, so re-reading §9 is the whole of
+what was owed.
+
+The reasoning is §9's, in one line: **the sketch's own headline was paid for by
+other work.** "One ordering mechanism instead of three" is what sold it, and
+`repositories/ordering.ts` is container-parameterised today without it — ~240 of
+its 487 lines are already shared by every container kind, and the doubled
+remainder is ~55 lines of *move* code plus one route. What series-as-node still
+buys is one *content* model rather than one *ordering* model, and that is priced
+at 76 files, two repositories (433 + 141 lines), eight API routes, `seriesId`
+across 57 files and `projectId` across 22 — with a data migration that has to
+preserve ids because revisions, proposals and blob refs all point at them.
+
+That is a real improvement bought at a bad exchange rate for a single-user blog
+whose stated optimization is less code and easier maintenance. The polymorphic
+root array is the honest cost of declining, and it is a cost the tolerant reader
+in `src/lib/orderArray.ts` already absorbs: it takes ids, not rows, and does not
+care which table each came from.
+
+**If this is ever revived, take (c), not (b).** §9.2 is the finding to carry
+forward — folding `Series` alone leaves the root array polymorphic across
+`Document` and `Project` anyway, so it pays most of the churn and does not
+deliver the benefit. The trigger worth watching for is a *third* grouping kind:
+two container tables beside `Document` is tolerable, three is the point at which
+the doubled move path stops being ~55 lines and the exchange rate flips.
