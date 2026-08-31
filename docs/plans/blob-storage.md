@@ -937,3 +937,54 @@ bounded now; the cost is not.
 
 The guard and the `Set` landed on 31 Aug 2026; **the migration has not been
 run**, and until it is, every SVG in the database is still inline.
+
+### 13.6 The run — 31 Aug 2026
+
+Done, on the dev database, in the order §13.5 asked for.
+
+| | |
+| --- | --- |
+| Documents rewritten | 2 |
+| Revisions rewritten | 47 |
+| Occurrences replaced | 77 |
+| Distinct blobs stored | 5 (all SVG) |
+| Revision JSON freed | 3.0 MB |
+| `Revision` on disk | 9136 kB → **7120 kB** after `VACUUM FULL` |
+| Database | 18 MB → **17 MB** |
+
+The on-disk figure is a third of the JSON figure because TOAST already
+compressed the SVG text well — worth stating, because "3.0 MB freed" is what the
+script prints and it is not what the disk gives back. **The write-amplification
+argument in §13.4 is unaffected by that**: what a future save no longer writes is
+the 3.0 MB, before compression.
+
+The rehearsal was a real one. `pg_dump -Fc` → restore into a throwaway
+`postgres:17` → run there → `verify` → inspect, and only then the live database.
+Both runs reported identical numbers, and the four `verify` checks passed on
+each. Two things were checked that `verify` does not:
+
+- **The stored bytes are the decoded original, unchanged.** A sketch blob still
+  carries its `<!-- payload-start -->` block, its one `<style>` and its one
+  `@font-face`; a graph blob is the plain SVG. §10.1's promise that migration
+  moves the payload rather than destroying it, confirmed on the bytes.
+- **The bookkeeping the collector depends on.** 114 revisions carry
+  `blobHashes`, and there are 6 `BlobRef` rows for 6 blobs.
+
+**Still outstanding: the browser pass.** §13.5 step 3 is the acceptance
+criterion and it has not been run — a sketch and a graph in the editor, in
+`/view`, and through a `.docx` export. Until then this is verified as a *data*
+migration and unverified as the *rendering* change it also is.
+
+#### A leak class the collector cannot reach
+
+Reconciling the bucket against the `Blob` table found **two objects with no row**
+(`a4b4da04…`, `ebf4f635…`), predating this run — the reverse direction, a row
+naming bytes that are not there, is empty. `pnpm blobs:collect` cannot reap
+these: it walks rows, and the row is the only thing that names the key (§5). The
+shape follows from two deliberate orderings — the migration stores bytes before
+rows, and collection deletes the object before the row — so an interruption in
+either window leaves exactly this. Both orderings are right, because the
+alternative failure is a post rendering an empty picture. Recording it because
+the only way to find these is a bucket-to-table reconcile, which nothing does on
+a schedule; `ops/restore-drill.sh` does the comparison monthly but only reports
+the direction that matters for a restore.
