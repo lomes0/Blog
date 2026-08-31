@@ -1020,14 +1020,9 @@ migrated `<img>`, and the sketch reads correctly on the dark ground.
 
 Neither is caused by this change, and neither is fixed here.
 
-- **A floated image with a caption wraps its caption one character per line in
-  the editor.** The `D3` graph is `float: right` with `showCaption`, and its
-  caption renders as a one-character column; the same document's caption is fine
-  in `/view`, which builds different markup. Isolated rather than assumed:
-  replacing the `<img>` in the live DOM with an inline `<svg>` of an identical
-  box leaves the caption at exactly the same 356 × 524, so the layout follows
-  the float and not the element. The non-floated sketch in the other document
-  captions correctly.
+- **A caption with an indent had no line box left** — recorded here as "the
+  floated caption bug" and then run down; the float was a red herring and so was
+  `/view` looking fine. §13.8 is the diagnosis and the fix.
 - **The `.docx` SVG fallback is not a PNG.** `docx/image.ts` passes
   `fallback: { type: "png", data }` with the same buffer whatever `type` is, so
   an SVG picture ships a "PNG" fallback that is SVG bytes. Unchanged since at
@@ -1037,3 +1032,53 @@ Neither is caused by this change, and neither is fixed here.
 Also observed on every editor load, unrelated to any of this:
 `NodeSelectionPlugin: The following nodes are not registered: TableNode,
 AttachmentNode`.
+
+### 13.8 The caption bug §13.7 found — diagnosed and fixed
+
+The symptom §13.7 recorded was "a floated image's caption wraps one character per
+line in the editor". **Two things about that description were wrong**, and both
+mattered to the fix.
+
+**It is not the float.** The `<img>` was swapped in the live DOM for an inline
+`<svg>` of an identical box and the caption did not move — the same 356 × 524
+either way — which ruled out the migration and, by construction, the element. It
+also ruled out the float, once the boxes were actually measured: the `figure`,
+the `figcaption` (356) and the caption's paragraph (336) were all the right size.
+The text was not being squeezed by its container.
+
+**It was the content.** The caption's paragraph carries `indent: 8` in the
+stored editor state, and Lexical writes an indent as
+`padding-inline-start: calc(8 * var(--lexical-indent-base-value, 40px))` — **320
+px of the 336 px box**, leaving a 16 px line box. `--lexical-indent-base-value`
+is 40px because it is sized for full-width prose; a caption is the picture's
+width. The other document's caption is `indent: 0, format: center` and was
+always fine.
+
+**And `/view` was never fine either**, which the §13.7 note got wrong from a
+screenshot. It carries the same indent — `exportDOM` resolves the calc to a
+literal `padding-inline-start: 320px` — and simply has a wider figure, so the
+caption is shoved against the right edge instead of collapsing. Same defect,
+flattering geometry.
+
+That last fact decided the fix. Scoping `--lexical-indent-base-value` down inside
+a caption is the tidy option and it would have fixed **only the editor**,
+creating a divergence between the two renderers where there was none: export
+writes a literal with no variable left to redefine. So the rule zeroes both
+shapes — `.LexicalTheme__indent` (editor) and `[data-lexical-indent]` (export) —
+inside `.LexicalTheme__image figcaption`, with `!important`, because the
+competing declaration is an inline style that no selector can outrank.
+
+**A caption does not indent, then.** The cost is that a deliberate caption indent
+is discarded; that is accepted, because a caption is one short line under a
+picture with no outline structure to express, the nested editor offers
+indentation only by reusing the paragraph theme, and the failure it replaces is
+silent — nothing in the UI says why the text has gone vertical.
+
+The author's content is left alone. `indent: 8` is still in the stored caption;
+it now renders as nothing rather than as a wrecked line box, and fixing the data
+instead would have left the next accidental Tab to reproduce it.
+
+Verified in the browser both ways: the caption's paragraph went from 336 × 504
+to 336 × 24 with the text on one line, `/view` moved it back under the figure
+from the right edge, and the other document's centered caption is untouched at
+44 px.

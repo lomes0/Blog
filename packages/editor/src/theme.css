@@ -956,6 +956,32 @@ iframe {
   min-height: 44px;
 }
 
+/* A caption does not indent.
+   `--lexical-indent-base-value` is 40px because it is sized for full-width
+   prose, and a caption's box is the picture's width — a few hundred pixels. The
+   D3 graph's caption carries `indent: 8` in its stored content, which is 320px
+   of padding: in the editor's 336px caption box that leaves a 16px line box and
+   the text renders one character per line, and in `/view` it shoves the caption
+   against the right edge of the figure. Nothing in the UI says why, and the
+   nested editor offers indentation only because it reuses the paragraph theme.
+
+   `!important` and two selectors, both deliberate. The indent arrives as an
+   inline style, which no ordinary rule can outrank — that is what `!important`
+   is for. And it arrives in two different shapes: the editor writes
+   `calc(N * var(--lexical-indent-base-value))` on an element carrying the
+   `indent` theme class, while `exportDOM` resolves it to a literal `320px` on an
+   element carrying `data-lexical-indent`. Scoping the variable would therefore
+   have fixed the editor and left `/view` alone — a divergence where there is
+   currently none. Zeroing both is what keeps them agreeing.
+
+   The cost is that an author who deliberately indented a caption loses it. That
+   is accepted: a caption is one short line under a picture, it has no outline
+   structure to express, and the failure this replaces is silent. */
+.LexicalTheme__image figcaption .LexicalTheme__indent,
+.LexicalTheme__image figcaption [data-lexical-indent] {
+  padding-inline-start: 0 !important;
+}
+
 /* The note's own ink, fixed in both schemes. The `--doc-*` island above
    restores the *content* colours for this subtree; these three are the note's
    own chrome and never had a dark twin to restore — colored paper takes dark
