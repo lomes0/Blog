@@ -25,9 +25,9 @@ export { CANVAS_GROW_MARGIN } from "@/components/NotesCanvas/canvasGeometry";
  * the reader can't grow. The author sets it with the grip on the board's
  * bottom edge.
  */
-export const CANVAS_MIN_HEIGHT = 200;
+const CANVAS_MIN_HEIGHT = 200;
 export const CANVAS_DEFAULT_HEIGHT = 480;
-export const CANVAS_MAX_HEIGHT = 1600;
+const CANVAS_MAX_HEIGHT = 1600;
 
 export const NOTE_DEFAULT_WIDTH = 240;
 export const NOTE_DEFAULT_HEIGHT = 200;
@@ -106,7 +106,7 @@ export function serializeNoteContent(note: CanvasNote): string {
  * decorates without importing the class it is rendered by — that import would
  * close a cycle between the node module and its component module.
  */
-export interface CanvasNodeLike {
+interface CanvasNodeLike {
   getNotes(): CanvasNote[];
   setNotes(notes: CanvasNote[]): void;
   getCanvasHeight(): number;

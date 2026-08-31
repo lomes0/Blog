@@ -42,7 +42,7 @@
  */
 
 /** Where a non-floating figure sits in the content column. */
-export type ImageAlignment = "left" | "center" | "right";
+type ImageAlignment = "left" | "center" | "right";
 
 /**
  * One mutually exclusive layout choice, spanning both vocabularies.
@@ -69,7 +69,7 @@ export const WIDTH_MIN = 10;
 export const WIDTH_MAX = 100;
 
 /** How close to a preset the slider has to land to be pulled onto it. */
-export const WIDTH_SNAP = 3;
+const WIDTH_SNAP = 3;
 
 /** Round to a whole percent and hold it inside the slider's range. */
 export function clampWidth(value: number): number {

@@ -221,7 +221,7 @@ export class TableNode extends LexicalTableNode {
   }
 }
 
-export function $convertTableElement(_domNode: Node): DOMConversionOutput {
+function $convertTableElement(_domNode: Node): DOMConversionOutput {
   const domNode = _domNode as HTMLTableElement;
   const tableNode = $createTableNode();
   tableNode.__style = domNode.style.cssText;

@@ -41,7 +41,7 @@ if (typeof window !== "undefined") {
   customizeMathVirtualKeyboard();
 }
 
-export type MathComponentProps = { initialValue: string; nodeKey: NodeKey };
+type MathComponentProps = { initialValue: string; nodeKey: NodeKey };
 
 export default function MathComponent(
   { initialValue, nodeKey }: MathComponentProps,

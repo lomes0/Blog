@@ -27,7 +27,7 @@ type SerializedDetailsSummaryNode = SerializedElementNode & {
   editable: boolean;
 };
 
-export function $convertSummaryElement(
+function $convertSummaryElement(
   _domNode: HTMLElement,
 ): DOMConversionOutput | null {
   const node = $createDetailsSummaryNode();

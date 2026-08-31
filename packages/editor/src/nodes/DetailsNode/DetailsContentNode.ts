@@ -23,7 +23,7 @@ import { domOnBeforeMatch, setDomHiddenUntilFound } from "./utils";
 
 type SerializedDetailsContentNode = SerializedElementNode;
 
-export function $convertDetailsContentElement(
+function $convertDetailsContentElement(
   _domNode: HTMLElement,
 ): DOMConversionOutput | null {
   const node = $createDetailsContentNode();

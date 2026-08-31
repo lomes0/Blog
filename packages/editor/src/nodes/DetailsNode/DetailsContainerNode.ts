@@ -31,7 +31,7 @@ export type SerializedDetailsContainerNode = Spread<
   SerializedElementNode
 >;
 
-export function $convertDetailsElement(
+function $convertDetailsElement(
   domNode: HTMLDetailsElement,
 ): DOMConversionOutput | null {
   const isOpen = domNode.open !== undefined ? domNode.open : true;

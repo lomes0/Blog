@@ -14,7 +14,7 @@ import { captionPlaceholder } from "./styles.css";
 
 const NestedEditor = lazy(() => import("@/editor/NestedEditor"));
 
-export function ImageCaption({
+function ImageCaption({
   nodeKey,
   editor,
   children,

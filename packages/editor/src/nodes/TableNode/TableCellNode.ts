@@ -25,7 +25,7 @@ import {
 
 import { getStyleObjectFromRawCSS } from "../utils";
 
-export type TableCellHeaderState =
+type TableCellHeaderState =
   typeof TableCellHeaderStates[keyof typeof TableCellHeaderStates];
 
 export type SerializedTableCellNode = LexicalSerializedTableCellNode & {
@@ -173,7 +173,7 @@ export class TableCellNode extends LexicalTableCellNode {
   }
 }
 
-export function $convertTableCellNodeElement(
+function $convertTableCellNodeElement(
   domNode: Node,
 ): DOMConversionOutput {
   const domNode_ = domNode as HTMLTableCellElement;

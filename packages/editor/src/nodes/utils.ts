@@ -9,7 +9,7 @@ import {
   readDisplayWidth,
 } from "./imageLayout";
 
-export const CSS_TO_STYLES: Map<string, Record<string, string>> = new Map();
+const CSS_TO_STYLES: Map<string, Record<string, string>> = new Map();
 
 export function getStyleObjectFromRawCSS(css: string): Record<string, string> {
   const styleObject: Record<string, string> = {};
@@ -63,7 +63,7 @@ export function $getNodeStyleValueForProperty(
   return defaultValue;
 }
 
-export function $patchNodeStyle(
+function $patchNodeStyle(
   target: LexicalNode,
   patch: Record<string, string | null>,
 ): void {
