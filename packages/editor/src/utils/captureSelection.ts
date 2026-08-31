@@ -45,8 +45,6 @@ import {
   type SelectionPoint,
 } from "@/lib/ai/selection";
 
-export type { CapturedSelection, SelectionPoint };
-
 /** What `ElementNode.getTextContent()` puts between two non-inline children. */
 const BLOCK_JOIN = 2; // "\n\n"
 

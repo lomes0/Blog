@@ -1,2 +1,2 @@
 export * from "@lexical/markdown";
-export { createTransformers, TRANSFORMERS } from "./MarkdownTransformers";
+export { createTransformers } from "./MarkdownTransformers";

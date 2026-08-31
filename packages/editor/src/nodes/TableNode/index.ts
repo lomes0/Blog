@@ -1,9 +1,5 @@
 export * from "@lexical/table";
-export {
-  TableCellNode as LexicalTableCellNode,
-  TableNode as LexicalTableNode,
-  TableRowNode as LexicalTableRowNode,
-} from "@lexical/table";
+export { TableNode as LexicalTableNode } from "@lexical/table";
 export {
   $createTableCellNode,
   $isTableCellNode,

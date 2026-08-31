@@ -2,7 +2,6 @@ import type {
   DOMExportOutput,
   EditorConfig,
   LexicalEditor,
-  LexicalNode,
   NodeKey,
   SerializedLexicalNode,
   Spread,
@@ -237,12 +236,6 @@ export class CanvasNode extends DecoratorNode<JSX.Element> {
 export function $createCanvasNode(payload: CanvasPayload = {}): CanvasNode {
   const { id, notes, height } = payload;
   return new CanvasNode(id ?? uuidv4(), notes ?? [], height);
-}
-
-export function $isCanvasNode(
-  node: LexicalNode | null | undefined,
-): node is CanvasNode {
-  return node instanceof CanvasNode;
 }
 
 export type { CanvasNote, CanvasPayload } from "./utils";

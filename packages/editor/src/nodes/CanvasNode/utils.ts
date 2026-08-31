@@ -8,7 +8,7 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { NoteFrame } from "@/types/notes";
 import { nestedEditorConfig } from "../nestedConfig";
-import { NOTE_COLORS, NoteColorKey } from "@/components/NotesCanvas/noteColors";
+import { NOTE_COLORS } from "@/components/NotesCanvas/noteColors";
 
 export const CANVAS_NODE_TYPE = "canvas";
 
@@ -38,7 +38,6 @@ export const NOTE_DEFAULT_HEIGHT = 200;
  * — so a note sized flush to a narrow board still earns it a scrollbar.
  */
 export const NOTE_GUTTER = 10;
-export const DEFAULT_NOTE_COLOR: NoteColorKey = "yellow";
 
 /** Used when a note carries a color that is no longer in the palette. */
 export const NOTE_COLORS_FALLBACK = NOTE_COLORS.yellow;

@@ -63,13 +63,6 @@ export function $getNodeStyleValueForProperty(
   return defaultValue;
 }
 
-export function $addNodeStyle(node: LexicalNode): void {
-  if (!isStylableNode(node)) return;
-  const CSSText = node.getStyle();
-  const styles = getStyleObjectFromRawCSS(CSSText);
-  CSS_TO_STYLES.set(CSSText, styles);
-}
-
 export function $patchNodeStyle(
   target: LexicalNode,
   patch: Record<string, string | null>,

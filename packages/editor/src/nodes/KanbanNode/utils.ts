@@ -28,10 +28,3 @@ export function createTask(name: string, stage: number = 0): Task {
   };
 }
 
-export function updateTask(task: Task, updates: Partial<Task>): Task {
-  return {
-    ...task,
-    ...updates,
-    updatedAt: new Date().toISOString(),
-  };
-}

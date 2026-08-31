@@ -50,7 +50,6 @@ const Excalidraw = dynamic<ExcalidrawProps>(
 );
 const AddLibraries = dynamic(() => import("./AddLibraries"), { ssr: false });
 
-export type ExcalidrawElementFragment = { isDeleted?: boolean };
 declare global {
   interface Window {
     EXCALIDRAW_ASSET_PATH: string;
