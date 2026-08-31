@@ -11,12 +11,14 @@ thing this plan was waiting on that was not step 3.
 
 Previously this line read "steps 1–7 are done" and "what is left is not code".
 Step 3's own STATUS contradicted both, and the plan index was quoting this line
-rather than the step. What step 3 leaves is a triage pass over dead exported
-types; `pnpm check:unused` on 31 Aug 2026 reports **220 unused exports and one
-unused file**, a wider surface than the "~30" that STATUS names — because the
-count now includes `packages/editor`, which did not exist as a package when the
-step was written and whose export surface is substantially deliberate. Read the
-step before acting on that number: knip's output is not a delete list.
+rather than the step. What step 3 leaves is a triage pass over dead exports;
+`pnpm check:unused` on 31 Aug 2026 reports **220 unused exports, 358 unused
+exported types and one unused file — 578 hits**, against the "~30" that STATUS
+names. Read the step before acting on that number. Most of it is not app code
+and not rot: there is no knip configuration in this repo, so `packages/editor`
+came into scope when the editor became a workspace package, and 353 of the 578
+are in it — 256 in `packages/editor/src/ui` alone, a component library whose
+exports are its purpose.
 
 Previously: **steps 1–6 are done or effectively done; step 7 is
 now UNBLOCKED.** The product question it waited on — does `/posts` render
@@ -149,14 +151,34 @@ any orphaned imports (`SeriesGroupItem`, `uuid`, `Collapse`).
 
 ## Step 3 — Dead type surface
 
-> **STATUS: PARTLY DONE — and as of 31 Aug 2026 the only step still open.** The
-> `*Response` cluster is gone. What remains is a triage pass, not a deletion:
-> `knip` reports 220 unused exports and one unused file
-> (`components/DocumentActions/Fork.tsx`), one or two per file across
-> `src/hooks`, `src/lib`, `src/indexeddb`, `src/repositories`, `src/store` and
-> — in scope only since the editor became a workspace package —
-> `packages/editor`, whose exports are substantially a deliberate API surface
-> and should be triaged as one rather than swept.
+> **STATUS: PARTLY DONE — and as of 31 Aug 2026 the only step still open.**
+> Everything the "State" paragraph below names by name is discharged: the
+> `*Response` cluster is gone (one survivor in `src/types.ts`), `src/api/
+> types.ts` is down to a single mention of the word, and the
+> `api/client.ts:464-483` re-export block no longer exists. What is left is a
+> different and larger thing than "~30" implied.
+>
+> **`knip` on 31 Aug 2026: 220 unused exports, 358 unused exported types, and
+> one unused file (`components/DocumentActions/Fork.tsx`) — 578 hits.**
+>
+> **The first finding is that most of that is not app code.** There is no knip
+> configuration in this repo — no `knip.json`, no `knip` key in `package.json` —
+> so it runs on defaults, and `packages/editor` came into scope the moment the
+> editor became a workspace package. **353 of the 578 hits are in that package,
+> and 256 — 44% of the whole report — are in `packages/editor/src/ui` alone**,
+> the Base UI primitives directory ported from haklex. A component library
+> exports its components whether or not this app imports every one; that is what
+> it is for. Triaging those by hand is the wrong pass over the wrong list.
+>
+> So this step is two pieces of work now, and the order matters:
+>
+> 1. **Configure knip**, so the report describes rot rather than architecture.
+>    Decide what `packages/editor` owes the app — its entry points are the
+>    config, the plugin set and the node classes — and declare `src/ui` a public
+>    surface rather than dead weight. Until that exists the 225 hits in `src/**`
+>    are buried under 353 that are not findings.
+> 2. **Then triage what is left**, which is the step as originally written:
+>    `delete` / `unexport` / `keep`, per the Decide paragraph below.
 >
 > **Two claims this STATUS used to make are wrong, both checked on 31 Aug
 > 2026.** `Layout/SideBar/hooks/useSidebarDnd.ts` does not exist — it was
