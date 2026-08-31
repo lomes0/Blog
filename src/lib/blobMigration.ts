@@ -19,13 +19,22 @@
  * | Type | Renders a data URI as | Renders a URL as | Migratable |
  * | --- | --- | --- | --- |
  * | `image` | `<img>` | `<img>` | **yes** — nothing changes |
- * | `graph` | inline `<svg>` | `<img>` (it guards on the prefix) | not yet |
- * | `sketch` | inline `<svg>` | broken — it decodes unconditionally | no |
+ * | `graph` | inline `<svg>` | `<img>` (it guards on the prefix) | **yes** |
+ * | `sketch` | inline `<svg>` | `<img>` (guarded since §13) | **yes** |
  *
- * Only `image` is migrated here, and it is where the bytes are: one PNG stored
- * 67 times is 10 MB of the 13.6 MB. The other two are the same decision — inline
- * SVG becomes an `<img>` — and that is a rendering change to verify in a
- * browser, not a migration.
+ * All three, since §13 decided it on 31 Aug 2026. `image` went first and is
+ * where the bulk was — one PNG stored 67 times was 10 MB of the 13.6 MB. The
+ * two SVG types were held back one decision longer because migrating them
+ * changes **how the node renders**: an inline `<svg>` becomes an `<img>`. That
+ * is safe for these two and only these two, because every stored SVG is
+ * self-contained — a graph has no `<style>` and no font, and a sketch embeds its
+ * font as a `data:font/woff2` URI inside its own `<style>`. Neither reaches
+ * outside itself, which is the property that decides it: an SVG that depended on
+ * the page's CSS could not become an `<img>` at all.
+ *
+ * **The inline path stays regardless.** A guest's documents keep their data
+ * URIs by design (§11.1), so both forms render forever and this is a decision
+ * about bytes, not about deleting a branch.
  */
 import { hashBytes } from "./storage";
 
@@ -33,7 +42,7 @@ import { hashBytes } from "./storage";
 const DATA_URI = /^data:([^;,]+)(;base64)?,([\s\S]*)$/;
 
 /** The node types whose `src` this migration may rewrite. See the docblock. */
-export const MIGRATABLE_TYPES = new Set(["image"]);
+export const MIGRATABLE_TYPES = new Set(["image", "graph", "sketch"]);
 
 export interface DecodedDataUri {
   mimeType: string;

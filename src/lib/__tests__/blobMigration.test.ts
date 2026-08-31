@@ -22,6 +22,7 @@ const pngHash = createHash("sha256").update(PNG).digest("hex");
 
 const SVG = '<svg xmlns="http://www.w3.org/2000/svg"><!-- payload-start -->{}<!-- payload-end --></svg>';
 const svgUri = `data:image/svg+xml,${encodeURIComponent(SVG)}`;
+const svgHash = createHash("sha256").update(Buffer.from(SVG)).digest("hex");
 
 const state = (...children: unknown[]) => ({
   root: { type: "root", children },
@@ -60,6 +61,11 @@ describe("findDataUriSites", () => {
       state(
         { type: "image", src: pngUri },
         { type: "sketch", src: svgUri },
+        // Not a picture: an iframe's `src` is an address, and moving it into the
+        // store would replace a live embed with a copy of nothing. The walk must
+        // still *see* it — reporting a site it may not touch is how the script's
+        // `status` output stays honest about what is left behind.
+        { type: "iframe", src: svgUri },
       ),
     );
 
@@ -68,6 +74,13 @@ describe("findDataUriSites", () => {
     expect([...sites].sort((a, b) => a.nodeType.localeCompare(b.nodeType)))
       .toEqual([
         {
+          nodeType: "iframe",
+          mimeType: "image/svg+xml",
+          size: Buffer.byteLength(SVG),
+          hash: svgHash,
+          migratable: false,
+        },
+        {
           nodeType: "image",
           mimeType: "image/png",
           size: PNG.byteLength,
@@ -75,11 +88,13 @@ describe("findDataUriSites", () => {
           migratable: true,
         },
         {
+          // §13: migratable since the render guard landed. Before that a URL
+          // here was a picture that did not appear.
           nodeType: "sketch",
           mimeType: "image/svg+xml",
           size: Buffer.byteLength(SVG),
-          hash: createHash("sha256").update(Buffer.from(SVG)).digest("hex"),
-          migratable: false,
+          hash: svgHash,
+          migratable: true,
         },
       ]);
   });
@@ -116,7 +131,19 @@ describe("blobsToStore", () => {
   });
 
   it("offers nothing for a type that may not be migrated", () => {
-    expect(blobsToStore(state({ type: "sketch", src: svgUri })).size).toBe(0);
+    expect(blobsToStore(state({ type: "iframe", src: svgUri })).size).toBe(0);
+  });
+
+  it("collapses a sketch and a graph holding the same SVG to one blob", () => {
+    // The two SVG types share the store with everything else — the key is the
+    // content, so which node type embedded it is not part of the identity.
+    const blobs = blobsToStore(
+      state(
+        { type: "sketch", src: svgUri },
+        { type: "graph", src: svgUri },
+      ),
+    );
+    expect([...blobs.keys()]).toEqual([svgHash]);
   });
 });
 
@@ -134,10 +161,25 @@ describe("rewriteToBlobUrls", () => {
     ]);
   });
 
-  it("leaves a sketch exactly as it was", () => {
-    // §6.1: a sketch decodes its own `src` on every render with no fallback,
-    // so a URL there is a picture that does not appear.
-    const doc = state({ type: "sketch", src: svgUri });
+  it("rewrites a sketch and a graph too", () => {
+    // §6.1 said a sketch decoded its own `src` on every render with no
+    // fallback, so a URL there was a picture that did not appear. §13 gave
+    // SketchNode the prefix guard GraphNode already had, which is what made the
+    // rewrite safe rather than what made it desirable.
+    const doc = state(
+      { type: "sketch", src: svgUri },
+      { type: "graph", src: svgUri },
+    );
+
+    expect(rewriteToBlobUrls(doc, blobUrl)).toBe(2);
+    expect(doc.root.children.map((c) => (c as { src: string }).src)).toEqual([
+      blobUrl(svgHash),
+      blobUrl(svgHash),
+    ]);
+  });
+
+  it("leaves a type that may not be migrated exactly as it was", () => {
+    const doc = state({ type: "iframe", src: svgUri });
 
     expect(rewriteToBlobUrls(doc, blobUrl)).toBe(0);
     expect((doc.root.children[0] as { src: string }).src).toBe(svgUri);

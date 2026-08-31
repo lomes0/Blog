@@ -111,6 +111,16 @@ export class SketchNode extends ImageNode {
   }
 
   exportDOM(editor: LexicalEditor): DOMExportOutput {
+    // A migrated sketch's `src` is `/api/blob/<hash>`, and everything below
+    // decodes the src as a data URI with no fallback — `split(",")[1]` on a URL
+    // is `undefined`. GraphNode has carried this guard since it was written;
+    // this class not having one is what held sketches out of the blob store
+    // (docs/plans/blob-storage.md §10.1, decided in §13). `super.exportDOM` is
+    // ImageNode's,
+    // which emits the `<img>` a URL wants.
+    if (!this.__src.startsWith("data:image/svg+xml")) {
+      return super.exportDOM(editor);
+    }
     const element = super.createDOM(editor._config, editor);
     if (element && isHTMLElement(element)) {
       const html = decodeURIComponent(this.__src.split(",")[1]);
@@ -190,11 +200,20 @@ export class SketchNode extends ImageNode {
       $generateHtmlFromNodes(self.__caption)
     );
     const children = htmr(html);
-    const decoded = decodeURIComponent(self.__src.split(",")[1]).replace(
-      /<!-- payload-start -->\s*(.+?)\s*<!-- payload-end -->/,
-      "",
-    ).replaceAll("//dist", "");
-    const src = `data:image/svg+xml,${encodeURIComponent(decoded)}`;
+    // Same guard as `exportDOM`, and the same reason: a `/api/blob/<hash>` src
+    // is a picture the browser fetches, not a document to decode. `element`
+    // picks the rendering, exactly as GraphNode does.
+    const isDataUri = self.__src.startsWith("data:image/svg+xml");
+    const src = isDataUri
+      ? `data:image/svg+xml,${
+        encodeURIComponent(
+          decodeURIComponent(self.__src.split(",")[1]).replace(
+            /<!-- payload-start -->\s*(.+?)\s*<!-- payload-end -->/,
+            "",
+          ).replaceAll("//dist", ""),
+        )
+      }`
+      : self.__src;
     return (
       <ImageComponent
         width={self.__width}
@@ -204,7 +223,7 @@ export class SketchNode extends ImageNode {
         nodeKey={self.__key}
         showCaption={self.__showCaption}
         caption={self.__caption}
-        element="svg"
+        element={isDataUri ? "svg" : "img"}
       >
         {children}
       </ImageComponent>

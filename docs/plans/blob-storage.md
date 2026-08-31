@@ -1,9 +1,11 @@
 # Blob storage: one content-addressed store for every byte
 
-Status: **all five phases built for images; the collector is not yet
+Status: **all five phases built for images; the collector is written but not yet
 *scheduled*, and cannot be until there is a deployment to schedule it on
-(§11.2).** The two SVG node types (sketch, graph) are the one thing 2 and 3 both
-stop short of, and §10.1 is now where that decision sits. **§10.2 closes §10's
+(§11.2 — answered 31 Aug 2026, pending a box).** The two SVG node types (sketch,
+graph) were the one thing 2 and 3 both stopped short of; **§10.1 held that
+decision and §13 takes it — migrate both, and the render guard sketches needed
+has landed. The migration itself has not been run.** **§10.2 closes §10's
 step 5, and does it by subtraction: backgrounds were a removed feature's
 leftovers and are deleted rather than migrated, attachments stay on disk on a
 blocker that is not effort, and §10's expected outcome is wrong about both.** §11.1 records why
@@ -834,3 +836,104 @@ paragraph above still describes the tree.
   public by design and 19 MB of the 20. Serving them straight off the R2 public
   URL removes the box from the path entirely — but bakes a hostname unless a
   rewrite fronts it, which is `archive/storage-uploads.md`'s option 2 again.
+
+---
+
+## 13. §10.1 decided — 31 Aug 2026: migrate both
+
+**Yes, and both types together.** `graph` and `sketch` join `image` in
+`MIGRATABLE_TYPES`. §10.1 left this as the last open question in the plan; it is
+answered on measurement rather than on the estimate §10.1 was written with.
+
+### 13.1 What the corpus actually is
+
+Measured against the live dev database at `44227263`, after the image migration:
+
+| | |
+| --- | --- |
+| Occurrences of an SVG data URI | **77** |
+| Distinct SVGs behind them | **5** |
+| Stored, as revision JSON | **3852 kB** |
+| Deduplicated | **396 kB** |
+| The same revisions on disk (TOAST-compressed) | 1848 kB of a 9136 kB `Revision` table, in an 18 MB database |
+
+The split by type is not what §10.1's framing suggests. **Two graphs are 54% of
+the bytes in 13 of the 77 occurrences** — 88 kB and 242 kB apiece — while three
+sketches carry the remaining 1.9 MB across 64. So the half that is cheapest to
+migrate is also the heavier half: GraphNode has guarded on the data-URI prefix
+in both `decorate` and `exportDOM` since it was written, which makes graphs a
+one-line change to a `Set`.
+
+### 13.2 The property that decides it
+
+All five distinct SVGs were decoded and inspected. **Not one references anything
+outside itself.**
+
+- The two graphs (Geogebra) have no `<style>`, no `@font-face`, no external
+  `href`, no nested `data:` — plain paths and text.
+- The three sketches (Excalidraw) each carry exactly one `<style>` holding one
+  `@font-face` whose `src` is a **`data:font/woff2;base64`** URI. No external
+  reference either.
+
+That is the whole question. An inline `<svg>` may depend on the page it is
+inlined into; an `<img>` cannot — SVG-as-image is rendered in secure static mode
+with no external fetches. A picture that reaches outside itself therefore cannot
+be migrated at any price, and neither of these does. §10.1 correctly identified
+that the decision is about rendering rather than about bytes, and then did not
+ask the question that settles it.
+
+A related finding, worth stating because it makes the change an improvement
+rather than a wash: **every current render path strips the `<style>`** —
+`SketchNode.exportDOM`, `GraphNode.exportDOM` and `ImageComponent`'s svg branch
+all `querySelectorAll("style")` and remove. They must, because inlining injects
+that `@font-face` into the host document. So a sketch's text renders in a
+fallback font today. As an `<img>` the style is scoped to the image, and the
+embedded font applies. **This is the one thing to look at in a browser** (§13.5).
+
+### 13.3 What it costs, and what it does not buy
+
+The code is one guard, in the two places `SketchNode` decodes `__src` without a
+fallback — the same guard `GraphNode` carries, and its absence is the entire
+reason sketches were held back. `decorate` picks `element="img"`, `exportDOM`
+delegates to `ImageNode`'s. Everything else was already generic:
+
+- **The docx path needs no change.** `imageData` resolves a blob `src` through
+  `resolveBlobSrc` and `typeFromMime("image/svg+xml")` already answers `"svg"`.
+- **The blob route is already safe for SVG.** It sets
+  `Content-Security-Policy: default-src 'none'; sandbox` and
+  `X-Content-Type-Options: nosniff`, so serving user SVG from the app's own
+  origin is not a new XSS surface — the one objection that would have blocked
+  this outright, and it was answered before the question was asked.
+- **`blobHashesFor`, `reconcileDocumentBlobs` and the collector** cover these
+  nodes by URL with no new arm.
+
+**It does not simplify anything.** The inline-SVG path stays forever: a guest's
+documents keep their data URIs by design (§11.1), so both forms must render. Any
+argument for this that rests on deleting a branch is wrong.
+
+### 13.4 Why it is worth doing at 1.8 MB when the images were worth 15 MB
+
+It is not the same size and it is the same *mechanism*. Every save of a document
+rewrites its pictures into a new `Revision` row, so the 242 kB graph costs 242 kB
+per revision, forever, on a document that is still being edited. That is exactly
+how one PNG became 10 MB across 67 copies (§1) — the corpus here is 13
+occurrences only because those documents have been edited less. The work is
+bounded now; the cost is not.
+
+### 13.5 How to land it, and the acceptance criterion
+
+1. **`pg_dump -Fc` first.** §10 already says it: the migration rewrites every
+   revision in the database, and §5's grace period does not protect against a bad
+   rewrite.
+2. `pnpm blobs:migrate run --dry-run`, then `run`.
+3. **Verify in a browser, which is the whole risk.** A sketch and a graph, in the
+   editor, in `/view`, and through a `.docx` export. The specific thing to look
+   at is a sketch containing text: with the `<style>` no longer stripped it
+   should render in Excalifont rather than the fallback it uses today. Different
+   from today is expected; *wrong* is not.
+4. If a sketch renders wrong, drop `"sketch"` from `MIGRATABLE_TYPES` and keep
+   `"graph"`, which needs no guard and carries more than half the bytes. That
+   would be a decision on evidence, not a reversal of this one.
+
+The guard and the `Set` landed on 31 Aug 2026; **the migration has not been
+run**, and until it is, every SVG in the database is still inline.

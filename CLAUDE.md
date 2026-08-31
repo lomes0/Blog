@@ -283,9 +283,13 @@ Images in the editor are stored once, content-addressed, and referenced by
 made six distinct images occupy 13.6 MB across 141 copies. `src/lib/storage.ts`
 is the object store (S3 API, MinIO locally), `src/repositories/blob.ts` the rows.
 See docs/plans/blob-storage.md. Migration is `pnpm blobs:migrate`
-(`status | run [--dry-run] | verify`) and has been run for `image` nodes;
-`sketch` and `graph` still hold SVG data URIs, because both render one inline
-and a URL would change that (§10.1). Collection is `pnpm blobs:collect`
+(`status | run [--dry-run] | verify`) and **has been run for `image` nodes
+only**. `sketch` and `graph` became migratable on 31 Aug 2026 (§13) — the render
+guard is in place and both are in `MIGRATABLE_TYPES` — but the migration has not
+been run for them, so every SVG in the database is still a data URI. Running it
+rewrites every revision, so it wants a dump and the browser pass §13.5
+describes. **The inline-SVG render path is permanent either way**: a guest's
+documents keep their data URIs (§11.1), so both forms must render forever. Collection is `pnpm blobs:collect`
 (`status | run [--dry-run]`): a blob with no `BlobRef` and older than seven days
 goes, object first and then the row, because the row is the only thing that
 names the key. **Nothing runs it on a schedule** — there is no scheduler in this
