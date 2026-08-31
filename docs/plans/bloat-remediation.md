@@ -188,6 +188,40 @@ any orphaned imports (`SeriesGroupItem`, `uuid`, `Collapse`).
 > 2. **Then triage what is left**, which is the step as originally written:
 >    `delete` / `unexport` / `keep`, per the Decide paragraph below.
 >
+> **Phase 1 is done (`31b1f607`) and phase 2a — the `src/**` half of the triage
+> — is done (31 Aug 2026, `1d97f336`…`d07cb5ca`). `src/**` went 225 → 27 hits and
+> the one unused file to none.** 15 symbols deleted, 136 unexported, 27 kept.
+> The three findings worth carrying:
+>
+> - `content-bridge/index.ts` was the single largest cluster (43 of the 225) and
+>   was a convenience aggregate, not a contract — it published 63 names to ten
+>   importers taking 24. It now re-exports exactly what is imported through it.
+> - **`scripts/check-codecs.mjs` matches on the literal text `export const
+>   TABLE_TYPES` in `blocks.ts`.** Unexporting either set would not fail the
+>   check; it would make it silently cover less, which is the failure mode that
+>   script's own comment warns about. Both are permanent keeps.
+> - `DocumentActions/Fork.tsx` was the unused *file*. Forking is live — registry
+>   command, `forkPost` thunk, `/new/[id]`, and `ViewDocument`'s own menu item —
+>   but this component stopped being one of its entry points when `ActionMenu`
+>   was rewritten, so it went.
+>
+> **The 27 that remain are deliberate and will be reported again by every future
+> run.** They are: the storage and blob-migration surfaces a live plan lists
+> (`presignBlobGet`, `MIGRATABLE_TYPES`); tooling-visible sets (`TABLE_TYPES`,
+> `TABLE_CELL_TYPES`); DESIGN.md's `TOUCH_TARGET` and `raisedShadow`;
+> CLAUDE.md's route-wrapper and access vocabulary (`RouteOptions`,
+> `ApiErrorOptions`, `DocumentAccess`) and `store/app.ts`'s deliberate thunk
+> re-export block (`loadSession`, `applyPostContainer`, `applySeriesProject`,
+> `loadRootOrder`, `OrderArg`); repository input/result types
+> (`CreateNoteInput`, `UpdateNoteInput`, `ProposalInput`, `ApproveResult`,
+> `DocumentPlacement`); plan-declared API shapes (`CredentialSummary`,
+> `RateLimiter`, `ProviderInstance`, `getDefaultModel`); the block IR's
+> `TextOpacity`; `SidebarMode`, which **step 4 below is about**; and
+> `rewriteAttachmentUrls`, which the Jul 2026 review names as the call fork and
+> duplicate are missing.
+>
+> **Phase 2b — `packages/editor`'s remaining ~98 hits — has not been done.**
+>
 > **Two claims this STATUS used to make are wrong, both checked on 31 Aug
 > 2026.** `Layout/SideBar/hooks/useSidebarDnd.ts` does not exist — it was
 > deleted, not left behind. And `__tests__/dragGeometry.test.ts` is not dead:
