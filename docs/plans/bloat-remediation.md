@@ -15,10 +15,9 @@ rather than the step. What step 3 leaves is a triage pass over dead exports;
 `pnpm check:unused` on 31 Aug 2026 reports **220 unused exports, 358 unused
 exported types and one unused file — 578 hits**, against the "~30" that STATUS
 names. Read the step before acting on that number. Most of it is not app code
-and not rot: there is no knip configuration in this repo, so `packages/editor`
-came into scope when the editor became a workspace package, and 353 of the 578
-are in it — 256 in `packages/editor/src/ui` alone, a component library whose
-exports are its purpose.
+and not rot: 353 of the 578 sit in `packages/editor`, and 256 of those in
+`packages/editor/src/ui` alone, a component library whose exports are its
+purpose.
 
 Previously: **steps 1–6 are done or effectively done; step 7 is
 now UNBLOCKED.** The product question it waited on — does `/posts` render
@@ -161,14 +160,23 @@ any orphaned imports (`SeriesGroupItem`, `uuid`, `Collapse`).
 > **`knip` on 31 Aug 2026: 220 unused exports, 358 unused exported types, and
 > one unused file (`components/DocumentActions/Fork.tsx`) — 578 hits.**
 >
-> **The first finding is that most of that is not app code.** There is no knip
-> configuration in this repo — no `knip.json`, no `knip` key in `package.json` —
-> so it runs on defaults, and `packages/editor` came into scope the moment the
-> editor became a workspace package. **353 of the 578 hits are in that package,
-> and 256 — 44% of the whole report — are in `packages/editor/src/ui` alone**,
-> the Base UI primitives directory ported from haklex. A component library
-> exports its components whether or not this app imports every one; that is what
-> it is for. Triaging those by hand is the wrong pass over the wrong list.
+> **The first finding is that most of that is not app code.** **353 of the 578
+> hits are in `packages/editor`, and 256 — 44% of the whole report — are in
+> `packages/editor/src/ui` alone**, the Base UI primitives directory ported from
+> haklex. A component library exports its components whether or not this app
+> imports every one; that is what it is for. Triaging those by hand is the wrong
+> pass over the wrong list.
+>
+> **Correction, same day:** this STATUS first said there was no knip
+> configuration in the repo and that `packages/editor` had fallen into scope on
+> defaults. Both are false. `knip.json` exists, is tracked, and was written
+> during the editor extraction (`f306652c`) — it already models the pnpm
+> workspace with per-workspace `entry`/`project`, and it brought the editor into
+> scope deliberately, with a hand-written `project` glob and a recorded reason
+> for excluding `.js`. The check that produced the wrong claim was
+> `ls knip* .knip*` in zsh, where the failing second glob aborts the command
+> before the first is ever listed. What the config genuinely lacked was any
+> statement about `src/ui`.
 >
 > So this step is two pieces of work now, and the order matters:
 >
