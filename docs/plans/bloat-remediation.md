@@ -1,23 +1,28 @@
 # Bloat & layout remediation plan
 
-**Status as of 2026-08-31: step 3 is the only step still open, and it _is_
-code.** Steps 1, 2 and 4–7 are done. Step 7's data-model half shipped the same
-day the product question was answered — `/posts` builds its root list with
+**Status as of 2026-08-31: all seven steps are done.** Step 3 closed last, in
+three phases the same day — see its STATUS. `pnpm check:unused` went **578 hits
+→ 51**, and all 51 are deliberate keeps recorded there by name, so that is the
+floor rather than a remainder. Step 7's data-model half had shipped the day its
+product question was answered — `/posts` builds its root list with
 `groupRootItems` and adapts it with `rootItemsToTreeNodes`, the same two
 functions the sidebar uses, and `ProjectRow` gives a project a row that contains
 its series — and **both drag cases were exercised in a browser on 30 Aug 2026
-and both pass** (see the note at the end of this file), which closed the last
-thing this plan was waiting on that was not step 3.
+and both pass** (see the note at the end of this file).
 
-Previously this line read "steps 1–7 are done" and "what is left is not code".
-Step 3's own STATUS contradicted both, and the plan index was quoting this line
-rather than the step. What step 3 leaves is a triage pass over dead exports;
-`pnpm check:unused` on 31 Aug 2026 reports **220 unused exports, 358 unused
-exported types and one unused file — 578 hits**, against the "~30" that STATUS
-names. Read the step before acting on that number. Most of it is not app code
-and not rot: 353 of the 578 sit in `packages/editor`, and 256 of those in
-`packages/editor/src/ui` alone, a component library whose exports are its
-purpose.
+Two things step 3 turned up that are **not** step 3 work, left for the author
+because both are runtime changes rather than declarations:
+
+- **`ThumbnailContext` has no consumer at all.** `/user/[id]` and
+  `/new/[[...id]]` compute thumbnail promises and mount `ThumbnailProvider`;
+  nothing ever reads the context. The dead declarations went; the inert provider
+  and the server-side work it wraps did not.
+- **`EditSortOrderField` edits a field that does not exist.** `sortOrder`
+  appears nowhere in `src/` or `prisma/schema.prisma`.
+
+For the record, because the index quoted it: this line previously read "steps
+1–7 are done" and "what is left is not code", while step 3's own STATUS said
+PARTLY DONE. Both were wrong in the same direction, and the index inherited it.
 
 Previously: **steps 1–6 are done or effectively done; step 7 is
 now UNBLOCKED.** The product question it waited on — does `/posts` render
@@ -32,7 +37,7 @@ which describes the state at the time the plan was written.
 | ---- | --------------------------------------------------------------------------- |
 | 1    | Done bar the doubtful pair — `knip` now reports **no** unused dependencies  |
 | 2    | Done — `PostsCompactListView` and `PostCompactListItem` no longer exist     |
-| 3    | **Partly done — the only step still open**; see its STATUS for the count   |
+| 3    | **Done 31 Aug 2026** — 578 knip hits → 51, all 51 deliberate keeps          |
 | 4    | Done — `hooks/useResizablePanel.ts` + `Layout/ResizeGripper.tsx` landed     |
 | 5    | Done — `LoadingState.tsx` gone, `DocumentCard/theme.ts` 149 → 72            |
 | 6    | Done — [tree-model-brief.md](./archive/tree-model-brief.md)                 |
@@ -150,8 +155,10 @@ any orphaned imports (`SeriesGroupItem`, `uuid`, `Collapse`).
 
 ## Step 3 — Dead type surface
 
-> **STATUS: PARTLY DONE — and as of 31 Aug 2026 the only step still open.**
-> Everything the "State" paragraph below names by name is discharged: the
+> **STATUS: DONE, 31 Aug 2026 — and with it the whole plan.** All three phases
+> ran; the report went **578 hits → 51**, and every one of the 51 is a
+> deliberate keep, named below and in phase 2b's note. Everything the "State"
+> paragraph further down names by name was already discharged before this pass: the
 > `*Response` cluster is gone (one survivor in `src/types.ts`), `src/api/
 > types.ts` is down to a single mention of the word, and the
 > `api/client.ts:464-483` re-export block no longer exists. What is left is a
@@ -220,7 +227,53 @@ any orphaned imports (`SeriesGroupItem`, `uuid`, `Collapse`).
 > `rewriteAttachmentUrls`, which the Jul 2026 review names as the call fork and
 > duplicate are missing.
 >
-> **Phase 2b — `packages/editor`'s remaining ~98 hits — has not been done.**
+> **Phase 2b — the editor package — is done (`dd4d278b`…`1535fa3c`).** 98 → 24
+> hits: 11 deleted, 63 unexported, 24 kept. Net −86 lines across 32 files, with
+> `check:nodes`, `check:codecs` and `check:theme` green alongside the usual
+> three at every commit.
+>
+> Its rule for the serialized types, applied once rather than 22 times: **a
+> `SerializedXNode` alias stays exported.** It names the parameter of
+> `static importJSON` and the return of `exportJSON` — public members of an
+> exported class — and so names the shape actually written to `Revision.data`.
+> The family is symmetric by construction: `SerializedImageNode` has three
+> importers only because three nodes extend `ImageNode`, and
+> `SerializedGraphNode` none only because nothing extends `GraphNode` yet.
+> Exporting whichever ones happen to have a subclass would make the package's
+> most contract-heavy surface arbitrary. Three `nodes/*/index.ts` barrels
+> already state that convention in code. Note the choice is a design call and
+> not a compiler constraint: `packages/editor/package.json` is four lines, with
+> no `exports`, no `main` and no declaration emit, so unexporting these could
+> never have produced a TS4053.
+>
+> **Three findings from that phase worth carrying:**
+>
+> - **The `$convertXElement` importers are all alive, and all five were only
+>   ever reachable through a closure.** Each is referenced from a `conversion:`
+>   slot inside its own class's `importDOM()` return object, which is precisely
+>   the shape a reachability tool cannot follow. They were unexported, not
+>   deleted; deleting one would have silently broken HTML paste for that node
+>   with nothing in the suite to catch it. The proof the unexport is safe is
+>   `pnpm lint`: an unexported module-local function nobody calls trips
+>   `no-unused-vars`, and lint is clean.
+> - **"~73 of the editor's 98 are `SerializedXNode`" was wrong — it is 22.**
+>   The real shape is that one vendored file carries a third of the whole
+>   report: `MarkdownTransformers.tsx` contributed 31 of the 98, all of them
+>   transformers composed into the arrays at the foot of the same file.
+> - **No node class in this package uses Lexical 0.49's `$config()`.** They all
+>   use the classic `getType`/`clone`/`static importJSON`/`exportJSON`. The only
+>   `$config` in the tree is a comment in `TableNode/registration.ts` about
+>   *upstream's* table classes declaring themselves that way.
+>
+> **The 24 editor keeps:** the 18 `SerializedXNode` declarations, four of the
+> same re-exported by a directory barrel, and `CanvasNote` / `Task` — class
+> vocabulary published beside the class that returns it.
+>
+> **51 is the floor, and it is deliberate.** Every future `pnpm check:unused`
+> reports exactly phase 2a's 27 and phase 2b's 24. An option not taken, left for
+> the author: knip supports JSDoc `tags`, so those 51 could be marked
+> `/** @public */` with `"tags": ["-public"]` in `knip.json`, which would make
+> each exemption a greppable act in the code rather than a line in this plan.
 >
 > **Two claims this STATUS used to make are wrong, both checked on 31 Aug
 > 2026.** `Layout/SideBar/hooks/useSidebarDnd.ts` does not exist — it was
