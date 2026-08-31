@@ -4,6 +4,7 @@ import {
   findCanvasByAuthorId,
   getOrCreateDefaultCanvas,
 } from "@/repositories/notes";
+import type { CanvasSummary } from "@/types/notes";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -18,12 +19,9 @@ export const GET = userRoute(async (_request, { user }) => {
   // Ensure at least one canvas exists
   await getOrCreateDefaultCanvas(user.id);
   const canvases = await findCanvasByAuthorId(user.id);
-  const summaries = canvases.map(({ id, name, createdAt, updatedAt }) => ({
-    id,
-    name,
-    createdAt,
-    updatedAt,
-  }));
+  const summaries: CanvasSummary[] = canvases.map(
+    ({ id, name, createdAt, updatedAt }) => ({ id, name, createdAt, updatedAt }),
+  );
   return NextResponse.json({ data: summaries });
 }, {
   errorLabel: "Error fetching canvases",

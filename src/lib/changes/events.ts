@@ -71,13 +71,6 @@ export const APP_ORIGIN = "app";
  */
 export const isAgentOrigin = (origin: string): boolean => origin !== APP_ORIGIN;
 
-export type ChangeEventKind =
-  | "document.created"
-  | "document.updated"
-  | "document.deleted"
-  | "proposal.upserted"
-  | "proposal.resolved";
-
 interface ChangeEventBase {
   /** The document. Never a revision id — see the module doc comment. */
   id: string;

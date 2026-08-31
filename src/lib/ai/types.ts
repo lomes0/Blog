@@ -54,19 +54,3 @@ export interface AIModel {
     reason?: boolean;
   };
 }
-
-export interface AIProviderConfig {
-  google: {
-    apiKey?: string;
-  };
-  anthropic: {
-    apiKey?: string;
-  };
-  azure: {
-    apiKey?: string;
-    resourceName?: string;
-  };
-  ollama: {
-    baseURL?: string;
-  };
-}

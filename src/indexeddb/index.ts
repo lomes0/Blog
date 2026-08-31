@@ -161,5 +161,3 @@ export interface LocalOrder {
   id: string;
   ids: string[];
 }
-
-export const orderDB = getStore<LocalOrder>("orders");

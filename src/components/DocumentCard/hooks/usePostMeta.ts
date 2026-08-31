@@ -54,8 +54,3 @@ export const usePostMeta = ({
     return chips;
   }, [postState, series, seriesOrder, showSeries]);
 };
-
-/**
- * Return type for usePostMeta hook
- */
-export type PostMetaHookResult = ReturnType<typeof usePostMeta>;

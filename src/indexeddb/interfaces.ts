@@ -72,11 +72,3 @@ export interface IndexedDBConfig {
    */
   migrations?: IndexedDBMigration[];
 }
-
-export interface TransactionOptions {
-  storeName: string;
-  dbMode: IDBTransactionMode;
-  error: (e: Event) => void;
-  complete: (e: Event) => void;
-  abort?: (e: Event) => void;
-}

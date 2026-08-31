@@ -187,13 +187,6 @@ const createRevision = async (data: Prisma.RevisionUncheckedCreateInput) => {
   throw new ProposalWriteError(id);
 };
 
-const updateRevision = async (id: string, data: Prisma.RevisionUpdateInput) => {
-  return prisma.revision.update({
-    where: { id },
-    data,
-  });
-};
-
 const deleteRevision = async (id: string) => {
   return prisma.revision.delete({
     where: { id },
@@ -945,6 +938,5 @@ export {
   isPendingProposal,
   markProposalsStale,
   rejectProposal,
-  updateRevision,
   upsertProposal,
 };

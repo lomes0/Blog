@@ -1,8 +1,8 @@
 "use client";
 
-import { createContext, useContext } from "react";
+import { createContext } from "react";
 
-export const ThumbnailContext = createContext<
+const ThumbnailContext = createContext<
   Record<string, Promise<string | null>> | null
 >(null);
 
@@ -18,9 +18,4 @@ export function ThumbnailProvider({
       {children}
     </ThumbnailContext.Provider>
   );
-}
-
-export function useThumbnailContext() {
-  const context = useContext(ThumbnailContext);
-  return context;
 }

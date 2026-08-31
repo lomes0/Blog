@@ -1,11 +1,10 @@
 import React from "react";
 import NextLink from "next/link";
-import { Avatar, Chip } from "@mui/material";
-import { BookOpen, Pencil, User as UserIcon } from "lucide-react";
-import { DocumentStatus, Series, User } from "@/types";
+import { Chip } from "@mui/material";
+import { BookOpen, Pencil } from "lucide-react";
+import { DocumentStatus, Series } from "@/types";
 import { createCardTheme } from "./theme";
 import { ICON_SIZE } from "@/theme/icons";
-import { MOTION, raisedShadow, SHADOW } from "@/theme/tokens";
 
 /**
  * Simplified post state for blog
@@ -51,131 +50,6 @@ export const createStatusChip = (postState: PostState) => {
 
   // No chip for published posts
   return null;
-};
-
-/**
- * Modern author chip - Pill Capsule with Soft Shadow
- * Clean, tactile design with micro-shadows and hover lift effect
- */
-export const createAuthorChip = (author?: User | null, showAuthor = true) => {
-  if (!showAuthor || !author) return null;
-
-  return (
-    <Chip
-      key="author-chip"
-      size="small"
-      component="a"
-      href="/dashboard"
-      clickable
-      onClick={(e: React.MouseEvent) => e.stopPropagation()}
-      aria-label={`View ${author.name ?? "author"}'s profile`}
-      avatar={
-        <Avatar
-          alt={author.name ?? "User"}
-          src={author.image ?? undefined}
-          sx={{
-            width: 24,
-            height: 24,
-            fontSize: "0.75rem",
-            fontWeight: 500,
-            border: (theme) => `2px solid ${theme.palette.background.paper}`,
-            boxShadow: "0 1px 2px rgba(0,0,0,0.08)",
-          }}
-        >
-          {!author.image && <UserIcon size={ICON_SIZE.inline} />}
-        </Avatar>
-      }
-      label={author.name ?? "User"}
-      sx={(theme) => ({
-        height: 32,
-        borderRadius: "9999px",
-        border: "1px solid transparent",
-        overflow: "hidden",
-        position: "relative",
-        background: "rgba(0, 0, 0, 0.03)",
-        boxShadow: SHADOW.raised.light,
-        ...theme.applyStyles("dark", {
-          background: "rgba(255, 255, 255, 0.06)",
-          boxShadow: SHADOW.raised.dark,
-        }),
-        color: "text.secondary",
-        fontWeight: 500,
-        typography: "dense",
-        letterSpacing: "0.01em",
-        textDecoration: "none",
-        cursor: "pointer",
-        transition: `all ${MOTION.base}ms ${MOTION.easing}`,
-        outline: "none",
-        WebkitTapHighlightColor: "transparent",
-
-        // Disable MUI's internal hover overlay (the cause of square corners)
-        "&::before": {
-          display: "none",
-        },
-        "&::after": {
-          display: "none",
-        },
-
-        "& .MuiChip-label": {
-          padding: "0 12px 0 6px",
-          lineHeight: 1.2,
-        },
-        "& .MuiChip-avatar": {
-          marginLeft: "4px",
-          marginRight: 0,
-          width: 24,
-          height: 24,
-        },
-        // Completely hide touch ripple to prevent any rectangular effects
-        "& .MuiTouchRipple-root": {
-          display: "none",
-        },
-        // Fix for MUI's internal hover overlay (focusVisible and clickable hover)
-        "& .MuiChip-action": {
-          borderRadius: "inherit",
-        },
-        // Override MUI's clickable chip hover background
-        "&.MuiChip-clickable": {
-          "&:hover": {
-            background: "rgba(0, 0, 0, 0.05)",
-            ...theme.applyStyles("dark", {
-              background: "rgba(255, 255, 255, 0.1)",
-            }),
-          },
-        },
-        // Override any ButtonBase focus styling
-        "&.MuiButtonBase-root": {
-          "&:focus": {
-            outline: "none",
-          },
-        },
-
-        "&:hover": {
-          background: "rgba(0, 0, 0, 0.05)",
-          ...theme.applyStyles("dark", {
-            background: "rgba(255, 255, 255, 0.1)",
-          }),
-          borderColor: "rgba(var(--mui-palette-primary-mainChannel) / 0.5)", // Unified hover border (primary)
-          color: "text.primary",
-        },
-
-        "&:active": {
-          borderColor: "rgba(var(--mui-palette-primary-mainChannel) / 0.7)", // Unified hover border (primary, active)
-        },
-
-        "&:focus-visible": {
-          outline: "none",
-          boxShadow: (theme) =>
-            `0 0 0 2px ${theme.palette.background.paper}, 0 0 0 4px ${theme.palette.primary.main}`,
-        },
-
-        "&:focus:not(:focus-visible)": {
-          outline: "none",
-          ...raisedShadow(theme),
-        },
-      })}
-    />
-  );
 };
 
 /**

@@ -124,11 +124,6 @@ export function loadKeyring(): Keyring {
   return cached;
 }
 
-/** Test seam: forget the memoised keyring. */
-export function resetKeyringCache(): void {
-  cached = undefined;
-}
-
 function decodeKey(version: number, encoded: string): Buffer {
   if (!encoded) {
     throw new KeyringError(`${KEYS_ENV} version ${version} has no key material`);

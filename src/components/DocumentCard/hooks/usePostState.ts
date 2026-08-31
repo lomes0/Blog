@@ -48,8 +48,3 @@ export const usePostState = (post?: Post, user?: User) => {
     };
   }, [post, user, getDocumentUrl]);
 };
-
-/**
- * Return type for usePostState hook
- */
-export type PostStateHookResult = ReturnType<typeof usePostState>;

@@ -168,21 +168,3 @@ export const EditStatusField: React.FC<{
     </FormControl>
   );
 };
-
-export const EditSortOrderField: React.FC<{
-  value: number | null | undefined;
-  onChange: (value: number | null) => void;
-}> = ({ value, onChange }) => (
-  <TextField
-    margin="normal"
-    size="small"
-    fullWidth
-    label="Sort Order"
-    type="number"
-    inputProps={{ min: 0, step: 1 }}
-    value={value === null || value === undefined ? "" : value}
-    onChange={(e) =>
-      onChange(e.target.value === "" ? null : Number(e.target.value))}
-    helperText="Items with sort order > 0 will appear first. Leave empty for default sorting."
-  />
-);

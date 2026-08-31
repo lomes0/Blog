@@ -182,32 +182,6 @@ export async function bringNoteToFront(
   return updateNote(noteId, { zIndex: newZIndex });
 }
 
-// Batch create notes (useful for migration)
-export async function batchCreateNotes(
-  canvasId: string,
-  notes: Omit<CreateNoteInput, "canvasId">[],
-): Promise<Note[]> {
-  const createdNotes = await prisma.$transaction(
-    notes.map((noteData) =>
-      prisma.note.create({
-        data: {
-          canvasId,
-          positionX: noteData.positionX,
-          positionY: noteData.positionY,
-          width: noteData.width,
-          height: noteData.height,
-          title: noteData.title,
-          content: noteData.content,
-          color: noteData.color || "#FFD700",
-          zIndex: noteData.zIndex ?? 0,
-        },
-      })
-    ),
-  );
-
-  return createdNotes.map(mapNoteFromPrisma);
-}
-
 // Mapping functions to convert Prisma types to application types
 
 function mapNoteFromPrisma(

@@ -16,15 +16,10 @@ import type { PaneMode, Post, WorkspacePane } from "@/types";
  * open" in three different places, each with its own rule (plan §0). The URL is
  * an entry point, consumed on arrival: `/edit/[id]` is what opened the pane,
  * never what defines it (docs/plans/archive/workspace-url.md §3).
- */
-export const selectFocusedPaneId = (state: RootState): string | null =>
-  state.ui.workspace.focusedPaneId;
-
-/**
- * The pane the user is acting in, or null when nothing is open.
  *
- * Not memoized on purpose — it returns a pane already in the state tree, so its
- * identity is as stable as the pane itself.
+ * The pane the user is acting in, or null when nothing is open. Not memoized on
+ * purpose — it returns a pane already in the state tree, so its identity is as
+ * stable as the pane itself.
  */
 export const selectFocusedPane = (state: RootState): WorkspacePane | null => {
   const { panes, focusedPaneId } = state.ui.workspace;
@@ -119,10 +114,6 @@ export const selectPaneDescriptions = createSelector(
       };
     }),
 );
-
-/** Whether one pane is currently filling the row, and which. */
-export const selectMaximizedPaneId = (state: RootState): string | null =>
-  state.ui.workspace.maximizedPaneId;
 
 /* ------------------------------------------------------------------ */
 /*  SideBar                                                            */
