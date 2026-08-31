@@ -350,6 +350,3 @@ export type AddressedBlock = Block & {
 
 /** Types a caller may author. `opaque` is readable but never writable. */
 export type WritableBlock = Exclude<Block, OpaqueBlock>;
-
-export const isWritableBlock = (block: Block): block is WritableBlock =>
-  block.type !== "opaque";

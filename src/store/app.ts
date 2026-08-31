@@ -957,5 +957,3 @@ export {
 export { catchUpPosts, fetchChangedPosts } from "./thunks/changeThunks";
 export { alert, updateUser } from "./thunks/userThunks";
 export { importGuestDrafts } from "./thunks/importGuestDrafts";
-
-export default appSlice.reducer;

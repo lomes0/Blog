@@ -13,8 +13,6 @@ import {
   useFloatingActions,
 } from "@/contexts/FloatingActionsContext";
 
-export { useFloatingActions };
-
 export function FloatingActionsContainer(
   { children }: { children: ReactNode },
 ) {
