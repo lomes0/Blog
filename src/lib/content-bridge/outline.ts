@@ -22,7 +22,7 @@ import { formatAddress, walkBlocks } from "./address";
 import { canSetText, nodeToBlock } from "./blocks";
 import { stateHash } from "./stateHash";
 
-export interface OutlineEntry {
+interface OutlineEntry {
   id: Address;
   /** Nesting level; 0 for a top-level block. */
   depth: number;
@@ -38,7 +38,7 @@ export interface OutlineEntry {
   textEditable: boolean;
 }
 
-export interface Outline {
+interface Outline {
   stateHash: string;
   blocks: OutlineEntry[];
 }
@@ -246,7 +246,7 @@ export function formatOutline(result: Outline): string {
     .join("\n");
 }
 
-export interface BlocksRead {
+interface BlocksRead {
   stateHash: string;
   blocks: AddressedBlock[];
   /** Addresses that matched nothing, rather than silently returning fewer. */

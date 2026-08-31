@@ -81,7 +81,7 @@ export function parseAddress(address: string): number[] | null {
 const isContainer = (node: SerializedNode): boolean =>
   BLOCK_CONTAINERS.has(typeOf(node)) && childrenOf(node).length > 0;
 
-export interface Located {
+interface Located {
   node: SerializedNode;
   /** The node holding it, and where — what an insert or delete needs. */
   parent: SerializedNode;
@@ -110,7 +110,7 @@ export function locate(state: StoredState, address: string): Located | null {
   return { node: node!, parent, index: path[path.length - 1] };
 }
 
-export interface WalkEntry {
+interface WalkEntry {
   /** The id when the block has one, otherwise its structural path. */
   address: Address;
   /** The structural path, always — `readBlocks` and moves need it. */
@@ -159,7 +159,7 @@ export function walkBlocks(state: StoredState): WalkEntry[] {
  * claim: it names one block, whereas a path names a position that some other
  * block may since have taken.
  */
-export function pathOf(state: StoredState, address: string): number[] | null {
+function pathOf(state: StoredState, address: string): number[] | null {
   if (isBlockId(address)) {
     const hit = walkBlocks(state).find((entry) => entry.address === address);
     return hit ? hit.path : null;

@@ -27,7 +27,7 @@ export interface BulkPostActionsResult {
   handleBulkMerge: () => Promise<void>;
 }
 
-export interface UseBulkPostActionsArgs {
+interface UseBulkPostActionsArgs {
   /** Currently multi-selected row ids. */
   selectedIds: Set<string>;
   /** All selectable rows in render order, for stable operation ordering. */

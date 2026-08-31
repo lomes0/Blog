@@ -92,14 +92,14 @@ export function isCollectable(
 }
 
 /** Why a blob was left alone. Reported, not inferred — see the plan below. */
-export type KeepReason = "referenced" | "within-grace";
+type KeepReason = "referenced" | "within-grace";
 
-export interface KeptBlob {
+interface KeptBlob {
   blob: BlobCandidate;
   reason: KeepReason;
 }
 
-export interface BlobCollectionPlan {
+interface BlobCollectionPlan {
   /** Oldest first. */
   collect: BlobCandidate[];
   keep: KeptBlob[];

@@ -13,7 +13,7 @@ import type { User } from "@/types";
  * rendering it disabled: a guest has no path to enable it in place, so a disabled
  * control is just noise.
  */
-export interface Capabilities {
+interface Capabilities {
   /** Group posts into series. */
   series: boolean;
   /** Group series into projects. */

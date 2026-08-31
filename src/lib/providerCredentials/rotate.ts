@@ -19,7 +19,7 @@ import { credentialAad, open, seal, type SealedSecret } from "./crypto";
 import { currentKey, type Keyring, keyFor } from "./keyring";
 
 /** Where a sealed secret is right now, and where it should end up. */
-export interface SealContext {
+interface SealContext {
   key: Buffer;
   aad: string;
 }
@@ -32,7 +32,7 @@ export interface SealContext {
  * key through a variable in a script, which is exactly the kind of thing that
  * ends up in a crash dump.
  */
-export function reseal(
+function reseal(
   sealed: SealedSecret,
   from: SealContext,
   to: SealContext,
@@ -41,7 +41,7 @@ export function reseal(
 }
 
 /** The row shape a rotation needs — deliberately not the whole record. */
-export interface RotatableRow {
+interface RotatableRow {
   id: string;
   userId: string;
   provider: string;

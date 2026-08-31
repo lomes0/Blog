@@ -39,7 +39,7 @@ const hostname = (host: string): string => {
   return colon === -1 ? trimmed : trimmed.slice(0, colon);
 };
 
-export interface SecureTransportEnv {
+interface SecureTransportEnv {
   /** `"1"` to accept a token over plain HTTP anyway. */
   MCP_ALLOW_INSECURE?: string;
   /** So `process.env` is assignable without a cast. */

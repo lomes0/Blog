@@ -66,7 +66,7 @@ export const looksLikeAgentToken = (value: string): boolean =>
 export const hashAgentToken = (secret: string): string =>
   createHash("sha256").update(secret).digest("hex");
 
-export type TokenState = "active" | "revoked" | "expired";
+type TokenState = "active" | "revoked" | "expired";
 
 /** Pure: what a stored row is, at a given moment. */
 export function tokenState(
@@ -149,7 +149,7 @@ export async function mintAgentToken(input: {
   return { secret, token };
 }
 
-export type VerifyResult =
+type VerifyResult =
   | { ok: true; token: AgentTokenSummary }
   | {
     ok: false;

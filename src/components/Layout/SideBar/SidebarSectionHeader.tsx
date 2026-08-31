@@ -5,7 +5,7 @@ import { ICON_SIZE } from "@/theme/icons";
 import { SB_FONT } from "./constants";
 
 /** One trailing create-action for a section header (e.g. "New note"). */
-export interface SectionAction {
+interface SectionAction {
   key: string;
   label: string;
   icon: React.ReactNode;

@@ -7,7 +7,7 @@ import { PostMetaOptions, usePostMeta } from "../hooks/usePostMeta";
 /**
  * Props for PostMeta component
  */
-export interface PostMetaProps {
+interface PostMetaProps {
   postState: PostState;
   author?: User | null;
   series?: Series | null;

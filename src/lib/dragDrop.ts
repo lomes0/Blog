@@ -22,7 +22,7 @@ export type DropPosition = "before" | "after";
  * single-row drag carries one id); `id`/`name` describe the grabbed row, for
  * drop targets that act on one item or need a label for a confirm prompt.
  */
-export interface DragPayload {
+interface DragPayload {
   ids: string[];
   id: string;
   name?: string;

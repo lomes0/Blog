@@ -3,7 +3,7 @@ import { useCallback } from "react";
 import { v4 as uuid } from "uuid";
 import { actions, useDispatch } from "@/store";
 
-export interface ConfirmRequest {
+interface ConfirmRequest {
   title: string;
   content: string;
   /** Label of the affirmative button. */

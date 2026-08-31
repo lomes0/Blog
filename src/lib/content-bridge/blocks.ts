@@ -962,7 +962,7 @@ export function blockText(block: Block): string {
  * A code block is never text-opaque: its body is literal, so there is no inline
  * formatting to lose. Hence the `in` check rather than a field access.
  */
-export const isTextEditable = (block: Block): boolean =>
+const isTextEditable = (block: Block): boolean =>
   block.type !== "opaque" &&
   !("readonlyText" in block && block.readonlyText === true);
 

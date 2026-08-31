@@ -13,7 +13,7 @@ export interface PostMetaOptions {
 /**
  * Input parameters for the metadata hook
  */
-export interface PostMetaInput {
+interface PostMetaInput {
   postState: PostState;
   author?: User | null;
   series?: Series | null;

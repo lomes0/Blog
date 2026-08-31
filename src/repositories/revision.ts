@@ -33,7 +33,7 @@ import { blobHashesFor } from "@/lib/blobRefs";
  * the document's publication state. Phase 2 of docs/plans/archive/agent-gating.md adds
  * that check; the column is here so it has something to read.
  */
-export type StoredRevision = Revision & { proposedAt: Date | null };
+type StoredRevision = Revision & { proposedAt: Date | null };
 
 const revisionSelect = {
   id: true,
@@ -134,7 +134,7 @@ const isUniqueViolation = (error: unknown) =>
  * "you tried to autosave onto something under review" is never mistaken for a
  * bug.
  */
-export class ProposalWriteError extends Error {
+class ProposalWriteError extends Error {
   constructor(readonly revisionId: string) {
     super("That revision is a pending proposal and cannot be written to");
     this.name = "ProposalWriteError";
@@ -210,7 +210,7 @@ const pendingSelect = {
   data: true,
 } as const;
 
-export type PendingProposalRow = Prisma.RevisionGetPayload<
+type PendingProposalRow = Prisma.RevisionGetPayload<
   { select: typeof pendingSelect }
 >;
 
@@ -280,7 +280,7 @@ const proposalSummarySelect = {
   document: { select: { title: true, handle: true, headRevisionId: true } },
 } as const;
 
-export type ProposalSummaryRow = Prisma.RevisionGetPayload<
+type ProposalSummaryRow = Prisma.RevisionGetPayload<
   { select: typeof proposalSummarySelect }
 >;
 

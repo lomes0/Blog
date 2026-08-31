@@ -71,9 +71,9 @@ export interface ChangeBatch {
  * `setTimeout` is a `number` in the browser's lib and a `Timeout` in Node's, and
  * this module is imported by code type-checked under both.
  */
-export type CancelScheduled = () => void;
+type CancelScheduled = () => void;
 
-export interface ChangeBatcherOptions {
+interface ChangeBatcherOptions {
   /** Called once per window, with a batch that is never empty. */
   onFlush: (batch: ChangeBatch) => void;
   /** Defaults to {@link COALESCE_WINDOW_MS}. */
@@ -85,7 +85,7 @@ export interface ChangeBatcherOptions {
   schedule?: (run: () => void, ms: number) => CancelScheduled;
 }
 
-export interface ChangeBatcher {
+interface ChangeBatcher {
   /** Fold one event into the open window, opening one if none is. */
   push(event: ChangeEvent): void;
   /** Flush now if anything is pending. A no-op otherwise. */

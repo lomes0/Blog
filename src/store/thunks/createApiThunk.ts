@@ -47,7 +47,7 @@ export function fail(subtitle: string, title?: string): never {
   throw new ThunkFailure(subtitle, title);
 }
 
-export interface ApiThunkConfig {
+interface ApiThunkConfig {
   state: AppState;
   rejectValue: Failure;
 }

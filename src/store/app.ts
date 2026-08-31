@@ -282,7 +282,7 @@ function removePost(state: AppState, id: string) {
 }
 
 /** What a background catch-up has learned: rows to upsert, rows proven gone. */
-export interface ReconcilePayload {
+interface ReconcilePayload {
   changed: Post[];
   deletedIds: string[];
 }

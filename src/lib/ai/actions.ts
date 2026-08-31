@@ -187,7 +187,7 @@ export const getAIAction = (id: string): AIAction | undefined =>
  * actions are excluded — they are Copilot chat prompts and never reach this
  * route, so accepting their ids here would widen the contract for nothing.
  */
-export type AICompletionAction = SelectionAIAction["id"] | "tone" | "custom";
+type AICompletionAction = SelectionAIAction["id"] | "tone" | "custom";
 
 // The assertion only tells TypeScript the array is non-empty, which `z.enum`
 // requires and the two leading literals make obvious. It does not widen or

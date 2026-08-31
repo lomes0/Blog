@@ -445,7 +445,7 @@ export function applyOps(
  * `stateHash` as a side effect of being observed, and so refuse the very next
  * write.
  */
-export function stampBlockIds(
+function stampBlockIds(
   state: StoredState,
   only?: ReadonlySet<SerializedNode>,
 ): void {

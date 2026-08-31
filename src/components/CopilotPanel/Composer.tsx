@@ -221,7 +221,7 @@ const glyphSx = {
   lineHeight: 1,
 } as const;
 
-export interface ComposerProps {
+interface ComposerProps {
   value: string;
   onChange: (value: string) => void;
   onKeyDown: (event: React.KeyboardEvent) => void;

@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 
-export interface InlineRenameOptions<T, C> {
+interface InlineRenameOptions<T, C> {
   /** The rows the rename can target; looked up by id when starting and committing. */
   items: T[] | undefined;
   getId: (item: T) => string;

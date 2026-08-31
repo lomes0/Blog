@@ -85,7 +85,7 @@ export const DEAD_BAND = 40;
  * this many px of the width you already chose lands exactly on it, so a
  * nudge-and-release does not quietly rewrite a width you were happy with.
  */
-export const OPEN_DETENT = 18;
+const OPEN_DETENT = 18;
 
 export const clamp = (n: number, lo: number, hi: number) =>
   Math.min(Math.max(n, lo), hi);

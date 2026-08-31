@@ -16,8 +16,6 @@ import type { SerializedEditorState } from "lexical";
  * pending" rather than throwing.
  */
 
-export type { PendingSave };
-
 export async function readPendingSave(
   postId: string,
 ): Promise<PendingSave | undefined> {

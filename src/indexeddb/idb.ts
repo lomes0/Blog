@@ -17,7 +17,7 @@ function validateStore(db: IDBDatabase, storeName: string) {
   return db.objectStoreNames.contains(storeName);
 }
 
-export function validateBeforeTransaction(
+function validateBeforeTransaction(
   db: IDBDatabase | undefined,
   storeName: string,
   reject: (reason: string) => void,
@@ -30,11 +30,11 @@ export function validateBeforeTransaction(
   }
 }
 
-export function commitTransaction(tx: IDBTransaction): void {
+function commitTransaction(tx: IDBTransaction): void {
   (tx as IDBTransaction & { commit?: () => void }).commit?.();
 }
 
-export function createTransaction(
+function createTransaction(
   db: IDBDatabase,
   dbMode: IDBTransactionMode,
   currentStore: string,

@@ -31,7 +31,7 @@ const DEFAULT_LLM: LLMConfig = {
  * There is no `apiKey` field to omit — the server has no shape that carries one
  * outward.
  */
-export interface ProviderKeySummary {
+interface ProviderKeySummary {
   provider: AIProviderType;
   /** The masked suffix, for display: `••••7f2a`. */
   last4: string;
@@ -46,7 +46,7 @@ export interface ProviderKeySummary {
  * account, so a guest simply has none — surfacing that as a failed request
  * would put an alert in front of someone who has done nothing wrong.
  */
-export type ProviderKeysState = "loading" | "ready" | "signed-out" | "error";
+type ProviderKeysState = "loading" | "ready" | "signed-out" | "error";
 
 interface AIModelContextType {
   llm: LLMConfig;

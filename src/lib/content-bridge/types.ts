@@ -272,7 +272,7 @@ export type CellHeader = "row" | "column" | "both";
  * blog hold exactly one paragraph — so it is the short spelling, and the object
  * form is there for spans and header flags.
  */
-export type TableCellInput =
+type TableCellInput =
   | string
   | {
     text?: string;

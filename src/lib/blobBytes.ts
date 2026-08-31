@@ -15,7 +15,7 @@
 import { findBlobMeta } from "@/repositories/blob";
 import { getBlob } from "@/lib/storage";
 
-export interface LoadedBlob {
+interface LoadedBlob {
   bytes: Buffer;
   mimeType: string;
 }

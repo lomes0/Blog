@@ -37,7 +37,7 @@ export interface RateLimiter {
   take(key: string, now?: number): RateDecision;
 }
 
-export interface TokenBucketOptions {
+interface TokenBucketOptions {
   /**
    * Burst: how many calls can land at once after an idle period. A limiter
    * whose capacity equals its per-minute rate refuses an agent that fires a

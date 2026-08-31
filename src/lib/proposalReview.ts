@@ -336,7 +336,7 @@ export const rejectedHunkIds = (
   rejected: ReadonlySet<string>,
 ): string[] => hunks.filter((hunk) => rejected.has(hunk.id)).map((h) => h.id);
 
-export interface DecisionCounts {
+interface DecisionCounts {
   total: number;
   accepted: number;
   refused: number;

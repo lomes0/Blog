@@ -11,7 +11,7 @@ export interface ContextMenuState<T> {
   target: T;
 }
 
-export interface ContextMenuResult<T> {
+interface ContextMenuResult<T> {
   contextMenu: ContextMenuState<T> | null;
   /** Right-click handler: anchors the menu at the cursor, keyed to `target`. */
   open: (event: React.MouseEvent, target: T) => void;

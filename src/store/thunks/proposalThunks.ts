@@ -19,7 +19,7 @@ import { createApiThunk, fail } from "./createApiThunk";
 
 const EMPTY_COUNT: ProposalCount = { proposals: 0, agentPosts: 0, total: 0 };
 
-export interface ProposalsPayload {
+interface ProposalsPayload {
   count: ProposalCount;
   proposals: PendingProposal[];
   agentPosts: AgentCreatedPost[];

@@ -22,7 +22,7 @@ import { NoteFrame } from "@/types/notes";
 
 const STORAGE_KEY = "blog-simple:notes-clipboard:v1";
 
-export interface ClipboardNote {
+interface ClipboardNote {
   title?: string;
   /** Serialized Lexical editor state. */
   content: string;
@@ -37,7 +37,7 @@ export interface ClipboardNote {
   offset: { x: number; y: number };
 }
 
-export interface NotesClip {
+interface NotesClip {
   /**
    * The board the notes came from, so pasting back into it can nudge the copies
    * clear of their originals instead of stacking them invisibly on top.

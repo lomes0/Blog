@@ -6,7 +6,7 @@ import { createChangeBatcher } from "@/lib/changes/coalesce";
 import { decodeChangeEvent } from "@/lib/changes/events";
 
 /** The SSE endpoint. Same origin, so the session cookie rides along. */
-export const CHANGE_FEED_ROUTE = "/api/events";
+const CHANGE_FEED_ROUTE = "/api/events";
 
 /**
  * Hop 4 of the change feed: the browser end —

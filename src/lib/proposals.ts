@@ -55,7 +55,7 @@
 // ─── Rows ────────────────────────────────────────────────────────────────────
 
 /** The columns head selection needs. A superset is fine — it is generic. */
-export interface RevisionRow {
+interface RevisionRow {
   id: string;
   createdAt: Date;
   /** Non-null means "pending proposal", i.e. not history. */
@@ -73,7 +73,7 @@ export const historyOf = <R extends Pick<RevisionRow, "proposedAt">>(
 
 // ─── Head selection ──────────────────────────────────────────────────────────
 
-export interface HeadSelection<R> {
+interface HeadSelection<R> {
   /**
    * The row `head` names — null when `head` is null, names no row in `rows`, or
    * names a *proposal*. The last case is a broken state rather than an
@@ -122,7 +122,7 @@ export const selectHead = <R extends RevisionRow>(
  * or — when `head` names nothing, because its revision was deleted — the row
  * `selectHead`'s `repair` picks. Never a proposal; that is `pending`'s job.
  */
-export interface AgentSources<R> {
+interface AgentSources<R> {
   /** `Document.head`, exactly as read. */
   head: string | null;
   /**
@@ -135,7 +135,7 @@ export interface AgentSources<R> {
   committed: R | null;
 }
 
-export interface AgentRead<R> {
+interface AgentRead<R> {
   /** Which of the two states was chosen — worth reporting, since they differ. */
   source: "proposal" | "committed" | "empty";
   /** The row to read content from, or null for a document with nothing in it. */
@@ -238,13 +238,13 @@ export const isProposalStale = (
   Boolean(proposal.staleAt) || (head ?? null) !== proposal.baseRevisionId;
 
 /** The columns a head move needs in order to decide what it invalidated. */
-export interface StaleCandidate {
+interface StaleCandidate {
   id: string;
   baseRevisionId: string | null;
   staleAt: Date | null;
 }
 
-export interface StaleMarking {
+interface StaleMarking {
   /** The rows to stamp. Empty is the overwhelmingly common answer. */
   ids: string[];
   /** The stamp, supplied rather than read, so the plan stays pure. */
@@ -347,9 +347,9 @@ export interface ProposalRowState {
  * write built from this cannot touch the base even by accident, which is the
  * one invariant in this plan with no database constraint behind it (§9).
  */
-export type ProposalPatch = Omit<ProposalRowState, "baseRevisionId">;
+type ProposalPatch = Omit<ProposalRowState, "baseRevisionId">;
 
-export type SquashPlan =
+type SquashPlan =
   | {
     kind: "create";
     /** The whole row, base included — the only place the base is set. */
@@ -488,7 +488,7 @@ export interface ApprovalDecisions {
   version?: number;
 }
 
-export type ApprovalPlan =
+type ApprovalPlan =
   | {
     /** The base stopped being head, so the proposal's content is built on a
      * state that no longer exists. Refuse rather than rebase (§3.6). */

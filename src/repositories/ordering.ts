@@ -59,7 +59,7 @@ export const seriesContainerOf = (series: {
 // ─── Reading and writing one container's array ───────────────────────────────
 
 /** The container's stored order, or `[]` when the owning row is gone. */
-export async function readOrder(
+async function readOrder(
   db: Db,
   container: OrderContainer,
 ): Promise<string[]> {
@@ -160,7 +160,7 @@ async function writeOrder(
  * The root list is the only one that spans three tables — standalone documents,
  * ungrouped series and projects share it, which is why they interleave.
  */
-export async function orderMemberIds(
+async function orderMemberIds(
   db: Db,
   container: OrderContainer,
 ): Promise<string[]> {
@@ -211,7 +211,7 @@ export async function orderMemberIds(
 }
 
 /** Why an order write was refused. Both answers are the caller's mistake. */
-export type OrderRejection =
+type OrderRejection =
   | { reason: "foreign"; ids: string[] }
   | { reason: "duplicate"; ids: string[] };
 
@@ -230,7 +230,7 @@ export type OrderRejection =
  *   such a window fail. {@link setOrder} keeps the unnamed members rather than
  *   dropping them, so a short array never destroys the order of what it omits.
  */
-export function validateOrder(
+function validateOrder(
   memberIds: readonly string[],
   orderedIds: readonly string[],
 ): OrderRejection | null {
@@ -261,7 +261,7 @@ export function validateOrder(
  *
  * Returns the array as written, or the rejection.
  */
-export async function setOrder(
+async function setOrder(
   db: Db,
   container: OrderContainer,
   orderedIds: string[],
@@ -432,7 +432,7 @@ async function assertNoParentCycle(
  * (where it interleaves with root documents and projects); setting it to a
  * project id nests it among that project's series.
  */
-export async function moveSeries(
+async function moveSeries(
   db: Db,
   args: { id: string; destination: { projectId?: string | null } },
 ): Promise<void> {

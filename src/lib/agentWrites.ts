@@ -194,7 +194,7 @@ export async function readAgentState(
 
 // ─── Proposing an edit ───────────────────────────────────────────────────────
 
-export interface ProposeOpsInput {
+interface ProposeOpsInput {
   /** A real `Document.id` — see {@link readAgentState}. */
   documentId: string;
   /** Whoever the agent authenticated as; recorded as the revision's author. */
@@ -222,12 +222,12 @@ export interface ProposeOpsInput {
  * put in front of the message, rather than being told apart by matching prose.
  * Absent means the plain reading holds: retrying unchanged fails identically.
  */
-export type AgentWriteRefusal =
+type AgentWriteRefusal =
   | { ok: false; reason: "not-found"; message: string }
   | { ok: false; reason: "stale"; message: string }
   | { ok: false; reason: "invalid"; message: string; code?: OpErrorCode };
 
-export interface ProposeOpsSuccess {
+interface ProposeOpsSuccess {
   ok: true;
   document: { id: string; name: string };
   /** The pending row, `replaced` included — see `ProposalRecord`. */
@@ -247,7 +247,7 @@ export interface ProposeOpsSuccess {
   stateHash: string;
 }
 
-export type ProposeOpsResult = ProposeOpsSuccess | AgentWriteRefusal;
+type ProposeOpsResult = ProposeOpsSuccess | AgentWriteRefusal;
 
 /**
  * Apply a batch of block ops and store the result as a **proposal**, leaving
@@ -349,7 +349,7 @@ export async function proposeOps(
 
 // ─── Creating a post ─────────────────────────────────────────────────────────
 
-export interface ProposeNewPostInput {
+interface ProposeNewPostInput {
   authorId: string;
   title: string;
   blocks: readonly WritableBlock[];
@@ -359,7 +359,7 @@ export interface ProposeNewPostInput {
   seriesId?: string | null;
 }
 
-export type ProposeNewPostResult =
+type ProposeNewPostResult =
   | {
     ok: true;
     id: string;

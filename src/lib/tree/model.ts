@@ -100,13 +100,13 @@ export const containerFromPost = (c: PostContainer): TreeContainer =>
     : ROOT_CONTAINER;
 
 /** What a given row id represents and which container it lives in. */
-export interface TreeTargetInfo {
+interface TreeTargetInfo {
   kind: TreeNodeKind;
   container: TreeContainer;
   label?: string;
 }
 
-export interface TreeIndex {
+interface TreeIndex {
   /** Row id → what it is and where it lives. */
   targetInfo: Map<string, TreeTargetInfo>;
   /**

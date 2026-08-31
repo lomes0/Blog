@@ -9,7 +9,7 @@ export interface FloatingButtonInfo {
 }
 
 // Context type for managing floating buttons
-export interface FloatingActionsContextType {
+interface FloatingActionsContextType {
   registerButton: (id: string, element: ReactNode, priority?: number) => void;
   unregisterButton: (id: string) => void;
 }

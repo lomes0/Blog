@@ -5,7 +5,7 @@ import { fetchStorageUsage } from "@/store/app";
 import { useErrorAnnounce } from "@/hooks/useErrorAnnounce";
 import type { DocumentStorageUsage } from "@/types";
 
-export type StorageUsageState = {
+type StorageUsageState = {
   loading: boolean;
   usage: number;
   details: { value: number; label?: string; color?: string }[];

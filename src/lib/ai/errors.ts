@@ -1,4 +1,4 @@
-export class AIError extends Error {
+class AIError extends Error {
   constructor(message: string, public readonly cause?: unknown) {
     super(message);
     this.name = "AIError";
@@ -13,13 +13,6 @@ export class AIProviderError extends AIError {
   ) {
     super(`[${provider}] ${message}`, cause);
     this.name = "AIProviderError";
-  }
-}
-
-export class AIModelNotFoundError extends AIError {
-  constructor(public readonly modelId: string) {
-    super(`Model '${modelId}' not found`);
-    this.name = "AIModelNotFoundError";
   }
 }
 

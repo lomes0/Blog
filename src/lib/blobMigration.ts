@@ -44,7 +44,7 @@ const DATA_URI = /^data:([^;,]+)(;base64)?,([\s\S]*)$/;
 /** The node types whose `src` this migration may rewrite. See the docblock. */
 export const MIGRATABLE_TYPES = new Set(["image", "graph", "sketch"]);
 
-export interface DecodedDataUri {
+interface DecodedDataUri {
   mimeType: string;
   bytes: Buffer;
 }
@@ -77,7 +77,7 @@ export function decodeDataUri(value: string): DecodedDataUri | null {
 }
 
 /** One node in a stored state whose `src` is a data URI. */
-export interface DataUriSite {
+interface DataUriSite {
   /** The Lexical node type: `image`, `sketch`, `graph`, … */
   nodeType: string;
   mimeType: string;
@@ -88,7 +88,7 @@ export interface DataUriSite {
 }
 
 /** A site plus the bytes to store, for the sites that are being migrated. */
-export interface MigratableSite extends DataUriSite {
+interface MigratableSite extends DataUriSite {
   bytes: Buffer;
 }
 

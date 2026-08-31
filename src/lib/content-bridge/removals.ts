@@ -88,7 +88,7 @@ const plural = (noun: string): string =>
 const SELF_NAMING: ReadonlySet<string> = new Set(["canvas-note"]);
 
 /** One removed block: the word it is counted by, and how it reads alone. */
-export interface Removal {
+interface Removal {
   /** `canvas`, `table`, `collapsible section` — the grouping key. */
   noun: string;
   /** `canvas · 7 notes`, `yellow note · 2 blocks`. */
@@ -112,7 +112,7 @@ const worthNaming = (block: Block): boolean =>
  * back to an opaque block rather than throwing, but it is walking stored JSON
  * from a document this build may not have written, so the guard stays.
  */
-export function removalOf(node: SerializedNode): Removal | null {
+function removalOf(node: SerializedNode): Removal | null {
   try {
     const block = nodeToBlock(node);
     if (!worthNaming(block)) return null;

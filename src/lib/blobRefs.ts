@@ -15,7 +15,7 @@
  */
 
 /** The path form every stored reference takes (§6). */
-export const BLOB_URL_PREFIX = "/api/blob/";
+const BLOB_URL_PREFIX = "/api/blob/";
 
 /**
  * The `src` to store for a blob.
@@ -129,7 +129,7 @@ export function inlineBlobUrls(
 }
 
 /** What reconciliation has to write to make the stored refs match the content. */
-export interface BlobRefPlan {
+interface BlobRefPlan {
   /** Referenced by the content, not yet recorded. */
   add: string[];
   /** Recorded, referenced by nothing, and old enough to let go of. */
@@ -137,7 +137,7 @@ export interface BlobRefPlan {
 }
 
 /** A `BlobRef` row, as much of one as planning needs. */
-export interface RecordedRef {
+interface RecordedRef {
   hash: string;
   createdAt: Date;
 }

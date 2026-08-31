@@ -168,7 +168,7 @@ export const isProposalCommandTool = (name: string): boolean =>
  * Everything downstream — the activity trace, the pending count, "Accept all" —
  * asks this rather than either list, so a new command joins all of it for free.
  */
-export type ToolDisposition = "read" | "write" | "proposal" | "unknown";
+type ToolDisposition = "read" | "write" | "proposal" | "unknown";
 
 export const toolDisposition = (name: string): ToolDisposition => {
   if (isReadTool(name)) return "read";

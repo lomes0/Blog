@@ -57,9 +57,9 @@ const resolveDrag = (
 };
 
 /** Resolve the full set of ids a grab should drag (e.g. the multi-selection). */
-export type DragSetResolver = (primaryId: string) => string[];
+type DragSetResolver = (primaryId: string) => string[];
 
-export interface TreeDndOptions {
+interface TreeDndOptions {
   /**
    * The container the top-level rows belong to. Defaults to the author's root
    * list. Must be referentially stable — it is a memo dependency.

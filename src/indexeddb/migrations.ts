@@ -33,7 +33,7 @@ export type StoredRecord = Record<string, unknown>;
  * key, must come out byte-identical, because the walker below writes back only
  * what changed.
  */
-export const renameField = (
+const renameField = (
   record: StoredRecord,
   from: string,
   to: string,
@@ -44,7 +44,7 @@ export const renameField = (
 };
 
 /** Drop one key, if the record still carries it. */
-export const dropField = (
+const dropField = (
   record: StoredRecord,
   key: string,
 ): StoredRecord | null => {

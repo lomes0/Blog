@@ -36,7 +36,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * mismatch on every panel at once. (That is why these do not use
  * `useLocalStorage`, which reads in its initialiser.)
  */
-export const readStoredWidth = (
+const readStoredWidth = (
   key: string,
   min: number,
   max: number,

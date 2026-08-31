@@ -45,7 +45,7 @@ interface JsonNode {
 const isNode = (value: unknown): value is JsonNode =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
-export interface UnwrapResult {
+interface UnwrapResult {
   /** Paragraphs replaced by their only child. */
   unwrapped: number;
   /**

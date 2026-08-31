@@ -2,7 +2,7 @@
 import { useCallback, useRef, useState } from "react";
 
 /** What a click with no modifier key does to the selection. */
-export type PlainClickBehavior =
+type PlainClickBehavior =
   /**
    * Drop any active multi-selection and consume the click; with nothing
    * selected, leave the selection alone and let the row act normally. For rows

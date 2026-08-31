@@ -178,7 +178,7 @@ export interface ProposedChange {
 }
 
 /** A command minus the machinery `defineCommand` adds. */
-export interface CommandSpec<P = void> {
+interface CommandSpec<P = void> {
   /** Namespaced and stable — the AI will learn these. e.g. "document.open". */
   readonly id: string;
   /** Sentence-case label. The palette shows its own copy where it varies by state. */

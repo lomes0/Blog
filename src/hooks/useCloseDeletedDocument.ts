@@ -8,7 +8,7 @@ import {
 } from "@/store/selectors/layoutSelectors";
 
 /** Where a workspace with nothing left in it goes. */
-export const HOME_ROUTE = "/";
+const HOME_ROUTE = "/";
 
 /**
  * Take a just-deleted document out of the workspace, and leave the address bar

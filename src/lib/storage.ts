@@ -42,7 +42,7 @@ const accessKeyId = process.env.S3_ACCESS_KEY_ID || "";
 const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY || "";
 
 /** The one bucket. See the docblock above for why there is not a second. */
-export const BLOB_BUCKET = process.env.S3_BUCKET || "blog-blobs";
+const BLOB_BUCKET = process.env.S3_BUCKET || "blog-blobs";
 
 /**
  * `||` rather than `??` throughout: `.env.example` ships every key as `""`, so a

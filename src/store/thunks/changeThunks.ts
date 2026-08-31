@@ -5,7 +5,7 @@ import type { AppState, Post } from "@/types";
 import { createApiThunk } from "./createApiThunk";
 
 /** Rows to upsert and rows proven gone — the payload `reconcile` folds in. */
-export interface CatchUpResult {
+interface CatchUpResult {
   changed: Post[];
   deletedIds: string[];
 }

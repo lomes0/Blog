@@ -23,7 +23,7 @@ import { documentCommands, uiCommands } from "@/commands";
  * Custom window event other entry points (title-bar search, activity rail,
  * status bar) can dispatch to open the palette without wiring through Redux.
  */
-export const OPEN_COMMAND_PALETTE_EVENT = "open-command-palette";
+const OPEN_COMMAND_PALETTE_EVENT = "open-command-palette";
 
 export const openCommandPalette = () => {
   window.dispatchEvent(new CustomEvent(OPEN_COMMAND_PALETTE_EVENT));

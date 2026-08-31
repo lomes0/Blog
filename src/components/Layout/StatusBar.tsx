@@ -12,7 +12,7 @@ import { countWords, readingMinutes } from "@/utils/editorContent";
 import { ICON_SIZE } from "@/theme/icons";
 
 /** DESIGN.md §17.1 — the status bar's row height. */
-export const STATUS_BAR_H = 26;
+const STATUS_BAR_H = 26;
 
 /**
  * Between two readings. Decorative, so it is not read out.

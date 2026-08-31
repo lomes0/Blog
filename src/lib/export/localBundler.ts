@@ -21,7 +21,7 @@ import {
 import { collectAttachmentFilenames } from "@/lib/export/lexicalAssetRewriter";
 import type { Post, Revision } from "@/types";
 
-export interface LocalBundleResult {
+interface LocalBundleResult {
   blob: Blob;
   stats: { documents: number; series: number; assets: number };
   warnings: string[];

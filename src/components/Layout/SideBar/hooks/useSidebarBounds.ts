@@ -44,7 +44,7 @@ const MIN_OPEN_FLOOR = DEAD_BAND +
  * `max` is a share of the viewport, for the ordinary reason: a panel may not eat
  * the document.
  */
-export interface SidebarBounds {
+interface SidebarBounds {
   min: number;
   max: number;
 }

@@ -65,6 +65,5 @@ export {
   isWhiteSpace,
   isWord,
   stripAnyAttributes,
-  stripTagAttributes,
   wrapText,
 };

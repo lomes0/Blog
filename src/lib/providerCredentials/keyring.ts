@@ -25,8 +25,8 @@ export interface Keyring {
   keys: ReadonlyMap<number, Buffer>;
 }
 
-export const KEYS_ENV = "AI_CREDENTIAL_KEYS";
-export const VERSION_ENV = "AI_CREDENTIAL_KEY_VERSION";
+const KEYS_ENV = "AI_CREDENTIAL_KEYS";
+const VERSION_ENV = "AI_CREDENTIAL_KEY_VERSION";
 
 /**
  * Parse the two variables into a keyring, or explain what is wrong with them.

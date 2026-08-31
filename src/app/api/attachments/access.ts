@@ -21,7 +21,7 @@ import { validate as isUuid } from "uuid";
 const ATTACHMENT_NAME = /^attach_([0-9a-fA-F-]{36})_/;
 
 /** Reject anything that could escape the attachments directory. */
-export function assertSafeFilename(filename: string): void {
+function assertSafeFilename(filename: string): void {
   if (
     filename.includes("..") || filename.includes("/") ||
     filename.includes("\\")

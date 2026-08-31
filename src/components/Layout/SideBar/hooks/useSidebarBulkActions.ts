@@ -12,7 +12,7 @@ export interface BulkMenuState {
   mouseY: number;
 }
 
-export interface SidebarBulkActionsResult extends
+interface SidebarBulkActionsResult extends
   Pick<
     BulkPostActionsResult,
     | "selectedCount"

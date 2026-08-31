@@ -33,7 +33,7 @@ export const GRIPPER_W = 4;
  * note below: the rest/hover/active/focus ladder is one vocabulary (§17.3), and
  * a second appearance is a named member of it, not an override of it.
  */
-export type GripperVariant = "wash" | "rule";
+type GripperVariant = "wash" | "rule";
 
 /**
  * The `rule` variant's channel — the strip either side of its centre line.
@@ -72,7 +72,7 @@ const RULE_W = { rest: "1px", live: "3px" } as const;
  * ordinary divider, and one that is operable by keyboard must be in the tab
  * order to say so.
  */
-export interface GripperValue {
+interface GripperValue {
   now: number;
   min: number;
   max: number;

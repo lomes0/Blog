@@ -28,7 +28,7 @@ import { useCloseDeletedDocument } from "@/hooks/useCloseDeletedDocument";
 export type RenameField = "name" | "tabLabel";
 
 /** Rename machinery for the rows of one entity type, plus their right-click menu. */
-export interface RowActions<C = undefined> {
+interface RowActions<C = undefined> {
   rename: InlineRenameResult<C>;
   /** Right-click handler for a row of this entity type. */
   openContextMenu: (event: React.MouseEvent, id: string) => void;
@@ -69,7 +69,7 @@ export interface ProjectItemActions extends RowActions {
 }
 
 /** The menu itself: where it sits, and what its items do. */
-export interface RowContextMenu {
+interface RowContextMenu {
   contextMenu: ContextMenuState<string> | null;
   close: () => void;
   onRename: (id: string) => void;
@@ -77,7 +77,7 @@ export interface RowContextMenu {
 }
 
 /** A menu whose entity has a page to open, so it carries an "Edit" item too. */
-export interface EditableRowContextMenu extends RowContextMenu {
+interface EditableRowContextMenu extends RowContextMenu {
   onEdit: (id: string) => void;
 }
 
@@ -85,21 +85,21 @@ export interface EditableRowContextMenu extends RowContextMenu {
  * A post's menu can also open it beside whatever is already open. Absent when
  * the workspace has no room for a second pane — see `MAX_PANES`.
  */
-export interface PostRowContextMenu extends EditableRowContextMenu {
+interface PostRowContextMenu extends EditableRowContextMenu {
   onOpenToSide?: (postId: string) => void;
 }
 
 /** A series' menu can also create a post inside it. */
-export interface SeriesRowContextMenu extends EditableRowContextMenu {
+interface SeriesRowContextMenu extends EditableRowContextMenu {
   onNewPost: (seriesId: string) => void;
 }
 
 /** A project's menu can also create a series inside it. */
-export interface ProjectRowContextMenu extends RowContextMenu {
+interface ProjectRowContextMenu extends RowContextMenu {
   onNewSeries: (projectId: string) => void;
 }
 
-export interface SidebarActionsResult {
+interface SidebarActionsResult {
   postActions: PostItemActions;
   seriesActions: SeriesItemActions;
   projectActions: ProjectItemActions;

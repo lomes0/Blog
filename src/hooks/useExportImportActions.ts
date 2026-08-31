@@ -9,15 +9,15 @@ import {
 } from "@/store/thunks/exportThunks";
 import type { ImportSummary } from "@/lib/export/manifest";
 
-export type ExportCloudResult =
+type ExportCloudResult =
   | { ok: true; filename: string }
   | { ok: false; error: string };
 
-export type ExportLocalResult =
+type ExportLocalResult =
   | { ok: true; filename: string; documents: number; warnings: string[] }
   | { ok: false; error: string };
 
-export type ImportResult =
+type ImportResult =
   | { ok: true; summary: ImportSummary }
   | { ok: false; error: string };
 

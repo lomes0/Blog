@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { getProviders } from "next-auth/react";
 
 /** A sign-in provider this deployment actually has configured. */
-export interface AuthProvider {
+interface AuthProvider {
   id: string;
   name: string;
 }

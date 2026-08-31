@@ -67,7 +67,7 @@ import type { RateDecision } from "@/lib/rateLimit";
 /** Where a write from this server says it came from (`Revision.origin`). */
 export const AGENT_ORIGIN = "claude-code";
 
-export interface ContentServerOptions {
+interface ContentServerOptions {
   /**
    * What this server may do. Defaults to everything, which is what the stdio
    * process gets — its credential is the operating system.

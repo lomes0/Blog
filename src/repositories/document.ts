@@ -272,7 +272,7 @@ const findDocument = async (
 };
 
 /** Largest page a caller may request, and the size used when none is given. */
-export const AUTHOR_DOCUMENTS_PAGE_SIZE = 100;
+const AUTHOR_DOCUMENTS_PAGE_SIZE = 100;
 
 /**
  * One page of the author's posts, newest first.

@@ -15,7 +15,7 @@
  */
 
 /** The minimum a row must carry to be ordered: an id, and a tiebreaker. */
-export interface Orderable {
+interface Orderable {
   id: string;
   createdAt?: string | Date | null;
 }

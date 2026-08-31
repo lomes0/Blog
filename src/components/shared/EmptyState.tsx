@@ -1,7 +1,7 @@
 import React from "react";
 import { Box, Button, Paper } from "@mui/material";
 
-export interface EmptyStateProps {
+interface EmptyStateProps {
   /** MUI icon element — takes precedence over `emoji` */
   icon?: React.ReactNode;
   /** Emoji fallback (kept for backward compat) */

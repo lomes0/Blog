@@ -23,13 +23,13 @@
  */
 
 /** The two fields the catch-up carries, on either side of the comparison. */
-export interface ChangeStamp {
+interface ChangeStamp {
   id: string;
   /** A `Date` in the store, an ISO string once it has crossed the wire. */
   updatedAt: string | Date;
 }
 
-export interface CatchUpDiff {
+interface CatchUpDiff {
   /** Ids to re-fetch: created or updated since the store last looked. */
   changedIds: string[];
   /** Ids the response proves are gone. */

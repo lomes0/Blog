@@ -13,7 +13,7 @@
  */
 
 /** Which edge of the target row a drop landed on. */
-export type DropEdge = "before" | "after";
+type DropEdge = "before" | "after";
 
 /** A menu / keyboard reorder command. */
 export type ReorderDirection = "up" | "down" | "top" | "bottom";

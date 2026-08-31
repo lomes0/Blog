@@ -1,5 +1,5 @@
 "use client";
-export interface IndexedDBColumn {
+interface IndexedDBColumn {
   name: string;
   keyPath: string;
   options?: IDBIndexParameters;

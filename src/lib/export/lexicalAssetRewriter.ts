@@ -27,7 +27,7 @@ function isAttachmentUrl(url: string): boolean {
  * Extract the plain filename from an attachment URL.
  * e.g. "/api/attachments/attach_abc123_ff.pdf" → "attach_abc123_ff.pdf"
  */
-export function attachmentUrlToFilename(url: string): string {
+function attachmentUrlToFilename(url: string): string {
   return url.replace(/^\/api\/attachments\//, "");
 }
 

@@ -70,7 +70,7 @@ export const ROW_TRANSITION = `background-color ${MOTION.fast}ms`;
  * (an 18px box plus its own margins, ~21px), and this stays one number to
  * animate toward rather than a second copy of those metrics.
  */
-export const ROW_CREATE_SLOT_MAX_W = 32;
+const ROW_CREATE_SLOT_MAX_W = 32;
 
 /**
  * The native-DnD insertion line: a 2px `primary.main` bar on the row edge the

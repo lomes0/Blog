@@ -263,7 +263,7 @@ export function detectLanguageFromFilename(filename: string): string | null {
  * @param mimetype - The MIME type of the file
  * @returns The Prism language identifier or null if not detected
  */
-export function detectLanguageFromMimetype(mimetype: string): string | null {
+function detectLanguageFromMimetype(mimetype: string): string | null {
   // Direct mapping
   if (mimetypeToLanguage[mimetype]) {
     return mimetypeToLanguage[mimetype];
@@ -286,7 +286,7 @@ export function detectLanguageFromMimetype(mimetype: string): string | null {
  * @param language - The language identifier
  * @returns true if the language is supported
  */
-export function isPrismLanguageSupported(language: string): boolean {
+function isPrismLanguageSupported(language: string): boolean {
   return supportedLanguages.has(language.toLowerCase());
 }
 

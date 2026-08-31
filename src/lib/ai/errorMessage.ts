@@ -19,7 +19,7 @@
 /** The tag on "you have no key for this provider". See `ApiErrorOptions.code`. */
 export const MISSING_PROVIDER_KEY = "provider_key_missing";
 
-export interface AIErrorInfo {
+interface AIErrorInfo {
   title: string;
   subtitle?: string;
   code?: string;

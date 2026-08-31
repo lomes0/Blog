@@ -110,7 +110,7 @@ export interface DocumentExport {
  * own, so a bundle that ever does get written from the model's vocabulary still
  * reads — see {@link readDocumentExport}.
  */
-export type StoredDocumentExport =
+type StoredDocumentExport =
   & Partial<DocumentExport>
   & {
     /** The model's names for the three fields the bundle spells differently. */

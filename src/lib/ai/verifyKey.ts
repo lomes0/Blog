@@ -15,7 +15,7 @@ import { getModelsByProvider } from "./models";
 import { createProvider, deploymentEndpoint } from "./providers";
 import type { AIProviderType } from "./types";
 
-export type KeyVerification =
+type KeyVerification =
   | { ok: true }
   | {
     ok: false;
