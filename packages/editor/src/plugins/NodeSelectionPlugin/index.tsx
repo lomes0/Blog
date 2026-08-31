@@ -167,22 +167,30 @@ export default function NodeSelectionPlugin({
     };
 
     let unregister: (() => void) | undefined;
+    // The import below is async, so the effect can be torn down before it
+    // resolves. Without this, the late `.then` registers commands and DOM
+    // listeners onto an editor nobody will unregister them from.
+    let cancelled = false;
 
-    getDefaultNodes().then((nodes) => {
-      // Validate that nodes are registered
-      const unregisteredNodes = nodes.filter(
-        (NodeClass) => !editor.hasNodes([NodeClass as Klass<LexicalNode>]),
-      );
+    getDefaultNodes().then((allNodes) => {
+      if (cancelled) return;
 
-      if (unregisteredNodes.length > 0) {
-        throw new Error(
-          `NodeSelectionPlugin: The following nodes are not registered: ${
-            unregisteredNodes
-              .map((n) => n.name)
-              .join(", ")
-          }`,
-        );
-      }
+      // `EditorPlugins` is shared by the document editor, the nested editors
+      // (sticky note, canvas note) and the image caption editor, and those
+      // configs register different node sets — `nodes/nestedConfig.tsx` has no
+      // AttachmentNode, `nodes/ImageNode/config.tsx` has neither that nor
+      // TableNode. So a missing node is the normal case, not a
+      // misconfiguration: narrow to what this editor actually has, the same way
+      // every other node-dependent plugin is gated on `editor.hasNode(...)` in
+      // `plugins/index.tsx`.
+      //
+      // This used to throw instead, which did more than log — the throw landed
+      // in an unawaited `.then`, so `unregister` was never assigned and the
+      // plugin registered *nothing* in those two editors. Selecting a code
+      // block by its gutter was dead in captions and sticky notes.
+      const nodes = allNodes.filter((NodeClass) => editor.hasNode(NodeClass));
+
+      if (nodes.length === 0) return;
 
       const isSelectableNode = createIsSelectableNode(nodes);
 
@@ -499,6 +507,7 @@ export default function NodeSelectionPlugin({
     });
 
     return () => {
+      cancelled = true;
       unregister?.();
     };
   }, [editor, selectableNodes]);
