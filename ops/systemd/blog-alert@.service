@@ -1,0 +1,12 @@
+# Failure handler for blog-job@.service. Instantiated with the failed unit's
+# name (%n), which it passes to ops/alert.sh to pull that unit's journal.
+#
+# Nothing schedules this; systemd starts it through OnFailure=.
+
+[Unit]
+Description=blog-simple failure alert for %i
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/blog-simple
+ExecStart=/opt/blog-simple/ops/alert.sh %i

@@ -1,0 +1,18 @@
+# Weekly blob collection — docs/plans/blob-storage.md §11.2, the scheduler that
+# document says does not exist. Weekly is the interval BLOB_GC_GRACE_MS is sized
+# for; more often is free, less often only defers storage.
+#
+# Sunday 04:17, an hour after the backup and two after the blob copy. The script
+# refuses to run if the copy is stale, so this ordering is a preference rather
+# than the safety mechanism.
+
+[Unit]
+Description=blog-simple weekly blob collection
+
+[Timer]
+OnCalendar=Sun *-*-* 04:17:00 UTC
+Persistent=true
+RandomizedDelaySec=600
+
+[Install]
+WantedBy=timers.target

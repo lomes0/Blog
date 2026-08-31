@@ -592,6 +592,33 @@ Optional:
   tunnel, Tailscale, a proxy that forwards under a different header. Setting it
   on a public deployment publishes the credential.
 
+## Production operations
+
+`ops/` is the host side of the deployment — backups, the offsite blob copy, the
+blob collector and a restore drill, on systemd timers whose unit files are
+committed in `ops/systemd/`. It runs on the VPS, as root, against
+`docker-compose.prod.yml`; nothing in it runs in development. The runbook is
+[ops/README.md](./ops/README.md) and the reasoning is
+docs/plans/production-deployment.md §10. **None of it has run against a real box
+yet** — there isn't one.
+
+Three things there that are invariants rather than conventions:
+
+- **Nothing in `prisma/scripts/` can run in the `app` container.** The runner
+  stage is a Next standalone bundle with neither `src/` nor `tsx`, and every one
+  of those scripts imports from `src/lib/`. Use the profile-gated `ops` service,
+  which builds the `builder` stage:
+  `docker compose -f docker-compose.prod.yml --profile ops run --rm ops node
+  --import tsx prisma/scripts/<script>.ts …`. Call the script directly, not
+  through its `pnpm` alias — the aliases carry `--env-file=.env`, and `.env` is
+  in `.dockerignore`.
+- **`pnpm blobs:collect` is the only thing in the system that deletes bytes**, so
+  `ops/blobs-collect.sh` refuses to run unless a recent offsite copy of the
+  bucket is on record. Do not route around that guard.
+- **Postgres is pinned to 17 in all three compose files**, because `pg_restore`
+  16 cannot read a 17 archive at all and the development server is 17.2. The
+  drill file must stay in step with the production one.
+
 ## Important Notes
 
 ### Build Configuration

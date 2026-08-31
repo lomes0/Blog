@@ -60,3 +60,7 @@ next-env.d.ts
 /fix.diff
 /docs/plans/storage-model.md
 /src/lib/demo.ts
+
+# operator configuration for ops/ — filled in on the production box, and it
+# names every backup destination. The committed template is ops/ops.env.example.
+/ops/ops.env

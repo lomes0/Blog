@@ -400,16 +400,93 @@ Named here so they are not mistaken for solved by choosing a host. From
 8. **Backups and a rehearsed restore (§5)** — before this is load-bearing, not
    after. Three things to back up, and the middle one is now the smallest by
    three orders of magnitude: the database, the upload volume (singular), and the
-   blob bucket
-9. **A scheduler, and its first two jobs.** There is none in the repo — no cron,
-   no timer unit, no `schedule:` workflow. §5's nightly backup needs one, and so
-   does `pnpm blobs:collect` (`blob-storage.md` §11.2, which records the trap:
-   the runner stage of the Dockerfile carries neither `src/` nor `tsx`, so
-   `docker compose exec app` cannot run any script in `prisma/scripts/`). Decide
-   the mechanism once, for both. Note the collector is the *only* thing that ever
-   removes bytes from the bucket, and §5 has to be backing that bucket up before
-   it first runs
+   blob bucket. — **Written 31 Aug 2026, not yet run against a box: `ops/`.**
+   §10 is what was built and the two things testing it changed
+9. ~~**A scheduler, and its first two jobs.**~~ — **decided and written 31 Aug
+   2026: systemd timers, units in `ops/systemd/`.** Four jobs, not two. The trap
+   `blob-storage.md` §11.2 records is answered by the profile-gated `ops` service
+   in `docker-compose.prod.yml`, which builds the *builder* stage, and the
+   ordering §5 states in prose — the bucket must be backed up before the
+   collector first deletes anything — is now a precondition that fails closed
+   rather than a sentence an operator can miss. §10.2 has the reasoning
 10. Verify the change feed end to end *through* Cloudflare (§1.1, and
    `changes-detection.md` §6.2 — the failure is silent, so this is a real step
    rather than a formality)
 11. External uptime check against `/api/health`, alerting somewhere you read
+
+---
+
+## 10. The ops layer, built 31 Aug 2026
+
+§9's steps 8 and 9 are the two that had to exist before the box is load-bearing
+rather than after, and neither of them needs a box to write. They are `ops/`,
+with the runbook in [ops/README.md](../../ops/README.md). Nothing here has run
+against a production machine yet — there isn't one — but the mechanism was
+tested where it could be, and testing it changed two things (§10.1).
+
+### 10.1 What testing changed
+
+**`postgres:16` was wrong, and would have failed at the worst moment.** The
+compose file has pinned 16 since it was recovered in `118a5a8c`. The only data
+that will ever seed production is the development database, which runs **17.2**
+— and `pg_restore` 16 does not read a 17 archive at all. It fails on the header,
+before a single row, with `unsupported version (1.16) in file header`. Verified
+directly, both images in hand. Pinned to 17 in all three compose files, which is
+a line now and a `pg_upgrade` after the first deploy.
+
+**`pg_restore --list /dev/stdin` does not work, and looks like it does.** The
+backup verifies its own dump before publishing it, and the obvious spelling of
+that check inside the container fails on a *valid* archive with `did not find
+magic string in file header` — naming the file makes pg_restore open it
+seekably. `pg_restore --list` reading bare stdin is fine. The two forms are one
+argument apart, both plausible, and the failing one fails in the direction that
+would have condemned every good backup as corrupt.
+
+### 10.2 The decisions
+
+**systemd timers, with the units in the repo.** Host cron keeps its schedule
+outside the repo, has no catch-up after downtime, and has no failure hook — a
+backup missed by a reboot is silent, which is §5's whole complaint. A scheduler
+sidecar wants the Docker socket, which is root on the box that terminates TLS;
+that is a bad trade for running four shell scripts. One templated unit,
+`blog-job@.service`, runs `ops/<instance>.sh`, so a fifth job is a script and a
+timer rather than another service definition.
+
+**Four jobs, not §9's two.** The blob copy is its own job because it is
+bucket-to-bucket and never touches the VPS, and the restore drill is a job
+because §5 says a rehearsal on a schedule is what separates a backup from a
+file. The drill is also the only thing that reads what the other three wrote.
+
+**The collector's precondition is code, not prose.** §5 says the bucket must be
+backed up before `blobs:collect` first runs, because it is the only thing in the
+system that ever deletes an object. `ops/blobs-collect.sh` refuses to run unless
+a successful blob copy is on record and younger than
+`BLOBS_SYNC_MAX_AGE_DAYS`. The copy is `rclone copy`, never `sync`: propagating
+a deletion made by the collector is precisely the failure the copy exists to
+survive, and blobs being immutable means append-only costs nothing.
+
+**The drill restores the bucket too, and reconciles it against the database.**
+§5's rule is that the rehearsal must not resolve images from the live store,
+because that passes whatever the backup contains — the pictures come from the
+half that was never tested, and it is the half whose loss the database cannot
+report. So the drill stands up its own MinIO, restores the offsite blob copy
+into it, and fails if a single hash in `Blob` has no object. "Open a post and
+look at the picture" as an assertion.
+
+**The `ops` compose service answers `blob-storage.md` §11.2.** Nothing in
+`prisma/scripts/` can run in the `app` container — the runner stage is a Next
+standalone bundle with neither `src/` nor `tsx`, and all of them import from
+`src/lib/`. A profile-gated service built from the `builder` stage runs them,
+which also means minting an agent token and rotating an AI key are possible in
+production at all; before this they were not.
+
+### 10.3 What is still not covered
+
+- **Nothing has run on a real box.** Every script is syntax-checked, the compose
+  files and the calendar expressions validate, and the pg_dump/verify mechanism
+  was tested against a live server — but the end-to-end path (offsite credentials,
+  a real drill) is untested until §9 step 5 provisions something.
+- **`ALERT_WEBHOOK` unset means nobody is told.** Deliberate — an unconfigured
+  alert must not itself be a failing unit — and it is the one setting in
+  `ops/ops.env` whose omission is silent.
+- **No uptime check**, which is §9 step 11 and belongs off the box by definition.

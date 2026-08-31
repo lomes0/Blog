@@ -4,19 +4,28 @@
 #
 # Three services on a private network, one of them published. Only `caddy`
 # binds host ports; `app` and `postgres` are reachable solely over the compose
-# network, by service name.
+# network, by service name. A fourth, `ops`, is profile-gated and never runs as a
+# service — see its comment.
 #
-# Reads secrets from .env (NEXTAUTH_SECRET, GOOGLE_CLIENT_ID/SECRET,
-# ANTHROPIC_API_KEY, …). DATABASE_URL is overridden below to point at the
-# `postgres` service rather than localhost, so a .env copied from a development
-# machine does not silently aim production at nothing.
+# Reads secrets from .env (NEXTAUTH_SECRET, GOOGLE_CLIENT_ID/SECRET, the S3_*
+# blob-store credentials, AI_CREDENTIAL_KEYS). There is no provider API key here:
+# each user brings their own, encrypted per row — docs/plans/archive/byo-provider-keys.md.
+# DATABASE_URL is overridden below to point at the `postgres` service rather than
+# localhost, so a .env copied from a development machine does not silently aim
+# production at nothing.
 #
 # .env must also carry APP_DOMAIN (the hostname Caddy obtains a certificate
 # for), NEXTAUTH_URL and PUBLIC_URL — all three https://<APP_DOMAIN>.
 
 services:
   postgres:
-    image: postgres:16
+    # 17, not 16. The only data that will ever seed this cluster is the
+    # development database, which runs 17.2 — and `pg_restore` 16 cannot read a
+    # 17 archive at all: "unsupported version (1.16) in file header", before it
+    # touches a single row. Verified 31 Aug 2026, both images in hand. Changing
+    # this pin after the first deploy is a `pg_upgrade`; changing it now is a
+    # line. See ops/README.md.
+    image: postgres:17
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-blog}
@@ -80,6 +89,41 @@ services:
       timeout: 5s
       retries: 3
       start_period: 40s
+
+  # One-shot container for the scripts in prisma/scripts/ — the collector, minting
+  # an agent token, rotating AI keys. docs/plans/production-deployment.md §9 step 9.
+  #
+  #   docker compose -f docker-compose.prod.yml --profile ops run --rm ops \
+  #     node --import tsx prisma/scripts/agent-token.ts mint --name laptop
+  #
+  # It exists because the `app` image *cannot* run any of them: the runner stage
+  # is a Next standalone bundle carrying neither `src/` nor `tsx`, and every one
+  # of those scripts imports from `src/lib/`. `target: builder` selects the stage
+  # that has the sources and the toolchain, which the app build already produces,
+  # so this costs a tag and no extra build work.
+  #
+  # `profiles` keeps it out of `up -d` entirely — it must never be a running
+  # service, only something `run --rm` starts and disposes of.
+  #
+  # Do not invoke the `pnpm` aliases here: they carry `--env-file=.env`, and .env
+  # is in .dockerignore. The environment comes from compose instead.
+  ops:
+    profiles: ["ops"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    image: blog-simple-ops:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-blog}:${POSTGRES_PASSWORD:-blog}@postgres:5432/${POSTGRES_DB:-blog}?connection_limit=5&schema=public
+    volumes:
+      - blog-attachments:/app/var/uploads
 
   caddy:
     image: caddy:2-alpine

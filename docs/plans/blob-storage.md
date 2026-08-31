@@ -768,6 +768,22 @@ needs a scheduler for the same reason and does not have one either. Until then
 the collector is a thing an operator runs, and nothing collects on its own —
 which is the safe direction for the failure to point.
 
+**Answered 31 Aug 2026, and by a third mechanism neither bullet named.**
+`production-deployment.md` §10 chose systemd timers, and the image problem is
+solved by a `profiles: ["ops"]` service in `docker-compose.prod.yml` that builds
+the Dockerfile's *builder* stage — which already has `src/` and `tsx`, because
+that is the stage that compiled the app. So the runner image gains nothing, no
+destructive operation goes on an HTTP surface, and every other script in
+`prisma/scripts/` becomes runnable in production as a side effect (minting an
+agent token, rotating an AI key — neither was possible before).
+
+One thing that section adds which this one did not think to ask for: because the
+collector is the only thing in the system that ever deletes an object,
+`ops/blobs-collect.sh` **refuses to run** unless an offsite copy of the bucket is
+on record and recent. The ordering that §5 states in prose is a precondition that
+fails closed. Nothing is scheduled until the box in §9 step 5 exists, so the last
+paragraph above still describes the tree.
+
 ## 12. What this supersedes
 
 - **`archive/storage-uploads.md` is superseded, not merely deferred.** Its scope

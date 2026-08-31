@@ -1,0 +1,16 @@
+# Copy the blob bucket to a second provider. Nightly, because it is append-only
+# and an incremental run over an unchanged bucket costs a listing.
+#
+# Runs BEFORE the collector's day (Sunday), which is the ordering §5 requires:
+# the only thing that ever deletes an object must never run against a stale copy.
+
+[Unit]
+Description=blog-simple offsite blob copy
+
+[Timer]
+OnCalendar=*-*-* 02:17:00 UTC
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

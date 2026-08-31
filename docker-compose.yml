@@ -1,6 +1,9 @@
 services:
   postgres:
-    image: postgres:16
+    # Kept in step with docker-compose.prod.yml. Note this service is usually
+    # NOT the one serving development: `postgres-blog` (17.2) already holds the
+    # real dev data on 5432 — see CLAUDE.md's warning before running this file.
+    image: postgres:17
     container_name: blog-postgres
     restart: unless-stopped
     environment:

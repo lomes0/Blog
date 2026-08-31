@@ -1,0 +1,15 @@
+# Nightly database + attachments backup. docs/plans/production-deployment.md §5.
+
+[Unit]
+Description=blog-simple nightly backup
+
+[Timer]
+OnCalendar=*-*-* 03:17:00 UTC
+# Catch up after downtime. A backup missed because the box was rebooted at 03:17
+# is the failure this exists to prevent, and it is silent without this line.
+Persistent=true
+# Not on the hour: every other box in the datacentre backs up at 03:00.
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

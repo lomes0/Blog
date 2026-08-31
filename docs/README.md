@@ -15,6 +15,7 @@ them.
 | ---------------------------------------------------------------- | ------------------------------------------------------------ |
 | [bootstrap.md](./bootstrap.md)                                   | From-zero local setup: Node, Docker Postgres, env            |
 | [guides/claude-code-content.md](./guides/claude-code-content.md) | Editing blog content from Claude Code: MCP setup — local stdio and remote `/api/mcp` — and caveats |
+| [../ops/README.md](../ops/README.md)                             | The production runbook: backups, the scheduler, the restore drill. Runs on the VPS, never in development |
 
 ## Guides
 
@@ -43,7 +44,7 @@ describe intended or observed states, not necessarily the current one.
 
 | File                                                             | Description                                                                        |
 | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| [plans/README.md](./plans/README.md)                             | The eight live plans; the ordering/schema chain is all but done                    |
+| [plans/README.md](./plans/README.md)                             | The seven live plans; the ordering/schema chain is done and series-as-node was declined |
 | [plans/archive/README.md](./plans/archive/README.md)             | Closed plans, kept because 332 code comments cite them by section number           |
 | [plans/claude-code-backlog.md](./plans/claude-code-backlog.md)   | Backlog for the Claude Code / Copilot content bridge — what is left, and why       |
 | [reviews/](./reviews/)                                           | Point-in-time code reviews, dated                                                  |

@@ -1,0 +1,30 @@
+# One service for every scheduled job — docs/plans/production-deployment.md §9
+# step 9, which asks for the mechanism to be decided once, for both jobs.
+#
+# The instance name is the script: blog-job@backup.service runs ops/backup.sh.
+# Adding a job is a script and a timer, never another service definition.
+#
+#   systemctl start blog-job@backup.service     # run one now
+#   systemctl list-timers 'blog-job@*'          # what is scheduled
+#   journalctl -u blog-job@backup.service -n 50 # what happened
+#
+# Type=oneshot with no Restart=: these jobs are idempotent-by-schedule, not
+# by retry. A failed backup should alert and wait for tomorrow, not hammer the
+# offsite provider in a loop.
+
+[Unit]
+Description=blog-simple %i
+After=docker.service network-online.target
+Requires=docker.service
+OnFailure=blog-alert@%n.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/blog-simple
+ExecStart=/opt/blog-simple/ops/%i.sh
+# Backups and restores are slow over a domestic uplink; a drill copies the whole
+# blob bucket. Long enough not to kill a real run, short enough that a hung
+# rclone does not sit there until the next one.
+TimeoutStartSec=4h
+Nice=10
+IOSchedulingClass=idle
