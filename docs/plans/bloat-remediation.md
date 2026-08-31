@@ -1,14 +1,22 @@
 # Bloat & layout remediation plan
 
-**Status as of 2026-08-27: steps 1–7 are done.** Step 7's data-model half
-shipped the same day the product question was answered — `/posts` builds its
-root list with `groupRootItems` and adapts it with `rootItemsToTreeNodes`, the
-same two functions the sidebar uses, and `ProjectRow` gives a project a row that
-contains its series. **Both drag cases were exercised in a browser on 30 Aug
-2026 and both pass** — see the note at the end of this file. Previously: what is
-left is not code: **drag reorder across series boundaries and multi-select drag
-have not been exercised in a browser**, and
-both have broken on this surface before.
+**Status as of 2026-08-31: step 3 is the only step still open, and it _is_
+code.** Steps 1, 2 and 4–7 are done. Step 7's data-model half shipped the same
+day the product question was answered — `/posts` builds its root list with
+`groupRootItems` and adapts it with `rootItemsToTreeNodes`, the same two
+functions the sidebar uses, and `ProjectRow` gives a project a row that contains
+its series — and **both drag cases were exercised in a browser on 30 Aug 2026
+and both pass** (see the note at the end of this file), which closed the last
+thing this plan was waiting on that was not step 3.
+
+Previously this line read "steps 1–7 are done" and "what is left is not code".
+Step 3's own STATUS contradicted both, and the plan index was quoting this line
+rather than the step. What step 3 leaves is a triage pass over dead exported
+types; `pnpm check:unused` on 31 Aug 2026 reports **220 unused exports and one
+unused file**, a wider surface than the "~30" that STATUS names — because the
+count now includes `packages/editor`, which did not exist as a package when the
+step was written and whose export surface is substantially deliberate. Read the
+step before acting on that number: knip's output is not a delete list.
 
 Previously: **steps 1–6 are done or effectively done; step 7 is
 now UNBLOCKED.** The product question it waited on — does `/posts` render
@@ -23,7 +31,7 @@ which describes the state at the time the plan was written.
 | ---- | --------------------------------------------------------------------------- |
 | 1    | Done bar the doubtful pair — `knip` now reports **no** unused dependencies  |
 | 2    | Done — `PostsCompactListView` and `PostCompactListItem` no longer exist     |
-| 3    | Partly done — ~30 unused exported types remain (see `npm run check:unused`) |
+| 3    | **Partly done — the only step still open**; see its STATUS for the count   |
 | 4    | Done — `hooks/useResizablePanel.ts` + `Layout/ResizeGripper.tsx` landed     |
 | 5    | Done — `LoadingState.tsx` gone, `DocumentCard/theme.ts` 149 → 72            |
 | 6    | Done — [tree-model-brief.md](./archive/tree-model-brief.md)                 |
@@ -141,13 +149,21 @@ any orphaned imports (`SeriesGroupItem`, `uuid`, `Collapse`).
 
 ## Step 3 — Dead type surface
 
-> **STATUS: PARTLY DONE.** The `*Response` cluster is gone, but `knip` still
-> lists ~30 unused exported types spread thin across `src/hooks`, `src/lib`,
-> `src/indexeddb`, `src/repositories` and `src/store` — one or two per file, so
-> this is now a triage pass, not a deletion. Two genuinely dead files remain:
-> `Layout/SideBar/hooks/useSidebarDnd.ts` and its
-> `__tests__/dragGeometry.test.ts`, both orphaned by step 7's drag-engine
-> extraction.
+> **STATUS: PARTLY DONE — and as of 31 Aug 2026 the only step still open.** The
+> `*Response` cluster is gone. What remains is a triage pass, not a deletion:
+> `knip` reports 220 unused exports and one unused file
+> (`components/DocumentActions/Fork.tsx`), one or two per file across
+> `src/hooks`, `src/lib`, `src/indexeddb`, `src/repositories`, `src/store` and
+> — in scope only since the editor became a workspace package —
+> `packages/editor`, whose exports are substantially a deliberate API surface
+> and should be triaged as one rather than swept.
+>
+> **Two claims this STATUS used to make are wrong, both checked on 31 Aug
+> 2026.** `Layout/SideBar/hooks/useSidebarDnd.ts` does not exist — it was
+> deleted, not left behind. And `__tests__/dragGeometry.test.ts` is not dead:
+> `dragGeometry.ts` is still there, still deliberately import-free so it is
+> testable without a browser, and CLAUDE.md lists the spec among the ones worth
+> knowing about. Neither appears in today's `knip` run.
 
 **State.** `knip` lists ~16 unused `*Response` interfaces (9 in `src/types.ts`,
 7 in `src/api/types.ts`), 12 files exporting the same symbol both named and

@@ -39,7 +39,7 @@ predate that work and have not been re-measured.
 So the remaining work is not "finish the codecs", and it is no longer capability
 either. The one correctness hole is closed (item 1, kept here for the record),
 items 2 and 4 are closed by the nested-editor work, 5 and 6 are answered and
-built, and **what is left is two decisions**: 3 and 7.
+built, and 7 was taken on 31 Aug 2026. **What is left is one decision**: 3.
 
 ---
 
@@ -304,7 +304,7 @@ an explicit `seriesId` suggests nothing and costs no read.
 
 ---
 
-## 7. Local drafts are invisible from the terminal
+## 7. Local drafts are invisible from the terminal — **ACCEPTED (31 Aug 2026)**
 
 The two agents see different libraries:
 
@@ -317,8 +317,18 @@ This is inherent to where each runs, not an oversight. Closing it would mean
 either syncing local drafts to the server (a product change with its own
 questions about guest data) or giving the MCP server a browser, which is absurd.
 
-**Recommendation:** accept and document, which is what the plan currently does.
-Listed here so it is a decision rather than a gap nobody noticed.
+**Decided 31 Aug 2026: accept.** The paragraph above is the whole reason: both
+ways of closing it cost more than the gap does.
+
+The documenting half is already discharged rather than owed, in the two places
+someone would actually hit it:
+[the content guide](../guides/claude-code-content.md) opens its "Caveats the
+tools cannot state themselves" section with exactly this, and CLAUDE.md names it
+first among the three things the tool descriptions do not say about themselves.
+
+So this is **closed, not deferred.** The only thing that would reopen it is a
+decision to sync guest drafts to the server, and that is a product question
+rather than one this file owns.
 
 ---
 

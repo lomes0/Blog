@@ -2,10 +2,11 @@
 
 **Status: answered AND built, 27 Aug 2026 — `/posts` renders projects.
 Archived; the question this brief existed to settle is settled.** Option A
-shipped. The follow-on work is not here: it is step 7 of
-[../bloat-remediation.md](../bloat-remediation.md), which stays live because
-drag reorder across series boundaries and multi-select drag have still not been
-exercised in a browser.
+shipped, and step 7 of [../bloat-remediation.md](../bloat-remediation.md) with
+it — including the drag verification this line used to name as outstanding,
+which was done on 30 Aug 2026 and passed for both the cross-series and the
+multi-select case. That plan stays live for its step 3, which is unrelated to
+anything here.
 
 Was: **§0 answered 27 Aug 2026 — YES, `/posts` renders projects.** Step 7 of
 [bloat-remediation.md](../bloat-remediation.md) is unblocked, and the shape to
