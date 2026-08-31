@@ -9,13 +9,15 @@ for what has landed and when.
 
 ## Live
 
-**Every row below was re-read against its own plan's status line on 31 Aug 2026,
+**Every row here was re-read against its own plan's status line on 31 Aug 2026,
 and two of them disagreed.** `bloat-remediation.md` was named as having nothing
-but browser verification left, which had been done the day before, while its
-step 3 was open and is code; `ide-redesign.md` was named as still owing a status
-bar that had shipped. Both rows are corrected. The rule the index states at the
-top — read the file's status, not this table — is there because this is the
-failure mode, and it caught two.
+left but browser verification, which had been done the day before, while its
+step 3 was open and was code; `ide-redesign.md` was named as still owing a
+status bar that had shipped. The rule this index states at the top — read the
+file's status, not this table — exists because that is the failure mode, and it
+caught two. Reading the first of them correctly is also what closed it:
+`bloat-remediation.md` finished the same day and is in
+[archive/](./archive/bloat-remediation.md) now.
 
 | Plan                                                       | Status                                                                                                                                                 |
 | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -24,7 +26,6 @@ failure mode, and it caught two.
 | [claude-code-backlog.md](./claude-code-backlog.md)         | **Backlog.** What the content bridge does _not_ do, and why. **Nothing on it is capability work any more (27 Aug 2026)** — §4 was answered "address into them" and `nested-editor-support.md` shipped it, which closed §2 as well: a canvas's notes became addressable rather than merely describable. **§5 and §6 were answered and built on 28 Aug** (`65db740d`, `97bdb583`) — a proposal now names the rich blocks its deletes remove, and `create_post` hands back the author's series as candidates rather than filing the post itself. **§7 was taken on 31 Aug 2026 — accepted**, and the documenting half it recommends turned out to be already discharged, in the content guide's "Caveats the tools cannot state themselves" and in CLAUDE.md, so it is closed rather than deferred. What is left is one decision and no work: §3 (semantic search), which wants a concrete failure before it is worth designing |
 | [nested-editor-support.md](./nested-editor-support.md)     | **DONE — both phases shipped 27 Aug 2026** (`e8d1abd1`, `5c56c06c`). Closed `claude-code-backlog.md` §4 and §2, and overturned `archive/haklex-reprise.md` §11.3's refusal — which was right about the mechanism and wrong about the corpus. The blocker was never nesting: canvas, image and sticky were inline decorators, so they sat inside a paragraph with no address to descend from. They are block-level now, `pnpm nodes:unwrap` rewrote the stored revisions (259 wrapper paragraphs, 5 documents, 0 skipped), a canvas's notes address as `b2.1` and their blocks as `b2.1.1`, and an image's caption is a codec field. §7 records the two things this plan got wrong — threading the parent was avoidable, and neither a canvas nor a note needs a codec. Not archived: `containers.ts` and `address.ts` cite it |
 | [ide-redesign.md](./ide-redesign.md)                       | **All three phases of the visible pass shipped, the status bar with them, and nothing here is actionable — corrected 31 Aug 2026.** This row used to name the status bar among what was left; `Layout/StatusBar.tsx` has existed since that pass, and the plan's own status line says so. The two genuine leftovers — AI panel restyle, tabs/breadcrumb polish — are **blocked on respecification rather than on effort**: both name their target by reference to the Blog IDE proposal bundle, which is no longer in the repo, so somebody has to decide what "restyle the AI panel" means before it can be built. The file stays out of `archive/` to hold that fact |
-| [bloat-remediation.md](./bloat-remediation.md)             | **Steps 1, 2 and 4–7 done; step 3 is the only one left — corrected 31 Aug 2026.** Step 7 shipped the day its product question was answered — `/posts` builds its root list with `groupRootItems` and `rootItemsToTreeNodes`, the same pair the sidebar uses, and `ProjectRow` gives a project a row containing its series. The brief it waited on is [archive/tree-model-brief.md](./archive/tree-model-brief.md). **This row used to say the drag work had never been exercised in a browser and that what was left was not code. Both were wrong.** Cross-series and multi-select drag were exercised on 30 Aug 2026 and both pass — four gestures, each checked in Postgres rather than on screen, recorded in that plan's closing note. **Step 3 then closed on 31 Aug 2026, and with it the plan.** It ran in three phases: teach knip that `packages/editor/src/ui` is a ported vendor surface rather than a backlog (its barrel is an `entry`, which reverses a decision recorded during the editor extraction — `--include-entry-exports` returns the full surface), then triage `src/**`, then the editor package. `pnpm check:unused` went **578 hits → 51**, all 51 deliberate keeps recorded in that step's STATUS by name, so 51 is the floor. Two findings were left for the author because they are runtime changes rather than declarations: `ThumbnailContext` has no consumer at all, and `EditSortOrderField` edits a `sortOrder` field that does not exist |
 | [schema-organization.md](./schema-organization.md)         | **All four phases shipped** — A on 30 Aug 2026, B–D on 31 Aug. `timestamptz` on all 21 bare `DateTime` columns, `User.role` an enum, `head` a real FK as `headRevisionId`, `Document.name → title`, and `Document.type` / `DocumentType` / `background_image` gone. Coauthors **stay** — §5's recommendation was declined. Kept out of `archive/` because the new code cites §B/§C/§D/§7 by this path. §6 and §7 are the phase logs; the findings worth carrying forward are that "no app-logic change" was false, that Prisma generates a destructive `DROP` + `ADD` for three of the four column changes, and that `tsc` cannot see a field rename through an `as const` select or a `$queryRaw` template |
 
 ## Answered
@@ -35,7 +36,7 @@ waiting on a human.**
 
 - **Does `/posts` render projects?** — **yes.** `archive/tree-model-brief.md`
   takes option A, the unified `TreeNode` model, which unblocked step 7 of
-  `bloat-remediation.md` and fixes the live cross-series drag-reorder bug
+  `archive/bloat-remediation.md` and fixes the live cross-series drag-reorder bug
   (`archive/tree-model-brief.md` §3) by construction.
 - **Nested editors: address into them, or refuse explicitly?** — **address into
   them, fully.** The cost §4 deferred on is a live-editor cost and the bridge

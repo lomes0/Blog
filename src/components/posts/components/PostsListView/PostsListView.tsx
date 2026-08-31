@@ -123,10 +123,10 @@ export function PostsListView({
    *
    * This was two implementations of one tree until 27 Aug 2026 — a nested one
    * here and a flat `{kind, id}` union there — which is what
-   * `docs/plans/bloat-remediation.md` step 7 existed to collapse. The order
-   * comes from one array shared by projects, ungrouped series and standalone
-   * posts, so the result must stay in that order: don't group or re-sort it for
-   * presentation.
+   * `docs/plans/archive/bloat-remediation.md` step 7 existed to collapse. The
+   * order comes from one array shared by projects, ungrouped series and
+   * standalone posts, so the result must stay in that order: don't group or
+   * re-sort it for presentation.
    */
   const rootItems = useMemo(
     () => groupRootItems(posts, seriesMap, projects ?? [], rootOrder),

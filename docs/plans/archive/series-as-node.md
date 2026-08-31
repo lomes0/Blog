@@ -321,7 +321,7 @@ benefit.** If this is worth doing it is worth doing as (c).
 **The Redux ripple is much smaller than §7 fears.** It names
 `SeriesGrid`/`SeriesView`/`SeriesCard` as the components that would have to
 change. **All three no longer exist** — the tree-model work
-(`../bloat-remediation.md` step 7, `tree-model-brief.md`) deleted them, and
+(`./bloat-remediation.md` step 7, `tree-model-brief.md`) deleted them, and
 a series is now a row that contains its posts, built by `groupRootItems` +
 `rootItemsToTreeNodes` from `src/lib/tree/`. Only **11 files** read
 `state.series` / `state.projects` at all.

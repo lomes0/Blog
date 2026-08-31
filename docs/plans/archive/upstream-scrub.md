@@ -472,7 +472,7 @@ would falsify that:
   stale.
 - `docs/plans/archive/workspace-panes.md` §8.2 left `/tutorial` as an open product call
   ("marketing surface or in-app help page"). Annotated as resolved by deletion.
-- `docs/plans/bloat-remediation.md` Step 5 said `EditorSkeleton` would stay,
+- `docs/plans/archive/bloat-remediation.md` Step 5 said `EditorSkeleton` would stay,
   being a genuinely different shape. Annotated: it went anyway, as a side effect
   rather than a refutation.
 

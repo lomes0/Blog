@@ -529,7 +529,7 @@ Key UI components (`src/components/`):
   card any more: a series is a row that contains its posts, and a project a row
   that contains its series, both built from `groupRootItems` +
   `rootItemsToTreeNodes` in `src/lib/tree/` — the same pair the sidebar uses
-  (`bloat-remediation.md` step 7)
+  (`docs/plans/archive/bloat-remediation.md` step 7)
 - **Layout/**: app shell — `AppLayout`, `EditorTopBar`, `StatusBar`,
   `ActivityRail`, `RightRail/`, and `SideBar/` (the explorer tree and its drag)
 - **EditDocument/**: the editing surface, panes and tab strip

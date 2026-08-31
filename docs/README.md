@@ -44,7 +44,7 @@ describe intended or observed states, not necessarily the current one.
 
 | File                                                             | Description                                                                        |
 | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| [plans/README.md](./plans/README.md)                             | The seven live plans; the ordering/schema chain is done and series-as-node was declined |
+| [plans/README.md](./plans/README.md)                             | The six live plans; the ordering/schema chain is done and series-as-node was declined |
 | [plans/archive/README.md](./plans/archive/README.md)             | Closed plans, kept because 332 code comments cite them by section number           |
 | [plans/claude-code-backlog.md](./plans/claude-code-backlog.md)   | Backlog for the Claude Code / Copilot content bridge — what is left, and why       |
 | [reviews/](./reviews/)                                           | Point-in-time code reviews, dated                                                  |
