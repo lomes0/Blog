@@ -34,7 +34,7 @@
  */
 
 /** Lowercase hex SHA-256 of a file's bytes, computed in the browser. */
-export async function hashFile(file: File | Blob): Promise<string> {
+async function hashFile(file: File | Blob): Promise<string> {
   const buffer = await file.arrayBuffer();
   const digest = await crypto.subtle.digest("SHA-256", buffer);
   return Array.from(new Uint8Array(digest))
@@ -49,7 +49,7 @@ export async function hashFile(file: File | Blob): Promise<string> {
  *
  * Never throws. A blob upload failing must not cost the user their paste.
  */
-export async function uploadBlob(
+async function uploadBlob(
   file: File | Blob,
   documentId: string | null,
 ): Promise<string | null> {

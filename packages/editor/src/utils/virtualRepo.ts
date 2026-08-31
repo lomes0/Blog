@@ -23,7 +23,7 @@ import {
   walkBlocks,
 } from "@/lib/content-bridge";
 
-export interface RepoFileMeta {
+interface RepoFileMeta {
   id: string;
   title: string;
   seriesId: string | null;
@@ -31,7 +31,7 @@ export interface RepoFileMeta {
   hasContent: boolean;
 }
 
-export interface RepoSearchHit {
+interface RepoSearchHit {
   id: string;
   title: string;
   /** The block address the match is in — feed it straight to `read_blocks`. */

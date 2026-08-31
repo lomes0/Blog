@@ -30,11 +30,12 @@
     // and it counts what the entry re-exports as consumed, so the 256 findings
     // the kit used to contribute go away while anything under `ui/` that the
     // barrel does *not* publish keeps being reported (`hsvToRgb` in
-    // `color-picker/color-math.ts` is the current example). Adding a primitive
-    // to the barrel is therefore the deliberate act that grants it the
-    // exemption; an unexported one is still rot. `ignore` was the alternative
-    // and is wrong: it would also hide unused *files* and unpublished symbols
-    // there, which is the half worth keeping.
+    // `color-picker/color-math.ts` was the example, and step 3 phase 2b of
+    // docs/plans/bloat-remediation.md unexported it on exactly that reading).
+    // Adding a primitive to the barrel is therefore the deliberate act that
+    // grants it the exemption; an unexported one is still rot. `ignore` was
+    // the alternative and is wrong: it would also hide unused *files* and
+    // unpublished symbols there, which is the half worth keeping.
     //
     // `.{ts,tsx}` deliberately, not knip's default globs, which also take
     // `.js`. The only JavaScript here is the vendored `utils/docx/mathml2omml`

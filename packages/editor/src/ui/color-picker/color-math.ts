@@ -25,7 +25,7 @@ const to255 = (n: number): number => Math.round(clamp(n, 0, 1) * 255);
 
 const pad2 = (n: number): string => n.toString(16).padStart(2, '0');
 
-export function hsvToRgb(h: number, s: number, v: number): { r: number; g: number; b: number } {
+function hsvToRgb(h: number, s: number, v: number): { r: number; g: number; b: number } {
   const hh = (((h % 360) + 360) % 360) / 60;
   const ss = clamp(s, 0, 1);
   const vv = clamp(v, 0, 1);

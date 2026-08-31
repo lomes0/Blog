@@ -11,7 +11,7 @@ import {
  * means the authoring header and the published article render identical labels.
  */
 
-export interface CodeLanguageGlyph {
+interface CodeLanguageGlyph {
   /** 1-3 character badge text, e.g. "JS", "PY", "{ }". */
   text: string;
   /** Badge background color (CSS). */
