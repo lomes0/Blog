@@ -521,16 +521,21 @@ add to that directory rather than reaching back across the seam.
 
 Key UI components (`src/components/`):
 
-- **BlogManager**: Main blog management interface
-- **PostsList**: Display and manage posts
-- **SeriesGrid** / **SeriesView** / **SeriesCard**: Series organization UI
-- **DocumentBrowser**: Browse and search documents
-- **EditDocument**: Document editing interface
-- **DocumentActions** / **SeriesActions**: Action menus
-- **TrashBin**: Soft delete management
-- **NotesCanvas**: Canvas for sticky notes
-- **Auth**: Authentication components
-- **Layout**: Page layouts and structure
+- **posts/**: the library surface — `PostsView` and, under `components/`,
+  `PostsListView` and the row types. There is no separate series grid or series
+  card any more: a series is a row that contains its posts, and a project a row
+  that contains its series, both built from `groupRootItems` +
+  `rootItemsToTreeNodes` in `src/lib/tree/` — the same pair the sidebar uses
+  (`bloat-remediation.md` step 7)
+- **Layout/**: app shell — `AppLayout`, `EditorTopBar`, `StatusBar`,
+  `ActivityRail`, `RightRail/`, and `SideBar/` (the explorer tree and its drag)
+- **EditDocument/**: the editing surface, panes and tab strip
+- **DocumentBrowser** / **DocumentCard** / **DocumentGrid**: browse and search
+- **DocumentActions** / **SeriesActions**: action menus
+- **CopilotPanel** / **Diff**: the AI surface and the proposal review rail
+- **NotesCanvas**: canvas for sticky notes
+- **views/**: the read-only renderers behind `/view` and `/attachment`
+- **shared/**: `AuthProvider`, `EmptyState`, `ViewToggle` and friends
 
 ### Path Aliases
 
@@ -624,9 +629,12 @@ comments across 257 files, and two tools (`eslint.config.mjs`'s MUI rule and
 `scripts/check-codecs.mjs`) print a path from there in their failure output. So:
 
 - Moving or renaming anything under `docs/plans/` means updating those
-  citations. `grep -rn "docs/plans/" --include="*.ts" --include="*.tsx"` finds
-  them; the two `prisma/migrations/*.sql` comments are the exception, since
-  Prisma checksums an applied migration and will refuse one that changed.
+  citations. `grep -rn "docs/plans/" src packages prisma docs scripts` finds
+  them — **not** a `--include="*.ts" --include="*.tsx"` sweep, which is how
+  archiving `ordering-simplification.md` left five stale citations sitting in
+  `prisma/schema.prisma`. The `prisma/migrations/*.sql` comments are the one
+  exception: Prisma checksums an applied migration and will refuse one that
+  changed.
 - Archived plans were accurate when they shipped and have drifted since — most
   say `src/editor`, which is `packages/editor/src` now. Read them for _why_ a
   thing is shaped as it is, never for _where_ it lives.

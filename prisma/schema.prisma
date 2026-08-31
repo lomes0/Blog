@@ -17,10 +17,10 @@ model Project {
   authorId    String   @db.Uuid
 
   // The order of this project's member series, newest model
-  // (docs/plans/ordering-simplification.md §2). Holds `Series.id`s; the array is
-  // the container's own list rather than a key on each child, which is what lets
-  // a reorder be one write. Tolerant on read: a member missing from it sorts
-  // last, an id with no row is ignored (§6).
+  // (docs/plans/archive/ordering-simplification.md §2). Holds `Series.id`s; the
+  // array is the container's own list rather than a key on each child, which is
+  // what lets a reorder be one write. Tolerant on read: a member missing from
+  // it sorts last, an id with no row is ignored (§6).
   seriesOrder String[] @default([])
 
   // Relations
@@ -44,9 +44,10 @@ model Series {
   // lives in the author's root list and is ordered by `User.rootOrder`.
   projectId String? @db.Uuid
 
-  // The order of this series' posts (docs/plans/ordering-simplification.md §2).
-  // Holds `Document.id`s. Read through `orderBy` in src/lib/orderArray.ts, so
-  // drift in either direction is cosmetic rather than a broken view (§6).
+  // The order of this series' posts
+  // (docs/plans/archive/ordering-simplification.md §2). Holds `Document.id`s.
+  // Read through `orderBy` in src/lib/orderArray.ts, so drift in either
+  // direction is cosmetic rather than a broken view (§6).
   postOrder String[] @default([])
 
   // Relations
@@ -111,8 +112,8 @@ model Document {
   tabLabel String?
 
   // The order of this document's child tabs
-  // (docs/plans/ordering-simplification.md §2). Holds `Document.id`s and is
-  // empty for a post that has no tabs, which is most of them.
+  // (docs/plans/archive/ordering-simplification.md §2). Holds `Document.id`s
+  // and is empty for a post that has no tabs, which is most of them.
   tabOrder String[] @default([])
 
   // Fork relationship
@@ -143,7 +144,7 @@ model Document {
   @@index([published]) // Index for finding published posts
   // `parentId` alone, because the composite it used to share with `rank` is
   // gone and this is the only index left serving "the children of this post"
-  // (docs/plans/ordering-simplification.md §3). The other two dropped
+  // (docs/plans/archive/ordering-simplification.md §3). The other two dropped
   // composites each still have a leading-column index: `seriesId` above,
   // `authorId` in `@@index([authorId, published])`.
   @@index([parentId]) // A tabbed post's child tabs
@@ -231,8 +232,9 @@ model User {
   image          String?
   role           UserRole            @default(USER)
 
-  // The author's root list, in order (docs/plans/ordering-simplification.md §2).
-  // The one array that is *not* single-typed: root holds standalone documents,
+  // The author's root list, in order
+  // (docs/plans/archive/ordering-simplification.md §2). The one array that is
+  // *not* single-typed: root holds standalone documents,
   // ungrouped series and projects in one space, so this interleaves ids from
   // three tables. They are all v4 UUIDs from separate `@default(uuid())`
   // columns, so an id resolves to at most one row (§10) — a lookup, not a

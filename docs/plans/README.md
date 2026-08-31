@@ -17,13 +17,14 @@ for what has landed and when.
 | [nested-editor-support.md](./nested-editor-support.md)     | **DONE — both phases shipped 27 Aug 2026** (`e8d1abd1`, `5c56c06c`). Closed `claude-code-backlog.md` §4 and §2, and overturned `archive/haklex-reprise.md` §11.3's refusal — which was right about the mechanism and wrong about the corpus. The blocker was never nesting: canvas, image and sticky were inline decorators, so they sat inside a paragraph with no address to descend from. They are block-level now, `pnpm nodes:unwrap` rewrote the stored revisions (259 wrapper paragraphs, 5 documents, 0 skipped), a canvas's notes address as `b2.1` and their blocks as `b2.1.1`, and an image's caption is a codec field. §7 records the two things this plan got wrong — threading the parent was avoidable, and neither a canvas nor a note needs a codec. Not archived: `containers.ts` and `address.ts` cite it |
 | [ide-redesign.md](./ide-redesign.md)                       | All three phases of the visible pass shipped; only its deferred list is left — status bar, AI panel restyle, tabs/breadcrumb polish                    |
 | [bloat-remediation.md](./bloat-remediation.md)             | **Steps 1–7 done (27 Aug 2026).** Step 7 shipped the day its product question was answered — `/posts` builds its root list with `groupRootItems` and `rootItemsToTreeNodes`, the same pair the sidebar uses, and `ProjectRow` gives a project a row containing its series. What is left is not code: cross-series drag reorder and multi-select drag have never been exercised in a browser, and both have broken on this surface before. The brief it waited on is [archive/tree-model-brief.md](./archive/tree-model-brief.md) |
-| [schema-organization.md](./schema-organization.md)         | **Phase A shipped 30 Aug 2026** — `timestamptz` on all 21 bare `DateTime` columns, the OAuth1 leftovers and the redundant `Series` index gone, `User.role` an enum. Phases B–D are proposal; see below. §6 is the phase log, and the two findings worth carrying forward are that "no app-logic change" was false (two admin checks compared `role` to a string) and that Prisma's generated SQL for the enum would have dropped the column |
-| [series-as-node.md](./series-as-node.md)                   | Sketch for comparison, not an approved plan. **Deferred 27 Aug 2026** until `rank` is gone — not refused, just decided against a base that is about to change |
+| [schema-organization.md](./schema-organization.md)         | **All four phases shipped** — A on 30 Aug 2026, B–D on 31 Aug. `timestamptz` on all 21 bare `DateTime` columns, `User.role` an enum, `head` a real FK as `headRevisionId`, `Document.name → title`, and `Document.type` / `DocumentType` / `background_image` gone. Coauthors **stay** — §5's recommendation was declined. Kept out of `archive/` because the new code cites §B/§C/§D/§7 by this path. §6 and §7 are the phase logs; the findings worth carrying forward are that "no app-logic change" was false, that Prisma generates a destructive `DROP` + `ADD` for three of the four column changes, and that `tsc` cannot see a field rename through an `as const` select or a `$queryRaw` template |
+| [series-as-node.md](./series-as-node.md)                   | Sketch for comparison, not an approved plan. Deferred 27 Aug 2026 until `rank` was gone; it went on 30 Aug, so **§9 re-costs it against the tree and it is now the only thing on this page waiting on a human.** §9's headline: three of §7's four cost bullets are overstated or false, §3's payoff is already half-built (`repositories/ordering.ts` is container-parameterised today, and only ~55 lines of *move* code are doubled), and the sketch missed `Project` — which makes this a three-way choice, where folding `Series` alone pays most of the cost without making the root array homogeneous |
 
 ## Answered 27 Aug 2026
 
 All three of the items that were blocked on a human answer rather than on work
-have one. Nothing in this file is now waiting on a decision.
+have one. **One of the three has come back round:** series-as-node was deferred
+until `rank` was gone, and `rank` went on 30 Aug 2026.
 
 - **Does `/posts` render projects?** — **yes.** `archive/tree-model-brief.md`
   takes option A, the unified `TreeNode` model, which unblocked step 7 of
@@ -36,7 +37,9 @@ have one. Nothing in this file is now waiting on a decision.
   rather than nesting.
 - **Commit to Plan 3 (series-as-node)?** — **deferred, not refused.** Revisit
   after ordering phase 5 deletes `rank`; the sequencing below already put it
-  last, so nothing waits on this.
+  last, so nothing waits on this. — **Now due.** Phase 5 shipped 30 Aug 2026,
+  so the deferral has expired and this is once again an open decision; see the
+  bottom of this file.
 
 ---
 
@@ -52,7 +55,7 @@ Read them in this order:
 | # | Plan                                                       | Owns                                                                                       | Churn        |
 | - | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ------------ |
 | 1 | [archive/ordering-simplification.md](./archive/ordering-simplification.md) | ~~Replace fractional `rank` with an ordered id array per container~~ — **done, all 5 phases, 30 Aug 2026** | Low–moderate |
-| 2 | [schema-organization.md](./schema-organization.md)         | Idiomatic schema cleanup (timestamptz, real FKs, enums, dead-field/index removal, renames) | Low–moderate |
+| 2 | [schema-organization.md](./schema-organization.md)         | ~~Idiomatic schema cleanup (timestamptz, real FKs, enums, dead-field/index removal, renames)~~ — **done, all 4 phases, 31 Aug 2026** | Low–moderate |
 | 3 | [series-as-node.md](./series-as-node.md)                   | Fold `Series` into the `Document` node tree so ordering is one `childOrder` mechanism      | High         |
 
 Plans 1 and 2 are complementary and largely independent. Plan 3 is the _unifying
@@ -77,10 +80,10 @@ possible model and will spend the refactor once.
 Land the small, safe work first; sequence the high-churn unification **last**,
 on top of an already-simplified base — never all at once.
 
-**Steps 1, 2, 3 and 5 all shipped on 30 Aug 2026** — the whole of Plan 1 and the
-safe half of Plan 2. What is left is step 4 (Schema B–D) and then the step 6
-decision. Struck text below is done; it is kept because the reasoning for the
-*order* still reads.
+**Steps 1–5 have all shipped** — 1, 2, 3 and 5 on 30 Aug 2026, step 4 on 31 Aug.
+That is the whole of Plans 1 and 2; only the step 6 decision is left. Struck
+text below is done; it is kept because the reasoning for the *order* still
+reads.
 
 1. ~~**Schema Phase A — the safe sweep** (from Plan 2): `timestamptz` everywhere,
    drop OAuth1 columns, drop redundant `[authorId]` indexes, `role` → enum. Pure
@@ -98,9 +101,11 @@ decision. Struck text below is done; it is kept because the reasoning for the
    thunks, UI drag/menu builds id arrays, remove the `between`/bracketing
    plumbing.~~ — **done**, four endpoints rather than three.
 
-4. **Schema Phases B–D** — **the only implementation work left on this page.** (from Plan 2): `head` → real FK, `name → title` /
+4. ~~**Schema Phases B–D** (from Plan 2): `head` → real FK, `name → title` /
    `background_image → backgroundImage` renames, drop dead `type`/coauthors.
-   Coordinate Phase D with the next step (both touch `Document` indexes).
+   Coordinate Phase D with the next step (both touch `Document` indexes).~~ —
+   **done**, with two departures the author made at the time: coauthors were
+   *kept*, and `background_image` was dropped rather than renamed.
 
 5. ~~**Ordering, Phase 5 — delete `rank`** (from Plan 1): drop the `rank`
    columns/indexes, the `fractional-indexing` dep, `lib/ordering.ts`,
@@ -108,8 +113,8 @@ decision. Struck text below is done; it is kept because the reasoning for the
    it took the local library with it: IndexedDB orders by array now too, so
    there is one ordering mechanism in the codebase rather than two.
 
-   → The two-plan approach is now **complete apart from step 4**. Everything
-   below is optional and only if you commit to Plan 3.
+   → The two-plan approach is now **complete**. Everything below is optional and
+   only if you commit to Plan 3.
 
 6. **Series-as-node** (Plan 3): project each `Series` row into a `kind = SERIES`
    `Document` (preserving id), repoint posts' `parentId`, fold the three order
@@ -129,8 +134,9 @@ decision. Struck text below is done; it is kept because the reasoning for the
 
 ## Open decisions
 
-- **Drop `DocumentCoauthors` + `collab` entirely?** Recommended — already
-  stubbed to `[]` and meaningless single-user. (Plan 2 §5.)
+- ~~**Drop `DocumentCoauthors` + `collab` entirely?**~~ **Declined 31 Aug 2026.**
+  They stay as a placeholder for collaborative editing, against Plan 2 §5's own
+  recommendation. If it is ever revived, re-key on `User.id`, not `userEmail`.
 - **Commit to Plan 3 (Series-as-node)?** The high-churn unification — do it
   last, or not at all if blast radius matters more than a fully uniform model.
   **No longer blocked:** it waited on `rank`, and `rank` is gone.
