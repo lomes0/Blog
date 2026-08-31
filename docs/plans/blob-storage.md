@@ -1,11 +1,11 @@
 # Blob storage: one content-addressed store for every byte
 
-Status: **all five phases built for images; the collector is written but not yet
-*scheduled*, and cannot be until there is a deployment to schedule it on
-(§11.2 — answered 31 Aug 2026, pending a box).** The two SVG node types (sketch,
-graph) were the one thing 2 and 3 both stopped short of; **§10.1 held that
-decision and §13 takes it — migrate both, and the render guard sketches needed
-has landed. The migration itself has not been run.** **§10.2 closes §10's
+Status: **complete for every picture in the database; the collector is written
+but not yet *scheduled*, and cannot be until there is a deployment to schedule it
+on (§11.2 — answered 31 Aug 2026, pending a box).** The two SVG node types
+(sketch, graph) were the one thing 2 and 3 both stopped short of; **§10.1 held
+that decision, §13 takes it — migrate both — §13.6 is the run and §13.7 the
+browser pass that accepted it. There are no data URIs left in any revision.** **§10.2 closes §10's
 step 5, and does it by subtraction: backgrounds were a removed feature's
 leftovers and are deleted rather than migrated, attachments stay on disk on a
 blocker that is not effort, and §10's expected outcome is wrong about both.** §11.1 records why
@@ -970,10 +970,9 @@ each. Two things were checked that `verify` does not:
 - **The bookkeeping the collector depends on.** 114 revisions carry
   `blobHashes`, and there are 6 `BlobRef` rows for 6 blobs.
 
-**Still outstanding: the browser pass.** §13.5 step 3 is the acceptance
-criterion and it has not been run — a sketch and a graph in the editor, in
-`/view`, and through a `.docx` export. Until then this is verified as a *data*
-migration and unverified as the *rendering* change it also is.
+**The browser pass followed the same day and passed — §13.7.** Until it ran this
+was verified as a *data* migration and unverified as the *rendering* change it
+also is; it is now verified as both.
 
 #### A leak class the collector cannot reach
 
@@ -988,3 +987,53 @@ alternative failure is a post rendering an empty picture. Recording it because
 the only way to find these is a bucket-to-table reconcile, which nothing does on
 a schedule; `ops/restore-drill.sh` does the comparison monthly but only reports
 the direction that matters for a restore.
+
+### 13.7 The browser pass — 31 Aug 2026, and it passes
+
+§13.5 step 3, run against a dev server on `:3005` (`BUILD_DIR=.next-verify`, so
+the stale `next start` on `:3000` was left alone). Both migrated documents, both
+node types, all three render paths.
+
+| Path | What it emits now | Result |
+| --- | --- | --- |
+| `exportDOM` (`/view`) | `<img src="/api/blob/…">` | Renders. 0 `data:image` left in the HTML |
+| `decorate` (the editor) | `<img>`, `element="img"` | Renders. `naturalWidth` 2717 / 1538 / 1670 — the browser decoded every one |
+| `.docx` | embedded SVG | 200, media entries at exactly the blob sizes (28725, 18616, 66757) |
+| `GET /api/blob/<hash>` | the bytes | 200, `image/svg+xml`, `nosniff`, `default-src 'none'; sandbox`, `public, immutable` |
+
+**The acceptance criterion §13.5 named is met, and it is the predicted change and
+nothing else.** Rendering the same sketch both ways side by side — the old inline
+`<svg>` with its `<style>` stripped, against the new `<img>` — the geometry is
+pixel-identical: every box, arrow and stroke in the same place. The single
+difference is the text, which was falling back to a serif face and now renders in
+Excalifont. §13.2 predicted exactly this: the strip was forced by inlining, and
+an `<img>` scopes the style to the image, so the embedded `data:font/woff2` face
+finally applies.
+
+**Dark mode survives, and by construction rather than by luck.** The rule is
+`html.dark .LexicalTheme__image.LexicalTheme__darkModeFilter :is(img, svg)` —
+it already named both branches, so the invert follows the picture across the
+change. Verified as computed style: `invert(0.93) hue-rotate(180deg)` on the
+migrated `<img>`, and the sketch reads correctly on the dark ground.
+
+#### Two things found in passing, both pre-existing
+
+Neither is caused by this change, and neither is fixed here.
+
+- **A floated image with a caption wraps its caption one character per line in
+  the editor.** The `D3` graph is `float: right` with `showCaption`, and its
+  caption renders as a one-character column; the same document's caption is fine
+  in `/view`, which builds different markup. Isolated rather than assumed:
+  replacing the `<img>` in the live DOM with an inline `<svg>` of an identical
+  box leaves the caption at exactly the same 356 × 524, so the layout follows
+  the float and not the element. The non-floated sketch in the other document
+  captions correctly.
+- **The `.docx` SVG fallback is not a PNG.** `docx/image.ts` passes
+  `fallback: { type: "png", data }` with the same buffer whatever `type` is, so
+  an SVG picture ships a "PNG" fallback that is SVG bytes. Unchanged since at
+  least June 2025 and identical before the migration — a Word old enough to use
+  the fallback would show a broken picture.
+
+Also observed on every editor load, unrelated to any of this:
+`NodeSelectionPlugin: The following nodes are not registered: TableNode,
+AttachmentNode`.
