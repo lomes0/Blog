@@ -14,7 +14,7 @@ import {
   type NestedDocPayload,
 } from "@/editor/nodes/NestedDocNode";
 
-export type InsertNestedDocPayload = Readonly<NestedDocPayload>;
+type InsertNestedDocPayload = Readonly<NestedDocPayload>;
 
 export const INSERT_NESTED_DOC_COMMAND: LexicalCommand<
   InsertNestedDocPayload | undefined

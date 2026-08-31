@@ -32,7 +32,7 @@ import {
   KanbanPayload,
 } from "@/editor/nodes/KanbanNode";
 
-export type InsertKanbanPayload = Readonly<KanbanPayload>;
+type InsertKanbanPayload = Readonly<KanbanPayload>;
 
 export const INSERT_KANBAN_COMMAND: LexicalCommand<
   InsertKanbanPayload | undefined

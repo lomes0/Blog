@@ -16,7 +16,7 @@ import {
 } from "@/editor/nodes/CanvasNode";
 import { registerBlockDecoratorUnwrap } from "@/editor/nodes/blockDecoratorUnwrap";
 
-export type InsertCanvasPayload = Readonly<CanvasPayload>;
+type InsertCanvasPayload = Readonly<CanvasPayload>;
 
 export const INSERT_CANVAS_COMMAND: LexicalCommand<
   InsertCanvasPayload | undefined

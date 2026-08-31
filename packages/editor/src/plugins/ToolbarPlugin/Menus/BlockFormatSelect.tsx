@@ -66,7 +66,7 @@ const H4 = () => (
   <HeadingGlyph path="M120 776V376h60v170h180V376h60v400h-60V606H180v170h-60Zm620 0V646H540V376h60v210h140V376h60v210h80v60h-80v130h-60Z" />
 );
 
-export type BlockType =
+type BlockType =
   | "bullet"
   | "check"
   | "code"

@@ -71,7 +71,7 @@ const buttonClass = getActionButtonClassName({ size: "md", icon: true });
 
 const FASTAPI_URL = process.env.NEXT_PUBLIC_FASTAPI_URL;
 
-export const useCallbackRefState = () => {
+const useCallbackRefState = () => {
   const [refValue, setRefValue] = useState<ExcalidrawImperativeAPI | null>(
     null,
   );

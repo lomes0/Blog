@@ -17,7 +17,7 @@ import {
   AttachmentPayload,
 } from "@/editor/nodes/AttachmentNode";
 
-export type InsertAttachmentPayload = Readonly<AttachmentPayload>;
+type InsertAttachmentPayload = Readonly<AttachmentPayload>;
 
 export const INSERT_ATTACHMENT_COMMAND: LexicalCommand<
   InsertAttachmentPayload

@@ -58,7 +58,7 @@ declare global {
 
 window.EXCALIDRAW_ASSET_PATH = "/";
 
-export const useCallbackRefState = () => {
+const useCallbackRefState = () => {
   const [refValue, setRefValue] = useState<ExcalidrawImperativeAPI | null>(
     null,
   );

@@ -51,7 +51,7 @@ export function dismissRequest(
   };
 }
 
-export type FilePickerButtonProps =
+type FilePickerButtonProps =
   & Omit<ActionButtonProps, "onChange" | "children">
   & {
     accept?: string;

@@ -37,13 +37,13 @@ import {
   TextNode,
 } from "lexical";
 
-export type Transformer =
+type Transformer =
   | ElementTransformer
   | MultilineElementTransformer
   | TextFormatTransformer
   | TextMatchTransformer;
 
-export type ElementTransformer = {
+type ElementTransformer = {
   dependencies: Array<Klass<LexicalNode>>;
   /**
    * `export` is called when the `$convertToMarkdownString` is called to convert the editor state into markdown.
@@ -72,7 +72,7 @@ export type ElementTransformer = {
   type: "element";
 };
 
-export type MultilineElementTransformer = {
+type MultilineElementTransformer = {
   /**
    * Use this function to manually handle the import process, once the `regExpStart` has matched successfully.
    * Without providing this function, the default behavior is to match until `regExpEnd` is found, or until the end of the document if `regExpEnd.optional` is true.
@@ -140,14 +140,14 @@ export type MultilineElementTransformer = {
   type: "multiline-element";
 };
 
-export type TextFormatTransformer = Readonly<{
+type TextFormatTransformer = Readonly<{
   format: ReadonlyArray<TextFormatType>;
   tag: string;
   intraword?: boolean;
   type: "text-format";
 }>;
 
-export type TextMatchTransformer = Readonly<{
+type TextMatchTransformer = Readonly<{
   dependencies: Array<Klass<LexicalNode>>;
   /**
    * Determines how a node should be exported to markdown
@@ -304,7 +304,7 @@ const listExport = (
   return output.join("\n");
 };
 
-export const HEADING: ElementTransformer = {
+const HEADING: ElementTransformer = {
   dependencies: [HeadingNode],
   export: (node, exportChildren) => {
     if (!$isHeadingNode(node)) {
@@ -321,7 +321,7 @@ export const HEADING: ElementTransformer = {
   type: "element",
 };
 
-export const QUOTE: ElementTransformer = {
+const QUOTE: ElementTransformer = {
   dependencies: [QuoteNode],
   export: (node, exportChildren) => {
     if (!$isQuoteNode(node)) {
@@ -358,7 +358,7 @@ export const QUOTE: ElementTransformer = {
   type: "element",
 };
 
-export const CODE: MultilineElementTransformer = {
+const CODE: MultilineElementTransformer = {
   dependencies: [CodeNode],
   export: (node: LexicalNode) => {
     if (!$isCodeNode(node)) {
@@ -443,7 +443,7 @@ export const CODE: MultilineElementTransformer = {
   type: "multiline-element",
 };
 
-export const UNORDERED_LIST: ElementTransformer = {
+const UNORDERED_LIST: ElementTransformer = {
   dependencies: [ListNode, ListItemNode],
   export: (node, exportChildren) => {
     return $isListNode(node) ? listExport(node, exportChildren, 0) : null;
@@ -453,7 +453,7 @@ export const UNORDERED_LIST: ElementTransformer = {
   type: "element",
 };
 
-export const CHECK_LIST: ElementTransformer = {
+const CHECK_LIST: ElementTransformer = {
   dependencies: [ListNode, ListItemNode],
   export: (node, exportChildren) => {
     return $isListNode(node) ? listExport(node, exportChildren, 0) : null;
@@ -463,7 +463,7 @@ export const CHECK_LIST: ElementTransformer = {
   type: "element",
 };
 
-export const ORDERED_LIST: ElementTransformer = {
+const ORDERED_LIST: ElementTransformer = {
   dependencies: [ListNode, ListItemNode],
   export: (node, exportChildren) => {
     return $isListNode(node) ? listExport(node, exportChildren, 0) : null;
@@ -473,57 +473,57 @@ export const ORDERED_LIST: ElementTransformer = {
   type: "element",
 };
 
-export const INLINE_CODE: TextFormatTransformer = {
+const INLINE_CODE: TextFormatTransformer = {
   format: ["code"],
   tag: "`",
   type: "text-format",
 };
 
-export const HIGHLIGHT: TextFormatTransformer = {
+const HIGHLIGHT: TextFormatTransformer = {
   format: ["highlight"],
   tag: "==",
   type: "text-format",
 };
 
-export const BOLD_ITALIC_STAR: TextFormatTransformer = {
+const BOLD_ITALIC_STAR: TextFormatTransformer = {
   format: ["bold", "italic"],
   tag: "***",
   type: "text-format",
 };
 
-export const BOLD_ITALIC_UNDERSCORE: TextFormatTransformer = {
+const BOLD_ITALIC_UNDERSCORE: TextFormatTransformer = {
   format: ["bold", "italic"],
   intraword: false,
   tag: "___",
   type: "text-format",
 };
 
-export const BOLD_STAR: TextFormatTransformer = {
+const BOLD_STAR: TextFormatTransformer = {
   format: ["bold"],
   tag: "**",
   type: "text-format",
 };
 
-export const BOLD_UNDERSCORE: TextFormatTransformer = {
+const BOLD_UNDERSCORE: TextFormatTransformer = {
   format: ["bold"],
   intraword: false,
   tag: "__",
   type: "text-format",
 };
 
-export const STRIKETHROUGH: TextFormatTransformer = {
+const STRIKETHROUGH: TextFormatTransformer = {
   format: ["strikethrough"],
   tag: "~~",
   type: "text-format",
 };
 
-export const ITALIC_STAR: TextFormatTransformer = {
+const ITALIC_STAR: TextFormatTransformer = {
   format: ["italic"],
   tag: "*",
   type: "text-format",
 };
 
-export const ITALIC_UNDERSCORE: TextFormatTransformer = {
+const ITALIC_UNDERSCORE: TextFormatTransformer = {
   format: ["italic"],
   intraword: false,
   tag: "_",
@@ -534,7 +534,7 @@ export const ITALIC_UNDERSCORE: TextFormatTransformer = {
 //
 // - code should go first as it prevents any transformations inside
 // - then longer tags match (e.g. ** or __ should go before * or _)
-export const LINK: TextMatchTransformer = {
+const LINK: TextMatchTransformer = {
   dependencies: [LinkNode],
   export: (node, exportChildren, _exportFormat) => {
     if (!$isLinkNode(node)) {
@@ -625,7 +625,7 @@ import {
 import { $isParagraphNode, $isTextNode, LexicalEditor } from "lexical";
 import { $wrapNodeInElement } from "@lexical/utils";
 
-export const HR: ElementTransformer = {
+const HR: ElementTransformer = {
   dependencies: [HorizontalRuleNode],
   export: (node: LexicalNode) => {
     return $isHorizontalRuleNode(node) ? "***" : null;
@@ -646,7 +646,7 @@ export const HR: ElementTransformer = {
   type: "element",
 };
 
-export const IMAGE: TextMatchTransformer = {
+const IMAGE: TextMatchTransformer = {
   dependencies: [ImageNode],
   export: (node) => {
     if (!$isImageNode(node)) {
@@ -673,7 +673,7 @@ export const IMAGE: TextMatchTransformer = {
   type: "text-match",
 };
 
-export const GRAPH: TextMatchTransformer = {
+const GRAPH: TextMatchTransformer = {
   dependencies: [GraphNode],
   export: (node) => {
     if (!$isGraphNode(node)) {
@@ -702,7 +702,7 @@ export const GRAPH: TextMatchTransformer = {
   type: "text-match",
 };
 
-export const SKETCH: TextMatchTransformer = {
+const SKETCH: TextMatchTransformer = {
   dependencies: [SketchNode],
   export: (node) => {
     if (!$isSketchNode(node)) {
@@ -730,7 +730,7 @@ export const SKETCH: TextMatchTransformer = {
   type: "text-match",
 };
 
-export const STICKY: TextMatchTransformer = {
+const STICKY: TextMatchTransformer = {
   dependencies: [],
   export: (node) => {
     if (!$isStickyNode(node)) {
@@ -755,7 +755,7 @@ const svgtoBase64 = (dataURI: string) => {
   return `data:image/svg+xml;base64,${base64}`;
 };
 
-export const MATH: TextMatchTransformer = {
+const MATH: TextMatchTransformer = {
   dependencies: [MathNode],
   export: (node) => {
     if (!$isMathNode(node)) {
@@ -778,7 +778,7 @@ export const MATH: TextMatchTransformer = {
   type: "text-match",
 };
 
-export const MULTILINE_MATH: MultilineElementTransformer = {
+const MULTILINE_MATH: MultilineElementTransformer = {
   dependencies: [MathNode],
   export: (node: LexicalNode) => {
     if (!$isMathNode(node)) {
@@ -848,7 +848,7 @@ export const MULTILINE_MATH: MultilineElementTransformer = {
 };
 
 // Very primitive table setup
-export const TABLE: ElementTransformer = {
+const TABLE: ElementTransformer = {
   dependencies: [TableNode, TableRowNode, TableCellNode],
   export: (node: LexicalNode) => {
     if (!$isTableNode(node)) {
@@ -1034,7 +1034,7 @@ const TEXT_FORMAT_TRANSFORMERS: Array<TextFormatTransformer> = [
 
 const TEXT_MATCH_TRANSFORMERS: Array<TextMatchTransformer> = [LINK];
 
-export const TRANSFORMERS: Array<Transformer> = [
+const TRANSFORMERS: Array<Transformer> = [
   TABLE,
   HR,
   IMAGE,

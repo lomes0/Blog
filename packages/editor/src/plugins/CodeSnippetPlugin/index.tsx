@@ -49,13 +49,13 @@ import CodeSnippetTabs from "@/editor/nodes/CodeSnippetNode/CodeSnippetTabs";
 import { registerCodeSnippetGuard } from "@/editor/nodes/CodeSnippetNode/guard";
 import { SNIPPET_TABS_CLASS } from "@/editor/nodes/CodeSnippetNode/utils";
 
-export interface SnippetFilePayload {
+interface SnippetFilePayload {
   filename?: string;
   language?: string;
   code?: string;
 }
 
-export interface InsertCodeSnippetPayload {
+interface InsertCodeSnippetPayload {
   /** One entry per file. A snippet with no files cannot exist. */
   files?: ReadonlyArray<SnippetFilePayload>;
 }

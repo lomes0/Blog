@@ -35,7 +35,7 @@ import {
   StickyPayload,
 } from "@/editor/nodes/StickyNode";
 import { registerBlockDecoratorUnwrap } from "@/editor/nodes/blockDecoratorUnwrap";
-export type InsertStickyPayload = Readonly<StickyPayload>;
+type InsertStickyPayload = Readonly<StickyPayload>;
 
 export const INSERT_STICKY_COMMAND: LexicalCommand<
   InsertStickyPayload | undefined
