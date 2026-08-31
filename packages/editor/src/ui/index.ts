@@ -24,24 +24,34 @@
  * `collapsible`, `animated-tabs`, `status-dot`, `viewport-gate` and
  * `quote-attribution` components, which no phase asks for yet.
  *
- * **`npm run check:unused` reports most of this directory, and that is the
- * expected state, not a backlog.** At the end of phase 2, 256 of knip's 532
- * findings sit under `ui/` — 124 distinct symbols, two thirds of them the
- * `XProps` aliases a wrapper needs in order to be wrapped. They are not dead
- * code by knip's usual meaning: this is a *ported vendor surface*, kept
- * complete on purpose so haklex's phase-3 and phase-4 components compile
- * against it unmodified. Trimming it to what phase 2 happens to call would
- * mean re-porting each piece at the moment it is needed, and re-deriving the
- * Base UI 1.7 adaptations recorded on each component (see `select`, `tooltip`,
- * `combobox`) a second time.
+ * **Most of this directory is unconsumed today, and that is the expected
+ * state, not a backlog.** At the end of phase 2, 256 of knip's findings sat
+ * under `ui/` — 124 distinct symbols, two thirds of them the `XProps` aliases
+ * a wrapper needs in order to be wrapped. They are not dead code by knip's
+ * usual meaning: this is a *ported vendor surface*, kept complete on purpose
+ * so haklex's phase-3 and phase-4 components compile against it unmodified.
+ * Trimming it to what phase 2 happens to call would mean re-porting each piece
+ * at the moment it is needed, and re-deriving the Base UI 1.7 adaptations
+ * recorded on each component (see `select`, `tooltip`, `combobox`) a second
+ * time. Three groups are entirely unconsumed and are the clearest case:
+ * `combobox` (nothing in the editor is a searchable select yet), the low-level
+ * `Popover*`/`Tooltip*` parts under the `Tooltip` / `ColorPicker` convenience
+ * wrappers, and `Sheet` / `ScrollArea` / `ActionBar`.
  *
- * So the triage for anything under `ui/` is **keep, with this as the reason**,
- * and the findings stay visible rather than being silenced in `knip.json` —
- * an ignore entry here would also hide a primitive that phase 3 lands and
- * nothing ever calls. Three groups are entirely unconsumed today and are the
- * clearest case: `combobox` (nothing in the editor is a searchable select
- * yet), the low-level `Popover*`/`Tooltip*` parts under the `Tooltip` /
- * `ColorPicker` convenience wrappers, and `Sheet` / `ScrollArea` / `ActionBar`.
+ * **This file is therefore a knip `entry`** (see `knip.json`), which is how
+ * that intent is stated rather than repeated by hand: knip does not report an
+ * entry's own exports and treats what it re-exports as consumed, so the kit
+ * stops filling the report. Previously the note here said the findings should
+ * stay visible instead — that traded 256 hits, none of which anyone would ever
+ * action, against catching a primitive that lands and is never called, and the
+ * report is the thing that has to stay readable. The trade is narrower than it
+ * looks: the exemption is granted by *adding a symbol to this barrel*, so
+ * anything under `ui/` this file does not re-export is still reported as rot
+ * (`hsvToRgb` in `color-picker/color-math.ts` is the current example), and
+ * **`pnpm exec knip --include-entry-exports` returns the whole surface** — 578
+ * findings against the default report's 324. So the case the old note was
+ * protecting is one flag away rather than gone: run it before porting a
+ * component, to see what the kit already carries.
  *
  * Everything *outside* `ui/` gets ordinary treatment: an unused export there
  * is deleted or unexported. `utils/useColorScheme.ts` is the phase-2 example.
