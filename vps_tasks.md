@@ -152,9 +152,10 @@ rather than assumed.
 - [x] `IS_VERCEL` — **already gone.** Nothing in the tree references it; the
       item was stale.
 
-One thing found while doing this, not acted on: `NEXT_PUBLIC_DEMO_MODE` and the
-`IS_DEMO` it feeds (`src/lib/demo.ts`) are read by nothing at all. The whole
-file is dead.
+One correction to a note made while doing this: `src/lib/demo.ts` and its
+`NEXT_PUBLIC_DEMO_MODE` are read by nothing, but they are not repo cleanup —
+`.gitignore` lists the file under "local scratch", so it is an untracked local
+throwaway that was never in the tree. Nothing to do.
 
 ## Cost, for reference
 
