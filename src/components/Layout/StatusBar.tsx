@@ -40,7 +40,7 @@ const Item: React.FC<React.PropsWithChildren> = ({ children }) => (
  * The workspace's bottom rail: what is being looked at, and the one thing about
  * it that might have gone wrong.
  *
- * The last item of docs/plans/ide-redesign.md's deferred list. Two of the five
+ * The last item of docs/plans/archive/ide-redesign.md's deferred list. Two of the five
  * fields that plan named are deliberately absent, because later work overtook
  * it:
  *

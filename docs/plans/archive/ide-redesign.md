@@ -1,19 +1,19 @@
 # IDE Redesign — Phased Plan (visible pass)
 
-**Status: all three phases of this pass have shipped, and so has the status
-bar.** Phase 0 (⌘K palette) and Phase 1 (`fda8cb70` — search pill + Read/Edit
-toggle) are in `EditorTopBar.tsx`; Phase 2's Explorer restyle landed over
-`4e138db5`…`13c32850`; Phase 3 is `Layout/ActivityRail.tsx`,
+**Status: CLOSED 2 Sep 2026.** All three phases of this pass shipped, and so
+did the status bar. Phase 0 (⌘K palette) and Phase 1 (`fda8cb70` — search pill
++ Read/Edit toggle) are in `EditorTopBar.tsx`; Phase 2's Explorer restyle
+landed over `4e138db5`…`13c32850`; Phase 3 is `Layout/ActivityRail.tsx`,
 `SideBar/SidebarSearchView.tsx` and `ui.sidebarView` in `store/app.ts`. The
 status bar is `Layout/StatusBar.tsx` — see the deferred list below for what it
 does and does not show, and why.
 
-**Nothing here is actionable any more.** The two remaining deferred items are
-**blocked on respecification**, not on effort: both name their target by
-reference to the Blog IDE proposal bundle, and that bundle is no longer in the
-repo (see the line under this one). Somebody has to decide what "restyle the AI
-panel" means before it can be built. This file stays out of `archive/` to hold
-that fact; §"Locked decisions" and the phase bodies are history.
+**The two items that kept this file out of `archive/` were dropped rather than
+respecified**, which is what closed it. Both named their target by reference to
+the Blog IDE proposal bundle, and that bundle is no longer in the repo, so
+neither could say what it wanted; the deferred list records the call. Everything
+here is history now — §"Locked decisions" and the phase bodies describe the tree
+as it was when each phase landed.
 
 Applying the **Blog IDE** proposal to this app. (The proposal bundle itself is
 no longer in the repo; the locked decisions below are what survived of it.)
@@ -212,19 +212,22 @@ where the rate lived (a named `WORDS_PER_MIN` in `OutlineSection`, a literal
 `utils/editorContent.ts`, next to `countWords`, so the three callers agree by
 construction rather than by luck.
 
-### AI panel restyle — BLOCKED on respecification
+### AI panel restyle, tabs/breadcrumb polish, front-matter card, toolbar grouping — DROPPED 2 Sep 2026
 
-### Tabs/breadcrumb polish, front-matter card, toolbar grouping — BLOCKED on respecification
+Not deferred, not deprioritised: **withdrawn.** Both specified their target
+_by reference_ — "Copilot → suggested-action cards + IDE chat styling" and "to
+match the proposal's button set" only meant something next to the **Blog IDE
+proposal bundle**, and that bundle left the repo. What was left was two
+placeholders naming a document nobody has, and they were kept on the live list
+for a month on the theory that somebody would one day respecify them.
 
-Neither is "not started". Both specify their target _by reference_: "Copilot →
-suggested-action cards + IDE chat styling" and "to match the proposal's button
-set" only mean something next to the **Blog IDE proposal bundle**, and that
-bundle is no longer in the repo (see the note under this file's title — the
-locked decisions are all that survived of it). There is nothing to build
-against, and guessing at it would produce a restyle nobody asked for.
+Nobody did, and the theory was the problem: a plan item that cannot say what it
+wants is not work waiting to be scheduled, it is an open question wearing a
+task's clothes. Deleting it costs nothing, because there was nothing there to
+lose — the surviving locked decisions are above, and a future AI-panel restyle
+would start from a fresh look at the panel rather than from these two lines.
 
-Reopening either one starts with a human deciding what it should look like now,
-not with reading this file.
+This is what closed the plan.
 
 ## Cross-cutting: state & architecture
 

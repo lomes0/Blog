@@ -1,7 +1,7 @@
 # Workspace panes, routing, and the AI command surface
 
 **Status: all five phases landed, plus §8.2 (31 Jul 2026).** Sits alongside
-[ide-redesign.md](../ide-redesign.md), which proposed converging the app on an
+[ide-redesign.md](./ide-redesign.md), which proposed converging the app on an
 IDE shell. That convergence is ~done at the _chrome_ level. This plan is about
 the layer underneath it: what "open" means, and who is allowed to say it.
 
