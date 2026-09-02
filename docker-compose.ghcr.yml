@@ -1,0 +1,38 @@
+# Deploy pre-built images from GHCR instead of building on the box.
+# docs/plans/production-deployment.md §4 — the recommended path: the build
+# compiles Excalidraw, MathLive and GeoGebra out of a 1.6GB node_modules, which
+# wants more RAM than a runtime-sized VPS should have, and building in place
+# degrades the live site for the duration of every deploy.
+#
+# Always used *alongside* the production file, never instead of it:
+#
+#   docker compose -f docker-compose.prod.yml -f docker-compose.ghcr.yml pull
+#   docker compose -f docker-compose.prod.yml -f docker-compose.ghcr.yml up -d
+#
+# APP_IMAGE and OPS_IMAGE come from .env — see .env.production.example. Pin a
+# digest or a sha- tag: :latest makes a redeploy and a rollback name the same
+# thing, and there is then nothing to roll back to.
+#
+# Both images come from one workflow run over one commit
+# (.github/workflows/build.yml). They are two stages of the same Dockerfile and
+# are not independently versioned — deploying an `app` from one commit and an
+# `ops` from another gives you maintenance scripts compiled against a different
+# schema than the running server's.
+#
+# Requires Compose v2.24+ for `!reset`. NOTE the spelling: the tag goes on the
+# *value*, `build: !reset null`. The other form, `!reset build: null`, parses
+# and merges without error and leaves the build section fully intact — it looks
+# like it worked, `config` reports success, and the box builds anyway.
+
+services:
+  app:
+    build: !reset null
+    image: ${APP_IMAGE:?set APP_IMAGE in .env, or drop this file and build on the box}
+
+  # Still profile-gated by the production file: `up -d` never starts it, only
+  # `--profile ops run --rm ops` does. The reason it needs an entry here is that
+  # it is the *builder* stage — the one with src/ and tsx — so on a box with no
+  # image it would build the entire toolchain to run one maintenance script.
+  ops:
+    build: !reset null
+    image: ${OPS_IMAGE:?set OPS_IMAGE in .env, or drop this file and build on the box}

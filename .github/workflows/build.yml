@@ -1,0 +1,149 @@
+# Build the production images and push them to GHCR.
+# docs/plans/production-deployment.md §4: build off-box, have the VPS pull.
+#
+# Two images from one Dockerfile, one commit, one run:
+#   ghcr.io/<owner>/<repo>      — the `runner` stage. The Next standalone server.
+#   ghcr.io/<owner>/<repo>-ops  — the `builder` stage. Carries src/ and tsx, which
+#                                 the runner deliberately does not, so that
+#                                 prisma/scripts/* can run at all.
+#
+# They are two views of the same tree and must be deployed as a pair; see the
+# note in docker-compose.ghcr.yml.
+#
+# The build must not need a database (§4.1). `src/app/sitemap.ts` is the only
+# prerendered route that queries Postgres and is `force-dynamic` for that
+# reason. If this job ever fails with "Environment variable not found:
+# DATABASE_URL", another route has grown a query — fix the route, do not add a
+# build-time DATABASE_URL. Baking the post list at build time would leave every
+# post published afterwards invisible to crawlers until the next redeploy:
+# served, well-formed and silently stale.
+
+name: Build
+
+on:
+  push:
+    branches: [main, master]
+    tags: ["v*"]
+  # Build PRs to prove they still build; never push an image from one.
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build:
+    name: Build and push images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # GHCR paths must be lowercase; a repository name with capitals is
+      # accepted by GitHub and rejected by the registry.
+      - name: Compute image names
+        id: names
+        run: |
+          repo="${GITHUB_REPOSITORY,,}"
+          echo "app=${REGISTRY}/${repo}" >> "$GITHUB_OUTPUT"
+          echo "ops=${REGISTRY}/${repo}-ops" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        # Skipped on pull_request: the token is read-only there, and the build
+        # steps below do not push.
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tags for the app image
+        id: meta-app
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.names.outputs.app }}
+          # `sha-<short>` is the tag to pin in .env. `latest` exists for
+          # convenience and is not a deployment target — pinning it means a
+          # rollback has nothing to roll back to.
+          tags: |
+            type=sha,format=short
+            type=ref,event=tag
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Tags for the ops image
+        id: meta-ops
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.names.outputs.ops }}
+          tags: |
+            type=sha,format=short
+            type=ref,event=tag
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      # amd64 only. Every VPS in §6's price range is amd64, and adding arm64
+      # here means QEMU-emulating a build that already compiles Excalidraw,
+      # MathLive and GeoGebra.
+      #
+      # The ops image is built first on purpose: it *is* the builder stage, so
+      # the app build below reuses those layers from cache rather than
+      # installing 1.6GB of node_modules and running `pnpm build` a second time.
+      - name: Build and push ops image (builder stage)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: builder
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta-ops.outputs.tags }}
+          labels: ${{ steps.meta-ops.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push app image (runner stage)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: runner
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta-app.outputs.tags }}
+          labels: ${{ steps.meta-app.outputs.labels }}
+          # NEXT_PUBLIC_* is inlined into the client bundle at build time and
+          # cannot be set from the box's .env — see the Dockerfile. Set the
+          # repository variable to turn the editor's OCR and math tools on;
+          # unset, they are simply absent.
+          build-args: |
+            NEXT_PUBLIC_FASTAPI_URL=${{ vars.NEXT_PUBLIC_FASTAPI_URL }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy line
+        if: github.event_name != 'pull_request'
+        run: |
+          tag="sha-${GITHUB_SHA::7}"
+          {
+            echo "### Deploy this build"
+            echo
+            echo 'In `/opt/blog-simple/.env`:'
+            echo
+            echo '```'
+            echo "APP_IMAGE=${{ steps.names.outputs.app }}:${tag}"
+            echo "OPS_IMAGE=${{ steps.names.outputs.ops }}:${tag}"
+            echo '```'
+            echo
+            echo 'Then:'
+            echo
+            echo '```'
+            echo 'docker compose -f docker-compose.prod.yml -f docker-compose.ghcr.yml pull'
+            echo 'docker compose -f docker-compose.prod.yml -f docker-compose.ghcr.yml up -d'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

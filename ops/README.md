@@ -121,6 +121,16 @@ Call the script directly, not through its `pnpm` alias: the aliases carry
 `--env-file=.env`, and `.env` is in `.dockerignore` — correctly, a secrets file
 does not belong in an image. Compose supplies the environment instead.
 
+**On a box that deploys pre-built images**, add `-f docker-compose.ghcr.yml` to
+that command, or it builds the entire builder stage — 1.6GB of `node_modules`
+and a full Next build — to run one script. The scripts here already do it: `.env`
+setting `APP_IMAGE` is what tells `ops/lib.sh` to append the override to every
+compose call it makes, and to export `APP_IMAGE` so
+`ops/docker-compose.drill.yml` resolves it too (compose reads `.env` from the
+project directory, and for the drill file that is `ops/`, where there is none).
+`APP_IMAGE` and `OPS_IMAGE` must name the same commit; see
+[docker-compose.ghcr.yml](../docker-compose.ghcr.yml).
+
 ## Restoring for real
 
 The drill is the rehearsal; this is the performance. Same steps, aimed at

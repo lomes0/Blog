@@ -47,8 +47,27 @@ PG_DB="$(env_of POSTGRES_DB blog)"
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/blog-simple}"
 STATE_DIR="${STATE_DIR:-/var/lib/blog-simple}"
 
+# APP_IMAGE in the app's .env is what says this box deploys pre-built images
+# from GHCR rather than building in place. When it is set, every compose call
+# here must carry docker-compose.ghcr.yml too — otherwise the profile-gated
+# `ops` service falls back to its `build:` section and builds the entire
+# builder stage, 1.6GB of node_modules and a full Next build, on a box sized
+# for the runtime. That is the exact cost §4 chose the registry to avoid, and
+# it would be paid inside a nightly timer at 03:17.
+#
+# Exported rather than read locally because ops/docker-compose.drill.yml
+# interpolates APP_IMAGE too, and compose resolves that from the *project*
+# directory's .env — which for the drill file is ops/, where there is none.
+APP_IMAGE="$(env_of APP_IMAGE)"; export APP_IMAGE
+OPS_IMAGE="$(env_of OPS_IMAGE)"; export OPS_IMAGE
+
+COMPOSE_FILES=(-f "$BLOG_DIR/docker-compose.prod.yml")
+if [ -n "$APP_IMAGE" ]; then
+  COMPOSE_FILES+=(-f "$BLOG_DIR/docker-compose.ghcr.yml")
+fi
+
 compose() {
-  docker compose -f "$BLOG_DIR/docker-compose.prod.yml" "$@"
+  docker compose "${COMPOSE_FILES[@]}" "$@"
 }
 
 log()  { printf '%s  %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }

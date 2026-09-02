@@ -57,7 +57,12 @@ services:
       "
 
   app:
-    image: blog-simple:latest
+    # The same image the production stack runs, whichever way it got here: a
+    # local `up --build` tags blog-simple:latest, a registry deploy sets
+    # APP_IMAGE. A drill against an image the box does not have fails on
+    # "image not found" — after the restore has already been proved, which
+    # reads as the restore failing.
+    image: ${APP_IMAGE:-blog-simple:latest}
     depends_on:
       postgres:
         condition: service_healthy

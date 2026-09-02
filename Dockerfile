@@ -39,6 +39,13 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # `postinstall` only runs patch-package, so generate the client explicitly.
 RUN pnpm exec prisma generate
+# NEXT_PUBLIC_* is inlined into the client bundle here and cannot be changed
+# afterwards — and .env is in .dockerignore, so the build never sees the
+# deployment's env file either. Anything the browser must know is a build arg or
+# it is unreachable, whatever the box's .env says. .env.production.example
+# records that; .github/workflows/build.yml passes it.
+ARG NEXT_PUBLIC_FASTAPI_URL=""
+ENV NEXT_PUBLIC_FASTAPI_URL=${NEXT_PUBLIC_FASTAPI_URL}
 RUN pnpm build
 
 # ---- Runner -----------------------------------------------------------------
