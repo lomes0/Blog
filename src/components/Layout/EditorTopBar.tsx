@@ -28,6 +28,7 @@ import { paneCommands } from "@/commands";
 import { useCommandRun } from "@/commands/CommandProvider";
 import { useTopBarActions } from "@/contexts/TopBarActionsContext";
 import { ICON_SIZE } from "@/theme/icons";
+import { CHROME_BAR_H } from "@/theme/tokens";
 import { openCommandPalette } from "@/components/CommandPalette/CommandPalette";
 import { CONTENT_AXIS_SHIFT } from "./contentInset";
 
@@ -268,7 +269,7 @@ const EditorTopBar: React.FC = () => {
   return (
     <Box
       sx={{
-        minHeight: 40,
+        minHeight: CHROME_BAR_H,
         px: 1.5,
         borderBottom: "1px solid",
         borderColor: "divider",

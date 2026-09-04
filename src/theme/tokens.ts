@@ -135,3 +135,19 @@ export const hiddenScrollbarSx = {
   scrollbarWidth: "none",
   "&::-webkit-scrollbar": { display: "none" },
 } as const;
+
+/**
+ * The app's chrome bar height — DESIGN.md §17.1's regions, stated once.
+ *
+ * Every full-height column reserves this much at the top, so the horizontal
+ * rules across the shell land on one axis. It was `minHeight: 40` in
+ * `EditorTopBar` alone; the sidebar header was 36, the right rail's panel header
+ * ~36 and the Copilot's ~51, which put three rules at three heights across three
+ * touching columns.
+ *
+ * A column with no bar of its own — the two icon rails — still reserves the band
+ * rather than starting its content at the top edge: the activity rail centres
+ * its brand chip in it, and the right rail's strip begins where the panel header
+ * beside it ends.
+ */
+export const CHROME_BAR_H = 40;

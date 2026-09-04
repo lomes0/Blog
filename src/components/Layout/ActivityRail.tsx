@@ -12,7 +12,7 @@ import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
 import { workspaceCommands } from "@/commands";
 import { useCommandRun } from "@/commands/CommandProvider";
 import { ACTIVITY_RAIL_W } from "./SideBar/constants";
-import { FOCUS_RING, MOTION } from "@/theme/tokens";
+import { CHROME_BAR_H, FOCUS_RING, MOTION } from "@/theme/tokens";
 
 interface RailButtonProps {
   label: string;
@@ -146,7 +146,9 @@ const ActivityRail: React.FC = () => {
         bgcolor: "background.rail",
         borderRight: "1px solid",
         borderColor: "divider",
-        py: 0.5,
+        // No top padding: the brand chip below owns the chrome band instead, so
+        // it centres on the same axis as the top bar's contents.
+        pb: 0.5,
         displayPrint: "none",
         zIndex: (theme) => theme.zIndex.drawer + 1,
       }}
@@ -164,7 +166,10 @@ const ActivityRail: React.FC = () => {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            height: 42,
+            // The shell's chrome band (DESIGN.md §17.1) rather than the 42px
+            // pitch the buttons below use: this chip is the rail's title row,
+            // and it lines up with the editor top bar and the two panel headers.
+            height: CHROME_BAR_H,
             flexShrink: 0,
             "&:hover .rail-chip": {
               bgcolor: "action.hover",

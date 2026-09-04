@@ -3,6 +3,7 @@ import React from "react";
 import { Box, Typography } from "@mui/material";
 import type { SidebarView } from "@/types";
 import { SB_FONT } from "./constants";
+import { CHROME_BAR_H } from "@/theme/tokens";
 
 const VIEW_TITLES: Record<SidebarView, string> = {
   explorer: "Explorer",
@@ -32,7 +33,7 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({ view }) => {
       sx={{
         display: "flex",
         alignItems: "center",
-        minHeight: 36,
+        minHeight: CHROME_BAR_H,
         px: 2,
         flexShrink: 0,
       }}

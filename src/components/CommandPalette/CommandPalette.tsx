@@ -18,6 +18,7 @@ import { selectAllPosts } from "@/store/selectors/postsSelectors";
 import { ICON_SIZE } from "@/theme/icons";
 import { useCommandContext, useCommandRun } from "@/commands/CommandProvider";
 import { documentCommands, uiCommands } from "@/commands";
+import { MAIN_SCROLLER_ID } from "@/components/EditDocument/paneChrome";
 
 /**
  * Custom window event other entry points (title-bar search, activity rail,
@@ -82,7 +83,7 @@ const CommandPalette = () => {
    * what this measures is exactly the box a centered child is centered in.
    */
   const measureOffset = useCallback(() => {
-    const el = document.getElementById("editor-main-container");
+    const el = document.getElementById(MAIN_SCROLLER_ID);
     if (!el) return setOffsetX(0);
     const style = getComputedStyle(el);
     const padLeft = parseFloat(style.paddingLeft) || 0;
@@ -130,7 +131,7 @@ const CommandPalette = () => {
   // closes. Observing the container covers all of them, per frame, where a
   // `resize` listener would only catch the first.
   useEffect(() => {
-    const el = open && document.getElementById("editor-main-container");
+    const el = open && document.getElementById(MAIN_SCROLLER_ID);
     if (!el) return;
     const observer = new ResizeObserver(measureOffset);
     observer.observe(el);

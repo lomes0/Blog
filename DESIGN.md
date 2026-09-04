@@ -648,10 +648,11 @@ this — no ad-hoc `fontSize`, `rgba()`, or radius literals in chrome.
 | ------------------------------ | -------------------------------------- | --------------------------------- |
 | Activity rail (far left, 54px) | `background.rail` (recessed/darker)    | `1px solid divider` (right)       |
 | Sidebar / Explorer / Search    | `background.sidebar`                   | `1px solid divider` (right)       |
-| Editor top bar                 | `background.default`                   | `1px solid divider` (bottom)      |
+| Editor top bar (40px)          | `background.default`                   | `1px solid divider` (bottom)      |
 | Editor body / canvas           | `background.default`                   | none                              |
 | Command palette overlay        | `background.paper`                     | `1px solid divider`, elev. shadow |
 | Copilot / AI panel + RightRail | `background.panel` (= `rail` in light) | `1px solid divider` (left)        |
+| Right rail's icon strip        | `background.rail` (twin of the left)   | `1px solid divider` (left)        |
 | Status bar (bottom, 26px)      | `background.sidebar`                   | `1px solid divider` (top)         |
 | Inputs (search, palette field) | `background.input`                     | `1px solid divider`               |
 
@@ -747,6 +748,7 @@ mechanics behind it are `hooks/useResizablePanel.ts`.
 
 | Element                      | Radius               | Height / metric                                                           |
 | ---------------------------- | -------------------- | ------------------------------------------------------------------------- |
+| Chrome bar (top bar, headers)| —                    | 40px — `CHROME_BAR_H` in `src/theme/tokens.ts`                            |
 | Rail icon button             | none (full-bleed)    | 44px tall, full width; tint spans full width, 2px accent bar on left edge |
 | Tree / list / result row     | `1.5` (6px)          | ~28–32px                                                                  |
 | Tab                          | `1.5` (6px) top only | matches top-bar height                                                    |
@@ -754,6 +756,17 @@ mechanics behind it are `hooks/useResizablePanel.ts`.
 | Palette overlay              | `3` (12px)           | —                                                                         |
 | Floating menus (block/align) | `2.5` (10px)         | —                                                                         |
 | Buttons / cards / panels     | `2` (8px)            | —                                                                         |
+
+> **One bar height across every column.** The editor top bar, the sidebar's view
+> header, the right rail's `PanelHeader` and the Copilot panel's header all
+> reserve `CHROME_BAR_H`, so the rules they draw land on one axis; the two icon
+> rails reserve the same band without drawing a rule, the activity rail centring
+> its brand chip in it and the right strip beginning where the panel header
+> beside it ends. These were 40 / 36 / ~36 / ~51 — three rules at three heights
+> across three touching columns, which is the first thing that reads as
+> unfinished about the top of the shell. A header that cannot fit its content in
+> 40px loses a line (the Copilot's scope moved onto its title's line); it does
+> not grow.
 
 Menus are a solved case: `MuiMenu`/`MuiMenuItem` in `src/theme/components.ts`
 set the surface (translucent paper + `blur(8px)` + elevation 2) and the row

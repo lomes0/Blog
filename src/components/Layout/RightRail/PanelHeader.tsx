@@ -2,6 +2,7 @@
 import { Box, IconButton, Tooltip, Typography } from "@mui/material";
 import { X } from "lucide-react";
 import { ICON_SIZE } from "@/theme/icons";
+import { CHROME_BAR_H } from "@/theme/tokens";
 import type { ViewId } from "./panelState";
 import { VIEWS } from "./views";
 
@@ -29,11 +30,17 @@ export default function PanelHeader({ view, count, onClose }: PanelHeaderProps) 
         alignItems: "center",
         gap: 0.75,
         px: 1.25,
-        py: 0.875,
+        // The shell's one chrome-bar axis (DESIGN.md §17.1): this rule, the
+        // editor top bar's and the Copilot header's all land on it.
+        minHeight: CHROME_BAR_H,
         flexShrink: 0,
         borderBottom: "1px solid",
         borderColor: "divider",
-        bgcolor: "background.paper",
+        // Not `paper`. The panel is one surface (§17.1 gives the whole RightRail
+        // `background.panel`) and the rule below is what separates the header
+        // from the content — a second fill made the rail a stack of three
+        // surfaces whose depth order inverted between the two schemes.
+        bgcolor: "background.panel",
       }}
     >
       <Box sx={{ color: "text.secondary", display: "flex", flexShrink: 0 }}>

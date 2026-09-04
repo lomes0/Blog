@@ -154,7 +154,7 @@ export default function ViewRail({ current, signals, onSelect }: ViewRailProps) 
                     bgcolor: active ? "accent.pillActiveBg" : "accent.pillBg",
                     // Against the rail, not the chip — it overhangs both.
                     border: "1px solid",
-                    borderColor: "background.panel",
+                    borderColor: "background.rail",
                   }}
                 >
                   {badgeText(count)}

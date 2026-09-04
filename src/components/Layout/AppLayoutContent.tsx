@@ -32,6 +32,7 @@ import {
   SetActiveEditorContext,
 } from "@/contexts/ActiveEditorContext";
 import { hiddenScrollbarSx } from "@/theme/tokens";
+import { MAIN_SCROLLER_ID } from "@/components/EditDocument/paneChrome";
 
 // Must match the grid-template-columns transition duration below.
 const COPILOT_TRANSITION_MS = 225;
@@ -154,7 +155,7 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
               <HydrationManager>
                 <Container
                   className="editor-container"
-                  id="editor-main-container"
+                  id={MAIN_SCROLLER_ID}
                   maxWidth={false}
                   sx={{
                     display: "flex",

@@ -1,6 +1,7 @@
 /**
  * Geometry shared between a pane's real chrome and the stand-in drawn while it
- * loads. Import-free on purpose, so both sides can read it without either
+ * loads, plus the DOM contract for addressing a pane's scroller from outside
+ * it. Import-free on purpose, so both sides can read it without either
  * depending on the other.
  */
 
@@ -73,3 +74,43 @@ export const SPLITTER_W = 11;
  * there is no window in which a stand-in would be standing in for it.
  */
 export const PANE_STRIP_H = 32;
+
+/**
+ * Id of the page's own scrolling container (`AppLayoutContent`'s Container).
+ *
+ * The element above it, `#app-main`, is `overflow: hidden` — it holds the top
+ * bar, this container and the status bar, and never scrolls. Reading a scroll
+ * position off it is not merely imprecise, it is always zero, which is what the
+ * right rail's reading-progress bar had been reporting since it was written.
+ */
+export const MAIN_SCROLLER_ID = "editor-main-container";
+
+/**
+ * Marks a split pane's own scroller (`PaneFrame`), which has no id because
+ * there is one per pane.
+ *
+ * Unsplit there is no such element at all — the pane renders bare into the
+ * page's container — so {@link documentScrollerFor} falls back rather than
+ * treating its absence as an error.
+ */
+export const PANE_SCROLLER_ATTR = "data-pane-scroller";
+
+/**
+ * The element that scrolls a given pane's document.
+ *
+ * Two answers, and which one applies is not the caller's business: split, each
+ * pane scrolls itself inside `PaneFrame`; unsplit, the page's own container
+ * scrolls the document. `useScrollMemory` resolves the same pair by walking up
+ * from an anchor inside the pane — that route is not open to chrome that lives
+ * *outside* the panes, which is why this one is by name.
+ *
+ * Returns `null` before mount and on a route with no workspace.
+ */
+export const documentScrollerFor = (
+  paneId: string | null,
+): HTMLElement | null => {
+  if (typeof document === "undefined") return null;
+  const pane = paneId ? document.getElementById(`pane-${paneId}`) : null;
+  const own = pane?.querySelector<HTMLElement>(`[${PANE_SCROLLER_ATTR}]`);
+  return own ?? document.getElementById(MAIN_SCROLLER_ID);
+};

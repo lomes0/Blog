@@ -23,6 +23,7 @@ import {
 } from "./copilotStorage";
 import { type CopilotThread, WORKSPACE_SCOPE } from "@/types";
 import { ICON_SIZE } from "@/theme/icons";
+import { CHROME_BAR_H } from "@/theme/tokens";
 
 interface CopilotPanelProps {
   /** `null` on a route with no document open — see {@link CopilotChat}. */
@@ -109,7 +110,12 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
       <Box
         sx={{
           px: 1.5,
-          py: 0.75,
+          // The shell's one chrome-bar axis (DESIGN.md §17.1). This header used
+          // to stack its title and its scope, which made it ~51px against the
+          // editor top bar's 40 and the right rail's 36 — three rules at three
+          // heights across three touching columns. The scope is on the title's
+          // line now, which is what buys the height back.
+          minHeight: CHROME_BAR_H,
           borderBottom: 1,
           borderColor: "divider",
           display: "flex",
@@ -128,15 +134,24 @@ const CopilotPanel: React.FC<CopilotPanelProps> = ({ documentId }) => {
           </IconButton>
         </Tooltip>
 
-        <Box sx={{ flex: 1, minWidth: 0, ml: 0.5 }}>
-          <Typography variant="subtitle2" sx={{ lineHeight: 1.2 }}>
+        <Box
+          sx={{
+            flex: 1,
+            minWidth: 0,
+            ml: 0.5,
+            display: "flex",
+            alignItems: "baseline",
+            gap: 0.75,
+          }}
+        >
+          <Typography variant="subtitle2" sx={{ flexShrink: 0 }}>
             Copilot
           </Typography>
           <Typography
             variant="caption"
             color="text.secondary"
             noWrap
-            display="block"
+            sx={{ minWidth: 0 }}
           >
             {
               /* Scope only. The model now has one home — the button on the

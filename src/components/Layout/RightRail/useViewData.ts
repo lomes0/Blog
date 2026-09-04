@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { postsSelectors, useSelector } from "@/store";
 import { extractHeadings, type OutlineHeading } from "@/utils/editorContent";
+import { documentScrollerFor } from "@/components/EditDocument/paneChrome";
 import type { ViewId } from "./panelState";
 
 /**
@@ -19,9 +20,7 @@ import type { ViewId } from "./panelState";
  * focused document whether or not the view is on screen.
  */
 
-function extractDomHeadings(): OutlineHeading[] {
-  const el = document.getElementById("app-main");
-  if (!el) return [];
+function extractDomHeadings(el: HTMLElement): OutlineHeading[] {
   const result: OutlineHeading[] = [];
   el.querySelectorAll("h2, h3").forEach((h) => {
     const level = parseInt(h.tagName.slice(1), 10) as 2 | 3;
@@ -39,7 +38,12 @@ function extractDomHeadings(): OutlineHeading[] {
  * stores to keep every document's content out of memory at startup, so the
  * rendered HTML is the only copy of the headings there is.
  */
-export const useOutlineHeadings = (activeDocId: string | null) => {
+export const useOutlineHeadings = (
+  activeDocId: string | null,
+  /** Scoped to the focused pane's scroller — in a split, the other pane's
+   * headings belong to the other pane's outline. */
+  paneId: string | null,
+) => {
   const [domHeadings, setDomHeadings] = useState<OutlineHeading[]>([]);
 
   const docData = useSelector((state) => {
@@ -52,15 +56,15 @@ export const useOutlineHeadings = (activeDocId: string | null) => {
 
   useEffect(() => {
     if (!needsDomFallback) return;
-    const el = document.getElementById("app-main");
+    const el = documentScrollerFor(paneId);
     if (!el) return;
-    setDomHeadings(extractDomHeadings());
+    setDomHeadings(extractDomHeadings(el));
     const observer = new MutationObserver(() =>
-      setDomHeadings(extractDomHeadings())
+      setDomHeadings(extractDomHeadings(el))
     );
     observer.observe(el, { childList: true, subtree: true });
     return () => observer.disconnect();
-  }, [needsDomFallback, activeDocId]);
+  }, [needsDomFallback, activeDocId, paneId]);
 
   return needsDomFallback ? domHeadings : jsonHeadings;
 };

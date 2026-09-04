@@ -9,7 +9,7 @@ import {
   selectFocusedDocId,
   selectFocusedPane,
 } from "@/store/selectors/layoutSelectors";
-import { useLayoutMode } from "@/contexts/LayoutModeContext";
+import { RAIL_COMPACT_W, useLayoutMode } from "@/contexts/LayoutModeContext";
 import ResizeGripper from "../ResizeGripper";
 import OutlineSection from "./OutlineSection";
 import PropertiesSection from "./PropertiesSection";
@@ -18,6 +18,7 @@ import ProposalsSection from "./ProposalsSection";
 import PanelHeader from "./PanelHeader";
 import ViewRail from "./ViewRail";
 import { ICON_SIZE } from "@/theme/icons";
+import { CHROME_BAR_H } from "@/theme/tokens";
 import { uiCommands } from "@/commands";
 import { useCommandRun } from "@/commands/CommandProvider";
 import { type ViewId, VIEW_IDS } from "./panelState";
@@ -48,6 +49,8 @@ const RightRail: React.FC = () => {
 
   const pane = useSelector(selectFocusedPane);
   const rootId = pane?.rootId ?? null;
+  // Which pane's scroller the outline reads — see `paneChrome.documentScrollerFor`.
+  const paneId = pane?.id ?? null;
   const isEditMode = pane?.mode === "write";
   const activeDocId = useSelector(selectFocusedDocId);
   // Undefined unless something open is retrying or has failed to save.
@@ -57,7 +60,7 @@ const RightRail: React.FC = () => {
 
   // Read once, here, and handed to both the rail's badges and the sections.
   // See `useViewData.ts` for why this is not each view's own business.
-  const headings = useOutlineHeadings(activeDocId);
+  const headings = useOutlineHeadings(activeDocId, paneId);
   const signals = useViewSignals(rootId, activeDocId, headings.length);
 
   // Keep the panel in the DOM during the close animation so it clips gradually
@@ -118,7 +121,13 @@ const RightRail: React.FC = () => {
         return <ProposalsSection activeDocId={activeDocId} />;
       case "outline":
         return rootId
-          ? <OutlineSection activeDocId={activeDocId} headings={headings} />
+          ? (
+            <OutlineSection
+              activeDocId={activeDocId}
+              paneId={paneId}
+              headings={headings}
+            />
+          )
           : <NothingOpen />;
       case "properties":
         return rootId
@@ -141,7 +150,7 @@ const RightRail: React.FC = () => {
           )
           : <NothingOpen />;
     }
-  }, [activeDocId, rootId, isEditMode, headings]);
+  }, [activeDocId, rootId, paneId, isEditMode, headings]);
 
   return (
     <Box
@@ -191,7 +200,6 @@ const RightRail: React.FC = () => {
                     overflowX: "hidden",
                     px: 1.25,
                     py: 1,
-                    bgcolor: "background.default",
                   }}
                 >
                   {renderView(view)}
@@ -208,13 +216,20 @@ const RightRail: React.FC = () => {
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          pt: 1,
+          // The strip starts where the panel header's rule ends, so the icon
+          // group and the panel it switches begin on the same line.
+          pt: `${CHROME_BAR_H}px`,
           gap: 0.5,
           borderLeft: "1px solid",
           borderColor: "divider",
-          bgcolor: "background.panel",
+          // `rail`, not `panel`: this strip is the right-hand twin of the
+          // activity rail, and the two bookends have to be the same surface.
+          // In light they already were (§2: panel *equals* rail there), so the
+          // mismatch only ever showed in dark — #2a3141 against the left rail's
+          // #1b202c.
+          bgcolor: "background.rail",
           height: "100vh",
-          width: 54,
+          width: RAIL_COMPACT_W,
           flexShrink: 0,
           position: "sticky",
           top: 0,

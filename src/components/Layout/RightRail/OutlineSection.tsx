@@ -7,9 +7,16 @@ import {
   type OutlineHeading,
   readingMinutes,
 } from "@/utils/editorContent";
+import { documentScrollerFor } from "@/components/EditDocument/paneChrome";
 
 interface OutlineSectionProps {
   activeDocId: string | null;
+  /**
+   * The focused pane, so the progress below is read off the scroller that
+   * actually moves — see {@link documentScrollerFor}. Split, that is the pane's
+   * own; unsplit, the page's container.
+   */
+  paneId: string | null;
   /**
    * The document's headings, read by `RightRail` rather than here.
    *
@@ -22,7 +29,7 @@ interface OutlineSectionProps {
 }
 
 export default function OutlineSection(
-  { activeDocId, headings }: OutlineSectionProps,
+  { activeDocId, paneId, headings }: OutlineSectionProps,
 ) {
   const [scrollPct, setScrollPct] = useState(0);
 
@@ -34,16 +41,30 @@ export default function OutlineSection(
   const wordCount = countWords(docData);
   const readMinutes = readingMinutes(wordCount);
 
+  /*
+   * This listened on `#app-main`, which is `overflow: hidden` — the top bar,
+   * the document container and the status bar sit inside it and it never
+   * scrolls. So `scrollHeight - clientHeight` was 0, the percentage never left
+   * 0, the bar never moved and "~N min left" always reported the whole
+   * document. The scroller is one level down, and in a split it is the focused
+   * pane's own.
+   *
+   * Read once on attach as well as on the event: a document restored to where
+   * it was left (`useScrollMemory`) has already scrolled by the time this runs,
+   * and waiting for a wheel to learn that is how the bar shows 0% on a
+   * half-read page.
+   */
   useEffect(() => {
-    const el = document.getElementById("app-main");
+    const el = documentScrollerFor(paneId);
     if (!el) return;
     const onScroll = () => {
       const max = el.scrollHeight - el.clientHeight;
       setScrollPct(max > 0 ? Math.round((el.scrollTop / max) * 100) : 0);
     };
+    onScroll();
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [paneId, activeDocId]);
 
   const remaining = Math.max(
     0,
@@ -51,7 +72,9 @@ export default function OutlineSection(
   );
 
   const scrollTo = (text: string) => {
-    const el = document.getElementById("app-main");
+    // The pane's own scroller is also the right search root: in a split, the
+    // other pane's headings are not this outline's to jump to.
+    const el = documentScrollerFor(paneId);
     if (!el) return;
     const allHeadings = el.querySelectorAll("h2, h3");
     for (const h of allHeadings) {

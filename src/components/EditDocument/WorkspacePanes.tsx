@@ -27,7 +27,7 @@ import {
 import TabbedDocumentEditor from "./TabbedDocumentEditor";
 import WorkspaceToolbar from "./WorkspaceToolbar";
 import { PANE_ACTION_CLASS } from "./PaneHeader";
-import { PANE_PAD_X, SPLITTER_W } from "./paneChrome";
+import { PANE_PAD_X, PANE_SCROLLER_ATTR, SPLITTER_W } from "./paneChrome";
 import { hiddenScrollbarSx } from "@/theme/tokens";
 import { cancelContentGutters } from "@/components/Layout/contentInset";
 import { ToolbarSlotProvider } from "@/contexts/ToolbarSlotContext";
@@ -141,6 +141,7 @@ const PaneFrame: React.FC<PaneFrameProps> = ({
           on it will not think to come back here. */
       }
       <Box
+        {...{ [PANE_SCROLLER_ATTR]: "" }}
         sx={{
           flex: 1,
           minHeight: 0,
