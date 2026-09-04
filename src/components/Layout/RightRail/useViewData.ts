@@ -10,57 +10,14 @@ import type { ViewId } from "./panelState";
  * Read once, by `RightRail`, and handed to both. That is the whole reason this
  * file exists: going from an all-visible stack to one-visible means the rail has
  * to say what is inside a view without the view being mounted, and the obvious
- * way to do that — have the rail fetch its own counts — would run the backlinks
- * request twice and the outline's `MutationObserver` twice whenever the section
- * happened to be open.
+ * way to do that — have the rail compute its own counts — would run the
+ * outline's `MutationObserver` twice whenever that section happened to be open.
  *
- * The cost this makes explicit: backlinks and the outline's DOM fallback are
- * now eager. They used to load only when their card was expanded; a badge that
- * is only right once you have already looked is not a badge, so the fetch and
- * the observer now run for the focused document whether or not the view is on
- * screen. Both are cheap and both are per document, but they are no longer lazy.
+ * The cost this makes explicit: the outline's DOM fallback is now eager. It
+ * used to run only when the card was expanded; a badge that is only right once
+ * you have already looked is not a badge, so the observer now runs for the
+ * focused document whether or not the view is on screen.
  */
-
-export interface BacklinkDoc {
-  id: string;
-  title: string;
-  handle: string | null;
-}
-
-/**
- * A document's backlinks, lifted out of `BacklinksSection`.
- *
- * Still one request per document and still cancelled on change; the only thing
- * that moved is who owns it.
- */
-export const useBacklinks = (rootId: string | null) => {
-  const [backlinks, setBacklinks] = useState<BacklinkDoc[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!rootId) {
-      setBacklinks([]);
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    fetch(`/api/documents/${rootId}/backlinks`)
-      .then((r) => r.ok ? r.json() : { data: [] })
-      .then((json) => {
-        if (!cancelled) setBacklinks(json.data ?? []);
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [rootId]);
-
-  return { backlinks, loading };
-};
 
 function extractDomHeadings(): OutlineHeading[] {
   const el = document.getElementById("app-main");
@@ -141,8 +98,6 @@ export const useViewSignals = (
   rootId: string | null,
   activeDocId: string | null,
   headingCount: number,
-  backlinkCount: number,
-  backlinksLoading: boolean,
 ): Record<ViewId, ViewSignal> => {
   const pendingAgentChanges = useSelector((state) =>
     state.ui.proposals.count.total
@@ -163,12 +118,5 @@ export const useViewSignals = (
     // to show at all.
     properties: { count: null, empty: !rootId },
     revisions: { count: revisionCount, empty: revisionCount === 0 },
-    backlinks: {
-      count: backlinkCount,
-      // Not dimmed while the request is in flight: flashing an icon from dim to
-      // lit on every document change is the sort of movement the rail exists to
-      // avoid, and "loading" is not "empty".
-      empty: !backlinksLoading && backlinkCount === 0,
-    },
   };
 };

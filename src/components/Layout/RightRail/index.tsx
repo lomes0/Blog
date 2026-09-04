@@ -15,7 +15,6 @@ import OutlineSection from "./OutlineSection";
 import PropertiesSection from "./PropertiesSection";
 import RevisionsSection from "./RevisionsSection";
 import ProposalsSection from "./ProposalsSection";
-import BacklinksSection from "./BacklinksSection";
 import PanelHeader from "./PanelHeader";
 import ViewRail from "./ViewRail";
 import { ICON_SIZE } from "@/theme/icons";
@@ -23,11 +22,7 @@ import { uiCommands } from "@/commands";
 import { useCommandRun } from "@/commands/CommandProvider";
 import { type ViewId, VIEW_IDS } from "./panelState";
 import { useRailPanel } from "./useRailPanel";
-import {
-  useBacklinks,
-  useOutlineHeadings,
-  useViewSignals,
-} from "./useViewData";
+import { useOutlineHeadings, useViewSignals } from "./useViewData";
 
 // Must match the grid-template-columns transition duration in AppLayoutContent.
 const TRANSITION_MS = 225;
@@ -63,14 +58,7 @@ const RightRail: React.FC = () => {
   // Read once, here, and handed to both the rail's badges and the sections.
   // See `useViewData.ts` for why this is not each view's own business.
   const headings = useOutlineHeadings(activeDocId);
-  const { backlinks, loading: backlinksLoading } = useBacklinks(rootId);
-  const signals = useViewSignals(
-    rootId,
-    activeDocId,
-    headings.length,
-    backlinks.length,
-    backlinksLoading,
-  );
+  const signals = useViewSignals(rootId, activeDocId, headings.length);
 
   // Keep the panel in the DOM during the close animation so it clips gradually
   // as the grid column shrinks, instead of vanishing instantly.
@@ -85,7 +73,7 @@ const RightRail: React.FC = () => {
   }, [open]);
 
   /**
-   * `Cmd/Ctrl+1..5`, and `Escape` inside the panel.
+   * `Cmd/Ctrl+1..4`, and `Escape` inside the panel.
    *
    * Escape is shared with the pane un-maximize in `WorkspacePanes`, which is
    * why this one only fires when focus is actually inside the panel, and marks
@@ -95,9 +83,14 @@ const RightRail: React.FC = () => {
     const onKeyDown = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
 
-      if (mod && !e.shiftKey && !e.altKey && /^[1-5]$/.test(e.key)) {
+      // Bounded by the rail's own length rather than a literal, so removing a
+      // view cannot leave a chord pointing past the end of it.
+      const digit = mod && !e.shiftKey && !e.altKey && /^[1-9]$/.test(e.key)
+        ? Number(e.key)
+        : 0;
+      if (digit >= 1 && digit <= VIEW_IDS.length) {
         e.preventDefault();
-        selectView(VIEW_IDS[Number(e.key) - 1]);
+        selectView(VIEW_IDS[digit - 1]);
         return;
       }
       if (
@@ -147,19 +140,8 @@ const RightRail: React.FC = () => {
             />
           )
           : <NothingOpen />;
-      case "backlinks":
-        return rootId
-          ? <BacklinksSection backlinks={backlinks} loading={backlinksLoading} />
-          : <NothingOpen />;
     }
-  }, [
-    activeDocId,
-    rootId,
-    isEditMode,
-    headings,
-    backlinks,
-    backlinksLoading,
-  ]);
+  }, [activeDocId, rootId, isEditMode, headings]);
 
   return (
     <Box
@@ -334,7 +316,7 @@ const RightRail: React.FC = () => {
 /**
  * What a document-scoped view shows with an empty workspace.
  *
- * Four of the five views describe a document, so with nothing open they have
+ * Every view but one describes a document, so with nothing open they have
  * nothing to describe. Agent changes is the exception and renders normally —
  * an agent writes to whatever it was asked about, so work waiting on the author
  * is not a property of the document that happens to be open.

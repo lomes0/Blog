@@ -32,7 +32,7 @@ export type ViewId = RailViewId;
 export type PanelView = ViewId | null;
 
 /**
- * Rail order, which is also the `Cmd/Ctrl+1..5` order.
+ * Rail order, which is also the `Cmd/Ctrl+1..4` order.
  *
  * Agent changes leads because it is the only view that speaks about documents
  * other than the open one, so it is the one whose badge is worth reaching
@@ -43,7 +43,6 @@ export const VIEW_IDS: readonly ViewId[] = [
   "outline",
   "properties",
   "revisions",
-  "backlinks",
 ] as const;
 
 /** The view a document with no stored panel state opens on. */

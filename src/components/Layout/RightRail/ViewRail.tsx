@@ -23,7 +23,7 @@ const badgeText = (count: number) => (count > 99 ? "99+" : String(count));
  *
  * This is the part that has to make back what the stack gave away for free.
  * With every section visible at once you could see there were three agent
- * changes and no backlinks without doing anything; with one view visible the
+ * changes and no revisions without doing anything; with one view visible the
  * rail is the only thing that can still say so. Hence a badge per view that has
  * a count, and a dimmed icon for a view that is empty *for this document* —
  * dimmed rather than disabled, because "nothing here" is a fact worth being

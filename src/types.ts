@@ -145,7 +145,7 @@ export type SidebarView = "explorer" | "search" | "notes";
 /**
  * A view the right rail can switch to.
  *
- * The panel used to render all five at once as a stack of collapsible cards;
+ * The panel used to render these all at once as a stack of collapsible cards;
  * it shows one at a time now, and the rail is the switch. The rules live in
  * `components/Layout/RightRail/panelState.ts`; only the shape is here, for the
  * same reason `WorkspaceState` is — this file is a leaf, and the persistence
@@ -164,8 +164,7 @@ export type RailViewId =
   | "agent-changes"
   | "outline"
   | "properties"
-  | "revisions"
-  | "backlinks";
+  | "revisions";
 
 /**
  * How an open post's latest edit is faring on its way to storage.

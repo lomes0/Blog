@@ -2,7 +2,6 @@ import {
   GitPullRequest,
   History,
   Info,
-  Link as LinkIcon,
   type LucideIcon,
   Table,
 } from "lucide-react";
@@ -71,14 +70,6 @@ export const VIEWS: Record<ViewId, ViewDescriptor> = {
     icon: History,
     scope: "document",
     countNoun: ["revision", "revisions"],
-  },
-  backlinks: {
-    id: "backlinks",
-    title: "Backlinks",
-    icon: LinkIcon,
-    // Usually a handful of links, often none.
-    scope: "document",
-    countNoun: ["backlink", "backlinks"],
   },
 };
 

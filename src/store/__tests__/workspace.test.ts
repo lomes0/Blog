@@ -678,9 +678,12 @@ describe("ui.workspace — restoring a stored layout", () => {
   });
 
   it("does not trust a stored panel view", () => {
+    // "backlinks" is not hypothetical — it was a real view until it was
+    // removed, so records in the wild name it. It has to open on something
+    // rather than leaving the panel showing nothing at all.
     const state = restore({
       panes: [storedPane("p1", "doc-a")],
-      railPanel: { "doc-a": "not-a-view", "doc-b": 7 },
+      railPanel: { "doc-a": "backlinks", "doc-b": 7 },
     });
 
     // A string was one of ours and defaults; a number never was, so the
@@ -710,14 +713,14 @@ describe("ui.workspace — restoring a stored layout", () => {
           ok: true,
           stored: {
             panes: [storedPane("p1", "doc-a")],
-            railPanel: { "doc-a": "backlinks" },
+            railPanel: { "doc-a": "properties" },
           },
         },
       }),
     );
 
     expect(workspaceOf(state).panes.map((p) => p.rootId)).toEqual(["doc-b"]);
-    expect(state.ui.railPanel["doc-a"]).toBe("backlinks");
+    expect(state.ui.railPanel["doc-a"]).toBe("properties");
   });
 
   it("installs no panel views when the read failed", () => {
