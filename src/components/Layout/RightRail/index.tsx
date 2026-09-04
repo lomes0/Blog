@@ -19,7 +19,6 @@ import ProposalsSection from "./ProposalsSection";
 import PanelHeader from "./PanelHeader";
 import ViewRail from "./ViewRail";
 import { ICON_SIZE } from "@/theme/icons";
-import { CHROME_BAR_H } from "@/theme/tokens";
 import { uiCommands } from "@/commands";
 import { useCommandRun } from "@/commands/CommandProvider";
 import { type ViewId, VIEW_IDS } from "./panelState";
@@ -219,9 +218,10 @@ const RightRail: React.FC = () => {
           // `stretch`, not `center`: a rail item spans the strip so its active
           // accent bar can hug the window edge, the way the activity rail's does.
           alignItems: "stretch",
-          // The strip starts where the panel header's rule ends, so the icon
-          // group and the panel it switches begin on the same line.
-          pt: `${CHROME_BAR_H}px`,
+          // No top padding: the view icons start at the top of the window, the
+          // way the activity rail's brand chip does. Holding the panel header's
+          // band clear left a 40px gap above the first icon and made this rail
+          // read as starting a row lower than its twin.
           // No `gap`: RAIL_ITEM_H already carries the 4px chip-to-chip gap, and
           // a second one here would put this rail on a 46px pitch against the
           // activity rail's 42. The divider below spaces itself.
