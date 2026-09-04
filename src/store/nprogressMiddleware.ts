@@ -41,27 +41,32 @@ NProgress.configure({
 });
 
 /**
- * Action type prefixes of thunks that may perform network requests.
- * NProgress is shown while any of these are in-flight.
+ * Action type prefixes of thunks the bar reports on: the ones that fetch
+ * something the user is waiting to look at.
  *
- * These are backend-agnostic now: against the local backend they resolve in the
+ * **Writes are deliberately absent.** Autosave dispatches `createRevision` and
+ * then `updatePost` every couple of seconds while somebody is typing, so
+ * tracking either swept a full-width bar across the top of the screen on every
+ * keystroke pause — exactly the flicker the quiet-autosave work removed, and
+ * the same reason `saveStatus` folds `saving` into "nothing to report" (see
+ * `selectSaveTrouble` in `store/index.ts`). A write that actually goes wrong is
+ * announced there, in the rail, where it does not compete with the text being
+ * written. Renames, publishes and moves are silent here for the same reason and
+ * carry their own feedback; a bulk merge is the one write that can take real
+ * time, and it is still not worth a bar over an editor.
+ *
+ * `importGuestDrafts` is the exception that proves the rule: it writes, but it
+ * runs once during bootstrap when there is nothing else on screen to disturb.
+ *
+ * These are backend-agnostic: against the local backend they resolve in the
  * same tick, so the bar never has time to appear.
  */
 const TRACKED_PREFIXES = [
   "app/loadPosts",
   "app/getPost",
   "app/forkPost",
-  "app/createPost",
-  "app/updatePost",
-  "app/deletePost",
-  "app/movePost",
-  "app/duplicatePost",
-  "app/mergePostsIntoTabs",
   "app/getRevision",
-  "app/createRevision",
-  "app/deleteRevision",
   "app/importGuestDrafts",
-  "app/updateUser",
 ];
 
 function isTracked(type: string): boolean {

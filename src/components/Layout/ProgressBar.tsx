@@ -5,8 +5,9 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { memo, useEffect } from "react";
 
 /**
- * The bar is started by `nprogressMiddleware` — one refcount over the thunks
- * that may go to the network — and ended here when a navigation commits.
+ * The bar is started by `nprogressMiddleware` — one refcount over the reads
+ * that fetch something the user is waiting to look at, writes deliberately
+ * excluded — and ended here when a navigation commits.
  *
  * There used to be a second source: a click handler bound to every `a[href]` in
  * the document, rebound by a `MutationObserver` on every DOM change, that
