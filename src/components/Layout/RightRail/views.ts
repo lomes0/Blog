@@ -6,12 +6,12 @@ import {
   type LucideIcon,
   Table,
 } from "lucide-react";
-import type { PreferredHeight, ViewId } from "./panelState";
+import type { ViewId } from "./panelState";
 
 /**
- * What the rail and the slot header both need to know about a view.
+ * What the rail and the panel header both need to know about a view.
  *
- * One table rather than two, because the rail icon and the slot header title
+ * One table rather than two, because the rail icon and the panel header title
  * used to be the same fact written in two places — `RailSection` took a `title`
  * and an `icon` from inside each section, and the compact strip repeated both
  * as literals. They drifted: the strip's Agent-changes tooltip said "agent
@@ -23,10 +23,9 @@ import type { PreferredHeight, ViewId } from "./panelState";
  */
 interface ViewDescriptor {
   id: ViewId;
-  /** The slot header's title, and the rail tooltip. */
+  /** The panel header's title, and the rail tooltip. */
   title: string;
   icon: LucideIcon;
-  preferredHeight: PreferredHeight;
   /**
    * Whether the view speaks about the open document or about the account.
    *
@@ -49,9 +48,6 @@ export const VIEWS: Record<ViewId, ViewDescriptor> = {
     id: "agent-changes",
     title: "Agent changes",
     icon: GitPullRequest,
-    // A list of proposals, each several lines tall, and the one view whose
-    // length is not bounded by the document.
-    preferredHeight: "grow",
     scope: "global",
     countNoun: ["change waiting for review", "changes waiting for review"],
   },
@@ -59,7 +55,6 @@ export const VIEWS: Record<ViewId, ViewDescriptor> = {
     id: "outline",
     title: "Outline",
     icon: Table,
-    preferredHeight: "grow",
     scope: "document",
     countNoun: ["heading", "headings"],
   },
@@ -67,9 +62,6 @@ export const VIEWS: Record<ViewId, ViewDescriptor> = {
     id: "properties",
     title: "Properties",
     icon: Info,
-    // A key/value list with a fixed set of keys — it is as tall as it is, and
-    // stretching it to half the panel is empty space with a border round it.
-    preferredHeight: "content",
     scope: "document",
     countNoun: ["property", "properties"],
   },
@@ -77,7 +69,6 @@ export const VIEWS: Record<ViewId, ViewDescriptor> = {
     id: "revisions",
     title: "Revisions",
     icon: History,
-    preferredHeight: "grow",
     scope: "document",
     countNoun: ["revision", "revisions"],
   },
@@ -86,14 +77,10 @@ export const VIEWS: Record<ViewId, ViewDescriptor> = {
     title: "Backlinks",
     icon: LinkIcon,
     // Usually a handful of links, often none.
-    preferredHeight: "content",
     scope: "document",
     countNoun: ["backlink", "backlinks"],
   },
 };
-
-export const preferredHeightOf = (view: ViewId): PreferredHeight =>
-  VIEWS[view].preferredHeight;
 
 /**
  * A rail icon's accessible name.

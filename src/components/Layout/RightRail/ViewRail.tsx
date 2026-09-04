@@ -3,15 +3,16 @@ import React, { useRef } from "react";
 import { Box, Tooltip } from "@mui/material";
 import { ICON_SIZE } from "@/theme/icons";
 import { FOCUS_RING, MOTION } from "@/theme/tokens";
-import type { PanelState, ViewId } from "./panelState";
-import { slotOf, VIEW_IDS } from "./panelState";
+import type { PanelView, ViewId } from "./panelState";
+import { VIEW_IDS } from "./panelState";
 import { railIconLabel, VIEWS } from "./views";
 import type { ViewSignal } from "./useViewData";
 
 interface ViewRailProps {
-  panel: PanelState;
+  /** The view on screen, or `null` when the panel is closed. */
+  current: PanelView;
   signals: Record<ViewId, ViewSignal>;
-  onSelect: (view: ViewId, otherSlot: boolean) => void;
+  onSelect: (view: ViewId) => void;
 }
 
 /** Badges stop counting rather than growing a third digit. */
@@ -30,21 +31,19 @@ const badgeText = (count: number) => (count > 99 ? "99+" : String(count));
  *
  * A tablist rather than a row of buttons: the icons are a single-choice control
  * over one region, arrow keys move between them, and `aria-selected` says which
- * are on screen. Both slots' views are selected in split mode, which is why
- * this is not `aria-current` — two tabs can be selected, one thing can be
- * current.
+ * one is showing.
  */
-export default function ViewRail({ panel, signals, onSelect }: ViewRailProps) {
+export default function ViewRail({ current, signals, onSelect }: ViewRailProps) {
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   /**
    * Which icon is in the tab order.
    *
    * Roving tabindex: exactly one stop for the whole group, so Tab passes the
-   * rail rather than walking through five buttons. The first view on screen
-   * owns it, or the first icon when the panel is closed.
+   * rail rather than walking through five buttons. The view on screen owns it,
+   * or the first icon when the panel is closed.
    */
-  const tabStop = panel.slots[0] ?? VIEW_IDS[0];
+  const tabStop = current ?? VIEW_IDS[0];
 
   const onKeyDown = (e: React.KeyboardEvent, view: ViewId) => {
     const step = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
@@ -65,8 +64,7 @@ export default function ViewRail({ panel, signals, onSelect }: ViewRailProps) {
       {VIEW_IDS.map((view) => {
         const { title, icon: Icon } = VIEWS[view];
         const { count, empty } = signals[view];
-        const slot = slotOf(panel, view);
-        const active = slot !== null;
+        const active = current === view;
         const showBadge = count !== null && count > 0;
 
         return (
@@ -82,8 +80,7 @@ export default function ViewRail({ panel, signals, onSelect }: ViewRailProps) {
               aria-label={railIconLabel(view, count)}
               tabIndex={view === tabStop ? 0 : -1}
               onKeyDown={(e: React.KeyboardEvent) => onKeyDown(e, view)}
-              onClick={(e: React.MouseEvent) =>
-                onSelect(view, e.metaKey || e.ctrlKey)}
+              onClick={() => onSelect(view)}
               sx={{
                 position: "relative",
                 display: "flex",
@@ -114,7 +111,7 @@ export default function ViewRail({ panel, signals, onSelect }: ViewRailProps) {
                   alignItems: "center",
                   justifyContent: "center",
                   bgcolor: active ? "accent.tint" : "transparent",
-                  // Three states, in priority order: in a slot, empty for this
+                  // Three states, in priority order: showing, empty for this
                   // document, ordinary. An active icon is never dimmed — you
                   // are looking at it.
                   color: active

@@ -7,7 +7,7 @@ import {
   sanitizeWorkspace,
   type StoredWorkspaceRead,
 } from "../lib/workspaceRestore";
-import { sanitizePanelStates } from "@/components/Layout/RightRail/panelState";
+import { sanitizePanelViews } from "@/components/Layout/RightRail/panelState";
 
 /**
  * The workspace-pane half of the app slice.
@@ -384,10 +384,10 @@ export const workspaceReducers = {
     // Derived on every restore rather than only when it is raised, so a flag
     // set by one entry cannot survive into the layout of the next.
     state.ui.workspaceProvisional = false;
-    // Before the pane guard below, and deliberately: which views the right
-    // panel shows is independent of which documents are open, so a deep link
-    // that has already minted a pane must still get its panel layouts back.
-    state.ui.railPanel = sanitizePanelStates(
+    // Before the pane guard below, and deliberately: which view the right panel
+    // shows is independent of which documents are open, so a deep link that has
+    // already minted a pane must still get its panel choices back.
+    state.ui.railPanel = sanitizePanelViews(
       read.ok && typeof read.stored === "object" && read.stored !== null
         ? (read.stored as { railPanel?: unknown }).railPanel
         : undefined,

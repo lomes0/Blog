@@ -2,22 +2,22 @@
 import { useMemo } from "react";
 import { actions, useDispatch, useSelector } from "@/store";
 import { selectFocusedPane } from "@/store/selectors/layoutSelectors";
-import type { RailSlotIndex } from "@/types";
 import {
-  defaultPanel,
+  DEFAULT_VIEW,
   isPanelOpen,
   NO_DOCUMENT_KEY,
-  type PanelState,
+  type PanelView,
   type ViewId,
 } from "./panelState";
 
 /**
- * The focused document's right-panel layout, and the gestures that change it.
+ * Which view the focused document's right panel is showing, and how to change
+ * it.
  *
  * Two components need this and must agree: `RightRail` draws the panel, and
  * `AppLayoutContent` sizes the grid column it lives in. They used to share a
  * `railMode` boolean in `LayoutModeContext`; the panel's open state is now
- * *derived* from whether any slot is filled, so there is no boolean to share —
+ * *derived* from whether a view is showing, so there is no boolean to share —
  * only the same derivation, made once here.
  */
 export const useRailPanel = () => {
@@ -31,33 +31,15 @@ export const useRailPanel = () => {
   const docKey = rootId ?? NO_DOCUMENT_KEY;
 
   const stored = useSelector((state) => state.ui.railPanel[docKey]);
-
-  /**
-   * A document nobody has touched opens on the default.
-   *
-   * Memoised on the stored value's identity so the fallback is not a fresh
-   * object every render — `PanelSlots` takes it as a prop, and a new default
-   * per render would defeat every memo downstream.
-   */
-  const panel: PanelState = useMemo(
-    () => stored ?? defaultPanel(),
-    [stored],
-  );
+  // A document nobody has touched opens on the default; `null` is a panel the
+  // user closed, and is not the same thing.
+  const view: PanelView = stored === undefined ? DEFAULT_VIEW : stored;
 
   const gestures = useMemo(() => ({
-    selectView: (view: ViewId, otherSlot = false) =>
-      dispatch(actions.railViewSelected({ docId: docKey, view, otherSlot })),
-    focusSlot: (index: RailSlotIndex) =>
-      dispatch(actions.railSlotFocused({ docId: docKey, index })),
-    closeSlot: (index: RailSlotIndex) =>
-      dispatch(actions.railSlotClosed({ docId: docKey, index })),
-    closeFocusedSlot: () =>
-      dispatch(actions.railFocusedSlotClosed({ docId: docKey })),
-    toggleSplit: () => dispatch(actions.railSplitToggled({ docId: docKey })),
-    setRatio: (ratio: number) =>
-      dispatch(actions.railRatioChanged({ docId: docKey, ratio })),
-    resetRatio: () => dispatch(actions.railRatioReset({ docId: docKey })),
+    selectView: (next: ViewId) =>
+      dispatch(actions.railViewSelected({ docId: docKey, view: next })),
+    closePanel: () => dispatch(actions.railPanelClosed({ docId: docKey })),
   }), [dispatch, docKey]);
 
-  return { rootId, panel, open: isPanelOpen(panel), ...gestures };
+  return { rootId, view, open: isPanelOpen(view), ...gestures };
 };

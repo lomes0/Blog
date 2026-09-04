@@ -666,43 +666,38 @@ describe("ui.workspace — restoring a stored layout", () => {
       actions.restoreWorkspace({ key, read: { ok: true, stored } }),
     );
 
-  it("installs the stored right-panel layouts", () => {
+  it("installs the stored right-panel views", () => {
     const state = restore({
       panes: [storedPane("p1", "doc-a")],
-      railPanel: {
-        "doc-a": { slots: ["revisions", "properties"], focused: 1, ratio: 0.3 },
-      },
+      railPanel: { "doc-a": "revisions", "doc-b": null },
     });
 
-    expect(state.ui.railPanel["doc-a"].slots).toEqual([
-      "revisions",
-      "properties",
-    ]);
-    expect(state.ui.railPanel["doc-a"].focused).toBe(1);
-    expect(state.ui.railPanel["doc-a"].ratio).toBe(0.3);
+    expect(state.ui.railPanel["doc-a"]).toBe("revisions");
+    // A closed panel is a choice, and survives as one.
+    expect(state.ui.railPanel["doc-b"]).toBeNull();
   });
 
-  it("does not trust a stored panel layout", () => {
+  it("does not trust a stored panel view", () => {
     const state = restore({
       panes: [storedPane("p1", "doc-a")],
-      railPanel: { "doc-a": { slots: ["not-a-view"], focused: 1, ratio: 99 } },
+      railPanel: { "doc-a": "not-a-view", "doc-b": 7 },
     });
 
-    // Unusable top slot, so the record is discarded whole for the default —
-    // and `focused` cannot survive naming a slot the result does not have.
-    expect(state.ui.railPanel["doc-a"].slots).toEqual(["outline"]);
-    expect(state.ui.railPanel["doc-a"].focused).toBe(0);
+    // A string was one of ours and defaults; a number never was, so the
+    // document reads as untouched rather than being handed a fake choice.
+    expect(state.ui.railPanel["doc-a"]).toBe("outline");
+    expect("doc-b" in state.ui.railPanel).toBe(false);
   });
 
-  it("survives a record written before the panel had slots", () => {
+  it("survives a record written before the panel had views", () => {
     const state = restore({ panes: [storedPane("p1", "doc-a")] });
     expect(state.ui.railPanel).toEqual({});
   });
 
-  it("restores panel layouts even when a deep link already opened a pane", () => {
+  it("restores panel views even when a deep link already opened a pane", () => {
     // The pane guard below returns early to protect a deep link's pane, but
-    // which views the right panel shows is independent of which documents are
-    // open — so the layouts must land anyway.
+    // which view the right panel shows is independent of which documents are
+    // open — so the choices must land anyway.
     const opened = reducer(
       initial(),
       actions.openPane({ paneId: "p9", rootId: "doc-b", mode: "write" }),
@@ -715,17 +710,17 @@ describe("ui.workspace — restoring a stored layout", () => {
           ok: true,
           stored: {
             panes: [storedPane("p1", "doc-a")],
-            railPanel: { "doc-a": { slots: ["backlinks"] } },
+            railPanel: { "doc-a": "backlinks" },
           },
         },
       }),
     );
 
     expect(workspaceOf(state).panes.map((p) => p.rootId)).toEqual(["doc-b"]);
-    expect(state.ui.railPanel["doc-a"].slots).toEqual(["backlinks"]);
+    expect(state.ui.railPanel["doc-a"]).toBe("backlinks");
   });
 
-  it("installs no panel layouts when the read failed", () => {
+  it("installs no panel views when the read failed", () => {
     const state = reducer(
       initial(),
       actions.restoreWorkspace({

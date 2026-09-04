@@ -11,7 +11,7 @@ import {
   type ScrollTops,
   shouldRecord,
 } from "@/lib/scrollMemory";
-import type { AppState, RailPanelState, WorkspaceState } from "@/types";
+import type { AppState, RailViewId, WorkspaceState } from "@/types";
 import { appSlice } from "./app";
 
 /**
@@ -80,20 +80,20 @@ interface StoredWorkspace extends Omit<WorkspaceState, "maximizedPaneId"> {
    */
   scrollTops?: ScrollTops;
   /**
-   * Each document's right-panel layout — which views are in its slots, which
-   * has focus, and the divider position.
+   * Which view each document's right panel is showing, or `null` for one the
+   * user closed.
    *
    * Here for the same reason `scrollTops` is: it is device-local, per document
    * and worthless to another browser, and a second record would mean a second
    * read on the critical path and two lifetimes to keep in step. Optional
-   * because records written before the panel had slots do not carry it.
+   * because records written before the panel had views do not carry it.
    *
    * Unlike `scrollTops` this one lives in Redux rather than in module state.
-   * A panel layout changes on a click, not on a scroll frame, and components
-   * render it — both of the reasons the scroll map is kept out of the store
-   * point the other way here.
+   * It changes on a click, not on a scroll frame, and components render it —
+   * both of the reasons the scroll map is kept out of the store point the other
+   * way here.
    */
-  railPanel?: Record<string, RailPanelState>;
+  railPanel?: Record<string, RailViewId | null>;
   updatedAt: string;
 }
 
@@ -218,7 +218,7 @@ export const flushWorkspaceWrite = () => {
 const schedule = (
   key: string,
   workspace: WorkspaceState,
-  railPanel: Record<string, RailPanelState>,
+  railPanel: Record<string, RailViewId | null>,
 ) => {
   pending = {
     id: key,
@@ -231,14 +231,9 @@ const schedule = (
     focusedPaneId: workspace.focusedPaneId,
     splitRatio: workspace.splitRatio,
     scrollTops: { ...scrollTops },
-    // Deep enough to outlive the store: `slots` is the only nested value, and
-    // a shallow copy would hand the record an array the next reducer mutates.
-    railPanel: Object.fromEntries(
-      Object.entries(railPanel).map(([docId, panel]) => [
-        docId,
-        { ...panel, slots: [...panel.slots] as RailPanelState["slots"] },
-      ]),
-    ),
+    // A shallow copy is enough: the values are strings or null, so there is
+    // nothing nested for a later reducer to mutate underneath the record.
+    railPanel: { ...railPanel },
     updatedAt: new Date().toISOString(),
   };
   if (timer === null) timer = setTimeout(write, WRITE_DEBOUNCE_MS);
@@ -272,7 +267,7 @@ let scrollTops: ScrollTops = {};
 let lastKey: string | null = null;
 let lastWorkspace: WorkspaceState | null = null;
 /** The panel map to attach to that same scroll-triggered write. */
-let lastPanels: Record<string, RailPanelState> = {};
+let lastPanels: Record<string, RailViewId | null> = {};
 
 /**
  * Seed the map from a record just read back.
@@ -333,7 +328,7 @@ let lastSeen: WorkspaceState | null = null;
  * independently: switching the right panel to Revisions touches no pane, and a
  * write gated only on the workspace object would drop it.
  */
-let lastSeenPanels: Record<string, RailPanelState> | null = null;
+let lastSeenPanels: Record<string, RailViewId | null> | null = null;
 /** The last key written to the hint, so the middleware is not a `localStorage` loop. */
 let lastHint: string | null = null;
 

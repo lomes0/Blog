@@ -16,7 +16,7 @@ import PropertiesSection from "./PropertiesSection";
 import RevisionsSection from "./RevisionsSection";
 import ProposalsSection from "./ProposalsSection";
 import BacklinksSection from "./BacklinksSection";
-import PanelSlots from "./PanelSlots";
+import PanelHeader from "./PanelHeader";
 import ViewRail from "./ViewRail";
 import { ICON_SIZE } from "@/theme/icons";
 import { uiCommands } from "@/commands";
@@ -33,16 +33,16 @@ import {
 const TRANSITION_MS = 225;
 
 /**
- * The right rail: a permanent icon strip, and a panel of one or two slots.
+ * The right rail: a permanent icon strip, and a panel showing one view.
  *
  * The panel used to render all five sections at once as a stack of collapsible
  * cards, and the strip could only toggle the whole thing open or shut — its
  * view icons did nothing at all once it was open. Now the strip switches views
- * and the panel shows the one or two you picked.
+ * and the panel shows the one you picked.
  *
- * **There is no open/closed state here.** The panel is open iff a slot is
- * filled; `useRailPanel` derives that and `AppLayoutContent` sizes its grid
- * column from the same derivation. Closing the last view is what collapses the
+ * **There is no open/closed state here.** The panel is open iff a view is
+ * showing; `useRailPanel` derives that and `AppLayoutContent` sizes its grid
+ * column from the same derivation. Closing the view is what collapses the
  * panel, and the strip stays either way.
  */
 const RightRail: React.FC = () => {
@@ -58,17 +58,7 @@ const RightRail: React.FC = () => {
   // Undefined unless something open is retrying or has failed to save.
   const saveTrouble = useSelector(selectAnySaveTrouble);
 
-  const {
-    panel,
-    open,
-    selectView,
-    focusSlot,
-    closeSlot,
-    closeFocusedSlot,
-    toggleSplit,
-    setRatio,
-    resetRatio,
-  } = useRailPanel();
+  const { view, open, selectView, closePanel } = useRailPanel();
 
   // Read once, here, and handed to both the rail's badges and the sections.
   // See `useViewData.ts` for why this is not each view's own business.
@@ -95,22 +85,16 @@ const RightRail: React.FC = () => {
   }, [open]);
 
   /**
-   * `Cmd/Ctrl+1..5`, `Cmd/Ctrl+\`, and `Escape` inside the panel.
+   * `Cmd/Ctrl+1..5`, and `Escape` inside the panel.
    *
-   * `Cmd/Ctrl+\` used to toggle the left sidebar; that moved to `Cmd/Ctrl+B`,
-   * which is what its own comment had claimed for years. Escape is shared with
-   * the pane un-maximize in `WorkspacePanes`, which is why this one only fires
-   * when focus is actually inside the panel and marks the event handled.
+   * Escape is shared with the pane un-maximize in `WorkspacePanes`, which is
+   * why this one only fires when focus is actually inside the panel, and marks
+   * the event handled so the two cannot both act on one press.
    */
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
 
-      if (mod && e.key === "\\") {
-        e.preventDefault();
-        toggleSplit();
-        return;
-      }
       if (mod && !e.shiftKey && !e.altKey && /^[1-5]$/.test(e.key)) {
         e.preventDefault();
         selectView(VIEW_IDS[Number(e.key) - 1]);
@@ -121,12 +105,12 @@ const RightRail: React.FC = () => {
         panelRef.current?.contains(document.activeElement)
       ) {
         e.preventDefault();
-        closeFocusedSlot();
+        closePanel();
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [toggleSplit, selectView, closeFocusedSlot, open]);
+  }, [selectView, closePanel, open]);
 
   /**
    * A view's content.
@@ -177,10 +161,6 @@ const RightRail: React.FC = () => {
     backlinksLoading,
   ]);
 
-  const counts = Object.fromEntries(
-    VIEW_IDS.map((view) => [view, signals[view].count]),
-  ) as Record<ViewId, number | null>;
-
   return (
     <Box
       component="aside"
@@ -198,6 +178,8 @@ const RightRail: React.FC = () => {
           />
           <Box
             ref={panelRef}
+            role="region"
+            aria-labelledby="rail-panel-title"
             sx={{
               borderLeft: "1px solid",
               borderColor: "divider",
@@ -212,16 +194,28 @@ const RightRail: React.FC = () => {
               displayPrint: "none",
             }}
           >
-            <PanelSlots
-              panel={panel}
-              renderView={renderView}
-              counts={counts}
-              onFocusSlot={focusSlot}
-              onCloseSlot={closeSlot}
-              onToggleSplit={toggleSplit}
-              onRatioChange={setRatio}
-              onRatioReset={resetRatio}
-            />
+            {view && (
+              <>
+                <PanelHeader
+                  view={view}
+                  count={signals[view].count}
+                  onClose={closePanel}
+                />
+                <Box
+                  sx={{
+                    flex: 1,
+                    minHeight: 0,
+                    overflowY: "auto",
+                    overflowX: "hidden",
+                    px: 1.25,
+                    py: 1,
+                    bgcolor: "background.default",
+                  }}
+                >
+                  {renderView(view)}
+                </Box>
+              </>
+            )}
           </Box>
         </>
       )}
@@ -246,11 +240,7 @@ const RightRail: React.FC = () => {
           displayPrint: "none",
         }}
       >
-        <ViewRail
-          panel={panel}
-          signals={signals}
-          onSelect={(view, otherSlot) => selectView(view, otherSlot)}
-        />
+        <ViewRail current={view} signals={signals} onSelect={selectView} />
 
         {
           /* The save-trouble indicator. It used to hang off the collapse

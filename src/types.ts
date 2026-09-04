@@ -140,16 +140,25 @@ export interface WorkspaceState {
 /** Which view the left sidebar renders, switched from the activity rail. */
 export type SidebarView = "explorer" | "search" | "notes";
 
-// ─── The right panel's slots ────────────────────────────────────────────────
+// ─── The right panel ────────────────────────────────────────────────────────
 
 /**
  * A view the right rail can switch to.
  *
- * The panel used to render all five at once as a stack of collapsible cards.
- * The rules that move between them live in
+ * The panel used to render all five at once as a stack of collapsible cards;
+ * it shows one at a time now, and the rail is the switch. The rules live in
  * `components/Layout/RightRail/panelState.ts`; only the shape is here, for the
  * same reason `WorkspaceState` is — this file is a leaf, and the persistence
  * layer has to name the type without reaching into a component.
+ *
+ * **The panel's open state is derived, never stored.** It is open iff a view is
+ * showing, which is why the stored value is the view itself and not a view plus
+ * a flag: a boolean admits "open with nothing in it", a state nobody can
+ * explain and every close path would have to remember to avoid.
+ *
+ * `null` is a panel the user closed. That is distinct from *absent*, which is a
+ * document whose panel has never been touched and opens on the default — see
+ * `AppState["ui"].railPanel`.
  */
 export type RailViewId =
   | "agent-changes"
@@ -157,49 +166,6 @@ export type RailViewId =
   | "properties"
   | "revisions"
   | "backlinks";
-
-/** Which slot has focus — the one the next rail click fills. */
-export type RailSlotIndex = 0 | 1;
-
-/**
- * The panel's slots, top first.
- *
- * The `null` is the placeholder a split opens, and it is only ever the *second*
- * slot. Slot 0 always holds a real view, which is what lets the panel's open
- * state be derived (`isPanelOpen`) instead of stored: "open iff a slot is
- * filled" stays exactly true, and an open panel with nothing in it is
- * unrepresentable rather than merely avoided.
- */
-export type RailSlots =
-  | []
-  | [RailViewId]
-  | [RailViewId, RailViewId | null];
-
-/**
- * One document's right-panel layout.
- *
- * Stored per document and per *device*, in the same IndexedDB workspace record
- * as `splitRatio` and `scrollTops` — a panel layout is the same kind of fact
- * they are, and giving it a record of its own would mean a second read on the
- * critical path and a second lifetime to keep in step.
- *
- * Deliberately no `isOpen`. See {@link RailSlots}.
- */
-export interface RailPanelState {
-  slots: RailSlots;
-  /** The top slot's share of the panel, clamped to a range the divider can reach. */
-  ratio: number;
-  focused: RailSlotIndex;
-  /**
-   * Whether {@link ratio} is the user's, from a divider drag.
-   *
-   * The sizing rule defers to each view's `preferredHeight` until the user
-   * drags, after which their number wins. Without this the drag would be
-   * silently overridden on the next render, which reads as the divider being
-   * broken.
-   */
-  ratioExplicit: boolean;
-}
 
 /**
  * How an open post's latest edit is faring on its way to storage.
@@ -431,22 +397,23 @@ export interface AppState {
      */
     workspaceKey: string | null;
     /**
-     * Each document's right-panel layout, keyed by the focused pane's `rootId`.
+     * Which view each document's right panel is showing, keyed by the focused
+     * pane's `rootId`. `null` is a panel the user closed; a document that is
+     * *absent* has never had its panel touched and opens on the default.
      *
      * Per document because the views are: the outline of one post says nothing
      * about another, and someone who reads with Properties open and edits with
      * Revisions open should not have to re-pick on every switch. Bounded, and
      * evicted least-recently-used, for the reason `scrollTops` is — the map
-     * rides in a record written on every layout change and must not accumulate
-     * a profile's entire history.
+     * rides in a record written on every change and must not accumulate a
+     * profile's entire history.
      *
-     * A document absent from the map has never had its panel touched and opens
-     * on the default. That is deliberately *not* a contextual default: the panel
-     * does not open Agent changes because something is pending, because a panel
-     * that rearranges itself in response to background events reads as the app
+     * The default is fixed, and deliberately *not* contextual: the panel does
+     * not open Agent changes because something is pending, because a panel that
+     * rearranges itself in response to background events reads as the app
      * changing under you. The rail badge does that job.
      */
-    railPanel: Record<string, RailPanelState>;
+    railPanel: Record<string, RailViewId | null>;
     /**
      * Whether the read behind {@link workspaceHydrated} failed — it timed out,
      * or it threw — rather than answering "nothing stored".
