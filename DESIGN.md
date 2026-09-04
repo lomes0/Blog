@@ -151,23 +151,25 @@ exposed as MUI CSS variables (`var(--mui-palette-*)`).
 
 ### Neutrals (Slate)
 
-| Role            | Token                              | Light     | Dark      |
-| --------------- | ---------------------------------- | --------- | --------- |
-| Canvas / page   | `--mui-palette-background-default` | `#ffffff` | `#252b3a` |
-| Surface / paper | `--mui-palette-background-paper`   | `#f8fafc` | `#303849` |
-| Activity rail   | `--mui-palette-background-rail`    | `#e4e6ea` | `#1b202c` |
-| Sidebar / nav   | `--mui-palette-background-sidebar` | `#f8fafc` | `#202634` |
-| Panel (Copilot) | `--mui-palette-background-panel`   | `#eceef2` | `#2a3141` |
-| Input field     | `--mui-palette-background-input`   | `#ffffff` | `#363f52` |
-| Divider         | `--mui-palette-divider`            | `#e2e8f0` | `#465166` |
+| Role            | Token                              | Light       | Dark        |
+| --------------- | ---------------------------------- | ----------- | ----------- |
+| Canvas / page   | `--mui-palette-background-default` | `#ffffff`   | `#252b3a`   |
+| Surface / paper | `--mui-palette-background-paper`   | `#f8fafc`   | `#303849`   |
+| Activity rail   | `--mui-palette-background-rail`    | `#e4e6ea`   | `#1b202c`   |
+| Sidebar / nav   | `--mui-palette-background-sidebar` | `#f8fafc`   | `#202634`   |
+| Panel (Copilot) | `--mui-palette-background-panel`   | = `sidebar` | = `sidebar` |
+| Input field     | `--mui-palette-background-input`   | `#ffffff`   | `#363f52`   |
+| Divider         | `--mui-palette-divider`            | `#e2e8f0`   | `#465166`   |
 
 > **Chrome surfaces** (`sidebar`/`panel`/`input`) are recessed/lifted variants
 > of `paper`, added by augmenting MUI's `TypeBackground` in `ThemeProvider.tsx`.
-> Both schemes step `rail` → `panel` → `sidebar`/`paper` → `default`: the icon
-> rails are the deepest chrome, the panels they switch sit a step above them,
-> and `background.default` white is reserved for the editing canvas. (In light
-> `panel` used to **equal** `rail`, which left the right rail's strip and its
-> panel as one slab separated only by a 1px divider.) Use
+> Both schemes step `rail` → `sidebar`/`panel` → `default`: the two icon rails
+> are the deepest chrome and match each other, the two columns they switch (left
+> tree, right rail panel / Copilot) are one surface above them and match each
+> other, and `background.default` white is reserved for the editing canvas.
+> `panel` is defined as a `var()` reference to `sidebar` so the pair cannot
+> drift. (`panel` used to be its own value, which made the right side of the app
+> a different colour from the left at both depths.) Use
 > them for the left nav (`AppDrawer`/`SideBar`), the right Copilot panel /
 > `RightRail`, and prompt/search fields — **not** raw hexes. There is **no**
 > `chip` or `accent-weak` token: selected rows, count pills, and hover fills use

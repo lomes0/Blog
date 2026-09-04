@@ -117,16 +117,16 @@ const theme = createTheme({
           // `panel`, which left the right rail's icon strip and the panel it
           // switches as one undifferentiated slab — the 1px divider between
           // them was the only thing saying they were two columns. Dark mode
-          // already stepped `rail` -> `panel`; this is that step in light,
-          // taken off `panel` rather than added to it so the panel's cards
-          // (`background.paper`) keep their lift.
+          // already stepped its rail below the columns beside it; this is that
+          // step in light.
           rail: "#e4e6ea",
           sidebar: "#f8fafc",
-          // Sits between the rail and the canvas rather than a hair off white:
-          // at #fbfcfe the right panel was ~1% from the canvas and read as
-          // canvas-with-a-border. This keeps white meaning "editing surface"
-          // alone, while the rails frame the app a step below it.
-          panel: "#eceef2",
+          // Tracks `sidebar` rather than carrying its own value: the left tree
+          // and the right rail's panel / the Copilot are the same thing — the
+          // column a rail switches — and the app reads as symmetric only if
+          // they are one surface. A reference, not a copy, so the two cannot
+          // drift apart again.
+          panel: "var(--mui-palette-background-sidebar)",
           input: "#ffffff",
         },
         text: {
@@ -168,7 +168,8 @@ const theme = createTheme({
           paper: "#303849",
           rail: "#1b202c",
           sidebar: "#202634",
-          panel: "#2a3141",
+          // Same rule as light — see the note there.
+          panel: "var(--mui-palette-background-sidebar)",
           input: "#363f52",
         },
         text: {
