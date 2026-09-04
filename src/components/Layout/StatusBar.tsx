@@ -1,15 +1,16 @@
 "use client";
 import * as React from "react";
-import { Box, Skeleton } from "@mui/material";
-import { Eye, PenLine } from "lucide-react";
+import { Box, Skeleton, Tooltip } from "@mui/material";
 import { postsSelectors, selectAnySaveTrouble, useSelector } from "@/store";
 import type { RootState } from "@/store";
 import {
   selectFocusedDocId,
   selectFocusedDocMode,
 } from "@/store/selectors/layoutSelectors";
+import { uiCommands } from "@/commands";
+import { useCommandRun } from "@/commands/CommandProvider";
 import { countWords, readingMinutes } from "@/utils/editorContent";
-import { ICON_SIZE } from "@/theme/icons";
+import { CHROME_RING } from "@/theme/treeRow";
 
 /** DESIGN.md §17.1 — the status bar's row height. */
 const STATUS_BAR_H = 26;
@@ -54,9 +55,18 @@ const Item: React.FC<React.PropsWithChildren> = ({ children }) => (
  *   deployment API key to be ready: each user brings their own, and whether
  *   one is present is already answered by `RightRail/ProviderKeys.tsx`. A copy
  *   here would be a third surface for one fact.
+ *
+ * The mode field is the exception to "status bar", and by the same argument
+ * that removed the other two: it was already rendering "Read"/"Edit" while
+ * `EditorTopBar` carried an eye/pencil button for the same state, so one of the
+ * two had to go. This one stayed because it says which mode you are *in*; a
+ * lone icon can only show the mode you would switch *to*, which is the standard
+ * ambiguity of a single-glyph toggle. It is a button now, and it is the only
+ * item in this bar you can act on.
  */
 const StatusBar: React.FC = () => {
   const trouble = useSelector(selectAnySaveTrouble);
+  const run = useCommandRun();
 
   /*
    * Global focus is the right coordinate *here*, and it is worth saying why,
@@ -156,12 +166,55 @@ const StatusBar: React.FC = () => {
 
       {mode && (
         <>
-          <Item>
-            {mode === "read"
-              ? <Eye size={ICON_SIZE.micro} />
-              : <PenLine size={ICON_SIZE.micro} />}
-            {mode === "read" ? "Read" : "Edit"}
-          </Item>
+          <Tooltip
+            title={mode === "read" ? "Switch to editing" : "Switch to reading"}
+          >
+            <Box
+              component="button"
+              type="button"
+              aria-label={mode === "read"
+                ? "Switch to editing"
+                : "Switch to reading"}
+              aria-pressed={mode === "read"}
+              onClick={() =>
+                run(uiCommands.setMode, {
+                  mode: mode === "read" ? "write" : "read",
+                })}
+              sx={{
+                // A button that has to disappear into an 11px status rail: no
+                // border, no background, and the bar's own type and colour
+                // rather than the browser's.
+                font: "inherit",
+                color: "inherit",
+                bgcolor: "transparent",
+                border: "none",
+                p: 0,
+                // Undoes the button's inline-block baseline so the word sits on
+                // the same line as the readings either side of it.
+                display: "inline-flex",
+                alignItems: "center",
+                cursor: "pointer",
+                // Breathing room for the hover fill, taken straight back off
+                // again so the resting row is laid out exactly as it was when
+                // this field was plain text.
+                px: 0.5,
+                mx: -0.5,
+                borderRadius: 0.5,
+                // The affordance is the hover, because at rest this must still
+                // read as a report of the current mode rather than as chrome —
+                // it is the one item in the bar you can act on, and the bar is
+                // otherwise silent by design (quiet-autosave).
+                transition: "background-color 0.15s, color 0.15s",
+                "&:hover": {
+                  color: "text.primary",
+                  bgcolor: "action.hover",
+                },
+                "&:focus-visible": CHROME_RING,
+              }}
+            >
+              {mode === "read" ? "Read" : "Edit"}
+            </Box>
+          </Tooltip>
           <Sep />
         </>
       )}

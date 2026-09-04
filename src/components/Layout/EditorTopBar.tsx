@@ -11,12 +11,10 @@ import {
 } from "@mui/material";
 import {
   BookOpen,
-  Eye,
   FileText,
   House,
   LayoutDashboard,
   Library,
-  Pencil,
   PenLine,
   Search,
   SquareSplitHorizontal,
@@ -26,7 +24,7 @@ import { shallowEqual } from "react-redux";
 import { postsSelectors, useSelector } from "@/store";
 import type { RootState } from "@/store";
 import { selectFocusedPane } from "@/store/selectors/layoutSelectors";
-import { paneCommands, uiCommands } from "@/commands";
+import { paneCommands } from "@/commands";
 import { useCommandRun } from "@/commands/CommandProvider";
 import { useTopBarActions } from "@/contexts/TopBarActionsContext";
 import { ICON_SIZE } from "@/theme/icons";
@@ -69,17 +67,19 @@ const EditorTopBar: React.FC = () => {
   );
   const docId = isEditPage ? focusedRootId ?? undefined : undefined;
 
-  // The pane controls: read/write and the split. Both act on the focused pane,
-  // which is why neither reads the pathname — with two panes open the address
-  // bar cannot say which one is meant (plan §4.4).
+  // The split control acts on the focused pane, which is why it does not read
+  // the pathname — with two panes open the address bar cannot say which one is
+  // meant (plan §4.4).
+  //
+  // Read/write used to live here too, as an eye/pencil icon beside it. It went
+  // to the status bar, which was already rendering the same fact as a passive
+  // "Read"/"Edit" field: two surfaces for one thing, and the icon-only one
+  // showed the *destination* rather than the current state. The field is the
+  // control now.
   const run = useCommandRun();
-  const focusedMode = useSelector(
-    (state: RootState) => selectFocusedPane(state)?.mode ?? null,
-  );
   const paneCount = useSelector(
     (state: RootState) => state.ui.workspace.panes.length,
   );
-  const isReading = focusedMode === "read";
 
   const urlSeriesId = React.useMemo(() => {
     if (
@@ -491,30 +491,6 @@ const EditorTopBar: React.FC = () => {
           gap: 0.25,
         }}
       >
-        {isEditPage && focusedMode && (
-          <Tooltip
-            title={isReading ? "Edit this post" : "Read this post"}
-          >
-            <IconButton
-              size="small"
-              aria-label={isReading ? "Switch to editing" : "Switch to reading"}
-              aria-pressed={isReading}
-              onClick={() =>
-                run(uiCommands.setMode, {
-                  mode: isReading ? "write" : "read",
-                })}
-              sx={{
-                flexShrink: 0,
-                color: isReading ? "primary.main" : "text.secondary",
-                "&:hover": { color: "primary.main" },
-              }}
-            >
-              {isReading
-                ? <Pencil size={ICON_SIZE.dense} />
-                : <Eye size={ICON_SIZE.dense} />}
-            </IconButton>
-          </Tooltip>
-        )}
         {isEditPage && paneCount > 1 && (
           <Tooltip title="Close the focused pane">
             <IconButton
