@@ -9,6 +9,7 @@ import { DateDisplay } from "@/components/shared/DateDisplay";
 import type { Revision, RevisionMeta } from "@/types";
 import { selectFocusedPane } from "@/store/selectors/layoutSelectors";
 import { ICON_SIZE } from "@/theme/icons";
+import { railChipSx } from "./railChrome";
 
 const COLLAPSE_AT = 3;
 
@@ -90,14 +91,14 @@ export default function RevisionsSection({
             size="small"
             variant={tabFilter === "this" ? "filled" : "outlined"}
             onClick={() => setTabFilter("this")}
-            sx={{ height: 20, typography: "micro", cursor: "pointer" }}
+            sx={{ ...railChipSx, cursor: "pointer" }}
           />
           <Chip
             label="All tabs"
             size="small"
             variant={tabFilter === "all" ? "filled" : "outlined"}
             onClick={() => setTabFilter("all")}
-            sx={{ height: 20, typography: "micro", cursor: "pointer" }}
+            sx={{ ...railChipSx, cursor: "pointer" }}
           />
         </Box>
       )}
@@ -157,11 +158,7 @@ export default function RevisionsSection({
                       ? <Cloud size={ICON_SIZE.micro} />
                       : <Smartphone size={ICON_SIZE.micro} />}
                     label={isCloud ? "Cloud" : "Local"}
-                    sx={{
-                      height: 16,
-                      typography: "micro",
-                      "& .MuiChip-label": { px: 0.5 },
-                    }}
+                    sx={railChipSx}
                   />
                 </Box>
               );

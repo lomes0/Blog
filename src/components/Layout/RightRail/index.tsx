@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Box, IconButton, Tooltip } from "@mui/material";
+import { Box } from "@mui/material";
 import { Command, Settings, Sparkles } from "lucide-react";
 import SettingsPanel from "./SettingsPanel";
 import { openCommandPalette } from "@/components/CommandPalette/CommandPalette";
@@ -11,6 +11,7 @@ import {
 } from "@/store/selectors/layoutSelectors";
 import { RAIL_COMPACT_W, useLayoutMode } from "@/contexts/LayoutModeContext";
 import ResizeGripper from "../ResizeGripper";
+import RailIconButton from "../RailIconButton";
 import OutlineSection from "./OutlineSection";
 import PropertiesSection from "./PropertiesSection";
 import RevisionsSection from "./RevisionsSection";
@@ -215,11 +216,15 @@ const RightRail: React.FC = () => {
         sx={{
           display: "flex",
           flexDirection: "column",
-          alignItems: "center",
+          // `stretch`, not `center`: a rail item spans the strip so its active
+          // accent bar can hug the window edge, the way the activity rail's does.
+          alignItems: "stretch",
           // The strip starts where the panel header's rule ends, so the icon
           // group and the panel it switches begin on the same line.
           pt: `${CHROME_BAR_H}px`,
-          gap: 0.5,
+          // No `gap`: RAIL_ITEM_H already carries the 4px chip-to-chip gap, and
+          // a second one here would put this rail on a 46px pitch against the
+          // activity rail's 42. The divider below spaces itself.
           borderLeft: "1px solid",
           borderColor: "divider",
           // `rail`, not `panel`: this strip is the right-hand twin of the
@@ -249,33 +254,29 @@ const RightRail: React.FC = () => {
             docs/plans/archive/quiet-autosave.md §3.3. */
         }
         {saveTrouble && (
-          <Tooltip
-            title={saveTrouble === "error"
+          <RailIconButton
+            label={saveTrouble === "error"
               ? "A document couldn't be saved"
               : "Reconnecting — unsaved work is stored locally"}
             placement="left"
-          >
-            <IconButton
-              size="small"
-              onClick={() => selectView("properties")}
-              aria-label={saveTrouble === "error"
-                ? "A document couldn't be saved"
-                : "Reconnecting — unsaved work is stored locally"}
-              sx={{
-                color: saveTrouble === "error" ? "error.main" : "warning.main",
-              }}
-            >
+            // The dot carries its own colour rather than the chip's: this is the
+            // one rail item whose glyph is the state, so it must not go
+            // `text.secondary` with the rest of them.
+            icon={
               <Box
                 component="span"
                 sx={{
                   width: 8,
                   height: 8,
                   borderRadius: "50%",
-                  bgcolor: "currentColor",
+                  bgcolor: saveTrouble === "error"
+                    ? "error.main"
+                    : "warning.main",
                 }}
               />
-            </IconButton>
-          </Tooltip>
+            }
+            onClick={() => selectView("properties")}
+          />
         )}
 
         <Box
@@ -283,42 +284,47 @@ const RightRail: React.FC = () => {
             width: 24,
             height: "1px",
             bgcolor: "divider",
+            alignSelf: "center",
             my: 0.5,
             flexShrink: 0,
           }}
         />
 
-        <Tooltip title="Copilot" placement="left">
-          <IconButton
-            size="small"
-            color={copilotOpen ? "primary" : "default"}
-            onClick={() => run(uiCommands.toggleCopilot)}
-            aria-label="Toggle Copilot"
-          >
-            <Sparkles size={ICON_SIZE.dense} />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="Command palette" placement="left">
-          <IconButton
-            size="small"
-            onClick={openCommandPalette}
-            aria-label="Command palette"
-            sx={{ mt: "auto" }}
-          >
-            <Command size={ICON_SIZE.dense} />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="Settings" placement="left">
-          <IconButton
-            size="small"
-            color={settingsOpen ? "primary" : "default"}
-            onClick={() => setSettingsOpen((prev) => !prev)}
-            aria-label="Settings"
-            sx={{ mb: 1 }}
-          >
-            <Settings size={ICON_SIZE.dense} />
-          </IconButton>
-        </Tooltip>
+        <RailIconButton
+          label="Copilot"
+          ariaLabel="Toggle Copilot"
+          placement="left"
+          icon={<Sparkles size={ICON_SIZE.dense} />}
+          active={copilotOpen}
+          showBar
+          side="right"
+          onClick={() => run(uiCommands.toggleCopilot)}
+        />
+
+        {
+          /* Pushes the two window-level controls to the foot of the strip. An
+            explicit spacer rather than `mt: "auto"` on one of them: that put the
+            margin on the *middle* item of the bottom group, so the divider above
+            read as grouping with Copilot while Copilot floated alone. */
+        }
+        <Box sx={{ flex: 1 }} />
+
+        <RailIconButton
+          label="Command palette"
+          placement="left"
+          icon={<Command size={ICON_SIZE.dense} />}
+          onClick={openCommandPalette}
+        />
+        <RailIconButton
+          label="Settings"
+          placement="left"
+          icon={<Settings size={ICON_SIZE.dense} />}
+          active={settingsOpen}
+          showBar
+          side="right"
+          onClick={() => setSettingsOpen((prev) => !prev)}
+          sx={{ mb: 1 }}
+        />
       </Box>
       <SettingsPanel
         open={settingsOpen}

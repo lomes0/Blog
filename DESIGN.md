@@ -730,6 +730,16 @@ prose and five files answered them independently. They are now `sx` fragments in
 > `chromeFocusRingSx` matches what ships. Reconciling the two forms is the same
 > kind of accessibility-visible call as the `inset` question.
 
+> **Both rails are one component.** `components/Layout/RailIconButton.tsx` owns
+> the chip, the tint ladder, the focus ring and the accent bar; the activity
+> rail, the right rail's view switcher and that strip's Copilot / palette /
+> settings row all render it. There were three spellings before, two of them in
+> the *same* 54px column four pixels apart — a 38px chip at an 11px radius with
+> a bar, a 34px chip at 10px with none, and a plain MUI `IconButton` saying
+> "active" with `color="primary"`. The bar mirrors: `side="left"` on the
+> activity rail, `side="right"` on the right strip, so each hugs the window edge
+> it stands on.
+
 > **Tabs draw the accent bar on their bottom edge.** The table says "2px
 > `primary.main` inset bar via `::before`" without naming a side, and a rail
 > item's is on the left. A pane tab's is on the edge where it meets the document
@@ -749,7 +759,7 @@ mechanics behind it are `hooks/useResizablePanel.ts`.
 | Element                      | Radius               | Height / metric                                                           |
 | ---------------------------- | -------------------- | ------------------------------------------------------------------------- |
 | Chrome bar (top bar, headers)| —                    | 40px — `CHROME_BAR_H` in `src/theme/tokens.ts`                            |
-| Rail icon button             | none (full-bleed)    | 44px tall, full width; tint spans full width, 2px accent bar on left edge |
+| Rail icon button             | `2` (8px) on the chip| 42px row, full width; 38px chip carries the tint — `RailIconButton`       |
 | Tree / list / result row     | `1.5` (6px)          | ~28–32px                                                                  |
 | Tab                          | `1.5` (6px) top only | matches top-bar height                                                    |
 | Top-bar search pill, inputs  | `1.5` (6px)          | ~32px                                                                     |

@@ -1,8 +1,8 @@
 "use client";
 import React, { useRef } from "react";
-import { Box, Tooltip } from "@mui/material";
+import { Box } from "@mui/material";
 import { ICON_SIZE } from "@/theme/icons";
-import { FOCUS_RING, MOTION } from "@/theme/tokens";
+import RailIconButton from "../RailIconButton";
 import type { PanelView, ViewId } from "./panelState";
 import { VIEW_IDS } from "./panelState";
 import { railIconLabel, VIEWS } from "./views";
@@ -32,6 +32,10 @@ const badgeText = (count: number) => (count > 99 ? "99+" : String(count));
  * A tablist rather than a row of buttons: the icons are a single-choice control
  * over one region, arrow keys move between them, and `aria-selected` says which
  * one is showing.
+ *
+ * The chip, the tint ladder and the accent bar are `RailIconButton`'s — the
+ * same component the activity rail runs on, so the two rails are one vocabulary
+ * (DESIGN.md §17.3). Only the badge is local, because only this rail has one.
  */
 export default function ViewRail({ current, signals, onSelect }: ViewRailProps) {
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -59,7 +63,12 @@ export default function ViewRail({ current, signals, onSelect }: ViewRailProps) 
       role="tablist"
       aria-orientation="vertical"
       aria-label="Document information views"
-      sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "stretch",
+        alignSelf: "stretch",
+      }}
     >
       {VIEW_IDS.map((view) => {
         const { title, icon: Icon } = VIEWS[view];
@@ -68,100 +77,63 @@ export default function ViewRail({ current, signals, onSelect }: ViewRailProps) 
         const showBadge = count !== null && count > 0;
 
         return (
-          <Tooltip key={view} title={title} placement="left">
-            <Box
-              component="button"
-              type="button"
-              role="tab"
-              ref={(el: HTMLButtonElement | null) => {
-                refs.current[view] = el;
-              }}
-              aria-selected={active}
-              aria-label={railIconLabel(view, count)}
-              tabIndex={view === tabStop ? 0 : -1}
-              onKeyDown={(e: React.KeyboardEvent) => onKeyDown(e, view)}
-              onClick={() => onSelect(view)}
-              sx={{
-                position: "relative",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 42,
-                height: 38,
-                p: 0,
-                border: "none",
-                background: "transparent",
-                cursor: "pointer",
-                "&:hover .view-chip": {
-                  bgcolor: active ? "accent.tint" : "action.hover",
-                },
-                "&:focus-visible": {
-                  outline: "none",
-                  "& .view-chip": { boxShadow: FOCUS_RING.chrome },
-                },
-              }}
-            >
+          <RailIconButton
+            key={view}
+            tab
+            label={title}
+            ariaLabel={railIconLabel(view, count)}
+            icon={<Icon size={ICON_SIZE.dense} />}
+            active={active}
+            dim={empty}
+            showBar
+            // Mirrored: the activity rail's bar is on the window's left edge,
+            // so this one is on its right.
+            side="right"
+            placement="left"
+            tabIndex={view === tabStop ? 0 : -1}
+            buttonRef={(el) => {
+              refs.current[view] = el;
+            }}
+            onKeyDown={(e) => onKeyDown(e, view)}
+            onClick={() => onSelect(view)}
+          >
+            {
+              /* Suppressed at zero rather than showing "0" — a badge is for the
+                exception, and five zeroes down the rail is noise that makes the
+                one real number harder to see. Marked `aria-hidden` because the
+                count is already in the button's own label. */
+            }
+            {showBadge && (
               <Box
-                className="view-chip"
+                component="span"
+                aria-hidden
                 sx={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: "10px",
+                  position: "absolute",
+                  // Against the chip's top-right corner, overhanging it into
+                  // the margin the chip leaves inside the 54px rail.
+                  top: -3,
+                  right: -3,
+                  minWidth: 15,
+                  height: 15,
+                  px: 0.375,
+                  borderRadius: "8px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  bgcolor: active ? "accent.tint" : "transparent",
-                  // Three states, in priority order: showing, empty for this
-                  // document, ordinary. An active icon is never dimmed — you
-                  // are looking at it.
-                  color: active
-                    ? "accent.main"
-                    : empty
-                    ? "text.disabled"
-                    : "text.secondary",
-                  transition:
-                    `color ${MOTION.fast}ms, background-color ${MOTION.fast}ms`,
+                  typography: "micro",
+                  fontWeight: 700,
+                  lineHeight: 1,
+                  color: active ? "accent.activeText" : "text.secondary",
+                  bgcolor: active ? "accent.pillActiveBg" : "accent.pillBg",
+                  // Against the rail, not the chip — it overhangs both.
+                  border: "1px solid",
+                  borderColor: "background.rail",
                 }}
               >
-                <Icon size={ICON_SIZE.dense} />
+                {badgeText(count)}
               </Box>
-
-              {
-                /* Suppressed at zero rather than showing "0" — a badge is for
-                  the exception, and five zeroes down the rail is noise that
-                  makes the one real number harder to see. Marked `aria-hidden`
-                  because the count is already in the button's own label. */
-              }
-              {showBadge && (
-                <Box
-                  component="span"
-                  aria-hidden
-                  sx={{
-                    position: "absolute",
-                    top: 1,
-                    right: 1,
-                    minWidth: 15,
-                    height: 15,
-                    px: 0.375,
-                    borderRadius: "8px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    typography: "micro",
-                    fontWeight: 700,
-                    lineHeight: 1,
-                    color: active ? "accent.activeText" : "text.secondary",
-                    bgcolor: active ? "accent.pillActiveBg" : "accent.pillBg",
-                    // Against the rail, not the chip — it overhangs both.
-                    border: "1px solid",
-                    borderColor: "background.rail",
-                  }}
-                >
-                  {badgeText(count)}
-                </Box>
-              )}
-            </Box>
-          </Tooltip>
+            )}
+          </RailIconButton>
         );
       })}
     </Box>

@@ -12,89 +12,8 @@ import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
 import { workspaceCommands } from "@/commands";
 import { useCommandRun } from "@/commands/CommandProvider";
 import { ACTIVITY_RAIL_W } from "./SideBar/constants";
-import { CHROME_BAR_H, FOCUS_RING, MOTION } from "@/theme/tokens";
-
-interface RailButtonProps {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}
-
-/**
- * One activity-rail icon button, Refined-Explorer style: a centered 38×38
- * rounded chip that carries the hover/active tint, plus an accent bar pinned to
- * the rail's left edge when active. The accent purple (tint + glyph + bar) is
- * light-mode only; dark mode keeps the neutral action tokens ("dark later").
- */
-const RailButton: React.FC<RailButtonProps> = (
-  { label, active, onClick, children },
-) => (
-  <Tooltip title={label} placement="right">
-    <Box
-      component="button"
-      type="button"
-      aria-label={label}
-      aria-pressed={active}
-      onClick={onClick}
-      sx={{
-        position: "relative",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: "100%",
-        // 42px around a 38px chip → the handoff's 4px chip-to-chip gap.
-        height: 42,
-        p: 0,
-        border: "none",
-        background: "transparent",
-        cursor: "pointer",
-        // Accent bar hugs the rail's left edge (not the chip) when active.
-        "&::before": {
-          content: '""',
-          position: "absolute",
-          left: 0,
-          top: 12,
-          bottom: 12,
-          width: 3,
-          borderRadius: "0 3px 3px 0",
-          bgcolor: "accent.main",
-          opacity: active ? 1 : 0,
-          transition: `opacity ${MOTION.fast}ms`,
-        },
-        // Hover only lifts inactive chips — the active chip keeps its tint.
-        ...(!active && {
-          "&:hover .rail-chip": {
-            bgcolor: "action.hover",
-            color: "text.primary",
-          },
-        }),
-        "&:focus-visible": {
-          outline: "none",
-          "& .rail-chip": { boxShadow: FOCUS_RING.chrome },
-        },
-      }}
-    >
-      <Box
-        className="rail-chip"
-        sx={{
-          width: 38,
-          height: 38,
-          borderRadius: "11px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: active ? "accent.main" : "text.secondary",
-          bgcolor: active ? "accent.tint" : "transparent",
-          transition:
-            `color ${MOTION.fast}ms, background-color ${MOTION.fast}ms`,
-        }}
-      >
-        {children}
-      </Box>
-    </Box>
-  </Tooltip>
-);
+import { CHROME_BAR_H } from "@/theme/tokens";
+import RailIconButton from "./RailIconButton";
 
 /**
  * Far-left activity rail. Switches the sidebar view (Explorer / Search) and
@@ -157,43 +76,16 @@ const ActivityRail: React.FC = () => {
         /* Home / brand — the Refined-Explorer `</>` code glyph, in the same
           rounded chip as the view buttons. Links home. */
       }
-      <Tooltip title="Blog · Home" placement="right">
-        <Box
-          component={RouterLink}
-          href="/"
-          aria-label="Blog home"
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            // The shell's chrome band (DESIGN.md §17.1) rather than the 42px
-            // pitch the buttons below use: this chip is the rail's title row,
-            // and it lines up with the editor top bar and the two panel headers.
-            height: CHROME_BAR_H,
-            flexShrink: 0,
-            "&:hover .rail-chip": {
-              bgcolor: "action.hover",
-              color: "text.primary",
-            },
-          }}
-        >
-          <Box
-            className="rail-chip"
-            sx={{
-              width: 38,
-              height: 38,
-              borderRadius: "11px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "text.secondary",
-              transition: "color 0.15s, background-color 0.15s",
-            }}
-          >
-            <Code size={ICON_SIZE.dense} strokeWidth={1.9} />
-          </Box>
-        </Box>
-      </Tooltip>
+      <RailIconButton
+        label="Blog · Home"
+        ariaLabel="Blog home"
+        icon={<Code size={ICON_SIZE.dense} strokeWidth={1.9} />}
+        href="/"
+        // The shell's chrome band (DESIGN.md §17.1) rather than the 42px pitch
+        // the buttons below use: this chip is the rail's title row, and it lines
+        // up with the editor top bar and the two panel headers.
+        sx={{ height: CHROME_BAR_H }}
+      />
       <Box
         sx={{
           width: 24,
@@ -205,28 +97,28 @@ const ActivityRail: React.FC = () => {
         }}
       />
 
-      <RailButton
+      <RailIconButton
         label="Explorer"
+        icon={<Files size={ICON_SIZE.dense} strokeWidth={1.9} />}
         active={sidebarOpen && sidebarView === "explorer"}
+        showBar
         onClick={() => handleViewClick("explorer")}
-      >
-        <Files size={ICON_SIZE.dense} strokeWidth={1.9} />
-      </RailButton>
-      <RailButton
+      />
+      <RailIconButton
         label="Search"
+        icon={<Search size={ICON_SIZE.dense} strokeWidth={1.9} />}
         active={sidebarOpen && sidebarView === "search"}
+        showBar
         onClick={() => handleViewClick("search")}
-      >
-        <Search size={ICON_SIZE.dense} strokeWidth={1.9} />
-      </RailButton>
-      <RailButton
+      />
+      <RailIconButton
         label="Posts"
+        icon={<Newspaper size={ICON_SIZE.dense} strokeWidth={1.9} />}
         active={postsActive}
+        showBar
         onClick={() =>
           run(workspaceCommands.openSection, { section: "library" })}
-      >
-        <Newspaper size={ICON_SIZE.dense} strokeWidth={1.9} />
-      </RailButton>
+      />
 
       {/* Spacer pushes the account button to the bottom */}
       <Box sx={{ flex: 1 }} />

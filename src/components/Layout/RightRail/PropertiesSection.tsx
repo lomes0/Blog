@@ -11,6 +11,7 @@ import { countWords, readingMinutes } from "@/utils/editorContent";
 import { seriesPositionOf } from "@/utils/posts/seriesGrouping";
 import { selectFocusedPane } from "@/store/selectors/layoutSelectors";
 import { MONO_FONT } from "@/components/Layout/SideBar/constants";
+import { railChipSx } from "./railChrome";
 
 /** Stable identity — this selector is compared with `shallowEqual`. */
 const EMPTY_TAB_IDS: string[] = [];
@@ -125,7 +126,7 @@ export default function PropertiesSection({
                   | "success"
                   | undefined ?? "default"}
                 variant="outlined"
-                sx={{ height: 18, typography: "micro" }}
+                sx={railChipSx}
               />
             }
           />

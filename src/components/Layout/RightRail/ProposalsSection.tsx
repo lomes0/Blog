@@ -21,6 +21,7 @@ import type {
 } from "@/types";
 import { originLabel } from "@/lib/proposalLabels";
 import { isProposalStale } from "@/lib/proposals";
+import { railChipSx } from "./railChrome";
 
 interface ProposalsSectionProps {
   /** The focused document, so its own proposal sorts to the top. */
@@ -211,11 +212,7 @@ function RowMeta(
       <Chip
         label={originLabel(origin)}
         size="small"
-        sx={{
-          height: 16,
-          typography: "micro",
-          "& .MuiChip-label": { px: 0.5 },
-        }}
+        sx={railChipSx}
       />
       {
         /* Not `variant="full"` like the revisions list next door: that row gives
