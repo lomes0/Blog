@@ -1,54 +1,31 @@
 "use client";
-import { useEffect, useState } from "react";
 import { Box, Link, Typography } from "@mui/material";
-import { FileText, Link as LinkIcon } from "lucide-react";
+import { FileText } from "lucide-react";
 import RouterLink from "next/link";
-import RailSection from "./RailSection";
 import { ICON_SIZE } from "@/theme/icons";
 import { documentCommands } from "@/commands";
 import { useCommandRun } from "@/commands/CommandProvider";
-
-interface BacklinkDoc {
-  id: string;
-  title: string;
-  handle: string | null;
-}
+import type { BacklinkDoc } from "./useViewData";
 
 interface BacklinksSectionProps {
-  rootId: string;
+  /**
+   * The document's backlinks, fetched by `RightRail` rather than here.
+   *
+   * They are the rail icon's badge count as well as this list, and a badge that
+   * is only right once you have opened the view is not a badge. See
+   * `useViewData.ts` for what that costs.
+   */
+  backlinks: BacklinkDoc[];
+  loading: boolean;
 }
 
-export default function BacklinksSection({ rootId }: BacklinksSectionProps) {
-  const [backlinks, setBacklinks] = useState<BacklinkDoc[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function BacklinksSection(
+  { backlinks, loading }: BacklinksSectionProps,
+) {
   const run = useCommandRun();
 
-  useEffect(() => {
-    if (!rootId) return;
-    let cancelled = false;
-    setLoading(true);
-    fetch(`/api/documents/${rootId}/backlinks`)
-      .then((r) => r.ok ? r.json() : { data: [] })
-      .then((json) => {
-        if (!cancelled) setBacklinks(json.data ?? []);
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [rootId]);
-
   return (
-    <RailSection
-      title="Backlinks"
-      count={backlinks.length || undefined}
-      icon={<LinkIcon size={ICON_SIZE.dense} />}
-      iconLabel="Backlinks"
-      defaultOpen={false}
-    >
+    <>
       {loading
         ? (
           <Typography variant="caption" color="text.disabled">
@@ -115,6 +92,6 @@ export default function BacklinksSection({ rootId }: BacklinksSectionProps) {
             ))}
           </Box>
         )}
-    </RailSection>
+    </>
   );
 }

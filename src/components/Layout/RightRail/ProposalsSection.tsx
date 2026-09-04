@@ -21,7 +21,6 @@ import type {
 } from "@/types";
 import { originLabel } from "@/lib/proposalLabels";
 import { isProposalStale } from "@/lib/proposals";
-import RailSection from "./RailSection";
 
 interface ProposalsSectionProps {
   /** The focused document, so its own proposal sorts to the top. */
@@ -108,13 +107,7 @@ export default function ProposalsSection(
   const showSkeleton = status === "loading" && !loaded;
 
   return (
-    <RailSection
-      title="Agent changes"
-      count={total || undefined}
-      icon={<GitPullRequest size={ICON_SIZE.dense} />}
-      iconLabel="Agent changes"
-      defaultOpen={true}
-    >
+    <>
       {showSkeleton
         ? (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
@@ -181,7 +174,7 @@ export default function ProposalsSection(
             ))}
           </Box>
         )}
-    </RailSection>
+    </>
   );
 }
 

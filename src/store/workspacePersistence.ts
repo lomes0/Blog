@@ -11,7 +11,7 @@ import {
   type ScrollTops,
   shouldRecord,
 } from "@/lib/scrollMemory";
-import type { AppState, WorkspaceState } from "@/types";
+import type { AppState, RailPanelState, WorkspaceState } from "@/types";
 import { appSlice } from "./app";
 
 /**
@@ -79,6 +79,21 @@ interface StoredWorkspace extends Omit<WorkspaceState, "maximizedPaneId"> {
    * this existed do not carry it.
    */
   scrollTops?: ScrollTops;
+  /**
+   * Each document's right-panel layout — which views are in its slots, which
+   * has focus, and the divider position.
+   *
+   * Here for the same reason `scrollTops` is: it is device-local, per document
+   * and worthless to another browser, and a second record would mean a second
+   * read on the critical path and two lifetimes to keep in step. Optional
+   * because records written before the panel had slots do not carry it.
+   *
+   * Unlike `scrollTops` this one lives in Redux rather than in module state.
+   * A panel layout changes on a click, not on a scroll frame, and components
+   * render it — both of the reasons the scroll map is kept out of the store
+   * point the other way here.
+   */
+  railPanel?: Record<string, RailPanelState>;
   updatedAt: string;
 }
 
@@ -200,7 +215,11 @@ export const flushWorkspaceWrite = () => {
   void write();
 };
 
-const schedule = (key: string, workspace: WorkspaceState) => {
+const schedule = (
+  key: string,
+  workspace: WorkspaceState,
+  railPanel: Record<string, RailPanelState>,
+) => {
   pending = {
     id: key,
     // Copied field by field: `workspace` is the live Immer-produced state, and
@@ -212,6 +231,14 @@ const schedule = (key: string, workspace: WorkspaceState) => {
     focusedPaneId: workspace.focusedPaneId,
     splitRatio: workspace.splitRatio,
     scrollTops: { ...scrollTops },
+    // Deep enough to outlive the store: `slots` is the only nested value, and
+    // a shallow copy would hand the record an array the next reducer mutates.
+    railPanel: Object.fromEntries(
+      Object.entries(railPanel).map(([docId, panel]) => [
+        docId,
+        { ...panel, slots: [...panel.slots] as RailPanelState["slots"] },
+      ]),
+    ),
     updatedAt: new Date().toISOString(),
   };
   if (timer === null) timer = setTimeout(write, WRITE_DEBOUNCE_MS);
@@ -244,6 +271,8 @@ let scrollTops: ScrollTops = {};
  */
 let lastKey: string | null = null;
 let lastWorkspace: WorkspaceState | null = null;
+/** The panel map to attach to that same scroll-triggered write. */
+let lastPanels: Record<string, RailPanelState> = {};
 
 /**
  * Seed the map from a record just read back.
@@ -284,7 +313,7 @@ export const rememberScroll = (docId: string, top: number) => {
     pending.scrollTops = { ...scrollTops };
     return;
   }
-  if (lastKey && lastWorkspace) schedule(lastKey, lastWorkspace);
+  if (lastKey && lastWorkspace) schedule(lastKey, lastWorkspace, lastPanels);
 };
 
 // ── The middleware ───────────────────────────────────────────────────────────
@@ -297,6 +326,14 @@ export const rememberScroll = (docId: string, top: number) => {
 let sessionResolved = false;
 /** The last workspace object written, by identity. Immer gives us that cheaply. */
 let lastSeen: WorkspaceState | null = null;
+/**
+ * The last panel map written, by identity.
+ *
+ * Tracked separately from {@link lastSeen} because the two change
+ * independently: switching the right panel to Revisions touches no pane, and a
+ * write gated only on the workspace object would drop it.
+ */
+let lastSeenPanels: Record<string, RailPanelState> | null = null;
 /** The last key written to the hint, so the middleware is not a `localStorage` loop. */
 let lastHint: string | null = null;
 
@@ -316,7 +353,7 @@ export const workspacePersistenceMiddleware: Middleware =
     // derives `RootState` from a store that this middleware is an argument to,
     // so naming it would be a cycle. `AppState` is that shape.
     const state = store.getState() as AppState;
-    const { workspace, workspaceKey } = state.ui;
+    const { railPanel, workspace, workspaceKey } = state.ui;
 
     if (sessionResolved) {
       const key = workspaceKeyFor(state.user);
@@ -330,6 +367,7 @@ export const workspacePersistenceMiddleware: Middleware =
         // would be written under the key that just arrived.
         store.dispatch(appSlice.actions.workspaceKeyChanged(key));
         lastSeen = null;
+        lastSeenPanels = null;
         return result;
       }
     }
@@ -345,9 +383,11 @@ export const workspacePersistenceMiddleware: Middleware =
       // a scroll write attaches itself to and a scroll is not a store change.
       lastKey = writeKey;
       lastWorkspace = workspace;
-      if (workspace !== lastSeen) {
+      lastPanels = railPanel;
+      if (workspace !== lastSeen || railPanel !== lastSeenPanels) {
         lastSeen = workspace;
-        schedule(writeKey, workspace);
+        lastSeenPanels = railPanel;
+        schedule(writeKey, workspace, railPanel);
       }
     } else if (
       state.ui.workspaceRestoreFailed || state.ui.workspaceProvisional
@@ -362,6 +402,7 @@ export const workspacePersistenceMiddleware: Middleware =
       // would be walked through every time.
       lastKey = null;
       lastWorkspace = null;
+      lastPanels = {};
     }
 
     return result;

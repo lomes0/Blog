@@ -140,6 +140,67 @@ export interface WorkspaceState {
 /** Which view the left sidebar renders, switched from the activity rail. */
 export type SidebarView = "explorer" | "search" | "notes";
 
+// ─── The right panel's slots ────────────────────────────────────────────────
+
+/**
+ * A view the right rail can switch to.
+ *
+ * The panel used to render all five at once as a stack of collapsible cards.
+ * The rules that move between them live in
+ * `components/Layout/RightRail/panelState.ts`; only the shape is here, for the
+ * same reason `WorkspaceState` is — this file is a leaf, and the persistence
+ * layer has to name the type without reaching into a component.
+ */
+export type RailViewId =
+  | "agent-changes"
+  | "outline"
+  | "properties"
+  | "revisions"
+  | "backlinks";
+
+/** Which slot has focus — the one the next rail click fills. */
+export type RailSlotIndex = 0 | 1;
+
+/**
+ * The panel's slots, top first.
+ *
+ * The `null` is the placeholder a split opens, and it is only ever the *second*
+ * slot. Slot 0 always holds a real view, which is what lets the panel's open
+ * state be derived (`isPanelOpen`) instead of stored: "open iff a slot is
+ * filled" stays exactly true, and an open panel with nothing in it is
+ * unrepresentable rather than merely avoided.
+ */
+export type RailSlots =
+  | []
+  | [RailViewId]
+  | [RailViewId, RailViewId | null];
+
+/**
+ * One document's right-panel layout.
+ *
+ * Stored per document and per *device*, in the same IndexedDB workspace record
+ * as `splitRatio` and `scrollTops` — a panel layout is the same kind of fact
+ * they are, and giving it a record of its own would mean a second read on the
+ * critical path and a second lifetime to keep in step.
+ *
+ * Deliberately no `isOpen`. See {@link RailSlots}.
+ */
+export interface RailPanelState {
+  slots: RailSlots;
+  /** The top slot's share of the panel, clamped to a range the divider can reach. */
+  ratio: number;
+  focused: RailSlotIndex;
+  /**
+   * Whether {@link ratio} is the user's, from a divider drag.
+   *
+   * The sizing rule defers to each view's `preferredHeight` until the user
+   * drags, after which their number wins. Without this the drag would be
+   * silently overridden on the next render, which reads as the divider being
+   * broken.
+   */
+  ratioExplicit: boolean;
+}
+
 /**
  * How an open post's latest edit is faring on its way to storage.
  *
@@ -369,6 +430,23 @@ export interface AppState {
      * two accounts sharing a browser cannot inherit each other's panes.
      */
     workspaceKey: string | null;
+    /**
+     * Each document's right-panel layout, keyed by the focused pane's `rootId`.
+     *
+     * Per document because the views are: the outline of one post says nothing
+     * about another, and someone who reads with Properties open and edits with
+     * Revisions open should not have to re-pick on every switch. Bounded, and
+     * evicted least-recently-used, for the reason `scrollTops` is — the map
+     * rides in a record written on every layout change and must not accumulate
+     * a profile's entire history.
+     *
+     * A document absent from the map has never had its panel touched and opens
+     * on the default. That is deliberately *not* a contextual default: the panel
+     * does not open Agent changes because something is pending, because a panel
+     * that rearranges itself in response to background events reads as the app
+     * changing under you. The rail badge does that job.
+     */
+    railPanel: Record<string, RailPanelState>;
     /**
      * Whether the read behind {@link workspaceHydrated} failed — it timed out,
      * or it threw — rather than answering "nothing stored".

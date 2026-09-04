@@ -1,13 +1,12 @@
 "use client";
 import { useMemo, useState } from "react";
 import { Avatar, Box, Chip, Link, Typography } from "@mui/material";
-import { Cloud, History, Smartphone } from "lucide-react";
+import { Cloud, Smartphone } from "lucide-react";
 import { createSelector } from "@reduxjs/toolkit";
 import { postsSelectors, useSelector } from "@/store";
 import type { RootState } from "@/store";
 import { DateDisplay } from "@/components/shared/DateDisplay";
 import type { Revision, RevisionMeta } from "@/types";
-import RailSection from "./RailSection";
 import { selectFocusedPane } from "@/store/selectors/layoutSelectors";
 import { ICON_SIZE } from "@/theme/icons";
 
@@ -83,13 +82,7 @@ export default function RevisionsSection({
   const hiddenCount = revisions.length - COLLAPSE_AT;
 
   return (
-    <RailSection
-      title="Revisions"
-      count={revisions.length || undefined}
-      icon={<History size={ICON_SIZE.dense} />}
-      iconLabel="Revisions"
-      defaultOpen={true}
-    >
+    <>
       {isEditMode && (
         <Box sx={{ display: "flex", gap: 0.5, mb: 1 }}>
           <Chip
@@ -187,6 +180,6 @@ export default function RevisionsSection({
             )}
           </Box>
         )}
-    </RailSection>
+    </>
   );
 }

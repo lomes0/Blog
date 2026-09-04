@@ -1,6 +1,5 @@
 "use client";
 import { Avatar, Box, Chip, Divider, Link, Typography } from "@mui/material";
-import { Info } from "lucide-react";
 import RouterLink from "next/link";
 import { postsSelectors, selectSaveTrouble, useSelector } from "@/store";
 import { triggerSave } from "@/components/EditDocument/saveRegistry";
@@ -10,9 +9,7 @@ import { DateDisplay } from "@/components/shared/DateDisplay";
 import { DocumentStatus } from "@/types";
 import { countWords, readingMinutes } from "@/utils/editorContent";
 import { seriesPositionOf } from "@/utils/posts/seriesGrouping";
-import RailSection from "./RailSection";
 import { selectFocusedPane } from "@/store/selectors/layoutSelectors";
-import { ICON_SIZE } from "@/theme/icons";
 import { MONO_FONT } from "@/components/Layout/SideBar/constants";
 
 /** Stable identity — this selector is compared with `shallowEqual`. */
@@ -91,12 +88,7 @@ export default function PropertiesSection({
   const status = cloudDoc?.status ?? localDoc?.status;
 
   return (
-    <RailSection
-      title="Properties"
-      icon={<Info size={ICON_SIZE.dense} />}
-      iconLabel="Properties"
-      defaultOpen={true}
-    >
+    <>
       <Box
         sx={{
           display: "grid",
@@ -307,6 +299,6 @@ export default function PropertiesSection({
           </Box>
         </>
       )}
-    </RailSection>
+    </>
   );
 }

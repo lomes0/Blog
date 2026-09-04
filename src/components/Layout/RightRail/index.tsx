@@ -1,18 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Box, IconButton, Tooltip } from "@mui/material";
-import {
-  Command,
-  GitPullRequest,
-  History,
-  Info,
-  Link as LinkIcon,
-  PanelRightClose,
-  PanelRightOpen,
-  Settings,
-  Sparkles,
-  Table,
-} from "lucide-react";
+import { Command, Settings, Sparkles } from "lucide-react";
 import SettingsPanel from "./SettingsPanel";
 import { openCommandPalette } from "@/components/CommandPalette/CommandPalette";
 import { selectAnySaveTrouble, useSelector } from "@/store";
@@ -20,60 +9,177 @@ import {
   selectFocusedDocId,
   selectFocusedPane,
 } from "@/store/selectors/layoutSelectors";
-import { type RailMode, useLayoutMode } from "@/contexts/LayoutModeContext";
+import { useLayoutMode } from "@/contexts/LayoutModeContext";
 import ResizeGripper from "../ResizeGripper";
 import OutlineSection from "./OutlineSection";
 import PropertiesSection from "./PropertiesSection";
 import RevisionsSection from "./RevisionsSection";
 import ProposalsSection from "./ProposalsSection";
 import BacklinksSection from "./BacklinksSection";
+import PanelSlots from "./PanelSlots";
+import ViewRail from "./ViewRail";
 import { ICON_SIZE } from "@/theme/icons";
 import { uiCommands } from "@/commands";
 import { useCommandRun } from "@/commands/CommandProvider";
+import { type ViewId, VIEW_IDS } from "./panelState";
+import { useRailPanel } from "./useRailPanel";
+import {
+  useBacklinks,
+  useOutlineHeadings,
+  useViewSignals,
+} from "./useViewData";
 
 // Must match the grid-template-columns transition duration in AppLayoutContent.
 const TRANSITION_MS = 225;
 
-interface RightRailProps {
-  railMode: RailMode;
-}
-
-const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
-  const {
-    toggleRail,
-    isRailResizing,
-    startRailResize,
-    copilotOpen,
-  } = useLayoutMode();
+/**
+ * The right rail: a permanent icon strip, and a panel of one or two slots.
+ *
+ * The panel used to render all five sections at once as a stack of collapsible
+ * cards, and the strip could only toggle the whole thing open or shut — its
+ * view icons did nothing at all once it was open. Now the strip switches views
+ * and the panel shows the one or two you picked.
+ *
+ * **There is no open/closed state here.** The panel is open iff a slot is
+ * filled; `useRailPanel` derives that and `AppLayoutContent` sizes its grid
+ * column from the same derivation. Closing the last view is what collapses the
+ * panel, and the strip stays either way.
+ */
+const RightRail: React.FC = () => {
+  const { isRailResizing, startRailResize, copilotOpen } = useLayoutMode();
   const run = useCommandRun();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
 
-  // The rail describes whatever pane has focus. It used to re-derive that from
-  // the pathname — which meant it could not be told apart from a stale tab, and
-  // could not have been told which of two panes to describe (plan §2.4).
   const pane = useSelector(selectFocusedPane);
   const rootId = pane?.rootId ?? null;
   const isEditMode = pane?.mode === "write";
   const activeDocId = useSelector(selectFocusedDocId);
   // Undefined unless something open is retrying or has failed to save.
   const saveTrouble = useSelector(selectAnySaveTrouble);
-  // How much agent work is waiting on the author, across every document — not
-  // just this one. See ProposalsSection.
-  const pendingAgentChanges = useSelector((state) =>
-    state.ui.proposals.count.total
+
+  const {
+    panel,
+    open,
+    selectView,
+    focusSlot,
+    closeSlot,
+    closeFocusedSlot,
+    toggleSplit,
+    setRatio,
+    resetRatio,
+  } = useRailPanel();
+
+  // Read once, here, and handed to both the rail's badges and the sections.
+  // See `useViewData.ts` for why this is not each view's own business.
+  const headings = useOutlineHeadings(activeDocId);
+  const { backlinks, loading: backlinksLoading } = useBacklinks(rootId);
+  const signals = useViewSignals(
+    rootId,
+    activeDocId,
+    headings.length,
+    backlinks.length,
+    backlinksLoading,
   );
 
-  // Keep the full panel in the DOM during the close animation so it clips
-  // gradually as the grid column shrinks, instead of vanishing instantly.
-  const [showPanel, setShowPanel] = useState(railMode === "full");
+  // Keep the panel in the DOM during the close animation so it clips gradually
+  // as the grid column shrinks, instead of vanishing instantly.
+  const [showPanel, setShowPanel] = useState(open);
   useEffect(() => {
-    if (railMode === "full") {
+    if (open) {
       setShowPanel(true);
     } else {
       const t = setTimeout(() => setShowPanel(false), TRANSITION_MS);
       return () => clearTimeout(t);
     }
-  }, [railMode]);
+  }, [open]);
+
+  /**
+   * `Cmd/Ctrl+1..5`, `Cmd/Ctrl+\`, and `Escape` inside the panel.
+   *
+   * `Cmd/Ctrl+\` used to toggle the left sidebar; that moved to `Cmd/Ctrl+B`,
+   * which is what its own comment had claimed for years. Escape is shared with
+   * the pane un-maximize in `WorkspacePanes`, which is why this one only fires
+   * when focus is actually inside the panel and marks the event handled.
+   */
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+
+      if (mod && e.key === "\\") {
+        e.preventDefault();
+        toggleSplit();
+        return;
+      }
+      if (mod && !e.shiftKey && !e.altKey && /^[1-5]$/.test(e.key)) {
+        e.preventDefault();
+        selectView(VIEW_IDS[Number(e.key) - 1]);
+        return;
+      }
+      if (
+        e.key === "Escape" && !e.defaultPrevented && open &&
+        panelRef.current?.contains(document.activeElement)
+      ) {
+        e.preventDefault();
+        closeFocusedSlot();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [toggleSplit, selectView, closeFocusedSlot, open]);
+
+  /**
+   * A view's content.
+   *
+   * Built here rather than in a lookup table because the five take five
+   * different sets of props, two of which are the lifted data above. A table of
+   * components would have to pass every prop to every view.
+   */
+  const renderView = useCallback((view: ViewId) => {
+    switch (view) {
+      case "agent-changes":
+        return <ProposalsSection activeDocId={activeDocId} />;
+      case "outline":
+        return rootId
+          ? <OutlineSection activeDocId={activeDocId} headings={headings} />
+          : <NothingOpen />;
+      case "properties":
+        return rootId
+          ? (
+            <PropertiesSection
+              rootId={rootId}
+              activeDocId={activeDocId}
+              isEditMode={isEditMode}
+            />
+          )
+          : <NothingOpen />;
+      case "revisions":
+        return rootId
+          ? (
+            <RevisionsSection
+              rootId={rootId}
+              activeDocId={activeDocId}
+              isEditMode={isEditMode}
+            />
+          )
+          : <NothingOpen />;
+      case "backlinks":
+        return rootId
+          ? <BacklinksSection backlinks={backlinks} loading={backlinksLoading} />
+          : <NothingOpen />;
+    }
+  }, [
+    activeDocId,
+    rootId,
+    isEditMode,
+    headings,
+    backlinks,
+    backlinksLoading,
+  ]);
+
+  const counts = Object.fromEntries(
+    VIEW_IDS.map((view) => [view, signals[view].count]),
+  ) as Record<ViewId, number | null>;
 
   return (
     <Box
@@ -84,13 +190,14 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
     >
       {showPanel && (
         <>
-          {/* Drag handle on the left edge of the full panel */}
+          {/* Drag handle on the left edge of the panel */}
           <ResizeGripper
             isResizing={isRailResizing}
             onMouseDown={startRailResize}
             label="Resize document information rail"
           />
           <Box
+            ref={panelRef}
             sx={{
               borderLeft: "1px solid",
               borderColor: "divider",
@@ -101,50 +208,20 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
               flex: 1,
               position: "sticky",
               top: 0,
-              overflowY: "auto",
-              overflowX: "hidden",
+              overflow: "hidden",
               displayPrint: "none",
             }}
           >
-            <Box
-              sx={{ display: "flex", flexDirection: "column", gap: 1, p: 1 }}
-            >
-              {
-                /* Above the document sections, and outside the "nothing open"
-                  branch: an agent writes to whatever it was asked about, so the
-                  work waiting on you is not a property of the document you
-                  happen to have open. With nothing open it is the only thing
-                  the rail can say — but only when there *is* something, or an
-                  empty rail would grow a permanent empty section. */
-              }
-              {(rootId || pendingAgentChanges > 0) && (
-                <ProposalsSection activeDocId={activeDocId} />
-              )}
-              {!rootId
-                ? (
-                  <Box
-                    sx={{ p: 1, color: "text.disabled", typography: "caption" }}
-                  >
-                    Open a document to see its info here.
-                  </Box>
-                )
-                : (
-                  <>
-                    <OutlineSection activeDocId={activeDocId} />
-                    <PropertiesSection
-                      rootId={rootId}
-                      activeDocId={activeDocId}
-                      isEditMode={isEditMode}
-                    />
-                    <RevisionsSection
-                      rootId={rootId}
-                      activeDocId={activeDocId}
-                      isEditMode={isEditMode}
-                    />
-                    <BacklinksSection rootId={rootId} />
-                  </>
-                )}
-            </Box>
+            <PanelSlots
+              panel={panel}
+              renderView={renderView}
+              counts={counts}
+              onFocusSlot={focusSlot}
+              onCloseSlot={closeSlot}
+              onToggleSplit={toggleSplit}
+              onRatioChange={setRatio}
+              onRatioReset={resetRatio}
+            />
           </Box>
         </>
       )}
@@ -169,90 +246,61 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
           displayPrint: "none",
         }}
       >
+        <ViewRail
+          panel={panel}
+          signals={signals}
+          onSelect={(view, otherSlot) => selectView(view, otherSlot)}
+        />
+
         {
-          /* The save-trouble badge lives here, on the one control that is
-            mounted at *both* rail modes. The message itself is a row inside
-            Properties, which is invisible while the rail is collapsed — which is
-            exactly when a stuck save would otherwise go unnoticed for longest.
-            See docs/plans/archive/quiet-autosave.md §3.3. */
+          /* The save-trouble indicator. It used to hang off the collapse
+            button, which was the one control mounted at both rail modes; there
+            is no collapse button any more, so it is its own row — still always
+            present, which is the property that mattered. A stuck save goes
+            unnoticed longest exactly when the panel is closed, and Properties
+            (which carries the message) is then not on screen. See
+            docs/plans/archive/quiet-autosave.md §3.3. */
         }
-        <Tooltip
-          title={saveTrouble
-            ? (saveTrouble === "error"
-              ? "A document couldn't be saved"
-              : "Reconnecting — unsaved work is stored locally")
-            : railMode === "full"
-            ? "Collapse rail"
-            : "Expand rail"}
-          placement="left"
-        >
-          <IconButton
-            size="small"
-            onClick={toggleRail}
-            aria-label={railMode === "full" ? "Collapse rail" : "Expand rail"}
-            sx={{ position: "relative" }}
-          >
-            {railMode === "full"
-              ? <PanelRightClose size={ICON_SIZE.dense} />
-              : <PanelRightOpen size={ICON_SIZE.dense} />}
-            {saveTrouble && (
-              <Box
-                component="span"
-                aria-hidden
-                sx={{
-                  position: "absolute",
-                  top: 4,
-                  right: 4,
-                  width: 6,
-                  height: 6,
-                  borderRadius: "50%",
-                  bgcolor: saveTrouble === "error"
-                    ? "error.main"
-                    : "warning.main",
-                }}
-              />
-            )}
-          </IconButton>
-        </Tooltip>
-        {
-          /* Mounted at both rail modes, like the save-trouble badge above it and
-            for the same reason: a collapsed rail is exactly when a terminal
-            write would otherwise go unnoticed. It appears only when there is
-            something — an always-present icon that is almost always inert is
-            not awareness, it is furniture. */
-        }
-        {pendingAgentChanges > 0 && (
+        {saveTrouble && (
           <Tooltip
-            title={pendingAgentChanges === 1
-              ? "1 agent change waiting for review"
-              : `${pendingAgentChanges} agent changes waiting for review`}
+            title={saveTrouble === "error"
+              ? "A document couldn't be saved"
+              : "Reconnecting — unsaved work is stored locally"}
             placement="left"
           >
             <IconButton
               size="small"
-              onClick={railMode === "compact" ? toggleRail : undefined}
-              aria-label={pendingAgentChanges === 1
-                ? "1 agent change waiting for review"
-                : `${pendingAgentChanges} agent changes waiting for review`}
-              sx={{ position: "relative", color: "primary.main" }}
+              onClick={() => selectView("properties")}
+              aria-label={saveTrouble === "error"
+                ? "A document couldn't be saved"
+                : "Reconnecting — unsaved work is stored locally"}
+              sx={{
+                color: saveTrouble === "error" ? "error.main" : "warning.main",
+              }}
             >
-              <GitPullRequest size={ICON_SIZE.dense} />
               <Box
                 component="span"
-                aria-hidden
                 sx={{
-                  position: "absolute",
-                  top: 4,
-                  right: 4,
-                  width: 6,
-                  height: 6,
+                  width: 8,
+                  height: 8,
                   borderRadius: "50%",
-                  bgcolor: "primary.main",
+                  bgcolor: "currentColor",
                 }}
               />
             </IconButton>
           </Tooltip>
         )}
+
+        <Box
+          sx={{
+            width: 24,
+            height: "1px",
+            bgcolor: "divider",
+            my: 0.5,
+            flexShrink: 0,
+          }}
+        />
+
         <Tooltip title="Copilot" placement="left">
           <IconButton
             size="small"
@@ -261,42 +309,6 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
             aria-label="Toggle Copilot"
           >
             <Sparkles size={ICON_SIZE.dense} />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="Outline" placement="left">
-          <IconButton
-            size="small"
-            onClick={railMode === "compact" ? toggleRail : undefined}
-            aria-label={railMode === "compact" ? "Expand rail" : "Outline"}
-          >
-            <Table size={ICON_SIZE.dense} />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="Properties" placement="left">
-          <IconButton
-            size="small"
-            onClick={railMode === "compact" ? toggleRail : undefined}
-            aria-label={railMode === "compact" ? "Expand rail" : "Properties"}
-          >
-            <Info size={ICON_SIZE.dense} />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="Revisions" placement="left">
-          <IconButton
-            size="small"
-            onClick={railMode === "compact" ? toggleRail : undefined}
-            aria-label={railMode === "compact" ? "Expand rail" : "Revisions"}
-          >
-            <History size={ICON_SIZE.dense} />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="Backlinks" placement="left">
-          <IconButton
-            size="small"
-            onClick={railMode === "compact" ? toggleRail : undefined}
-            aria-label={railMode === "compact" ? "Expand rail" : "Backlinks"}
-          >
-            <LinkIcon size={ICON_SIZE.dense} />
           </IconButton>
         </Tooltip>
         <Tooltip title="Command palette" placement="left">
@@ -328,5 +340,19 @@ const RightRail: React.FC<RightRailProps> = ({ railMode }) => {
     </Box>
   );
 };
+
+/**
+ * What a document-scoped view shows with an empty workspace.
+ *
+ * Four of the five views describe a document, so with nothing open they have
+ * nothing to describe. Agent changes is the exception and renders normally —
+ * an agent writes to whatever it was asked about, so work waiting on the author
+ * is not a property of the document that happens to be open.
+ */
+const NothingOpen = () => (
+  <Box sx={{ color: "text.disabled", typography: "caption" }}>
+    Open a document to see its info here.
+  </Box>
+);
 
 export default RightRail;

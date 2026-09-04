@@ -1,33 +1,22 @@
 "use client";
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import React, { createContext, useContext, useState } from "react";
 import {
   type ResizablePanelConfig,
   useResizablePanel,
 } from "@/hooks/useResizablePanel";
 
 /**
- * The right rail's two states.
+ * The right rail no longer has a mode.
  *
- * Deliberately *not* the sidebar's `SidebarMode` even though that union used to
- * be spelled identically here: the rail has no hidden state. Its compact strip
- * is the app's permanent right border — the thing the collapse button collapses
- * *to* — so "hidden" was unreachable (`toggleRail` only ever flipped
- * full ↔ compact) and the two consumers disagreed about what it would mean:
- * `RightRail` rendered nothing while `AppLayoutContent` still reserved the 54px
- * column. An identical shape is not the same concept; three modes that all
- * happen and two that do are different types, and this one is now honest about
- * which it is.
+ * There used to be a `RailMode` of `"full" | "compact"` here, persisted under
+ * `ui.railMode`. The panel is now one or two view slots and it is open iff a
+ * slot is filled — see `components/Layout/RightRail/panelState.ts`. That made
+ * the boolean not merely redundant but wrong: it could say "open" with nothing
+ * to show, and closing the last view had to remember to flip it.
+ *
+ * The width below stays, because a width is not a mode: it is what the column
+ * is when there is something in it.
  */
-export type RailMode = "full" | "compact";
-
-const RAIL_MODE_KEY = "ui.railMode";
-
 /** Width of the always-present compact strip on the rail's right edge. */
 export const RAIL_COMPACT_W = 54;
 
@@ -56,9 +45,7 @@ const COPILOT_PANEL: ResizablePanelConfig = {
 };
 
 interface LayoutModeContextType {
-  railMode: RailMode;
-  toggleRail: () => void;
-  /** User's preferred rail width (full mode only) */
+  /** User's preferred rail width, applied whenever the panel has a slot. */
   railWidth: number;
   /** Whether the user is currently dragging the rail resize handle */
   isRailResizing: boolean;
@@ -95,7 +82,6 @@ export const useLayoutMode = () => {
 export const LayoutModeProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [railMode, setRailMode] = useState<RailMode>("full");
   // Copilot visibility lives here rather than in the Redux `ui` slice, where it
   // used to sit apart from its own width: a panel's open state and its width are
   // one decision (the grid column is `open ? width : 0`), and splitting them
@@ -108,27 +94,9 @@ export const LayoutModeProvider: React.FC<{ children: React.ReactNode }> = ({
   const rail = useResizablePanel(RAIL_PANEL);
   const copilot = useResizablePanel(COPILOT_PANEL);
 
-  useEffect(() => {
-    const saved = localStorage.getItem(RAIL_MODE_KEY);
-    // "hidden" is a value older builds could write. It survives only as this
-    // migration; see `RailMode` above.
-    if (saved === "full" || saved === "compact") setRailMode(saved);
-    else if (saved === "hidden") setRailMode("compact");
-  }, []);
-
-  const toggleRail = useCallback(() => {
-    setRailMode((prev) => {
-      const next = prev === "full" ? "compact" : "full";
-      localStorage.setItem(RAIL_MODE_KEY, next);
-      return next;
-    });
-  }, []);
-
   return (
     <LayoutModeContext.Provider
       value={{
-        railMode,
-        toggleRail,
         railWidth: rail.width,
         isRailResizing: rail.isResizing,
         startRailResize: rail.startResize,

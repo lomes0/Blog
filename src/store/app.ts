@@ -12,10 +12,28 @@ import {
   PendingRename,
   Post,
   ProposalCount,
+  RailPanelState,
+  RailSlotIndex,
+  RailViewId,
   SaveStatus,
   Series,
   SidebarView,
 } from "../types";
+
+import {
+  closeFocusedSlot,
+  closeSlot,
+  defaultPanel,
+  focusSlot,
+  type PanelState,
+  rememberPanel,
+  resetRatio,
+  selectView,
+  selectViewInOtherSlot,
+  setRatio,
+  type Slots,
+  toggleSplit,
+} from "@/components/Layout/RightRail/panelState";
 
 // ── Domain thunks (split into separate files for maintainability) ────────────
 import { loadSession } from "./thunks/sessionThunks";
@@ -328,6 +346,40 @@ function reconcile(state: AppState, payload: ReconcilePayload) {
 }
 
 /**
+ * A document's panel layout, copied out of the Immer draft as plain data.
+ *
+ * The copy is the point. `panelState.ts` is written against ordinary values and
+ * spreads what it is given; handing it a draft would produce a new object whose
+ * `slots` is still a proxy into the old state, which Immer can mostly cope with
+ * and which is impossible to reason about when it cannot.
+ *
+ * A document nobody has touched gets the default, which is what makes every
+ * reducer below total — there is no "no panel yet" case for them to handle.
+ */
+function readRailPanel(state: AppState, docId: string): PanelState {
+  const stored = state.ui.railPanel[docId];
+  if (!stored) return defaultPanel();
+  return {
+    slots: [...stored.slots] as Slots,
+    focused: stored.focused,
+    ratio: stored.ratio,
+    ratioExplicit: stored.ratioExplicit,
+  };
+}
+
+/**
+ * Write one back, evicting the least recently used if the map is full.
+ *
+ * A *closed* panel is recorded rather than deleted. "This document opens with
+ * no panel" is a choice the user made and has to survive a reload; deleting the
+ * entry would make it indistinguishable from a document never opened, which
+ * comes back on the default view.
+ */
+function writeRailPanel(state: AppState, docId: string, panel: PanelState) {
+  state.ui.railPanel = rememberPanel(state.ui.railPanel, docId, panel);
+}
+
+/**
  * Drop a document's pending proposal and keep the badge count honest.
  *
  * The count is decremented rather than recomputed because it is what the *poll*
@@ -411,6 +463,7 @@ const initialState: AppState = {
     workspaceKey: null,
     workspaceRestoreFailed: false,
     workspaceProvisional: false,
+    railPanel: {},
     sidebarView: "explorer",
     proposals: {
       byDocId: {},
@@ -554,6 +607,71 @@ export const appSlice = createSlice({
     },
     setSidebarView: (state, action: PayloadAction<SidebarView>) => {
       state.ui.sidebarView = action.payload;
+    },
+
+    // ── The right panel's slots ──
+    //
+    // One reducer per gesture rather than a single `setRailPanel`, so the
+    // transition rules stay in `panelState.ts` where they are tested and the
+    // components stay unable to invent a state the model forbids. Each one
+    // reads the document's panel (or the default), applies one transition, and
+    // writes it back through `rememberPanel`, which is what keeps the map
+    // bounded and least-recently-used.
+    railViewSelected: (
+      state,
+      action: PayloadAction<
+        { docId: string; view: RailViewId; otherSlot?: boolean }
+      >,
+    ) => {
+      const { docId, view, otherSlot } = action.payload;
+      const panel = readRailPanel(state, docId);
+      writeRailPanel(
+        state,
+        docId,
+        otherSlot
+          ? selectViewInOtherSlot(panel, view)
+          : selectView(panel, view),
+      );
+    },
+    railSlotClosed: (
+      state,
+      action: PayloadAction<{ docId: string; index: RailSlotIndex }>,
+    ) => {
+      const { docId, index } = action.payload;
+      writeRailPanel(state, docId, closeSlot(readRailPanel(state, docId), index));
+    },
+    railFocusedSlotClosed: (state, action: PayloadAction<{ docId: string }>) => {
+      const { docId } = action.payload;
+      writeRailPanel(state, docId, closeFocusedSlot(readRailPanel(state, docId)));
+    },
+    railSplitToggled: (state, action: PayloadAction<{ docId: string }>) => {
+      const { docId } = action.payload;
+      writeRailPanel(state, docId, toggleSplit(readRailPanel(state, docId)));
+    },
+    railSlotFocused: (
+      state,
+      action: PayloadAction<{ docId: string; index: RailSlotIndex }>,
+    ) => {
+      const { docId, index } = action.payload;
+      writeRailPanel(state, docId, focusSlot(readRailPanel(state, docId), index));
+    },
+    railRatioChanged: (
+      state,
+      action: PayloadAction<{ docId: string; ratio: number }>,
+    ) => {
+      const { docId, ratio } = action.payload;
+      writeRailPanel(state, docId, setRatio(readRailPanel(state, docId), ratio));
+    },
+    railRatioReset: (state, action: PayloadAction<{ docId: string }>) => {
+      const { docId } = action.payload;
+      writeRailPanel(state, docId, resetRatio(readRailPanel(state, docId)));
+    },
+    /** Install a whole map, from the restored workspace record. */
+    railPanelsRestored: (
+      state,
+      action: PayloadAction<Record<string, RailPanelState>>,
+    ) => {
+      state.ui.railPanel = action.payload;
     },
   },
   extraReducers: (builder) => {

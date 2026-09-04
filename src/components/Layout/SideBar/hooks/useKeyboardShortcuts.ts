@@ -21,10 +21,15 @@ export const useKeyboardShortcuts = ({
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     if (!enabled) return;
 
-    // Check for modifier keys (Ctrl/Cmd + B to toggle sidebar)
+    // Ctrl/Cmd + B toggles the sidebar.
+    //
+    // It was `\` until the right panel grew slots and needed a split toggle.
+    // `Cmd+\` is the split now, and this moved to `B` — which is what this
+    // comment claimed for years while the code below read `\`, and what the
+    // same chord does in every editor this app is shaped after.
     const isModifierPressed = event.ctrlKey || event.metaKey;
 
-    if (isModifierPressed && event.key === "\\") {
+    if (isModifierPressed && event.key.toLowerCase() === "b") {
       event.preventDefault();
       onToggleSidebar();
     }
@@ -41,6 +46,6 @@ export const useKeyboardShortcuts = ({
   }, [handleKeyDown, enabled]);
 
   return {
-    shortcutHint: "Ctrl+\\",
+    shortcutHint: "Ctrl+B",
   };
 };

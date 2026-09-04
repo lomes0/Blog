@@ -26,6 +26,7 @@ import { useSidebarWidth } from "@/contexts/SidebarWidthContext";
 import { useLayoutMode } from "@/contexts/LayoutModeContext";
 import { usePathname } from "next/navigation";
 import { RAIL_COMPACT_W } from "@/contexts/LayoutModeContext";
+import { useRailPanel } from "./RightRail/useRailPanel";
 import {
   ActiveEditorContext,
   SetActiveEditorContext,
@@ -40,7 +41,6 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
   const initialized = useSelector((state: RootState) => state.ui.initialized);
   const { noWidthMotion, sidebarWidth } = useSidebarWidth();
   const {
-    railMode,
     railWidth,
     isRailResizing,
     copilotOpen,
@@ -89,9 +89,11 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
   useChangeFeed();
   useBackgroundRefresh();
 
-  const railW = railMode === "full"
-    ? railWidth + RAIL_COMPACT_W
-    : RAIL_COMPACT_W;
+  // Derived, never stored: the panel is open iff a view is in a slot. The rail
+  // itself reads the same hook, so the column and its contents cannot disagree
+  // about whether there is anything to show.
+  const { open: railOpen } = useRailPanel();
+  const railW = railOpen ? railWidth + RAIL_COMPACT_W : RAIL_COMPACT_W;
 
   // Always keep the column present (0px when closed) so its width can animate
   // open/closed instead of the track appearing/disappearing.
@@ -246,7 +248,7 @@ const AppLayoutContent = ({ children }: { children: React.ReactNode }) => {
           {showCopilot
             ? <CopilotPanel documentId={copilotDocumentId} />
             : <Box />}
-          <RightRail railMode={railMode} />
+          <RightRail />
         </Box>
         {
           /* Outside the grid on purpose: it is `position: fixed` and owns its

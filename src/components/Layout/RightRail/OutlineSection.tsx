@@ -1,71 +1,37 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Box, LinearProgress, Link, Typography } from "@mui/material";
-import { Table } from "lucide-react";
 import { postsSelectors, useSelector } from "@/store";
 import {
   countWords,
-  extractHeadings,
   type OutlineHeading,
   readingMinutes,
 } from "@/utils/editorContent";
-import RailSection from "./RailSection";
-import { ICON_SIZE } from "@/theme/icons";
 
 interface OutlineSectionProps {
   activeDocId: string | null;
+  /**
+   * The document's headings, read by `RightRail` rather than here.
+   *
+   * They are the rail icon's badge count as well as this list, and the badge
+   * has to be right whether or not this view is in a slot — so the extraction
+   * (and its `MutationObserver` fallback for view mode) moved up to the one
+   * component that is always mounted. See `useViewData.ts`.
+   */
+  headings: OutlineHeading[];
 }
 
-function extractDomHeadings(): OutlineHeading[] {
-  const el = document.getElementById("app-main");
-  if (!el) return [];
-  const result: OutlineHeading[] = [];
-  el.querySelectorAll("h2, h3").forEach((h) => {
-    const level = parseInt(h.tagName.slice(1), 10) as 2 | 3;
-    const text = h.textContent?.trim() ?? "";
-    if (text) result.push({ text, level, key: text });
-  });
-  return result;
-}
-
-export default function OutlineSection({ activeDocId }: OutlineSectionProps) {
+export default function OutlineSection(
+  { activeDocId, headings }: OutlineSectionProps,
+) {
   const [scrollPct, setScrollPct] = useState(0);
-  const [domHeadings, setDomHeadings] = useState<OutlineHeading[]>([]);
 
   const docData = useSelector((state) => {
     if (!activeDocId) return undefined;
-    const doc = postsSelectors.selectById(state, activeDocId);
-    return doc?.data;
+    return postsSelectors.selectById(state, activeDocId)?.data;
   });
 
-  const jsonHeadings = extractHeadings(docData);
-  const needsDomFallback = jsonHeadings.length === 0;
-  const headings = needsDomFallback ? domHeadings : jsonHeadings;
   const wordCount = countWords(docData);
-
-  // In view mode (/view/[id]), doc.data is always EMPTY_EDITOR_STATE
-  // because loadPosts stores a placeholder to avoid loading all
-  // document content into memory at startup. The rendered HTML is already in
-  // the DOM, so we query h2/h3 directly — same approach used by scrollTo().
-  //
-  // Alternatives if this ever needs to change:
-  //   B) Fetch the revision's Lexical JSON from the API in a useEffect here
-  //      and feed it to extractHeadings — correct data but an extra round-trip.
-  //   C) Have ViewDocument dispatch an action to hydrate doc.data from
-  //      the revision JSON, so OutlineSection picks it up via the normal Redux
-  //      path — most architecturally consistent but requires threading the raw
-  //      Lexical JSON through the server component and a new Redux action.
-  useEffect(() => {
-    if (!needsDomFallback) return;
-    const el = document.getElementById("app-main");
-    if (!el) return;
-    setDomHeadings(extractDomHeadings());
-    const observer = new MutationObserver(() =>
-      setDomHeadings(extractDomHeadings())
-    );
-    observer.observe(el, { childList: true, subtree: true });
-    return () => observer.disconnect();
-  }, [needsDomFallback]);
   const readMinutes = readingMinutes(wordCount);
 
   useEffect(() => {
@@ -97,21 +63,11 @@ export default function OutlineSection({ activeDocId }: OutlineSectionProps) {
   };
 
   return (
-    <RailSection
-      title="Outline"
-      count={headings.length || undefined}
-      icon={<Table size={ICON_SIZE.dense} />}
-      iconLabel="Outline"
-      defaultOpen={true}
-    >
+    <>
       {wordCount > 0 && (
         <>
           <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              mb: 0.5,
-            }}
+            sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}
           >
             <Typography variant="caption" color="text.secondary">
               {scrollPct}% read
@@ -165,6 +121,6 @@ export default function OutlineSection({ activeDocId }: OutlineSectionProps) {
             ))}
           </Box>
         )}
-    </RailSection>
+    </>
   );
 }
