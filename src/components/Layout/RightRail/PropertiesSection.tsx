@@ -1,6 +1,7 @@
 "use client";
 import { Avatar, Box, Chip, Divider, Link, Typography } from "@mui/material";
 import RouterLink from "next/link";
+import { FileText } from "lucide-react";
 import { postsSelectors, selectSaveTrouble, useSelector } from "@/store";
 import { triggerSave } from "@/components/EditDocument/saveRegistry";
 import type { RootState } from "@/store";
@@ -12,6 +13,7 @@ import { seriesPositionOf } from "@/utils/posts/seriesGrouping";
 import { selectFocusedPane } from "@/store/selectors/layoutSelectors";
 import { MONO_FONT } from "@/components/Layout/SideBar/constants";
 import { railChipSx } from "./railChrome";
+import { ICON_SIZE } from "@/theme/icons";
 
 /** Stable identity — this selector is compared with `shallowEqual`. */
 const EMPTY_TAB_IDS: string[] = [];
@@ -259,6 +261,12 @@ export default function PropertiesSection({
               borderColor: "info.light",
             }}
           />
+          {
+            /* `FileText` is the app's mark for a tab — `DocumentTabs` and
+              `PaneHeader` both draw it — rather than the `▤` that stood here,
+              which was whatever box-drawing glyph the reader's fallback font
+              happened to have. */
+          }
           <Typography
             variant="caption"
             sx={{
@@ -266,11 +274,14 @@ export default function PropertiesSection({
               typography: "micro",
               letterSpacing: "0.06em",
               textTransform: "uppercase",
-              display: "block",
+              display: "flex",
+              alignItems: "center",
+              gap: 0.5,
               mb: 0.5,
             }}
           >
-            ▤ This tab
+            <FileText size={ICON_SIZE.micro} />
+            This tab
           </Typography>
           <Box
             sx={{

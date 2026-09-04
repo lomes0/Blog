@@ -1,11 +1,13 @@
 /**
  * Metrics the right rail's views share.
  *
- * Import-free, so it stays readable next to DESIGN.md rather than next to a
- * component. Same test as `src/theme/tokens.ts`: a literal that appears in more
- * than one file is a default that was never set — these appeared in three, with
- * three different answers.
+ * Same test as `src/theme/tokens.ts`: a literal that appears in more than one
+ * file is a default that was never set — these appeared in three, with three
+ * different answers. What the theme already owns is imported rather than
+ * restated, which is the whole point of the file existing at all.
  */
+
+import { TREE_ROW_RADIUS } from "@/theme/treeRow";
 
 /**
  * A rail chip's height.
@@ -33,4 +35,26 @@ export const railChipSx = {
   height: RAIL_CHIP_H,
   typography: "micro",
   "& .MuiChip-label": { px: 0.5 },
+} as const;
+
+/**
+ * The card a rail row sits in — a proposal, an agent-created post, a rename, a
+ * revision.
+ *
+ * Written twice, identically apart from the flex axis: `ProposalsSection`'s
+ * `rowSx` and `RevisionsSection`'s inline row. Both wrote `borderRadius: 1`,
+ * which on the ×4 `sx` scale is **4px** — DESIGN.md §5's *image* radius, not a
+ * row's. §17.4 puts a list row at `1.5` (6px), which is what `TREE_ROW_RADIUS`
+ * has always said; this is its second user.
+ *
+ * The axis stays with the caller: a revision is a single line of avatar, name
+ * and mark, and a proposal is a stack ending in its buttons.
+ */
+export const railRowSx = {
+  display: "flex",
+  border: "1px solid",
+  borderColor: "divider",
+  borderRadius: TREE_ROW_RADIUS,
+  p: 0.75,
+  bgcolor: "background.paper",
 } as const;

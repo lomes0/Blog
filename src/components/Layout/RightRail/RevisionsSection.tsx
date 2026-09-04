@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { Avatar, Box, Chip, Link, Typography } from "@mui/material";
-import { Cloud, Smartphone } from "lucide-react";
+import { ChevronDown, Cloud, Smartphone } from "lucide-react";
 import { createSelector } from "@reduxjs/toolkit";
 import { postsSelectors, useSelector } from "@/store";
 import type { RootState } from "@/store";
@@ -9,7 +9,8 @@ import { DateDisplay } from "@/components/shared/DateDisplay";
 import type { Revision, RevisionMeta } from "@/types";
 import { selectFocusedPane } from "@/store/selectors/layoutSelectors";
 import { ICON_SIZE } from "@/theme/icons";
-import { railChipSx } from "./railChrome";
+import { MOTION } from "@/theme/tokens";
+import { railChipSx, railRowSx } from "./railChrome";
 
 const COLLAPSE_AT = 3;
 
@@ -120,16 +121,7 @@ export default function RevisionsSection({
               return (
                 <Box
                   key={rev.id}
-                  sx={{
-                    display: "flex",
-                    gap: 0.75,
-                    alignItems: "center",
-                    border: "1px solid",
-                    borderColor: "divider",
-                    borderRadius: 1,
-                    p: 0.75,
-                    bgcolor: "background.paper",
-                  }}
+                  sx={{ ...railRowSx, gap: 0.75, alignItems: "center" }}
                 >
                   <Avatar
                     src={author?.image ?? undefined}
@@ -164,15 +156,37 @@ export default function RevisionsSection({
               );
             })}
 
-            {!showAll && hiddenCount > 0 && (
+            {
+              /* A toggle, not a one-way door: this used to render only while
+                collapsed, so expanding a long history left no way back to the
+                three rows the section is meant to be. The chevron is lucide's
+                rather than the `▾` that stood here — a literal glyph rendered in
+                whatever fallback font had it, next to icons that all came from
+                one set. */
+            }
+            {hiddenCount > 0 && (
               <Link
                 component="button"
+                type="button"
                 variant="caption"
                 underline="hover"
-                onClick={() => setShowAll(true)}
-                sx={{ textAlign: "center", mt: 0.25 }}
+                onClick={() => setShowAll((prev) => !prev)}
+                sx={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 0.25,
+                  mt: 0.25,
+                }}
               >
-                show {hiddenCount} more ▾
+                {showAll ? "Show fewer" : `Show ${hiddenCount} more`}
+                <ChevronDown
+                  size={ICON_SIZE.micro}
+                  style={{
+                    transform: showAll ? "rotate(180deg)" : undefined,
+                    transition: `transform ${MOTION.fast}ms`,
+                  }}
+                />
               </Link>
             )}
           </Box>

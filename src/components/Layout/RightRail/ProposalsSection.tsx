@@ -21,7 +21,7 @@ import type {
 } from "@/types";
 import { originLabel } from "@/lib/proposalLabels";
 import { isProposalStale } from "@/lib/proposals";
-import { railChipSx } from "./railChrome";
+import { railChipSx, railRowSx } from "./railChrome";
 
 interface ProposalsSectionProps {
   /** The focused document, so its own proposal sorts to the top. */
@@ -179,17 +179,8 @@ export default function ProposalsSection(
   );
 }
 
-/** The card every row in this section shares. */
-const rowSx = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 0.5,
-  border: "1px solid",
-  borderColor: "divider",
-  borderRadius: 1,
-  p: 0.75,
-  bgcolor: "background.paper",
-} as const;
+/** The shared rail card, stacked — a row here ends in its answer buttons. */
+const rowSx = { ...railRowSx, flexDirection: "column", gap: 0.5 } as const;
 
 function RowMeta(
   { origin, date, icon }: {
