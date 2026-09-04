@@ -55,12 +55,13 @@ import {
   RECOVERY_DOC,
 } from "@/lib/content-bridge/schema";
 import { AGENT_SCOPES, type AgentScope } from "@/lib/agentTokens";
-// The two `manage` tools, and the only writes here that are not proposals.
-// Author-scoped by argument rather than by a session, because this server has
-// no session — see `loadPost` for the same reasoning about reads.
+// `delete_post`, the one write here that is not a proposal, and the rename that
+// stopped being one (docs/plans/claude-code-backlog.md §8). Author-scoped by
+// argument rather than by a session, because this server has no session — see
+// `loadPost` for the same reasoning about reads.
 import {
   deleteOwnedDocument,
-  renameOwnedDocument,
+  proposeRenameOwnedDocument,
 } from "@/repositories/document";
 import type { RateDecision } from "@/lib/rateLimit";
 
@@ -511,48 +512,18 @@ export function createContentServer(
   // `manage` is a separate axis from `propose`, not a wider version of it — a
   // token can hold either without the other — so this is a guarded block rather
   // than a second early return. Putting it *above* the `propose` return is what
-  // keeps a manage-only token from silently losing these two tools.
+  // keeps a manage-only token from silently losing this tool.
   //
-  // Everything here lands immediately on the author's own content. That is the
+  // What is left here lands immediately on the author's own content, and it is
+  // one tool: `rename_post` moved out to `propose` once a rename could be
+  // reviewed and declined like any other write (docs/plans/claude-code-backlog.md
+  // §8), which leaves `manage` meaning exactly "irreversible". That is the
   // opposite of the rule the tools below follow, and the tool text says so in
   // as many words, because an agent that has learned "my writes are proposals"
   // from `apply_ops` will otherwise carry that belief into a delete.
   // -------------------------------------------------------------------------
 
   if (mayManage) {
-    server.registerTool(
-      "rename_post",
-      {
-        description:
-          "Change a post's title. Unlike apply_ops this is NOT a proposal — it " +
-          "takes effect immediately on the live post, so confirm the new title " +
-          "with the user before calling rather than after. " +
-          "Only the title: the handle (the post's URL) is left alone, so links " +
-          "keep working and the address can still say something the title no " +
-          "longer does. Publishing, moving between series and editing content " +
-          "are all elsewhere. A rename does not touch content, so a pending " +
-          "proposal on this post stays pending and still applies.",
-        inputSchema: {
-          id: z.string().describe("Document id"),
-          title: z.string().min(1).describe("The new title"),
-        },
-      },
-      metered("write", async ({ id, title }) => {
-        const authorId = await getAuthorId();
-        const result = await renameOwnedDocument({
-          id,
-          ownedBy: authorId,
-          title,
-          origin,
-        });
-        if (!result.ok) return fail(`Post ${id} not found (or not yours).`);
-        return text(
-          `Renamed "${result.previousTitle}" to "${title}". This is live — the ` +
-            `post is now titled that in the author's library.`,
-        );
-      }),
-    );
-
     server.registerTool(
       "delete_post",
       {
@@ -775,6 +746,60 @@ export function createContentServer(
           `agent-created and awaiting the author's accept or discard. Nobody ` +
           `else can read it until they publish it.\nstateHash: ${result.stateHash}` +
           placement,
+      );
+    }),
+  );
+
+  server.registerTool(
+    "rename_post",
+    {
+      description:
+        "PROPOSE a new title for a post. Like apply_ops and unlike delete_post, " +
+        "this does not take effect: the post keeps its current title until the " +
+        "author approves the new one in the app, so report it as proposed, " +
+        "never as done. A second call replaces the title you proposed before " +
+        "rather than queueing another. " +
+        "Only the title: the handle (the post's URL) is left alone, so links " +
+        "keep working and the address can still say something the title no " +
+        "longer does. Publishing, moving between series and editing content " +
+        "are all elsewhere. A rename touches no content, so a pending content " +
+        "proposal on this post stays pending, applies independently, and is " +
+        "neither carried along by approving the rename nor invalidated by it.",
+      inputSchema: {
+        id: z.string().describe("Document id"),
+        title: z.string().min(1).describe("The title to propose"),
+      },
+    },
+    metered("write", async ({ id, title }) => {
+      const authorId = await getAuthorId();
+      const result = await proposeRenameOwnedDocument({
+        id,
+        ownedBy: authorId,
+        title,
+        origin,
+      });
+      if (!result.ok) return fail(`Post ${id} not found (or not yours).`);
+
+      // Nothing was written, and saying "proposed" would be a lie about the
+      // review rail — there is no row on it to approve.
+      if (result.unchanged) {
+        return text(
+          `Post ${id} is already titled "${title}". Nothing was proposed.`,
+        );
+      }
+
+      // The displaced title is named rather than merely mentioned: the author
+      // never saw the first proposal, so an agent that renamed twice has to be
+      // able to say which of the two is the one waiting.
+      const replaced = result.replaced
+        ? ` This replaces the title you proposed earlier ("${result.replaced}"), ` +
+          `which is no longer waiting for the author.`
+        : "";
+      return text(
+        `Proposed renaming "${result.currentTitle}" to "${title}". The post is ` +
+          `still titled "${result.currentTitle}" and stays that way until the ` +
+          `author approves the rename in the app — they can also reject it.` +
+          replaced,
       );
     }),
   );

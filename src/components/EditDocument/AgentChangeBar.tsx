@@ -4,11 +4,15 @@ import {
   Check,
   GitPullRequest,
   GitPullRequestCreate,
+  SquarePen,
   Trash2,
   X,
 } from "lucide-react";
 import { useSelector } from "@/store";
-import { selectAgentPost } from "@/store/selectors/proposalSelectors";
+import {
+  selectAgentPost,
+  selectPendingRename,
+} from "@/store/selectors/proposalSelectors";
 import { DateDisplay } from "@/components/shared/DateDisplay";
 import { ICON_SIZE } from "@/theme/icons";
 import { useProposalActions } from "@/hooks/useProposalActions";
@@ -38,9 +42,16 @@ interface AgentChangeBarProps {
  *   Review: there is nothing to diff it against, which is the whole reason a
  *   create lands rather than proposes.
  *
- * A document is at most one of the two — a post the author has not accepted yet
- * has no proposals against it — so this branches rather than stacking, and
- * renders nothing when neither answers.
+ * - A **pending rename** (docs/plans/claude-code-backlog.md §8) — a title an
+ *   agent proposed. Approve it onto the post or Reject it; no Review, because
+ *   the change is the two names in the bar.
+ *
+ * A document is at most one of the first two — a post the author has not
+ * accepted yet has no proposals against it — so those branch rather than
+ * stacking. A rename is orthogonal to both and stacks above whichever is there:
+ * it lives in its own columns, it is answered by its own pair of routes, and
+ * approving a content edit must not silently carry a new title with it. The
+ * component renders nothing when none of the three answers.
  *
  * It renders whenever this document is in either state — in or out of diff mode
  * (docs/plans/archive/agent-change-indication.md §3.4). It used to render only when the
@@ -57,9 +68,55 @@ interface AgentChangeBarProps {
  * review.
  *
  * Sticky, because a proposal can be pages long and the decision has to stay
- * reachable without scrolling back.
+ * reachable without scrolling back. The stickiness is on the stack rather than
+ * on each bar, so a rename and a proposal shown together travel as one block.
  */
 export default function AgentChangeBar({ docId }: AgentChangeBarProps) {
+  // Read here only to decide whether there is a bar at all. The stickiness and
+  // the margin live on this wrapper rather than on each bar inside it: two
+  // independently sticky elements at `top: 0` would slide over one another the
+  // moment the document scrolled, and an always-rendered wrapper would put its
+  // margin above every document that has nothing waiting. The children read
+  // what they render for themselves — the same key out of the same store, so
+  // the second read is a lookup, not a second source of truth.
+  const hasProposal = useSelector((state) =>
+    Boolean(state.ui.proposals.byDocId[docId])
+  );
+  const hasAgentPost = useSelector((state) =>
+    Boolean(state.ui.proposals.agentPostIds[docId])
+  );
+  const hasRename = useSelector((state) =>
+    Boolean(state.ui.proposals.renames[docId])
+  );
+  if (!hasProposal && !hasAgentPost && !hasRename) return null;
+
+  return (
+    <Box
+      sx={{
+        position: "sticky",
+        top: 0,
+        zIndex: 2,
+        display: "flex",
+        flexDirection: "column",
+        gap: 1,
+        mb: 2,
+        // The pane's own ground, so the gap between two stacked bars does not
+        // become a window onto the text sliding underneath them.
+        bgcolor: "background.default",
+      }}
+    >
+      {
+        /* Above the content decision: it is the smaller question, and the one
+          whose whole answer is legible without reading anything else. */
+      }
+      <RenameBar docId={docId} />
+      <DecisionBar docId={docId} />
+    </Box>
+  );
+}
+
+/** The proposal-or-created-post half, which is at most one of the two. */
+function DecisionBar({ docId }: AgentChangeBarProps) {
   const proposal = useSelector((state) => state.ui.proposals.byDocId[docId]);
   const agentPost = useSelector((state) => selectAgentPost(state, docId));
   const comparing = useSelector((state) => state.ui.diff.new);
@@ -226,6 +283,66 @@ export default function AgentChangeBar({ docId }: AgentChangeBarProps) {
   return null;
 }
 
+/**
+ * A title an agent proposed, and the two answers to it.
+ *
+ * Its own component so the bar above can stack it without either branch of the
+ * main decision knowing it exists.
+ */
+function RenameBar({ docId }: AgentChangeBarProps) {
+  const rename = useSelector((state) => selectPendingRename(state, docId));
+  const { busyId, approveRename, rejectRename } = useProposalActions();
+  if (!rename) return null;
+
+  const busy = busyId === rename.id;
+
+  return (
+    <Bar
+      icon={<SquarePen size={ICON_SIZE.dense} />}
+      title={`Rename to “${rename.proposedTitle}”`}
+      meta={
+        <>
+          {/* What it is called now, which the headline replaces if approved. */}
+          <span>Currently “{rename.title || "Untitled"}”</span>
+          <Chip
+            label={originLabel(rename.origin)}
+            size="small"
+            sx={chipSx}
+          />
+          <DateDisplay date={rename.proposedAt} variant="full" />
+        </>
+      }
+      actions={
+        <>
+          {
+            /* No Review, and no staleness: a rename touches no content, so
+              there is nothing to diff and nothing a save can invalidate. */
+          }
+          <Button
+            size="small"
+            variant="outlined"
+            color="inherit"
+            disabled={busy}
+            startIcon={<X size={ICON_SIZE.inline} />}
+            onClick={() => void rejectRename(rename)}
+          >
+            Reject
+          </Button>
+          <Button
+            size="small"
+            variant="contained"
+            disabled={busy}
+            startIcon={<Check size={ICON_SIZE.inline} />}
+            onClick={() => void approveRename(rename)}
+          >
+            Approve
+          </Button>
+        </>
+      }
+    />
+  );
+}
+
 /** Origin, and the proposal's staleness flag, at the size the meta line is. */
 const chipSx = {
   height: 16,
@@ -234,12 +351,12 @@ const chipSx = {
 } as const;
 
 /**
- * The frame both states share: glyph, a headline, one line of provenance, and
+ * The frame every state shares: glyph, a headline, one line of provenance, and
  * the decision on the right.
  *
- * Shared as a component rather than by copying the `sx` block, because the two
- * branches differing in their padding or their sticky offset would read as two
- * different notices about the same document.
+ * Shared as a component rather than by copying the `sx` block, because the
+ * branches differing in their padding would read as different notices about the
+ * same document. Positioning is the stack's above, not each bar's.
  */
 function Bar({
   icon,
@@ -257,14 +374,10 @@ function Bar({
   return (
     <Box
       sx={{
-        position: "sticky",
-        top: 0,
-        zIndex: 2,
         display: "flex",
         flexWrap: "wrap",
         alignItems: "center",
         gap: 1,
-        mb: 2,
         px: 1.5,
         py: 1,
         border: "1px solid",

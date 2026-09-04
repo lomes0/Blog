@@ -1,6 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 import type { RootState } from "@/store";
-import type { AgentCreatedPost } from "@/types";
+import type { AgentCreatedPost, PendingRename } from "@/types";
 import { isProposalStale } from "@/lib/proposals";
 
 /* ------------------------------------------------------------------ */
@@ -10,12 +10,14 @@ import { isProposalStale } from "@/lib/proposals";
 /**
  * What a document is waiting on the author for, in one word.
  *
- * The three states are ordered stale > pending > created because only the stale
- * one needs an action other than "look at it" — a proposal built on a base the
+ * Ordered stale > pending > renamed > created. Stale leads because only it
+ * needs an action other than "look at it" — a proposal built on a base the
  * document has moved past cannot be approved, so a row that showed "pending"
- * instead would be inviting a click that 409s.
+ * instead would be inviting a click that 409s. A content proposal outranks a
+ * pending rename below it because it is the larger question about the same
+ * post; the rail lists both, and this is one word.
  */
-export type AgentMarker = "stale" | "pending" | "created";
+export type AgentMarker = "stale" | "pending" | "renamed" | "created";
 
 /**
  * The marker for one document, as a string rather than an object.
@@ -39,6 +41,7 @@ export const selectAgentMarker = (
   if (proposal) {
     return isProposalStale(proposal, proposal.head) ? "stale" : "pending";
   }
+  if (state.ui.proposals.renames[docId]) return "renamed";
   return state.ui.proposals.agentPostIds[docId] ? "created" : null;
 };
 
@@ -82,14 +85,20 @@ export const selectAgentPost = (
 export const selectMarkerByDocId = createSelector(
   [
     (state: RootState) => state.ui.proposals.byDocId,
+    (state: RootState) => state.ui.proposals.renames,
     (state: RootState) => state.ui.proposals.agentPostIds,
   ],
-  (byDocId, agentPostIds): Record<string, AgentMarker> => {
+  (byDocId, renames, agentPostIds): Record<string, AgentMarker> => {
     const markers: Record<string, AgentMarker> = {};
     for (const [docId, proposal] of Object.entries(byDocId)) {
       markers[docId] = isProposalStale(proposal, proposal.head)
         ? "stale"
         : "pending";
+    }
+    // A content proposal outranks a rename on the same post, for the reason
+    // {@link AgentMarker} gives: one word, and the bigger question wins it.
+    for (const docId of Object.keys(renames)) {
+      if (!markers[docId]) markers[docId] = "renamed";
     }
     // A pending proposal outranks "created": the post may have been written by
     // an agent, but what the author has to act on is the proposal.
@@ -112,8 +121,8 @@ export const selectMarkerByDocId = createSelector(
  * `useMemo` over the ids it already holds and the one stable map above.
  *
  * The precedence is the same ladder as {@link AgentMarker}: stale > pending >
- * created. `count` is every marked descendant regardless of state, because the
- * tooltip says "n agent changes inside", not "n stale ones".
+ * renamed > created. `count` is every marked descendant regardless of state,
+ * because the tooltip says "n agent changes inside", not "n stale ones".
  */
 export const rollUpMarkers = (
   docIds: Iterable<string>,
@@ -122,6 +131,7 @@ export const rollUpMarkers = (
   let count = 0;
   let stale = 0;
   let pending = 0;
+  let renamed = 0;
 
   for (const docId of docIds) {
     const marker = markerByDocId[docId];
@@ -129,10 +139,25 @@ export const rollUpMarkers = (
     count++;
     if (marker === "stale") stale++;
     else if (marker === "pending") pending++;
+    else if (marker === "renamed") renamed++;
   }
 
   if (count === 0) return { marker: null, count: 0 };
   if (stale > 0) return { marker: "stale", count };
   if (pending > 0) return { marker: "pending", count };
+  if (renamed > 0) return { marker: "renamed", count };
   return { marker: "created", count };
 };
+
+/**
+ * The rename waiting on this document, if there is one
+ * (docs/plans/claude-code-backlog.md §8).
+ *
+ * A key lookup rather than a scan, and it returns the entry as it sits in the
+ * store, so `useSelector`'s reference comparison holds until a poll replaces
+ * the listing.
+ */
+export const selectPendingRename = (
+  state: RootState,
+  docId: string,
+): PendingRename | null => state.ui.proposals.renames[docId] ?? null;

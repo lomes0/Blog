@@ -10,17 +10,16 @@
 
 import type { SerializedEditorState } from "lexical";
 import type {
-  AgentCreatedPost,
   CopilotThread,
   CopilotThreadInput,
   DocumentStorageUsage,
   GetSessionResponse,
-  PendingProposal,
   Post,
   PostCreateInput,
   PostUpdateInput,
   Project,
   ProposalCount,
+  ProposalListing,
   Revision,
   RevisionMeta,
   Series,
@@ -346,14 +345,8 @@ export const apiClient = {
       request<ProposalCount>("/api/proposals/count", { cache: "no-store" }),
 
     /** GET /api/proposals — what the rail lists once the count is non-zero. */
-    list: (): Promise<
-      | { proposals: PendingProposal[]; agentPosts: AgentCreatedPost[] }
-      | undefined
-    > =>
-      request<{ proposals: PendingProposal[]; agentPosts: AgentCreatedPost[] }>(
-        "/api/proposals",
-        { cache: "no-store" },
-      ),
+    list: (): Promise<ProposalListing | undefined> =>
+      request<ProposalListing>("/api/proposals", { cache: "no-store" }),
 
     /**
      * POST /api/documents/:documentId/proposals/:revisionId/approve
@@ -413,6 +406,32 @@ export const apiClient = {
     ): Promise<{ id: string; accepted: boolean } | undefined> =>
       request<{ id: string; accepted: boolean }>(
         `/api/documents/${id}/agent/accept`,
+        { method: "POST" },
+      ),
+
+    /**
+     * POST /api/documents/:id/agent/rename/approve — apply a proposed rename.
+     *
+     * The document rather than a revision in the path, because a rename has no
+     * revision: it is three columns on the post
+     * (docs/plans/claude-code-backlog.md §8).
+     */
+    approveRename: (
+      id: string,
+    ): Promise<
+      { id: string; approved: boolean; title: string | null } | undefined
+    > =>
+      request<{ id: string; approved: boolean; title: string | null }>(
+        `/api/documents/${id}/agent/rename/approve`,
+        { method: "POST" },
+      ),
+
+    /** POST /api/documents/:id/agent/rename/reject — drop a proposed rename. */
+    rejectRename: (
+      id: string,
+    ): Promise<{ id: string; rejected: boolean } | undefined> =>
+      request<{ id: string; rejected: boolean }>(
+        `/api/documents/${id}/agent/rename/reject`,
         { method: "POST" },
       ),
 

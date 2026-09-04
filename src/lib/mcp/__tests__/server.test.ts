@@ -25,7 +25,7 @@ const userFindUnique = vi.fn();
 const revisionFindMany = vi.fn();
 const proposeOps = vi.fn();
 const proposeNewPost = vi.fn();
-const renameOwnedDocument = vi.fn();
+const proposeRenameOwnedDocument = vi.fn();
 const deleteOwnedDocument = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
@@ -43,10 +43,12 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
-// The `manage` tools go to the repository rather than through `agentWrites`,
-// because they are not proposals — see the server's "Managing" section.
+// Both go to the repository rather than through `agentWrites`: a rename is a
+// proposal but not a *revision* proposal — it is three columns on the document
+// (docs/plans/claude-code-backlog.md §8) — and a delete is not a proposal at all.
 vi.mock("@/repositories/document", () => ({
-  renameOwnedDocument: (...args: unknown[]) => renameOwnedDocument(...args),
+  proposeRenameOwnedDocument: (...args: unknown[]) =>
+    proposeRenameOwnedDocument(...args),
   deleteOwnedDocument: (...args: unknown[]) => deleteOwnedDocument(...args),
 }));
 
@@ -92,7 +94,12 @@ beforeEach(() => {
     reason: "not-found",
     message: "stub",
   });
-  renameOwnedDocument.mockResolvedValue({ ok: true, previousTitle: "Before" });
+  proposeRenameOwnedDocument.mockResolvedValue({
+    ok: true,
+    currentTitle: "Before",
+    replaced: null,
+    unchanged: false,
+  });
   deleteOwnedDocument.mockResolvedValue({
     ok: false,
     reason: "unconfirmed",
@@ -255,23 +262,27 @@ describe("createContentServer", () => {
   // in this file while silently disarming one of the two tokens.
   // -------------------------------------------------------------------------
 
-  it("gives a propose-only server no manage tools", async () => {
+  it("gives a propose-only server every reviewable write and no delete", async () => {
     const client = await connect(async () => "author-a", ["read", "propose"]);
     const names = (await client.listTools()).tools.map((tool) => tool.name);
 
     expect(names).toContain("apply_ops");
-    expect(names).not.toContain("rename_post");
+    expect(names).toContain("create_post");
+    // A rename proposes since §8 of the backlog, so it belongs to the scope
+    // whose contract is "everything here can be declined" — and the delete,
+    // which cannot be, must not have come with it.
+    expect(names).toContain("rename_post");
     expect(names).not.toContain("delete_post");
   });
 
-  it("gives a manage-only server its tools without the proposal ones", async () => {
+  it("gives a manage-only server the delete without the proposal ones", async () => {
     const client = await connect(async () => "author-a", ["read", "manage"]);
     const names = (await client.listTools()).tools.map((tool) => tool.name);
 
-    expect(names).toContain("rename_post");
     expect(names).toContain("delete_post");
     expect(names).not.toContain("apply_ops");
     expect(names).not.toContain("create_post");
+    expect(names).not.toContain("rename_post");
   });
 
   it("deletes nothing when a read-only server is asked to", async () => {
@@ -286,8 +297,11 @@ describe("createContentServer", () => {
     expect(deleteOwnedDocument).not.toHaveBeenCalled();
   });
 
-  it("passes the resolved author as the manage tools' authorization", async () => {
-    const client = await connect(async () => "author-a", ["read", "manage"]);
+  it("passes the resolved author as the write tools' authorization", async () => {
+    const client = await connect(
+      async () => "author-a",
+      ["read", "propose", "manage"],
+    );
 
     await client.callTool({
       name: "rename_post",
@@ -300,7 +314,7 @@ describe("createContentServer", () => {
 
     // Neither tool takes an author from its arguments — same invariant as the
     // reads, and the only thing keeping one token off another author's posts.
-    expect(renameOwnedDocument.mock.calls[0][0]).toMatchObject({
+    expect(proposeRenameOwnedDocument.mock.calls[0][0]).toMatchObject({
       id: "doc-1",
       ownedBy: "author-a",
       title: "After",
@@ -309,6 +323,66 @@ describe("createContentServer", () => {
       id: "doc-1",
       ownedBy: "author-a",
     });
+  });
+
+  // ── Renames propose (docs/plans/claude-code-backlog.md §8) ────────────────
+  //
+  // The wording is the tested part, and it is not decoration: an agent that
+  // reports a rename as done has told the author their post is called something
+  // it is not, and nothing downstream can correct that. Same class of claim as
+  // `apply_ops` reporting "proposed" rather than "saved".
+
+  it("reports a rename as proposed and the post as still named what it was", async () => {
+    const client = await connect(async () => "author-a", ["read", "propose"]);
+
+    const result = await client.callTool({
+      name: "rename_post",
+      arguments: { id: "doc-1", title: "After" },
+    });
+
+    expect(result.isError).toBeFalsy();
+    const said = JSON.stringify(result.content);
+    expect(said).toMatch(/Proposed renaming/);
+    // The quotes around the title are escaped twice over by the transport and
+    // then by `JSON.stringify`, so the assertion is on the words either side.
+    expect(said).toMatch(/still titled \\"Before/);
+    expect(said).not.toMatch(/Renamed "/);
+  });
+
+  it("names the pending title a second rename displaced", async () => {
+    proposeRenameOwnedDocument.mockResolvedValue({
+      ok: true,
+      currentTitle: "Before",
+      replaced: "First guess",
+      unchanged: false,
+    });
+    const client = await connect(async () => "author-a", ["read", "propose"]);
+
+    const result = await client.callTool({
+      name: "rename_post",
+      arguments: { id: "doc-1", title: "Second guess" },
+    });
+
+    expect(JSON.stringify(result.content)).toMatch(/First guess/);
+  });
+
+  it("says nothing was proposed when the post already has that title", async () => {
+    proposeRenameOwnedDocument.mockResolvedValue({
+      ok: true,
+      currentTitle: "Before",
+      replaced: null,
+      unchanged: true,
+    });
+    const client = await connect(async () => "author-a", ["read", "propose"]);
+
+    const result = await client.callTool({
+      name: "rename_post",
+      arguments: { id: "doc-1", title: "Before" },
+    });
+
+    const said = JSON.stringify(result.content);
+    expect(said).toMatch(/already titled/);
+    expect(said).toMatch(/Nothing was proposed/);
   });
 
   it("previews a delete without confirming it on the caller's behalf", async () => {
@@ -354,7 +428,7 @@ describe("createContentServer", () => {
     }));
     const client = await connect(
       async () => "author-a",
-      ["read", "manage"],
+      ["read", "propose", "manage"],
       checkRate,
     );
 

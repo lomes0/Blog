@@ -17,9 +17,9 @@
 // ## Two modes, because the point is that it runs from anywhere
 //
 // With `DATABASE_URL` and `MCP_AUTHOR_ID` it provisions itself: it mints the
-// tokens it needs — a read-only one to prove six tools rather than eight, and a
-// `manage` one to prove that the two destructive tools are the difference
-// between eight and ten — and revokes them on the way out whatever happened.
+// tokens it needs — a read-only one to prove six tools rather than nine, and a
+// `manage` one to prove that `delete_post` is the difference between nine and
+// ten — and revokes them on the way out whatever happened.
 // That is the local case, and it is zero-setup.
 //
 // With only `BLOG_MCP_TOKEN` it runs against a deployment it has no database
@@ -334,7 +334,7 @@ async function main(): Promise<void> {
 
     await check("initialize + tools/list over the SDK's HTTP transport", async () => {
       toolNames = (await client.listTools()).tools.map((t) => t.name);
-      expect(toolNames.length === 8, `expected 8 tools, got ${toolNames.length}: ${toolNames.join(", ")}`);
+      expect(toolNames.length === 9, `expected 9 tools, got ${toolNames.length}: ${toolNames.join(", ")}`);
       return toolNames.join(", ");
     });
 
@@ -375,15 +375,21 @@ async function main(): Promise<void> {
       return `${names.length} tools, no apply_ops/create_post`;
     });
 
-    await check("a propose token is not offered the destructive tools", async () => {
+    await check("a propose token is not offered the destructive tool", async () => {
       // The escalation this scope exists to prevent: `manage` must not ride in
       // on `propose`, or every token minted before it silently gained the
-      // ability to delete posts irreversibly.
+      // ability to delete posts irreversibly. `rename_post` is expected here —
+      // it proposes since docs/plans/claude-code-backlog.md §8, and a proposal
+      // is exactly what `propose` grants.
       expect(
-        !toolNames.includes("rename_post") && !toolNames.includes("delete_post"),
-        `manage tools leaked into a read+propose token: ${toolNames.join(", ")}`,
+        toolNames.includes("rename_post"),
+        `a propose token should carry rename_post: ${toolNames.join(", ")}`,
       );
-      return "8 tools, no rename_post/delete_post";
+      expect(
+        !toolNames.includes("delete_post"),
+        `delete_post leaked into a read+propose token: ${toolNames.join(", ")}`,
+      );
+      return "9 tools, rename_post but no delete_post";
     });
 
     await check("a manage token is offered all ten", async () => {
@@ -393,10 +399,10 @@ async function main(): Promise<void> {
       await mg.close();
       expect(names.length === 10, `expected 10 tools, got ${names.length}: ${names.join(", ")}`);
       expect(
-        names.includes("rename_post") && names.includes("delete_post"),
-        `manage token is missing its own tools: ${names.join(", ")}`,
+        names.includes("delete_post"),
+        `manage token is missing its own tool: ${names.join(", ")}`,
       );
-      return `${names.length} tools, including rename_post/delete_post`;
+      return `${names.length} tools, including delete_post`;
     });
 
     await check("delete_post will not delete without a confirmation", async () => {

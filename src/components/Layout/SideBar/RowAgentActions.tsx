@@ -5,6 +5,7 @@ import { type RootState, useSelector, useStore } from "@/store";
 import {
   type AgentMarker,
   selectAgentPost,
+  selectPendingRename,
 } from "@/store/selectors/proposalSelectors";
 import { useProposalActions } from "@/hooks/useProposalActions";
 import { ICON_SIZE } from "@/theme/icons";
@@ -32,6 +33,9 @@ interface RowAgentActionsProps {
  * - **stale**: Reject ONLY. The server 409s a stale approval, so offering it is
  *   offering a failure. The same reasoning `RightRail/ProposalsSection` and
  *   `EditDocument/AgentChangeBar` follow.
+ * - **renamed**: Approve and Reject, for a title an agent proposed
+ *   (docs/plans/claude-code-backlog.md §8). Neither is destructive — the post
+ *   keeps its content either way, and rejecting leaves it keeping its name too.
  * - **created**: Keep (accept) and Discard (delete). The post was written by an
  *   agent and has not been accepted yet. Discard is destructive; `discardPost`
  *   confirms and also closes the document if it is open.
@@ -49,15 +53,22 @@ interface RowAgentActionsProps {
  * `:focus-within` can undo, because an element that is not displayed cannot take
  * focus in the first place. That is acceptable here and only here: this is an
  * accelerator, not the only way to answer. The rail section and the bar over the
- * document offer the same four actions, both fully keyboard-reachable, so
- * nothing is available to a mouse alone.
+ * document offer the same actions, both fully keyboard-reachable, so nothing is
+ * available to a mouse alone.
  */
 export function RowAgentActions({
   postId,
   marker,
 }: RowAgentActionsProps) {
-  const { busyId, approve, reject, acceptPost, discardPost } =
-    useProposalActions();
+  const {
+    busyId,
+    approve,
+    reject,
+    acceptPost,
+    discardPost,
+    approveRename,
+    rejectRename,
+  } = useProposalActions();
   // Read at the moment of acting, not as of a render: the actions need the whole
   // proposal or post row, and subscribing to it would hand this row a fresh
   // object identity on every poll. `useStore` does not subscribe — the same
@@ -83,6 +94,12 @@ export function RowAgentActions({
       await acceptPost(post);
       return;
     }
+    if (marker === "renamed") {
+      const rename = selectPendingRename(state, postId);
+      if (!rename) return;
+      await approveRename(rename);
+      return;
+    }
     const proposal = state.ui.proposals.byDocId[postId];
     if (!proposal) return;
     await approve(proposal);
@@ -96,6 +113,12 @@ export function RowAgentActions({
       await discardPost(post);
       return;
     }
+    if (marker === "renamed") {
+      const rename = selectPendingRename(state, postId);
+      if (!rename) return;
+      await rejectRename(rename);
+      return;
+    }
     const proposal = state.ui.proposals.byDocId[postId];
     if (!proposal) return;
     await reject(proposal);
@@ -103,8 +126,9 @@ export function RowAgentActions({
 
   // pending → Approve and Reject
   // stale → Reject ONLY (the server 409s a stale approval)
+  // renamed → Approve and Reject
   // created → Keep and Discard
-  const showApprove = marker === "pending" || marker === "created";
+  const showApprove = marker !== "stale";
 
   return (
     <>
@@ -112,6 +136,8 @@ export function RowAgentActions({
         <IconButton
           aria-label={marker === "created"
             ? "Keep agent-created post"
+            : marker === "renamed"
+            ? "Approve proposed title"
             : "Approve agent change"}
           size="small"
           disabled={busy}
@@ -133,6 +159,8 @@ export function RowAgentActions({
       <IconButton
         aria-label={marker === "created"
           ? "Discard agent-created post"
+          : marker === "renamed"
+          ? "Reject proposed title"
           : "Reject agent change"}
         size="small"
         disabled={busy}

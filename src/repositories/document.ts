@@ -965,7 +965,13 @@ const discardAgentDocument = async (id: string) =>
   });
 
 /**
- * Rename one of *this author's* posts, by id.
+ * Propose a rename of one of *this author's* posts, by id.
+ *
+ * The post is **not** renamed. The title an agent asks for lands in
+ * `pendingTitle` and waits there for an approve or a reject, exactly as a
+ * content edit waits as a proposal (docs/plans/claude-code-backlog.md §8) — so
+ * "Claude changed my post" means one thing whether the change was a paragraph
+ * or a name.
  *
  * Separate from `updateDocument` for the reason `discardAgentDocument` is
  * separate from `deleteDocument`: that one takes a handle and no author, and is
@@ -978,10 +984,17 @@ const discardAgentDocument = async (id: string) =>
  * `published` (a publish is a decision, not a rename), and not the container
  * fields, which belong to the move routes.
  *
- * No compare-and-set on `headRevisionId`: a rename does not touch content, so it
- * cannot race a save and cannot invalidate a pending proposal.
+ * No compare-and-set on `headRevisionId`, and no staleness: a rename does not
+ * touch content, so it cannot race a save, cannot invalidate a pending proposal
+ * and cannot itself be invalidated by one. A second proposal overwrites the
+ * first — there is one pending name per post, and the caller is told which one
+ * it displaced so it can say so.
+ *
+ * A title equal to the one the post already has writes nothing. It is not an
+ * error — the state the caller wanted is the state it is in — but recording it
+ * would put a row in the review rail asking the author to approve a no-op.
  */
-const renameOwnedDocument = async (
+const proposeRenameOwnedDocument = async (
   { id, ownedBy, title, origin = APP_ORIGIN }: {
     id: string;
     ownedBy: string;
@@ -989,24 +1002,167 @@ const renameOwnedDocument = async (
     origin?: string;
   },
 ): Promise<
-  { ok: true; previousTitle: string } | { ok: false; reason: "not-found" }
+  | {
+    ok: true;
+    currentTitle: string;
+    /** The pending title this one replaced, if there was one. */
+    replaced: string | null;
+    /** The post is already called that, so nothing was proposed. */
+    unchanged: boolean;
+  }
+  | { ok: false; reason: "not-found" }
 > =>
   prisma.$transaction(async (tx) => {
     const doc = await tx.document.findFirst({
       where: { id, authorId: ownedBy },
-      select: { id: true, title: true },
+      select: { id: true, title: true, pendingTitle: true },
     });
     if (!doc) return { ok: false as const, reason: "not-found" as const };
 
-    await tx.document.update({ where: { id: doc.id }, data: { title } });
+    if (doc.title === title) {
+      return {
+        ok: true as const,
+        currentTitle: doc.title,
+        replaced: doc.pendingTitle,
+        unchanged: true,
+      };
+    }
+
+    await tx.document.update({
+      where: { id: doc.id },
+      data: {
+        pendingTitle: title,
+        pendingTitleAt: new Date(),
+        pendingTitleOrigin: origin,
+      },
+    });
+    // The row changed, and a client that only heard about renames when they
+    // land would show no marker on the post until the next poll.
     await notifyChange(tx, {
       kind: "document.updated",
       id: doc.id,
       authorId: ownedBy,
       origin,
     });
-    return { ok: true as const, previousTitle: doc.title };
+    return {
+      ok: true as const,
+      currentTitle: doc.title,
+      replaced: doc.pendingTitle,
+      unchanged: false,
+    };
   });
+
+/**
+ * How many of this author's posts have a rename waiting — the third number in
+ * the focus poll.
+ */
+const countPendingRenames = async (authorId: string) =>
+  prisma.document.count({
+    where: { authorId, pendingTitleAt: { not: null } },
+  });
+
+/**
+ * This author's pending renames, newest first.
+ *
+ * `title` comes back alongside `pendingTitle` because the rail renders the pair
+ * — "Old → New" is the whole content of the row — and it is read here rather
+ * than remembered from when the rename was proposed. An author who renames the
+ * post themselves in the meantime has changed the left-hand side, not
+ * invalidated the right one.
+ */
+const findPendingRenames = async (authorId: string) =>
+  prisma.document.findMany({
+    where: { authorId, pendingTitleAt: { not: null } },
+    select: {
+      id: true,
+      title: true,
+      handle: true,
+      pendingTitle: true,
+      pendingTitleAt: true,
+      pendingTitleOrigin: true,
+    },
+    orderBy: { pendingTitleAt: "desc" },
+  });
+
+/**
+ * Approve a pending rename: the proposed title becomes the title.
+ *
+ * One statement, guarded on the pending columns rather than read-then-write, so
+ * two clicks — or a click racing the author's own rename — cannot apply a name
+ * that has already been answered. `updateMany` cannot copy a column onto
+ * another in Prisma, so the value is read inside the transaction and the write
+ * is conditioned on it still being there.
+ *
+ * @returns the new title, or null if there was nothing pending.
+ */
+const approvePendingRename = async (
+  id: string,
+  authorId: string,
+): Promise<string | null> => {
+  const title = await prisma.$transaction(async (tx) => {
+    const doc = await tx.document.findFirst({
+      where: { id, pendingTitleAt: { not: null } },
+      select: { pendingTitle: true },
+    });
+    // `pendingTitle` is non-null wherever `pendingTitleAt` is — they are written
+    // and cleared together — but the column is nullable, so the guard is real
+    // code rather than an assertion.
+    if (!doc?.pendingTitle) return null;
+
+    const { count } = await tx.document.updateMany({
+      where: { id, pendingTitle: doc.pendingTitle },
+      data: {
+        title: doc.pendingTitle,
+        pendingTitle: null,
+        pendingTitleAt: null,
+        pendingTitleOrigin: null,
+      },
+    });
+    return count === 0 ? null : doc.pendingTitle;
+  });
+  if (title === null) return null;
+
+  // Post-commit, and with the author from the caller rather than from a second
+  // query, for the reason `acceptAgentDocument` gives: the route reached here
+  // through `requireDocument(id, user, "own")`, which is the proof that the
+  // signed-in user is this document's author, and the fan-out key must not come
+  // from anything in the request (docs/plans/archive/changes-detection.md §2.3).
+  await notifyChange(prisma, {
+    kind: "document.updated",
+    id,
+    authorId,
+    origin: APP_ORIGIN,
+  });
+  return title;
+};
+
+/**
+ * Reject a pending rename: the columns clear and the post keeps its name.
+ *
+ * Costs nothing to undo — the agent can propose it again — which is why this,
+ * unlike discarding an agent-created post, needs no confirmation in front of
+ * it.
+ *
+ * @returns true if something was pending, false if there was nothing to reject.
+ */
+const rejectPendingRename = async (
+  id: string,
+  authorId: string,
+): Promise<boolean> => {
+  const { count } = await prisma.document.updateMany({
+    where: { id, pendingTitleAt: { not: null } },
+    data: { pendingTitle: null, pendingTitleAt: null, pendingTitleOrigin: null },
+  });
+  if (count === 0) return false;
+
+  await notifyChange(prisma, {
+    kind: "document.updated",
+    id,
+    authorId,
+    origin: APP_ORIGIN,
+  });
+  return true;
+};
 
 /**
  * Delete one of *this author's* posts, by id, after confirming its title.
@@ -1073,7 +1229,9 @@ const deleteOwnedDocument = async (
 
 export {
   acceptAgentDocument,
+  approvePendingRename,
   countAgentCreatedDocuments,
+  countPendingRenames,
   createDocument,
   deleteDocument,
   deleteOwnedDocument,
@@ -1085,9 +1243,11 @@ export {
   findDocumentIdsByAuthorId,
   findDocumentsByAuthorId,
   findEditorDocument,
+  findPendingRenames,
   findPublishedDocuments,
   findPublishedDocumentsByAuthorId,
   findUnownedDocumentIds,
-  renameOwnedDocument,
+  proposeRenameOwnedDocument,
+  rejectPendingRename,
   updateDocument,
 };

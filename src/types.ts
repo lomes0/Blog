@@ -198,10 +198,44 @@ export interface AgentCreatedPost {
   agentOrigin: string | null;
 }
 
+/**
+ * A rename an agent proposed, waiting on the author
+ * (docs/plans/claude-code-backlog.md §8).
+ *
+ * Keyed by the document, because a rename has no row of its own — it is three
+ * columns on the post. Both titles travel: the row's whole content is
+ * "`title` → `proposedTitle`", and `title` is whatever the post is called
+ * *now*, not what it was called when the rename was written.
+ */
+export interface PendingRename {
+  /** The document's id. There is at most one pending rename per post. */
+  id: string;
+  /** The title the post has now. */
+  title: string;
+  handle: string | null;
+  proposedTitle: string;
+  proposedAt: string;
+  origin: string | null;
+}
+
+/**
+ * What `GET /api/proposals` answers — every kind of agent work at once.
+ *
+ * One request rather than three, because the rail asks one question ("what is
+ * waiting on me") and the poll in front of it has already said the answer is
+ * non-empty.
+ */
+export interface ProposalListing {
+  proposals: PendingProposal[];
+  agentPosts: AgentCreatedPost[];
+  renames: PendingRename[];
+}
+
 /** What `GET /api/proposals/count` answers — the §3.5 focus poll. */
 export interface ProposalCount {
   proposals: number;
   agentPosts: number;
+  renames: number;
   total: number;
 }
 
@@ -232,6 +266,16 @@ export interface ProposalsState {
    * on its own.
    */
   agentPostIds: Record<string, true>;
+  /**
+   * Pending renames, keyed by document for the reason proposals are: every
+   * reader addresses one by the post it is against, and the database allows
+   * only one per post.
+   *
+   * A document can hold a rename *and* a proposal at once — they are separate
+   * columns answered by separate buttons — so this is a second map rather than
+   * another arm of {@link byDocId}.
+   */
+  renames: Record<string, PendingRename>;
   count: ProposalCount;
   /**
    * `loading` is set by every poll, including the ones that refresh a list

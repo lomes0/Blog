@@ -3,6 +3,7 @@ import type {
   AgentCreatedPost,
   AppState,
   PendingProposal,
+  PendingRename,
   ProposalCount,
 } from "@/types";
 import { createApiThunk, fail } from "./createApiThunk";
@@ -17,12 +18,18 @@ import { createApiThunk, fail } from "./createApiThunk";
  * thunks do. There is nothing for `localBackend` to implement.
  */
 
-const EMPTY_COUNT: ProposalCount = { proposals: 0, agentPosts: 0, total: 0 };
+const EMPTY_COUNT: ProposalCount = {
+  proposals: 0,
+  agentPosts: 0,
+  renames: 0,
+  total: 0,
+};
 
 interface ProposalsPayload {
   count: ProposalCount;
   proposals: PendingProposal[];
   agentPosts: AgentCreatedPost[];
+  renames: PendingRename[];
 }
 
 /**
@@ -31,7 +38,7 @@ interface ProposalsPayload {
  * The browser cannot know a terminal write happened, so this is the whole
  * signal (§3.5) — polled on window focus and on document open, never streamed.
  * The count comes first and the listing only when it is non-zero, which keeps
- * the common case at two indexed counts: the answer is almost always zero, and
+ * the common case at three indexed counts: the answer is almost always zero, and
  * a poll that fetched a listing every time would be paying for rows that do not
  * exist.
  *
@@ -42,12 +49,12 @@ export const refreshProposals = createApiThunk<ProposalsPayload, void>(
   "app/refreshProposals",
   async (_arg, thunkAPI) => {
     if (!(thunkAPI.getState() as AppState).user) {
-      return { count: EMPTY_COUNT, proposals: [], agentPosts: [] };
+      return { count: EMPTY_COUNT, proposals: [], agentPosts: [], renames: [] };
     }
 
     const count = await apiClient.proposals.count() ?? EMPTY_COUNT;
     if (count.total === 0) {
-      return { count, proposals: [], agentPosts: [] };
+      return { count, proposals: [], agentPosts: [], renames: [] };
     }
 
     const listing = await apiClient.proposals.list();
@@ -55,6 +62,7 @@ export const refreshProposals = createApiThunk<ProposalsPayload, void>(
       count,
       proposals: listing?.proposals ?? [],
       agentPosts: listing?.agentPosts ?? [],
+      renames: listing?.renames ?? [],
     };
   },
   { title: "Couldn't check for agent changes" },
@@ -128,4 +136,35 @@ export const discardAgentPost = createApiThunk(
     return id;
   },
   { title: "Couldn't discard this post" },
+);
+
+/**
+ * Apply a rename an agent proposed: the title becomes the proposed one
+ * (docs/plans/claude-code-backlog.md §8).
+ *
+ * The new title comes back rather than being taken from the row on screen, so
+ * the store writes what the server actually stored — a rename the author
+ * answered from a rail that had gone stale updates to the truth rather than to
+ * what the rail was showing.
+ */
+export const approveRename = createApiThunk(
+  "app/approveRename",
+  async (rename: PendingRename) => {
+    const result = await apiClient.proposals.approveRename(rename.id);
+    return {
+      id: rename.id,
+      title: result?.title ?? rename.proposedTitle,
+    };
+  },
+  { title: "Couldn't apply this rename" },
+);
+
+/** Drop a proposed rename. The post keeps its name; nothing else moves. */
+export const rejectRename = createApiThunk(
+  "app/rejectRename",
+  async (rename: PendingRename) => {
+    await apiClient.proposals.rejectRename(rename.id);
+    return rename.id;
+  },
+  { title: "Couldn't reject this rename" },
 );

@@ -6,10 +6,14 @@ import { useCloseDeletedDocument } from "@/hooks/useCloseDeletedDocument";
 import { documentCommands } from "@/commands";
 import { useCommandRun } from "@/commands/CommandProvider";
 import { reloadAfterApproval } from "@/components/EditDocument/proposalReload";
-import type { AgentCreatedPost, PendingProposal } from "@/types";
+import type {
+  AgentCreatedPost,
+  PendingProposal,
+  PendingRename,
+} from "@/types";
 
 /**
- * The four answers an author can give an agent, plus "let me look at it first".
+ * The six answers an author can give an agent, plus "let me look at it first".
  *
  * Shared by the rail section and the review bar over the diff, because the
  * *sequence* is the part worth having once: approve, then reload whatever tab is
@@ -162,5 +166,45 @@ export function useProposalActions() {
     }
   }, [confirm, dispatch, closeDeleted]);
 
-  return { busyId, review, approve, reject, acceptPost, discardPost };
+  /**
+   * Apply a rename an agent proposed (docs/plans/claude-code-backlog.md §8).
+   *
+   * No reload afterwards, unlike approving a proposal: nothing about the open
+   * editor's content changed, and the store already carries the new title to
+   * every surface that renders one.
+   */
+  const approveRename = useCallback(async (rename: PendingRename) => {
+    setBusyId(rename.id);
+    try {
+      const result = await dispatch(actions.approveRename(rename));
+      return !actions.approveRename.rejected.match(result);
+    } finally {
+      setBusyId(null);
+    }
+  }, [dispatch]);
+
+  /**
+   * Decline it. Unconfirmed, for the reason rejecting a proposal is: nothing is
+   * lost — the post keeps its name and the agent can propose another.
+   */
+  const rejectRename = useCallback(async (rename: PendingRename) => {
+    setBusyId(rename.id);
+    try {
+      const result = await dispatch(actions.rejectRename(rename));
+      return !actions.rejectRename.rejected.match(result);
+    } finally {
+      setBusyId(null);
+    }
+  }, [dispatch]);
+
+  return {
+    busyId,
+    review,
+    approve,
+    reject,
+    acceptPost,
+    discardPost,
+    approveRename,
+    rejectRename,
+  };
 }

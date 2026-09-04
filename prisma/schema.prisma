@@ -132,6 +132,25 @@ model Document {
   agentCreatedAt DateTime? @db.Timestamptz
   agentOrigin    String?
 
+  // A rename an agent has proposed, waiting on the author
+  // (docs/plans/claude-code-backlog.md §8). `title` is untouched while this is
+  // set — nothing renders `pendingTitle` as the post's name — so approving is
+  // one column write and declining is none.
+  //
+  // Deliberately *not* a `Revision` proposal, even though that is the machinery
+  // the author answers it with. A proposal row is content: it carries `data`,
+  // `blobHashes` and a base to compare-and-set against, and it goes stale when
+  // the author saves — right for an edit, wrong for a rename, which stays
+  // applicable however the content moves. Keeping the two apart is also what
+  // lets one post carry both at once and be answered separately.
+  //
+  // No index, for the reason `agentCreatedAt` has none: the listing and the
+  // count are both scoped by `authorId` first, which `@@index([authorId,
+  // published])` already leads with.
+  pendingTitle       String?
+  pendingTitleAt     DateTime? @db.Timestamptz
+  pendingTitleOrigin String?
+
   // Relations
   author    User                @relation(fields: [authorId], references: [id], onDelete: Cascade)
   coauthors DocumentCoauthors[]

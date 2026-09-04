@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   GitPullRequest,
   GitPullRequestCreate,
+  SquarePen,
 } from "lucide-react";
 import type { AgentMarker as AgentMarkerValue } from "@/store/selectors/proposalSelectors";
 import { ICON_SIZE } from "@/theme/icons";
@@ -52,6 +53,7 @@ export function AgentMarker({
   const labels = {
     pending: "Agent change waiting for review",
     stale: "Agent change is out of date — reject or re-run",
+    renamed: "Agent proposed a new title — approve or reject",
     created: "Created by an agent, not yet accepted",
   } as const;
 
@@ -67,12 +69,17 @@ export function AgentMarker({
   const glyphs = {
     pending: GitPullRequest,
     stale: AlertTriangle,
+    // Off the pull-request metaphor on purpose: a rename is not a change to the
+    // document's contents and there is nothing to diff, so it gets the glyph
+    // every rename affordance in the app already uses.
+    renamed: SquarePen,
     created: GitPullRequestCreate,
   } as const;
 
   const colors = {
     pending: "primary.main",
     stale: "warning.main",
+    renamed: "primary.main",
     created: "primary.main",
   } as const;
 

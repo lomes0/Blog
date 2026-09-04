@@ -259,15 +259,22 @@ stays the complete list of unauthenticated surfaces.
 | `search`      | Block-level text hits across posts, each with an address              |
 | `apply_ops`   | Edit by block, all-or-nothing, guarded by `stateHash`                 |
 | `create_post` | New post from blocks — real code nodes and lists, not fenced Markdown |
-| `rename_post` | Rename a post. **Commits immediately** — `manage` scope       |
+| `rename_post` | Propose a new title. Waits for approval — `propose` scope |
 | `delete_post` | Delete a post and its history. **Irreversible** — `manage` scope |
 
-`rename_post` and `delete_post` are the two writes that are not proposals: they
-land on the live post the moment they are called, and `Document` has no
-`deletedAt`, so a delete takes the revision history with it. Hence the separate
-`manage` scope, which no default grants, and hence `delete_post` refusing unless
-it is passed the post's exact title as `confirm` — aimed at acting on the id
-next to the one you meant, not at an agent that has decided to be destructive.
+`delete_post` is the one write that is not a proposal: it lands on the live post
+the moment it is called, and `Document` has no `deletedAt`, so it takes the
+revision history with it. Hence the separate `manage` scope, which no default
+grants, and hence the tool refusing unless it is passed the post's exact title
+as `confirm` — aimed at acting on the id next to the one you meant, not at an
+agent that has decided to be destructive.
+
+`rename_post` was in that scope until renames became reviewable
+(docs/plans/claude-code-backlog.md §8). A proposed title now lands in
+`Document.pendingTitle` and the post keeps its own until the author approves it
+from the same rail a content proposal is answered on — separate columns,
+separate buttons, so approving an edit never carries a rename with it and
+rejecting one leaves the other pending.
 
 `search` walks every post's head revision in JS. Fine at one author's scale; if
 it gets slow, prefilter in SQL on the revision JSON before walking.
@@ -297,8 +304,9 @@ the only place both content stores and the live editor exist.
 - The content tool **names are the table above** — `list_posts`, `search`,
   `outline`, `read_blocks`, `read_post`, `apply_ops`, `create_post`, plus
   `list_series` and the browser-only `get_selection`. Not `rename_post` or
-  `delete_post`: renaming is reachable here as a `command_` tool, and there is
-  no destructive equivalent. One operation, one name,
+  `delete_post`: renaming is reachable here as a `command_` tool — which has its
+  own preview/accept step, so both surfaces make the author say yes — and there
+  is no destructive equivalent. One operation, one name,
   whichever agent is calling. Command tools carry a `command_` prefix, so they
   cannot collide with the bare `search` / `outline`.
 - `packages/editor/src/utils/virtualRepo.ts` is the Copilot's view of the library — pure

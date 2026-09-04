@@ -9,7 +9,9 @@ import {
   AppState,
   DEFAULT_PANE_RATIO,
   PendingProposal,
+  PendingRename,
   Post,
+  ProposalCount,
   SaveStatus,
   Series,
   SidebarView,
@@ -55,9 +57,11 @@ import {
 import {
   acceptAgentPost,
   approveProposal,
+  approveRename,
   discardAgentPost,
   refreshProposals,
   rejectProposal,
+  rejectRename,
 } from "./thunks/proposalThunks";
 import { catchUpPosts, fetchChangedPosts } from "./thunks/changeThunks";
 import { alert, updateUser } from "./thunks/userThunks";
@@ -335,7 +339,26 @@ function forgetProposal(state: AppState, documentId: string) {
   delete state.ui.proposals.byDocId[documentId];
   const { count } = state.ui.proposals;
   count.proposals = Math.max(0, count.proposals - 1);
-  count.total = count.proposals + count.agentPosts;
+  count.total = countTotal(count);
+}
+
+/** The badge's number, from its parts. One place, so they cannot drift. */
+const countTotal = (count: ProposalCount) =>
+  count.proposals + count.agentPosts + count.renames;
+
+/**
+ * The same, for a rename that has been approved or rejected.
+ *
+ * Separate from {@link forgetProposal} rather than sharing its map: a post can
+ * carry a rename and a content proposal at once, and answering one must leave
+ * the other on the rail.
+ */
+function forgetRename(state: AppState, documentId: string) {
+  if (!state.ui.proposals.renames[documentId]) return;
+  delete state.ui.proposals.renames[documentId];
+  const { count } = state.ui.proposals;
+  count.renames = Math.max(0, count.renames - 1);
+  count.total = countTotal(count);
 }
 
 /**
@@ -354,7 +377,7 @@ function forgetAgentPost(state: AppState, id: string) {
   if (state.ui.proposals.agentPosts.length === before) return;
   const { count } = state.ui.proposals;
   count.agentPosts = Math.max(0, count.agentPosts - 1);
-  count.total = count.proposals + count.agentPosts;
+  count.total = countTotal(count);
 }
 
 /** Push a thunk's `rejectWithValue` payload onto the announcement queue. */
@@ -393,7 +416,8 @@ const initialState: AppState = {
       byDocId: {},
       agentPosts: [],
       agentPostIds: {},
-      count: { proposals: 0, agentPosts: 0, total: 0 },
+      renames: {},
+      count: { proposals: 0, agentPosts: 0, renames: 0, total: 0 },
       status: "idle",
       error: null,
       loaded: false,
@@ -694,7 +718,7 @@ export const appSlice = createSlice({
         state.ui.proposals.status = "loading";
       })
       .addCase(refreshProposals.fulfilled, (state, action) => {
-        const { count, proposals, agentPosts } = action.payload;
+        const { count, proposals, agentPosts, renames } = action.payload;
         const byDocId: Record<string, PendingProposal> = {};
         for (const proposal of proposals) {
           byDocId[proposal.documentId] = proposal;
@@ -706,9 +730,14 @@ export const appSlice = createSlice({
         for (const post of agentPosts) {
           agentPostIds[post.id] = true;
         }
+        const byRenameDocId: Record<string, PendingRename> = {};
+        for (const rename of renames) {
+          byRenameDocId[rename.id] = rename;
+        }
         state.ui.proposals.byDocId = byDocId;
         state.ui.proposals.agentPosts = agentPosts;
         state.ui.proposals.agentPostIds = agentPostIds;
+        state.ui.proposals.renames = byRenameDocId;
         state.ui.proposals.count = count;
         state.ui.proposals.status = "idle";
         state.ui.proposals.error = null;
@@ -748,6 +777,24 @@ export const appSlice = createSlice({
         removePost(state, action.payload);
       })
       .addCase(discardAgentPost.rejected, (state, action) => {
+        announceFailure(state, action.payload);
+      })
+      .addCase(approveRename.fulfilled, (state, action) => {
+        const { id, title } = action.payload;
+        forgetRename(state, id);
+        // The post is called something else now, and nothing else will say so:
+        // the sidebar, the tab strip and the library all read this field, and
+        // the next poll is a window focus away.
+        const post = state.posts.entities[id];
+        if (post) post.title = title;
+      })
+      .addCase(approveRename.rejected, (state, action) => {
+        announceFailure(state, action.payload);
+      })
+      .addCase(rejectRename.fulfilled, (state, action) => {
+        forgetRename(state, action.payload);
+      })
+      .addCase(rejectRename.rejected, (state, action) => {
         announceFailure(state, action.payload);
       })
       // ── User ──
@@ -950,9 +997,11 @@ export {
 export {
   acceptAgentPost,
   approveProposal,
+  approveRename,
   discardAgentPost,
   refreshProposals,
   rejectProposal,
+  rejectRename,
 } from "./thunks/proposalThunks";
 export { catchUpPosts, fetchChangedPosts } from "./thunks/changeThunks";
 export { alert, updateUser } from "./thunks/userThunks";

@@ -19,6 +19,7 @@ import {
 const MARKER_LABELS = {
   pending: "Agent change waiting for review",
   stale: "Agent change is out of date — reject or re-run",
+  renamed: "Agent proposed a new title — approve or reject",
   created: "Created by an agent, not yet accepted",
 } as const;
 

@@ -38,7 +38,7 @@ predate that work and have not been re-measured.
 
 So the remaining work is not "finish the codecs", and it is no longer capability
 either. The one correctness hole is closed (item 1, kept here for the record),
-items 2 and 4 are closed by the nested-editor work, 5 and 6 are answered and
+items 2 and 4 are closed by the nested-editor work, 5, 6 and 8 are answered and
 built, and 7 was taken on 31 Aug 2026. **What is left is one decision**: 3.
 
 ---
@@ -332,6 +332,93 @@ rather than one this file owns.
 
 ---
 
+## 8. A rename should be reviewable — **DONE (4 Sep 2026)**
+
+`rename_post` committed. Every other write an agent could make waited for the
+author — a content edit as a proposal, a create as a flagged draft — and a
+rename landed on the live post, with nothing on the review rail to say it had
+and no way to answer it but renaming the post back. The tool description carried
+the whole guard ("confirm the new title with the user before calling"), which is
+a rule an agent can simply not follow.
+
+**Done: three columns on `Document`, answered on the rail beside everything
+else.** `pendingTitle`, `pendingTitleAt` and `pendingTitleOrigin`. `title` does
+not change until the author approves, so a proposed rename is invisible
+everywhere except where it is being asked about.
+
+### Why not a `Revision` proposal
+
+That is the machinery the author already answers, so folding a title into the
+pending row is the obvious move. It is wrong three times over:
+
+1. **A proposal row is content.** It carries `data` and `blobHashes`, so a
+   rename would need a `data` — a copy of head's JSON, which on the worst
+   document here is 11 MB — plus a `reconcileDocumentBlobs` call, for a string.
+2. **A proposal goes stale when the author saves** (§3.6 of agent-gating), and
+   approval compare-and-sets `head` against the base it was built on. Both are
+   right for an edit and wrong for a rename: a rename touches no content, so
+   nothing a save does can invalidate it.
+3. **One row is one decision.** `revision_one_pending_per_document` means a
+   folded rename would be approved or rejected with the content edit beside it.
+   They are separate questions.
+
+The precedent that does fit is the agent-created post (§3.7 of agent-gating):
+also not a revision, also columns on `Document`, also listed by
+`GET /api/proposals` and answered at `/api/documents/[id]/agent/…`. A rename is
+that shape.
+
+### What it touches
+
+- `proposeRenameOwnedDocument`, `approvePendingRename`, `rejectPendingRename`,
+  `findPendingRenames`, `countPendingRenames` in `src/repositories/document.ts`.
+  The old `renameOwnedDocument` is gone rather than kept beside them — one
+  rename path, and the approval *is* the write it used to do.
+- `/api/documents/[id]/agent/rename/approve` and `/reject`, both
+  `requireDocument(…, "own")` and both idempotent, like the accept route they
+  sit next to.
+- A third array on `GET /api/proposals` and a third number on its count, so the
+  focus poll notices a rename the way it notices anything else.
+- `ui.proposals.renames`, keyed by document — a second map rather than another
+  arm of `byDocId`, because a post can carry both at once.
+- A row in `RightRail/ProposalsSection` and a bar in `EditDocument/
+  AgentChangeBar`, which now stacks: the rename above whichever content decision
+  is there, both inside one sticky wrapper so two `top: 0` elements cannot slide
+  over each other.
+- A fourth `AgentMarker`, `renamed`, ranked below `pending` and above `created`,
+  with the sidebar row's hover ✓/✗ answering it.
+
+### The scope move, which is the part with a cost
+
+`rename_post` moved from `manage` to `propose`. `manage` now means exactly
+"irreversible" and holds `delete_post` alone, which is what that scope was
+*for*; the alternative was leaving the one reviewable write behind a scope
+whose whole justification is that its tools cannot be declined.
+
+It widens what an existing `propose` token can do — it can now suggest a title
+it previously could not. That is the scope's contract rather than a hole in it,
+but it is a real change to a credential someone already minted, and it is the
+reason this section exists rather than a line in a commit message.
+
+Tool counts moved with it: a `read` token sees 6, `read,propose` 9 (was 8) and
+`manage` 10 (unchanged). `mcp/smokeHttp.ts` checks the middle case in both
+directions now — a propose token must *have* `rename_post` and must *not* have
+`delete_post`.
+
+### Not done, on purpose
+
+**`delete_post` still commits.** The same columns would generalize to a pending
+delete, but a delete is not a change waiting to be looked at: the confirm-echo
+guard already aims at the failure that actually happens (acting on the id next
+to the one you meant), and a post sitting in a "pending deletion" state is a new
+kind of thing for the library to render for a decision the author has already
+made out loud.
+
+**The in-app Copilot's rename was already gated** — `document.rename` is a
+`mutate` command with a preview the author accepts — so nothing there changed.
+The two surfaces now agree, which they did not before.
+
+---
+
 ## Never — recorded so they are not re-proposed
 
 - **`graph` and `sketch` codecs.** They carry GeoGebra state and Excalidraw
@@ -355,9 +442,9 @@ rather than one this file owns.
 
 None of these are bugs; the surface was scoped to content on purpose.
 
-- **No document lifecycle.** Content only — no publish, rename, move, status or
-  handle management from either agent. The command registry already exposes some
-  of this to the in-app Copilot; MCP has none of it.
+- **No document lifecycle beyond the title.** No publish, move, status or handle
+  management from either agent; renaming is the one exception, and it proposes
+  (§8). The command registry already exposes more of this to the in-app Copilot.
 - **No uploads.** `image` and `attachment` can only reference files that already
   exist. Authoring an image means someone uploaded it first.
 - **No revision history access.** Claude can write a new revision but cannot

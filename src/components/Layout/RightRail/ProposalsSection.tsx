@@ -1,13 +1,24 @@
 "use client";
 import { useMemo } from "react";
 import { Alert, Box, Button, Chip, Skeleton, Typography } from "@mui/material";
-import { Check, FilePlus2, GitPullRequest, Trash2, X } from "lucide-react";
+import {
+  Check,
+  FilePlus2,
+  GitPullRequest,
+  SquarePen,
+  Trash2,
+  X,
+} from "lucide-react";
 import { createSelector } from "@reduxjs/toolkit";
 import { actions, type RootState, useDispatch, useSelector } from "@/store";
 import { DateDisplay } from "@/components/shared/DateDisplay";
 import { ICON_SIZE } from "@/theme/icons";
 import { useProposalActions } from "@/hooks/useProposalActions";
-import type { AgentCreatedPost, PendingProposal } from "@/types";
+import type {
+  AgentCreatedPost,
+  PendingProposal,
+  PendingRename,
+} from "@/types";
 import { originLabel } from "@/lib/proposalLabels";
 import { isProposalStale } from "@/lib/proposals";
 import RailSection from "./RailSection";
@@ -21,13 +32,21 @@ interface ProposalsSectionProps {
  * What Claude has done that is waiting on you (docs/plans/archive/agent-gating.md §3.5,
  * "awareness" tier).
  *
- * Two kinds of thing, one list, because from the author's side they are one
+ * Three kinds of thing, one list, because from the author's side they are one
  * question:
  *
  * - a **pending proposal** on an existing document — approve it into `head`,
  *   reject it, or open it as a diff first;
  * - an **agent-created post** (§3.7), which landed as an unpublished draft
- *   because a create has no head to withhold — accept it or discard it.
+ *   because a create has no head to withhold — accept it or discard it;
+ * - a **pending rename** (docs/plans/claude-code-backlog.md §8) — a title an
+ *   agent proposed, which the post does not carry until you approve it. No
+ *   Review, for the reason a created post has none: the whole of the change is
+ *   the two names on the row.
+ *
+ * A post can appear twice, once for a content proposal and once for a rename.
+ * That is the point of keeping them apart rather than one pending state per
+ * document: they are separate questions and either can be answered alone.
  *
  * Not scoped to the open document. A terminal session edits whatever it was
  * asked about, and the point of the poll is to notice work on a document you are
@@ -39,8 +58,16 @@ export default function ProposalsSection(
   { activeDocId }: ProposalsSectionProps,
 ) {
   const dispatch = useDispatch();
-  const { busyId, review, approve, reject, acceptPost, discardPost } =
-    useProposalActions();
+  const {
+    busyId,
+    review,
+    approve,
+    reject,
+    acceptPost,
+    discardPost,
+    approveRename,
+    rejectRename,
+  } = useProposalActions();
 
   const selectProposals = useMemo(
     () =>
@@ -52,6 +79,15 @@ export default function ProposalsSection(
   );
   const proposals = useSelector(selectProposals);
   const agentPosts = useSelector((state) => state.ui.proposals.agentPosts);
+  const selectRenames = useMemo(
+    () =>
+      createSelector(
+        (state: RootState) => state.ui.proposals.renames,
+        (renames) => Object.values(renames),
+      ),
+    [],
+  );
+  const renames = useSelector(selectRenames);
   const status = useSelector((state) => state.ui.proposals.status);
   const error = useSelector((state) => state.ui.proposals.error);
   const loaded = useSelector((state) => state.ui.proposals.loaded);
@@ -65,7 +101,7 @@ export default function ProposalsSection(
     });
   }, [proposals, activeDocId]);
 
-  const total = ordered.length + agentPosts.length;
+  const total = ordered.length + agentPosts.length + renames.length;
   // The poll runs on every window focus, so `loading` is the state a list
   // already on screen spends a moment in each time you come back to the tab.
   // Only the *first* load has nothing to show, and only it may paint a skeleton.
@@ -123,6 +159,15 @@ export default function ProposalsSection(
                 onReview={() => void review(proposal)}
                 onApprove={() => void approve(proposal)}
                 onReject={() => void reject(proposal)}
+              />
+            ))}
+            {renames.map((rename) => (
+              <RenameRow
+                key={`rename-${rename.id}`}
+                rename={rename}
+                busy={busyId === rename.id}
+                onApprove={() => void approveRename(rename)}
+                onReject={() => void rejectRename(rename)}
               />
             ))}
             {agentPosts.map((post) => (
@@ -322,6 +367,70 @@ function AgentPostRow({
           onClick={onDiscard}
         >
           Discard
+        </Button>
+      </Box>
+    </Box>
+  );
+}
+
+function RenameRow({
+  rename,
+  busy,
+  onApprove,
+  onReject,
+}: {
+  rename: PendingRename;
+  busy: boolean;
+  onApprove: () => void;
+  onReject: () => void;
+}) {
+  return (
+    <Box sx={rowSx}>
+      <Typography
+        variant="caption"
+        sx={{ fontWeight: 600, display: "block" }}
+        noWrap
+      >
+        {rename.title || "Untitled"}
+      </Typography>
+      {
+        /* The proposed title is the row's content, so it gets the line the
+          proposal's summary gets — and the arrow says which way round it is
+          without a second word. `title` above is what the post is called now,
+          read fresh on every poll, so an author who renamed it themselves in
+          the meantime sees their own name on the left. */
+      }
+      <Typography variant="micro" component="div" color="text.secondary">
+        Rename to “{rename.proposedTitle}”
+      </Typography>
+      <RowMeta
+        origin={rename.origin}
+        date={rename.proposedAt}
+        icon={<SquarePen size={ICON_SIZE.micro} />}
+      />
+      <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+        {
+          /* No Review. There is nothing to diff — the change is the two names
+            already on this row (docs/plans/claude-code-backlog.md §8). */
+        }
+        <Button
+          size="small"
+          variant="text"
+          disabled={busy}
+          startIcon={<Check size={ICON_SIZE.micro} />}
+          onClick={onApprove}
+        >
+          Approve
+        </Button>
+        <Button
+          size="small"
+          variant="text"
+          color="inherit"
+          disabled={busy}
+          startIcon={<X size={ICON_SIZE.micro} />}
+          onClick={onReject}
+        >
+          Reject
         </Button>
       </Box>
     </Box>

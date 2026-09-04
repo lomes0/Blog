@@ -1,7 +1,14 @@
 import { userRoute } from "@/lib/api-utils";
-import { findAgentCreatedDocuments } from "@/repositories/document";
+import {
+  findAgentCreatedDocuments,
+  findPendingRenames,
+} from "@/repositories/document";
 import { findPendingProposalsByAuthor } from "@/repositories/revision";
-import type { AgentCreatedPost, PendingProposal } from "@/types";
+import type {
+  AgentCreatedPost,
+  PendingProposal,
+  PendingRename,
+} from "@/types";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -29,9 +36,10 @@ export const dynamic = "force-dynamic";
  */
 export const GET = userRoute(
   async (_request, { user }) => {
-    const [rows, agentDocs] = await Promise.all([
+    const [rows, agentDocs, renameRows] = await Promise.all([
       findPendingProposalsByAuthor(user.id),
       findAgentCreatedDocuments(user.id),
+      findPendingRenames(user.id),
     ]);
 
     const proposals: PendingProposal[] = rows.map((row) => ({
@@ -58,7 +66,23 @@ export const GET = userRoute(
       agentOrigin: doc.agentOrigin,
     }));
 
-    return NextResponse.json({ data: { proposals, agentPosts } });
+    // A rename is not a proposal row and not a created post: it is three
+    // columns on a document the author already has (§8 of the backlog). Third
+    // array rather than a flag on either of the others, because it is answered
+    // by its own pair of routes and can sit alongside a proposal on the same
+    // post.
+    const renames: PendingRename[] = renameRows.map((doc) => ({
+      id: doc.id,
+      title: doc.title,
+      handle: doc.handle,
+      // Both non-null by the query's own `where`; the columns are nullable
+      // because "no rename pending" is the ordinary state of a post.
+      proposedTitle: doc.pendingTitle ?? doc.title,
+      proposedAt: (doc.pendingTitleAt ?? new Date()).toISOString(),
+      origin: doc.pendingTitleOrigin,
+    }));
+
+    return NextResponse.json({ data: { proposals, agentPosts, renames } });
   },
   { errorLabel: "Error listing pending agent changes" },
 );

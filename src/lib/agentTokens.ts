@@ -19,18 +19,25 @@ import { prisma } from "@/lib/prisma";
  * What a token may do.
  *
  * `read` is the whole listing/outline/read/search surface; `propose` adds
- * `apply_ops` and `create_post`. A read-only token is the reason scopes exist
- * at all — it is the difference between handing something the ability to read
- * your blog and the ability to write to it.
+ * `apply_ops`, `create_post` and `rename_post`. A read-only token is the reason
+ * scopes exist at all — it is the difference between handing something the
+ * ability to read your blog and the ability to write to it.
  *
  * `manage` is a third rather than part of `propose`, and the reason is that
  * every write `propose` grants is *reversible by declining it*: a proposal sits
- * in the review rail until the author approves it, and a created post is an
- * unpublished draft they can discard. `rename_post` and `delete_post` are
- * neither. They land on the author's own content immediately, and `Document`
- * has no `deletedAt` — a deleted post and its revisions are gone. Folding those
- * into `propose` would have retroactively widened every token already minted,
- * so a credential that predates this scope cannot use them.
+ * in the review rail until the author approves it, a created post is an
+ * unpublished draft they can discard, and a proposed title is not the post's
+ * title until they say so (docs/plans/claude-code-backlog.md §8). `delete_post`
+ * is none of those. It lands immediately and `Document` has no `deletedAt` — a
+ * deleted post and its revisions are gone. Folding it into `propose` would have
+ * retroactively widened every token already minted, so a credential that
+ * predates this scope cannot use it.
+ *
+ * `rename_post` was in `manage` until renames became reviewable, and moving it
+ * widens what an existing `propose` token can do: it can now suggest a title it
+ * previously could not. That is the scope's own contract — every write it
+ * grants is one the author can decline — and the alternative was leaving the
+ * one reviewable write behind a scope that means "irreversible".
  */
 export const AGENT_SCOPES = ["read", "propose", "manage"] as const;
 export type AgentScope = (typeof AGENT_SCOPES)[number];

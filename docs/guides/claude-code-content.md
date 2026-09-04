@@ -159,14 +159,14 @@ which is the point of having more than one.
 Two flags worth knowing:
 
 - `--scopes read` mints a token that cannot write. The server then does not
-  register `apply_ops` or `create_post` at all, so an agent holding it sees six
-  tools rather than eight and plans around the limit instead of discovering it
-  through a refusal.
-- `--scopes read,propose,manage` is the only way to get `rename_post` and
-  `delete_post`, which is why it is spelled out rather than defaulted. Every
-  other write an agent can make is reviewable — a proposal you decline, a draft
-  you discard. These two are not: they land on the live post, and a delete takes
-  its revision history with it. The default (`read,propose`) is the one to want
+  register `apply_ops`, `create_post` or `rename_post` at all, so an agent
+  holding it sees six tools rather than nine and plans around the limit instead
+  of discovering it through a refusal.
+- `--scopes read,propose,manage` is the only way to get `delete_post`, which is
+  why it is spelled out rather than defaulted. Every other write an agent can
+  make is reviewable — a proposal you decline, a draft you discard, a title you
+  approve or refuse. A delete is not: it lands on the live post and takes its
+  revision history with it. The default (`read,propose`) is the one to want
   unless you specifically need a terminal that can tidy your library.
 - `--expires 90d` (also `12h`, `30m`). Omit for a token that does not expire.
 
@@ -270,18 +270,18 @@ URL that already exists.
 
 **Creates land unpublished**; publish from the app.
 
-**`rename_post` and `delete_post` are the two writes that are not proposals.**
-Everything else an agent does here is reviewable — a proposal you approve or
-decline, a draft you accept or discard. These two take effect on the live post
-the moment they are called, and a delete is final: `Document` has no `deletedAt`
-and there is no trash table, so the post and its whole revision history go
-together. Child tabs survive, promoted to top level; forks survive, losing the
-link back.
+**`delete_post` is the one write that is not a proposal.** Everything else an
+agent does here is reviewable — a proposal you approve or decline, a draft you
+accept or discard, a title you approve or refuse. A delete takes effect on the
+live post the moment it is called, and it is final: `Document` has no
+`deletedAt` and there is no trash table, so the post and its whole revision
+history go together. Child tabs survive, promoted to top level; forks survive,
+losing the link back.
 
 Two things keep that honest, and neither is a substitute for reading what you
 are about to approve:
 
-- They need the `manage` scope, which no default grants — locally you have it
+- It needs the `manage` scope, which no default grants — locally you have it
   (the credential is your operating system); remotely you must have minted the
   token with `--scopes read,propose,manage`.
 - `delete_post` refuses unless it is passed the post's exact title as `confirm`.
@@ -309,8 +309,8 @@ failed to start, and a missing `${VAR}` in a config, by name.
 | `MCP_AUTHOR_ID is required` | it is unset in `.env` — the server reads it from there via `--env-file=.env`, and no longer from `.mcp.json` |
 | 401 on every call, remote | the token is unknown, revoked, or expired. All three are answered identically on purpose, so the endpoint cannot be used to test which secrets were once real — check with `npm run mcp:token -- list you@example.com`, which names the state |
 | 426 Upgrade Required | the endpoint was reached over plain HTTP on a non-loopback host. Use HTTPS; see [§3](#3-it-must-be-https) |
-| Six tools instead of eight | a `--scopes read` token. `apply_ops` and `create_post` are not registered at all rather than refusing later |
-| No `rename_post` / `delete_post` | the token lacks `manage`, which no default grants. Mint one with `--scopes read,propose,manage`, and read [the flag](#2-mint-a-token) before you do |
+| Six tools instead of nine | a `--scopes read` token. `apply_ops`, `create_post` and `rename_post` are not registered at all rather than refusing later |
+| No `delete_post` | the token lacks `manage`, which no default grants. Mint one with `--scopes read,propose,manage`, and read [the flag](#2-mint-a-token) before you do |
 | 429, or a tool error naming a wait | you hit a [budget](#4-what-it-costs-you). In an ordinary editing session this is a bug — say so |
 
 Beyond that, `npm run mcp:smoke` (local) and `npm run mcp:smoke:http` (remote)
