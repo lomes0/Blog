@@ -113,12 +113,19 @@ const theme = createTheme({
         background: {
           default: "#ffffff",
           paper: "#f8fafc",
-          rail: "#eceef2",
+          // The deepest chrome surface, in both schemes. It used to equal
+          // `panel`, which left the right rail's icon strip and the panel it
+          // switches as one undifferentiated slab — the 1px divider between
+          // them was the only thing saying they were two columns. Dark mode
+          // already stepped `rail` -> `panel`; this is that step in light,
+          // taken off `panel` rather than added to it so the panel's cards
+          // (`background.paper`) keep their lift.
+          rail: "#e4e6ea",
           sidebar: "#f8fafc",
-          // Bookends the activity rail rather than sitting a hair off white:
-          // at #fbfcfe the right rail was ~1% from the canvas and read as
-          // canvas-with-a-border. Matching `rail` frames the app left and
-          // right and leaves white to mean "editing surface" alone.
+          // Sits between the rail and the canvas rather than a hair off white:
+          // at #fbfcfe the right panel was ~1% from the canvas and read as
+          // canvas-with-a-border. This keeps white meaning "editing surface"
+          // alone, while the rails frame the app a step below it.
           panel: "#eceef2",
           input: "#ffffff",
         },

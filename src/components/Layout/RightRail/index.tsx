@@ -228,10 +228,8 @@ const RightRail: React.FC = () => {
           borderLeft: "1px solid",
           borderColor: "divider",
           // `rail`, not `panel`: this strip is the right-hand twin of the
-          // activity rail, and the two bookends have to be the same surface.
-          // In light they already were (§2: panel *equals* rail there), so the
-          // mismatch only ever showed in dark — #2a3141 against the left rail's
-          // #1b202c.
+          // activity rail, and the two bookends have to be the same surface —
+          // a step below the panel it switches, in both schemes (§2).
           bgcolor: "background.rail",
           height: "100vh",
           width: RAIL_COMPACT_W,

@@ -155,7 +155,7 @@ exposed as MUI CSS variables (`var(--mui-palette-*)`).
 | --------------- | ---------------------------------- | --------- | --------- |
 | Canvas / page   | `--mui-palette-background-default` | `#ffffff` | `#252b3a` |
 | Surface / paper | `--mui-palette-background-paper`   | `#f8fafc` | `#303849` |
-| Activity rail   | `--mui-palette-background-rail`    | `#eceef2` | `#1b202c` |
+| Activity rail   | `--mui-palette-background-rail`    | `#e4e6ea` | `#1b202c` |
 | Sidebar / nav   | `--mui-palette-background-sidebar` | `#f8fafc` | `#202634` |
 | Panel (Copilot) | `--mui-palette-background-panel`   | `#eceef2` | `#2a3141` |
 | Input field     | `--mui-palette-background-input`   | `#ffffff` | `#363f52` |
@@ -163,9 +163,11 @@ exposed as MUI CSS variables (`var(--mui-palette-*)`).
 
 > **Chrome surfaces** (`sidebar`/`panel`/`input`) are recessed/lifted variants
 > of `paper`, added by augmenting MUI's `TypeBackground` in `ThemeProvider.tsx`.
-> In light mode `panel` **equals** `rail`: the two rails bookend the app, the
-> sidebar is the lightest chrome, and `background.default` white is reserved for
-> the editing canvas. Dark mode still steps `rail` → `sidebar` → `panel`. Use
+> Both schemes step `rail` → `panel` → `sidebar`/`paper` → `default`: the icon
+> rails are the deepest chrome, the panels they switch sit a step above them,
+> and `background.default` white is reserved for the editing canvas. (In light
+> `panel` used to **equal** `rail`, which left the right rail's strip and its
+> panel as one slab separated only by a 1px divider.) Use
 > them for the left nav (`AppDrawer`/`SideBar`), the right Copilot panel /
 > `RightRail`, and prompt/search fields — **not** raw hexes. There is **no**
 > `chip` or `accent-weak` token: selected rows, count pills, and hover fills use
